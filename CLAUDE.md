@@ -1,10 +1,10 @@
 # Cloakfox
 
-Daily-driver privacy browser: Cloakfox (C++ fingerprint spoofing) + ContainerShield (per-container, per-domain identity isolation).
+Daily-driver privacy browser: Camoufox (C++ fingerprint spoofing) + ContainerShield (per-container, per-domain identity isolation).
 
 ## What This Is
 
-A hard fork of Cloakfox (Firefox fork with 33+ C++ engine patches) transformed into a daily-use browser with:
+A hard fork of Camoufox (Firefox fork with 33+ C++ engine patches) transformed into a daily-use browser with:
 - C++ level fingerprint spoofing (canvas, audio, fonts, WebGL, navigator, screen, WebRTC, etc.)
 - Firefox Multi-Account Containers with per-container unique fingerprints
 - Per-domain deterministic fingerprinting within each container
@@ -13,7 +13,7 @@ A hard fork of Cloakfox (Firefox fork with 33+ C++ engine patches) transformed i
 ## Architecture
 
 Three layers:
-1. **C++ Engine** — 26 Cloakfox patches applied to Firefox ESR. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
+1. **C++ Engine** — 26 Camoufox patches applied to Firefox ESR. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
 2. **Cloakfox Shield Extension** — Stripped ContainerShield. Background manages containers/profiles/seeds. Inject script calls `window.setXxx()` with domain-specific seeds. JS spoofers handle vectors C++ doesn't cover.
 3. **Config** — `policies.json` + `cloakfox.cfg` restore daily-driver features (search, bookmarks, passwords) while keeping privacy hardened.
 
@@ -31,8 +31,8 @@ make all        # Full pipeline
 
 ## Repo Structure
 
-- `patches/fingerprint/` — 19 C++ spoofing patches from Cloakfox
-- `patches/infra/` — 7 infrastructure patches from Cloakfox
+- `patches/fingerprint/` — 19 C++ spoofing patches from Camoufox
+- `patches/infra/` — 7 infrastructure patches from Camoufox
 - `patches/cloakfox/` — New patches for daily-driver restoration
 - `config/` — policies.json, cloakfox.cfg, local-settings.js
 - `extension/` — Cloakfox Shield extension (TypeScript, React, Tailwind)

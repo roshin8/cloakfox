@@ -2,7 +2,7 @@
 
 A daily-driver privacy browser with **C++ level fingerprint spoofing** and **per-container, per-domain identity isolation**.
 
-Hard fork of [Cloakfox](https://github.com/daijro/cloakfox) (Firefox with 19+ C++ engine patches) + a bundled extension (Cloakfox Shield) for container management and fingerprint configuration.
+Hard fork of [Camoufox](https://github.com/daijro/camoufox) (Firefox with 19+ C++ engine patches) + a bundled extension (Cloakfox Shield) for container management and fingerprint configuration.
 
 ## Why
 
@@ -17,7 +17,7 @@ JS-based fingerprint spoofing has fundamental limitations that can't be solved f
 | WebRTC ICE candidates | Timing gaps in JS interception | Intercepted at SDP level |
 | Function.prototype.toString | Patched but detectable | Genuinely native code |
 
-Cloakfox solves these at the C++ level, but lacks container support and daily-driver features. Cloakfox adds both.
+Camoufox solves these at the C++ level, but lacks container support and daily-driver features. Cloakfox adds both.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ Cloakfox solves these at the C++ level, but lacks container support and daily-dr
 ┌─────────────────────────────────────────────────┐
 │              Cloakfox Browser              │
 │                                                  │
-│  C++ Engine (Gecko + 19 Cloakfox patches)        │
+│  C++ Engine (Gecko + 19 Camoufox patches)        │
 │  ├── CanvasFingerprintManager                    │
 │  ├── AudioFingerprintManager                     │
 │  ├── NavigatorManager                            │
@@ -108,9 +108,9 @@ make run          # Launch browser
 
 ```
 ├── patches/
-│   ├── fingerprint/    # 13 C++ spoofing patches from Cloakfox
+│   ├── fingerprint/    # 13 C++ spoofing patches from Camoufox
 │   └── infra/          # 6 infrastructure patches
-├── additions/          # MaskConfig.hpp, branding assets (from Cloakfox)
+├── additions/          # MaskConfig.hpp, branding assets (from Camoufox)
 ├── config/             # policies.json, cloakfox.cfg, chrome.css
 ├── extension/          # Cloakfox Shield (TypeScript, React)
 │   ├── src/
@@ -128,7 +128,7 @@ make run          # Launch browser
 
 ## Patches
 
-### Kept from Cloakfox (19)
+### Kept from Camoufox (19)
 
 **Fingerprint spoofing (13):** anti-font-fingerprinting, audio-context-spoofing, fingerprint-injection, font-hijacker, geolocation-spoofing, locale-spoofing, media-device-spoofing, network-patches, screen-hijacker, timezone-spoofing, voice-spoofing, webgl-spoofing, webrtc-ip-spoofing
 
@@ -153,9 +153,10 @@ See [PLAN.md](PLAN.md) for the full 6-milestone roadmap.
 
 ## License
 
-MPL-2.0 — same as Firefox/Cloakfox.
+MPL-2.0 — same as Firefox/Camoufox.
 
 ## Credits
 
-- [Cloakfox](https://github.com/daijro/cloakfox) by daijro — C++ fingerprint spoofing engine
+- [Camoufox](https://github.com/daijro/camoufox) by daijro — C++ fingerprint spoofing engine
 - [Firefox](https://www.mozilla.org/firefox/) by Mozilla — browser foundation
+- [LibreWolf](https://librewolf.net/) — data reporting and build patches
