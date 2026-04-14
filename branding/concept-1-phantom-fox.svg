@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="foxFade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="60%" stop-color="#4C1D95"/>
+      <stop offset="100%" stop-color="#0D1117" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="90" fill="#0D1117"/>
+  <!-- Fox body fading -->
+  <path d="M140 380 L180 160 L220 120 L256 180 L292 120 L332 160 L372 380 Q360 400 320 410 L290 390 Q256 420 222 390 L192 410 Q152 400 140 380Z" fill="url(#foxFade)" opacity="0.9"/>
+  <!-- Fox face details -->
+  <path d="M210 280 Q256 320 302 280 L290 300 Q256 330 222 300Z" fill="#4C1D95" opacity="0.5"/>
+  <!-- Nose -->
+  <ellipse cx="256" cy="295" rx="12" ry="8" fill="#1E1B4B"/>
+  <!-- Eye - the signature element -->
+  <circle cx="228" cy="248" r="8" fill="#22D3EE" filter="url(#glow)"/>
+  <circle cx="284" cy="248" r="8" fill="#22D3EE" filter="url(#glow)"/>
+  <!-- Scan lines -->
+  <g opacity="0.15" stroke="#7C3AED" stroke-width="1">
+    <line x1="160" y1="200" x2="352" y2="200"/>
+    <line x1="155" y1="220" x2="357" y2="220"/>
+    <line x1="150" y1="240" x2="362" y2="240"/>
+    <line x1="148" y1="260" x2="364" y2="260"/>
+    <line x1="150" y1="280" x2="362" y2="280"/>
+    <line x1="155" y1="300" x2="357" y2="300"/>
+    <line x1="160" y1="320" x2="352" y2="320"/>
+    <line x1="168" y1="340" x2="344" y2="340"/>
+    <line x1="178" y1="360" x2="334" y2="360"/>
+  </g>
+  <!-- Text -->
+  <text x="256" y="460" text-anchor="middle" font-family="SF Pro Display, Helvetica Neue, sans-serif" font-size="36" font-weight="600" fill="#7C3AED" letter-spacing="8">CLOAKFOX</text>
+</svg>

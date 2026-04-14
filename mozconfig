@@ -1,0 +1,37 @@
+ac_add_options --enable-application=browser
+
+ac_add_options --allow-addon-sideload
+ac_add_options --disable-crashreporter
+ac_add_options --disable-backgroundtasks
+ac_add_options --disable-debug
+ac_add_options --disable-default-browser-agent
+ac_add_options --disable-tests
+ac_add_options --disable-updater
+ac_add_options --enable-release
+
+ac_add_options --disable-system-policies
+ac_add_options --without-wasm-sandboxed-libraries
+
+ac_add_options --with-app-name=cloakfox
+ac_add_options --with-branding=browser/branding/cloakfox
+
+ac_add_options --with-unsigned-addon-scopes=app,system
+
+# Use brew LLVM clang (not Apple clang, which lacks some features Firefox needs)
+CC=/opt/homebrew/opt/llvm/bin/clang
+CXX=/opt/homebrew/opt/llvm/bin/clang++
+
+# Use Apple's linker (lld not available on macOS via brew)
+# Firefox on macOS doesn't require lld — Apple ld works
+ac_add_options --disable-bootstrap
+
+export MOZ_REQUIRE_SIGNING=
+
+mk_add_options MOZ_CRASHREPORTER=0
+mk_add_options MOZ_DATA_REPORTING=0
+mk_add_options MOZ_SERVICES_HEALTHREPORT=0
+mk_add_options MOZ_TELEMETRY_REPORTING=0
+mk_add_options MOZ_INSTALLER=0
+mk_add_options MOZ_AUTOMATION_INSTALLER=0
+
+mk_add_options MOZ_MAKE_FLAGS="-j$(sysctl -n hw.ncpu)"

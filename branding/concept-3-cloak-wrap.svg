@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tailGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F97316"/>
+      <stop offset="50%" stop-color="#EA580C"/>
+      <stop offset="100%" stop-color="#9A3412"/>
+    </linearGradient>
+    <filter id="eyeGlow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="90" fill="#111827"/>
+  <!-- Tail/cloak - outer spiral -->
+  <path d="M350,200 Q400,250 380,340 Q360,420 280,430 Q200,440 150,380 Q100,320 130,240 Q150,180 210,160 Q260,145 300,170 Q330,190 320,230 Q310,270 270,280 Q240,285 230,260"
+        fill="none" stroke="url(#tailGrad)" stroke-width="55" stroke-linecap="round" opacity="0.9"/>
+  <!-- Inner body (void - same as background = invisible) -->
+  <circle cx="265" cy="270" r="50" fill="#111827"/>
+  <!-- Fox ear hints poking from cloak -->
+  <polygon points="235,195 245,170 255,200" fill="#F97316" opacity="0.8"/>
+  <polygon points="275,190 285,165 290,195" fill="#EA580C" opacity="0.8"/>
+  <!-- Fox eye peeking out -->
+  <circle cx="255" cy="240" r="10" fill="#6366F1" filter="url(#eyeGlow)"/>
+  <circle cx="255" cy="238" r="4" fill="#C7D2FE"/>
+  <circle cx="280" cy="243" r="8" fill="#6366F1" filter="url(#eyeGlow)"/>
+  <circle cx="280" cy="241" r="3" fill="#C7D2FE"/>
+  <!-- Nose tip -->
+  <ellipse cx="268" cy="268" rx="6" ry="4" fill="#9A3412"/>
+  <!-- Warm glow where body meets tail -->
+  <circle cx="265" cy="270" r="45" fill="#FDE68A" opacity="0.05"/>
+  <!-- Text -->
+  <text x="256" y="480" text-anchor="middle" font-family="SF Pro Display, Helvetica Neue, sans-serif" font-size="36" font-weight="600" fill="#F97316" letter-spacing="8">CLOAKFOX</text>
+</svg>

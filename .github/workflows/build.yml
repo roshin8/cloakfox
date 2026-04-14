@@ -1,0 +1,216 @@
+name: Build Cloakfox
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-macos:
+    runs-on: macos-26
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      BUILD_TARGET: macos,arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Rust
+        run: |
+          curl https://sh.rustup.rs -sSf | bash -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          brew install aria2 nasm lld cbindgen create-dmg
+          echo "$(brew --prefix lld)/bin" >> $GITHUB_PATH
+
+      - name: Set up sccache
+        uses: Mozilla-Actions/sccache-action@v0.0.9
+
+      - name: Prioritize action's sccache
+        run: echo "$(dirname $SCCACHE_PATH)" >> $GITHUB_PATH
+
+      - name: Fetch and setup
+        run: |
+          make fetch
+          make setup-minimal
+
+      - name: Patch and configure
+        run: |
+          make dir
+          python3 scripts/fix-mach-logging.py firefox-src
+          echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
+
+      - name: Build
+        run: make build
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats || true
+
+      - name: Verify
+        run: |
+          ls -la firefox-src/obj-*/dist/bin/cloakfox* || true
+          grep "setCanvasSeed" firefox-src/dom/webidl/Window.webidl && echo "C++ API: FOUND" || echo "C++ API: NOT FOUND"
+
+      - name: Package
+        run: |
+          cd firefox-src && ./mach package
+          # Extract app from mach package DMG
+          DMG_PATH=$(find obj-*/dist -name "*.dmg" -maxdepth 1 | head -1)
+          hdiutil attach "$DMG_PATH" -mountpoint /tmp/mach-dmg -nobrowse
+          # Copy app, strip extended attributes, and ad-hoc codesign
+          mkdir -p /tmp/dmg-staging
+          cp -R /tmp/mach-dmg/Cloakfox.app /tmp/dmg-staging/
+          xattr -cr /tmp/dmg-staging/Cloakfox.app
+          codesign --force --deep --sign - /tmp/dmg-staging/Cloakfox.app
+          hdiutil detach /tmp/mach-dmg
+          # Create branded DMG with background, icon positioning, and Applications shortcut
+          mkdir -p ../dist
+          create-dmg \
+            --volname "Cloakfox" \
+            --volicon "../additions/browser/branding/cloakfox/firefox.icns" \
+            --background "../additions/browser/branding/cloakfox/background.png" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 128 \
+            --text-size 12 \
+            --icon "Cloakfox.app" 175 200 \
+            --app-drop-link 485 200 \
+            --hide-extension "Cloakfox.app" \
+            --no-internet-enable \
+            --format UDZO \
+            ../dist/Cloakfox-macos-arm64.dmg \
+            /tmp/dmg-staging
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloakfox-macos-arm64
+          path: dist/Cloakfox-macos-arm64.dmg
+
+  build-linux:
+    runs-on: ubuntu-24.04
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      BUILD_TARGET: linux,x86_64
+
+    steps:
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-docker-images: "true"
+          remove-cached-tools: "true"
+          remove-swapfile: "true"
+          verbose: "false"
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up LLVM 18
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 18
+          sudo apt-get install -y lld-18 clang-18
+          sudo update-alternatives --install /usr/bin/ld.lld ld.lld /usr/bin/ld.lld-18 100
+
+      - name: Install Rust
+        run: |
+          curl https://sh.rustup.rs -sSf | bash -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y msitools p7zip-full aria2 nasm \
+            libasound2-dev libgtk-3-dev libdbus-glib-1-dev libpulse-dev \
+            libx11-xcb-dev libxt-dev libxrandr-dev libxcomposite-dev libxdamage-dev \
+            libclang-dev
+          cargo install cbindgen
+
+      - name: Set up git identity
+        run: |
+          git config --global user.email "ci@cloakfox"
+          git config --global user.name "Cloakfox CI"
+
+      - name: Set up sccache
+        uses: Mozilla-Actions/sccache-action@v0.0.9
+
+      - name: Prioritize action's sccache
+        run: echo "$(dirname $SCCACHE_PATH)" >> $GITHUB_PATH
+
+      - name: Fetch and setup
+        run: |
+          make fetch
+          make setup-minimal
+
+      - name: Patch and configure
+        run: |
+          make dir
+          python3 scripts/fix-mach-logging.py firefox-src
+          echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
+
+      - name: Create swap space
+        run: |
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
+      - name: Build
+        run: make build
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats || true
+
+      - name: Verify
+        run: |
+          ls -la firefox-src/obj-*/dist/bin/cloakfox* || true
+          grep "setCanvasSeed" firefox-src/dom/webidl/Window.webidl && echo "C++ API: FOUND" || echo "C++ API: NOT FOUND"
+
+      - name: Package
+        run: cd firefox-src && ./mach package
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloakfox-linux-x86_64
+          path: firefox-src/obj-*/dist/*.tar.bz2
+
+  release:
+    needs: [build-macos, build-linux]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

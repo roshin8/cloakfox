@@ -1,0 +1,64 @@
+name: Test sccache
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-sccache:
+    runs-on: ubuntu-24.04
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up LLVM 18
+        run: |
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 18
+          sudo apt-get install -y clang-18
+
+      - name: Install Rust
+        run: |
+          curl https://sh.rustup.rs -sSf | bash -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Set up sccache
+        uses: Mozilla-Actions/sccache-action@v0.0.9
+
+      - name: Prioritize action's sccache over any other
+        run: echo "$(dirname $SCCACHE_PATH)" >> $GITHUB_PATH
+
+      - name: Simulate bootstrap sccache conflict
+        run: |
+          # Create a fake sccache in ~/.mozbuild like mach bootstrap does
+          mkdir -p ~/.mozbuild
+          echo '#!/bin/bash' > ~/.mozbuild/sccache
+          echo 'echo "WRONG SCCACHE - bootstrap version"' >> ~/.mozbuild/sccache
+          chmod +x ~/.mozbuild/sccache
+          export PATH="$HOME/.mozbuild:$PATH"
+          echo "=== Which sccache is found? ==="
+          which sccache
+          sccache --version
+          echo "(should be the action's version, not bootstrap's)"
+
+      - name: Test C compile with sccache
+        run: |
+          echo 'int main() { return 0; }' > /tmp/test.c
+          sccache clang-18 -c /tmp/test.c -o /tmp/test.o
+          echo "Compile 1 (miss): OK"
+          sccache clang-18 -c /tmp/test.c -o /tmp/test.o
+          echo "Compile 2 (hit): OK"
+
+      - name: Test Rust compile with sccache
+        run: |
+          echo 'fn main() {}' > /tmp/test.rs
+          RUSTC_WRAPPER=sccache rustc /tmp/test.rs -o /tmp/test_rs
+          echo "Rust compile: OK"
+
+      - name: Show stats
+        run: |
+          sccache --show-stats
+          echo ""
+          echo "=== Cache location should be 'ghac' ==="
+          sccache --show-stats 2>&1 | grep "Cache location"

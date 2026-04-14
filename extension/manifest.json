@@ -1,0 +1,63 @@
+{
+  "manifest_version": 2,
+  "name": "Cloakfox Shield",
+  "version": "0.1.0",
+  "description": "Per-container, per-domain fingerprint isolation for Cloakfox",
+  "author": "Cloakfox",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cloakfox-shield@cloakfox",
+      "strict_min_version": "128.0"
+    }
+  },
+
+  "permissions": [
+    "contextualIdentities",
+    "cookies",
+    "storage",
+    "tabs",
+    "webNavigation",
+    "webRequest",
+    "webRequestBlocking",
+    "scripting",
+    "<all_urls>"
+  ],
+
+  "background": {
+    "scripts": ["dist/background/index.js"],
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content/index.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/inject/index.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    }
+  ],
+
+  "browser_action": {
+    "default_popup": "dist/popup/index.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}
