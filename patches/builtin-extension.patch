@@ -1,12 +1,11 @@
 diff --git a/browser/extensions/moz.build b/browser/extensions/moz.build
 --- a/browser/extensions/moz.build
 +++ b/browser/extensions/moz.build
-@@ -11,6 +11,8 @@
- # AOM Group 3 (hidden)
- DIRS += ["formautofill"]
- DIRS += ["pictureinpicture"]
-+# Cloakfox Shield — built-in per-container fingerprint isolation
-+DIRS += ["cloakfox-shield"]
- DIRS += ["webcompat"]
- 
- # AOM Group 4 (can be disabled, but not uninstalled)
+@@ -7,6 +7,7 @@
+ DIRS += [
+     "data-leak-blocker",
+     "formautofill",
++    "cloakfox-shield",
+     "ipp-activator",
+     "webcompat",
+     "pictureinpicture",
