@@ -65,6 +65,8 @@ set-target:
 
 extension:
 	cd extension && npm ci && npm run build:prod
+	# Package as XPI (zip of dist/ + manifest.json + icons/)
+	cd extension && zip -r ../cloakfox-shield.xpi manifest.json dist/ icons/ -x "*.map"
 
 build:
 	@if [ ! -f $(cf_source_dir)/_READY ]; then \

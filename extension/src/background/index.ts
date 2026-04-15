@@ -3,9 +3,9 @@
  */
 
 import { ConfigInjector } from './config-injector';
+import { getProfileForContainer } from './profile-manager';
+import { getSettingsForDomain } from './settings-store';
 import { generateEntropySeed } from '@/lib/crypto';
-import { DEFAULT_SETTINGS } from '@/constants';
-import { DEFAULT_PROFILE } from '@/lib/profiles/default';
 import { STORAGE_KEYS } from '@/constants';
 
 /** In-memory entropy cache (persisted to storage) */
@@ -42,18 +42,16 @@ async function getContainerForTab(tabId: number): Promise<string> {
   return tab.cookieStoreId ?? 'firefox-default';
 }
 
-// Initialize config injector with dependency stubs
-// These will be replaced by full ContainerManager/ProfileManager/SettingsStore later
+// Initialize config injector with real implementations
 const _injector = new ConfigInjector({
   getContainerForTab,
   getEntropySeed: ensureEntropy,
-  getAssignedProfile: async (_cookieStoreId) => {
-    // TODO: Replace with ProfileManager lookup
-    return DEFAULT_PROFILE;
+  getAssignedProfile: async (cookieStoreId) => {
+    const entropy = await ensureEntropy(cookieStoreId);
+    return getProfileForContainer(cookieStoreId, entropy);
   },
-  getSettingsForDomain: async (_cookieStoreId, _domain) => {
-    // TODO: Replace with SettingsStore lookup + domain rule merging
-    return DEFAULT_SETTINGS;
+  getSettingsForDomain: async (cookieStoreId, domain) => {
+    return getSettingsForDomain(cookieStoreId, domain);
   },
 });
 

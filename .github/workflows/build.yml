@@ -37,6 +37,14 @@ jobs:
       - name: Prioritize action's sccache
         run: echo "$(dirname $SCCACHE_PATH)" >> $GITHUB_PATH
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build extension
+        run: make extension
+
       - name: Fetch and setup
         run: |
           make fetch
@@ -154,6 +162,14 @@ jobs:
 
       - name: Prioritize action's sccache
         run: echo "$(dirname $SCCACHE_PATH)" >> $GITHUB_PATH
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build extension
+        run: make extension
 
       - name: Fetch and setup
         run: |

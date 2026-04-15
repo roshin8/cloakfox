@@ -2,13 +2,14 @@ diff --git a/browser/installer/package-manifest.in b/browser/installer/package-m
 index 6bb2e64906..fbdb0b26ea 100644
 --- a/browser/installer/package-manifest.in
 +++ b/browser/installer/package-manifest.in
-@@ -250,6 +250,11 @@
+@@ -250,6 +250,12 @@
  #endif
  #endif
  
 +; Cloakfox specific files
 +@RESPATH@/defaults/pref/local-settings.js
 +@RESPATH@/distribution/policies.json
++@RESPATH@/distribution/extensions/cloakfox-shield@cloakfox.xpi
 +@RESPATH@/cloakfox.cfg
 +
  ; [Default Preferences]
@@ -18,7 +19,7 @@ diff --git a/lw/moz.build b/lw/moz.build
 index e69de29bb2..5459e4ac36 100644
 --- a/lw/moz.build
 +++ b/lw/moz.build
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,20 @@
 +FINAL_TARGET_FILES += [
 +  "chrome.css",
 +  "cloakfox.cfg",
@@ -28,6 +29,11 @@ index e69de29bb2..5459e4ac36 100644
 +FINAL_TARGET_FILES.distribution += [
 +  "policies.json",
 +]
++
++if os.path.exists("extensions/cloakfox-shield@cloakfox.xpi"):
++    FINAL_TARGET_FILES.distribution.extensions += [
++        "extensions/cloakfox-shield@cloakfox.xpi",
++    ]
 +
 +# local-settings does not yet end up being pacakged.
 +FINAL_TARGET_FILES.defaults.pref += [
