@@ -151,6 +151,17 @@ no-css-animations, no-search-engines, disable-extension-newtab, disable-remote-s
 
 See [PLAN.md](PLAN.md) for the full 6-milestone roadmap.
 
+## FAQ
+
+### macOS says "Cloakfox can't be opened because Apple cannot check it for malicious software"
+
+This is normal for unsigned apps. Go to **System Settings → Privacy & Security**, scroll down — you'll see a message about Cloakfox being blocked. Click **"Open Anyway"**.
+
+Alternatively, run this in Terminal before first launch:
+```bash
+xattr -dr com.apple.quarantine /Applications/Cloakfox.app
+```
+
 ## License
 
 MPL-2.0 — same as Firefox/Camoufox.
