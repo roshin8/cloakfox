@@ -156,6 +156,29 @@ export function applyCoreProtections(
     }
   }
 
+  // ─── Battery ─────────────────────────────────────────────────
+  if (settings.hardware?.battery !== 'off') {
+    const rng = subPRNG(masterSeed, 'core.battery');
+    // Generate realistic battery: usually charging, level 0.20-1.00
+    const charging = rng.nextInt(0, 3) !== 0; // 75% chance charging
+    const level = rng.nextInt(20, 100) / 100;
+    if (callCore('setBatteryStatus', charging, level)) {
+      handled.add('hardware.battery');
+    }
+  }
+
+  // ─── Media Devices ─────────────────────────────────────────
+  if (settings.hardware?.mediaDevices !== 'off') {
+    const rng = subPRNG(masterSeed, 'core.mediaDevices');
+    // Realistic device counts: 1-3 mics, 1-2 cams, 1-3 speakers
+    const mics = rng.nextInt(1, 3);
+    const cams = rng.nextInt(1, 2);
+    const speakers = rng.nextInt(1, 3);
+    if (callCore('setMediaDeviceCounts', mics, cams, speakers)) {
+      handled.add('hardware.mediaDevices');
+    }
+  }
+
   // ─── WebRTC ──────────────────────────────────────────────────
   if (settings.network?.webrtc !== 'off') {
     const rng = subPRNG(masterSeed, 'core.webrtc');

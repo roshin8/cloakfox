@@ -12,6 +12,7 @@ import {
   type UserAgentProfile,
   getRandomProfile,
 } from '@/lib/profiles/user-agents';
+import { generateCoherentFingerprint } from '@/lib/bayesian';
 import {
   ALL_SCREENS,
   type ScreenProfile,
@@ -206,6 +207,60 @@ export function generateUniqueProfile(
 }
 
 /**
+ * Generate a profile using the Bayesian network for statistical coherence.
+ * Falls back to the PRNG approach if the network fails to load.
+ */
+export async function generateProfileWithBayesian(
+  entropy: ContainerEntropy
+): Promise<AssignedProfile> {
+  try {
+    const fp = await generateCoherentFingerprint(entropy.seed);
+
+    // Map Bayesian output to our AssignedProfile format
+    // Find matching UA profile from our profiles list, or create one from the Bayesian output
+    const prng = new PRNG(base64ToUint8Array(entropy.seed));
+    const matchingUA = ALL_PROFILES.find(p => p.userAgent === fp.userAgent);
+    const userAgent: UserAgentProfile = matchingUA || {
+      id: `bayesian-${prng.nextInt(0, 99999)}`,
+      name: fp.userAgent.split('/').pop() || 'Unknown',
+      userAgent: fp.userAgent,
+      platform: fp.platform,
+      vendor: '',
+      appVersion: fp.appVersion,
+      oscpu: fp.oscpu,
+      mobile: false,
+      platformName: fp.platform.includes('Win') ? 'Windows' : fp.platform.includes('Mac') ? 'macOS' : 'Linux',
+      platformVersion: '',
+    };
+
+    const screen: ScreenProfile = {
+      width: fp.screen.width,
+      height: fp.screen.height,
+      availWidth: fp.screen.availWidth,
+      availHeight: fp.screen.availHeight,
+      colorDepth: fp.screen.colorDepth,
+      pixelDepth: fp.screen.pixelDepth,
+      devicePixelRatio: fp.screen.devicePixelRatio,
+    };
+
+    const signature = `bayesian-${fp.userAgent.slice(-20)}-${fp.screen.width}x${fp.screen.height}`;
+
+    return {
+      userAgent,
+      screen,
+      hardwareConcurrency: fp.hardwareConcurrency,
+      deviceMemory: fp.deviceMemory || prng.pick(DEVICE_MEMORY),
+      timezoneOffset: prng.pick(TIMEZONE_OFFSETS),
+      languages: prng.pick(LANGUAGE_SETS),
+      signature,
+    };
+  } catch (e) {
+    console.warn('[ProfileManager] Bayesian network failed, falling back to PRNG:', e);
+    return generateUniqueProfile(entropy);
+  }
+}
+
+/**
  * Register a profile assignment for a container
  */
 export function registerProfile(
@@ -351,8 +406,8 @@ export async function ensureUniqueProfile(
     return existing;
   }
 
-  // Generate new unique profile
-  const profile = generateUniqueProfile(entropy);
+  // Generate new unique profile — try Bayesian network first for coherent fingerprints
+  const profile = await generateProfileWithBayesian(entropy);
   registerProfile(entropy.cookieStoreId, profile);
 
   return profile;
