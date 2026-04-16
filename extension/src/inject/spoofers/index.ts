@@ -154,8 +154,9 @@ export function initializeSpoofers(config: InjectConfig): void {
   const { settings, assignedProfile } = config;
 
   // Try C++ Core protections first — returns set of signals handled at engine level
+  // Uses isolated sub-PRNGs per signal, so doesn't affect pagePRNG state
   const coreHandled = applyCoreProtections(
-    pagePRNG,
+    hashedSeed,
     assignedProfile,
     settings as unknown as Record<string, Record<string, string>>
   );
@@ -165,7 +166,9 @@ export function initializeSpoofers(config: InjectConfig): void {
 
   // Wrap each spoofer init so one failure doesn't crash all others
   const safe = (name: string, fn: () => void) => {
-    try { fn(); } catch { /* spoofer init failed — continue with others */ }
+    try { fn(); } catch (e) {
+      console.warn(`[Cloakfox] Spoofer "${name}" failed to initialize:`, e);
+    }
   };
 
   // Graphics (skip canvas/webgl if Core handled them)
@@ -177,8 +180,8 @@ export function initializeSpoofers(config: InjectConfig): void {
       selectedGPURef = getSelectedGPU();
     }
   });
-  safe('offscreen', () => { if (settings.graphics.offscreenCanvas !== 'off') initOffscreenCanvasSpoofer(settings.graphics.offscreenCanvas, pagePRNG); });
-  safe('webglShaders', () => { if (settings.graphics.webglShaders !== 'off') initWebGLShaderSpoofer(settings.graphics.webglShaders, pagePRNG); });
+  safe('offscreen', () => { if (settings.graphics.offscreenCanvas !== 'off' && !skip('graphics.offscreenCanvas')) initOffscreenCanvasSpoofer(settings.graphics.offscreenCanvas, pagePRNG); });
+  safe('webglShaders', () => { if (settings.graphics.webglShaders !== 'off' && !skip('graphics.webglShaders')) initWebGLShaderSpoofer(settings.graphics.webglShaders, pagePRNG); });
   safe('webgpu', () => { if (settings.graphics.webgpu !== 'off') initWebGPUSpoofer(settings.graphics.webgpu, pagePRNG); });
   safe('domRect', () => { if (settings.graphics.domRect !== 'off') initDOMRectSpoofer(settings.graphics.domRect, pagePRNG); });
   safe('textMetrics', () => { if (settings.graphics.textMetrics !== 'off') initTextMetricsSpoofer(settings.graphics.textMetrics, pagePRNG); });
@@ -186,12 +189,12 @@ export function initializeSpoofers(config: InjectConfig): void {
 
   safe('audio', () => { if (settings.audio.audioContext !== 'off' && !skip('audio.audioContext')) initAudioSpoofer(settings.audio.audioContext, pagePRNG); });
   safe('offlineAudio', () => { if (settings.audio.offlineAudio !== 'off' && !skip('audio.offlineAudio')) initOfflineAudioSpoofer(settings.audio.offlineAudio, pagePRNG); });
-  safe('audioLatency', () => { if (settings.audio.latency !== 'off') initAudioLatencySpoofer(settings.audio.latency, pagePRNG); });
+  safe('audioLatency', () => { if (settings.audio.latency !== 'off' && !skip('audio.latency')) initAudioLatencySpoofer(settings.audio.latency, pagePRNG); });
   safe('codecs', () => { if (settings.audio.codecs !== 'off') initCodecSpoofer(settings.audio.codecs, pagePRNG); });
 
   safe('screen', () => { if (settings.hardware.screen !== 'off' && !skip('hardware.screen')) initScreenSpoofer(settings.hardware.screen, pagePRNG, assignedProfile?.screen); });
-  safe('screenFrame', () => { if (settings.hardware.screenFrame !== 'off') initScreenFrameSpoofer(settings.hardware.screenFrame, pagePRNG); });
-  safe('orientation', () => { if (settings.hardware.orientation !== 'off') initScreenOrientationSpoofer(settings.hardware.orientation, pagePRNG); });
+  safe('screenFrame', () => { if (settings.hardware.screenFrame !== 'off' && !skip('hardware.screenFrame')) initScreenFrameSpoofer(settings.hardware.screenFrame, pagePRNG); });
+  safe('orientation', () => { if (settings.hardware.orientation !== 'off' && !skip('hardware.orientation')) initScreenOrientationSpoofer(settings.hardware.orientation, pagePRNG); });
   safe('device', () => {
     if ((settings.hardware.deviceMemory !== 'off' || settings.hardware.hardwareConcurrency !== 'off') && !skip('hardware.hardwareConcurrency')) {
       initDeviceSpoofer(settings.hardware.deviceMemory, settings.hardware.hardwareConcurrency, pagePRNG, assignedProfile);
@@ -203,7 +206,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('sensors', () => { if (settings.hardware.sensors !== 'off') initSensorSpoofer(settings.hardware.sensors, pagePRNG); });
   safe('architecture', () => { if (settings.hardware.architecture !== 'off') initArchitectureSpoofer(settings.hardware.architecture, pagePRNG); });
   safe('viewport', () => { if (settings.hardware.visualViewport !== 'off') initVisualViewportSpoofer(settings.hardware.visualViewport, pagePRNG); });
-  safe('screenExt', () => { if (settings.hardware.screenExtended !== 'off') initScreenExtendedSpoofer(settings.hardware.screenExtended, pagePRNG); });
+  safe('screenExt', () => { if (settings.hardware.screenExtended !== 'off' && !skip('hardware.screenExtended')) initScreenExtendedSpoofer(settings.hardware.screenExtended, pagePRNG); });
 
   safe('navigator', () => { if (settings.navigator.userAgent !== 'off' && !skip('navigator.userAgent')) initNavigatorSpoofer(settings.navigator, pagePRNG, config.profile, assignedProfile); });
   safe('clipboard', () => { if (settings.navigator.clipboard !== 'off') initClipboardSpoofer(settings.navigator.clipboard, pagePRNG); });
@@ -251,18 +254,18 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('crypto', () => { if (settings.crypto.webCrypto !== 'off') initCryptoSpoofer(settings.crypto.webCrypto, pagePRNG); });
 
   // Devices
-  if (settings.devices.gamepad !== 'off') initGamepadSpoofer(settings.devices.gamepad, pagePRNG);
-  if (settings.devices.midi !== 'off') initMIDISpoofer(settings.devices.midi, pagePRNG);
-  if (settings.devices.bluetooth !== 'off') initBluetoothSpoofer(settings.devices.bluetooth, pagePRNG);
-  if (settings.devices.usb !== 'off') initUSBSpoofer(settings.devices.usb, pagePRNG);
-  if (settings.devices.serial !== 'off') initSerialSpoofer(settings.devices.serial, pagePRNG);
-  if (settings.devices.hid !== 'off') initHIDSpoofer(settings.devices.hid, pagePRNG);
+  safe('gamepad', () => { if (settings.devices.gamepad !== 'off') initGamepadSpoofer(settings.devices.gamepad, pagePRNG); });
+  safe('midi', () => { if (settings.devices.midi !== 'off') initMIDISpoofer(settings.devices.midi, pagePRNG); });
+  safe('bluetooth', () => { if (settings.devices.bluetooth !== 'off') initBluetoothSpoofer(settings.devices.bluetooth, pagePRNG); });
+  safe('usb', () => { if (settings.devices.usb !== 'off') initUSBSpoofer(settings.devices.usb, pagePRNG); });
+  safe('serial', () => { if (settings.devices.serial !== 'off') initSerialSpoofer(settings.devices.serial, pagePRNG); });
+  safe('hid', () => { if (settings.devices.hid !== 'off') initHIDSpoofer(settings.devices.hid, pagePRNG); });
 
   // Features
   safe('features', () => { if (settings.features.detection !== 'off') initFeatureSpoofer(settings.features.detection, pagePRNG); });
 
   // Payment
-  if (settings.payment.applePay !== 'off') initApplePaySpoofer(settings.payment.applePay, pagePRNG);
+  safe('applePay', () => { if (settings.payment.applePay !== 'off') initApplePaySpoofer(settings.payment.applePay, pagePRNG); });
 
   // Intercept iframe creation to apply overrides to iframe contexts.
   initIframePatcher({ settings, assignedProfile, selectedGPU: selectedGPURef });
