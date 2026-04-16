@@ -78,8 +78,29 @@ def list_files(root_dir, suffix):
 
 
 def list_patches(root_dir='../patches', suffix='*.patch'):
-    """List all patch files"""
-    return sorted(list_files(root_dir, suffix), key=os.path.basename)
+    """List all patch files, respecting order.txt if it exists.
+
+    If patches/order.txt exists, patches are applied in that order.
+    Any patches not listed in order.txt are appended at the end (alphabetically).
+    Lines starting with # are comments. Blank lines are ignored.
+    """
+    all_patches = {os.path.basename(p): p for p in list_files(root_dir, suffix)}
+    order_file = os.path.join(root_dir, 'order.txt')
+
+    if os.path.exists(order_file):
+        ordered = []
+        with open(order_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if line in all_patches:
+                    ordered.append(all_patches.pop(line))
+        # Append any remaining patches not in order.txt (alphabetically)
+        ordered.extend(sorted(all_patches.values(), key=os.path.basename))
+        return ordered
+
+    return sorted(all_patches.values(), key=os.path.basename)
 
 def is_bootstrap_patch(name):
     return bool(re.match(r'\d+\-.*', os.path.basename(name)))

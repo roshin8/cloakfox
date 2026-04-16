@@ -1,0 +1,49 @@
+# Cloakfox patch application order
+# Patches are applied in this order. Any patches not listed here
+# are appended at the end (alphabetically).
+
+# Infrastructure
+config.patch
+cross-process-storage.patch
+browser-init.patch
+builtin-extension.patch
+
+# LibreWolf
+librewolf/bootstrap.patch
+librewolf/custom-ubo-assets-bootstrap-location.patch
+librewolf/dbus_name.patch
+librewolf/devtools-bypass.patch
+librewolf/disable-data-reporting-at-compile-time.patch
+librewolf/mozilla_dirs.patch
+librewolf/urlbarprovider-interventions.patch
+
+# Camoufox fingerprint spoofing (core patches)
+fingerprint-injection.patch
+chromeutil.patch
+all-addons-private-mode.patch
+force-default-pointer.patch
+shadow-root-bypass.patch
+macos-sandbox-crash-fix.patch
+network-patches.patch
+
+# C++ spoofing managers (order matters — these modify the same files)
+audio-context-spoofing.patch
+audio-fingerprint-manager.patch
+canvas-spoofing.patch
+font-hijacker.patch
+font-list-spoofing.patch
+anti-font-fingerprinting.patch
+geolocation-spoofing.patch
+locale-spoofing.patch
+media-device-spoofing.patch
+navigator-spoofing.patch
+screen-spoofing.patch
+speech-voices-spoofing.patch
+timezone-spoofing.patch
+voice-spoofing.patch
+webgl-spoofing.patch
+webrtc-ip-spoofing.patch
+
+# New WebIDL patches (must apply LAST — depend on all above)
+battery-webidl.patch
+media-device-webidl.patch
