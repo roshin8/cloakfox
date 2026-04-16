@@ -1,420 +1,248 @@
-import React, { useEffect, useState } from 'react';
-
-type TabId = 'dashboard' | 'fingerprint' | 'signals' | 'headers' | 'whitelist' | 'settings';
-
-const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Home', icon: '⌂' },
-  { id: 'fingerprint', label: 'Profile', icon: '👤' },
-  { id: 'signals', label: 'Signals', icon: '📡' },
-  { id: 'headers', label: 'Headers', icon: '⟨/⟩' },
-  { id: 'whitelist', label: 'Rules', icon: '✓' },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
-];
+import React, { useEffect, useState, useCallback } from 'react';
+import browser from 'webextension-polyfill';
+import type { ContainerIdentity, ContainerSettings } from '@/types';
+import { createDefaultSettings } from '@/types/settings';
+import {
+  MSG_GET_ALL_CONTAINERS,
+  MSG_GET_CONTAINER_INFO,
+  MSG_GET_SETTINGS,
+  MSG_SET_SETTINGS,
+  MSG_GET_ASSIGNED_PROFILE,
+} from '@/constants';
+import { EXTENSION_VERSION } from '@/lib/constants';
+import { popupLogger } from '@/lib/logger';
+import TabNavigation, { type TabId } from './components/TabNavigation';
+import DashboardTab from './components/tabs/DashboardTab';
+import FingerprintTab from './components/tabs/FingerprintTab';
+import SignalsTab from './components/tabs/SignalsTab';
+import HeadersTab from './components/tabs/HeadersTab';
+import WhitelistTab from './components/tabs/WhitelistTab';
+import SettingsTab from './components/tabs/SettingsTab';
+import ErrorBoundary from './components/ErrorBoundary';
 
 interface ContainerInfo {
-  name: string;
-  color: string;
-  cookieStoreId: string;
+  containerId: string;
+  containerName: string;
+  containerColor: string;
+  containerIcon: string;
+}
+
+interface AssignedProfile {
+  userAgent?: {
+    id?: string; name?: string; userAgent?: string; platform?: string;
+    vendor?: string; platformName?: string; platformVersion?: string; mobile?: boolean;
+  };
+  screen?: {
+    width: number; height: number; availWidth?: number; availHeight?: number;
+    colorDepth?: number; pixelDepth?: number; devicePixelRatio?: number;
+  };
+  hardwareConcurrency?: number;
+  deviceMemory?: number;
+  languages?: string[];
+  timezoneOffset?: number;
 }
 
 export default function App() {
+  const [containers, setContainers] = useState<ContainerIdentity[]>([]);
+  const [currentContainer, setCurrentContainer] = useState<ContainerInfo | null>(null);
+  const [selectedContainer, setSelectedContainer] = useState<string | null>(null);
+  const [settings, setSettings] = useState<ContainerSettings>(createDefaultSettings());
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
-  const [isDark, setIsDark] = useState(true);
-  const [engineActive, setEngineActive] = useState(false);
-  const [container, setContainer] = useState<ContainerInfo | null>(null);
-  const [domain, setDomain] = useState('');
-  const [enabled, setEnabled] = useState(true);
+  const [highlightedSignal, setHighlightedSignal] = useState<{ category: string; signal: string } | undefined>();
+  const [assignedProfile, setAssignedProfile] = useState<AssignedProfile | undefined>();
+  const [isDark, setIsDark] = useState(() => {
+    try { return localStorage.getItem('cloakfox-theme') === 'dark'; } catch { return false; }
+  });
+
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    try { localStorage.setItem('cloakfox-theme', isDark ? 'dark' : 'light'); } catch {}
+  }, [isDark]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('cloakfox-theme');
-    if (saved === 'light') { setIsDark(false); document.documentElement.setAttribute('data-theme', 'light'); }
-
-    // Get current tab info
-    browser.tabs.query({ active: true, currentWindow: true }).then(async (tabs) => {
-      const tab = tabs[0];
-      if (!tab?.id || !tab.url) return;
-
-      try { setDomain(new URL(tab.url).hostname); } catch {}
-
-      // Get container info
-      if (tab.cookieStoreId && tab.cookieStoreId !== 'firefox-default') {
-        try {
-          const ctx = await browser.contextualIdentities.get(tab.cookieStoreId);
-          setContainer({ name: ctx.name, color: ctx.color, cookieStoreId: tab.cookieStoreId });
-        } catch {}
-      }
-
-      // Check C++ engine
+    async function init() {
       try {
-        const results = await browser.scripting.executeScript({
-          target: { tabId: tab.id },
-          world: 'MAIN' as never,
-          func: () => typeof (window as Record<string, unknown>).setCanvasSeed === 'function',
-        });
-        setEngineActive(results[0]?.result === true);
-      } catch { setEngineActive(false); }
-    });
+        const allContainers = await browser.runtime.sendMessage({ type: MSG_GET_ALL_CONTAINERS }) as ContainerIdentity[] | null;
+        setContainers(allContainers || []);
+
+        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+        const containerInfo = await browser.runtime.sendMessage({ type: MSG_GET_CONTAINER_INFO, tabId: tab?.id }) as ContainerInfo;
+        setCurrentContainer(containerInfo);
+        setSelectedContainer(containerInfo.containerId);
+
+        const containerSettings = await browser.runtime.sendMessage({ type: MSG_GET_SETTINGS, containerId: containerInfo.containerId }) as ContainerSettings;
+        setSettings(containerSettings);
+      } catch (error) {
+        popupLogger.error('Failed to initialize:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    init();
   }, []);
 
-  const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
-    localStorage.setItem('cloakfox-theme', next ? 'dark' : 'light');
-  };
+  useEffect(() => {
+    if (!selectedContainer) return;
+    (async () => {
+      try {
+        const s = await browser.runtime.sendMessage({ type: MSG_GET_SETTINGS, containerId: selectedContainer }) as ContainerSettings;
+        setSettings(s);
+      } catch {}
+    })();
+  }, [selectedContainer]);
+
+  const loadAssignedProfile = useCallback(async () => {
+    if (!selectedContainer) return;
+    try {
+      // Try to get the ACTUAL profile from the inject script (stored per-tab)
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        const stored = await browser.storage.local.get(`activeProfile:${tab.id}`);
+        const active = stored[`activeProfile:${tab.id}`];
+        if (active?.profile) {
+          setAssignedProfile(active.profile);
+          return;
+        }
+      }
+      // Fallback to background's assigned profile
+      const profile = await browser.runtime.sendMessage({ type: MSG_GET_ASSIGNED_PROFILE, containerId: selectedContainer }) as AssignedProfile | null;
+      setAssignedProfile(profile || undefined);
+    } catch { setAssignedProfile(undefined); }
+  }, [selectedContainer]);
+
+  useEffect(() => { loadAssignedProfile(); }, [loadAssignedProfile]);
+
+  const saveSettings = useCallback(async (updates: Partial<ContainerSettings>) => {
+    if (!selectedContainer) return;
+    setSettings(prev => ({ ...prev, ...updates }));
+    try {
+      await browser.runtime.sendMessage({ type: MSG_SET_SETTINGS, containerId: selectedContainer, settings: updates });
+      await loadAssignedProfile();
+    } catch (error) {
+      popupLogger.error('Failed to save:', error);
+    }
+  }, [selectedContainer, loadAssignedProfile]);
+
+  const enableSpoofer = useCallback(async (settingPath: string) => {
+    const [category, setting] = settingPath.split('.');
+    if (!category || !setting) return;
+    const spoofers = { ...settings.spoofers } as any;
+    if (spoofers[category]) {
+      spoofers[category] = { ...spoofers[category], [setting]: 'noise' };
+    }
+    await saveSettings({ spoofers });
+  }, [settings, saveSettings]);
+
+  const navigateToSignal = useCallback((category: string, signal: string) => {
+    setHighlightedSignal({ category, signal });
+    setActiveTab('signals');
+    setTimeout(() => setHighlightedSignal(undefined), 3000);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full w-full" style={{ background: 'var(--bg-base)' }}>
+        <div className="w-5 h-5 border-2 rounded-full animate-spin"
+          style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+      </div>
+    );
+  }
+
+  const containerInfo = containers.find(c => c.cookieStoreId === selectedContainer);
+  const activeCount = Object.values(settings.spoofers).reduce((n, cat) =>
+    n + Object.values(cat).filter(v => v !== 'off').length, 0);
 
   return (
-    <>
-      {/* Sidebar navigation */}
-      <nav className="tab-nav">
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-              title={tab.label}
+    <ErrorBoundary>
+      <div style={{ display: 'flex', width: '440px', height: '540px', background: 'var(--bg-base)', overflow: 'hidden' }}>
+        <TabNavigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isDark={isDark}
+          onToggleTheme={() => setIsDark(d => !d)}
+        />
+
+        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', width: 'calc(100% - 54px)' }}>
+          {/* Header */}
+          <header className="flex items-center justify-between px-3 py-2"
+            style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="flex items-center gap-2.5">
+              {/* Status indicator */}
+              <div className="w-7 h-7 rounded-md flex items-center justify-center"
+                style={{ background: settings.enabled ? 'var(--green-muted)' : 'var(--bg-elevated)' }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}
+                  style={{ color: settings.enabled ? 'var(--green)' : 'var(--text-muted)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                  Cloakfox Shield
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                  {settings.enabled ? `${activeCount} protections` : 'Disabled'}
+                </div>
+              </div>
+            </div>
+
+            <select
+              value={selectedContainer || ''}
+              onChange={(e) => setSelectedContainer(e.target.value)}
+              className="select"
+              style={{
+                width: 'auto',
+                maxWidth: '130px',
+                fontSize: '11px',
+                padding: '4px 6px',
+                borderLeft: `3px solid ${containerInfo?.colorCode || 'var(--text-muted)'}`,
+              }}
             >
-              <span style={{ fontSize: 15 }}>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-        <button className="tab-btn" onClick={toggleTheme} title={isDark ? 'Light mode' : 'Dark mode'}>
-          <span style={{ fontSize: 15 }}>{isDark ? '☀' : '☾'}</span>
-          <span>Theme</span>
-        </button>
-      </nav>
+              {containers.map((c) => (
+                <option key={c.cookieStoreId} value={c.cookieStoreId}>
+                  {c.name}{c.cookieStoreId === currentContainer?.containerId ? ' *' : ''}
+                </option>
+              ))}
+            </select>
+          </header>
 
-      {/* Main content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
-        <header style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>Cloakfox Shield</div>
-              <div style={{ fontSize: 11, marginTop: 2, display: 'flex', alignItems: 'center' }}>
-                <span className={`status-dot ${engineActive ? 'green' : 'red'}`} />
-                <span style={{ color: engineActive ? 'var(--green)' : 'var(--red)' }}>
-                  {engineActive ? 'C++ Engine Active' : 'Engine: Page not spoofed'}
-                </span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {container && (
-                <span className="pill active" style={{ fontSize: 10 }}>
-                  {container.name}
-                </span>
-              )}
-              <div
-                className={`toggle ${enabled ? 'on' : ''}`}
-                onClick={() => setEnabled(!enabled)}
-                title={enabled ? 'Disable protection' : 'Enable protection'}
-              />
-            </div>
-          </div>
-          {domain && (
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-              {domain}
-            </div>
-          )}
-        </header>
+          {/* Content */}
+          <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px', width: '100%' }}>
+            {activeTab === 'dashboard' && (
+              <DashboardTab settings={settings} onSaveSettings={saveSettings}
+                onEnableSpoofer={enableSpoofer} onNavigateToSignal={navigateToSignal}
+                currentContainerId={selectedContainer || undefined}
+                assignedProfile={assignedProfile} />
+            )}
+            {activeTab === 'fingerprint' && (
+              <FingerprintTab settings={settings} onSaveSettings={saveSettings}
+                assignedProfile={assignedProfile} />
+            )}
+            {activeTab === 'signals' && (
+              <SignalsTab settings={settings} onSaveSettings={saveSettings}
+                highlightedSignal={highlightedSignal} />
+            )}
+            {activeTab === 'headers' && (
+              <HeadersTab settings={settings} onSaveSettings={saveSettings} />
+            )}
+            {activeTab === 'whitelist' && (
+              <WhitelistTab settings={settings} onSaveSettings={saveSettings} />
+            )}
+            {activeTab === 'settings' && (
+              <SettingsTab settings={settings} containers={containers}
+                currentContainerId={selectedContainer || ''} onSaveSettings={saveSettings} />
+            )}
+          </main>
 
-        {/* Content */}
-        <main style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
-          {activeTab === 'dashboard' && <DashboardTab container={container} />}
-          {activeTab === 'fingerprint' && <FingerprintTab />}
-          {activeTab === 'signals' && <SignalsTab />}
-          {activeTab === 'headers' && <HeadersTab />}
-          {activeTab === 'whitelist' && <RulesTab />}
-          {activeTab === 'settings' && <SettingsTab />}
-        </main>
-
-        {/* Footer */}
-        <footer style={{
-          padding: '6px 14px',
-          borderTop: '1px solid var(--border)',
-          fontSize: 10,
-          color: 'var(--text-muted)',
-          display: 'flex',
-          justifyContent: 'space-between',
-        }}>
-          <span>{container ? container.name : 'Default'}</span>
-          <span>v0.1.0</span>
-        </footer>
-      </div>
-    </>
-  );
-}
-
-/* ─── DASHBOARD TAB ─────────────────────────────────────────────── */
-
-function DashboardTab({ container }: { container: ContainerInfo | null }) {
-  const protections = [
-    { name: 'Canvas', status: 'noise' as const },
-    { name: 'Audio', status: 'noise' as const },
-    { name: 'Navigator', status: 'spoof' as const },
-    { name: 'Screen', status: 'spoof' as const },
-    { name: 'Fonts', status: 'filter' as const },
-    { name: 'WebGL', status: 'noise' as const },
-    { name: 'WebRTC', status: 'spoof' as const },
-    { name: 'Timezone', status: 'spoof' as const },
-  ];
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Protection status */}
-      <div className="card">
-        <div className="section-label">Protection Status</div>
-        {protections.map((p) => (
-          <div key={p.name} className="row">
-            <span style={{ fontSize: 12 }}>{p.name}</span>
-            <span className={`pill ${p.status === 'noise' ? 'green' : 'active'}`}>
-              {p.status === 'noise' ? 'Noise' : p.status === 'spoof' ? 'Spoofed' : 'Filtered'}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Stats */}
-      <div className="grid-3">
-        <div className="stat">
-          <div className="stat-value" style={{ color: 'var(--green)' }}>8</div>
-          <div className="stat-label">Protected</div>
-        </div>
-        <div className="stat">
-          <div className="stat-value" style={{ color: 'var(--yellow)' }}>0</div>
-          <div className="stat-label">Blocked</div>
-        </div>
-        <div className="stat">
-          <div className="stat-value" style={{ color: 'var(--blue)' }}>0</div>
-          <div className="stat-label">Accesses</div>
+          {/* Footer */}
+          <footer className="flex items-center justify-between px-3 py-1.5"
+            style={{ borderTop: '1px solid var(--border)', fontSize: '10px', color: 'var(--text-muted)' }}>
+            <span>{containerInfo?.name || 'Default'}</span>
+            <span>v{EXTENSION_VERSION}</span>
+          </footer>
         </div>
       </div>
-
-      {/* Container info */}
-      <div className="card">
-        <div className="section-label">Container Identity</div>
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-          {container ? (
-            <>
-              <div className="row">
-                <span>Container</span>
-                <span style={{ color: 'var(--accent)', fontWeight: 500 }}>{container.name}</span>
-              </div>
-              <div className="row">
-                <span>Isolation</span>
-                <span className="pill green">Per-domain</span>
-              </div>
-            </>
-          ) : (
-            <div style={{ padding: '8px 0', color: 'var(--text-muted)' }}>
-              Default container — open a Container Tab for per-identity isolation
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── FINGERPRINT TAB ───────────────────────────────────────────── */
-
-function FingerprintTab() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div className="card">
-        <div className="section-label">Active Profile</div>
-        <div className="grid-2">
-          {[
-            ['Platform', 'MacIntel'],
-            ['Screen', '1920×1080'],
-            ['Cores', '8'],
-            ['Memory', '8 GB'],
-            ['Timezone', 'America/New_York'],
-            ['Language', 'en-US'],
-            ['WebGL', 'Apple M1'],
-            ['Color Depth', '24-bit'],
-          ].map(([label, value]) => (
-            <div key={label} style={{ padding: '6px 0' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{label}</div>
-              <div style={{ fontSize: 12, fontWeight: 500 }}>{value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="section-label">Profile Rotation</div>
-        <div className="row">
-          <div>
-            <div style={{ fontSize: 12 }}>Auto-rotate</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>New identity per session</div>
-          </div>
-          <div className="toggle on" />
-        </div>
-        <div className="row">
-          <span style={{ fontSize: 12 }}>Rotate Now</span>
-          <button className="btn btn-secondary" style={{ fontSize: 11 }}>↻ Rotate</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── SIGNALS TAB ───────────────────────────────────────────────── */
-
-function SignalsTab() {
-  const groups = [
-    { name: 'Graphics', signals: ['Canvas 2D', 'WebGL Params', 'WebGL Vendor'] },
-    { name: 'Audio', signals: ['AudioContext', 'OfflineAudioContext'] },
-    { name: 'Hardware', signals: ['Screen Size', 'Color Depth', 'CPU Cores', 'Device Memory'] },
-    { name: 'Navigator', signals: ['User Agent', 'Platform', 'Language'] },
-    { name: 'Network', signals: ['WebRTC IP', 'WebRTC IPv6'] },
-    { name: 'Timing', signals: ['Timezone', 'Date offset'] },
-    { name: 'Fonts', signals: ['Font Enumeration', 'Font Metrics'] },
-  ];
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {groups.map((group) => (
-        <div key={group.name} className="card">
-          <div className="section-label">{group.name}</div>
-          {group.signals.map((signal) => (
-            <div key={signal} className="row">
-              <span style={{ fontSize: 12 }}>{signal}</span>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <span className="pill off">Off</span>
-                <span className="pill green">Noise</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── HEADERS TAB ───────────────────────────────────────────────── */
-
-function HeadersTab() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div className="card">
-        <div className="section-label">Request Headers</div>
-        <div className="row">
-          <div>
-            <div style={{ fontSize: 12 }}>User-Agent</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Matches spoofed navigator</div>
-          </div>
-          <div className="toggle on" />
-        </div>
-        <div className="row">
-          <div>
-            <div style={{ fontSize: 12 }}>Accept-Language</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Matches spoofed language</div>
-          </div>
-          <div className="toggle on" />
-        </div>
-        <div className="row">
-          <div>
-            <div style={{ fontSize: 12 }}>DNT (Do Not Track)</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Adds uniqueness — disable for stealth</div>
-          </div>
-          <div className="toggle" />
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="section-label">Referer Policy</div>
-        <div className="row">
-          <div>
-            <div style={{ fontSize: 12 }}>Strip referer to origin</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Send only domain, not full path</div>
-          </div>
-          <div className="toggle on" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── RULES TAB ─────────────────────────────────────────────────── */
-
-function RulesTab() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div className="card">
-        <div className="section-label">Domain Exceptions</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>
-          Sites where spoofing is disabled. Add domains that break with fingerprint protection.
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <input
-            type="text"
-            placeholder="example.com"
-            style={{
-              flex: 1,
-              fontSize: 12,
-              padding: '6px 10px',
-              borderRadius: 6,
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-              outline: 'none',
-            }}
-          />
-          <button className="btn btn-primary">Add</button>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="section-label">Blocklist</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>
-          Tracking domains to block entirely. Requests to these domains will be cancelled.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── SETTINGS TAB ──────────────────────────────────────────────── */
-
-function SettingsTab() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div className="card">
-        <div className="section-label">General</div>
-        <div className="row">
-          <div>
-            <div style={{ fontSize: 12 }}>Apply to all containers</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Use same settings for all containers</div>
-          </div>
-          <div className="toggle" />
-        </div>
-        <div className="row">
-          <div>
-            <div style={{ fontSize: 12 }}>Auto-rotate profiles</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>New identity each session</div>
-          </div>
-          <div className="toggle on" />
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="section-label">Data</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary" style={{ flex: 1 }}>Export Settings</button>
-          <button className="btn btn-secondary" style={{ flex: 1 }}>Import Settings</button>
-        </div>
-      </div>
-
-      <div className="card" style={{ borderColor: 'var(--red-border)' }}>
-        <div className="section-label" style={{ color: 'var(--red)' }}>Danger Zone</div>
-        <button className="btn" style={{ background: 'var(--red-muted)', color: 'var(--red)', borderColor: 'var(--red-border)', width: '100%' }}>
-          Reset All Settings
-        </button>
-      </div>
-    </div>
+    </ErrorBoundary>
   );
 }

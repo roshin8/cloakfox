@@ -1,59 +1,90 @@
 /**
- * Background entry point — initializes all background services.
+ * Background script entry point for Cloakfox Shield
  */
 
-import { ConfigInjector } from './config-injector';
-import { getProfileForContainer } from './profile-manager';
-import { getSettingsForDomain } from './settings-store';
-import { generateEntropySeed } from '@/lib/crypto';
-import { STORAGE_KEYS } from '@/constants';
+import browser from 'webextension-polyfill';
+import { ContainerManager } from './container-manager';
+import { SettingsStore } from './settings-store';
+import { HeaderSpoofer } from './header-spoofer';
+import { IPIsolation } from './ip-isolation';
+import { MessageHandler } from './message-handler';
+import { initProfileManager } from './profile-manager';
+import { ProfileRotation } from './profile-rotation';
+import { StatisticsStore } from './statistics-store';
+import { getBadgeManager } from './badge-manager';
+import { ContextMenuManager } from './context-menu';
+import { KeyboardShortcuts } from './keyboard-shortcuts';
+import { EXTENSION_VERSION, STORAGE_KEYS } from '@/lib/constants';
+// SW injection via filterResponseData doesn't work in Firefox (can't intercept SW scripts)
+// ServiceWorker spoof mode rejects SW → falls back to SharedWorker (spoofed)
 
-/** In-memory entropy cache (persisted to storage) */
-const entropyCache = new Map<string, string>();
+async function init(): Promise<void> {
+  console.log(`[Cloakfox Shield] Initializing v${EXTENSION_VERSION}`);
 
-/** Initialize entropy for a container, generating if needed */
-async function ensureEntropy(cookieStoreId: string): Promise<string> {
-  const cached = entropyCache.get(cookieStoreId);
-  if (cached) return cached;
+  try {
+    const settingsStore = new SettingsStore();
+    await settingsStore.init();
 
-  // Check storage
-  const stored = await browser.storage.local.get(STORAGE_KEYS.CONTAINER_ENTROPY);
-  const allEntropy = (stored[STORAGE_KEYS.CONTAINER_ENTROPY] ?? {}) as Record<
-    string,
-    string
-  >;
+    const containerManager = new ContainerManager(settingsStore);
+    await containerManager.init();
 
-  if (allEntropy[cookieStoreId]) {
-    entropyCache.set(cookieStoreId, allEntropy[cookieStoreId]);
-    return allEntropy[cookieStoreId];
+    await initProfileManager();
+
+    const headerSpoofer = new HeaderSpoofer(settingsStore, containerManager);
+    await headerSpoofer.init();
+
+
+    const ipIsolation = new IPIsolation(settingsStore, containerManager);
+    await ipIsolation.init();
+
+    const profileRotation = new ProfileRotation(settingsStore);
+    await profileRotation.init();
+
+    const statisticsStore = new StatisticsStore();
+    if (typeof statisticsStore.init === 'function') {
+      await statisticsStore.init();
+    }
+
+    const messageHandler = new MessageHandler(
+      settingsStore, containerManager, ipIsolation, profileRotation, statisticsStore
+    );
+    messageHandler.init();
+
+    const badgeManager = getBadgeManager();
+    await badgeManager.init();
+
+    const contextMenuManager = new ContextMenuManager(settingsStore, containerManager);
+    await contextMenuManager.init();
+
+    const keyboardShortcuts = new KeyboardShortcuts(settingsStore);
+    keyboardShortcuts.init();
+
+    await checkFirstRun();
+    await checkTestMode();
+
+    await browser.storage.local.set({ [STORAGE_KEYS.VERSION]: EXTENSION_VERSION });
+  } catch (error) {
+    console.error('[Cloakfox Shield] Initialization failed:', error);
   }
-
-  // Generate new entropy
-  const seed = generateEntropySeed();
-  allEntropy[cookieStoreId] = seed;
-  await browser.storage.local.set({ [STORAGE_KEYS.CONTAINER_ENTROPY]: allEntropy });
-  entropyCache.set(cookieStoreId, seed);
-  return seed;
 }
 
-/** Get the container (cookie store) for a tab */
-async function getContainerForTab(tabId: number): Promise<string> {
-  const tab = await browser.tabs.get(tabId);
-  return tab.cookieStoreId ?? 'firefox-default';
+async function checkFirstRun(): Promise<void> {
+  const { onboardingComplete } = await browser.storage.local.get('onboardingComplete');
+  if (!onboardingComplete) {
+    await browser.tabs.create({ url: browser.runtime.getURL('pages/onboarding.html') });
+  }
 }
 
-// Initialize config injector with real implementations
-const _injector = new ConfigInjector({
-  getContainerForTab,
-  getEntropySeed: ensureEntropy,
-  getAssignedProfile: async (cookieStoreId) => {
-    const entropy = await ensureEntropy(cookieStoreId);
-    return getProfileForContainer(cookieStoreId, entropy);
-  },
-  getSettingsForDomain: async (cookieStoreId, domain) => {
-    return getSettingsForDomain(cookieStoreId, domain);
-  },
-});
+/** Listen for test runner open requests */
+async function checkTestMode(): Promise<void> {
+  browser.runtime.onMessage.addListener((msg: any) => {
+    if (msg.type === 'OPEN_TEST_RUNNER') {
+      browser.storage.local.set({ onboardingComplete: true });
+      const only = msg.only ? `?only=${encodeURIComponent(msg.only)}` : '';
+      browser.tabs.create({ url: browser.runtime.getURL(`pages/test-runner.html${only}`) });
+      return Promise.resolve({ opened: true });
+    }
+  });
+}
 
-// Log startup
-console.log('[Cloakfox Shield] Background initialized');
+init();

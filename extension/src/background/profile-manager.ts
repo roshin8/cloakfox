@@ -1,218 +1,359 @@
 /**
- * ProfileManager — generates deterministic, coherent fingerprint profiles
- * per container using the container's entropy seed.
+ * Profile Manager - Ensures unique fingerprint profiles across containers
  *
- * Same entropy seed always produces the same profile.
- * Different containers get different profiles.
+ * Prevents the same combination of identifying properties from being
+ * assigned to multiple containers, which would allow cross-container tracking.
  */
 
-import { PRNG } from '@/lib/crypto';
-import { STORAGE_KEYS } from '@/constants';
-import type { AssignedProfile } from '@/types';
-
-/** Platform definitions with coherent property sets */
-const PLATFORMS = [
-  {
-    platform: 'Win32',
-    oscpuPrefix: 'Windows NT ',
-    osVersions: ['10.0', '10.0', '10.0', '11.0'], // weighted toward Win10
-    uaOS: (v: string) =>
-      `Windows NT ${v}; Win64; x64`,
-    appVersionOS: (v: string) =>
-      `Windows NT ${v}; Win64; x64`,
-    webglVendors: [
-      { vendor: 'Google Inc. (NVIDIA)', renderers: [
-        'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)',
-        'ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Direct3D11 vs_5_0 ps_5_0, D3D11)',
-        'ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 SUPER Direct3D11 vs_5_0 ps_5_0, D3D11)',
-        'ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 Direct3D11 vs_5_0 ps_5_0, D3D11)',
-      ]},
-      { vendor: 'Google Inc. (AMD)', renderers: [
-        'ANGLE (AMD, AMD Radeon RX 6700 XT Direct3D11 vs_5_0 ps_5_0, D3D11)',
-        'ANGLE (AMD, AMD Radeon RX 580 Direct3D11 vs_5_0 ps_5_0, D3D11)',
-      ]},
-      { vendor: 'Google Inc. (Intel)', renderers: [
-        'ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)',
-        'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)',
-      ]},
-    ],
-  },
-  {
-    platform: 'MacIntel',
-    oscpuPrefix: 'Intel Mac OS X ',
-    osVersions: ['10.15', '10.15', '11.0', '12.0', '13.0', '14.0'],
-    uaOS: (v: string) =>
-      `Macintosh; Intel Mac OS X ${v.replace('.', '_')}`,
-    appVersionOS: (v: string) =>
-      `Macintosh; Intel Mac OS X ${v.replace('.', '_')}`,
-    webglVendors: [
-      { vendor: 'Google Inc. (Apple)', renderers: [
-        'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)',
-        'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)',
-        'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)',
-        'ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)',
-      ]},
-      { vendor: 'Google Inc. (Intel)', renderers: [
-        'ANGLE (Intel Inc., Intel(R) Iris(TM) Plus Graphics, OpenGL 4.1)',
-        'ANGLE (Intel Inc., Intel(R) UHD Graphics 630, OpenGL 4.1)',
-      ]},
-    ],
-  },
-  {
-    platform: 'Linux x86_64',
-    oscpuPrefix: 'Linux x86_64',
-    osVersions: [''],
-    uaOS: () => 'X11; Linux x86_64',
-    appVersionOS: () => 'X11; Linux x86_64',
-    webglVendors: [
-      { vendor: 'Mesa', renderers: [
-        'Mesa Intel(R) UHD Graphics 630 (CFL GT2)',
-        'Mesa Intel(R) Xe Graphics (TGL GT2)',
-      ]},
-      { vendor: 'X.Org', renderers: [
-        'AMD Radeon RX 580 (polaris10, LLVM 15.0.7, DRM 3.49, 6.1.0)',
-        'AMD Radeon RX 6700 XT (navi22, LLVM 16.0.6, DRM 3.52, 6.5.0)',
-      ]},
-    ],
-  },
-] as const;
-
-/** Common screen resolutions */
-const SCREENS = [
-  { w: 1920, h: 1080 },
-  { w: 1920, h: 1080 },
-  { w: 2560, h: 1440 },
-  { w: 1366, h: 768 },
-  { w: 1536, h: 864 },
-  { w: 1440, h: 900 },
-  { w: 1680, h: 1050 },
-  { w: 3840, h: 2160 },
-];
-
-/** Taskbar height offsets (availHeight = height - offset) */
-const TASKBAR_OFFSETS = [25, 30, 40, 48, 55, 65];
-
-/** Common hardware concurrency values */
-const CORE_COUNTS = [4, 4, 6, 8, 8, 12, 16];
-
-/** Common device memory values (GB) */
-const MEMORY_VALUES = [4, 8, 8, 16, 16, 32];
-
-/** Timezones */
-const TIMEZONES = [
-  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-  'America/Toronto', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
-  'Europe/Amsterdam', 'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Singapore',
-  'Australia/Sydney', 'Pacific/Auckland',
-];
-
-/** Languages */
-const LANGUAGES = [
-  { primary: 'en-US', list: ['en-US', 'en'] },
-  { primary: 'en-GB', list: ['en-GB', 'en'] },
-  { primary: 'en-US', list: ['en-US', 'en'] },
-  { primary: 'en-US', list: ['en-US', 'en'] },
-  { primary: 'de', list: ['de', 'en-US', 'en'] },
-  { primary: 'fr', list: ['fr', 'en-US', 'en'] },
-  { primary: 'ja', list: ['ja', 'en-US', 'en'] },
-];
-
-/** Profile cache: cookieStoreId → AssignedProfile */
-const profileCache = new Map<string, AssignedProfile>();
+import type { ContainerEntropy } from '@/types';
+import { PRNG, generateSeed, base64ToUint8Array, uint8ArrayToBase64 } from '@/lib/crypto';
+import {
+  ALL_PROFILES,
+  type UserAgentProfile,
+  getRandomProfile,
+} from '@/lib/profiles/user-agents';
+import {
+  ALL_SCREENS,
+  type ScreenProfile,
+  getScreenForUserAgent,
+  varyScreenProfile,
+} from '@/lib/profiles/screen-sizes';
 
 /**
- * Generate or retrieve a deterministic profile for a container.
- * Same entropy seed always produces the same profile.
+ * Key properties that together form a fingerprintable signature
  */
-export async function getProfileForContainer(
-  cookieStoreId: string,
-  entropySeed: string
-): Promise<AssignedProfile> {
-  const cached = profileCache.get(cookieStoreId);
-  if (cached) return cached;
+export interface FingerprintSignature {
+  userAgentId: string;
+  screenWidth: number;
+  screenHeight: number;
+  devicePixelRatio: number;
+  hardwareConcurrency: number;
+  deviceMemory: number;
+  timezoneOffset: number;
+  languages: string;
+}
 
-  // Check storage for persisted profiles
-  const stored = await browser.storage.local.get(STORAGE_KEYS.CONTAINER_PROFILES);
-  const allProfiles = (stored[STORAGE_KEYS.CONTAINER_PROFILES] ?? {}) as Record<
-    string,
-    AssignedProfile
-  >;
+/**
+ * Assigned profile for a container
+ */
+export interface AssignedProfile {
+  userAgent: UserAgentProfile;
+  screen: ScreenProfile;
+  hardwareConcurrency: number;
+  deviceMemory: number;
+  timezoneOffset: number;
+  languages: string[];
+  signature: string; // Hash of the signature for quick comparison
+}
 
-  if (allProfiles[cookieStoreId]) {
-    profileCache.set(cookieStoreId, allProfiles[cookieStoreId]);
-    return allProfiles[cookieStoreId];
+/**
+ * Storage for assigned profiles
+ */
+interface ProfileRegistry {
+  assignments: Record<string, AssignedProfile>; // keyed by cookieStoreId
+  usedSignatures: Set<string>; // Set of signature hashes in use
+}
+
+// In-memory registry (loaded from storage on init)
+let registry: ProfileRegistry = {
+  assignments: {},
+  usedSignatures: new Set(),
+};
+
+// Common timezone offsets
+const TIMEZONE_OFFSETS = [
+  -480, -420, -360, -300, -240, 0, 60, 120, 180, 330, 480, 540, 600,
+];
+
+// Common language combinations
+const LANGUAGE_SETS = [
+  ['en-US', 'en'],
+  ['en-GB', 'en'],
+  ['en-US'],
+  ['de-DE', 'de', 'en-US', 'en'],
+  ['fr-FR', 'fr', 'en-US', 'en'],
+  ['es-ES', 'es', 'en-US', 'en'],
+  ['pt-BR', 'pt', 'en-US', 'en'],
+  ['ja-JP', 'ja', 'en-US', 'en'],
+  ['zh-CN', 'zh', 'en-US', 'en'],
+  ['ko-KR', 'ko', 'en-US', 'en'],
+  ['ru-RU', 'ru', 'en-US', 'en'],
+  ['it-IT', 'it', 'en-US', 'en'],
+  ['nl-NL', 'nl', 'en-US', 'en'],
+  ['pl-PL', 'pl', 'en-US', 'en'],
+];
+
+// Hardware concurrency options
+const HARDWARE_CONCURRENCY = [2, 4, 6, 8, 12, 16];
+
+// Device memory options (GB)
+const DEVICE_MEMORY = [2, 4, 8, 16, 32];
+
+/**
+ * Generate a signature hash for quick comparison
+ */
+function generateSignatureHash(sig: FingerprintSignature): string {
+  const str = `${sig.userAgentId}|${sig.screenWidth}x${sig.screenHeight}|${sig.devicePixelRatio}|${sig.hardwareConcurrency}|${sig.deviceMemory}|${sig.timezoneOffset}|${sig.languages}`;
+  // Simple hash for comparison (not cryptographic)
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash.toString(16);
+}
+
+/**
+ * Check if a signature is already in use
+ */
+function isSignatureInUse(sig: FingerprintSignature): boolean {
+  const hash = generateSignatureHash(sig);
+  return registry.usedSignatures.has(hash);
+}
+
+/**
+ * Generate a unique profile for a container
+ * Tries up to maxAttempts times to find a non-colliding combination
+ */
+export function generateUniqueProfile(
+  entropy: ContainerEntropy,
+  maxAttempts: number = 100
+): AssignedProfile {
+  const seedBytes = base64ToUint8Array(entropy.seed);
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // Create a modified seed for each attempt
+    const attemptSeed = new Uint8Array(seedBytes.length);
+    attemptSeed.set(seedBytes);
+    // Mix in the attempt number
+    attemptSeed[0] ^= attempt;
+    attemptSeed[1] ^= attempt >> 8;
+
+    const prng = new PRNG(attemptSeed);
+
+    // Select profile components
+    const userAgent = getRandomProfile(prng, { desktopOnly: true });
+    const baseScreen = getScreenForUserAgent(prng, userAgent.mobile, userAgent.platformName);
+    const screen = varyScreenProfile(baseScreen, prng);
+    const hardwareConcurrency = prng.pick(HARDWARE_CONCURRENCY);
+    const deviceMemory = prng.pick(DEVICE_MEMORY);
+    const timezoneOffset = prng.pick(TIMEZONE_OFFSETS);
+    const languages = prng.pick(LANGUAGE_SETS);
+
+    // Build signature
+    const signature: FingerprintSignature = {
+      userAgentId: userAgent.id,
+      screenWidth: screen.width,
+      screenHeight: screen.height,
+      devicePixelRatio: screen.devicePixelRatio,
+      hardwareConcurrency,
+      deviceMemory,
+      timezoneOffset,
+      languages: languages.join(','),
+    };
+
+    // Check for collision
+    if (!isSignatureInUse(signature)) {
+      const signatureHash = generateSignatureHash(signature);
+
+      const profile: AssignedProfile = {
+        userAgent,
+        screen,
+        hardwareConcurrency,
+        deviceMemory,
+        timezoneOffset,
+        languages,
+        signature: signatureHash,
+      };
+
+      return profile;
+    }
+
+    console.log(
+      `[ProfileManager] Collision detected on attempt ${attempt + 1}, retrying...`
+    );
   }
 
-  // Generate new profile deterministically from entropy
-  const profile = await generateProfile(entropySeed);
+  // If we exhaust attempts, force a unique profile by adding random suffix
+  console.warn(
+    '[ProfileManager] Could not find unique profile after max attempts, forcing uniqueness'
+  );
 
-  // Persist
-  allProfiles[cookieStoreId] = profile;
-  await browser.storage.local.set({ [STORAGE_KEYS.CONTAINER_PROFILES]: allProfiles });
-  profileCache.set(cookieStoreId, profile);
+  const prng = new PRNG(seedBytes);
+  const userAgent = getRandomProfile(prng, { desktopOnly: true });
+  const baseScreen = getScreenForUserAgent(prng, userAgent.mobile, userAgent.platformName);
+
+  // Add random variation to force uniqueness
+  const forcedScreen: ScreenProfile = {
+    ...baseScreen,
+    availHeight: baseScreen.availHeight - Math.floor(Math.random() * 50),
+    devicePixelRatio:
+      baseScreen.devicePixelRatio + (Math.random() - 0.5) * 0.01,
+  };
+
+  const profile: AssignedProfile = {
+    userAgent,
+    screen: forcedScreen,
+    hardwareConcurrency: prng.pick(HARDWARE_CONCURRENCY),
+    deviceMemory: prng.pick(DEVICE_MEMORY),
+    timezoneOffset: prng.pick(TIMEZONE_OFFSETS),
+    languages: prng.pick(LANGUAGE_SETS),
+    signature: `forced-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  };
+
   return profile;
 }
 
-/** Generate a coherent profile from an entropy seed */
-async function generateProfile(entropy: string): Promise<AssignedProfile> {
-  const rng = await PRNG.fromDerivedKey(entropy, 'profile', 'generation');
+/**
+ * Register a profile assignment for a container
+ */
+export function registerProfile(
+  cookieStoreId: string,
+  profile: AssignedProfile
+): void {
+  // Remove old assignment if exists
+  const oldProfile = registry.assignments[cookieStoreId];
+  if (oldProfile) {
+    registry.usedSignatures.delete(oldProfile.signature);
+  }
 
-  // Pick platform
-  const platformDef = rng.pick(PLATFORMS);
-  const osVersion = rng.pick(platformDef.osVersions);
-  const platform = platformDef.platform;
-  const oscpu = platformDef.oscpuPrefix + osVersion;
+  // Register new assignment
+  registry.assignments[cookieStoreId] = profile;
+  registry.usedSignatures.add(profile.signature);
 
-  // Build user agent
-  const ffVersion = '146.0';
-  const uaOS = platformDef.uaOS(osVersion);
-  const userAgent = `Mozilla/5.0 (${uaOS}) Gecko/20100101 Firefox/${ffVersion}`;
-  const appVersion = `5.0 (${platformDef.appVersionOS(osVersion)})`;
+  // Persist to storage
+  saveRegistry();
 
-  // Screen
-  const screen = rng.pick(SCREENS);
-  const taskbarOffset = rng.pick(TASKBAR_OFFSETS);
-
-  // WebGL — pick vendor/renderer coherent with platform
-  const vendorDef = rng.pick(platformDef.webglVendors);
-  const webglVendor = vendorDef.vendor;
-  const webglRenderer = rng.pick(vendorDef.renderers);
-
-  // Other hardware
-  const cores = rng.pick(CORE_COUNTS);
-  const memory = rng.pick(MEMORY_VALUES);
-  const tz = rng.pick(TIMEZONES);
-  const lang = rng.pick(LANGUAGES);
-
-  return {
-    userAgent: {
-      userAgent,
-      platform,
-      oscpu,
-      appVersion,
-    },
-    screen: {
-      width: screen.w,
-      height: screen.h,
-      availWidth: screen.w,
-      availHeight: screen.h - taskbarOffset,
-      colorDepth: 24,
-      pixelDepth: 24,
-    },
-    hardwareConcurrency: cores,
-    deviceMemory: memory,
-    maxTouchPoints: 0,
-    language: lang.primary,
-    languages: lang.list,
-    timezone: tz,
-    webgl: {
-      vendor: webglVendor,
-      renderer: webglRenderer,
-    },
-  };
+  console.log(
+    `[ProfileManager] Registered profile for container ${cookieStoreId}:`,
+    profile.userAgent.name,
+    `${profile.screen.width}x${profile.screen.height}`
+  );
 }
 
-/** Clear the profile cache (e.g., on rotation) */
-export function clearProfileCache(): void {
-  profileCache.clear();
+/**
+ * Get assigned profile for a container
+ */
+export function getAssignedProfile(
+  cookieStoreId: string
+): AssignedProfile | undefined {
+  return registry.assignments[cookieStoreId];
+}
+
+/**
+ * Remove profile assignment when container is deleted
+ */
+export function unregisterProfile(cookieStoreId: string): void {
+  const profile = registry.assignments[cookieStoreId];
+  if (profile) {
+    registry.usedSignatures.delete(profile.signature);
+    delete registry.assignments[cookieStoreId];
+    saveRegistry();
+    console.log(`[ProfileManager] Unregistered profile for container ${cookieStoreId}`);
+  }
+}
+
+/**
+ * Get all assigned profiles (for UI display)
+ */
+export function getAllAssignedProfiles(): Record<string, AssignedProfile> {
+  return { ...registry.assignments };
+}
+
+/**
+ * Check how many unique profiles are still available
+ */
+export function getAvailableProfileCount(): number {
+  const totalCombinations =
+    ALL_PROFILES.length *
+    ALL_SCREENS.length *
+    HARDWARE_CONCURRENCY.length *
+    DEVICE_MEMORY.length *
+    TIMEZONE_OFFSETS.length *
+    LANGUAGE_SETS.length;
+
+  return totalCombinations - registry.usedSignatures.size;
+}
+
+/**
+ * Save registry to browser storage
+ */
+async function saveRegistry(): Promise<void> {
+  try {
+    const data = {
+      assignments: registry.assignments,
+      usedSignatures: Array.from(registry.usedSignatures),
+    };
+    await browser.storage.local.set({ profileRegistry: data });
+  } catch (error) {
+    console.error('[ProfileManager] Failed to save registry:', error);
+  }
+}
+
+/**
+ * Load registry from browser storage
+ */
+export async function loadRegistry(): Promise<void> {
+  try {
+    const result = await browser.storage.local.get('profileRegistry');
+    if (result.profileRegistry) {
+      registry = {
+        assignments: result.profileRegistry.assignments || {},
+        usedSignatures: new Set(result.profileRegistry.usedSignatures || []),
+      };
+      console.log(
+        `[ProfileManager] Loaded ${Object.keys(registry.assignments).length} profile assignments`
+      );
+    }
+  } catch (error) {
+    console.error('[ProfileManager] Failed to load registry:', error);
+  }
+}
+
+/**
+ * Initialize profile manager
+ */
+export async function initProfileManager(): Promise<void> {
+  await loadRegistry();
+
+  // Clean up orphaned assignments (containers that no longer exist)
+  try {
+    const containers = await browser.contextualIdentities.query({});
+    const validIds = new Set(containers.map((c) => c.cookieStoreId));
+    validIds.add('firefox-default'); // Default container
+
+    let cleaned = 0;
+    for (const cookieStoreId of Object.keys(registry.assignments)) {
+      if (!validIds.has(cookieStoreId)) {
+        unregisterProfile(cookieStoreId);
+        cleaned++;
+      }
+    }
+
+    if (cleaned > 0) {
+      console.log(`[ProfileManager] Cleaned up ${cleaned} orphaned profile assignments`);
+    }
+  } catch (error) {
+    console.error('[ProfileManager] Failed to clean up orphaned assignments:', error);
+  }
+}
+
+/**
+ * Get or create profile for a container
+ * This is the main entry point - ensures a unique profile exists
+ */
+export async function ensureUniqueProfile(
+  entropy: ContainerEntropy
+): Promise<AssignedProfile> {
+  const existing = getAssignedProfile(entropy.cookieStoreId);
+  if (existing) {
+    return existing;
+  }
+
+  // Generate new unique profile
+  const profile = generateUniqueProfile(entropy);
+  registerProfile(entropy.cookieStoreId, profile);
+
+  return profile;
 }
