@@ -33,7 +33,7 @@ export function ImportExport({ onImportComplete }: ImportExportProps) {
         _meta: {
           version: '0.3.0',
           exportedAt: new Date().toISOString(),
-          type: 'containershield-settings',
+          type: 'cloakfox-settings',
         },
         ...allData,
       };
@@ -44,7 +44,7 @@ export function ImportExport({ onImportComplete }: ImportExportProps) {
       });
       const url = URL.createObjectURL(blob);
       const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `containershield-backup-${timestamp}.json`;
+      const filename = `cloakfox-backup-${timestamp}.json`;
 
       const a = document.createElement('a');
       a.href = url;
@@ -85,7 +85,7 @@ export function ImportExport({ onImportComplete }: ImportExportProps) {
       const importData = JSON.parse(text);
 
       // Validate import data
-      if (!importData._meta || importData._meta.type !== 'containershield-settings') {
+      if (!importData._meta || importData._meta.type !== 'cloakfox-settings') {
         throw new Error('Invalid backup file format');
       }
 

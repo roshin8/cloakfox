@@ -59,7 +59,7 @@ function OptionsPage() {
       <div className="max-w-4xl mx-auto py-8 px-4">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <img src="../icons/icon-48.svg" alt="Cloakfox Shield" className="w-12 h-12" />
+          <img src="../icons/icon-48.png" alt="Cloakfox Shield" className="w-12 h-12" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cloakfox Shield</h1>
             <p className="text-gray-600 dark:text-gray-400">Settings & Configuration</p>
@@ -230,7 +230,7 @@ function OptionsPage() {
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = 'containershield-backup.json';
+                      a.download = 'cloakfox-shield-backup.json';
                       a.click();
                     }}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -300,7 +300,7 @@ function OptionsPage() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">About Cloakfox Shield</h2>
 
               <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <img src="../icons/icon-64.svg" alt="Cloakfox Shield" className="w-16 h-16" />
+                <img src="../icons/icon-128.png" alt="Cloakfox Shield" className="w-16 h-16" />
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white">Cloakfox Shield</h3>
                   <p className="text-gray-600 dark:text-gray-400">Version 0.2.0</p>
@@ -310,7 +310,7 @@ function OptionsPage() {
 
               <div className="space-y-3">
                 <a
-                  href="https://github.com/roshin8/containershield"
+                  href="https://github.com/roshin8/cloakfox"
                   target="_blank"
                   className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
@@ -318,7 +318,7 @@ function OptionsPage() {
                   <span className="text-gray-400">→</span>
                 </a>
                 <a
-                  href="https://github.com/roshin8/containershield/issues"
+                  href="https://github.com/roshin8/cloakfox/issues"
                   target="_blank"
                   className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
@@ -326,7 +326,7 @@ function OptionsPage() {
                   <span className="text-gray-400">→</span>
                 </a>
                 <a
-                  href="https://github.com/roshin8/containershield/blob/main/LICENSE"
+                  href="https://github.com/roshin8/cloakfox/blob/main/LICENSE"
                   target="_blank"
                   className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >

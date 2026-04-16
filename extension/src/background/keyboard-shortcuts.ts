@@ -64,7 +64,7 @@ export class KeyboardShortcuts {
     // Show notification
     await browser.notifications.create({
       type: 'basic',
-      iconUrl: 'icons/icon-96.svg',
+      iconUrl: 'icons/icon-128.png',
       title: 'Cloakfox Shield',
       message: newEnabled ? 'Protection enabled' : 'Protection disabled',
     });
@@ -87,7 +87,7 @@ export class KeyboardShortcuts {
 
     await browser.notifications.create({
       type: 'basic',
-      iconUrl: 'icons/icon-96.svg',
+      iconUrl: 'icons/icon-128.png',
       title: 'Cloakfox Shield',
       message: 'Fingerprint rotated for this container',
     });
@@ -127,7 +127,7 @@ export class KeyboardShortcuts {
 
     await browser.notifications.create({
       type: 'basic',
-      iconUrl: 'icons/icon-96.svg',
+      iconUrl: 'icons/icon-128.png',
       title: 'Cloakfox Shield',
       message,
     });

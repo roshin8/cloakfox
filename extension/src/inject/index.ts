@@ -22,7 +22,7 @@ import { PRNG, base64ToUint8Array } from '@/lib/crypto';
 // Patch Function.prototype.toString FIRST — before any spoofers
 initStealth();
 
-const FALLBACK_SALT = ':containershield:fallback';
+const FALLBACK_SALT = ':cloakfox:fallback';
 
 // Old DESKTOP_SCREENS and LOCALE_TIMEZONE_PAIRS removed — now defined inside generateProfile
 // with platform-specific variants

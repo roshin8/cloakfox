@@ -47,7 +47,7 @@ export default function SettingsManager({ onSettingsChange }: SettingsManagerPro
 
       const a = document.createElement('a');
       a.href = url;
-      a.download = `containershield-settings-${Date.now()}.json`;
+      a.download = `cloakfox-settings-${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

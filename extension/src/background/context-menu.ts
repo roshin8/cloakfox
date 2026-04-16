@@ -26,7 +26,7 @@ export class ContextMenuManager {
 
     // Create parent menu
     browser.contextMenus.create({
-      id: 'containershield-parent',
+      id: 'cloakfox-parent',
       title: 'Cloakfox Shield',
       contexts: ['page', 'link'],
     });
@@ -34,7 +34,7 @@ export class ContextMenuManager {
     // Toggle protection for current site
     browser.contextMenus.create({
       id: 'toggle-site-protection',
-      parentId: 'containershield-parent',
+      parentId: 'cloakfox-parent',
       title: 'Disable protection for this site',
       contexts: ['page'],
     });
@@ -42,7 +42,7 @@ export class ContextMenuManager {
     // Separator
     browser.contextMenus.create({
       id: 'separator-1',
-      parentId: 'containershield-parent',
+      parentId: 'cloakfox-parent',
       type: 'separator',
       contexts: ['page', 'link'],
     });
@@ -50,7 +50,7 @@ export class ContextMenuManager {
     // Open link in container submenu
     browser.contextMenus.create({
       id: 'open-in-container',
-      parentId: 'containershield-parent',
+      parentId: 'cloakfox-parent',
       title: 'Open link in container...',
       contexts: ['link'],
     });
@@ -61,7 +61,7 @@ export class ContextMenuManager {
     // Separator
     browser.contextMenus.create({
       id: 'separator-2',
-      parentId: 'containershield-parent',
+      parentId: 'cloakfox-parent',
       type: 'separator',
       contexts: ['page'],
     });
@@ -69,7 +69,7 @@ export class ContextMenuManager {
     // Rotate fingerprint
     browser.contextMenus.create({
       id: 'rotate-fingerprint',
-      parentId: 'containershield-parent',
+      parentId: 'cloakfox-parent',
       title: 'Rotate fingerprint for this container',
       contexts: ['page'],
     });
@@ -77,7 +77,7 @@ export class ContextMenuManager {
     // View fingerprint monitor
     browser.contextMenus.create({
       id: 'view-monitor',
-      parentId: 'containershield-parent',
+      parentId: 'cloakfox-parent',
       title: 'View fingerprint accesses',
       contexts: ['page'],
     });
@@ -203,7 +203,7 @@ export class ContextMenuManager {
       // Show notification
       await browser.notifications.create({
         type: 'basic',
-        iconUrl: 'icons/icon-96.svg',
+        iconUrl: 'icons/icon-128.png',
         title: 'Cloakfox Shield',
         message: 'Fingerprint rotated. Reload pages to apply.',
       });

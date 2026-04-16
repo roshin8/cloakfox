@@ -50,7 +50,7 @@ const SCHEDULE_INTERVALS: Record<RotationSchedule, number> = {
 /**
  * Profile rotation manager
  */
-const ALARM_NAME = 'containershield-rotation-check';
+const ALARM_NAME = 'cloakfox-rotation-check';
 
 export class ProfileRotation {
   private settingsStore: SettingsStore;
