@@ -62,25 +62,31 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
-    async function init() {
-      try {
-        const allContainers = await browser.runtime.sendMessage({ type: MSG_GET_ALL_CONTAINERS }) as ContainerIdentity[] | null;
-        setContainers(allContainers || []);
+    async function init(retries = 5) {
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          const allContainers = await browser.runtime.sendMessage({ type: MSG_GET_ALL_CONTAINERS }) as ContainerIdentity[] | null;
+          setContainers(allContainers || []);
 
-        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        const containerInfo = await browser.runtime.sendMessage({ type: MSG_GET_CONTAINER_INFO, tabId: tab?.id }) as ContainerInfo;
-        setCurrentContainer(containerInfo);
-        setSelectedContainer(containerInfo.containerId);
+          const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+          const containerInfo = await browser.runtime.sendMessage({ type: MSG_GET_CONTAINER_INFO, tabId: tab?.id }) as ContainerInfo;
+          setCurrentContainer(containerInfo);
+          setSelectedContainer(containerInfo.containerId);
 
-        const containerSettings = await browser.runtime.sendMessage({ type: MSG_GET_SETTINGS, containerId: containerInfo.containerId }) as ContainerSettings;
-        setSettings(containerSettings);
-      } catch (error) {
-        popupLogger.error('Failed to initialize:', error);
-      } finally {
-        setLoading(false);
+          const containerSettings = await browser.runtime.sendMessage({ type: MSG_GET_SETTINGS, containerId: containerInfo.containerId }) as ContainerSettings;
+          setSettings(containerSettings);
+          return; // Success
+        } catch (error) {
+          if (attempt < retries - 1) {
+            // Background not ready yet — wait and retry
+            await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+          } else {
+            popupLogger.error('Failed to initialize after retries:', error);
+          }
+        }
       }
     }
-    init();
+    init().finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
