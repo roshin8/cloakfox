@@ -1,6 +1,6 @@
---- a/b/dom/base/AudioFingerprintManager.cpp	2026-04-16 19:02:06
-+++ b/dom/base/AudioFingerprintManager.cpp	2026-04-16 19:06:20
-@@ -26,21 +26,13 @@
+--- a/b/dom/base/AudioFingerprintManager.cpp	2026-04-17 13:46:11
++++ b/dom/base/AudioFingerprintManager.cpp	2026-04-17 13:46:12
+@@ -26,24 +26,14 @@
  
  /* static */ void
  AudioFingerprintManager::SetSeed(uint32_t aUserContextId, uint32_t aSeed) {
@@ -21,12 +21,16 @@
 -    return seed;
 -  }
 -  // Fallback to CLOAK_CONFIG for Workers in separate processes
-   if (auto val = MaskConfig::GetUint32("audio:seed")) {
-     return val.value();
-   }
---- a/b/dom/base/CanvasFingerprintManager.cpp	2026-04-16 19:02:06
-+++ b/dom/base/CanvasFingerprintManager.cpp	2026-04-16 19:06:03
-@@ -17,19 +17,12 @@
+-  if (auto val = MaskConfig::GetUint32("audio:seed")) {
+-    return val.value();
+-  }
++  if (auto val = MaskConfig::GetUint32("audio:seed")) return val.value();
+   return 0;
+ }
+ 
+--- a/b/dom/base/CanvasFingerprintManager.cpp	2026-04-17 13:46:11
++++ b/dom/base/CanvasFingerprintManager.cpp	2026-04-17 13:46:12
+@@ -17,22 +17,12 @@
  }
  
  void CanvasFingerprintManager::SetSeed(uint32_t aId, uint32_t aSeed) {
@@ -45,12 +49,15 @@
 -    return seed;
 -  }
 -  // Fallback to CLOAK_CONFIG for Workers in separate processes
-+  // Unified path: MaskConfig checks overlay -> env var
-   if (auto val = MaskConfig::GetUint32("canvas:seed")) {
-     return val.value();
-   }
---- a/b/dom/base/FontSpacingSeedManager.cpp	2026-04-16 19:02:06
-+++ b/dom/base/FontSpacingSeedManager.cpp	2026-04-16 19:06:39
+-  if (auto val = MaskConfig::GetUint32("canvas:seed")) {
+-    return val.value();
+-  }
++  if (auto val = MaskConfig::GetUint32("canvas:seed")) return val.value();
+   return 0;
+ }
+ 
+--- a/b/dom/base/FontSpacingSeedManager.cpp	2026-04-17 13:46:11
++++ b/dom/base/FontSpacingSeedManager.cpp	2026-04-17 13:46:54
 @@ -30,7 +30,8 @@
  /* static */ void
  FontSpacingSeedManager::SetSeed(uint32_t userContextId, uint32_t seed) {
@@ -61,7 +68,7 @@
    
    // Mark the function as disabled for this context after first use
    DisableFunction(userContextId);
-@@ -54,7 +55,7 @@
+@@ -52,7 +53,7 @@
  FontSpacingSeedManager::HasSeed(uint32_t userContextId) {
    nsString key = KeyForUserContext(userContextId);
    uint32_t seed = 0;
@@ -70,8 +77,8 @@
  }
  
  /* static */ bool
---- a/b/dom/base/ScreenDimensionManager.cpp	2026-04-16 19:02:06
-+++ b/dom/base/ScreenDimensionManager.cpp	2026-04-16 19:07:03
+--- a/b/dom/base/ScreenDimensionManager.cpp	2026-04-17 13:46:11
++++ b/dom/base/ScreenDimensionManager.cpp	2026-04-17 13:46:54
 @@ -32,8 +32,9 @@
    nsString widthKey, heightKey;
    widthKey.AppendPrintf("screenWidth_%u", aUserContextId);
@@ -84,21 +91,18 @@
  }
  
  /* static */ bool
-@@ -43,8 +44,11 @@
+@@ -43,8 +44,8 @@
    heightKey.AppendPrintf("screenHeight_%u", aUserContextId);
  
    uint32_t width = 0, height = 0;
 -  RoverfoxStorageManager::GetUint(widthKey, width);
 -  RoverfoxStorageManager::GetUint(heightKey, height);
-+  auto w = MaskConfig::GetInt32("screen.width");
-+  auto h = MaskConfig::GetInt32("screen.height");
-+  if (w && h) {
-+    width = w.value(); height = h.value();
-+  }
++  if (auto w = MaskConfig::GetInt32("screen.width")) width = w.value();
++  if (auto h = MaskConfig::GetInt32("screen.height")) height = h.value();
  
    if (width > 0 && height > 0) {
      *aWidth = static_cast<int32_t>(width);
-@@ -58,7 +62,8 @@
+@@ -58,7 +59,8 @@
  ScreenDimensionManager::SetColorDepth(uint32_t aUserContextId, int32_t aColorDepth) {
    nsString key;
    key.AppendPrintf("screenColorDepth_%u", aUserContextId);
@@ -108,9 +112,9 @@
  }
  
  /* static */ int32_t
---- a/b/dom/base/WebGLParamsManager.cpp	2026-04-16 19:02:06
-+++ b/dom/base/WebGLParamsManager.cpp	2026-04-16 19:07:22
-@@ -21,27 +21,34 @@
+--- a/b/dom/base/WebGLParamsManager.cpp	2026-04-17 13:46:11
++++ b/dom/base/WebGLParamsManager.cpp	2026-04-17 13:46:54
+@@ -21,27 +21,28 @@
  }
  
  void WebGLParamsManager::SetVendor(uint32_t aId, const nsAString& aValue) {
@@ -118,18 +122,15 @@
 -  key.AppendPrintf("webgl_vendor_%u", aId);
 -  RoverfoxStorageManager::PutString(key, aValue);
 +  extern void CloakConfigOverlay_MergeString(uint32_t, const std::string&, const std::string&);
-+  NS_ConvertUTF16toUTF8 utf8(aValue);
-+  CloakConfigOverlay_MergeString(aId, "webGl:vendor", std::string(utf8.get()));
++  NS_ConvertUTF16toUTF8 utf8v(aValue);
++  CloakConfigOverlay_MergeString(aId, "webGl:vendor", std::string(utf8v.get()));
  }
  
  bool WebGLParamsManager::GetVendor(uint32_t aId, nsAString& aOut) {
    nsAutoString key;
 -  key.AppendPrintf("webgl_vendor_%u", aId);
 -  return RoverfoxStorageManager::GetString(key, aOut);
-+  if (auto val = MaskConfig::GetString("webGl:vendor")) {
-+    aOut = NS_ConvertUTF8toUTF16(val.value().c_str());
-+    return true;
-+  }
++  if (auto val = MaskConfig::GetString("webGl:vendor")) { aOut = NS_ConvertUTF8toUTF16(val.value().c_str()); return true; }
 +  return false;
  }
  
@@ -146,16 +147,13 @@
    nsAutoString key;
 -  key.AppendPrintf("webgl_renderer_%u", aId);
 -  return RoverfoxStorageManager::GetString(key, aOut);
-+  if (auto val = MaskConfig::GetString("webGl:renderer")) {
-+    aOut = NS_ConvertUTF8toUTF16(val.value().c_str());
-+    return true;
-+  }
++  if (auto val = MaskConfig::GetString("webGl:renderer")) { aOut = NS_ConvertUTF8toUTF16(val.value().c_str()); return true; }
 +  return false;
  }
  
  void WebGLParamsManager::DisableVendorFunction(uint32_t aId) {
---- a/b/dom/base/WebRTCIPManager.cpp	2026-04-16 19:02:06
-+++ b/dom/base/WebRTCIPManager.cpp	2026-04-16 19:07:46
+--- a/b/dom/base/WebRTCIPManager.cpp	2026-04-17 13:46:11
++++ b/dom/base/WebRTCIPManager.cpp	2026-04-17 13:46:54
 @@ -48,8 +48,9 @@
  
  /* static */ void
@@ -168,16 +166,13 @@
    
    // Mark the function as disabled for this context after first use
    DisableIPv4Function(userContextId);
-@@ -57,14 +58,18 @@
+@@ -57,14 +58,15 @@
  
  /* static */ bool
  WebRTCIPManager::GetIPv4(uint32_t userContextId, nsAString& outIPv4) {
 -  nsString key = IPv4KeyForUserContext(userContextId);
 -  return RoverfoxStorageManager::GetString(key, outIPv4);
-+  if (auto val = MaskConfig::GetString("webrtc:ipv4")) {
-+    outIPv4 = NS_ConvertUTF8toUTF16(val.value().c_str());
-+    return true;
-+  }
++  if (auto val = MaskConfig::GetString("webrtc:ipv4")) { outIPv4 = NS_ConvertUTF8toUTF16(val.value().c_str()); return true; }
 +  return false;
  }
  
@@ -191,66 +186,14 @@
    
    // Mark the function as disabled for this context after first use
    DisableIPv6Function(userContextId);
-@@ -72,8 +77,11 @@
+@@ -72,8 +74,8 @@
  
  /* static */ bool
  WebRTCIPManager::GetIPv6(uint32_t userContextId, nsAString& outIPv6) {
 -  nsString key = IPv6KeyForUserContext(userContextId);
 -  return RoverfoxStorageManager::GetString(key, outIPv6);
-+  if (auto val = MaskConfig::GetString("webrtc:ipv6")) {
-+    outIPv6 = NS_ConvertUTF8toUTF16(val.value().c_str());
-+    return true;
-+  }
++  if (auto val = MaskConfig::GetString("webrtc:ipv6")) { outIPv6 = NS_ConvertUTF8toUTF16(val.value().c_str()); return true; }
 +  return false;
  }
  
  
---- a/b/dom/base/CloakConfigOverlay.cpp	2026-04-16 19:02:06
-+++ b/dom/base/CloakConfigOverlay.cpp	2026-04-16 19:02:33
-@@ -3,6 +3,7 @@
-  * (which is included by intl/, gfx/, netwerk/ that lack DOM include paths).
-  */
- #include "RoverfoxStorageManager.h"
-+#include "json.hpp"
- #include "nsString.h"
- #include <string>
- 
-@@ -24,3 +25,38 @@
-   NS_ConvertUTF8toUTF16 value(jsonStr.c_str());
-   mozilla::dom::RoverfoxStorageManager::PutString(key, value);
- }
-+
-+// Merge helpers — called by Manager classes to write values into the JSON blob
-+// These do read-modify-write on the JSON blob in RoverfoxStorageManager
-+
-+void CloakConfigOverlay_MergeUint(uint32_t userContextId, const std::string& key, uint32_t value) {
-+  std::string current = CloakConfigOverlay_Get(userContextId);
-+  nlohmann::json j = current.empty() ? nlohmann::json{} : 
-+    (nlohmann::json::accept(current) ? nlohmann::json::parse(current) : nlohmann::json{});
-+  j[key] = value;
-+  CloakConfigOverlay_Set(userContextId, j.dump());
-+}
-+
-+void CloakConfigOverlay_MergeString(uint32_t userContextId, const std::string& key, const std::string& value) {
-+  std::string current = CloakConfigOverlay_Get(userContextId);
-+  nlohmann::json j = current.empty() ? nlohmann::json{} :
-+    (nlohmann::json::accept(current) ? nlohmann::json::parse(current) : nlohmann::json{});
-+  j[key] = value;
-+  CloakConfigOverlay_Set(userContextId, j.dump());
-+}
-+
-+void CloakConfigOverlay_MergeDouble(uint32_t userContextId, const std::string& key, double value) {
-+  std::string current = CloakConfigOverlay_Get(userContextId);
-+  nlohmann::json j = current.empty() ? nlohmann::json{} :
-+    (nlohmann::json::accept(current) ? nlohmann::json::parse(current) : nlohmann::json{});
-+  j[key] = value;
-+  CloakConfigOverlay_Set(userContextId, j.dump());
-+}
-+
-+void CloakConfigOverlay_MergeBool(uint32_t userContextId, const std::string& key, bool value) {
-+  std::string current = CloakConfigOverlay_Get(userContextId);
-+  nlohmann::json j = current.empty() ? nlohmann::json{} :
-+    (nlohmann::json::accept(current) ? nlohmann::json::parse(current) : nlohmann::json{});
-+  j[key] = value;
-+  CloakConfigOverlay_Set(userContextId, j.dump());
-+}
