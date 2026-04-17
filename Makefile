@@ -64,11 +64,7 @@ set-target:
 	python3 scripts/patch.py $(version) $(release) --mozconfig-only
 
 extension:
-	cd extension && npm ci && npm run build
-	# Copy built extension into additions for built-in addon
-	rm -rf additions/browser/extensions/cloakfox-shield/dist
-	cp -r extension/dist additions/browser/extensions/cloakfox-shield/
-	# manifest.json is already in dist/ (copied by build)
+	cd additions/browser/extensions/cloakfox-shield && npm ci && npm run build
 
 build:
 	@if [ ! -f $(cf_source_dir)/_READY ]; then \
@@ -93,12 +89,12 @@ generate-assets-car:
 
 clean:
 	rm -rf $(cf_source_dir)/obj-*
-	rm -rf extension/dist
+	rm -rf additions/browser/extensions/cloakfox-shield/dist
 	rm -f *.dmg
 
 distclean: clean
 	rm -rf $(cf_source_dir)
-	rm -rf extension/node_modules
+	rm -rf additions/browser/extensions/cloakfox-shield/node_modules
 	rm -f $(ff_source_tarball)
 
 patch:
