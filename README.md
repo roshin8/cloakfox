@@ -78,7 +78,7 @@ This builds a Linux binary in a Docker container. Output goes to `dist/`.
 ### Extension only (native)
 
 ```bash
-cd extension
+cd additions/browser/extensions/cloakfox-shield
 npm ci
 npm test        # 32 unit tests
 npm run build   # production build
@@ -112,7 +112,7 @@ make run          # Launch browser
 │   └── infra/          # 6 infrastructure patches
 ├── additions/          # MaskConfig.hpp, branding assets (from Camoufox)
 ├── config/             # policies.json, cloakfox.cfg, chrome.css
-├── extension/          # Cloakfox Shield (TypeScript, React)
+├── additions/browser/extensions/cloakfox-shield/          # Cloakfox Shield (TypeScript, React)
 │   ├── src/
 │   │   ├── background/ # Container manager, config injector
 │   │   ├── inject/     # Cloakfox bridge, fingerprint monitor

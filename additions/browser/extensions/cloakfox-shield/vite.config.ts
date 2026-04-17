@@ -39,8 +39,8 @@ export default defineConfig(({ mode }) => ({
           if (chunkInfo.name === 'options') return 'pages/options.js';
           return '[name].js';
         },
-        chunkFileNames: 'chunks/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
+        chunkFileNames: 'chunks/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
         manualChunks(id) {
           // Create chunk for React (shared by all UI components)
           if (id.includes('node_modules/react')) {

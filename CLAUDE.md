@@ -35,18 +35,18 @@ make all        # Full pipeline
 - `patches/infra/` — 7 infrastructure patches from Camoufox
 - `patches/cloakfox/` — New patches for daily-driver restoration
 - `config/` — policies.json, cloakfox.cfg, local-settings.js
-- `extension/` — Cloakfox Shield extension (TypeScript, React, Tailwind)
+- `additions/browser/extensions/cloakfox-shield/` — Cloakfox Shield extension (TypeScript, React, Tailwind)
 - `scripts/` — Build automation scripts
 - `branding/` — App icons and about dialog assets
 - `tests/` — Unit (Vitest) and E2E (Playwright)
 
 ## Extension Architecture
 
-- `extension/src/background/` — Container manager, settings store, profile manager, config injector, header spoofer
-- `extension/src/inject/` — Cloakfox bridge (calls window.setXxx()), fingerprint monitor
-- `extension/src/content/` — MAIN ↔ ISOLATED world message bridge
-- `extension/src/popup/` — React popup UI (6 tabs)
-- `extension/src/lib/` — PRNG (xorshift128+), seed derivation, domain matcher, profiles
+- `additions/browser/extensions/cloakfox-shield/src/background/` — Container manager, settings store, profile manager, config injector, header spoofer
+- `additions/browser/extensions/cloakfox-shield/src/inject/` — Cloakfox bridge (calls window.setXxx()), fingerprint monitor
+- `additions/browser/extensions/cloakfox-shield/src/content/` — MAIN ↔ ISOLATED world message bridge
+- `additions/browser/extensions/cloakfox-shield/src/popup/` — React popup UI (6 tabs)
+- `additions/browser/extensions/cloakfox-shield/src/lib/` — PRNG (xorshift128+), seed derivation, domain matcher, profiles
 
 ## Critical Constraints
 
@@ -64,11 +64,11 @@ make all        # Full pipeline
 - camelCase for variables/functions, PascalCase for types/components
 - Imports: group by external, internal, types
 - No default exports except React components
-- Use PRNG from `extension/src/lib/crypto.ts` for all randomization, never Math.random()
+- Use PRNG from `additions/browser/extensions/cloakfox-shield/src/lib/crypto.ts` for all randomization, never Math.random()
 
 ## Testing
 
-- Unit tests: Vitest, `extension/tests/unit/`
+- Unit tests: Vitest, `additions/browser/extensions/cloakfox-shield/tests/unit/`
 - E2E tests: Playwright, `tests/e2e/`
 - Test spoofed values are deterministic given same seed
 - Test different containers produce different fingerprints
