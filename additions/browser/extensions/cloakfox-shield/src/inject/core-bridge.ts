@@ -67,9 +67,13 @@ export function applyCoreProtections(
   if (settings.navigator?.vibration === 'block') {
     cloakConfig['navigator:vibrate:disabled'] = true;
   }
+  if (settings.navigator?.clipboard === 'block') {
+    cloakConfig['navigator:clipboard:disabled'] = true;
+  }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
+      if ('navigator:clipboard:disabled' in cloakConfig) handled.add('navigator.clipboard');
     }
   }
 

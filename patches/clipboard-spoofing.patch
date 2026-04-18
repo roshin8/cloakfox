@@ -1,0 +1,56 @@
+--- a/b/dom/events/Clipboard.cpp	2026-04-18 02:15:09
++++ b/dom/events/Clipboard.cpp	2026-04-18 02:15:31
+@@ -7,6 +7,7 @@
+ #include "mozilla/dom/Clipboard.h"
+ 
+ #include <algorithm>
++#include "MaskConfig.hpp"
+ 
+ #include "imgIContainer.h"
+ #include "imgITools.h"
+@@ -329,6 +330,17 @@
+ already_AddRefed<Promise> Clipboard::ReadHelper(nsIPrincipal& aSubjectPrincipal,
+                                                 ReadRequestType aType,
+                                                 ErrorResult& aRv) {
++  // Cloakfox: block clipboard reads if configured
++  if (MaskConfig::GetBool("navigator:clipboard:disabled").value_or(false)) {
++    nsGlobalWindowInner* owner = GetOwnerWindow();
++    RefPtr<Promise> p = dom::Promise::Create(owner, aRv);
++    if (aRv.Failed()) {
++      return nullptr;
++    }
++    p->MaybeRejectWithNotAllowedError("Clipboard read denied");
++    return p.forget();
++  }
++
+   // Create a new promise
+   nsGlobalWindowInner* owner = GetOwnerWindow();
+   RefPtr<Promise> p = dom::Promise::Create(owner, aRv);
+@@ -679,6 +691,17 @@
+ already_AddRefed<Promise> Clipboard::Write(
+     const Sequence<OwningNonNull<ClipboardItem>>& aData,
+     nsIPrincipal& aSubjectPrincipal, ErrorResult& aRv) {
++  // Cloakfox: block clipboard writes if configured
++  if (MaskConfig::GetBool("navigator:clipboard:disabled").value_or(false)) {
++    RefPtr<nsGlobalWindowInner> owner = GetOwnerWindow();
++    RefPtr<Promise> p = dom::Promise::Create(owner, aRv);
++    if (aRv.Failed()) {
++      return nullptr;
++    }
++    p->MaybeRejectWithNotAllowedError("Clipboard write denied");
++    return p.forget();
++  }
++
+   // Create a promise
+   RefPtr<nsGlobalWindowInner> owner = GetOwnerWindow();
+   RefPtr<Promise> p = dom::Promise::Create(owner, aRv);
+--- a/b/dom/events/moz.build	2026-04-18 00:00:00
++++ b/dom/events/moz.build	2026-04-18 00:00:00
+@@ -175,6 +175,7 @@
+
+ FINAL_LIBRARY = "xul"
+ LOCAL_INCLUDES += [
++    "/cloakcfg",
+     "/docshell/base",
+     "/dom/base",
+     "/dom/html",

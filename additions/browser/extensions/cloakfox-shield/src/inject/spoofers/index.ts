@@ -216,7 +216,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('screenExt', () => { if (settings.hardware.screenExtended !== 'off' && !skip('hardware.screenExtended')) initScreenExtendedSpoofer(settings.hardware.screenExtended, pagePRNG); });
 
   safe('navigator', () => { if (settings.navigator.userAgent !== 'off' && !skip('navigator.userAgent')) initNavigatorSpoofer(settings.navigator, pagePRNG, config.profile, assignedProfile); });
-  safe('clipboard', () => { if (settings.navigator.clipboard !== 'off') initClipboardSpoofer(settings.navigator.clipboard, pagePRNG); });
+  safe('clipboard', () => { if (settings.navigator.clipboard !== 'off' && !skip('navigator.clipboard')) initClipboardSpoofer(settings.navigator.clipboard, pagePRNG); });
   safe('vibration', () => { if (settings.navigator.vibration !== 'off' && !skip('navigator.vibration')) initVibrationSpoofer(settings.navigator.vibration, pagePRNG); });
   safe('vendorFlavors', () => { if (settings.navigator.vendorFlavors !== 'off') initVendorFlavorSpoofer(settings.navigator.vendorFlavors, pagePRNG); });
   safe('fontPrefs', () => { if (settings.navigator.fontPreferences !== 'off') initFontPreferencesSpoofer(settings.navigator.fontPreferences, pagePRNG); });
