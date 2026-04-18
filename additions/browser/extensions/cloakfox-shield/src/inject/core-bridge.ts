@@ -146,6 +146,13 @@ export function applyCoreProtections(
   cloakConfig['mediaFeature:prefersReducedTransparency'] = false;            // content: no-preference
   cloakConfig['mediaFeature:invertedColors'] = false;                        // content: none
   cloakConfig['mediaFeature:prefersContrast'] = 0;                           // content: no-preference
+  // Color gamut: pin to srgb (0). Most displays report srgb; p3/rec2020
+  // would flag the container as a premium display = extra identity bits.
+  cloakConfig['mediaFeature:colorGamut'] = 0;
+  // Resolution in device-pixels-per-CSS-pixel should match spoofed DPR.
+  if (profile?.screen?.dpr) {
+    cloakConfig['mediaFeature:resolution'] = profile.screen.dpr;
+  }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');

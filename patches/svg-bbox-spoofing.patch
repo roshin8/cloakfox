@@ -1,5 +1,5 @@
 --- a/b/dom/svg/SVGGraphicsElement.cpp	2026-04-18 14:19:43
-+++ b/dom/svg/SVGGraphicsElement.cpp	2026-04-18 14:20:25
++++ b/dom/svg/SVGGraphicsElement.cpp	2026-04-18 17:12:26
 @@ -6,6 +6,7 @@
  
  #include "mozilla/dom/SVGGraphicsElement.h"
@@ -49,7 +49,7 @@
    }
    uint32_t flags = 0;
    if (aOptions.mFill) {
-@@ -112,7 +129,8 @@
+@@ -112,9 +129,26 @@
      flags |= SVGUtils::eBBoxIncludeFillGeometry;
    }
    flags |= SVGUtils::eUseUserSpaceOfUseElement;
@@ -58,4 +58,40 @@
 +      new SVGRect(this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(frame, flags)))));
  }
  
++// Cloakfox: noise the 6 components of a 2D affine matrix. Applied to
++// getCTM / getScreenCTM so SVG transform fingerprints differ per container.
++static gfx::Matrix CloakNoiseMatrix(gfx::Matrix m) {
++  auto seed = MaskConfig::GetUint32("canvas:seed");
++  if (!seed || seed.value() == 0) return m;
++  uint32_t s = seed.value();
++  auto n = [&s]() {
++    s = s * 1664525u + 1013904223u;
++    return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 1e-4f;
++  };
++  m._11 += n(); m._12 += n();
++  m._21 += n(); m._22 += n();
++  m._31 += n(); m._32 += n();
++  return m;
++}
++
  already_AddRefed<SVGMatrix> SVGGraphicsElement::GetCTM() {
+   if (auto* currentDoc = GetComposedDoc()) {
+     // Flush all pending notifications so that our frames are up to date
+@@ -124,7 +158,7 @@
+   if (m.IsSingular()) {
+     m = {};
+   }
+-  return do_AddRef(new SVGMatrix(ThebesMatrix(m)));
++  return do_AddRef(new SVGMatrix(ThebesMatrix(CloakNoiseMatrix(m))));
+ }
+ 
+ already_AddRefed<SVGMatrix> SVGGraphicsElement::GetScreenCTM() {
+@@ -136,7 +170,7 @@
+   if (m.IsSingular()) {
+     m = {};
+   }
+-  return do_AddRef(new SVGMatrix(ThebesMatrix(m)));
++  return do_AddRef(new SVGMatrix(ThebesMatrix(CloakNoiseMatrix(m))));
+ }
+ 
+ bool SVGGraphicsElement::IsSVGFocusable(bool* aIsFocusable,

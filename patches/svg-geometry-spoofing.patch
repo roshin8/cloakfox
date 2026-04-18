@@ -1,0 +1,26 @@
+--- a/b/dom/svg/SVGGeometryElement.cpp	2026-04-18 17:13:05
++++ b/dom/svg/SVGGeometryElement.cpp	2026-04-18 17:13:44
+@@ -6,6 +6,7 @@
+ 
+ #include "SVGGeometryElement.h"
+ 
++#include "MaskConfig.hpp"
+ #include "DOMSVGPoint.h"
+ #include "SVGAnimatedLength.h"
+ #include "SVGCircleElement.h"
+@@ -292,7 +293,14 @@
+ 
+ float SVGGeometryElement::GetTotalLength() {
+   RefPtr<Path> flat = GetOrBuildPathForMeasuring();
+-  return flat ? flat->ComputeLength() : 0.f;
++  float length = flat ? flat->ComputeLength() : 0.f;
++  // Cloakfox: sub-pixel noise to defeat SVG path-length fingerprinting.
++  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++    uint32_t s = seed.value() ^ static_cast<uint32_t>(length * 1000);
++    s = s * 1664525u + 1013904223u;
++    length += (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
++  }
++  return length;
+ }
+ 
+ void SVGGeometryElement::FlushIfNeeded() {

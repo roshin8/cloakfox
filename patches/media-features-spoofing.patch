@@ -1,5 +1,5 @@
 --- a/b/layout/style/nsMediaFeatures.cpp	2026-04-18 16:05:32
-+++ b/layout/style/nsMediaFeatures.cpp	2026-04-18 16:08:10
++++ b/layout/style/nsMediaFeatures.cpp	2026-04-18 17:11:25
 @@ -7,6 +7,7 @@
  /* the features that media queries can test */
  
@@ -8,7 +8,36 @@
  #include "mozilla/GeckoBindings.h"
  #include "mozilla/LookAndFeel.h"
  #include "mozilla/RelativeLuminanceUtils.h"
-@@ -270,6 +271,11 @@
+@@ -149,6 +150,15 @@
+ }
+ 
+ StyleColorGamut Gecko_MediaFeatures_ColorGamut(const Document* aDocument) {
++  // Cloakfox: content-only color gamut spoof — srgb (0), p3 (1), rec2020 (2)
++  if (auto value = MaskConfig::GetInt32("mediaFeature:colorGamut");
++      value.has_value()) {
++    switch (value.value()) {
++      case 1: return StyleColorGamut::P3;
++      case 2: return StyleColorGamut::Rec2020;
++      default: return StyleColorGamut::Srgb;
++    }
++  }
+   auto* dx = GetDeviceContextFor(aDocument);
+   if (!dx || aDocument->ShouldResistFingerprinting(RFPTarget::CSSColorInfo)) {
+     return StyleColorGamut::Srgb;
+@@ -187,6 +197,12 @@
+ }
+ 
+ float Gecko_MediaFeatures_GetResolution(const Document* aDocument) {
++  // Cloakfox: content-only resolution override. Reports a fixed DPPX
++  // that matches the spoofed devicePixelRatio, hiding the real monitor DPI.
++  if (auto value = MaskConfig::GetDouble("mediaFeature:resolution");
++      value.has_value()) {
++    return static_cast<float>(value.value());
++  }
+   // We're returning resolution in terms of device pixels per css pixel, since
+   // that is the preferred unit for media queries of resolution. This avoids
+   // introducing precision error from conversion to and from less-used
+@@ -270,6 +286,11 @@
  }
  
  bool Gecko_MediaFeatures_PrefersReducedMotion(const Document* aDocument) {
@@ -20,7 +49,7 @@
    if (aDocument->ShouldResistFingerprinting(
            RFPTarget::CSSPrefersReducedMotion)) {
      return false;
-@@ -278,6 +284,11 @@
+@@ -278,6 +299,11 @@
  }
  
  bool Gecko_MediaFeatures_PrefersReducedTransparency(const Document* aDocument) {
@@ -32,7 +61,7 @@
    if (aDocument->ShouldResistFingerprinting(
            RFPTarget::CSSPrefersReducedTransparency)) {
      return false;
-@@ -304,6 +315,16 @@
+@@ -304,6 +330,16 @@
  // as a signal.
  StylePrefersContrast Gecko_MediaFeatures_PrefersContrast(
      const Document* aDocument) {
@@ -49,7 +78,7 @@
    if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSPrefersContrast)) {
      return StylePrefersContrast::NoPreference;
    }
-@@ -326,6 +347,10 @@
+@@ -326,6 +362,10 @@
  }
  
  bool Gecko_MediaFeatures_InvertedColors(const Document* aDocument) {
