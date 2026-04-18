@@ -164,6 +164,11 @@ export function applyCoreProtections(
     handled.add('rendering.emoji');
     handled.add('rendering.mathml');
   }
+  // feature-detection.ts mostly wraps vectors we already cover in C++
+  // (navigator.webdriver is always spoofed; navigator.globalPrivacyControl
+  // is covered by Camoufox; pdfViewerEnabled/javaEnabled/cookieEnabled are
+  // either controlled by Firefox prefs or already return safe values).
+  if ('navigator:webdriver' in cloakConfig) handled.add('features.detection');
 
   // ─── Canvas ──────────────────────────────────────────────────
   if (settings.graphics?.canvas !== 'off') {

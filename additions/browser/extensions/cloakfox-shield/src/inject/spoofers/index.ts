@@ -269,7 +269,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('hid', () => { if (settings.devices.hid !== 'off') initHIDSpoofer(settings.devices.hid, pagePRNG); });
 
   // Features
-  safe('features', () => { if (settings.features.detection !== 'off') initFeatureSpoofer(settings.features.detection, pagePRNG); });
+  safe('features', () => { if (settings.features.detection !== 'off' && !skip('features.detection')) initFeatureSpoofer(settings.features.detection, pagePRNG); });
 
   // Payment
   safe('applePay', () => { if (settings.payment.applePay !== 'off') initApplePaySpoofer(settings.payment.applePay, pagePRNG); });
