@@ -24,13 +24,10 @@ import { initAudioLatencySpoofer } from './audio/audio-latency';
 // Hardware
 import { initScreenSpoofer } from './hardware/screen';
 import { initScreenFrameSpoofer } from './hardware/screen-frame';
-import { initScreenExtendedSpoofer } from './hardware/screen-extended';
 import { initScreenOrientationSpoofer } from './hardware/screen-orientation';
-import { initDeviceSpoofer } from './hardware/device';
 import { initBatterySpoofer } from './hardware/battery';
 import { initMediaDevicesSpoofer } from './hardware/media-devices';
 import { initTouchSpoofer } from './hardware/touch';
-import { initSensorSpoofer } from './hardware/sensors';
 import { initArchitectureSpoofer } from './hardware/architecture';
 import { initVisualViewportSpoofer } from './hardware/visual-viewport';
 
@@ -38,7 +35,6 @@ import { initVisualViewportSpoofer } from './hardware/visual-viewport';
 import { initNavigatorSpoofer } from './navigator/user-agent';
 import { initClipboardSpoofer } from './navigator/clipboard';
 import { initVibrationSpoofer } from './navigator/vibration';
-import { initVendorFlavorSpoofer } from './navigator/vendor-flavors';
 import { initFontPreferencesSpoofer } from './navigator/font-preferences';
 import { initWindowNameSpoofer } from './navigator/window-name';
 import { initTabHistorySpoofer } from './navigator/tab-history';
@@ -53,7 +49,6 @@ import { initCSSFontSpoofer } from './fonts/css-fonts';
 
 // Network
 import { initWebRTCSpoofer } from './network/webrtc';
-import { initNetworkSpoofer } from './network/connection';
 import { initGeolocationSpoofer } from './network/geolocation';
 import { initWebSocketSpoofer } from './network/websocket';
 
@@ -62,7 +57,6 @@ import { initKeyboardCadenceSpoofer } from './keyboard/cadence';
 
 // Timing
 import { initPerformanceSpoofer } from './timing/performance';
-import { initMemorySpoofer } from './timing/memory';
 import { initEventLoopJitter } from './timing/event-loop';
 
 // CSS
@@ -78,7 +72,6 @@ import { initNotificationSpoofer } from './permissions/notification';
 // Storage
 import { initStorageSpoofer } from './storage/storage-estimate';
 import { initIndexedDBSpoofer } from './storage/indexeddb';
-import { initWebSQLSpoofer } from './storage/websql';
 import { initPrivateModeProtection } from './storage/private-mode';
 
 // Codecs
@@ -88,7 +81,6 @@ import { initCodecSpoofer } from './codecs/codecs';
 import { initMathSpoofer } from './math/math';
 
 // Keyboard
-import { initKeyboardSpoofer } from './keyboard/keyboard';
 
 // Workers
 import { initWorkerSpoofer } from './workers/worker-fingerprint';
@@ -109,14 +101,11 @@ import { initCryptoSpoofer } from './crypto/webcrypto';
 // Devices
 import { initGamepadSpoofer } from './devices/gamepad';
 import { initMIDISpoofer } from './devices/midi';
-import { initBluetoothSpoofer } from './devices/bluetooth';
-import { initUSBSpoofer, initSerialSpoofer, initHIDSpoofer } from './devices/usb-serial';
 
 // Features
 import { initFeatureSpoofer } from './features/feature-detection';
 
 // Payment
-import { initApplePaySpoofer } from './payment/apple-pay';
 
 // Iframe
 import { initIframePatcher } from './iframe/iframe-patcher';
@@ -202,23 +191,15 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('screen', () => { if (settings.hardware.screen !== 'off' && !skip('hardware.screen')) initScreenSpoofer(settings.hardware.screen, pagePRNG, assignedProfile?.screen); });
   safe('screenFrame', () => { if (settings.hardware.screenFrame !== 'off' && !skip('hardware.screenFrame')) initScreenFrameSpoofer(settings.hardware.screenFrame, pagePRNG); });
   safe('orientation', () => { if (settings.hardware.orientation !== 'off' && !skip('hardware.orientation')) initScreenOrientationSpoofer(settings.hardware.orientation, pagePRNG); });
-  safe('device', () => {
-    if ((settings.hardware.deviceMemory !== 'off' || settings.hardware.hardwareConcurrency !== 'off') && !skip('hardware.hardwareConcurrency')) {
-      initDeviceSpoofer(settings.hardware.deviceMemory, settings.hardware.hardwareConcurrency, pagePRNG, assignedProfile);
-    }
-  });
   safe('battery', () => { if (settings.hardware.battery !== 'off') initBatterySpoofer(settings.hardware.battery, pagePRNG); });
   safe('mediaDevices', () => { if (settings.hardware.mediaDevices !== 'off') initMediaDevicesSpoofer(settings.hardware.mediaDevices, pagePRNG); });
   safe('touch', () => { if (settings.hardware.touch !== 'off' && !skip('hardware.touch')) initTouchSpoofer(settings.hardware.touch, pagePRNG, assignedProfile); });
-  safe('sensors', () => { if (settings.hardware.sensors !== 'off') initSensorSpoofer(settings.hardware.sensors, pagePRNG); });
   safe('architecture', () => { if (settings.hardware.architecture !== 'off') initArchitectureSpoofer(settings.hardware.architecture, pagePRNG); });
   safe('viewport', () => { if (settings.hardware.visualViewport !== 'off' && !skip('hardware.visualViewport')) initVisualViewportSpoofer(settings.hardware.visualViewport, pagePRNG); });
-  safe('screenExt', () => { if (settings.hardware.screenExtended !== 'off' && !skip('hardware.screenExtended')) initScreenExtendedSpoofer(settings.hardware.screenExtended, pagePRNG); });
 
   safe('navigator', () => { if (settings.navigator.userAgent !== 'off' && !skip('navigator.userAgent')) initNavigatorSpoofer(settings.navigator, pagePRNG, config.profile, assignedProfile); });
   safe('clipboard', () => { if (settings.navigator.clipboard !== 'off' && !skip('navigator.clipboard')) initClipboardSpoofer(settings.navigator.clipboard, pagePRNG); });
   safe('vibration', () => { if (settings.navigator.vibration !== 'off' && !skip('navigator.vibration')) initVibrationSpoofer(settings.navigator.vibration, pagePRNG); });
-  safe('vendorFlavors', () => { if (settings.navigator.vendorFlavors !== 'off') initVendorFlavorSpoofer(settings.navigator.vendorFlavors, pagePRNG); });
   safe('fontPrefs', () => { if (settings.navigator.fontPreferences !== 'off') initFontPreferencesSpoofer(settings.navigator.fontPreferences, pagePRNG); });
   safe('windowName', () => { if (settings.navigator.windowName !== 'off' && !skip('navigator.windowName')) initWindowNameSpoofer(settings.navigator.windowName, pagePRNG); });
   safe('tabHistory', () => { if (settings.navigator.tabHistory !== 'off' && !skip('navigator.tabHistory')) initTabHistorySpoofer(settings.navigator.tabHistory, pagePRNG); });
@@ -234,12 +215,10 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('cssFonts', () => { if (settings.fonts.cssDetection !== 'off' && !skip('fonts.cssDetection')) initCSSFontSpoofer(settings.fonts.cssDetection, pagePRNG); });
 
   safe('webrtc', () => { if (settings.network.webrtc !== 'off' && !skip('network.webrtc')) initWebRTCSpoofer(settings.network.webrtc, pagePRNG); });
-  safe('connection', () => { if (settings.network.connection !== 'off') initNetworkSpoofer(settings.network.connection, pagePRNG); });
   safe('geolocation', () => { if (settings.network.geolocation !== 'off' && !skip('network.geolocation')) initGeolocationSpoofer(settings.network.geolocation, pagePRNG); });
   safe('websocket', () => { if (settings.network.websocket !== 'off' && !skip('network.websocket')) initWebSocketSpoofer(settings.network.websocket, pagePRNG); });
 
   safe('performance', () => { if (settings.timing.performance !== 'off') initPerformanceSpoofer(settings.timing.performance, pagePRNG); });
-  safe('memory', () => { if (settings.timing.memory !== 'off') initMemorySpoofer(settings.timing.memory, pagePRNG); });
   safe('eventLoop', () => { if (settings.timing.eventLoop !== 'off' && !skip('timing.eventLoop')) initEventLoopJitter(settings.timing.eventLoop, pagePRNG); });
 
   safe('css', () => { if (settings.css.mediaQueries !== 'off') initCSSSpoofer(settings.css.mediaQueries, pagePRNG, assignedProfile); });
@@ -248,10 +227,8 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('notification', () => { if (settings.permissions.notification !== 'off' && !skip('permissions.notification')) initNotificationSpoofer(settings.permissions.notification, pagePRNG); });
   safe('storage', () => { if (settings.storage.estimate !== 'off' && !skip('storage.estimate')) initStorageSpoofer(settings.storage.estimate, pagePRNG); });
   safe('indexedDB', () => { if (settings.storage.indexedDB !== 'off' && !skip('storage.indexedDB')) initIndexedDBSpoofer(settings.storage.indexedDB, pagePRNG); });
-  safe('webSQL', () => { if (settings.storage.webSQL !== 'off') initWebSQLSpoofer(settings.storage.webSQL, pagePRNG); });
   safe('privateMode', () => { if (settings.storage.privateModeProtection !== 'off' && !skip('storage.privateModeProtection')) initPrivateModeProtection(settings.storage.privateModeProtection, pagePRNG); });
   safe('math', () => { if (settings.math.functions !== 'off') initMathSpoofer(settings.math.functions, pagePRNG); });
-  safe('keyboard', () => { if (settings.keyboard.layout !== 'off') initKeyboardSpoofer(settings.keyboard.layout, pagePRNG); });
   safe('cadence', () => { if (settings.keyboard.cadence !== 'off') initKeyboardCadenceSpoofer(settings.keyboard.cadence, pagePRNG); });
   safe('workers', () => { if (settings.workers.fingerprint !== 'off') initWorkerSpoofer(settings.workers.fingerprint, pagePRNG, assignedProfile, settings.workers.serviceWorker); });
   safe('errors', () => { if (settings.errors.stackTrace !== 'off') initErrorSpoofer(settings.errors.stackTrace, pagePRNG); });
@@ -263,16 +240,9 @@ export function initializeSpoofers(config: InjectConfig): void {
   // Devices
   safe('gamepad', () => { if (settings.devices.gamepad !== 'off' && !skip('devices.gamepad')) initGamepadSpoofer(settings.devices.gamepad, pagePRNG); });
   safe('midi', () => { if (settings.devices.midi !== 'off' && !skip('devices.midi')) initMIDISpoofer(settings.devices.midi, pagePRNG); });
-  safe('bluetooth', () => { if (settings.devices.bluetooth !== 'off') initBluetoothSpoofer(settings.devices.bluetooth, pagePRNG); });
-  safe('usb', () => { if (settings.devices.usb !== 'off') initUSBSpoofer(settings.devices.usb, pagePRNG); });
-  safe('serial', () => { if (settings.devices.serial !== 'off') initSerialSpoofer(settings.devices.serial, pagePRNG); });
-  safe('hid', () => { if (settings.devices.hid !== 'off') initHIDSpoofer(settings.devices.hid, pagePRNG); });
 
   // Features
   safe('features', () => { if (settings.features.detection !== 'off' && !skip('features.detection')) initFeatureSpoofer(settings.features.detection, pagePRNG); });
-
-  // Payment
-  safe('applePay', () => { if (settings.payment.applePay !== 'off') initApplePaySpoofer(settings.payment.applePay, pagePRNG); });
 
   // Intercept iframe creation to apply overrides to iframe contexts.
   initIframePatcher({ settings, assignedProfile, selectedGPU: selectedGPURef });
