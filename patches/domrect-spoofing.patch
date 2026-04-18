@@ -1,0 +1,25 @@
+--- a/b/dom/base/Element.cpp	2026-04-18 07:41:27
++++ b/dom/base/Element.cpp	2026-04-18 07:41:40
+@@ -1108,6 +1108,22 @@
+   }
+ 
+   rect->SetLayoutRect(frame->GetBoundingClientRect());
++
++  // Cloakfox: sub-pixel noise on the returned rect using canvas:seed.
++  // Layout-based fingerprints (e.g. font rendering detection) measure
++  // getBoundingClientRect across elements; we add deterministic per-context
++  // jitter so every container sees a different value.
++  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++    uint32_t s = seed.value();
++    auto n = [&s]() {
++      s = s * 1664525u + 1013904223u;
++      return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
++    };
++    rect->SetRect(static_cast<float>(rect->X()) + n(),
++                  static_cast<float>(rect->Y()) + n(),
++                  static_cast<float>(rect->Width()) + n(),
++                  static_cast<float>(rect->Height()) + n());
++  }
+   return rect.forget();
+ }
+ 

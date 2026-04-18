@@ -126,6 +126,9 @@ export function applyCoreProtections(
   if (settings.audio?.codecs !== 'off') {
     cloakConfig['codecs:spoof'] = true;
   }
+  if (settings.network?.websocket === 'block') {
+    cloakConfig['webSocket:disabled'] = true;
+  }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
@@ -148,11 +151,19 @@ export function applyCoreProtections(
       if ('timing:setTimeoutJitter' in cloakConfig) handled.add('timing.eventLoop');
       if ('mediaCapabilities:spoof' in cloakConfig) handled.add('navigator.mediaCapabilities');
       if ('codecs:spoof' in cloakConfig) handled.add('audio.codecs');
+      if ('webSocket:disabled' in cloakConfig) handled.add('network.websocket');
     }
   }
-  // Text metrics ride on the existing canvas:seed (setCanvasSeed). If the
-  // canvas-fingerprint manager was engaged above, text-metrics is also handled.
-  if (handled.has('graphics.canvas')) handled.add('graphics.textMetrics');
+  // Text metrics, DOMRect, SVG text length, emoji canvas measurements and
+  // MathML bbox all ride on the canvas:seed set by setCanvasSeed. Mark them
+  // handled whenever the core canvas manager was engaged.
+  if (handled.has('graphics.canvas')) {
+    handled.add('graphics.textMetrics');
+    handled.add('graphics.domrect');
+    handled.add('graphics.svg');
+    handled.add('rendering.emoji');
+    handled.add('rendering.mathml');
+  }
 
   // ─── Canvas ──────────────────────────────────────────────────
   if (settings.graphics?.canvas !== 'off') {

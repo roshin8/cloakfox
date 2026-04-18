@@ -190,9 +190,9 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('offscreen', () => { if (settings.graphics.offscreenCanvas !== 'off' && !skip('graphics.offscreenCanvas')) initOffscreenCanvasSpoofer(settings.graphics.offscreenCanvas, pagePRNG); });
   safe('webglShaders', () => { if (settings.graphics.webglShaders !== 'off' && !skip('graphics.webglShaders')) initWebGLShaderSpoofer(settings.graphics.webglShaders, pagePRNG); });
   safe('webgpu', () => { if (settings.graphics.webgpu !== 'off' && !skip('graphics.webgpu')) initWebGPUSpoofer(settings.graphics.webgpu, pagePRNG); });
-  safe('domRect', () => { if (settings.graphics.domRect !== 'off') initDOMRectSpoofer(settings.graphics.domRect, pagePRNG); });
+  safe('domRect', () => { if (settings.graphics.domRect !== 'off' && !skip('graphics.domrect')) initDOMRectSpoofer(settings.graphics.domRect, pagePRNG); });
   safe('textMetrics', () => { if (settings.graphics.textMetrics !== 'off' && !skip('graphics.textMetrics')) initTextMetricsSpoofer(settings.graphics.textMetrics, pagePRNG); });
-  safe('svg', () => { if (settings.graphics.svg !== 'off') initSVGSpoofer(settings.graphics.svg, pagePRNG); });
+  safe('svg', () => { if (settings.graphics.svg !== 'off' && !skip('graphics.svg')) initSVGSpoofer(settings.graphics.svg, pagePRNG); });
 
   safe('audio', () => { if (settings.audio.audioContext !== 'off' && !skip('audio.audioContext')) initAudioSpoofer(settings.audio.audioContext, pagePRNG); });
   safe('offlineAudio', () => { if (settings.audio.offlineAudio !== 'off' && !skip('audio.offlineAudio')) initOfflineAudioSpoofer(settings.audio.offlineAudio, pagePRNG); });
@@ -236,7 +236,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('webrtc', () => { if (settings.network.webrtc !== 'off' && !skip('network.webrtc')) initWebRTCSpoofer(settings.network.webrtc, pagePRNG); });
   safe('connection', () => { if (settings.network.connection !== 'off') initNetworkSpoofer(settings.network.connection, pagePRNG); });
   safe('geolocation', () => { if (settings.network.geolocation !== 'off' && !skip('network.geolocation')) initGeolocationSpoofer(settings.network.geolocation, pagePRNG); });
-  safe('websocket', () => { if (settings.network.websocket !== 'off') initWebSocketSpoofer(settings.network.websocket, pagePRNG); });
+  safe('websocket', () => { if (settings.network.websocket !== 'off' && !skip('network.websocket')) initWebSocketSpoofer(settings.network.websocket, pagePRNG); });
 
   safe('performance', () => { if (settings.timing.performance !== 'off') initPerformanceSpoofer(settings.timing.performance, pagePRNG); });
   safe('memory', () => { if (settings.timing.memory !== 'off') initMemorySpoofer(settings.timing.memory, pagePRNG); });
@@ -255,8 +255,8 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('cadence', () => { if (settings.keyboard.cadence !== 'off') initKeyboardCadenceSpoofer(settings.keyboard.cadence, pagePRNG); });
   safe('workers', () => { if (settings.workers.fingerprint !== 'off') initWorkerSpoofer(settings.workers.fingerprint, pagePRNG, assignedProfile, settings.workers.serviceWorker); });
   safe('errors', () => { if (settings.errors.stackTrace !== 'off') initErrorSpoofer(settings.errors.stackTrace, pagePRNG); });
-  safe('emoji', () => { if (settings.rendering.emoji !== 'off') initEmojiSpoofer(settings.rendering.emoji, pagePRNG); });
-  safe('mathml', () => { if (settings.rendering.mathml !== 'off') initMathMLSpoofer(settings.rendering.mathml, pagePRNG); });
+  safe('emoji', () => { if (settings.rendering.emoji !== 'off' && !skip('rendering.emoji')) initEmojiSpoofer(settings.rendering.emoji, pagePRNG); });
+  safe('mathml', () => { if (settings.rendering.mathml !== 'off' && !skip('rendering.mathml')) initMathMLSpoofer(settings.rendering.mathml, pagePRNG); });
   safe('intl', () => { if (settings.intl.apis !== 'off') initIntlSpoofer(settings.intl.apis, pagePRNG, assignedProfile); });
   safe('crypto', () => { if (settings.crypto.webCrypto !== 'off') initCryptoSpoofer(settings.crypto.webCrypto, pagePRNG); });
 

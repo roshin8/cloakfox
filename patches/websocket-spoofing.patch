@@ -1,0 +1,29 @@
+--- a/b/dom/websocket/WebSocket.cpp	2026-04-18 07:44:57
++++ b/dom/websocket/WebSocket.cpp	2026-04-18 07:45:31
+@@ -6,6 +6,7 @@
+ 
+ #include "WebSocket.h"
+ 
++#include "MaskConfig.hpp"
+ #include "ErrorList.h"
+ #include "js/ColumnNumber.h"  // JS::ColumnNumberOneOrigin
+ #include "jsapi.h"
+@@ -1045,6 +1046,11 @@
+ already_AddRefed<WebSocket> WebSocket::Constructor(
+     const GlobalObject& aGlobal, const nsAString& aUrl,
+     const StringOrStringSequence& aProtocols, ErrorResult& aRv) {
++  // Cloakfox: optional WebSocket blocking for privacy-focused contexts.
++  if (MaskConfig::GetBool("webSocket:disabled").value_or(false)) {
++    aRv.ThrowSecurityError("WebSocket blocked by Cloakfox");
++    return nullptr;
++  }
+   if (aProtocols.IsStringSequence()) {
+     return WebSocket::ConstructorCommon(
+         aGlobal, aUrl, aProtocols.GetAsStringSequence(), nullptr, ""_ns, aRv);
+--- a/b/dom/websocket/moz.build	2026-04-18 00:00:00
++++ b/dom/websocket/moz.build	2026-04-18 00:00:00
+@@ -18,3 +18,4 @@
+ LOCAL_INCLUDES += [
++    "/cloakcfg",
+     "/dom/base",
+ ]
