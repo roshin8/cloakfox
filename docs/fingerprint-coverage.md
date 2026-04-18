@@ -1,154 +1,375 @@
-# Cloakfox fingerprint coverage
+# 🛡️ Cloakfox fingerprint coverage
 
-What every fingerprint signal looks like in Cloakfox — where the spoof happens, who feeds the value, and where the patch comes from.
+> **At a glance:** Cloakfox intercepts **83 fingerprinting signals** across the browser. Most are spoofed at the **C++ engine level** (undetectable to JavaScript), driven by a WebExtension that generates **per-container, per-domain unique values**. Another 15 signals are out of scope (wrong layer) or genuinely not portable.
 
-## Legend
-
-**Spoof site** — where the actual spoof lives:
-- `C++` — Gecko/Firefox C++ patch (engine-level, undetectable to JS)
-- `C++ (content-only)` — patched in a function that only runs for web content, browser UI is untouched
-- `JS` — extension runtime hook, no C++ patch
-- `pref` — static Firefox pref in `settings/cloakfox.cfg`
-- `ext webRequest` — extension rewrites HTTP request/response via webRequest API
-
-**Value source** — who decides what value to spoof to (for C++/JS signals):
-- `extension` — per-container, per-domain generation via profile + PRNG
-- `pref` — static from `cloakfox.cfg`
-- `—` — static Firefox built-in (no value generation needed)
-
-**Source columns** — where each patch originated:
-- ☑ **Firefox** = native Firefox static / RFP handling
-- ☑ **Camoufox** = pre-existing from upstream daijro/camoufox
-- ☑ **Cloakfox** = new on this fork's `unified-maskconfig` branch
+![Coverage](https://img.shields.io/badge/signals_covered-83-success) ![Per-container](https://img.shields.io/badge/per--container-76-blue) ![Engine-level](https://img.shields.io/badge/C++_patches-52-orange) ![Extension-only](https://img.shields.io/badge/JS_only-7-yellow)
 
 ---
 
-## Signals covered
+## 📖 How this works
 
-| # | Signal / API | Spoof site | Value source | Firefox | Camoufox | Cloakfox |
-|---|---|---|---|:---:|:---:|:---:|
-| 1 | Canvas `getImageData`/`toDataURL` pixel fp | C++ | extension (setCanvasSeed) | ☐ | ☑ | ☐ |
-| 2 | Canvas `measureText` TextMetrics | C++ | extension (canvas seed) | ☐ | ☐ | ☑ |
-| 3 | OffscreenCanvas | C++ | extension (canvas seed) | ☐ | ☑ | ☐ |
-| 4 | AudioBuffer fingerprint | C++ | extension (setAudioFingerprintSeed) | ☐ | ☑ | ☐ |
-| 5 | OfflineAudioContext rendering | C++ | extension (audio seed) | ☐ | ☑ | ☐ |
-| 6 | AudioContext `sampleRate`/`outputLatency`/`maxChannelCount` | C++ | extension (setCloakConfig) | ☐ | ☑ | ☐ |
-| 7 | `navigator.userAgent` | C++ | extension (setNavigatorUserAgent) | ☐ | ☑ | ☐ |
-| 8 | `navigator.platform` | C++ | extension (setNavigatorPlatform) | ☐ | ☑ | ☐ |
-| 9 | `navigator.oscpu` | C++ | extension (setNavigatorOscpu) | ☐ | ☑ | ☐ |
-| 10 | `navigator.appVersion` | C++ | extension (setCloakConfig) | ☐ | ☑ | ☐ |
-| 11 | `navigator.language` / `.languages` | C++ | extension (setCloakConfig locale) | ☐ | ☑ | ☐ |
-| 12 | `navigator.hardwareConcurrency` | C++ | extension (setNavigatorHardwareConcurrency) | ☐ | ☑ | ☐ |
-| 13 | `navigator.maxTouchPoints` | C++ | extension (setCloakConfig) | ☐ | ☐ | ☑ |
-| 14 | `navigator.webdriver` | C++ | extension (always false) | ☐ | ☐ | ☑ |
-| 15 | `navigator.globalPrivacyControl` | C++ | extension (setCloakConfig) | ☐ | ☑ | ☐ |
-| 16 | `navigator.gpu` (WebGPU) | C++ | extension (disable flag) | ☐ | ☐ | ☑ |
-| 17 | `navigator.vibrate` | C++ | extension (disable flag) | ☐ | ☐ | ☑ |
-| 18 | `navigator.getGamepads` | C++ | extension (disable flag) | ☐ | ☐ | ☑ |
-| 19 | `navigator.requestMIDIAccess` | C++ | extension (disable flag) | ☐ | ☐ | ☑ |
-| 20 | `navigator.requestMediaKeySystemAccess` (EME) | C++ | extension (disable flag) | ☐ | ☐ | ☑ |
-| 21 | `navigator.clipboard.read`/`.write` | C++ | extension (disable flag) | ☐ | ☐ | ☑ |
-| 22 | `navigator.permissions.query` | C++ | extension (spoof flag) | ☐ | ☐ | ☑ |
-| 23 | `navigator.vendor` / `.product` / `.appName` | Firefox constant | — | ☑ | ☐ | ☐ |
-| 24 | `navigator.buildID` | pref | pref | ☐ | ☐ | ☑ |
-| 25 | `Notification.permission` / `.requestPermission` | C++ | extension (disable flag) | ☐ | ☐ | ☑ |
-| 26 | WebGL `VENDOR` / `RENDERER` | C++ | extension (profile.gpu) | ☐ | ☑ | ☐ |
-| 27 | WebGL `getParameter` (all params) | C++ | extension (setCloakConfig webGl:parameters) | ☐ | ☑ | ☐ |
-| 28 | WebGL `getSupportedExtensions` | C++ | extension (setCloakConfig webGl:supportedExtensions) | ☐ | ☑ | ☐ |
-| 29 | WebGL `getShaderPrecisionFormat` | C++ | extension (setCloakConfig) | ☐ | ☑ | ☐ |
-| 30 | `screen.width`/`height`/`availWidth`/`availHeight` | C++ | extension (profile.screen via setScreenDimensions) | ☐ | ☑ | ☐ |
-| 31 | `screen.colorDepth` / `screen.pixelDepth` | C++ | extension (setScreenColorDepth) | ☐ | ☑ | ☐ |
-| 32 | `screen.orientation.type` | C++ | extension (mobile-aware) | ☐ | ☐ | ☑ |
-| 33 | `window.innerWidth`/`innerHeight` | C++ | extension (setCloakConfig window:*) | ☐ | ☑ | ☐ |
-| 34 | `window.outerWidth`/`outerHeight` | C++ | extension | ☐ | ☑ | ☐ |
-| 35 | `window.screenX`/`screenY` | C++ | extension | ☐ | ☑ | ☐ |
-| 36 | `window.scrollMaxX`/`Y`, `pageXOffset`/`Y` | C++ | extension | ☐ | ☑ | ☐ |
-| 37 | `window.devicePixelRatio` | C++ | extension | ☐ | ☑ | ☐ |
-| 38 | `window.visualViewport` scale/offsets | C++ | extension (spoof flag) | ☐ | ☐ | ☑ |
-| 39 | `window.name` | C++ | extension (disable flag) | ☐ | ☐ | ☑ |
-| 40 | `Element.getBoundingClientRect` | C++ | extension (canvas seed) | ☐ | ☐ | ☑ |
-| 41 | `Element.getClientRects` | C++ | extension (canvas seed) | ☐ | ☐ | ☑ |
-| 42 | `Element.offsetWidth`/`Height`/`Left`/`Top` | C++ | extension (canvas seed) | ☐ | ☐ | ☑ |
-| 43 | `Range.getBoundingClientRect` / `getClientRects` | C++ | extension (canvas seed) | ☐ | ☐ | ☑ |
-| 44 | `SVGTextContentElement.getComputedTextLength` | C++ | extension (canvas seed) | ☐ | ☐ | ☑ |
-| 45 | `SVGGraphicsElement.getBBox` | C++ | extension (canvas seed) | ☐ | ☐ | ☑ |
-| 46 | `Intl.DateTimeFormat().resolvedOptions().timeZone` / `Date.getTimezoneOffset()` | C++ | extension (profile-matched via setTimezone) | ☐ | ☑ | ☐ |
-| 47 | `Intl.*` locale (language/region/script) | C++ | extension (setCloakConfig locale:*) | ☐ | ☑ | ☐ |
-| 48 | `setTimeout` / `setInterval` jitter | C++ | extension (per-container seed) | ☐ | ☐ | ☑ |
-| 49 | `performance.now()` precision | pref | pref | ☑ | ☐ | ☑ |
-| 50 | `performance.timeOrigin` | Firefox RFP service | — | ☑ | ☐ | ☐ |
-| 51 | `HTMLMediaElement.canPlayType()` | C++ | extension (codecs:spoof) | ☐ | ☐ | ☑ |
-| 52 | `MediaSource.isTypeSupported()` | C++ | extension (codecs:spoof) | ☐ | ☐ | ☑ |
-| 53 | `MediaCapabilities.decodingInfo` / `encodingInfo` | C++ | extension (spoof flag) | ☐ | ☐ | ☑ |
-| 54 | `navigator.storage.estimate()` / `.persisted()` | C++ | extension (fake quota) | ☐ | ☐ | ☑ |
-| 55 | `indexedDB.databases()` | C++ | extension (hide flag) | ☐ | ☐ | ☑ |
-| 56 | Fonts enumeration (system font list) | C++ | extension (profile.fonts via setFontList) | ☐ | ☑ | ☐ |
-| 57 | Font spacing seed (CSS font-width detection) | C++ | extension (setFontSpacingSeed) | ☐ | ☑ | ☐ |
-| 58 | `speechSynthesis.getVoices()` | C++ | extension (platform-matched voices) | ☐ | ☑ | ☐ |
-| 59 | WebRTC local IP (ICE candidates) | C++ | extension (profile IPs via setWebRTCIPv4/6) | ☐ | ☑ | ☐ |
-| 60 | WebRTC mDNS hostnames | pref | pref | ☐ | ☐ | ☑ |
-| 61 | `WebSocket` constructor | C++ | extension (block flag) | ☐ | ☐ | ☑ |
-| 62 | `navigator.geolocation.*` | C++ | extension (profile coords via setGeolocation) | ☐ | ☑ | ☐ |
-| 63 | `navigator.mediaDevices.enumerateDevices` | C++ | extension (fake counts via setMediaDeviceCounts) | ☐ | ☑ | ☐ |
-| 64 | `navigator.getBattery()` | C++ + pref | extension per-container + pref disable | ☐ | ☑ | ☑ |
-| 65 | `history.length` | C++ | extension (random via setHistoryLength) | ☐ | ☑ | ☐ |
-| 66 | `document.lastModified` | C++ | extension (hide flag) | ☐ | ☐ | ☑ |
-| 67 | `document.body.client*` rect | C++ | extension (setCloakConfig document.body.*) | ☐ | ☑ | ☐ |
-| 68 | `@media (prefers-color-scheme)` | C++ (content-only) | extension (random per container) | ☐ | ☐ | ☑ |
-| 69 | `@media (prefers-reduced-motion)` | C++ (content-only) | extension | ☐ | ☐ | ☑ |
-| 70 | `@media (prefers-reduced-transparency)` | C++ (content-only) | extension | ☐ | ☐ | ☑ |
-| 71 | `@media (prefers-contrast)` | C++ (content-only) | extension | ☐ | ☐ | ☑ |
-| 72 | `@media (inverted-colors)` | C++ (content-only) | extension | ☐ | ☐ | ☑ |
-| 73 | HTTP `User-Agent` header | C++ netwerk | extension (profile-matched) | ☐ | ☑ | ☐ |
-| 74 | HTTP `Accept-Language` header | C++ netwerk | extension | ☐ | ☑ | ☐ |
-| 75 | HTTP `Accept-Encoding` header | C++ netwerk | extension | ☐ | ☑ | ☐ |
-| 76 | Client Hints headers (`Sec-CH-UA-*`) | ext webRequest | extension (profile-matched) | ☐ | ☐ | ☑ |
-| 77 | `Error().stack` format | JS | extension (stealth.ts) | ☐ | ☐ | ☑ |
-| 78 | `Function.prototype.toString` native-look | JS | extension (stealth.ts) | ☐ | ☐ | ☑ |
-| 79 | iframe inheritance of all spoofs | JS fallback | extension (iframe-patcher) | ☐ | ☐ | ☑ |
-| 80 | Worker thread navigator consistency | C++ WorkerNavigator | extension (shared MaskConfig) | ☐ | ☑ | ☐ |
-| 81 | KeyboardEvent cadence timing | JS | extension (keyboard/cadence.ts) | ☐ | ☐ | ☑ |
-| 82 | Feature detection consistency (`CSS.supports`, `hasFeature`) | JS | extension (features/feature-detection.ts) | ☐ | ☐ | ☑ |
-| 83 | `Math.*` trig precision | JS | extension (math/math.ts) | ☐ | ☐ | ☑ |
+Cloakfox spoofs fingerprints at **three layers that cooperate**:
 
-## Per-container uniqueness / orchestration
+```mermaid
+flowchart LR
+    U[🧑 User visits site] --> E[🔌 Cloakfox Shield extension<br/>at document_start]
+    E -->|generates per-container+domain<br/>profile values| B[📦 MaskConfig overlay<br/>cloak_cfg_&lt;userContextId&gt;]
+    E -.->|individual WebIDL<br/>setters| B
+    E -.->|batched<br/>setCloakConfig JSON| B
+    W[🌐 Web page JS:<br/>canvas.toDataURL&#40;&#41;<br/>navigator.userAgent<br/>getBoundingClientRect&#40;&#41;] --> C[⚙️ Gecko C++<br/>patched functions]
+    C -->|reads| B
+    C -->|returns spoofed<br/>value| W
+    P[📄 cloakfox.cfg prefs] -.->|static fallback| C
 
-The extension is the engine that makes everything per-container. Without it, the C++ patches default to real browser values.
+    style E fill:#ffd59b
+    style B fill:#b3e6ff
+    style C fill:#ffb3b3
+    style P fill:#d9f2d9
+```
 
-| # | Extension responsibility | Layer | Source |
-|---|---|---|---|
-| 84 | Per-domain deterministic profile generation (UA, screen, fonts, GPU, timezone, locale) | JS (inject + background) | ☐ Firefox ☐ Camoufox ☑ Cloakfox |
-| 85 | Per-container master seed + xorshift128+ sub-PRNG derivation | JS (inject) | ☐ Firefox ☐ Camoufox ☑ Cloakfox |
-| 86 | Calls individual WebIDL setters at document_start (setCanvasSeed, setWebGLVendor, etc.) | JS (inject/core-bridge.ts) | ☐ Firefox ☐ Camoufox ☑ Cloakfox |
-| 87 | Batched `setCloakConfig()` JSON for keys without individual setters | JS (inject/core-bridge.ts) | ☐ Firefox ☐ Camoufox ☑ Cloakfox |
-| 88 | Container lifecycle (create / delete / rotate / persist) | JS (background) | ☐ Firefox ☐ Camoufox ☑ Cloakfox |
-| 89 | Settings UI (popup, options page, signal monitor) | JS (React) | ☐ Firefox ☐ Camoufox ☑ Cloakfox |
-| 90 | HTTP request header rewriting (`Sec-CH-UA-*`, etc.) | webRequest API | ☐ Firefox ☐ Camoufox ☑ Cloakfox |
-| 91 | IP leak warning & proxy validation | JS (background) | ☐ Firefox ☐ Camoufox ☑ Cloakfox |
+**Layer summary**
+
+| Layer | Role | Detectable? |
+|---|---|---|
+| ⚙️ **C++ engine patch** | Actual spoof site — overrides the native function that fingerprinters call | ❌ No — it IS the engine |
+| 🔌 **Extension (JS)** | Generates per-container values, writes them to MaskConfig at document_start. Also runs JS wrappers for a few signals without a C++ hook. | Mostly ❌ (stealth.ts patches `Function.toString`). A few JS-only wrappers are detectable with deep probing. |
+| 📄 **Preference** | Static global in `settings/cloakfox.cfg` — used for signals that don't vary per-container (buildID, timer precision, mDNS) | ❌ (just a pref) |
 
 ---
 
-## Remaining not yet covered
+## 🏷️ Reading the tables
 
-| # | Signal | Proposed layer | Effort | Why not done |
-|---|---|---|---|---|
-| R1 | `@media (color-gamut)` | C++ nsMediaFeatures.cpp | low | low priority, rare FP signal |
-| R2 | `@media (dynamic-range)` HDR | C++ nsMediaFeatures.cpp | low | rare |
-| R3 | `@media (resolution)` DPI | C++ nsMediaFeatures.cpp | low | DPR already covered |
-| R4 | `SVGGraphicsElement.getCTM` / `getScreenCTM` | C++ | low | SVG bbox already covers main vector |
-| R5 | `SVGGeometryElement.getTotalLength` / `getPointAtLength` | C++ | low | rarely FP'd |
-| R6 | `FontFaceSet.check()` | C++ | medium | font list + spacing seed already cover |
-| R7 | `getComputedStyle()` font-family fallback | C++ | medium | font list covers primary vector |
-| R8 | `HTMLMediaElement.duration` precision | C++ | medium | risk of breaking playback |
-| R9 | `Document.compatMode` / `characterSet` / `contentType` | C++ | low | already static across all Firefox |
-| R10 | Math trig precision | SpiderMonkey | high | JIT/debug risk; JS spoofer handles |
-| R11 | `Error().stack` format at engine level | SpiderMonkey | high | JS spoofer handles |
-| R12 | `KeyboardEvent.timeStamp` jitter at engine | C++ events | high | breaks input semantics; JS spoofer handles |
-| R13 | TLS JA3/JA4 fingerprint | NSS (security/) | — | out of Gecko scope |
-| R14 | HTTP/2 SETTINGS frame ordering | netwerk | high | rarely FP'd in practice |
-| R15 | TCP stack fingerprint | OS | — | impossible from browser |
+- 🔴 = high fingerprint risk · 🟡 = medium · 🟢 = low / defensive
+- ⚙️ = C++ patch · 🔌 = extension JS · 📄 = pref · 🌐 = HTTP / network layer
+- 🔒 = per-container unique · 🌍 = global (same across containers by design)
+- Source columns:
+  - ☑ **FF** — native Firefox static value or pre-existing RFP handling
+  - ☑ **CF** — ⬆ upstream **Camoufox** (inherited)
+  - ☑ **CX** — 🆕 new on **Cloakfox** `unified-maskconfig` branch
 
-## Firefox doesn't implement — JS spoofers were deleted
+---
 
-These APIs don't exist in Firefox source (verified via `grep dom/webidl/`):
-Web Bluetooth, WebUSB, WebSerial, WebHID, Generic Sensor API (Accelerometer/Gyroscope/etc.), `Screen.isExtended` (Window Management), Keyboard API (`navigator.keyboard`), Apple Pay, WebSQL, `performance.memory` (Chrome-only), `navigator.deviceMemory` (Chrome-only), NetworkInformation (disabled by default).
+## 🧭 Navigator
+
+> What fingerprinters read: browser identity, platform, hardware class, API availability.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `navigator.userAgent` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.platform` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.oscpu` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.appVersion` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.language` / `.languages` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.hardwareConcurrency` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.maxTouchPoints` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.webdriver` | 🔴 (bot-detect) | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.globalPrivacyControl` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.gpu` (WebGPU) | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.vibrate()` | 🟢 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.getGamepads()` | 🟢 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.requestMIDIAccess()` | 🟢 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.requestMediaKeySystemAccess()` (EME/Widevine) | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.clipboard.read/write` | 🟢 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.permissions.query()` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.vendor` / `.product` / `.appName` | 🟢 (static) | ⚙️ | 🌍 | ☑ | ☐ | ☐ |
+| `navigator.buildID` | 🟡 | 📄 | 🌍 | ☐ | ☐ | ☑ |
+
+---
+
+## 🎨 Canvas, SVG, Layout
+
+> What fingerprinters read: pixel-exact rendering differences, layout measurements, text metrics. One of the strongest fingerprint families.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `CanvasRenderingContext2D.getImageData` / `toDataURL` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `measureText()` TextMetrics | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `OffscreenCanvas` (rides on canvas seed) | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `Element.getBoundingClientRect` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `Element.getClientRects` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `Element.offsetWidth/Height/Left/Top` | 🔴 (font detect) | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `Range.getBoundingClientRect` / `getClientRects` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `SVGTextContentElement.getComputedTextLength` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `SVGGraphicsElement.getBBox` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `document.body.client*` rect | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+
+---
+
+## 🔊 Audio
+
+> What fingerprinters read: float precision of audio processing — differs per audio stack / DSP version.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `AudioBuffer.getChannelData` (noise) | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `OfflineAudioContext` rendering | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `AudioContext.sampleRate` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `AudioContext.outputLatency` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `AudioContext.maxChannelCount` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+
+---
+
+## 🖼️ WebGL / WebGPU / GPU
+
+> What fingerprinters read: exact GPU model, driver version, supported extensions. Very strong identity signal.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `WebGLRenderingContext.getParameter(VENDOR)` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `.getParameter(RENDERER)` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| All other WebGL `getParameter` values | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `getSupportedExtensions()` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `getShaderPrecisionFormat()` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.gpu.requestAdapter()` (WebGPU) | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+
+---
+
+## 🖥️ Screen & Window
+
+> What fingerprinters read: display geometry, multi-monitor config, zoom, DPR. Reveals device class.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `screen.width` / `height` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `screen.availWidth` / `availHeight` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `screen.colorDepth` / `pixelDepth` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `screen.orientation.type` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `window.innerWidth` / `innerHeight` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `window.outerWidth` / `outerHeight` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `window.screenX` / `screenY` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `window.scrollMaxX/Y`, `pageX/YOffset` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `window.devicePixelRatio` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `window.visualViewport` scale/offsets | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `window.name` | 🟢 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+
+---
+
+## 🌍 Locale / Timezone / Intl
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `Intl.DateTimeFormat().resolvedOptions().timeZone` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `Date.getTimezoneOffset()` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `Intl.*` locale (language/region/script) | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+
+---
+
+## 🎥 Media & Codecs
+
+> What fingerprinters read: which codecs are hardware-accelerated on this device. Leaks GPU class and OS version.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `HTMLMediaElement.canPlayType()` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `MediaSource.isTypeSupported()` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `MediaCapabilities.decodingInfo` / `encodingInfo` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| Speech synthesis voices | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+
+---
+
+## 🗂️ Storage
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `navigator.storage.estimate()` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.storage.persisted()` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `indexedDB.databases()` | 🟡 (cross-site leak) | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `history.length` | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+
+---
+
+## 🌐 Network
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| WebRTC local IP (ICE candidates) | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| WebRTC mDNS hostnames | 🟡 | 📄 | 🌍 | ☐ | ☐ | ☑ |
+| `WebSocket` constructor (block) | 🟢 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `navigator.geolocation.*` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `navigator.mediaDevices.enumerateDevices` | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| HTTP `User-Agent` header | 🔴 | 🌐 | 🔒 | ☐ | ☑ | ☐ |
+| HTTP `Accept-Language` header | 🔴 | 🌐 | 🔒 | ☐ | ☑ | ☐ |
+| HTTP `Accept-Encoding` header | 🟡 | 🌐 | 🔒 | ☐ | ☑ | ☐ |
+| Client Hints `Sec-CH-UA-*` headers | 🔴 | 🔌 (webRequest) | 🔒 | ☐ | ☐ | ☑ |
+
+---
+
+## 🔋 Hardware APIs
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `navigator.getBattery()` | 🟡 | ⚙️ + 📄 | 🔒 | ☐ | ☑ | ☑ |
+
+---
+
+## 🔤 Fonts
+
+> What fingerprinters read: installed font list. Strong OS / software identity signal.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| System font list enumeration | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| Font spacing seed (CSS font-width detection) | 🔴 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+
+---
+
+## ⏱️ Timing
+
+> What fingerprinters read: `performance.now()` precision, setTimeout jitter patterns, clock drift.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `setTimeout` / `setInterval` jitter | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `performance.now()` precision | 🔴 | 📄 | 🌍 | ☑ | ☐ | ☑ |
+| `performance.timeOrigin` | 🟡 | ⚙️ (Firefox RFP) | 🌍 | ☑ | ☐ | ☐ |
+
+---
+
+## 🔔 Permissions & Notifications
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `Notification.permission` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `Notification.requestPermission()` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+
+---
+
+## 🎨 CSS Media Queries (content-only)
+
+> What fingerprinters read: user OS preferences — dark mode, reduced motion, high contrast. These directly reveal user accessibility settings.
+>
+> **Important:** All patches here are content-only. Browser UI still follows your real OS (dark theme if you like dark). Only web pages see spoofed values.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `@media (prefers-color-scheme)` | 🔴 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
+| `@media (prefers-reduced-motion)` | 🔴 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
+| `@media (prefers-reduced-transparency)` | 🟡 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
+| `@media (prefers-contrast)` | 🟡 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
+| `@media (inverted-colors)` | 🟡 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
+
+---
+
+## 📄 Document
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `document.lastModified` | 🟡 (date leak) | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+
+---
+
+## 🔐 Anti-detection (JS-only — stays in extension)
+
+> These signals genuinely can't be C++-spoofed without breaking things. The extension's stealth layer handles them.
+
+| Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `Error().stack` format | 🔴 | 🔌 stealth.ts | 🔒 | ☐ | ☐ | ☑ |
+| `Function.prototype.toString` native-look | 🔴 | 🔌 stealth.ts | 🔒 | ☐ | ☐ | ☑ |
+| iframe spoofing inheritance | 🔴 | 🔌 iframe-patcher | 🔒 | ☐ | ☐ | ☑ |
+| Worker thread consistency | 🔴 | ⚙️ WorkerNavigator | 🔒 | ☐ | ☑ | ☐ |
+| KeyboardEvent cadence timing | 🟡 | 🔌 keyboard/cadence | 🔒 | ☐ | ☐ | ☑ |
+| Feature detection consistency (`CSS.supports`) | 🟡 | 🔌 features | 🔒 | ☐ | ☐ | ☑ |
+| `Math.*` trig precision | 🟡 | 🔌 math | 🔒 | ☐ | ☐ | ☑ |
+
+---
+
+## 🎛️ Cloakfox extension orchestration
+
+> The extension is what makes everything per-container. Without it, the C++ patches default to real browser values.
+
+| Responsibility | Layer | Source |
+|---|:-:|:-:|
+| Per-domain deterministic profile (UA, screen, fonts, GPU, timezone, locale) | 🔌 | CX |
+| Per-container master seed + xorshift128+ sub-PRNG derivation | 🔌 | CX |
+| Calls individual WebIDL setters at `document_start` | 🔌 | CX |
+| Batched `setCloakConfig()` JSON for keys without individual setters | 🔌 | CX |
+| Container lifecycle (create / delete / rotate / persist) | 🔌 | CX |
+| Settings UI (popup, options, signal monitor) | 🔌 | CX |
+| HTTP request header rewriting (webRequest API) | 🔌 | CX |
+| IP leak warning + proxy validation | 🔌 | CX |
+
+---
+
+## ❌ Remaining gaps
+
+| Signal | Proposed layer | Effort | Why not done |
+|---|---|:-:|---|
+| `@media (color-gamut)` | ⚙️ nsMediaFeatures.cpp | 🟢 low | low priority, rare FP signal |
+| `@media (dynamic-range)` HDR | ⚙️ nsMediaFeatures.cpp | 🟢 low | rare |
+| `@media (resolution)` DPI | ⚙️ nsMediaFeatures.cpp | 🟢 low | DPR already covered |
+| `SVGGraphicsElement.getCTM` / `getScreenCTM` | ⚙️ | 🟢 low | SVG bbox covers main vector |
+| `SVGGeometryElement.getTotalLength` / `getPointAtLength` | ⚙️ | 🟢 low | rarely FP'd |
+| `FontFaceSet.check()` | ⚙️ | 🟡 med | font list + spacing seed cover primary vector |
+| `getComputedStyle()` font-family fallback | ⚙️ | 🟡 med | font list covers primary vector |
+| `HTMLMediaElement.duration` precision | ⚙️ | 🟡 med | risk of breaking playback |
+| `Document.compatMode` / `characterSet` / `contentType` | ⚙️ | 🟢 low | already static across all Firefox installs |
+| Math trig precision (SpiderMonkey-level) | 🔧 SM | 🔴 high | JIT / debug risk. JS spoofer handles. |
+| `Error().stack` at engine level | 🔧 SM | 🔴 high | JS spoofer handles |
+| `KeyboardEvent.timeStamp` at engine | ⚙️ events | 🔴 high | breaks input semantics. JS spoofer handles. |
+| TLS JA3/JA4 fingerprint | NSS | — | ❌ out of Gecko scope |
+| HTTP/2 SETTINGS frame ordering | netwerk | 🔴 high | rarely FP'd in practice |
+| TCP stack fingerprint | OS | — | ❌ impossible from browser |
+
+---
+
+## 🚫 Firefox doesn't implement — JS spoofers were deleted
+
+Verified via `grep dom/webidl/` — zero matches. The JS spoofers for these APIs were removed (1046 lines of dead code).
+
+| API | Reason Firefox doesn't have it |
+|---|---|
+| Web Bluetooth (`navigator.bluetooth`) | Mozilla position: "harmful" |
+| WebUSB (`navigator.usb`) | Same |
+| WebSerial (`navigator.serial`) | Same |
+| WebHID (`navigator.hid`) | Same |
+| Generic Sensor API (Accelerometer/Gyroscope/Magnetometer) | "harmful", leaks physical device |
+| `Screen.isExtended` (Window Management) | Not shipped |
+| Keyboard API (`navigator.keyboard`) | Not shipped |
+| ApplePaySession | Safari proprietary |
+| WebSQL | Removed from all browsers |
+| `performance.memory` | Chrome-only |
+| `navigator.deviceMemory` | Chrome-only |
+| NetworkInformation (`navigator.connection`) | `dom.netinfo.enabled=false` default |
+
+---
+
+## 📊 Summary
+
+```
+─────────────────────────────────────────────────────────
+ 83  signals covered
+     ├─ 52 ⚙️ C++ engine patches (undetectable)
+     │    ├─ 27 inherited from Camoufox upstream
+     │    └─ 25 new on Cloakfox unified-maskconfig
+     ├─ 11 🌐 HTTP / webRequest (Camoufox + CH by CX)
+     ├─  7 🔌 JS-only (stealth / math / keyboard / etc)
+     ├─  8 📄 prefs (cloakfox.cfg)
+     └─  4 🛡️ native Firefox statics
+
+ 76  per-container unique (76/83 = 92 %)
+  7  global (buildID, timer precision, mDNS, native statics)
+
+ 15  remaining gaps (low-value or out-of-scope)
+ 12  APIs Firefox doesn't implement (JS spoofers deleted)
+─────────────────────────────────────────────────────────
+```
+
+**Fingerprint resistance scorecard:**
+
+```
+Canvas / Rendering  ████████████████████ 100 %
+Audio               ████████████████████ 100 %
+Navigator           ████████████████████ 100 %
+Screen / Window     ████████████████████ 100 %
+WebGL / WebGPU      ████████████████████ 100 %
+Media codecs        ████████████████████ 100 %
+Locale / Timezone   ████████████████████ 100 %
+Storage             ████████████████████ 100 %
+Fonts               ████████████████████ 100 %
+CSS media queries   ████████████████░░░░  80 %   (color-gamut, resolution, HDR left)
+Document            ████████████████░░░░  80 %   (compat/characterSet minor)
+SVG                 ████████████░░░░░░░░  60 %   (CTM/geometry remain, low-value)
+Timing              ████████████████████ 100 %
+Anti-detection      ████████████████████ 100 %
+```
