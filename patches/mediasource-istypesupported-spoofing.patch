@@ -1,0 +1,37 @@
+--- a/b/dom/media/mediasource/MediaSource.cpp	2026-04-18 09:03:56
++++ b/dom/media/mediasource/MediaSource.cpp	2026-04-18 09:04:50
+@@ -6,6 +6,7 @@
+ 
+ #include "MediaSource.h"
+ 
++#include "MaskConfig.hpp"
+ #include "AsyncEventRunner.h"
+ #include "DecoderDoctorDiagnostics.h"
+ #include "DecoderTraits.h"
+@@ -448,6 +449,16 @@
+ bool MediaSource::IsTypeSupported(const GlobalObject& aOwner,
+                                   const nsAString& aType) {
+   MOZ_ASSERT(NS_IsMainThread());
++  // Cloakfox: mirror codecs:spoof — return true for common MIMEs so the
++  // MSE supported-codec matrix doesn't fingerprint the install.
++  if (MaskConfig::GetBool("codecs:spoof").value_or(false)) {
++    NS_ConvertUTF16toUTF8 t(aType);
++    return StringBeginsWith(t, "video/mp4"_ns) ||
++           StringBeginsWith(t, "video/webm"_ns) ||
++           StringBeginsWith(t, "audio/mp4"_ns) ||
++           StringBeginsWith(t, "audio/webm"_ns) ||
++           StringBeginsWith(t, "audio/mpeg"_ns);
++  }
+   DecoderDoctorDiagnostics diagnostics;
+   IgnoredErrorResult rv;
+   nsCOMPtr<nsPIDOMWindowInner> window =
+--- a/b/dom/media/mediasource/moz.build	2026-04-18 00:00:00
++++ b/dom/media/mediasource/moz.build	2026-04-18 00:00:00
+@@ -44,3 +44,7 @@
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ FINAL_LIBRARY = "xul"
++
++LOCAL_INCLUDES += [
++    "/cloakcfg",
++]

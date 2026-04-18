@@ -1,0 +1,24 @@
+--- a/b/dom/base/Document.cpp	2026-04-18 09:02:19
++++ b/dom/base/Document.cpp	2026-04-18 09:03:02
+@@ -9,6 +9,7 @@
+  */
+ 
+ #include "mozilla/dom/Document.h"
++#include "MaskConfig.hpp"
+ 
+ #include <inttypes.h>
+ #include <stdlib.h>
+@@ -4472,6 +4473,13 @@
+ }
+ 
+ void Document::GetLastModified(nsAString& aLastModified) const {
++  // Cloakfox: return empty string rather than current-time fallback —
++  // leaking a fresh timestamp fingerprints the user's clock.
++  if (MaskConfig::GetBool("document:lastModified:hidden").value_or(false) &&
++      mLastModified.IsEmpty()) {
++    aLastModified.Truncate();
++    return;
++  }
+   if (!mLastModified.IsEmpty()) {
+     aLastModified.Assign(mLastModified);
+   } else {

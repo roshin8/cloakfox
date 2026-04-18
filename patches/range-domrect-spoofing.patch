@@ -1,5 +1,5 @@
 --- a/b/dom/base/nsRange.cpp	2026-04-18 08:36:12
-+++ b/dom/base/nsRange.cpp	2026-04-18 08:36:33
++++ b/dom/base/nsRange.cpp	2026-04-18 09:06:21
 @@ -10,6 +10,7 @@
  
  #include "nsRange.h"
@@ -27,5 +27,30 @@
 +                  static_cast<float>(rect->Height()) + n());
 +  }
    return rect.forget();
+ }
+ 
+@@ -3167,6 +3182,24 @@
+       endRef.GetContainer(),
+       *endRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets), aClampToEdge,
+       aFlushLayout);
++  // Cloakfox: noise each rect in the list. CreepJS uses Range.getClientRects
++  // against rendered text to probe per-character metrics.
++  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++    uint32_t s = seed.value();
++    auto n = [&s]() {
++      s = s * 1664525u + 1013904223u;
++      return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
++    };
++    for (uint32_t i = 0; i < rectList->Length(); ++i) {
++      DOMRect* r = rectList->Item(i);
++      if (r) {
++        r->SetRect(static_cast<float>(r->X()) + n(),
++                   static_cast<float>(r->Y()) + n(),
++                   static_cast<float>(r->Width()) + n(),
++                   static_cast<float>(r->Height()) + n());
++      }
++    }
++  }
+   return rectList.forget();
  }
  

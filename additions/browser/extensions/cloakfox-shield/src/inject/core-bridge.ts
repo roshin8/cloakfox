@@ -133,6 +133,8 @@ export function applyCoreProtections(
   // Disable by default for privacy; users can enable per-site if they
   // need Netflix / Spotify etc.
   cloakConfig['navigator:eme:disabled'] = true;
+  // Hide document.lastModified fallback to current time (date leak).
+  cloakConfig['document:lastModified:hidden'] = true;
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
