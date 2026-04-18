@@ -4,7 +4,7 @@ Daily-driver privacy browser: Camoufox (C++ fingerprint spoofing) + ContainerShi
 
 ## What This Is
 
-A hard fork of Camoufox (Firefox fork with 33+ C++ engine patches) transformed into a daily-use browser with:
+A hard fork of Camoufox (Firefox 146.0.1 fork with C++ engine patches) transformed into a daily-use browser with:
 - C++ level fingerprint spoofing (canvas, audio, fonts, WebGL, navigator, screen, WebRTC, etc.)
 - Firefox Multi-Account Containers with per-container unique fingerprints
 - Per-domain deterministic fingerprinting within each container
@@ -13,30 +13,30 @@ A hard fork of Camoufox (Firefox fork with 33+ C++ engine patches) transformed i
 ## Architecture
 
 Three layers:
-1. **C++ Engine** — 26 Camoufox patches applied to Firefox ESR. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
+1. **C++ Engine** — Camoufox + LibreWolf patches (~36 total) applied to Firefox 146.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
 2. **Cloakfox Shield Extension** — Stripped ContainerShield. Background manages containers/profiles/seeds. Inject script calls `window.setXxx()` with domain-specific seeds. JS spoofers handle vectors C++ doesn't cover.
 3. **Config** — `policies.json` + `cloakfox.cfg` restore daily-driver features (search, bookmarks, passwords) while keeping privacy hardened.
 
 ## Build
 
 ```bash
-make fetch      # Download Firefox ESR source
-make patch      # Apply C++ patches
-make config     # Copy policies/prefs into source
-make extension  # Build Cloakfox Shield extension
-make build      # Compile Firefox (45-90 min on Apple Silicon)
-make package    # Create macOS DMG
-make all        # Full pipeline
+make fetch           # Download Firefox 146.0.1 source tarball
+make setup-minimal   # Extract source + copy additions/ (policies, cloakcfg, extension)
+make dir             # Apply all patches (ordered via patches/order.txt)
+make extension       # Build Cloakfox Shield extension in-place
+make build           # Compile Firefox (45-90 min on Apple Silicon)
+make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 ```
 
 ## Repo Structure
 
-- `patches/fingerprint/` — 19 C++ spoofing patches from Camoufox
-- `patches/infra/` — 7 infrastructure patches from Camoufox
-- `patches/cloakfox/` — New patches for daily-driver restoration
-- `config/` — policies.json, cloakfox.cfg, local-settings.js
+- `patches/` — Flat directory of all C++ engine patches (29 top-level + 7 in `patches/librewolf/`)
+- `patches/order.txt` — Explicit apply order; overrides alphabetical default
+- `settings/` — policies.json, cloakfox.cfg, local-settings.js
+- `additions/cloakcfg/` — MaskConfig.hpp, MouseTrajectories.hpp, json.hpp (copied into firefox-src)
 - `additions/browser/extensions/cloakfox-shield/` — Cloakfox Shield extension (TypeScript, React, Tailwind)
-- `scripts/` — Build automation scripts
+- `additions/juggler/` — Playwright automation bridge
+- `scripts/` — Build automation scripts (patch.py, fetch-firefox.sh, copy-additions.sh, package.py)
 - `branding/` — App icons and about dialog assets
 - `tests/` — Unit (Vitest) and E2E (Playwright)
 

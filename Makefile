@@ -7,7 +7,7 @@ ff_source_tarball := firefox-$(version).source.tar.xz
 _ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(_ARGS):;@:)
 
-.PHONY: help fetch setup setup-minimal clean distclean build package \
+.PHONY: help fetch setup setup-minimal clean distclean distclean-all build package \
         patch unpatch dir run mozbootstrap bootstrap extension set-target \
         package-linux package-macos package-windows
 
@@ -24,7 +24,8 @@ help:
 	@echo "  make set-target    Update mozconfig for BUILD_TARGET"
 	@echo "  make run           Launch the built browser"
 	@echo "  make clean         Remove build artifacts"
-	@echo "  make distclean     Remove everything including source"
+	@echo "  make distclean     Remove source + build + extension deps"
+	@echo "  make distclean-all distclean + ~/.mozbuild toolchain cache"
 	@echo ""
 
 fetch:
@@ -96,6 +97,9 @@ distclean: clean
 	rm -rf $(cf_source_dir)
 	rm -rf additions/browser/extensions/cloakfox-shield/node_modules
 	rm -f $(ff_source_tarball)
+
+distclean-all: distclean
+	rm -rf $(HOME)/.mozbuild
 
 patch:
 	cd $(cf_source_dir) && patch -p1 -i ../$(_ARGS)
