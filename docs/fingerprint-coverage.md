@@ -122,7 +122,10 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 | `Range.getBoundingClientRect` / `getClientRects` | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
 | `SVGTextContentElement.getComputedTextLength` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
 | `SVGGraphicsElement.getBBox` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `SVGGraphicsElement.getCTM` / `getScreenCTM` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
+| `SVGGeometryElement.getTotalLength` | 🟡 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
 | `document.body.client*` rect | 🟡 | ⚙️ | 🔒 | ☐ | ☑ | ☐ |
+| `document.fonts.check()` | 🔴 | ⚙️ FontFaceSet::Check | 🔒 | ☐ | ☑ | ☐ |
 
 ---
 
@@ -278,6 +281,9 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 | `@media (prefers-reduced-transparency)` | 🟡 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
 | `@media (prefers-contrast)` | 🟡 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
 | `@media (inverted-colors)` | 🟡 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
+| `@media (color-gamut)` (srgb/p3/rec2020) | 🟡 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
+| `@media (resolution)` (DPPX) | 🟡 | ⚙️ content-only | 🔒 | ☐ | ☐ | ☑ |
+| `@media (dynamic-range)` | 🟢 | Firefox hardcoded to Standard | 🌍 | ☑ | ☐ | ☐ |
 
 ---
 
@@ -327,12 +333,12 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 
 | Signal | Proposed layer | Effort | Why not done |
 |---|---|:-:|---|
-| `@media (color-gamut)` | ⚙️ nsMediaFeatures.cpp | 🟢 low | low priority, rare FP signal |
-| `@media (dynamic-range)` HDR | ⚙️ nsMediaFeatures.cpp | 🟢 low | rare |
-| `@media (resolution)` DPI | ⚙️ nsMediaFeatures.cpp | 🟢 low | DPR already covered |
-| `SVGGraphicsElement.getCTM` / `getScreenCTM` | ⚙️ | 🟢 low | SVG bbox covers main vector |
-| `SVGGeometryElement.getTotalLength` / `getPointAtLength` | ⚙️ | 🟢 low | rarely FP'd |
-| `FontFaceSet.check()` | ⚙️ | 🟡 med | font list + spacing seed cover primary vector |
+| ~~`@media (color-gamut)`~~ | ~~⚙️ nsMediaFeatures.cpp~~ | ✅ done | now in media-features-spoofing |
+| ~~`@media (dynamic-range)`~~ | ~~⚙️~~ | ✅ built-in safe | Firefox hardcodes Standard |
+| ~~`@media (resolution)`~~ | ~~⚙️~~ | ✅ done | now in media-features-spoofing |
+| ~~`SVGGraphicsElement.getCTM` / `getScreenCTM`~~ | ~~⚙️~~ | ✅ done | now in svg-bbox-spoofing |
+| ~~`SVGGeometryElement.getTotalLength`~~ | ~~⚙️~~ | ✅ done | svg-geometry-spoofing |
+| ~~`FontFaceSet.check()`~~ | ~~⚙️~~ | ✅ built-in | Camoufox per-container font list already covers |
 | `getComputedStyle()` font-family fallback | ⚙️ | 🟡 med | font list covers primary vector |
 | `HTMLMediaElement.duration` precision | ⚙️ | 🟡 med | risk of breaking playback |
 | `Document.compatMode` / `characterSet` / `contentType` | ⚙️ | 🟢 low | already static across all Firefox installs |
