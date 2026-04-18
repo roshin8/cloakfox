@@ -1,5 +1,5 @@
 --- a/b/dom/base/Document.cpp	2026-04-18 09:02:19
-+++ b/dom/base/Document.cpp	2026-04-18 09:03:02
++++ b/dom/base/Document.cpp	2026-04-18 16:04:12
 @@ -9,6 +9,7 @@
   */
  
@@ -22,3 +22,20 @@
    if (!mLastModified.IsEmpty()) {
      aLastModified.Assign(mLastModified);
    } else {
+@@ -20469,6 +20477,16 @@
+ }
+ 
+ ColorScheme Document::PreferredColorScheme(IgnoreRFP aIgnoreRFP) const {
++  // Cloakfox: per-container content-only color-scheme spoof. UI is
++  // unaffected — this function is called only from content media-query
++  // evaluation and content style computation.
++  if (aIgnoreRFP == IgnoreRFP::No) {
++    if (auto value = MaskConfig::GetInt32("document:prefersColorScheme");
++        value.has_value()) {
++      return value.value() ? ColorScheme::Dark : ColorScheme::Light;
++    }
++  }
++
+   if (ShouldResistFingerprinting(RFPTarget::CSSPrefersColorScheme) &&
+       aIgnoreRFP == IgnoreRFP::No) {
+     return ColorScheme::Light;

@@ -136,19 +136,16 @@ export function applyCoreProtections(
   // Hide document.lastModified fallback to current time (date leak).
   cloakConfig['document:lastModified:hidden'] = true;
 
-  // LookAndFeel per-container: for signals without a native content-only
-  // pref. We deliberately DON'T override systemUsesDarkTheme here —
-  // prefers-color-scheme is handled content-only by Firefox via
-  // layout.css.prefers-color-scheme.content-override (see cloakfox.cfg),
-  // so browser UI still follows the user's real OS theme.
-  // These remaining signals affect both UI and content; set to neutral
-  // values that match a plain desktop install.
-  cloakConfig['lookAndFeel:prefersReducedMotion'] = 0;                       // no-preference
-  cloakConfig['lookAndFeel:prefersReducedTransparency'] = 0;                 // no-preference
-  cloakConfig['lookAndFeel:useAccessibilityTheme'] = 0;                      // off
-  cloakConfig['lookAndFeel:invertedColors'] = 0;                             // none
-  cloakConfig['lookAndFeel:primaryPointerCapabilities'] = 4;                 // fine/mouse
-  cloakConfig['lookAndFeel:allPointerCapabilities'] = 4;
+  // Per-container content-only CSS media queries. All patches are
+  // content-only hooks (Document::PreferredColorScheme +
+  // Gecko_MediaFeatures_*) so browser UI keeps the user's real OS theme
+  // and accessibility settings — only web content sees spoofed values.
+  const colorSchemeRng = subPRNG(masterSeed, 'core.colorScheme');
+  cloakConfig['document:prefersColorScheme'] = colorSchemeRng.nextInt(0, 1);  // 0 light, 1 dark
+  cloakConfig['mediaFeature:prefersReducedMotion'] = false;                  // content: no-preference
+  cloakConfig['mediaFeature:prefersReducedTransparency'] = false;            // content: no-preference
+  cloakConfig['mediaFeature:invertedColors'] = false;                        // content: none
+  cloakConfig['mediaFeature:prefersContrast'] = 0;                           // content: no-preference
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');

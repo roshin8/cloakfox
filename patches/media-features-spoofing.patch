@@ -1,0 +1,62 @@
+--- a/b/layout/style/nsMediaFeatures.cpp	2026-04-18 16:05:32
++++ b/layout/style/nsMediaFeatures.cpp	2026-04-18 16:08:10
+@@ -7,6 +7,7 @@
+ /* the features that media queries can test */
+ 
+ #include "PreferenceSheet.h"
++#include "MaskConfig.hpp"
+ #include "mozilla/GeckoBindings.h"
+ #include "mozilla/LookAndFeel.h"
+ #include "mozilla/RelativeLuminanceUtils.h"
+@@ -270,6 +271,11 @@
+ }
+ 
+ bool Gecko_MediaFeatures_PrefersReducedMotion(const Document* aDocument) {
++  // Cloakfox: content-only override. Browser UI keeps real OS value.
++  if (auto value = MaskConfig::GetBool("mediaFeature:prefersReducedMotion");
++      value.has_value()) {
++    return value.value();
++  }
+   if (aDocument->ShouldResistFingerprinting(
+           RFPTarget::CSSPrefersReducedMotion)) {
+     return false;
+@@ -278,6 +284,11 @@
+ }
+ 
+ bool Gecko_MediaFeatures_PrefersReducedTransparency(const Document* aDocument) {
++  if (auto value =
++          MaskConfig::GetBool("mediaFeature:prefersReducedTransparency");
++      value.has_value()) {
++    return value.value();
++  }
+   if (aDocument->ShouldResistFingerprinting(
+           RFPTarget::CSSPrefersReducedTransparency)) {
+     return false;
+@@ -304,6 +315,16 @@
+ // as a signal.
+ StylePrefersContrast Gecko_MediaFeatures_PrefersContrast(
+     const Document* aDocument) {
++  // Cloakfox: content-only override — 0=no-pref, 1=less, 2=more, 3=custom
++  if (auto value = MaskConfig::GetInt32("mediaFeature:prefersContrast");
++      value.has_value()) {
++    switch (value.value()) {
++      case 1: return StylePrefersContrast::Less;
++      case 2: return StylePrefersContrast::More;
++      case 3: return StylePrefersContrast::Custom;
++      default: return StylePrefersContrast::NoPreference;
++    }
++  }
+   if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSPrefersContrast)) {
+     return StylePrefersContrast::NoPreference;
+   }
+@@ -326,6 +347,10 @@
+ }
+ 
+ bool Gecko_MediaFeatures_InvertedColors(const Document* aDocument) {
++  if (auto value = MaskConfig::GetBool("mediaFeature:invertedColors");
++      value.has_value()) {
++    return value.value();
++  }
+   if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSInvertedColors)) {
+     return false;
+   }
