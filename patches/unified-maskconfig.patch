@@ -1,14 +1,13 @@
 --- a/b/dom/base/AudioFingerprintManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/AudioFingerprintManager.cpp	2026-04-17 18:45:33
-@@ -26,24 +26,14 @@
++++ b/dom/base/AudioFingerprintManager.cpp	2026-04-17 21:23:31
+@@ -26,24 +26,13 @@
  
  /* static */ void
  AudioFingerprintManager::SetSeed(uint32_t aUserContextId, uint32_t aSeed) {
 -  nsString key;
 -  key.AppendPrintf("audioFingerprintSeed_%u", aUserContextId);
 -  RoverfoxStorageManager::PutUint(key, aSeed);
-+  extern void CloakConfigOverlay_MergeUint(uint32_t, const std::string&, uint32_t);
-+  CloakConfigOverlay_MergeUint(aUserContextId, "audio:seed", aSeed);
++  ::CloakConfigOverlay_MergeUint(aUserContextId, "audio:seed", aSeed);
    DisableFunction(aUserContextId);
  }
  
@@ -29,16 +28,15 @@
  }
  
 --- a/b/dom/base/CanvasFingerprintManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/CanvasFingerprintManager.cpp	2026-04-17 18:46:08
-@@ -17,22 +17,12 @@
++++ b/dom/base/CanvasFingerprintManager.cpp	2026-04-17 21:23:58
+@@ -17,22 +17,11 @@
  }
  
  void CanvasFingerprintManager::SetSeed(uint32_t aId, uint32_t aSeed) {
 -  nsAutoString key;
 -  key.AppendPrintf("canvasSeed_%u", aId);
 -  RoverfoxStorageManager::PutUint(key, aSeed);
-+  extern void CloakConfigOverlay_MergeUint(uint32_t, const std::string&, uint32_t);
-+  CloakConfigOverlay_MergeUint(aId, "canvas:seed", aSeed);
++  ::CloakConfigOverlay_MergeUint(aId, "canvas:seed", aSeed);
  }
  
  uint32_t CanvasFingerprintManager::GetSeed(uint32_t aId) {
@@ -57,16 +55,15 @@
  }
  
 --- a/b/dom/base/FontSpacingSeedManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/FontSpacingSeedManager.cpp	2026-04-17 18:46:55
-@@ -29,32 +29,22 @@
++++ b/dom/base/FontSpacingSeedManager.cpp	2026-04-17 21:24:05
+@@ -29,32 +29,21 @@
  
  /* static */ void
  FontSpacingSeedManager::SetSeed(uint32_t userContextId, uint32_t seed) {
 -  nsString key = KeyForUserContext(userContextId);
 -  RoverfoxStorageManager::PutUint(key, seed);
 -  
-+  extern void CloakConfigOverlay_MergeUint(uint32_t, const std::string&, uint32_t);
-+  CloakConfigOverlay_MergeUint(userContextId, "fonts:spacing_seed", seed);
++  ::CloakConfigOverlay_MergeUint(userContextId, "fonts:spacing_seed", seed);
 +
    // Mark the function as disabled for this context after first use
    DisableFunction(userContextId);
@@ -97,7 +94,7 @@
  
  /* static */ bool
 --- a/b/dom/base/ScreenDimensionManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/ScreenDimensionManager.cpp	2026-04-17 18:48:09
++++ b/dom/base/ScreenDimensionManager.cpp	2026-04-17 21:24:23
 @@ -6,6 +6,7 @@
  
  #include "ScreenDimensionManager.h"
@@ -106,7 +103,7 @@
  #include "nsGlobalWindowInner.h"
  #include "xpcpublic.h"
  #include "mozilla/dom/BrowsingContext.h"
-@@ -29,22 +30,16 @@
+@@ -29,22 +30,15 @@
  
  /* static */ void
  ScreenDimensionManager::SetDimensions(uint32_t aUserContextId, int32_t aWidth, int32_t aHeight) {
@@ -115,9 +112,8 @@
 -  heightKey.AppendPrintf("screenHeight_%u", aUserContextId);
 -  RoverfoxStorageManager::PutUint(widthKey, static_cast<uint32_t>(aWidth));
 -  RoverfoxStorageManager::PutUint(heightKey, static_cast<uint32_t>(aHeight));
-+  extern void CloakConfigOverlay_MergeUint(uint32_t, const std::string&, uint32_t);
-+  CloakConfigOverlay_MergeUint(aUserContextId, "screen.width", static_cast<uint32_t>(aWidth));
-+  CloakConfigOverlay_MergeUint(aUserContextId, "screen.height", static_cast<uint32_t>(aHeight));
++  ::CloakConfigOverlay_MergeUint(aUserContextId, "screen.width", static_cast<uint32_t>(aWidth));
++  ::CloakConfigOverlay_MergeUint(aUserContextId, "screen.height", static_cast<uint32_t>(aHeight));
  }
  
  /* static */ bool
@@ -134,15 +130,14 @@
  
    if (width > 0 && height > 0) {
      *aWidth = static_cast<int32_t>(width);
-@@ -56,18 +51,14 @@
+@@ -56,18 +50,13 @@
  
  /* static */ void
  ScreenDimensionManager::SetColorDepth(uint32_t aUserContextId, int32_t aColorDepth) {
 -  nsString key;
 -  key.AppendPrintf("screenColorDepth_%u", aUserContextId);
 -  RoverfoxStorageManager::PutUint(key, static_cast<uint32_t>(aColorDepth));
-+  extern void CloakConfigOverlay_MergeUint(uint32_t, const std::string&, uint32_t);
-+  CloakConfigOverlay_MergeUint(aUserContextId, "screen.colorDepth", static_cast<uint32_t>(aColorDepth));
++  ::CloakConfigOverlay_MergeUint(aUserContextId, "screen.colorDepth", static_cast<uint32_t>(aColorDepth));
  }
  
  /* static */ int32_t
@@ -158,7 +153,7 @@
  
  /* static */ nsString
 --- a/b/dom/base/WebGLParamsManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/WebGLParamsManager.cpp	2026-04-17 18:49:20
++++ b/dom/base/WebGLParamsManager.cpp	2026-04-17 21:24:35
 @@ -1,5 +1,6 @@
  /* Cloakfox: Per-context WebGL parameter manager */
  #include "WebGLParamsManager.h"
@@ -166,16 +161,15 @@
  
  #include "mozilla/dom/BrowsingContext.h"
  #include "nsGlobalWindowInner.h"
-@@ -21,27 +22,31 @@
+@@ -21,27 +22,29 @@
  }
  
  void WebGLParamsManager::SetVendor(uint32_t aId, const nsAString& aValue) {
 -  nsAutoString key;
 -  key.AppendPrintf("webgl_vendor_%u", aId);
 -  RoverfoxStorageManager::PutString(key, aValue);
-+  extern void CloakConfigOverlay_MergeString(uint32_t, const std::string&, const std::string&);
 +  NS_ConvertUTF16toUTF8 utf8v(aValue);
-+  CloakConfigOverlay_MergeString(aId, "webGl:vendor", std::string(utf8v.get()));
++  ::CloakConfigOverlay_MergeString(aId, "webGl:vendor", std::string(utf8v.get()));
  }
  
  bool WebGLParamsManager::GetVendor(uint32_t aId, nsAString& aOut) {
@@ -193,9 +187,8 @@
 -  nsAutoString key;
 -  key.AppendPrintf("webgl_renderer_%u", aId);
 -  RoverfoxStorageManager::PutString(key, aValue);
-+  extern void CloakConfigOverlay_MergeString(uint32_t, const std::string&, const std::string&);
 +  NS_ConvertUTF16toUTF8 utf8r(aValue);
-+  CloakConfigOverlay_MergeString(aId, "webGl:renderer", std::string(utf8r.get()));
++  ::CloakConfigOverlay_MergeString(aId, "webGl:renderer", std::string(utf8r.get()));
  }
  
  bool WebGLParamsManager::GetRenderer(uint32_t aId, nsAString& aOut) {
@@ -211,7 +204,7 @@
  
  void WebGLParamsManager::DisableVendorFunction(uint32_t aId) {
 --- a/b/dom/base/WebRTCIPManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/WebRTCIPManager.cpp	2026-04-17 18:50:31
++++ b/dom/base/WebRTCIPManager.cpp	2026-04-17 21:24:48
 @@ -1,6 +1,7 @@
  #include "WebRTCIPManager.h"
  #include "nsTHashMap.h"
@@ -220,16 +213,15 @@
  #include "nsPrintfCString.h"
  #include "nsGlobalWindowInner.h"
  #include "nsDocShell.h"
-@@ -48,32 +49,40 @@
+@@ -48,32 +49,38 @@
  
  /* static */ void
  WebRTCIPManager::SetIPv4(uint32_t userContextId, const nsAString& ipv4) {
 -  nsString key = IPv4KeyForUserContext(userContextId);
 -  RoverfoxStorageManager::PutString(key, ipv4);
 -  
-+  extern void CloakConfigOverlay_MergeString(uint32_t, const std::string&, const std::string&);
 +  NS_ConvertUTF16toUTF8 utf4(ipv4);
-+  CloakConfigOverlay_MergeString(userContextId, "webrtc:ipv4", std::string(utf4.get()));
++  ::CloakConfigOverlay_MergeString(userContextId, "webrtc:ipv4", std::string(utf4.get()));
 +
    // Mark the function as disabled for this context after first use
    DisableIPv4Function(userContextId);
@@ -251,9 +243,8 @@
 -  nsString key = IPv6KeyForUserContext(userContextId);
 -  RoverfoxStorageManager::PutString(key, ipv6);
 -  
-+  extern void CloakConfigOverlay_MergeString(uint32_t, const std::string&, const std::string&);
 +  NS_ConvertUTF16toUTF8 utf6(ipv6);
-+  CloakConfigOverlay_MergeString(userContextId, "webrtc:ipv6", std::string(utf6.get()));
++  ::CloakConfigOverlay_MergeString(userContextId, "webrtc:ipv6", std::string(utf6.get()));
 +
    // Mark the function as disabled for this context after first use
    DisableIPv6Function(userContextId);
