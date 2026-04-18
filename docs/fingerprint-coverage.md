@@ -10,21 +10,52 @@
 
 Cloakfox spoofs fingerprints at **three layers that cooperate**:
 
-```mermaid
-flowchart LR
-    U[🧑 User visits site] --> E[🔌 Cloakfox Shield extension<br/>at document_start]
-    E -->|generates per-container+domain<br/>profile values| B[📦 MaskConfig overlay<br/>cloak_cfg_&lt;userContextId&gt;]
-    E -.->|individual WebIDL<br/>setters| B
-    E -.->|batched<br/>setCloakConfig JSON| B
-    W[🌐 Web page JS:<br/>canvas.toDataURL&#40;&#41;<br/>navigator.userAgent<br/>getBoundingClientRect&#40;&#41;] --> C[⚙️ Gecko C++<br/>patched functions]
-    C -->|reads| B
-    C -->|returns spoofed<br/>value| W
-    P[📄 cloakfox.cfg prefs] -.->|static fallback| C
-
-    style E fill:#ffd59b
-    style B fill:#b3e6ff
-    style C fill:#ffb3b3
-    style P fill:#d9f2d9
+```text
+  ┌─────────────────────┐
+  │  🧑 User visits site │
+  └──────────┬──────────┘
+             │
+             ▼
+  ┌─────────────────────────────────────────────┐
+  │  🔌 Cloakfox Shield extension                │
+  │     runs at document_start, generates        │
+  │     per-container + per-domain profile       │
+  └─┬────────┬────────────────┬──────────────────┘
+    │        │                │
+    │        │ setCanvasSeed, │ setCloakConfig
+    │        │ setNavigatorUA,│ (batched JSON of
+    │        │ setWebGLVendor,│  all MaskConfig
+    │        │ …              │  keys in one call)
+    │        ▼                ▼
+    │   ┌─────────────────────────────────────┐
+    │   │  📦 MaskConfig overlay               │
+    │   │     pref: cloak_cfg_<userContextId> │
+    │   │     JSON blob, per-container         │
+    │   └──────────────┬──────────────────────┘
+    │                  ▲
+    │                  │ reads per-context
+    │                  │
+    ▼                  │
+  ┌────────────────────┴──────────────────────┐
+  │  🌐 Web page JS calls                       │
+  │     canvas.toDataURL()                     │
+  │     navigator.userAgent                    │
+  │     getBoundingClientRect()                │
+  │     @media (prefers-color-scheme)          │
+  │     …                                       │
+  └──────────────┬─────────────────────────────┘
+                 │
+                 ▼
+  ┌───────────────────────────────────────────┐
+  │  ⚙️ Gecko C++ patched functions            │
+  │     read MaskConfig, return spoofed value │
+  └───────────────────────────────────────────┘
+                 ▲
+                 │ static fallback
+  ┌──────────────┴────────────────────────────┐
+  │  📄 settings/cloakfox.cfg prefs            │
+  │     buildID, timer precision, mDNS block   │
+  └───────────────────────────────────────────┘
 ```
 
 **Layer summary**
@@ -258,19 +289,20 @@ flowchart LR
 
 ---
 
-## 🔐 Anti-detection (JS-only — stays in extension)
+## 🔐 Anti-detection (extension JS spoofers)
 
-> These signals genuinely can't be C++-spoofed without breaking things. The extension's stealth layer handles them.
+> Signals that either can't be C++-spoofed without breaking things (SpiderMonkey-level) or benefit from a JS fallback running at `document_start`. Every row below is a real file in `additions/browser/extensions/cloakfox-shield/src/inject/spoofers/` (verified).
 
 | Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
-| `Error().stack` format | 🔴 | 🔌 stealth.ts | 🔒 | ☐ | ☐ | ☑ |
-| `Function.prototype.toString` native-look | 🔴 | 🔌 stealth.ts | 🔒 | ☐ | ☐ | ☑ |
-| iframe spoofing inheritance | 🔴 | 🔌 iframe-patcher | 🔒 | ☐ | ☐ | ☑ |
-| Worker thread consistency | 🔴 | ⚙️ WorkerNavigator | 🔒 | ☐ | ☑ | ☐ |
-| KeyboardEvent cadence timing | 🟡 | 🔌 keyboard/cadence | 🔒 | ☐ | ☐ | ☑ |
-| Feature detection consistency (`CSS.supports`) | 🟡 | 🔌 features | 🔒 | ☐ | ☐ | ☑ |
-| `Math.*` trig precision | 🟡 | 🔌 math | 🔒 | ☐ | ☐ | ☑ |
+| `Error().stack` format | 🔴 | 🔌 `errors/stack-trace.ts` | 🔒 | ☐ | ☐ | ☑ |
+| `Function.prototype.toString` native-look | 🔴 | 🔌 `lib/stealth.ts` | 🔒 | ☐ | ☐ | ☑ |
+| iframe spoofing inheritance | 🔴 | 🔌 `iframe/iframe-patcher.ts` | 🔒 | ☐ | ☐ | ☑ |
+| Worker thread consistency (navigator fields) | 🔴 | ⚙️ `WorkerNavigator.cpp` | 🔒 | ☐ | ☑ | ☐ |
+| Worker preamble injection (extra fields) | 🔴 | 🔌 `workers/worker-fingerprint.ts` | 🔒 | ☐ | ☐ | ☑ |
+| KeyboardEvent cadence timing | 🟡 | 🔌 `keyboard/cadence.ts` | 🔒 | ☐ | ☐ | ☑ |
+| Feature detection consistency (`CSS.supports`, `hasFeature`) | 🟡 | 🔌 `features/feature-detection.ts` | 🔒 | ☐ | ☐ | ☑ |
+| `Math.*` trig precision | 🟡 | 🔌 `math/math.ts` | 🔒 | ☐ | ☐ | ☑ |
 
 ---
 
