@@ -1,0 +1,49 @@
+--- a/b/widget/nsXPLookAndFeel.cpp	2026-04-18 15:34:08
++++ b/widget/nsXPLookAndFeel.cpp	2026-04-18 15:34:42
+@@ -4,6 +4,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "mozilla/LookAndFeel.h"
++#include "MaskConfig.hpp"
+ #include "mozilla/RWLock.h"
+ #include "nscore.h"
+ 
+@@ -1024,6 +1025,28 @@
+ }
+ 
+ nsresult nsXPLookAndFeel::GetIntValue(IntID aID, int32_t& aResult) {
++  // Cloakfox: allow per-context override of system-level media queries.
++  // Extension can set these in cloakConfig JSON — takes precedence over
++  // Firefox prefs and native OS values. Fixes the per-container model
++  // for prefers-color-scheme / reduced-motion / forced-colors / etc.
++  const char* maskKey = nullptr;
++  switch (aID) {
++    case IntID::SystemUsesDarkTheme:       maskKey = "lookAndFeel:systemUsesDarkTheme"; break;
++    case IntID::PrefersReducedMotion:      maskKey = "lookAndFeel:prefersReducedMotion"; break;
++    case IntID::PrefersReducedTransparency:maskKey = "lookAndFeel:prefersReducedTransparency"; break;
++    case IntID::UseAccessibilityTheme:     maskKey = "lookAndFeel:useAccessibilityTheme"; break;
++    case IntID::InvertedColors:            maskKey = "lookAndFeel:invertedColors"; break;
++    case IntID::PrimaryPointerCapabilities:maskKey = "lookAndFeel:primaryPointerCapabilities"; break;
++    case IntID::AllPointerCapabilities:    maskKey = "lookAndFeel:allPointerCapabilities"; break;
++    default: break;
++  }
++  if (maskKey) {
++    if (auto value = MaskConfig::GetInt32(maskKey); value.has_value()) {
++      aResult = value.value();
++      return NS_OK;
++    }
++  }
++
+   if (NS_SUCCEEDED(Preferences::GetInt(sIntPrefs[size_t(aID)], &aResult))) {
+     return NS_OK;
+   }
+--- a/b/widget/moz.build	2026-04-18 00:00:00
++++ b/widget/moz.build	2026-04-18 00:00:00
+@@ -358,6 +358,7 @@
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ LOCAL_INCLUDES += [
++    "/cloakcfg",
+     "/dom/base",
+     "/dom/ipc",
+     "/gfx/2d",

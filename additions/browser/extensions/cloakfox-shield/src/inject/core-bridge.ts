@@ -135,6 +135,20 @@ export function applyCoreProtections(
   cloakConfig['navigator:eme:disabled'] = true;
   // Hide document.lastModified fallback to current time (date leak).
   cloakConfig['document:lastModified:hidden'] = true;
+
+  // LookAndFeel per-container: for signals without a native content-only
+  // pref. We deliberately DON'T override systemUsesDarkTheme here —
+  // prefers-color-scheme is handled content-only by Firefox via
+  // layout.css.prefers-color-scheme.content-override (see cloakfox.cfg),
+  // so browser UI still follows the user's real OS theme.
+  // These remaining signals affect both UI and content; set to neutral
+  // values that match a plain desktop install.
+  cloakConfig['lookAndFeel:prefersReducedMotion'] = 0;                       // no-preference
+  cloakConfig['lookAndFeel:prefersReducedTransparency'] = 0;                 // no-preference
+  cloakConfig['lookAndFeel:useAccessibilityTheme'] = 0;                      // off
+  cloakConfig['lookAndFeel:invertedColors'] = 0;                             // none
+  cloakConfig['lookAndFeel:primaryPointerCapabilities'] = 4;                 // fine/mouse
+  cloakConfig['lookAndFeel:allPointerCapabilities'] = 4;
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
