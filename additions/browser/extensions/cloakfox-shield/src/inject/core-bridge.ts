@@ -60,6 +60,19 @@ export function applyCoreProtections(
 ): Set<string> {
   const handled = new Set<string>();
 
+  // ─── Batched MaskConfig keys (via setCloakConfig) ─────────────
+  // For signals without dedicated WebIDL setters — one call sets many keys.
+  // Must run FIRST so individual Manager setters (below) can merge into it.
+  const cloakConfig: Record<string, unknown> = {};
+  if (settings.navigator?.vibration === 'block') {
+    cloakConfig['navigator:vibrate:disabled'] = true;
+  }
+  if (Object.keys(cloakConfig).length > 0) {
+    if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
+      if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
+    }
+  }
+
   // ─── Canvas ──────────────────────────────────────────────────
   if (settings.graphics?.canvas !== 'off') {
     const rng = subPRNG(masterSeed, 'core.canvas');

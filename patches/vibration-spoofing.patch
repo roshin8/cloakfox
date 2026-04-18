@@ -1,0 +1,13 @@
+--- a/b/dom/base/Navigator.cpp	2026-04-18 00:00:00
++++ b/dom/base/Navigator.cpp	2026-04-18 00:00:00
+@@ -911,6 +911,10 @@
+ bool Navigator::Vibrate(const nsTArray<uint32_t>& aPattern) {
+   MOZ_ASSERT(NS_IsMainThread());
+
++  if (MaskConfig::GetBool("navigator:vibrate:disabled").value_or(false)) {
++    return false;
++  }
++
+   if (!mWindow) {
+     return false;
+   }
