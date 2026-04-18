@@ -1,0 +1,52 @@
+--- a/b/dom/quota/StorageManager.cpp	2026-04-18 02:37:38
++++ b/dom/quota/StorageManager.cpp	2026-04-18 02:38:09
+@@ -10,6 +10,7 @@
+ #include <cstdlib>
+ #include <utility>
+ 
++#include "MaskConfig.hpp"
+ #include "ErrorList.h"
+ #include "MainThreadUtils.h"
+ #include "fs/FileSystemRequestHandler.h"
+@@ -778,6 +779,14 @@
+ 
+ already_AddRefed<Promise> StorageManager::Persisted(ErrorResult& aRv) {
+   MOZ_ASSERT(mOwner);
++
++  // Cloakfox: always return false when persisted-status spoofing is enabled
++  if (MaskConfig::GetBool("storage:persisted:disabled").value_or(false)) {
++    RefPtr<Promise> promise = Promise::Create(mOwner, aRv);
++    if (aRv.Failed()) return nullptr;
++    promise->MaybeResolve(false);
++    return promise.forget();
++  }
+ 
+   return ExecuteOpOnMainOrWorkerThread(mOwner, RequestResolver::Type::Persisted,
+                                        aRv);
+@@ -793,6 +802,18 @@
+ already_AddRefed<Promise> StorageManager::Estimate(ErrorResult& aRv) {
+   MOZ_ASSERT(mOwner);
+ 
++  // Cloakfox: return spoofed estimate values if configured
++  if (auto quota = MaskConfig::GetUint64("storage:quota")) {
++    RefPtr<Promise> promise = Promise::Create(mOwner, aRv);
++    if (aRv.Failed()) return nullptr;
++    StorageEstimate estimate;
++    estimate.mQuota.Construct(quota.value());
++    estimate.mUsage.Construct(
++        MaskConfig::GetUint64("storage:usage").value_or(0));
++    promise->MaybeResolve(estimate);
++    return promise.forget();
++  }
++
+   return ExecuteOpOnMainOrWorkerThread(mOwner, RequestResolver::Type::Estimate,
+                                        aRv);
+ }
+--- a/b/dom/quota/moz.build	2026-04-18 00:00:00
++++ b/dom/quota/moz.build	2026-04-18 00:00:00
+@@ -193,4 +193,5 @@
+ LOCAL_INCLUDES += [
+     "/caps",
++    "/cloakcfg",
+     "/dom/fs/include",
+ ]

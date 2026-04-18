@@ -70,10 +70,28 @@ export function applyCoreProtections(
   if (settings.navigator?.clipboard === 'block') {
     cloakConfig['navigator:clipboard:disabled'] = true;
   }
+  if (settings.navigator?.windowName !== 'off') {
+    cloakConfig['window:name:disabled'] = true;
+  }
+  if (settings.permissions?.notifications === 'block') {
+    cloakConfig['notification:permission:disabled'] = true;
+  }
+  if (settings.storage?.storageEstimate !== 'off') {
+    // Fixed ~50GB quota — matches what a typical desktop reports.
+    cloakConfig['storage:quota'] = 53687091200;
+    cloakConfig['storage:usage'] = 0;
+    cloakConfig['storage:persisted:disabled'] = true;
+  }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
       if ('navigator:clipboard:disabled' in cloakConfig) handled.add('navigator.clipboard');
+      if ('window:name:disabled' in cloakConfig) handled.add('navigator.windowName');
+      if ('notification:permission:disabled' in cloakConfig) handled.add('permissions.notifications');
+      if ('storage:quota' in cloakConfig) {
+        handled.add('storage.storageEstimate');
+        handled.add('storage.privateMode');
+      }
     }
   }
 

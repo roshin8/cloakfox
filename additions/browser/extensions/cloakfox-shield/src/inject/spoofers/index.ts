@@ -220,7 +220,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('vibration', () => { if (settings.navigator.vibration !== 'off' && !skip('navigator.vibration')) initVibrationSpoofer(settings.navigator.vibration, pagePRNG); });
   safe('vendorFlavors', () => { if (settings.navigator.vendorFlavors !== 'off') initVendorFlavorSpoofer(settings.navigator.vendorFlavors, pagePRNG); });
   safe('fontPrefs', () => { if (settings.navigator.fontPreferences !== 'off') initFontPreferencesSpoofer(settings.navigator.fontPreferences, pagePRNG); });
-  safe('windowName', () => { if (settings.navigator.windowName !== 'off') initWindowNameSpoofer(settings.navigator.windowName, pagePRNG); });
+  safe('windowName', () => { if (settings.navigator.windowName !== 'off' && !skip('navigator.windowName')) initWindowNameSpoofer(settings.navigator.windowName, pagePRNG); });
   safe('tabHistory', () => { if (settings.navigator.tabHistory !== 'off' && !skip('navigator.tabHistory')) initTabHistorySpoofer(settings.navigator.tabHistory, pagePRNG); });
   safe('mediaCapabilities', () => { if (settings.navigator.mediaCapabilities !== 'off') initMediaCapabilitiesSpoofer(settings.navigator.mediaCapabilities, pagePRNG); });
 
@@ -245,11 +245,11 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('css', () => { if (settings.css.mediaQueries !== 'off') initCSSSpoofer(settings.css.mediaQueries, pagePRNG, assignedProfile); });
   safe('speech', () => { if (settings.speech.synthesis !== 'off' && !skip('speech.synthesis')) initSpeechSpoofer(settings.speech.synthesis, pagePRNG); });
   safe('permissions', () => { if (settings.permissions.query !== 'off') initPermissionsSpoofer(settings.permissions.query, pagePRNG); });
-  safe('notification', () => { if (settings.permissions.notification !== 'off') initNotificationSpoofer(settings.permissions.notification, pagePRNG); });
-  safe('storage', () => { if (settings.storage.estimate !== 'off') initStorageSpoofer(settings.storage.estimate, pagePRNG); });
+  safe('notification', () => { if (settings.permissions.notification !== 'off' && !skip('permissions.notifications')) initNotificationSpoofer(settings.permissions.notification, pagePRNG); });
+  safe('storage', () => { if (settings.storage.estimate !== 'off' && !skip('storage.storageEstimate')) initStorageSpoofer(settings.storage.estimate, pagePRNG); });
   safe('indexedDB', () => { if (settings.storage.indexedDB !== 'off') initIndexedDBSpoofer(settings.storage.indexedDB, pagePRNG); });
   safe('webSQL', () => { if (settings.storage.webSQL !== 'off') initWebSQLSpoofer(settings.storage.webSQL, pagePRNG); });
-  safe('privateMode', () => { if (settings.storage.privateModeProtection !== 'off') initPrivateModeProtection(settings.storage.privateModeProtection, pagePRNG); });
+  safe('privateMode', () => { if (settings.storage.privateModeProtection !== 'off' && !skip('storage.privateMode')) initPrivateModeProtection(settings.storage.privateModeProtection, pagePRNG); });
   safe('math', () => { if (settings.math.functions !== 'off') initMathSpoofer(settings.math.functions, pagePRNG); });
   safe('keyboard', () => { if (settings.keyboard.layout !== 'off') initKeyboardSpoofer(settings.keyboard.layout, pagePRNG); });
   safe('cadence', () => { if (settings.keyboard.cadence !== 'off') initKeyboardCadenceSpoofer(settings.keyboard.cadence, pagePRNG); });

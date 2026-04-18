@@ -1,0 +1,54 @@
+--- a/b/dom/notification/Notification.cpp	2026-04-18 02:35:03
++++ b/dom/notification/Notification.cpp	2026-04-18 02:36:10
+@@ -8,6 +8,7 @@
+ 
+ #include <utility>
+ 
++#include "MaskConfig.hpp"
+ #include "Navigator.h"
+ #include "NotificationUtils.h"
+ #include "mozilla/Encoding.h"
+@@ -474,6 +475,22 @@
+     ErrorResult& aRv) {
+   AssertIsOnMainThread();
+ 
++  // Cloakfox: auto-deny notification permission requests if disabled
++  if (MaskConfig::GetBool("notification:permission:disabled").value_or(false)) {
++    nsCOMPtr<nsPIDOMWindowInner> window =
++        do_QueryInterface(aGlobal.GetAsSupports());
++    if (!window) {
++      aRv.Throw(NS_ERROR_UNEXPECTED);
++      return nullptr;
++    }
++    RefPtr<Promise> promise = Promise::Create(window->AsGlobal(), aRv);
++    if (aRv.Failed()) {
++      return nullptr;
++    }
++    promise->MaybeResolve(NotificationPermission::Denied);
++    return promise.forget();
++  }
++
+   // Get principal from global to make permission request for notifications.
+   nsCOMPtr<nsPIDOMWindowInner> window =
+       do_QueryInterface(aGlobal.GetAsSupports());
+@@ -512,6 +529,10 @@
+ // static
+ NotificationPermission Notification::GetPermission(const GlobalObject& aGlobal,
+                                                    ErrorResult& aRv) {
++  // Cloakfox: return 'default' if notification permission reads are disabled
++  if (MaskConfig::GetBool("notification:permission:disabled").value_or(false)) {
++    return NotificationPermission::Default;
++  }
+   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
+   return GetPermission(global, PermissionCheckPurpose::PermissionAttribute,
+                        aRv);
+--- a/b/dom/notification/moz.build	2026-04-18 00:00:00
++++ b/dom/notification/moz.build	2026-04-18 00:00:00
+@@ -51,6 +51,7 @@
+ 
+ FINAL_LIBRARY = "xul"
+ LOCAL_INCLUDES += [
++    "/cloakcfg",
+     "/dom/base",
+     "/dom/ipc",
+     # NotificationHandler::RespondOnClick, but see bug 1966910.

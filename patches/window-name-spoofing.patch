@@ -1,0 +1,33 @@
+--- a/b/dom/base/nsGlobalWindowOuter.cpp	2026-04-18 02:32:47
++++ b/dom/base/nsGlobalWindowOuter.cpp	2026-04-18 02:32:59
+@@ -7,6 +7,7 @@
+ #include "nsGlobalWindowOuter.h"
+ 
+ #include <algorithm>
++#include "MaskConfig.hpp"
+ 
+ #include "mozilla/Assertions.h"
+ #include "mozilla/ScopeExit.h"
+@@ -3407,6 +3408,11 @@
+ }
+ 
+ void nsGlobalWindowOuter::GetNameOuter(nsAString& aName) {
++  // Cloakfox: block window.name reads if configured
++  if (MaskConfig::GetBool("window:name:disabled").value_or(false)) {
++    aName.Truncate();
++    return;
++  }
+   if (mDocShell) {
+     mDocShell->GetName(aName);
+   }
+@@ -3414,6 +3420,10 @@
+ 
+ void nsGlobalWindowOuter::SetNameOuter(const nsAString& aName,
+                                        mozilla::ErrorResult& aError) {
++  // Cloakfox: silently ignore window.name writes if configured
++  if (MaskConfig::GetBool("window:name:disabled").value_or(false)) {
++    return;
++  }
+   if (mDocShell) {
+     aError = mDocShell->SetName(aName);
+   }
