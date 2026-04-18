@@ -244,10 +244,10 @@ export function initializeSpoofers(config: InjectConfig): void {
 
   safe('css', () => { if (settings.css.mediaQueries !== 'off') initCSSSpoofer(settings.css.mediaQueries, pagePRNG, assignedProfile); });
   safe('speech', () => { if (settings.speech.synthesis !== 'off' && !skip('speech.synthesis')) initSpeechSpoofer(settings.speech.synthesis, pagePRNG); });
-  safe('permissions', () => { if (settings.permissions.query !== 'off') initPermissionsSpoofer(settings.permissions.query, pagePRNG); });
+  safe('permissions', () => { if (settings.permissions.query !== 'off' && !skip('permissions.query')) initPermissionsSpoofer(settings.permissions.query, pagePRNG); });
   safe('notification', () => { if (settings.permissions.notification !== 'off' && !skip('permissions.notification')) initNotificationSpoofer(settings.permissions.notification, pagePRNG); });
   safe('storage', () => { if (settings.storage.estimate !== 'off' && !skip('storage.estimate')) initStorageSpoofer(settings.storage.estimate, pagePRNG); });
-  safe('indexedDB', () => { if (settings.storage.indexedDB !== 'off') initIndexedDBSpoofer(settings.storage.indexedDB, pagePRNG); });
+  safe('indexedDB', () => { if (settings.storage.indexedDB !== 'off' && !skip('storage.indexedDB')) initIndexedDBSpoofer(settings.storage.indexedDB, pagePRNG); });
   safe('webSQL', () => { if (settings.storage.webSQL !== 'off') initWebSQLSpoofer(settings.storage.webSQL, pagePRNG); });
   safe('privateMode', () => { if (settings.storage.privateModeProtection !== 'off' && !skip('storage.privateModeProtection')) initPrivateModeProtection(settings.storage.privateModeProtection, pagePRNG); });
   safe('math', () => { if (settings.math.functions !== 'off') initMathSpoofer(settings.math.functions, pagePRNG); });

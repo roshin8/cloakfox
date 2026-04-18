@@ -1,0 +1,33 @@
+--- a/b/dom/indexedDB/IDBFactory.cpp	2026-04-18 03:16:56
++++ b/dom/indexedDB/IDBFactory.cpp	2026-04-18 03:17:26
+@@ -6,6 +6,7 @@
+ 
+ #include "IDBFactory.h"
+ 
++#include "MaskConfig.hpp"
+ #include "BackgroundChildImpl.h"
+ #include "IDBRequest.h"
+ #include "IndexedDatabaseManager.h"
+@@ -455,6 +456,14 @@
+     return nullptr;
+   }
+ 
++  // Cloakfox: hide all databases — reveals per-site storage fingerprint
++  if (MaskConfig::GetBool("indexedDB:databases:hidden").value_or(false)) {
++    RefPtr<Promise> promise = Promise::CreateInfallible(GetOwnerGlobal());
++    nsTArray<IDBDatabaseInfo> empty;
++    promise->MaybeResolve(empty);
++    return promise.forget();
++  }
++
+   RefPtr<Promise> promise = Promise::CreateInfallible(GetOwnerGlobal());
+   if (!mAllowed) {
+     promise->MaybeRejectWithSecurityError(kAccessError);
+--- a/b/dom/indexedDB/moz.build	2026-04-18 00:00:00
++++ b/dom/indexedDB/moz.build	2026-04-18 00:00:00
+@@ -120,4 +120,5 @@
+ LOCAL_INCLUDES += [
++    "/cloakcfg",
+     "/dom/base",
+     "/dom/storage",
+     "/ipc/glue",

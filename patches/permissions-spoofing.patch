@@ -1,0 +1,32 @@
+--- a/b/dom/permission/PermissionStatus.cpp	2026-04-18 03:16:01
++++ b/dom/permission/PermissionStatus.cpp	2026-04-18 03:16:27
+@@ -6,6 +6,7 @@
+ 
+ #include "mozilla/dom/PermissionStatus.h"
+ 
++#include "MaskConfig.hpp"
+ #include "PermissionStatusSink.h"
+ #include "PermissionUtils.h"
+ #include "mozilla/AsyncEventDispatcher.h"
+@@ -97,6 +98,11 @@
+ }
+ 
+ PermissionState PermissionStatus::ComputeStateFromAction(uint32_t aAction) {
++  // Cloakfox: normalize all permission states to 'prompt' when spoofing is
++  // enabled — hides granted/denied state which can uniquely fingerprint users.
++  if (MaskConfig::GetBool("permissions:spoof").value_or(false)) {
++    return PermissionState::Prompt;
++  }
+   nsCOMPtr<nsIGlobalObject> global = GetOwnerGlobal();
+   if (NS_WARN_IF(!global)) {
+     return PermissionState::Denied;
+--- a/b/dom/permission/moz.build	2026-04-18 00:00:00
++++ b/dom/permission/moz.build	2026-04-18 00:00:00
+@@ -30,3 +30,7 @@
+ FINAL_LIBRARY = "xul"
+
++LOCAL_INCLUDES += [
++    "/cloakcfg",
++]
++
+ include("/ipc/chromium/chromium-config.mozbuild")

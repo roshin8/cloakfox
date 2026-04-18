@@ -98,6 +98,16 @@ export function applyCoreProtections(
   }
   // Always hide webdriver unless explicitly set — automation indicator is high FP signal.
   cloakConfig['navigator:webdriver'] = false;
+  if (settings.permissions?.query !== 'off') {
+    cloakConfig['permissions:spoof'] = true;
+  }
+  if (settings.storage?.indexedDB === 'block') {
+    cloakConfig['indexedDB:databases:hidden'] = true;
+  }
+  if (settings.hardware?.orientation !== 'off' && profile?.userAgent) {
+    const mobile = (profile.userAgent as unknown as { mobile?: boolean }).mobile;
+    cloakConfig['screen:orientation:type'] = mobile ? 'portrait-primary' : 'landscape-primary';
+  }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
@@ -113,6 +123,9 @@ export function applyCoreProtections(
       if ('navigator:webgpu:disabled' in cloakConfig) handled.add('graphics.webgpu');
       if ('navigator:maxTouchPoints' in cloakConfig) handled.add('hardware.touch');
       if ('navigator:webdriver' in cloakConfig) handled.add('navigator.webdriver');
+      if ('permissions:spoof' in cloakConfig) handled.add('permissions.query');
+      if ('indexedDB:databases:hidden' in cloakConfig) handled.add('storage.indexedDB');
+      if ('screen:orientation:type' in cloakConfig) handled.add('hardware.orientation');
     }
   }
 

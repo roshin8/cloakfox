@@ -1,0 +1,25 @@
+--- a/b/dom/base/ScreenOrientation.cpp	2026-04-18 03:13:18
++++ b/dom/base/ScreenOrientation.cpp	2026-04-18 03:13:32
+@@ -6,6 +6,7 @@
+ 
+ #include "ScreenOrientation.h"
+ 
++#include "MaskConfig.hpp"
+ #include "mozilla/DOMEventTargetHelper.h"
+ #include "mozilla/Hal.h"
+ #include "mozilla/Preferences.h"
+@@ -714,6 +715,14 @@
+ 
+ OrientationType ScreenOrientation::GetType(CallerType aCallerType,
+                                            ErrorResult& aRv) const {
++  // Cloakfox: always landscape-primary on desktop profiles
++  if (auto v = MaskConfig::GetString("screen:orientation:type")) {
++    const std::string& s = v.value();
++    if (s == "landscape-primary") return OrientationType::Landscape_primary;
++    if (s == "landscape-secondary") return OrientationType::Landscape_secondary;
++    if (s == "portrait-primary") return OrientationType::Portrait_primary;
++    if (s == "portrait-secondary") return OrientationType::Portrait_secondary;
++  }
+   Document* doc = GetResponsibleDocument();
+   BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
+   if (!bc) {
