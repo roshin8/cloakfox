@@ -197,7 +197,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('audio', () => { if (settings.audio.audioContext !== 'off' && !skip('audio.audioContext')) initAudioSpoofer(settings.audio.audioContext, pagePRNG); });
   safe('offlineAudio', () => { if (settings.audio.offlineAudio !== 'off' && !skip('audio.offlineAudio')) initOfflineAudioSpoofer(settings.audio.offlineAudio, pagePRNG); });
   safe('audioLatency', () => { if (settings.audio.latency !== 'off' && !skip('audio.latency')) initAudioLatencySpoofer(settings.audio.latency, pagePRNG); });
-  safe('codecs', () => { if (settings.audio.codecs !== 'off') initCodecSpoofer(settings.audio.codecs, pagePRNG); });
+  safe('codecs', () => { if (settings.audio.codecs !== 'off' && !skip('audio.codecs')) initCodecSpoofer(settings.audio.codecs, pagePRNG); });
 
   safe('screen', () => { if (settings.hardware.screen !== 'off' && !skip('hardware.screen')) initScreenSpoofer(settings.hardware.screen, pagePRNG, assignedProfile?.screen); });
   safe('screenFrame', () => { if (settings.hardware.screenFrame !== 'off' && !skip('hardware.screenFrame')) initScreenFrameSpoofer(settings.hardware.screenFrame, pagePRNG); });

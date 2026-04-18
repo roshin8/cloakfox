@@ -1,0 +1,45 @@
+--- a/b/dom/media/mediaelement/HTMLMediaElement.cpp	2026-04-18 07:10:12
++++ b/dom/media/mediaelement/HTMLMediaElement.cpp	2026-04-18 07:10:39
+@@ -10,6 +10,8 @@
+ #include <cmath>
+ #include <limits>
+ #include <type_traits>
++
++#include "MaskConfig.hpp"
+ #include <unordered_map>
+ 
+ #include "AudioDeviceInfo.h"
+@@ -5364,6 +5366,25 @@
+ }
+ 
+ void HTMLMediaElement::CanPlayType(const nsAString& aType, nsAString& aResult) {
++  // Cloakfox: return a generic 'probably' for common media MIME types to
++  // hide the per-install codec support matrix (a known fingerprint vector).
++  if (MaskConfig::GetBool("codecs:spoof").value_or(false)) {
++    NS_ConvertUTF16toUTF8 t(aType);
++    if (StringBeginsWith(t, "video/mp4"_ns) ||
++        StringBeginsWith(t, "video/webm"_ns) ||
++        StringBeginsWith(t, "video/ogg"_ns) ||
++        StringBeginsWith(t, "audio/mp4"_ns) ||
++        StringBeginsWith(t, "audio/webm"_ns) ||
++        StringBeginsWith(t, "audio/ogg"_ns) ||
++        StringBeginsWith(t, "audio/mpeg"_ns) ||
++        StringBeginsWith(t, "audio/wav"_ns) ||
++        StringBeginsWith(t, "audio/flac"_ns)) {
++      aResult.AssignLiteral("probably");
++      return;
++    }
++    aResult.Truncate();
++    return;
++  }
+   DecoderDoctorDiagnostics diagnostics;
+   CanPlayStatus canPlay = GetCanPlay(aType, &diagnostics);
+   diagnostics.StoreFormatDiagnostics(OwnerDoc(), aType, canPlay != CANPLAY_NO,
+--- a/b/dom/media/mediaelement/moz.build	2026-04-18 00:00:00
++++ b/dom/media/mediaelement/moz.build	2026-04-18 00:00:00
+@@ -33,4 +33,5 @@
+ LOCAL_INCLUDES += [
++    "/cloakcfg",
+     "/dom/base",
+     "/dom/media",
+     "/netwerk/base",

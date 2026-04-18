@@ -123,6 +123,9 @@ export function applyCoreProtections(
   if (settings.navigator?.mediaCapabilities !== 'off') {
     cloakConfig['mediaCapabilities:spoof'] = true;
   }
+  if (settings.audio?.codecs !== 'off') {
+    cloakConfig['codecs:spoof'] = true;
+  }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
@@ -144,6 +147,7 @@ export function applyCoreProtections(
       if ('window:visualViewport:spoof' in cloakConfig) handled.add('hardware.visualViewport');
       if ('timing:setTimeoutJitter' in cloakConfig) handled.add('timing.eventLoop');
       if ('mediaCapabilities:spoof' in cloakConfig) handled.add('navigator.mediaCapabilities');
+      if ('codecs:spoof' in cloakConfig) handled.add('audio.codecs');
     }
   }
   // Text metrics ride on the existing canvas:seed (setCanvasSeed). If the
