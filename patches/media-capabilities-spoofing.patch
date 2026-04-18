@@ -1,0 +1,56 @@
+--- a/b/dom/media/mediacapabilities/MediaCapabilities.cpp	2026-04-18 06:50:04
++++ b/dom/media/mediacapabilities/MediaCapabilities.cpp	2026-04-18 06:50:53
+@@ -10,6 +10,7 @@
+ 
+ #include <utility>
+ 
++#include "MaskConfig.hpp"
+ #include "AllocationPolicy.h"
+ #include "DecoderTraits.h"
+ #include "MP4Decoder.h"
+@@ -191,6 +192,18 @@
+     return nullptr;
+   }
+ 
++  // Cloakfox: return generic 'supported+smooth+powerEfficient' info to avoid
++  // revealing which codecs are hardware-accelerated on this device.
++  if (MaskConfig::GetBool("mediaCapabilities:spoof").value_or(false)) {
++    MediaCapabilitiesDecodingInfo info;
++    info.mSupported = true;
++    info.mSmooth = true;
++    info.mPowerEfficient = true;
++    info.mKeySystemAccess = nullptr;
++    promise->MaybeResolve(info);
++    return promise.forget();
++  }
++
+   // If configuration is not a valid MediaConfiguration, return a Promise
+   // rejected with a TypeError.
+   if (!aConfiguration.mVideo.WasPassed() &&
+@@ -641,6 +654,16 @@
+     return nullptr;
+   }
+ 
++  // Cloakfox: spoofed encoding info mirrors decodingInfo logic.
++  if (MaskConfig::GetBool("mediaCapabilities:spoof").value_or(false)) {
++    MediaCapabilitiesInfo info;
++    info.mSupported = true;
++    info.mSmooth = true;
++    info.mPowerEfficient = true;
++    promise->MaybeResolve(info);
++    return promise.forget();
++  }
++
+   // If configuration is not a valid MediaConfiguration, return a Promise
+   // rejected with a TypeError.
+   if (!aConfiguration.mVideo.WasPassed() &&
+--- a/b/dom/media/mediacapabilities/moz.build	2026-04-18 00:00:00
++++ b/dom/media/mediacapabilities/moz.build	2026-04-18 00:00:00
+@@ -14,3 +14,7 @@
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ FINAL_LIBRARY = "xul"
++
++LOCAL_INCLUDES += [
++    "/cloakcfg",
++]

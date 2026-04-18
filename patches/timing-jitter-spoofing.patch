@@ -1,0 +1,41 @@
+--- a/b/dom/base/nsGlobalWindowInner.cpp	2026-04-18 06:46:44
++++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-18 06:46:58
+@@ -6190,22 +6190,34 @@
+   // error.
+   return HasActiveDocument() ? nsGlobalWindowInner::Cast(currentInner)
+                              : nullptr;
++}
++
++// Cloakfox: deterministic timer jitter for fingerprinting resistance.
++// Based on a per-context seed, inject 0-N ms jitter into each SetTimeout/
++// SetInterval call so timing patterns differ across containers.
++static int32_t CloakJitter(int32_t aTimeout) {
++  auto max = MaskConfig::GetUint32("timing:setTimeoutJitter");
++  if (!max || max.value() == 0) return aTimeout;
++  static uint32_t state = MaskConfig::GetUint32("timing:setTimeoutSeed")
++                              .value_or(1);
++  state = state * 1664525u + 1013904223u;
++  return aTimeout + static_cast<int32_t>(state % max.value());
+ }
+ 
+ int32_t nsGlobalWindowInner::SetTimeout(
+     JSContext* aCx, const FunctionOrTrustedScriptOrString& aHandler,
+     int32_t aTimeout, const Sequence<JS::Value>& aArguments,
+     nsIPrincipal* aSubjectPrincipal, ErrorResult& aError) {
+-  return SetTimeoutOrInterval(aCx, aHandler, aTimeout, aArguments, false,
+-                              aSubjectPrincipal, aError);
++  return SetTimeoutOrInterval(aCx, aHandler, CloakJitter(aTimeout), aArguments,
++                              false, aSubjectPrincipal, aError);
+ }
+ 
+ int32_t nsGlobalWindowInner::SetInterval(
+     JSContext* aCx, const FunctionOrTrustedScriptOrString& aHandler,
+     const int32_t aTimeout, const Sequence<JS::Value>& aArguments,
+     nsIPrincipal* aSubjectPrincipal, ErrorResult& aError) {
+-  return SetTimeoutOrInterval(aCx, aHandler, aTimeout, aArguments, true,
+-                              aSubjectPrincipal, aError);
++  return SetTimeoutOrInterval(aCx, aHandler, CloakJitter(aTimeout), aArguments,
++                              true, aSubjectPrincipal, aError);
+ }
+ 
+ int32_t nsGlobalWindowInner::SetTimeoutOrInterval(

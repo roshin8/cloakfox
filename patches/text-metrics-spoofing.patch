@@ -1,0 +1,31 @@
+--- a/b/dom/canvas/CanvasRenderingContext2D.cpp	2026-04-18 06:49:06
++++ b/dom/canvas/CanvasRenderingContext2D.cpp	2026-04-18 06:49:48
+@@ -7,6 +7,7 @@
+ 
+ #include <algorithm>
+ 
++#include "MaskConfig.hpp"
+ #include "CanvasImageCache.h"
+ #include "CanvasFingerprintManager.h"
+ #include "nsPIDOMWindow.h"
+@@ -5262,6 +5263,20 @@
+     double actualBoundingBoxDescent =
+         processor.mBoundingBox.YMost() + baselineAnchor;
+     auto baselines = font->GetBaselines(fontOrientation);
++    // Cloakfox: add deterministic sub-pixel noise to text metrics using
++    // canvas:seed so measureText is not a reliable font fingerprint.
++    if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++      uint32_t s = seed.value();
++      auto noise = [&s]() {
++        s = s * 1664525u + 1013904223u;
++        return (static_cast<double>(s) / 4294967295.0 - 0.5) * 0.4;
++      };
++      totalWidth += noise();
++      actualBoundingBoxLeft += noise();
++      actualBoundingBoxRight += noise();
++      actualBoundingBoxAscent += noise();
++      actualBoundingBoxDescent += noise();
++    }
+     return MakeUnique<TextMetrics>(
+         totalWidth, actualBoundingBoxLeft, actualBoundingBoxRight,
+         fontMetrics.maxAscent - baselineAnchor,   // fontBBAscent

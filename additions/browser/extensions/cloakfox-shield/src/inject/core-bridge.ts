@@ -111,6 +111,18 @@ export function applyCoreProtections(
   if (settings.hardware?.visualViewport !== 'off') {
     cloakConfig['window:visualViewport:spoof'] = true;
   }
+  if (settings.timing?.eventLoop !== 'off') {
+    // Per-page deterministic jitter (0-2ms) seeded by the page PRNG.
+    cloakConfig['timing:setTimeoutJitter'] = 2;
+    cloakConfig['timing:setTimeoutSeed'] = Math.floor(Math.random() * 0xFFFFFFFF) >>> 0;
+  }
+  if (settings.graphics?.textMetrics !== 'off') {
+    // canvas:seed is set via setCanvasSeed (individual method). We just need to
+    // mark this as handled so the JS spoofer gates off.
+  }
+  if (settings.navigator?.mediaCapabilities !== 'off') {
+    cloakConfig['mediaCapabilities:spoof'] = true;
+  }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
@@ -130,8 +142,13 @@ export function applyCoreProtections(
       if ('indexedDB:databases:hidden' in cloakConfig) handled.add('storage.indexedDB');
       if ('screen:orientation:type' in cloakConfig) handled.add('hardware.orientation');
       if ('window:visualViewport:spoof' in cloakConfig) handled.add('hardware.visualViewport');
+      if ('timing:setTimeoutJitter' in cloakConfig) handled.add('timing.eventLoop');
+      if ('mediaCapabilities:spoof' in cloakConfig) handled.add('navigator.mediaCapabilities');
     }
   }
+  // Text metrics ride on the existing canvas:seed (setCanvasSeed). If the
+  // canvas-fingerprint manager was engaged above, text-metrics is also handled.
+  if (handled.has('graphics.canvas')) handled.add('graphics.textMetrics');
 
   // ─── Canvas ──────────────────────────────────────────────────
   if (settings.graphics?.canvas !== 'off') {

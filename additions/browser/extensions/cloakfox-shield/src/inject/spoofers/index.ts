@@ -191,7 +191,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('webglShaders', () => { if (settings.graphics.webglShaders !== 'off' && !skip('graphics.webglShaders')) initWebGLShaderSpoofer(settings.graphics.webglShaders, pagePRNG); });
   safe('webgpu', () => { if (settings.graphics.webgpu !== 'off' && !skip('graphics.webgpu')) initWebGPUSpoofer(settings.graphics.webgpu, pagePRNG); });
   safe('domRect', () => { if (settings.graphics.domRect !== 'off') initDOMRectSpoofer(settings.graphics.domRect, pagePRNG); });
-  safe('textMetrics', () => { if (settings.graphics.textMetrics !== 'off') initTextMetricsSpoofer(settings.graphics.textMetrics, pagePRNG); });
+  safe('textMetrics', () => { if (settings.graphics.textMetrics !== 'off' && !skip('graphics.textMetrics')) initTextMetricsSpoofer(settings.graphics.textMetrics, pagePRNG); });
   safe('svg', () => { if (settings.graphics.svg !== 'off') initSVGSpoofer(settings.graphics.svg, pagePRNG); });
 
   safe('audio', () => { if (settings.audio.audioContext !== 'off' && !skip('audio.audioContext')) initAudioSpoofer(settings.audio.audioContext, pagePRNG); });
@@ -222,7 +222,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('fontPrefs', () => { if (settings.navigator.fontPreferences !== 'off') initFontPreferencesSpoofer(settings.navigator.fontPreferences, pagePRNG); });
   safe('windowName', () => { if (settings.navigator.windowName !== 'off' && !skip('navigator.windowName')) initWindowNameSpoofer(settings.navigator.windowName, pagePRNG); });
   safe('tabHistory', () => { if (settings.navigator.tabHistory !== 'off' && !skip('navigator.tabHistory')) initTabHistorySpoofer(settings.navigator.tabHistory, pagePRNG); });
-  safe('mediaCapabilities', () => { if (settings.navigator.mediaCapabilities !== 'off') initMediaCapabilitiesSpoofer(settings.navigator.mediaCapabilities, pagePRNG); });
+  safe('mediaCapabilities', () => { if (settings.navigator.mediaCapabilities !== 'off' && !skip('navigator.mediaCapabilities')) initMediaCapabilitiesSpoofer(settings.navigator.mediaCapabilities, pagePRNG); });
 
   safe('timezone', () => {
     if ((settings.timezone.intl !== 'off' || settings.timezone.date !== 'off') && !skip('timezone.intl')) {
@@ -240,7 +240,7 @@ export function initializeSpoofers(config: InjectConfig): void {
 
   safe('performance', () => { if (settings.timing.performance !== 'off') initPerformanceSpoofer(settings.timing.performance, pagePRNG); });
   safe('memory', () => { if (settings.timing.memory !== 'off') initMemorySpoofer(settings.timing.memory, pagePRNG); });
-  safe('eventLoop', () => { if (settings.timing.eventLoop !== 'off') initEventLoopJitter(settings.timing.eventLoop, pagePRNG); });
+  safe('eventLoop', () => { if (settings.timing.eventLoop !== 'off' && !skip('timing.eventLoop')) initEventLoopJitter(settings.timing.eventLoop, pagePRNG); });
 
   safe('css', () => { if (settings.css.mediaQueries !== 'off') initCSSSpoofer(settings.css.mediaQueries, pagePRNG, assignedProfile); });
   safe('speech', () => { if (settings.speech.synthesis !== 'off' && !skip('speech.synthesis')) initSpeechSpoofer(settings.speech.synthesis, pagePRNG); });
