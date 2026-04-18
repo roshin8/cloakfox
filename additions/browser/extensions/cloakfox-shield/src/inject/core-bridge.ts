@@ -73,25 +73,46 @@ export function applyCoreProtections(
   if (settings.navigator?.windowName !== 'off') {
     cloakConfig['window:name:disabled'] = true;
   }
-  if (settings.permissions?.notifications === 'block') {
+  if (settings.permissions?.notification === 'block') {
     cloakConfig['notification:permission:disabled'] = true;
   }
-  if (settings.storage?.storageEstimate !== 'off') {
+  if (settings.storage?.estimate !== 'off') {
     // Fixed ~50GB quota — matches what a typical desktop reports.
     cloakConfig['storage:quota'] = 53687091200;
     cloakConfig['storage:usage'] = 0;
     cloakConfig['storage:persisted:disabled'] = true;
   }
+  if (settings.devices?.gamepad === 'block') {
+    cloakConfig['navigator:gamepads:disabled'] = true;
+  }
+  if (settings.devices?.midi === 'block') {
+    cloakConfig['navigator:midi:disabled'] = true;
+  }
+  if (settings.graphics?.webgpu === 'block') {
+    cloakConfig['navigator:webgpu:disabled'] = true;
+  }
+  if (settings.hardware?.touch !== 'off' && profile?.userAgent) {
+    // Pick deterministic maxTouchPoints based on platform mobile flag.
+    const mobile = (profile.userAgent as unknown as { mobile?: boolean }).mobile;
+    cloakConfig['navigator:maxTouchPoints'] = mobile ? 5 : 0;
+  }
+  // Always hide webdriver unless explicitly set — automation indicator is high FP signal.
+  cloakConfig['navigator:webdriver'] = false;
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
       if ('navigator:clipboard:disabled' in cloakConfig) handled.add('navigator.clipboard');
       if ('window:name:disabled' in cloakConfig) handled.add('navigator.windowName');
-      if ('notification:permission:disabled' in cloakConfig) handled.add('permissions.notifications');
+      if ('notification:permission:disabled' in cloakConfig) handled.add('permissions.notification');
       if ('storage:quota' in cloakConfig) {
-        handled.add('storage.storageEstimate');
-        handled.add('storage.privateMode');
+        handled.add('storage.estimate');
+        handled.add('storage.privateModeProtection');
       }
+      if ('navigator:gamepads:disabled' in cloakConfig) handled.add('devices.gamepad');
+      if ('navigator:midi:disabled' in cloakConfig) handled.add('devices.midi');
+      if ('navigator:webgpu:disabled' in cloakConfig) handled.add('graphics.webgpu');
+      if ('navigator:maxTouchPoints' in cloakConfig) handled.add('hardware.touch');
+      if ('navigator:webdriver' in cloakConfig) handled.add('navigator.webdriver');
     }
   }
 

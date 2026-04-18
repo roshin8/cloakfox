@@ -1,0 +1,60 @@
+--- a/b/dom/base/Navigator.cpp	2026-04-18 02:53:23
++++ b/dom/base/Navigator.cpp	2026-04-18 02:55:51
+@@ -971,6 +971,10 @@
+ //*****************************************************************************
+ 
+ uint32_t Navigator::MaxTouchPoints(CallerType aCallerType) {
++  // Cloakfox: return configured max touch points when spoofing is enabled
++  if (auto v = MaskConfig::GetUint32("navigator:maxTouchPoints")) {
++    return v.value();
++  }
+   nsIDocShell* docshell = GetDocShell();
+   BrowsingContext* bc = docshell ? docshell->GetBrowsingContext() : nullptr;
+ 
+@@ -1707,6 +1711,10 @@
+ 
+ void Navigator::GetGamepads(nsTArray<RefPtr<Gamepad>>& aGamepads,
+                             ErrorResult& aRv) {
++  // Cloakfox: return no gamepads when gamepad spoofing is enabled
++  if (MaskConfig::GetBool("navigator:gamepads:disabled").value_or(false)) {
++    return;
++  }
+   if (!mWindow || !mWindow->IsFullyActive()) {
+     return;
+   }
+@@ -1965,6 +1973,13 @@
+     aRv.Throw(NS_ERROR_UNEXPECTED);
+     return nullptr;
+   }
++  // Cloakfox: reject MIDI access when spoofing is enabled
++  if (MaskConfig::GetBool("navigator:midi:disabled").value_or(false)) {
++    RefPtr<Promise> p = Promise::Create(mWindow->AsGlobal(), aRv);
++    if (aRv.Failed()) return nullptr;
++    p->MaybeRejectWithNotAllowedError("MIDI access denied");
++    return p.forget();
++  }
+   MIDIAccessManager* accessMgr = MIDIAccessManager::Get();
+   return accessMgr->RequestMIDIAccess(mWindow, aOptions, aRv);
+ }
+@@ -2375,6 +2390,10 @@
+ }
+ 
+ webgpu::Instance* Navigator::Gpu() {
++  // Cloakfox: return null (navigator.gpu -> null) when WebGPU is disabled
++  if (MaskConfig::GetBool("navigator:webgpu:disabled").value_or(false)) {
++    return nullptr;
++  }
+   if (!mWebGpu) {
+     mWebGpu = webgpu::Instance::Create(GetWindow()->AsGlobal());
+   }
+@@ -2404,6 +2423,10 @@
+ 
+ /* static */
+ bool Navigator::Webdriver() {
++  // Cloakfox: hide webdriver when running automation tools under spoofing
++  if (auto v = MaskConfig::GetBool("navigator:webdriver"); v.has_value()) {
++    return v.value();
++  }
+ #ifdef ENABLE_WEBDRIVER
+   nsCOMPtr<nsIMarionette> marionette = do_GetService(NS_MARIONETTE_CONTRACTID);
+   if (marionette) {
