@@ -1,5 +1,5 @@
 --- a/b/dom/base/Navigator.cpp	2026-04-18 02:53:23
-+++ b/dom/base/Navigator.cpp	2026-04-18 02:55:51
++++ b/dom/base/Navigator.cpp	2026-04-18 08:37:05
 @@ -971,6 +971,10 @@
  //*****************************************************************************
  
@@ -36,7 +36,22 @@
    MIDIAccessManager* accessMgr = MIDIAccessManager::Get();
    return accessMgr->RequestMIDIAccess(mWindow, aOptions, aRv);
  }
-@@ -2375,6 +2390,10 @@
+@@ -2281,6 +2296,14 @@
+ already_AddRefed<Promise> Navigator::RequestMediaKeySystemAccess(
+     const nsAString& aKeySystem,
+     const Sequence<MediaKeySystemConfiguration>& aConfigs, ErrorResult& aRv) {
++  // Cloakfox: reject EME / Widevine access when disabled. DRM level
++  // detection (L1 vs L3 via Widevine robustness) is a strong FP signal.
++  if (MaskConfig::GetBool("navigator:eme:disabled").value_or(false)) {
++    RefPtr<Promise> p = Promise::Create(mWindow->AsGlobal(), aRv);
++    if (aRv.Failed()) return nullptr;
++    p->MaybeRejectWithNotSupportedError("EME not supported");
++    return p.forget();
++  }
+   EME_LOG("%s", RequestKeySystemAccessLogString(aKeySystem, aConfigs,
+                                                 mWindow->IsSecureContext())
+                     .get());
+@@ -2375,6 +2398,10 @@
  }
  
  webgpu::Instance* Navigator::Gpu() {
@@ -47,7 +62,7 @@
    if (!mWebGpu) {
      mWebGpu = webgpu::Instance::Create(GetWindow()->AsGlobal());
    }
-@@ -2404,6 +2423,10 @@
+@@ -2404,6 +2431,10 @@
  
  /* static */
  bool Navigator::Webdriver() {

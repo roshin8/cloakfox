@@ -129,6 +129,10 @@ export function applyCoreProtections(
   if (settings.network?.websocket === 'block') {
     cloakConfig['webSocket:disabled'] = true;
   }
+  // DRM / EME: L1 vs L3 Widevine levels are a strong identity signal.
+  // Disable by default for privacy; users can enable per-site if they
+  // need Netflix / Spotify etc.
+  cloakConfig['navigator:eme:disabled'] = true;
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
