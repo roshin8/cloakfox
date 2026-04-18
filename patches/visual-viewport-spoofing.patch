@@ -1,0 +1,43 @@
+--- a/b/dom/base/VisualViewport.cpp	2026-04-18 03:37:55
++++ b/dom/base/VisualViewport.cpp	2026-04-18 03:38:41
+@@ -6,6 +6,7 @@
+ 
+ #include "VisualViewport.h"
+ 
++#include "MaskConfig.hpp"
+ #include "DocumentInlines.h"
+ #include "mozilla/EventDispatcher.h"
+ #include "mozilla/PresShell.h"
+@@ -95,6 +96,10 @@
+ }
+ 
+ double VisualViewport::Scale() const {
++  // Cloakfox: spoof zoom to 1 (matches non-zoomed viewport)
++  if (MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
++    return 1.0;
++  }
+   double scale = 1;
+   if (PresShell* presShell = GetPresShell()) {
+     scale = presShell->GetResolution();
+@@ -103,6 +108,10 @@
+ }
+ 
+ CSSPoint VisualViewport::VisualViewportOffset() const {
++  // Cloakfox: zero offset (no scroll/zoom)
++  if (MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
++    return CSSPoint(0, 0);
++  }
+   CSSPoint offset = CSSPoint(0, 0);
+ 
+   if (PresShell* presShell = GetPresShell()) {
+@@ -112,6 +121,10 @@
+ }
+ 
+ CSSPoint VisualViewport::LayoutViewportOffset() const {
++  // Cloakfox: zero offset (matches spoofed visual viewport)
++  if (MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
++    return CSSPoint(0, 0);
++  }
+   CSSPoint offset = CSSPoint(0, 0);
+ 
+   if (PresShell* presShell = GetPresShell()) {

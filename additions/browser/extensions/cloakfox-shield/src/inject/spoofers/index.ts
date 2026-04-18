@@ -212,7 +212,7 @@ export function initializeSpoofers(config: InjectConfig): void {
   safe('touch', () => { if (settings.hardware.touch !== 'off' && !skip('hardware.touch')) initTouchSpoofer(settings.hardware.touch, pagePRNG, assignedProfile); });
   safe('sensors', () => { if (settings.hardware.sensors !== 'off') initSensorSpoofer(settings.hardware.sensors, pagePRNG); });
   safe('architecture', () => { if (settings.hardware.architecture !== 'off') initArchitectureSpoofer(settings.hardware.architecture, pagePRNG); });
-  safe('viewport', () => { if (settings.hardware.visualViewport !== 'off') initVisualViewportSpoofer(settings.hardware.visualViewport, pagePRNG); });
+  safe('viewport', () => { if (settings.hardware.visualViewport !== 'off' && !skip('hardware.visualViewport')) initVisualViewportSpoofer(settings.hardware.visualViewport, pagePRNG); });
   safe('screenExt', () => { if (settings.hardware.screenExtended !== 'off' && !skip('hardware.screenExtended')) initScreenExtendedSpoofer(settings.hardware.screenExtended, pagePRNG); });
 
   safe('navigator', () => { if (settings.navigator.userAgent !== 'off' && !skip('navigator.userAgent')) initNavigatorSpoofer(settings.navigator, pagePRNG, config.profile, assignedProfile); });

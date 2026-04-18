@@ -108,6 +108,9 @@ export function applyCoreProtections(
     const mobile = (profile.userAgent as unknown as { mobile?: boolean }).mobile;
     cloakConfig['screen:orientation:type'] = mobile ? 'portrait-primary' : 'landscape-primary';
   }
+  if (settings.hardware?.visualViewport !== 'off') {
+    cloakConfig['window:visualViewport:spoof'] = true;
+  }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {
       if ('navigator:vibrate:disabled' in cloakConfig) handled.add('navigator.vibration');
@@ -126,6 +129,7 @@ export function applyCoreProtections(
       if ('permissions:spoof' in cloakConfig) handled.add('permissions.query');
       if ('indexedDB:databases:hidden' in cloakConfig) handled.add('storage.indexedDB');
       if ('screen:orientation:type' in cloakConfig) handled.add('hardware.orientation');
+      if ('window:visualViewport:spoof' in cloakConfig) handled.add('hardware.visualViewport');
     }
   }
 
