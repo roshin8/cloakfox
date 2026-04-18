@@ -1,0 +1,61 @@
+--- a/b/dom/svg/SVGGraphicsElement.cpp	2026-04-18 14:19:43
++++ b/dom/svg/SVGGraphicsElement.cpp	2026-04-18 14:20:25
+@@ -6,6 +6,7 @@
+ 
+ #include "mozilla/dom/SVGGraphicsElement.h"
+ 
++#include "MaskConfig.hpp"
+ #include "mozilla/ISVGDisplayableFrame.h"
+ #include "mozilla/SVGContentUtils.h"
+ #include "mozilla/SVGTextFrame.h"
+@@ -42,6 +43,22 @@
+   return MakeAndAddRef<SVGRect>(&aOwner, gfx::Rect{0, 0, 0, 0});
+ }
+ 
++// Cloakfox: sub-pixel noise on a gfx::Rect for SVG bbox spoofing.
++static gfx::Rect CloakNoiseRect(gfx::Rect aRect) {
++  auto seed = MaskConfig::GetUint32("canvas:seed");
++  if (!seed || seed.value() == 0) return aRect;
++  uint32_t s = seed.value();
++  auto n = [&s]() {
++    s = s * 1664525u + 1013904223u;
++    return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
++  };
++  aRect.x += n();
++  aRect.y += n();
++  aRect.width += n();
++  aRect.height += n();
++  return aRect;
++}
++
+ already_AddRefed<SVGRect> SVGGraphicsElement::GetBBox(
+     const SVGBoundingBoxOptions& aOptions) {
+   nsIFrame* frame = GetPrimaryFrame(FlushType::Layout);
+@@ -82,14 +99,14 @@
+     rec.x += float(text->GetPosition().x) / AppUnitsPerCSSPixel();
+     rec.y += float(text->GetPosition().y) / AppUnitsPerCSSPixel();
+ 
+-    return do_AddRef(new SVGRect(this, ToRect(rec)));
++    return do_AddRef(new SVGRect(this, CloakNoiseRect(ToRect(rec))));
+   }
+ 
+   if (!NS_SVGNewGetBBoxEnabled()) {
+     return do_AddRef(new SVGRect(
+-        this, ToRect(SVGUtils::GetBBox(
++        this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(
+                   frame, SVGUtils::eBBoxIncludeFillGeometry |
+-                             SVGUtils::eUseUserSpaceOfUseElement))));
++                             SVGUtils::eUseUserSpaceOfUseElement)))));
+   }
+   uint32_t flags = 0;
+   if (aOptions.mFill) {
+@@ -112,7 +129,8 @@
+     flags |= SVGUtils::eBBoxIncludeFillGeometry;
+   }
+   flags |= SVGUtils::eUseUserSpaceOfUseElement;
+-  return do_AddRef(new SVGRect(this, ToRect(SVGUtils::GetBBox(frame, flags))));
++  return do_AddRef(
++      new SVGRect(this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(frame, flags)))));
+ }
+ 
+ already_AddRefed<SVGMatrix> SVGGraphicsElement::GetCTM() {

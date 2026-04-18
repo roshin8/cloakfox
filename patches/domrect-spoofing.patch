@@ -1,5 +1,5 @@
 --- a/b/dom/base/Element.cpp	2026-04-18 07:41:27
-+++ b/dom/base/Element.cpp	2026-04-18 09:06:01
++++ b/dom/base/Element.cpp	2026-04-18 14:19:14
 @@ -1108,6 +1108,22 @@
    }
  
@@ -47,5 +47,31 @@
 +    }
 +  }
    return rectList.forget();
+ }
+ 
+@@ -5579,6 +5614,25 @@
+ 
+   aRect = CSSIntRect::FromAppUnitsRounded(
+       frame->Style()->EffectiveZoom().Unzoom(rect));
++  // Cloakfox: add integer jitter (±1px) to offset measurements. Covers
++  // Element.offsetWidth/Height/Left/Top, which CreepJS and fingerprint.com
++  // use for font detection via span.offsetWidth comparison.
++  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++    uint32_t s = seed.value() ^ static_cast<uint32_t>(aRect.width * 31 +
++                                                       aRect.height * 17);
++    s = s * 1664525u + 1013904223u;
++    int32_t dx = static_cast<int32_t>(s % 3) - 1;
++    s = s * 1664525u + 1013904223u;
++    int32_t dy = static_cast<int32_t>(s % 3) - 1;
++    s = s * 1664525u + 1013904223u;
++    int32_t dw = static_cast<int32_t>(s % 3) - 1;
++    s = s * 1664525u + 1013904223u;
++    int32_t dh = static_cast<int32_t>(s % 3) - 1;
++    aRect.x += dx;
++    aRect.y += dy;
++    aRect.width = std::max(0, aRect.width + dw);
++    aRect.height = std::max(0, aRect.height + dh);
++  }
+   return parent;
  }
  
