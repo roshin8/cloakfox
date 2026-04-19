@@ -22,16 +22,21 @@ import { PRNG, base64ToUint8Array } from '@/lib/crypto';
 // Patch Function.prototype.toString FIRST — before any spoofers
 initStealth();
 
-const FALLBACK_SALT = ':cloakfox:fallback';
+// DO NOT include the domain here. initializeSpoofers() XORs the domain into
+// this seed AGAIN to derive the per-page PRNG — if the seed already carried
+// domain bits, the two XORs cancel and every fallback-path page ends up with
+// the same PRNG state. The fallback seed is a fixed salt; all per-domain
+// entropy comes from the second XOR inside the spoofers module.
+const FALLBACK_SALT = ':cloakfox:fallback:seed:v1';
 
 // Old DESKTOP_SCREENS and LOCALE_TIMEZONE_PAIRS removed — now defined inside generateProfile
 // with platform-specific variants
 
-function generateSeed(domain: string): string {
+function generateSeed(_domain: string): string {
   const bytes = new Uint8Array(32);
-  const domainBytes = new TextEncoder().encode(domain + FALLBACK_SALT);
-  for (let i = 0; i < domainBytes.length; i++) {
-    bytes[i % 32] ^= domainBytes[i];
+  const saltBytes = new TextEncoder().encode(FALLBACK_SALT);
+  for (let i = 0; i < saltBytes.length; i++) {
+    bytes[i % 32] ^= saltBytes[i];
   }
   if (bytes.every(b => b === 0)) bytes[0] = 1;
 
