@@ -39,11 +39,11 @@ export class SettingsStore {
     ]);
 
     this.storage = {
-      containers: result[STORAGE_KEYS.CONTAINER_SETTINGS] || {},
-      entropy: result[STORAGE_KEYS.ENTROPY] || {},
+      containers: (result[STORAGE_KEYS.CONTAINER_SETTINGS] as Record<string, ContainerSettings>) || {},
+      entropy: (result[STORAGE_KEYS.ENTROPY] as Record<string, ContainerEntropy>) || {},
       defaults: createDefaultSettings(),
-      ipDatabase: result[STORAGE_KEYS.IP_DATABASE] || this.createDefaultIPDatabase(),
-      version: result[STORAGE_KEYS.VERSION] || '0.0.0',
+      ipDatabase: (result[STORAGE_KEYS.IP_DATABASE] as IPDatabase) || this.createDefaultIPDatabase(),
+      version: (result[STORAGE_KEYS.VERSION] as string) || '0.0.0',
     };
   }
 
@@ -85,7 +85,7 @@ export class SettingsStore {
       // and old 'block' defaults get updated to 'noise' for balanced mode
       const defaults = createDefaultSettings();
 
-      for (const [containerId, settings] of Object.entries(this.storage.containers)) {
+      for (const [, settings] of Object.entries(this.storage.containers)) {
         // Deep merge spoofers - add missing categories and fields from defaults
         if (settings.spoofers && defaults.spoofers) {
           for (const [cat, defaultVals] of Object.entries(defaults.spoofers)) {

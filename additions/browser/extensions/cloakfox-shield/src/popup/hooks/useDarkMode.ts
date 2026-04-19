@@ -24,8 +24,9 @@ export function useDarkMode(): UseDarkModeReturn {
   useEffect(() => {
     const loadPreference = async () => {
       try {
-        const { globalSettings } = await browser.storage.local.get('globalSettings');
-        if (globalSettings?.darkMode) {
+        const stored = await browser.storage.local.get('globalSettings');
+        const globalSettings = (stored.globalSettings || {}) as { darkMode?: ThemeMode };
+        if (globalSettings.darkMode) {
           setModeState(globalSettings.darkMode);
         }
       } catch (error) {
@@ -64,7 +65,8 @@ export function useDarkMode(): UseDarkModeReturn {
     setModeState(newMode);
 
     try {
-      const { globalSettings = {} } = await browser.storage.local.get('globalSettings');
+      const stored = await browser.storage.local.get('globalSettings');
+      const globalSettings = (stored.globalSettings || {}) as Record<string, unknown>;
       await browser.storage.local.set({
         globalSettings: { ...globalSettings, darkMode: newMode },
       });

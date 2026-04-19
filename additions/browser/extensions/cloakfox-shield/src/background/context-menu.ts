@@ -152,29 +152,19 @@ export class ContextMenuManager {
       const url = new URL(tab.url);
       const domain = url.hostname;
 
-      const settings = await this.settingsStore.getSettings(tab.cookieStoreId);
-      const exceptions = settings.domainExceptions || [];
-
-      const isExcepted = exceptions.includes(domain);
+      const settings = this.settingsStore.getContainerSettings(tab.cookieStoreId);
+      const domainRules = { ...(settings.domainRules || {}) };
+      const isExcepted = domainRules[domain]?.enabled === false;
 
       if (isExcepted) {
-        // Remove from exceptions
-        const newExceptions = exceptions.filter((d: string) => d !== domain);
-        await this.settingsStore.updateSettings(tab.cookieStoreId, {
-          domainExceptions: newExceptions,
-        });
-
-        // Update menu title
+        delete domainRules[domain];
+        await this.settingsStore.updateContainerSettings(tab.cookieStoreId, { domainRules });
         browser.contextMenus.update('toggle-site-protection', {
           title: 'Disable protection for this site',
         });
       } else {
-        // Add to exceptions
-        await this.settingsStore.updateSettings(tab.cookieStoreId, {
-          domainExceptions: [...exceptions, domain],
-        });
-
-        // Update menu title
+        domainRules[domain] = { ...(domainRules[domain] || {}), enabled: false };
+        await this.settingsStore.updateContainerSettings(tab.cookieStoreId, { domainRules });
         browser.contextMenus.update('toggle-site-protection', {
           title: 'Enable protection for this site',
         });

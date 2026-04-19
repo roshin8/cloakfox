@@ -45,3 +45,25 @@ declare module 'webextension-polyfill' {
     };
   }
 }
+
+/**
+ * WebGPU types — not yet in the standard TS DOM lib because the spec
+ * is still working-draft. Cast-only shapes we use in spoofers.
+ */
+declare global {
+  type GPUAdapter = any;
+  type GPUAdapterInfo = any;
+  type GPUDevice = any;
+  type GPUDeviceDescriptor = any;
+  type GPUSupportedLimits = any;
+  type GPUSupportedFeatures = any;
+  type GPURequestAdapterOptions = any;
+
+  /**
+   * BatteryManager — deprecated API Firefox removed from content but
+   * which spoofers still target for fingerprint attempts.
+   */
+  type BatteryManager = any;
+}
+
+export {};

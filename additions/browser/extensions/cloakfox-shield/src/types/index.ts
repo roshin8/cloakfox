@@ -16,7 +16,19 @@ export type MessageType =
   | 'GET_FINGERPRINT_DATA'
   | 'GET_RECOMMENDATIONS'
   | 'GET_ASSIGNED_PROFILE'
-  | 'CHECK_COLLISIONS';
+  | 'CHECK_COLLISIONS'
+  | 'ACTIVE_PROFILE'
+  | 'GET_IP_DATABASE'
+  | 'ADD_TRACKED_DOMAIN'
+  | 'REMOVE_TRACKED_DOMAIN'
+  | 'CLEAR_IP_RECORD'
+  | 'UPDATE_IP_SETTINGS'
+  | 'ADD_IP_EXCEPTION'
+  | 'REMOVE_IP_EXCEPTION'
+  | 'GET_ROTATION_SETTINGS'
+  | 'SET_ROTATION_SETTINGS'
+  | 'ROTATE_NOW'
+  | 'GET_STATS';
 
 /**
  * Fingerprint access record
@@ -227,6 +239,27 @@ export interface CheckCollisionsMessage extends BaseMessage {
   type: 'CHECK_COLLISIONS';
 }
 
+/**
+ * Generic message for message types without dedicated interfaces
+ * (IP database ops, rotation settings, stats, active-profile sync, etc.).
+ * Payload fields are accessed via `(message as any).field` in handlers.
+ */
+export interface GenericMessage extends BaseMessage {
+  type:
+    | 'ACTIVE_PROFILE'
+    | 'GET_IP_DATABASE'
+    | 'ADD_TRACKED_DOMAIN'
+    | 'REMOVE_TRACKED_DOMAIN'
+    | 'CLEAR_IP_RECORD'
+    | 'UPDATE_IP_SETTINGS'
+    | 'ADD_IP_EXCEPTION'
+    | 'REMOVE_IP_EXCEPTION'
+    | 'GET_ROTATION_SETTINGS'
+    | 'SET_ROTATION_SETTINGS'
+    | 'ROTATE_NOW'
+    | 'GET_STATS';
+}
+
 export type ExtensionMessage =
   | GetSettingsMessage
   | SetSettingsMessage
@@ -239,7 +272,8 @@ export type ExtensionMessage =
   | GetFingerprintDataMessage
   | GetRecommendationsMessage
   | GetAssignedProfileMessage
-  | CheckCollisionsMessage;
+  | CheckCollisionsMessage
+  | GenericMessage;
 
 /**
  * Firefox container identity

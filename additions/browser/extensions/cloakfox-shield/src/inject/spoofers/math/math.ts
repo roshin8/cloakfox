@@ -38,7 +38,7 @@ export function initMathSpoofer(mode: ProtectionMode, prng: PRNG): void {
     if (typeof original !== 'function') continue;
 
     overrideMethod(Math as any, fn as string, (orig, _thisArg, args) => {
-      logAccess(`Math.${fn}`, { spoofed: true, value: '\u00b11e-12 noise' });
+      logAccess(`Math.${String(fn)}`, { spoofed: true, value: '\u00b11e-12 noise' });
       const result = orig.apply(Math, args);
       if (Number.isFinite(result) && !Number.isInteger(result)) {
         return result + noise();
@@ -47,18 +47,8 @@ export function initMathSpoofer(mode: ProtectionMode, prng: PRNG): void {
     });
   }
 
-  // Also spoof Math constants with very tiny noise
-  // These are already exact, but some fingerprinters check them
-  const originalPI = Math.PI;
-  const originalE = Math.E;
-  const originalLN2 = Math.LN2;
-  const originalLN10 = Math.LN10;
-  const originalLOG2E = Math.LOG2E;
-  const originalLOG10E = Math.LOG10E;
-  const originalSQRT2 = Math.SQRT2;
-  const originalSQRT1_2 = Math.SQRT1_2;
-
-  // These are already constants, fingerprinters just read them
-  // We log access but don't modify since they're used in real calculations
-
+  // Math constants (PI, E, LN2, etc.) are read-only values that some
+  // fingerprinters check. We don't modify them — they're used in real
+  // numerical code and any noise would break calculations. Leaving them
+  // untouched is the correct trade-off.
 }

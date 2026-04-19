@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import browser from 'webextension-polyfill';
-import type { ContainerSettings } from '@/types';
+import type { ContainerSettings, AssignedProfileData } from '@/types';
 import ProtectionLevel from '../ProtectionLevel';
 import FingerprintMonitor from '../FingerprintMonitor';
 import { PROTECTION_PRESETS, PROTECTION_DESCRIPTIONS } from '@/lib/protection-presets';
@@ -19,11 +19,7 @@ interface DashboardTabProps {
   onEnableSpoofer: (settingPath: string) => void;
   onNavigateToSignal?: (category: string, signal: string) => void;
   currentContainerId?: string;
-  assignedProfile?: {
-    userAgent?: { name?: string };
-    screen?: { width: number; height: number };
-    languages?: string[];
-  };
+  assignedProfile?: AssignedProfileData;
 }
 
 function CollisionCard({ currentContainerId }: { currentContainerId?: string }) {
@@ -108,8 +104,7 @@ function CollisionCard({ currentContainerId }: { currentContainerId?: string }) 
             }
 
             // Current view: selected container or current container
-            const viewId = selectedContainer || currentContainerId || containers.keys().next().value;
-            const viewName = containers.get(viewId) || 'Unknown';
+            const viewId = selectedContainer || currentContainerId || containers.keys().next().value || '';
 
             // Get pairs for the viewed container
             const pairs = collisions
@@ -179,9 +174,7 @@ function CollisionCard({ currentContainerId }: { currentContainerId?: string }) 
 export default function DashboardTab({
   settings, onSaveSettings, onEnableSpoofer, onNavigateToSignal, currentContainerId, assignedProfile,
 }: DashboardTabProps) {
-  const activeCount = Object.values(settings.spoofers).reduce((n, cat) =>
-    n + (typeof cat === 'object' ? Object.values(cat).filter(v => v !== 'off').length : 0), 0);
-  const signalCounts = countByType(settings.spoofers as Record<string, Record<string, string>>);
+  const signalCounts = countByType(settings.spoofers as unknown as Record<string, Record<string, string>>);
 
   const [stats, setStats] = useState<any>(null);
   useEffect(() => {

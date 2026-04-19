@@ -278,6 +278,7 @@ export class MessageHandler {
         containerId,
         domain,
         seed: entropy.seed,
+        useCoreEngine: settings.useCoreEngine !== false,
         settings: settings.spoofers,
         profile: settings.profile,
         assignedProfile: assignedProfileData,
@@ -291,7 +292,7 @@ export class MessageHandler {
   private async handleFingerprintReport(
     message: FingerprintReportMessage,
     sender: browser.Runtime.MessageSender
-  ): { success: boolean } | null {
+  ): Promise<{ success: boolean } | null> {
     const tabId = sender.tab?.id;
     if (!tabId) return null;
 

@@ -56,10 +56,10 @@ export class KeyboardShortcuts {
    */
   private async toggleProtection(tab: browser.Tabs.Tab): Promise<void> {
     const containerId = tab.cookieStoreId!;
-    const settings = await this.settingsStore.getSettings(containerId);
+    const settings = this.settingsStore.getContainerSettings(containerId);
 
     const newEnabled = !settings.enabled;
-    await this.settingsStore.updateSettings(containerId, { enabled: newEnabled });
+    await this.settingsStore.updateContainerSettings(containerId, { enabled: newEnabled });
 
     // Show notification
     await browser.notifications.create({
@@ -106,22 +106,21 @@ export class KeyboardShortcuts {
     const url = new URL(tab.url);
     const domain = url.hostname;
 
-    const settings = await this.settingsStore.getSettings(containerId);
-    const exceptions = settings.domainExceptions || [];
+    const settings = this.settingsStore.getContainerSettings(containerId);
+    // A domain with `{ enabled: false }` in domainRules is treated as an
+    // exception: getSettingsForDomain merges it and disables protection
+    // for that domain while leaving other domains in the container spoofed.
+    const domainRules = { ...(settings.domainRules || {}) };
+    const isException = domainRules[domain]?.enabled === false;
 
     let message: string;
-    if (exceptions.includes(domain)) {
-      // Remove exception
-      const newExceptions = exceptions.filter((d: string) => d !== domain);
-      await this.settingsStore.updateSettings(containerId, {
-        domainExceptions: newExceptions,
-      });
+    if (isException) {
+      delete domainRules[domain];
+      await this.settingsStore.updateContainerSettings(containerId, { domainRules });
       message = `Protection enabled for ${domain}`;
     } else {
-      // Add exception
-      await this.settingsStore.updateSettings(containerId, {
-        domainExceptions: [...exceptions, domain],
-      });
+      domainRules[domain] = { ...(domainRules[domain] || {}), enabled: false };
+      await this.settingsStore.updateContainerSettings(containerId, { domainRules });
       message = `Protection disabled for ${domain}`;
     }
 

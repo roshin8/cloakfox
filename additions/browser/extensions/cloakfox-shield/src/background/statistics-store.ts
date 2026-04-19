@@ -79,10 +79,8 @@ export class StatisticsStore {
     // Get or create container stats
     let stats = this.cache.get(containerId);
     if (!stats) {
-      stats = await this.loadContainerStats(containerId);
-      if (!stats) {
-        stats = this.createEmptyContainerStats(containerId, containerName);
-      }
+      const loaded = await this.loadContainerStats(containerId);
+      stats = loaded ?? this.createEmptyContainerStats(containerId, containerName);
       this.cache.set(containerId, stats);
     }
 
@@ -187,7 +185,7 @@ export class StatisticsStore {
 
     for (const key of Object.keys(allData)) {
       if (key.startsWith(STORAGE_KEY_PREFIX) && key !== GLOBAL_STATS_KEY) {
-        containers.push(allData[key]);
+        containers.push(allData[key] as ContainerStats);
       }
     }
 
@@ -242,7 +240,7 @@ export class StatisticsStore {
     try {
       const key = `${STORAGE_KEY_PREFIX}${containerId}`;
       const result = await browser.storage.local.get(key);
-      return result[key] || null;
+      return (result[key] as ContainerStats | undefined) ?? null;
     } catch (error) {
       console.error('Failed to load container stats:', error);
       return null;
@@ -252,7 +250,7 @@ export class StatisticsStore {
   private async loadGlobalStats(): Promise<GlobalStats> {
     try {
       const result = await browser.storage.local.get(GLOBAL_STATS_KEY);
-      this.globalCache = result[GLOBAL_STATS_KEY] || this.createEmptyGlobalStats();
+      this.globalCache = (result[GLOBAL_STATS_KEY] as GlobalStats | undefined) ?? this.createEmptyGlobalStats();
       return this.globalCache;
     } catch (error) {
       console.error('Failed to load global stats:', error);

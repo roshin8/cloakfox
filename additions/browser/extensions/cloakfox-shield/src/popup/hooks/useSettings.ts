@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import browser from 'webextension-polyfill';
-import type { ContainerSettings, SpooferSettings, ProfileSettings, ProtectionMode } from '@/types';
+import type { ContainerSettings, SpooferSettings, ProfileConfig, ProtectionMode } from '@/types';
 import { createDefaultSettings } from '@/types/settings';
 import { MSG_GET_SETTINGS, MSG_SET_SETTINGS } from '@/constants';
 import { popupLogger } from '@/lib/logger';
@@ -22,7 +22,7 @@ interface UseSettingsReturn {
   /** Update a specific spoofer setting */
   updateSpoofer: (category: string, signal: string, mode: ProtectionMode) => void;
   /** Update profile settings */
-  updateProfile: (profile: Partial<ProfileSettings>) => void;
+  updateProfile: (profile: Partial<ProfileConfig>) => void;
   /** Set protection level (updates multiple spoofers) */
   setProtectionLevel: (level: 0 | 1 | 2 | 3) => void;
   /** Toggle protection on/off */
@@ -121,7 +121,7 @@ export function useSettings(containerId: string | null): UseSettingsReturn {
   }, [settings.spoofers, updateSettings]);
 
   // Update profile
-  const updateProfile = useCallback((profile: Partial<ProfileSettings>) => {
+  const updateProfile = useCallback((profile: Partial<ProfileConfig>) => {
     updateSettings({
       profile: { ...settings.profile, ...profile },
     });
@@ -129,7 +129,12 @@ export function useSettings(containerId: string | null): UseSettingsReturn {
 
   // Set protection level (preset configurations)
   const setProtectionLevel = useCallback((level: 0 | 1 | 2 | 3) => {
-    const presets: Record<number, Partial<SpooferSettings>> = {
+    // Each category uses Partial so presets can omit fields they don't
+    // need to override — the active settings are merged on top below.
+    type PartialSpoofers = {
+      [K in keyof SpooferSettings]?: Partial<SpooferSettings[K]>;
+    };
+    const presets: Record<number, PartialSpoofers> = {
       0: {}, // Off - all remain as-is
       1: {   // Minimal - only high-risk
         graphics: { canvas: 'noise', webgl: 'noise', webgl2: 'noise', svg: 'off', domRect: 'off', textMetrics: 'off', offscreenCanvas: 'off', webglShaders: 'off', webgpu: 'off' },

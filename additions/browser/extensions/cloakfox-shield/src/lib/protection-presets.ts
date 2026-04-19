@@ -9,25 +9,23 @@
 
 import type { SpooferSettings, ProtectionLevel } from '@/types/settings';
 
-type M = 'off' | 'noise' | 'block';
-
 function allNoise(): SpooferSettings {
   return {
     graphics: { canvas: 'noise', offscreenCanvas: 'noise', webgl: 'noise', webgl2: 'noise', webglShaders: 'noise', webgpu: 'noise', svg: 'noise', domRect: 'noise', textMetrics: 'noise' },
     audio: { audioContext: 'noise', offlineAudio: 'noise', latency: 'noise', codecs: 'noise' },
     hardware: { screen: 'noise', screenFrame: 'noise', screenExtended: 'noise', orientation: 'noise', deviceMemory: 'noise', hardwareConcurrency: 'noise', mediaDevices: 'noise', battery: 'noise', gpu: 'noise', touch: 'noise', sensors: 'noise', architecture: 'noise', visualViewport: 'noise' },
-    navigator: { userAgent: 'noise', languages: 'noise', plugins: 'noise', clientHints: 'noise', clipboard: 'noise', vibration: 'noise', vendorFlavors: 'noise', fontPreferences: 'noise', windowName: 'noise', tabHistory: 'noise' },
+    navigator: { userAgent: 'noise', languages: 'noise', plugins: 'noise', clientHints: 'noise', clipboard: 'noise', vibration: 'noise', vendorFlavors: 'noise', fontPreferences: 'noise', windowName: 'noise', tabHistory: 'noise', mediaCapabilities: 'noise' },
     timezone: { intl: 'noise', date: 'noise' },
     fonts: { enumeration: 'noise', cssDetection: 'noise' },
     network: { webrtc: 'public_only', connection: 'noise', geolocation: 'noise', websocket: 'noise' },
-    timing: { performance: 'noise', memory: 'noise' },
+    timing: { performance: 'noise', memory: 'noise', eventLoop: 'noise' },
     css: { mediaQueries: 'noise' },
     speech: { synthesis: 'noise' },
     permissions: { query: 'noise', notification: 'noise' },
-    storage: { estimate: 'noise', indexedDB: 'noise', webSQL: 'noise' },
+    storage: { estimate: 'noise', indexedDB: 'noise', webSQL: 'noise', privateModeProtection: 'noise' },
     math: { functions: 'noise' },
     keyboard: { layout: 'noise', cadence: 'noise' },
-    workers: { fingerprint: 'noise' },
+    workers: { fingerprint: 'noise', serviceWorker: 'noise' },
     errors: { stackTrace: 'noise' },
     rendering: { emoji: 'noise', mathml: 'noise' },
     intl: { apis: 'noise' },
@@ -69,7 +67,7 @@ const LEVEL_3: SpooferSettings = {
   hardware: { ...allNoise().hardware, battery: 'block', sensors: 'block' },
   navigator: { ...allNoise().navigator, clipboard: 'block', windowName: 'block' },
   network: { webrtc: 'block', connection: 'noise', geolocation: 'block', websocket: 'block' },
-  storage: { estimate: 'noise', indexedDB: 'noise', webSQL: 'block' },
+  storage: { estimate: 'noise', indexedDB: 'noise', webSQL: 'block', privateModeProtection: 'block' },
   devices: { gamepad: 'block', midi: 'block', bluetooth: 'block', usb: 'block', serial: 'block', hid: 'block' },
   payment: { applePay: 'block' },
 };
