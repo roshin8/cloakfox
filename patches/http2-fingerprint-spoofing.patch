@@ -1,5 +1,5 @@
---- a/b/netwerk/protocol/http/Http2Session.cpp	2026-04-18 20:24:57
-+++ b/netwerk/protocol/http/Http2Session.cpp	2026-04-18 20:26:45
+--- a/netwerk/protocol/http/Http2Session.cpp	2025-12-17 10:38:49
++++ b/netwerk/protocol/http/Http2Session.cpp	2026-04-18 20:43:53
 @@ -1067,6 +1067,17 @@
    // 3rd entry is bytes 21 to 26
    // 4th entry is bytes 27 to 32
@@ -102,3 +102,40 @@
      // send a window update for the session (Stream 0) for something large
      mLocalSessionWindow = mInitialRwin;
  
+--- a/netwerk/protocol/http/Http2Compression.cpp	2025-12-17 10:38:50
++++ b/netwerk/protocol/http/Http2Compression.cpp	2026-04-18 21:37:22
+@@ -16,6 +16,7 @@
+ #include "Http2Compression.h"
+ #include "Http2HuffmanIncoming.h"
+ #include "Http2HuffmanOutgoing.h"
++#include "mozilla/Preferences.h"
+ #include "mozilla/StaticPtr.h"
+ #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
+ #include "nsCharSeparatedTokenizer.h"
+@@ -1051,11 +1052,23 @@
+   }
+ 
+   // colon headers first
++  // Cloakfox: HPACK pseudo-header order is an Akamai h2 fingerprint input.
++  // Firefox default: m,p,a,s. Chrome: m,a,s,p. Toggled via pref.
++  nsAutoCString h2Profile;
++  Preferences::GetCString("network.http.http2.fingerprint_profile", h2Profile);
++  bool chromeH2 = h2Profile.EqualsLiteral("chrome");
++
+   if (!simpleConnectForm) {
+     ProcessHeader(nvPair(":method"_ns, method), false, false);
+-    ProcessHeader(nvPair(":path"_ns, path), true, false);
+-    ProcessHeader(nvPair(":authority"_ns, host), false, false);
+-    ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
++    if (chromeH2) {
++      ProcessHeader(nvPair(":authority"_ns, host), false, false);
++      ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
++      ProcessHeader(nvPair(":path"_ns, path), true, false);
++    } else {
++      ProcessHeader(nvPair(":path"_ns, path), true, false);
++      ProcessHeader(nvPair(":authority"_ns, host), false, false);
++      ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
++    }
+     if (isWebsocket) {
+       ProcessHeader(nvPair(":protocol"_ns, protocol), false, false);
+     }
