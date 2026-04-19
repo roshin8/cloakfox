@@ -158,14 +158,120 @@ safari : c9da4b13f7b57d7e7082044bd0f7225c | 2:0;3:100;4:2097152 | WU=10485760 | 
 ============================ 4 passed in 6.29s ============================
 ```
 
-## H3 / Sec-CH-UA / Math constants
+## 3. `test_h3_profile.py` — H3 profile pref plumbing
 
-Not yet covered. Easy additions:
+Verifies the HTTP/3 fingerprint profile pref round-trips through Firefox's
+static_prefs system. Wire-level observation of the QUIC SETTINGS frame
+would need mitmproxy-quic / wireshark — out of scope here. Instead this
+test proves: (a) the default pref is 0, (b) setting via prefs.js survives
+browser startup (defaultPref contract), (c) the `setHttp3Profile` WebIDL
+method is bound on windows.
 
-- **H3:** same pattern as `test_h2_profile.py` but against a quic-echoing
-  endpoint. Profile pref is an int (`network.http.http3.fingerprint_profile`).
-- **Sec-CH-UA:** visit `https://browserleaks.com/headers`, assert brands
-  vary with the user-agent profile.
-- **Math constants:** reload same domain in same container twice,
-  `Math.PI.toPrecision(17)` should match byte-for-byte; across two containers
-  the two values should differ.
+Documents a known limitation in its header — the WebIDL setter's
+`Preferences::SetUint` call runs in content-process scope and doesn't
+persist to the parent prefs DB without IPC. Selenium/prefs.js is the
+working path today; a WebExtensions Experiment API is the follow-up.
+
+```bash
+CLOAKFOX_BIN=... pytest tests/fingerprint/test_h3_profile.py -v
+```
+
+## 4. `test_sec_ch_ua.py` — Sec-CH-UA HTTP header injection
+
+Checks the webRequest header-spoofer emits `Sec-CH-UA`, `Sec-CH-UA-Mobile`,
+`Sec-CH-UA-Platform` headers when the assigned profile is Chromium, and
+does NOT emit them for Firefox/Safari profiles. Documents the cold-start
+race: first navigation in a session can't have CH headers because the
+inject script hasn't posted the active profile yet.
+
+```bash
+CLOAKFOX_BIN=... pytest tests/fingerprint/test_sec_ch_ua.py -v
+```
+
+## 5. `test_math_constants.py` — Math.PI / Math.E / etc. determinism
+
+Four tests: perturbation (not IEEE), in-session determinism, cross-domain
+differentiation, Math.sin is noisy too. Uses DOM-injection pattern because
+selenium's `execute_script` sandbox maintains a separate `Math` binding
+from the page's.
+
+```bash
+CLOAKFOX_BIN=... pytest tests/fingerprint/test_math_constants.py -v
+```
+
+## 6. `antibot_battery.py` — pre-release validation tool (not pytest)
+
+Drives Cloakfox through bot.sannysoft / areyouheadless / browserleaks /
+CreepJS under each of the three transport profiles, captures full-page
+screenshots, extracts verdicts where possible, emits a markdown report.
+Not wired into pytest — runs for minutes and depends on external sites.
+
+```bash
+CLOAKFOX_BIN=... python tests/fingerprint/antibot_battery.py
+```
+
+Output at `tests/fingerprint/reports/<timestamp>/REPORT.md` with inline
+screenshots.
+
+## Gotchas we hit (and documented in tests)
+
+Writing these tests surfaced several real bugs in the shipped build,
+each worth remembering:
+
+1. **`jar.mn` paths must match `manifest.json`.** Previously the jar
+   packaged files under `dist/inject/index.js` but manifest said
+   `inject/index.js` — Firefox silently skipped registering the content
+   script and no JS-level spoofing ran in ANY shipped build. Fixed by
+   flattening the `dist/` prefix from jar.mn destinations.
+
+2. **AutoConfig `pref()` clobbers user values.** `cloakfox.cfg` was
+   using `pref()` for the H2/H3 fingerprint toggles, which in Mozilla
+   AutoConfig semantics overwrites the user pref on every startup.
+   Must use `defaultPref()` so user values (set via selenium, extension,
+   or about:config) survive restart.
+
+3. **Math.PI is non-writable non-configurable per ECMA spec.** You
+   can't Proxy-wrap Math and return a different PI — the proxy invariant
+   for non-writable non-configurable properties demands the same value.
+   Any access throws TypeError. Workaround: build a plain object with
+   writable constants and replace `window.Math`.
+
+4. **Double XOR cancels the domain contribution to the seed.** The
+   inject script's fallback `generateSeed(domain)` XOR-folded domain
+   into the seed, then `initializeSpoofers()` XOR'd the domain in AGAIN
+   to derive the page PRNG. Domain bits cancel; every fallback page
+   gets the same PRNG. Fixed by dropping the domain from generateSeed
+   — let the spoofers module be the only place domain is XOR'd.
+
+5. **Noise must exceed float64 ULP to be visible.** My first Math
+   constant spoofer used 1e-15 noise. Math.PI's ULP is ~4.44e-16 — a
+   1e-15 perturbation rounds to zero half the time, producing IEEE-
+   identical bit patterns and defeating the spoof. Bumped to 1e-13
+   (~225 ULPs — guaranteed visible, still invisible numerically).
+
+6. **WebIDL setters from content process don't persist prefs.**
+   `Preferences::SetCString/SetUint` called from a WebIDL method runs
+   in content-process scope. In e10s Firefox the parent owns the prefs
+   DB; content writes don't persist without IPC. The `setHttp2Profile`
+   / `setHttp3Profile` methods self-destruct (proving they were called)
+   but the pref doesn't actually change. Real toggle path is via
+   profile prefs.js or about:config — not the page-script setter.
+
+7. **Selenium sandbox has its own Math binding.** `driver.execute_script`
+   runs in a webdriver sandbox with a separate copy of Math from the
+   page. Reading `Math.PI` from selenium gets the IEEE default even when
+   the page's Math is spoofed. Workaround: inject a `<script>` tag that
+   writes the value to the DOM, then read via `find_element`.
+
+## What lives where
+
+```
+tests/fingerprint/
+├── README.md                — this file
+├── test_h2_profile.py       — H2 SETTINGS/WINDOW_UPDATE/HPACK shape per profile
+├── test_h3_profile.py       — H3 pref plumbing
+├── test_sec_ch_ua.py        — HTTP header injection
+├── test_math_constants.py   — Math.PI/E/LN2 noise
+├── mitm_h2_observer.py      — local byte-level observer
+└── antibot_battery.py       — manual pre-release validation tool
+```
