@@ -6,15 +6,27 @@ designed and match the browser they claim to mimic.
 ## 1. `test_h2_profile.py` — automated shape check
 
 Launches the built Cloakfox binary under each H2 profile (firefox / chrome /
-safari) via Playwright, hits `https://tls.peet.ws/api/all`, and asserts the
-SETTINGS frame, WINDOW_UPDATE, and HPACK pseudo-header order match the
-profile contract.
+safari) via **Selenium + geckodriver**, hits `https://tls.peet.ws/api/all`,
+and asserts the SETTINGS frame, WINDOW_UPDATE, and HPACK pseudo-header order
+match each profile's spec.
+
+### Why Selenium and not Playwright
+
+Playwright's Firefox driver uses the Juggler protocol, which requires a
+Juggler-patched Firefox binary. Playwright ships one; Cloakfox does not.
+Attempting `playwright.firefox.launch_persistent_context(executable_path=CLOAKFOX_BIN)`
+times out after 180s waiting for a Juggler handshake that never comes.
+
+geckodriver speaks Marionette — the WebDriver protocol that every Firefox
+build (vanilla, LibreWolf, Cloakfox, Camoufox) supports by default. No patch
+required.
 
 ### Setup
 
 ```bash
-pip install pytest playwright
-python -m playwright install  # downloads Playwright's browser drivers
+pip install pytest selenium
+brew install geckodriver          # macOS
+# or download geckodriver from https://github.com/mozilla/geckodriver/releases
 ```
 
 ### Run
@@ -24,10 +36,10 @@ CLOAKFOX_BIN=/Applications/Cloakfox.app/Contents/MacOS/cloakfox \
   pytest tests/fingerprint/test_h2_profile.py -v
 ```
 
-Or on Linux:
+On Linux, point at the built-in-tree binary:
 
 ```bash
-CLOAKFOX_BIN=/path/to/firefox-src/obj-*/dist/bin/cloakfox \
+CLOAKFOX_BIN=$(pwd)/firefox-src/obj-x86_64-pc-linux-gnu/dist/bin/cloakfox \
   pytest tests/fingerprint/test_h2_profile.py -v
 ```
 
@@ -36,20 +48,43 @@ without blowing up on machines without a built binary.
 
 ### What each test checks
 
-- `test_h2_profile_shape[firefox]` — MAX_FRAME_SIZE present, MAX_HEADER_LIST_SIZE absent, HPACK order `:method, :path, :authority, :scheme`.
-- `test_h2_profile_shape[chrome]` — MAX_HEADER_LIST_SIZE=262144, no MAX_FRAME_SIZE, WINDOW_UPDATE=15663105, HPACK order `:method, :authority, :scheme, :path`.
-- `test_h2_profile_shape[safari]` — sparse SETTINGS (IDs 2/3/4 only), WINDOW_UPDATE=10485760, HPACK order `:method, :scheme, :path, :authority`.
-- `test_h2_profiles_produce_distinct_fingerprints` — all three profiles produce distinct `akamai_fingerprint_hash` values. Collapsing hashes mean the WebIDL setter isn't firing.
+- `test_h2_profile_shape[firefox]` — SETTINGS {1,2,4,5}, HPACK order `:method, :path, :authority, :scheme`.
+- `test_h2_profile_shape[chrome]` — SETTINGS {1,2,3,4,6} with MAX_CONCURRENT=1000, INITIAL_WINDOW=6291456, MAX_HEADER_LIST=262144; WINDOW_UPDATE=15663105; HPACK order `:method, :authority, :scheme, :path`.
+- `test_h2_profile_shape[safari]` — sparse SETTINGS {2,3,4} with MAX_CONCURRENT=100, INITIAL_WINDOW=2097152; WINDOW_UPDATE=10485760; HPACK order `:method, :scheme, :path, :authority`.
+- `test_h2_profiles_produce_distinct_fingerprints` — all three profiles produce distinct `akamai_fingerprint_hash` values. Collapsing hashes mean the WebIDL setter isn't firing OR `cloakfox.cfg` is clobbering user prefs (see gotcha below).
+
+### One shared probe per session
+
+The three shape tests and the distinct-fingerprints test share a single
+session-scoped fixture that launches Cloakfox once per profile. This makes
+the full suite run in ~6 seconds against a local build.
 
 ### Known limitations
 
-- `headless=False` is intentional. Cloakfox's `setHttp2Profile` WebIDL method
-  is bound in the MAIN world and gets nerfed by some headless code paths.
-  CI runs need a virtual display (Xvfb on Linux).
-- The pref is forced via `user.js` dropped in the profile dir rather than
-  through the extension UI. This tests the C++ patch directly. A second
-  test that round-trips through the extension (`setHttp2Profile()` call
-  from `content/index.ts`) would be a useful addition.
+- **Headless is OK** for this test — we only care about wire-level bytes,
+  not JS-level MAIN-world spoofing. Tests that check `navigator.*`, canvas,
+  etc. would need headful.
+- Geckodriver prints its log to `<tmp>/gd-<profile>.log` if you need to
+  debug why a launch failed.
+
+### Why the `pref()` vs `defaultPref()` matters (gotcha)
+
+The AutoConfig file `settings/cloakfox.cfg` originally declared:
+
+```
+pref("network.http.http2.fingerprint_profile", "firefox");
+```
+
+In Mozilla's AutoConfig semantics, `pref()` overwrites the user value on
+every startup. So if the extension (or a test, or an about:config edit)
+flipped the pref to "chrome", the next startup reset it to "firefox" and
+the patch emitted Firefox-default SETTINGS. The test caught this with
+`test_h2_profiles_produce_distinct_fingerprints` failing — all three
+profiles produced identical hashes.
+
+Fix: use `defaultPref()` for toggleable prefs. This only seeds the default
+value; the user value (set by `Preferences::SetCString` via the WebIDL
+setter, or by `set_preference` in the test) survives restart.
 
 ## 2. `mitm_h2_observer.py` — local packet-level observation
 
@@ -72,11 +107,11 @@ mitmproxy -s tests/fingerprint/mitm_h2_observer.py --listen-port 8080
 Then in Cloakfox, `about:config`:
 
 ```
-network.proxy.type       = 1
-network.proxy.http       = 127.0.0.1
-network.proxy.http_port  = 8080
-network.proxy.ssl        = 127.0.0.1
-network.proxy.ssl_port   = 8080
+network.proxy.type                 = 1
+network.proxy.http                 = 127.0.0.1
+network.proxy.http_port            = 8080
+network.proxy.ssl                  = 127.0.0.1
+network.proxy.ssl_port             = 8080
 network.proxy.share_proxy_settings = true
 ```
 
@@ -95,9 +130,6 @@ WINDOW_UPDATE: 15663105
 HPACK order on first HEADERS: :method, :authority, :scheme, :path
 ```
 
-Compare against the profile contracts above. If the pref is set to `chrome`
-but you see Firefox bytes, the setter isn't firing.
-
 ### HTTPS interception note
 
 mitmproxy intercepts TLS by injecting its own CA cert. Install mitmproxy's
@@ -110,8 +142,20 @@ the cert manipulation leaks the real fingerprint.
 ```
 tests/fingerprint/
 ├── README.md                — this file
-├── test_h2_profile.py       — Playwright E2E: launches Cloakfox, hits peetwapp
+├── test_h2_profile.py       — Selenium E2E: launches Cloakfox, hits peetwapp
 └── mitm_h2_observer.py      — mitmproxy addon: logs H2 frames locally
+```
+
+## Live verification output (reference)
+
+Run against a build at `unified-maskconfig@2195549a9c`:
+
+```
+firefox: 6ea73faa8fc5aac76bded7bd238f6433 | 1:65536;2:0;4:131072;5:16384 | WU=12517377 | m,p,a,s
+chrome : a345a694846ad9f6c97bcc3c75adbe26 | 1:65536;2:0;3:1000;4:6291456;6:262144 | WU=15663105 | m,a,s,p
+safari : c9da4b13f7b57d7e7082044bd0f7225c | 2:0;3:100;4:2097152 | WU=10485760 | m,s,p,a
+
+============================ 4 passed in 6.29s ============================
 ```
 
 ## H3 / Sec-CH-UA / Math constants
@@ -119,8 +163,7 @@ tests/fingerprint/
 Not yet covered. Easy additions:
 
 - **H3:** same pattern as `test_h2_profile.py` but against a quic-echoing
-  endpoint (`https://cloudflare-quic.com/b/headers` returns the H3 SETTINGS
-  it observed).
+  endpoint. Profile pref is an int (`network.http.http3.fingerprint_profile`).
 - **Sec-CH-UA:** visit `https://browserleaks.com/headers`, assert brands
   vary with the user-agent profile.
 - **Math constants:** reload same domain in same container twice,
