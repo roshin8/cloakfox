@@ -1,8 +1,8 @@
 # 🛡️ Cloakfox fingerprint coverage
 
-> **At a glance:** Cloakfox intercepts **83 fingerprinting signals** across the browser. Most are spoofed at the **C++ engine level** (undetectable to JavaScript), driven by a WebExtension that generates **per-container, per-domain unique values**. Another 15 signals are out of scope (wrong layer) or genuinely not portable.
+> **At a glance:** Cloakfox intercepts **84 fingerprinting signals** across the browser. Most are spoofed at the **C++ engine level** (undetectable to JavaScript), driven by a WebExtension that generates **per-container, per-domain unique values**. Another 15 signals are out of scope (wrong layer) or genuinely not portable.
 
-![Coverage](https://img.shields.io/badge/signals_covered-83-success) ![Per-container](https://img.shields.io/badge/per--container-76-blue) ![Engine-level](https://img.shields.io/badge/C++_patches-52-orange) ![Extension-only](https://img.shields.io/badge/JS_only-7-yellow)
+![Coverage](https://img.shields.io/badge/signals_covered-84-success) ![Per-container](https://img.shields.io/badge/per--container-76-blue) ![Engine-level](https://img.shields.io/badge/C++_patches-53-orange) ![Extension-only](https://img.shields.io/badge/JS_only-7-yellow)
 
 ---
 
@@ -379,19 +379,19 @@ Verified via `grep dom/webidl/` — zero matches. The JS spoofers for these APIs
 
 ```
 ─────────────────────────────────────────────────────────
- 83  signals covered
-     ├─ 52 ⚙️ C++ engine patches (undetectable)
+ 84  signals covered
+     ├─ 53 ⚙️ C++ engine patches (undetectable)
      │    ├─ 27 inherited from Camoufox upstream
-     │    └─ 25 new on Cloakfox unified-maskconfig
+     │    └─ 26 new on Cloakfox unified-maskconfig
      ├─ 11 🌐 HTTP / webRequest (Camoufox + CH by CX)
      ├─  7 🔌 JS-only (stealth / math / keyboard / etc)
      ├─  8 📄 prefs (cloakfox.cfg)
      └─  4 🛡️ native Firefox statics
 
- 76  per-container unique (76/83 = 92 %)
-  7  global (buildID, timer precision, mDNS, native statics)
+ 76  per-container unique (76/84 = 90 %)
+  8  global (buildID, timer precision, mDNS, H2 profile, native statics)
 
- 15  remaining gaps (low-value or out-of-scope)
+ 13  remaining gaps (low-value or out-of-scope)
  12  APIs Firefox doesn't implement (JS spoofers deleted)
 ─────────────────────────────────────────────────────────
 ```
