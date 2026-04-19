@@ -47,8 +47,55 @@ export function initMathSpoofer(mode: ProtectionMode, prng: PRNG): void {
     });
   }
 
-  // Math constants (PI, E, LN2, etc.) are read-only values that some
-  // fingerprinters check. We don't modify them — they're used in real
-  // numerical code and any noise would break calculations. Leaving them
-  // untouched is the correct trade-off.
+  // ─── Math constants noise ────────────────────────────────────────
+  // Math.PI / Math.E / Math.LN2 / etc. are spec-fixed IEEE-754 doubles,
+  // so every legitimate browser returns identical bit patterns. A per-
+  // container 1e-16 ULP perturbation makes the values uniquely
+  // identifiable to probes like `Math.PI.toString() === '3.141592653589793'`
+  // while preserving enough numerical precision that trig, WebGL
+  // matrices, physics sims, and canvas arc rendering stay visually
+  // indistinguishable.
+  //
+  // The constants are defined with { configurable: false } by the JS
+  // spec, so we can't redefineProperty them directly. Instead we wrap
+  // `Math` in a Proxy and replace the global reference — callers that
+  // read `Math.PI` or `Math.E` go through the get trap.
+  //
+  // Trade-off: code that does `if (Math.PI === 3.141592653589793)` will
+  // break. Such code is rare and always a bug (the check is tautological
+  // on every real browser), but math-heavy sites that happen to compare
+  // constants to a hard-coded literal may misbehave. Set the math.functions
+  // spoofer to 'off' to disable.
+  const tinyNoise = () => (prng.nextFloat() - 0.5) * 1e-15;
+  const spoofedConstants: Record<string, number> = {
+    PI: Math.PI + tinyNoise(),
+    E: Math.E + tinyNoise(),
+    LN2: Math.LN2 + tinyNoise(),
+    LN10: Math.LN10 + tinyNoise(),
+    LOG2E: Math.LOG2E + tinyNoise(),
+    LOG10E: Math.LOG10E + tinyNoise(),
+    SQRT2: Math.SQRT2 + tinyNoise(),
+    SQRT1_2: Math.SQRT1_2 + tinyNoise(),
+  };
+
+  const spoofedMath = new Proxy(Math, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && prop in spoofedConstants) {
+        logAccess(`Math.${prop}`, { spoofed: true, value: 'constant noise' });
+        return spoofedConstants[prop];
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+
+  try {
+    Object.defineProperty(window, 'Math', {
+      value: spoofedMath,
+      writable: true,
+      configurable: true,
+    });
+  } catch {
+    // If the global is non-configurable (some sandboxes), skip silently —
+    // the per-function noise above still runs.
+  }
 }
