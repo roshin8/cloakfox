@@ -225,6 +225,7 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 | HTTP `Accept-Language` header | 🔴 | 🌐 | 🔒 | ☐ | ☑ | ☐ |
 | HTTP `Accept-Encoding` header | 🟡 | 🌐 | 🔒 | ☐ | ☑ | ☐ |
 | Client Hints `Sec-CH-UA-*` headers | 🔴 | 🔌 (webRequest) | 🔒 | ☐ | ☐ | ☑ |
+| HTTP/2 SETTINGS + WINDOW_UPDATE fingerprint (Akamai h2fp) | 🔴 | ⚙️ Http2Session.cpp | 🌍 (opt-in pref) | ☐ | ☐ | ☑ |
 
 ---
 
@@ -346,7 +347,8 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 | `Error().stack` at engine level | 🔧 SM | 🔴 high | JS spoofer handles |
 | `KeyboardEvent.timeStamp` at engine | ⚙️ events | 🔴 high | breaks input semantics. JS spoofer handles. |
 | TLS JA3/JA4 fingerprint | NSS | — | ❌ out of Gecko scope |
-| HTTP/2 SETTINGS frame ordering | netwerk | 🔴 high | rarely FP'd in practice |
+| ~~HTTP/2 SETTINGS + WINDOW_UPDATE~~ | ~~netwerk~~ | ✅ done | opt-in via `network.http.http2.fingerprint_profile=chrome` — Akamai h2fp partially closed |
+| HTTP/2 HPACK pseudo-header order (:method/:authority/:scheme/:path) | netwerk HPACK | 🔴 high | harder — lives in Http2HeadersCompressor.cpp; the other ~30% of the h2fp |
 | TCP stack fingerprint | OS | — | ❌ impossible from browser |
 
 ---
