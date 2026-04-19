@@ -141,7 +141,7 @@ export function validateMessageType(message: unknown): ValidationResult<Extensio
     return { valid: false, error: `Unknown message type: ${message.type}` };
   }
 
-  return { valid: true, data: message as ExtensionMessage };
+  return { valid: true, data: message as unknown as ExtensionMessage };
 }
 
 /**

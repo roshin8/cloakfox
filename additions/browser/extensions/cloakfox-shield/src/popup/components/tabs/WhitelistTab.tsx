@@ -25,8 +25,9 @@ export default function WhitelistTab({ settings, onSaveSettings }: WhitelistTabP
     async function loadBlocked() {
       try {
         const stored = await browser.storage.local.get('blockedTrackingDomains');
-        if (stored.blockedTrackingDomains) {
-          setBlockedDomains(stored.blockedTrackingDomains);
+        const list = stored.blockedTrackingDomains as string[] | undefined;
+        if (list) {
+          setBlockedDomains(list);
         } else {
           // Default list
           setBlockedDomains([

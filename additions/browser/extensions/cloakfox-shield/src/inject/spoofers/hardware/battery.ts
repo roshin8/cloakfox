@@ -33,7 +33,7 @@ export function initBatterySpoofer(mode: ProtectionMode, prng: PRNG): void {
   }
 
   // Noise mode - return fake battery info
-  const originalGetBattery = navigator.getBattery.bind(navigator);
+  const originalGetBattery = (navigator.getBattery as () => Promise<any>).bind(navigator);
 
   // Generate consistent fake battery values for this container+domain
   const fakeBattery = {

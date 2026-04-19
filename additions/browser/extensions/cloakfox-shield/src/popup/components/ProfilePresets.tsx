@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ProfileSettings } from '@/types';
+import type { ProfileConfig } from '@/types';
 
 /**
  * Browser profile preset definition
@@ -9,7 +9,7 @@ interface ProfilePreset {
   name: string;
   description: string;
   icon: string;
-  profile: Partial<ProfileSettings>;
+  profile: Partial<ProfileConfig>;
 }
 
 /**
@@ -121,8 +121,8 @@ const PROFILE_PRESETS: ProfilePreset[] = [
 ];
 
 interface ProfilePresetsProps {
-  currentProfile: ProfileSettings;
-  onChange: (profile: Partial<ProfileSettings>) => void;
+  currentProfile: ProfileConfig;
+  onChange: (profile: Partial<ProfileConfig>) => void;
   disabled?: boolean;
 }
 

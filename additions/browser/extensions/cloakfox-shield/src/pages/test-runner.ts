@@ -6,7 +6,8 @@
  * No engine injection. No localhost testing. Real extension on real sites.
  */
 
-declare const browser: typeof chrome;
+import browserPolyfill from 'webextension-polyfill';
+const browser = browserPolyfill as any;
 
 const RESULT_SERVER = 'http://localhost:19999';
 const REAL_TZO = new Date().getTimezoneOffset(); // Before spoofers affect this page
@@ -1822,7 +1823,7 @@ async function scenario_PopupSignalsTab() {
         check('Network signals visible', signals?.hasNetwork, 'true', !!signals?.hasNetwork),
         check('Device signals visible', signals?.hasDevices, 'true', !!signals?.hasDevices),
         check('Worker signals visible', signals?.hasWorkers, 'true', !!signals?.hasWorkers),
-        check('fpData keys in storage', signals?.fpKeys?.join(', '), '> 0', (signals?.fpKeys?.length || 0) > 0),
+        check('fpData keys in storage', (signals as any)?.fpKeys?.join(', '), '> 0', ((signals as any)?.fpKeys?.length || 0) > 0),
         check('Signal value elements found', signals?.valueCount, '> 5', (signals?.valueCount || 0) > 5),
         check('Example values', signals?.foundValues?.join(', '), 'non-empty', (signals?.foundValues?.length || 0) > 0),
       ],

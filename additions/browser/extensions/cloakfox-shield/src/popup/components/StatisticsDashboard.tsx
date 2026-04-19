@@ -52,7 +52,7 @@ export default function StatisticsDashboard({ containerId }: StatisticsDashboard
       try {
         const key = containerId ? `statistics_${containerId}` : 'statistics_global';
         const result = await browser.storage.local.get(key);
-        setStats(result[key] || DEFAULT_STATISTICS);
+        setStats((result[key] as StatisticsData | undefined) || DEFAULT_STATISTICS);
       } catch (error) {
         popupLogger.error('Failed to load statistics:', error);
       } finally {

@@ -13,7 +13,7 @@ const PAGE_MSG_FINGERPRINT_REPORT = 'CONTAINER_SHIELD_FINGERPRINT_REPORT';
 const PAGE_MSG_GET_REPORT = 'CONTAINER_SHIELD_GET_REPORT';
 const PAGE_MSG_GET_RECOMMENDATIONS = 'CONTAINER_SHIELD_GET_RECOMMENDATIONS';
 
-declare const browser: typeof chrome;
+import browser from 'webextension-polyfill';
 
 // Sync the HTTP/2 fingerprint profile into the page's privileged
 // window.setHttp2Profile() WebIDL method. Runs at document_start so the
@@ -22,7 +22,8 @@ declare const browser: typeof chrome;
 // (Firefox prefs are process-wide), so one successful call is enough.
 (async () => {
   try {
-    const { globalSettings } = await browser.storage.local.get('globalSettings');
+    const stored = await browser.storage.local.get('globalSettings');
+    const globalSettings = stored.globalSettings as { http2Profile?: string } | undefined;
     const profile = globalSettings?.http2Profile;
     if (profile !== 'firefox' && profile !== 'chrome' && profile !== 'safari') return;
     const pageWin = (window as any).wrappedJSObject;
@@ -69,7 +70,8 @@ window.addEventListener('message', async (event) => {
 });
 
 // Background → Page: forward report/recommendation requests
-browser.runtime.onMessage.addListener((message: { type: string; settings?: unknown }) => {
+browser.runtime.onMessage.addListener((rawMessage: unknown) => {
+  const message = rawMessage as { type: string; settings?: unknown };
   if (message.type === MSG_GET_FINGERPRINT_REPORT) {
     window.postMessage({ type: PAGE_MSG_GET_REPORT }, '*');
     return true;

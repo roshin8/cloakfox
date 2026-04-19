@@ -97,7 +97,7 @@ export function initAudioSpoofer(mode: ProtectionMode, prng: PRNG): void {
   }
 
   // Patch getOutputTimestamp to add noise
-  if (typeof AudioContext !== 'undefined' && AudioContext.prototype.getOutputTimestamp) {
+  if (typeof AudioContext !== 'undefined' && 'getOutputTimestamp' in AudioContext.prototype) {
     overrideMethod(AudioContext.prototype, 'getOutputTimestamp', (original, thisArg, _args) => {
       const ts = original.call(thisArg);
       logAccess('AudioContext.getOutputTimestamp', { spoofed: true });

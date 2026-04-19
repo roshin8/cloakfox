@@ -35,7 +35,7 @@ export class IPIsolation {
     );
 
     // Listen for "allow once" messages from warning page
-    browser.runtime.onMessage.addListener((message) => {
+    browser.runtime.onMessage.addListener((message: unknown) => {
       if ((message as any).type === 'IP_ALLOW_ONCE') {
         const { ip, url, containerId, containerName } = message as any;
         this.allowedOnce.add(ip);

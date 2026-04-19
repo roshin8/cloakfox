@@ -115,8 +115,9 @@ export class HeaderSpoofer {
     // Load user-configured blocked domains
     try {
       const stored = await browser.storage.local.get('blockedTrackingDomains');
-      if (stored.blockedTrackingDomains) {
-        this.blockedDomains = new Set(stored.blockedTrackingDomains);
+      const list = stored.blockedTrackingDomains as string[] | undefined;
+      if (list) {
+        this.blockedDomains = new Set<string>(list);
       }
     } catch {}
 
@@ -220,11 +221,14 @@ export class HeaderSpoofer {
       const headers = this.modifyHeaders(
         details.requestHeaders || [],
         settings.headers,
-        effectiveProfile
+        effectiveProfile as unknown as import('@/types').ProfileConfig
       );
 
       // Reorder headers to match spoofed browser's typical order
-      const reordered = this.reorderHeaders(headers, effectiveProfile);
+      const reordered = this.reorderHeaders(
+        headers,
+        effectiveProfile as unknown as import('@/types').ProfileConfig
+      );
       return { requestHeaders: reordered };
     } catch {
       return {};

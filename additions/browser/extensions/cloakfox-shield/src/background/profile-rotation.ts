@@ -91,7 +91,7 @@ export class ProfileRotation {
    */
   private async loadSettings(): Promise<void> {
     const result = await browser.storage.local.get('rotationSettings');
-    this.settings = result.rotationSettings || DEFAULT_ROTATION_SETTINGS;
+    this.settings = (result.rotationSettings as RotationSettings | undefined) || DEFAULT_ROTATION_SETTINGS;
   }
 
   /**

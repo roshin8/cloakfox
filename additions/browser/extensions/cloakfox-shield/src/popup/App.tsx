@@ -106,7 +106,7 @@ export default function App() {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (tab?.id) {
         const stored = await browser.storage.local.get(`activeProfile:${tab.id}`);
-        const active = stored[`activeProfile:${tab.id}`];
+        const active = stored[`activeProfile:${tab.id}`] as { profile?: any } | undefined;
         if (active?.profile) {
           setAssignedProfile(active.profile);
           return;
@@ -219,11 +219,11 @@ export default function App() {
               <DashboardTab settings={settings} onSaveSettings={saveSettings}
                 onEnableSpoofer={enableSpoofer} onNavigateToSignal={navigateToSignal}
                 currentContainerId={selectedContainer || undefined}
-                assignedProfile={assignedProfile} />
+                assignedProfile={assignedProfile as any} />
             )}
             {activeTab === 'fingerprint' && (
               <FingerprintTab settings={settings} onSaveSettings={saveSettings}
-                assignedProfile={assignedProfile} />
+                assignedProfile={assignedProfile as any} />
             )}
             {activeTab === 'signals' && (
               <SignalsTab settings={settings} onSaveSettings={saveSettings}

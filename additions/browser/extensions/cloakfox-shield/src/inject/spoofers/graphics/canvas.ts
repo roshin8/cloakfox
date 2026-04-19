@@ -86,7 +86,7 @@ export function initCanvasSpoofer(mode: ProtectionMode, prng: PRNG): void {
   }
 
   // Block canvas.captureStream — returns unnoised video stream
-  if (HTMLCanvasElement.prototype.captureStream) {
+  if ('captureStream' in HTMLCanvasElement.prototype) {
     overrideMethod(HTMLCanvasElement.prototype, 'captureStream', (original, thisArg, args) => {
       logAccess('HTMLCanvasElement.captureStream', { spoofed: true });
       if (mode === 'block') {

@@ -11,7 +11,7 @@
 import { PRNG, base64ToUint8Array } from '@/lib/crypto';
 import type { AssignedProfileData } from '@/types';
 
-const win = window as Record<string, unknown>;
+const win = window as unknown as Record<string, unknown>;
 
 /** Try calling a C++ method. Returns true if it existed and was called. */
 function callCore(method: string, ...args: unknown[]): boolean {
@@ -160,8 +160,9 @@ export function applyCoreProtections(
   // would flag the container as a premium display = extra identity bits.
   cloakConfig['mediaFeature:colorGamut'] = 0;
   // Resolution in device-pixels-per-CSS-pixel should match spoofed DPR.
-  if (profile?.screen?.dpr) {
-    cloakConfig['mediaFeature:resolution'] = profile.screen.dpr;
+  const dpr = profile?.screen?.devicePixelRatio;
+  if (dpr) {
+    cloakConfig['mediaFeature:resolution'] = dpr;
   }
   if (Object.keys(cloakConfig).length > 0) {
     if (callCore('setCloakConfig', JSON.stringify(cloakConfig))) {

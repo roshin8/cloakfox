@@ -44,8 +44,13 @@ export function initErrorSpoofer(mode: ProtectionMode, prng: PRNG): void {
     return error;
   } as ErrorConstructor;
 
-  // Copy prototype and static methods
-  window.Error.prototype = OriginalError.prototype;
+  // Copy prototype and static methods. Error.prototype is read-only per
+  // the spec, so defineProperty is required instead of direct assignment.
+  Object.defineProperty(window.Error, 'prototype', {
+    value: OriginalError.prototype,
+    writable: false,
+    configurable: false,
+  });
   Object.setPrototypeOf(window.Error, OriginalError);
 
   // Also spoof captureStackTrace if it exists (V8-specific)

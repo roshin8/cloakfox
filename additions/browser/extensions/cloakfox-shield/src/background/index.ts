@@ -41,9 +41,7 @@ async function init(): Promise<void> {
     await profileRotation.init();
 
     const statisticsStore = new StatisticsStore();
-    if (typeof statisticsStore.init === 'function') {
-      await statisticsStore.init();
-    }
+    // StatisticsStore lazily loads on first access, no explicit init needed.
 
     const messageHandler = new MessageHandler(
       settingsStore, containerManager, ipIsolation, profileRotation, statisticsStore

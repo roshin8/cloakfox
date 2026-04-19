@@ -20,7 +20,7 @@ export function initOffscreenCanvasSpoofer(mode: ProtectionMode, prng: PRNG): vo
   if (typeof OffscreenCanvas === 'undefined') return;
 
   // Spoof OffscreenCanvas.convertToBlob
-  if (OffscreenCanvas.prototype.convertToBlob) {
+  if ('convertToBlob' in OffscreenCanvas.prototype) {
     overrideMethod(OffscreenCanvas.prototype, 'convertToBlob', async (original, thisArg, args) => {
       const options = args[0] as ImageEncodeOptions | undefined;
       logAccess('OffscreenCanvas.convertToBlob', { spoofed: mode !== 'block', value: 'noised' });

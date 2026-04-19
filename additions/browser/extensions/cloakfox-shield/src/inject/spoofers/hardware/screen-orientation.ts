@@ -42,12 +42,12 @@ export function initScreenOrientationSpoofer(mode: ProtectionMode, prng: PRNG): 
     addEventListener: originalOrientation.addEventListener.bind(originalOrientation),
     removeEventListener: originalOrientation.removeEventListener.bind(originalOrientation),
     dispatchEvent: originalOrientation.dispatchEvent.bind(originalOrientation),
-    lock: function (orientation: OrientationLockType): Promise<void> {
+    lock: function (orientation: OrientationType): Promise<void> {
       logAccess('screen.orientation.lock', { spoofed: true, value: spoofedType });
       if (mode === 'block') {
         return Promise.reject(new DOMException('Orientation lock denied', 'NotSupportedError'));
       }
-      return originalOrientation.lock(orientation);
+      return (originalOrientation as any).lock(orientation);
     },
     unlock: function (): void {
       logAccess('screen.orientation.unlock', { spoofed: true, value: spoofedType });

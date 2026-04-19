@@ -48,13 +48,11 @@ export function initFeatureSpoofer(mode: ProtectionMode, prng: PRNG): void {
   }
 
   // Spoof document.implementation.hasFeature (deprecated but still used)
+  // Signature is `(...args: any[]) => true` per DOM spec legacy behavior.
   if (document.implementation && document.implementation.hasFeature) {
-    document.implementation.hasFeature = function (
-      feature: string,
-      version?: string
-    ): boolean {
+    document.implementation.hasFeature = function (..._args: any[]): true {
       logAccess('document.implementation.hasFeature', { spoofed: true, value: 'webdriver: false' });
-      return true; // Always return true (it's deprecated anyway)
+      return true;
     };
   }
 

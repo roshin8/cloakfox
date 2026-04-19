@@ -164,7 +164,7 @@ export function initWebGLSpoofer(
       if (typeof OffscreenCanvas !== 'undefined') {
         const origOCGetCtx = OffscreenCanvas.prototype.getContext;
         OffscreenCanvas.prototype.getContext = function(this: OffscreenCanvas, id: string, ...rest: any[]) {
-          const ctx = origOCGetCtx.call(this, id, ...rest);
+          const ctx = (origOCGetCtx as any).call(this, id, ...rest);
           if (ctx && (id === 'webgl' || id === 'experimental-webgl') && webglMode !== 'off') {
             patchCtx(ctx, webglMode, _origWGL1GetParam);
           }

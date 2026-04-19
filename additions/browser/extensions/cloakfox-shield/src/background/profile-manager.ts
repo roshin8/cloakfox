@@ -5,8 +5,9 @@
  * assigned to multiple containers, which would allow cross-container tracking.
  */
 
+import browser from 'webextension-polyfill';
 import type { ContainerEntropy } from '@/types';
-import { PRNG, generateSeed, base64ToUint8Array, uint8ArrayToBase64 } from '@/lib/crypto';
+import { PRNG, base64ToUint8Array } from '@/lib/crypto';
 import {
   ALL_PROFILES,
   type UserAgentProfile,
@@ -226,14 +227,30 @@ export async function generateProfileWithBayesian(
       userAgent: fp.userAgent,
       platform: fp.platform,
       vendor: '',
+      vendorSub: '',
       appVersion: fp.appVersion,
+      appName: 'Netscape',
+      appCodeName: 'Mozilla',
+      product: 'Gecko',
+      productSub: '20100101',
       oscpu: fp.oscpu,
       mobile: false,
       platformName: fp.platform.includes('Win') ? 'Windows' : fp.platform.includes('Mac') ? 'macOS' : 'Linux',
       platformVersion: '',
+      architecture: 'x86',
+      bitness: '64',
+      model: '',
     };
 
+    // Synthesize ScreenProfile fields (id/name/category/popularity) for the
+    // Bayesian-generated dimensions — the real profile registry fields are
+    // only used for UI filtering, not for fingerprint values.
+    const isDesktop = fp.screen.width >= 1280;
     const screen: ScreenProfile = {
+      id: `bayesian-${fp.screen.width}x${fp.screen.height}`,
+      name: `${fp.screen.width}x${fp.screen.height}`,
+      category: isDesktop ? 'desktop' : 'laptop',
+      popularity: 1,
       width: fp.screen.width,
       height: fp.screen.height,
       availWidth: fp.screen.availWidth,
@@ -352,10 +369,13 @@ async function saveRegistry(): Promise<void> {
 export async function loadRegistry(): Promise<void> {
   try {
     const result = await browser.storage.local.get('profileRegistry');
-    if (result.profileRegistry) {
+    const stored = result.profileRegistry as
+      | { assignments?: Record<string, AssignedProfile>; usedSignatures?: string[] }
+      | undefined;
+    if (stored) {
       registry = {
-        assignments: result.profileRegistry.assignments || {},
-        usedSignatures: new Set(result.profileRegistry.usedSignatures || []),
+        assignments: stored.assignments || {},
+        usedSignatures: new Set<string>(stored.usedSignatures || []),
       };
       console.log(
         `[ProfileManager] Loaded ${Object.keys(registry.assignments).length} profile assignments`

@@ -38,7 +38,7 @@ export default function ProfileRotationSettings({ containerId }: ProfileRotation
     async function loadSettings() {
       try {
         const result = await browser.storage.local.get('rotationSettings');
-        setSettings(result.rotationSettings || {
+        setSettings((result.rotationSettings as RotationSettings | undefined) || {
           enabled: false,
           schedule: 'daily',
           lastRotation: {},

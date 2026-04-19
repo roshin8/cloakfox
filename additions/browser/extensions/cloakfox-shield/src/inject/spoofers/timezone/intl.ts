@@ -177,7 +177,7 @@ export function initTimezoneSpoofer(
           // Local-parsed — shift to spoofed timezone
           return new OrigDate(OrigDate.parse(s) + offsetDiffMs);
         }
-        return new OrigDate(...args);
+        return new (OrigDate as any)(...args);
       }
       return new OrigDate().toString();
     } as any;

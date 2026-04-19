@@ -81,7 +81,7 @@ export function initCodecSpoofer(mode: ProtectionMode, prng: PRNG): void {
   });
 
   // Spoof MediaSource.isTypeSupported
-  if (typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported) {
+  if (typeof MediaSource !== 'undefined' && 'isTypeSupported' in MediaSource) {
     overrideMethod(MediaSource as any, 'isTypeSupported', (original, _thisArg, args) => {
       const type = args[0] as string;
       logAccess('MediaSource.isTypeSupported', { spoofed: true, value: 'normalized' });
@@ -101,7 +101,7 @@ export function initCodecSpoofer(mode: ProtectionMode, prng: PRNG): void {
   }
 
   // Spoof RTCRtpSender.getCapabilities (WebRTC codecs)
-  if (typeof RTCRtpSender !== 'undefined' && RTCRtpSender.getCapabilities) {
+  if (typeof RTCRtpSender !== 'undefined' && 'getCapabilities' in RTCRtpSender) {
     overrideMethod(RTCRtpSender as any, 'getCapabilities', (original, _thisArg, args) => {
       logAccess('RTCRtpSender.getCapabilities', { spoofed: true, value: 'normalized' });
 

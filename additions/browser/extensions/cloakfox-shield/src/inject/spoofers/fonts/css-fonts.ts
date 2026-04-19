@@ -71,19 +71,19 @@ export function initCSSFontSpoofer(mode: ProtectionMode, prng: PRNG): void {
     // @ts-ignore
     window.FontFace = function (
       family: string,
-      source: string | BinaryData,
+      source: string | ArrayBuffer | ArrayBufferView,
       descriptors?: FontFaceDescriptors
     ): FontFace {
       logAccess('FontFace.constructor', { spoofed: true });
 
       if (mode === 'block') {
         // Return a font face that never loads
-        const fakeFontFace = new OriginalFontFace(family, source, descriptors);
+        const fakeFontFace = new OriginalFontFace(family, source as BufferSource, descriptors);
         Object.defineProperty(fakeFontFace, 'status', { value: 'error' });
         return fakeFontFace;
       }
 
-      return new OriginalFontFace(family, source, descriptors);
+      return new OriginalFontFace(family, source as BufferSource, descriptors);
     };
 
     (window.FontFace as any).prototype = OriginalFontFace.prototype;

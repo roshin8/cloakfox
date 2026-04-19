@@ -37,7 +37,7 @@ export function PerDomainRules({ containerId }: PerDomainRulesProps) {
   const loadRules = async () => {
     try {
       const result = await browser.storage.local.get(`domainRules_${containerId}`);
-      const storedRules = result[`domainRules_${containerId}`] || [];
+      const storedRules = (result[`domainRules_${containerId}`] as DomainRule[] | undefined) || [];
       setRules(storedRules);
     } catch (error) {
       console.error('Failed to load domain rules:', error);

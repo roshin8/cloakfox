@@ -22,7 +22,8 @@ export function initCryptoSpoofer(mode: ProtectionMode, prng: PRNG): void {
 
   crypto.getRandomValues = function <T extends ArrayBufferView | null>(array: T): T {
     logAccess('crypto.getRandomValues', { spoofed: true, value: 'spoofed' });
-    return originalGetRandomValues(array);
+    if (array === null) return array;
+    return originalGetRandomValues(array as ArrayBufferView) as T;
   };
 
   // Spoof randomUUID

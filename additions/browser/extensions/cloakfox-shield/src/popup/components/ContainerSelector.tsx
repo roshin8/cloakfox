@@ -49,7 +49,7 @@ export default function ContainerSelector({
                 backgroundColor: isSelected ? color : `${color}33`,
                 color: isSelected ? '#fff' : color,
                 borderColor: color,
-                ringColor: color,
+                ['--tw-ring-color' as any]: color,
               }}
             >
               {container.name}
