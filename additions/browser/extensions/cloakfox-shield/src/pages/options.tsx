@@ -17,7 +17,7 @@ interface GlobalSettings {
   firstPartyIsolation: boolean;
   contextMenuEnabled: boolean;
   keyboardShortcutsEnabled: boolean;
-  http2Profile: 'firefox' | 'chrome';
+  http2Profile: 'firefox' | 'chrome' | 'safari';
 }
 
 const defaultSettings: GlobalSettings = {
@@ -236,11 +236,12 @@ function OptionsPage() {
                 </div>
                 <select
                   value={settings.http2Profile}
-                  onChange={(e) => saveSettings({ http2Profile: e.target.value as 'firefox' | 'chrome' })}
+                  onChange={(e) => saveSettings({ http2Profile: e.target.value as 'firefox' | 'chrome' | 'safari' })}
                   className="px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
                   <option value="firefox">Firefox (default)</option>
                   <option value="chrome">Chrome (anti-bot)</option>
+                  <option value="safari">Safari (anti-bot)</option>
                 </select>
               </div>
 

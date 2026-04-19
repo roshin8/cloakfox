@@ -227,6 +227,7 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 | Client Hints `Sec-CH-UA-*` headers | 🔴 | 🔌 (webRequest) | 🔒 | ☐ | ☐ | ☑ |
 | HTTP/2 SETTINGS + WINDOW_UPDATE fingerprint (Akamai h2fp) | 🔴 | ⚙️ Http2Session.cpp | 🌍 (opt-in pref) | ☐ | ☐ | ☑ |
 | HTTP/2 HPACK pseudo-header order (Akamai h2fp) | 🔴 | ⚙️ Http2Compression.cpp | 🌍 (opt-in pref) | ☐ | ☐ | ☑ |
+| HTTP/2 profile presets: firefox / chrome / safari | 🔴 | ⚙️ + 🔌 toggle | 🌍 (opt-in pref) | ☐ | ☐ | ☑ |
 
 ---
 

@@ -24,7 +24,7 @@ declare const browser: typeof chrome;
   try {
     const { globalSettings } = await browser.storage.local.get('globalSettings');
     const profile = globalSettings?.http2Profile;
-    if (profile !== 'firefox' && profile !== 'chrome') return;
+    if (profile !== 'firefox' && profile !== 'chrome' && profile !== 'safari') return;
     const pageWin = (window as any).wrappedJSObject;
     if (typeof pageWin?.setHttp2Profile === 'function') {
       pageWin.setHttp2Profile(profile);

@@ -1,13 +1,18 @@
 --- a/dom/base/nsGlobalWindowInner.cpp	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-18 21:42:40
-@@ -7888,6 +7888,23 @@
-   }
- }
- 
++++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-18 23:11:49
+@@ -7884,6 +7884,24 @@
+       JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
+       JS_SetProperty(cx, global, "setWebGLRenderer", undef);
+       JS_DeleteProperty(cx, global, "setWebGLRenderer");
++    }
++  }
++}
++
 +void nsGlobalWindowInner::SetHttp2Profile(const nsAString& aProfile,
 +                                          ErrorResult& aRv) {
 +  NS_ConvertUTF16toUTF8 utf8(aProfile);
-+  if (!utf8.EqualsLiteral("firefox") && !utf8.EqualsLiteral("chrome")) {
++  if (!utf8.EqualsLiteral("firefox") && !utf8.EqualsLiteral("chrome") &&
++      !utf8.EqualsLiteral("safari")) {
 +    return;
 +  }
 +  Preferences::SetCString("network.http.http2.fingerprint_profile", utf8);
@@ -17,13 +22,9 @@
 +      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
 +      JS_SetProperty(cx, global, "setHttp2Profile", undef);
 +      JS_DeleteProperty(cx, global, "setHttp2Profile");
-+    }
-+  }
-+}
-+
- void nsGlobalWindowInner::SetCloakConfig(const nsAString& aJson,
-                                           ErrorResult& aRv) {
-   uint32_t userContextId = 0;
+     }
+   }
+ }
 --- a/dom/base/nsGlobalWindowInner.h	2026-04-18 21:43:52
 +++ b/dom/base/nsGlobalWindowInner.h	2026-04-18 21:42:54
 @@ -722,6 +722,8 @@

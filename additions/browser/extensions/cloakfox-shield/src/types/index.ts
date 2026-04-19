@@ -173,7 +173,7 @@ export interface InjectConfig {
   settings: import('./settings').SpooferSettings;
   profile: import('./settings').ProfileConfig;
   assignedProfile?: AssignedProfileData;
-  http2Profile?: 'firefox' | 'chrome';
+  http2Profile?: 'firefox' | 'chrome' | 'safari';
 }
 
 /**
