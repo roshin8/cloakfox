@@ -56,9 +56,18 @@ function subPRNG(masterSeed: Uint8Array, signal: string): PRNG {
 export function applyCoreProtections(
   masterSeed: Uint8Array,
   profile: AssignedProfileData | undefined,
-  settings: Record<string, Record<string, string>>
+  settings: Record<string, Record<string, string>>,
+  http2Profile?: 'firefox' | 'chrome'
 ): Set<string> {
   const handled = new Set<string>();
+
+  // ─── HTTP/2 fingerprint profile (global pref) ──────────────────
+  // Chrome profile reorders SETTINGS, adds 15663105 WINDOW_UPDATE, and
+  // reorders HPACK pseudo-headers to :method/:authority/:scheme/:path.
+  // Writes the Firefox pref via a self-destructing WebIDL setter.
+  if (http2Profile === 'firefox' || http2Profile === 'chrome') {
+    callCore('setHttp2Profile', http2Profile);
+  }
 
   // ─── Batched MaskConfig keys (via setCloakConfig) ─────────────
   // For signals without dedicated WebIDL setters — one call sets many keys.

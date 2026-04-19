@@ -1,0 +1,51 @@
+--- a/dom/base/nsGlobalWindowInner.cpp	2026-04-18 21:43:52
++++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-18 21:42:40
+@@ -7888,6 +7888,23 @@
+   }
+ }
+ 
++void nsGlobalWindowInner::SetHttp2Profile(const nsAString& aProfile,
++                                          ErrorResult& aRv) {
++  NS_ConvertUTF16toUTF8 utf8(aProfile);
++  if (!utf8.EqualsLiteral("firefox") && !utf8.EqualsLiteral("chrome")) {
++    return;
++  }
++  Preferences::SetCString("network.http.http2.fingerprint_profile", utf8);
++  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
++    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
++    if (global) {
++      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
++      JS_SetProperty(cx, global, "setHttp2Profile", undef);
++      JS_DeleteProperty(cx, global, "setHttp2Profile");
++    }
++  }
++}
++
+ void nsGlobalWindowInner::SetCloakConfig(const nsAString& aJson,
+                                           ErrorResult& aRv) {
+   uint32_t userContextId = 0;
+--- a/dom/base/nsGlobalWindowInner.h	2026-04-18 21:43:52
++++ b/dom/base/nsGlobalWindowInner.h	2026-04-18 21:42:54
+@@ -722,6 +722,8 @@
+   void SetWebGLRenderer(const nsAString& renderer, mozilla::ErrorResult& aRv);
+ 
+   void SetCloakConfig(const nsAString& aJson, mozilla::ErrorResult& aRv);
++
++  void SetHttp2Profile(const nsAString& profile, mozilla::ErrorResult& aRv);
+ 
+  public:
+   void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
+--- a/dom/webidl/Window.webidl	2026-04-18 21:43:52
++++ b/dom/webidl/Window.webidl	2026-04-18 21:43:05
+@@ -968,6 +968,11 @@
+   undefined setCloakConfig(DOMString json);
+ };
+ 
++partial interface Window {
++  [Throws]
++  undefined setHttp2Profile(DOMString profile);
++};
++
+ // Used to assign marks to appear on the scrollbar when
+ // finding on a page.
+ partial interface Window {

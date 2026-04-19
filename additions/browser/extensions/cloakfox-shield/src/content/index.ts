@@ -15,6 +15,23 @@ const PAGE_MSG_GET_RECOMMENDATIONS = 'CONTAINER_SHIELD_GET_RECOMMENDATIONS';
 
 declare const browser: typeof chrome;
 
+// Sync the HTTP/2 fingerprint profile into the page's privileged
+// window.setHttp2Profile() WebIDL method. Runs at document_start so the
+// pref change is visible before any H2 connection this tab establishes.
+// The method writes network.http.http2.fingerprint_profile globally
+// (Firefox prefs are process-wide), so one successful call is enough.
+(async () => {
+  try {
+    const { globalSettings } = await browser.storage.local.get('globalSettings');
+    const profile = globalSettings?.http2Profile;
+    if (profile !== 'firefox' && profile !== 'chrome') return;
+    const pageWin = (window as any).wrappedJSObject;
+    if (typeof pageWin?.setHttp2Profile === 'function') {
+      pageWin.setHttp2Profile(profile);
+    }
+  } catch {}
+})();
+
 // Page → Background: forward fingerprint reports
 window.addEventListener('message', async (event) => {
   if (event.source !== window) return;

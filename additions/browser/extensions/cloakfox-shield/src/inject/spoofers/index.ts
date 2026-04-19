@@ -148,7 +148,8 @@ export function initializeSpoofers(config: InjectConfig): void {
     coreHandled = applyCoreProtections(
       hashedSeed,
       assignedProfile,
-      settings as unknown as Record<string, Record<string, string>>
+      settings as unknown as Record<string, Record<string, string>>,
+      config.http2Profile
     );
     if (coreHandled.size > 0) {
       console.log(`[Cloakfox] Core engine handled ${coreHandled.size} signals:`, [...coreHandled].join(', '));

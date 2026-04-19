@@ -32,12 +32,35 @@ echo "Copying additions..."
 cd "$TEST_DIR"
 bash "$REPO_DIR/scripts/copy-additions.sh" "$version" "$release" "$REPO_DIR" >/dev/null 2>&1
 
-# Apply all patches in sorted order
+# Apply all patches — respect order.txt first, then anything unlisted (alphabetical).
 echo ""
 echo "=== Applying patches ==="
 FAILED=0
 APPLIED=0
+
+ORDERED=()
+if [ -f "$REPO_DIR/patches/order.txt" ]; then
+    while IFS= read -r line; do
+        line="${line%%#*}"
+        line="${line// /}"
+        line="${line//$'\t'/}"
+        [ -z "$line" ] && continue
+        if [ -f "$REPO_DIR/patches/$line" ]; then
+            ORDERED+=("$REPO_DIR/patches/$line")
+        fi
+    done < "$REPO_DIR/patches/order.txt"
+fi
+# Append any unlisted patches (alphabetical)
 for p in $(find "$REPO_DIR/patches" -name '*.patch' | sort); do
+    name=$(basename "$p")
+    listed=0
+    for existing in "${ORDERED[@]}"; do
+        [ "$(basename "$existing")" = "$name" ] && listed=1 && break
+    done
+    [ $listed -eq 0 ] && ORDERED+=("$p")
+done
+
+for p in "${ORDERED[@]}"; do
     name=$(basename "$p")
     echo -n "  $name ... "
     result=$(patch -p1 --force -i "$p" < /dev/null 2>&1)
