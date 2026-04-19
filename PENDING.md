@@ -75,6 +75,125 @@ Once CI `24637464609` (or its successor) goes green on both Linux + macOS:
   site, PerimeterX) with `chrome` profile active, confirm they don't
   immediately challenge.
 
+## P1 — JS spoofer audit (~55 files, only ~5 live-verified)
+
+Live testing of Math.PI surfaced four stacked bugs (double-XOR seed,
+noise-below-ULP, Proxy invariant violation, copy-before-override silent
+failure). The double-XOR fix unblocks ALL spoofers' PRNG streams — so
+per-domain seeding should work across the board now. But there's no
+guarantee the rest don't have their own specific bugs (e.g. the
+Math-style non-configurable property issue, or wrong override targets).
+
+**Quick-audit tool:** `tests/fingerprint/probe_js_spoofers.py` dumps ~40
+signals via a single Cloakfox launch and compares against "unspoofed
+defaults on my machine" heuristics. Run it first to triage what's
+broken before writing per-spoofer tests.
+
+### Verified working via live probe
+
+- `navigator.userAgent` — spoofed to Chrome 125 Windows post-warmup
+- `navigator.hardwareConcurrency` — spoofed (16 vs real 12)
+- `Math.sin(x)` — ±1e-12 noise on result
+- `Math.PI / Math.E / ...` — per-domain noise at 1e-13 (post-fix)
+- `Sec-CH-UA / Sec-CH-UA-Mobile / Sec-CH-UA-Platform` — emitted on
+  warm navigations for Chromium profiles
+- H2 SETTINGS / WINDOW_UPDATE / HPACK — all three profiles distinct
+
+### Not yet live-verified (presumed working via C++ or untouched code)
+
+Most of these have C++ patches that do the heavy lifting; the JS
+spoofer is a fallback or complement. Low risk, but worth a probe run.
+
+- `canvas.toDataURL` noise (C++ canvas-spoofing patch)
+- WebGL `getParameter(VENDOR/RENDERER)` (C++ webgl-spoofing + JS)
+- WebGL shader precision / extension list (JS: webgl.ts, webgl-shaders.ts)
+- `OffscreenCanvas` (JS: offscreen.ts)
+- `WebGPU` adapter info (JS: webgpu.ts, C++: nothing currently)
+- `AudioContext` getChannelData noise (C++: audio-context-spoofing)
+- `OfflineAudioContext` (JS: offline-audio.ts)
+- `HTMLMediaElement` latency (JS: audio-latency.ts)
+- `MediaSource.isTypeSupported` (C++: mediasource-istypesupported + JS)
+- `RTCRtpSender.getCapabilities` (JS: codecs.ts)
+- `screen.width / height / availWidth / availHeight` (C++: screen-spoofing)
+- `window.outerWidth / outerHeight / screenFrame` (JS: screen-frame.ts)
+- `screen.orientation.type` (C++: screen-orientation-spoofing + JS)
+- `navigator.getBattery()` (JS: battery.ts; C++ disables entirely via pref)
+- `navigator.mediaDevices.enumerateDevices()` (C++: media-device + JS)
+- `navigator.maxTouchPoints` (JS: touch.ts)
+- `navigator.architecture / bitness` via UA-CH (JS: architecture.ts)
+- `window.visualViewport.*` (C++: visual-viewport-spoofing + JS)
+- `navigator.clipboard.*` (C++: clipboard-spoofing + JS)
+- `navigator.vibrate()` (C++: vibration-spoofing + JS)
+- `document.fonts.check()` / FontFaceSet (C++: font-list + JS: font-enum)
+- CSS font-family fallback enumeration (JS: css-fonts.ts)
+- `navigator.fontConfig` (JS: font-preferences.ts)
+- `window.name` persistence (C++: window-name-spoofing + JS)
+- `navigator.mediaCapabilities.decodingInfo()` (C++: + JS)
+- CSS media queries: prefers-color-scheme, prefers-reduced-motion,
+  color-gamut, resolution (C++: media-features-spoofing)
+- `speechSynthesis.getVoices()` (C++: speech-voices-spoofing + JS)
+- `navigator.permissions.query()` (C++: permissions-spoofing + JS)
+- `navigator.storage.estimate()` (C++: storage-estimate-spoofing + JS)
+- `indexedDB.databases()` (C++: indexeddb-spoofing + JS)
+- `window.Notification.permission` (C++: notification-spoofing + JS)
+- `navigator.getGamepads()` (JS: gamepad.ts)
+- `navigator.requestMIDIAccess()` (JS: midi.ts)
+- `window.crypto.getRandomValues` (JS: webcrypto.ts)
+- `window.Notification.requestPermission` (C++ + JS)
+- `performance.now()` timer resolution (C++: timing-jitter-spoofing + JS)
+- `setTimeout / setInterval` jitter (JS: event-loop.ts)
+- Worker fingerprint propagation (JS: worker-fingerprint.ts)
+- Service worker UA override (JS: worker-fingerprint.ts)
+- `Error().stack` normalization (JS: stack-trace.ts)
+- Emoji rendering quirks (JS: emoji.ts)
+- MathML bbox (JS: mathml.ts)
+- SVG bbox / CTM / getTotalLength (C++ handles; JS: svg.ts)
+- Iframe re-patching on dynamic append (JS: iframe-patcher.ts)
+- `Intl.DateTimeFormat().resolvedOptions().timeZone` (C++: locale-spoofing + JS: intl-apis.ts)
+- Feature-detection (`document.implementation.hasFeature`, CSS.supports) (JS: feature-detection.ts)
+- `Geolocation.getCurrentPosition` (C++: geolocation-spoofing + JS)
+- `WebSocket` constructor (C++: websocket-spoofing + JS)
+- `tab.sessionStorage` history (JS: tab-history.ts)
+- Private-mode detection (JS: private-mode.ts)
+- Architecture-detection via Math.fround tricks (JS: architecture.ts)
+- Keyboard cadence / typing rhythm (JS: cadence.ts — no test, separately P1)
+
+### Known likely-broken (same class as the Math bugs)
+
+No evidence yet — identification needed via probe run. Categories of
+bugs to look for:
+
+1. **Non-configurable property replacement.** Math.PI/E are non-writable
+   non-configurable; I had to swap Math entirely via Proxy (which also
+   broke — see history) and ultimately via a plain object copy. Similar
+   bugs may exist in:
+   - `navigator.userAgent` override — browsers lock this with specific
+     descriptor rules; verify assignment sticks in page world not just
+     selenium sandbox.
+   - `screen.width / height` — check descriptor.
+   - `navigator.hardwareConcurrency` — check.
+   - Any `Object.defineProperty(X.prototype, 'someNativeGetter', ...)`
+     in the spoofers — if the original getter is non-configurable, the
+     override fails silently.
+
+2. **Double-XOR-style seed cancellation.** Now fixed for the fallback
+   path (inject/index.ts `generateSeed` no longer includes domain). But
+   verify no other spoofer does its own XOR-with-domain on top of the
+   pagePRNG — that would re-introduce cancellation.
+
+3. **Selenium sandbox / page world mismatch.** When writing tests, `Math`
+   is one case. `navigator` might be another — check via inline `<script>`
+   DOM injection pattern (same trick used in test_math_constants.py).
+
+### Action items
+
+- [ ] Run `probe_js_spoofers.py` against the next green DMG, save the
+      output as the baseline
+- [ ] For each signal marked UNSPOOFED in probe output, triage: is the
+      spoofer disabled by default? Is it genuinely broken?
+- [ ] Write a per-spoofer test for each broken one, following
+      `test_math_constants.py` pattern
+
 ## P1 — test coverage gaps
 
 ### Cross-container uniqueness (not just cross-domain)
