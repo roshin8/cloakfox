@@ -222,16 +222,18 @@ function OptionsPage() {
                 </label>
               </div>
 
-              {/* HTTP/2 Fingerprint Profile */}
+              {/* HTTP Transport Fingerprint Profile (H2 + H3 coherent) */}
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium text-gray-900 dark:text-white">
-                    HTTP/2 Fingerprint Profile
+                    HTTP Transport Fingerprint Profile
                     <span className="ml-2 text-xs font-normal text-amber-600 dark:text-amber-400">experimental</span>
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Masquerade HTTP/2 SETTINGS, WINDOW_UPDATE, and HPACK order to bypass Akamai/Cloudflare h2 bot checks.
-                    Controls <code className="text-xs">network.http.http2.fingerprint_profile</code>. Requires restart.
+                    Masquerade HTTP/2 SETTINGS, WINDOW_UPDATE, HPACK order AND HTTP/3 SETTINGS frame to match the target browser.
+                    Bypasses Akamai/Cloudflare h2fp + h3fp (JA4H) bot checks. Writes both
+                    <code className="text-xs mx-1">network.http.http2.fingerprint_profile</code>
+                    and <code className="text-xs ml-1">network.http.http3.fingerprint_profile</code>.
                   </p>
                 </div>
                 <select

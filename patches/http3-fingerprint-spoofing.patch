@@ -1,0 +1,240 @@
+--- a/modules/libpref/init/StaticPrefList.yaml	2026-04-18 23:52:27
++++ b/modules/libpref/init/StaticPrefList.yaml	2026-04-18 23:52:37
+@@ -15320,6 +15320,19 @@
+   mirror: always
+   rust: true
+ 
++# Cloakfox: HTTP/3 fingerprint profile (Akamai h3fp / JA4H).
++# Reshapes the SETTINGS frame emitted on the H3 control stream and the
++# QPACK transport parameters to match the target browser.
++#   0 => firefox (default, no change)
++#   1 => chrome
++#   2 => safari
++# See patches/http3-fingerprint-spoofing.patch for the emitted shapes.
++- name: network.http.http3.fingerprint_profile
++  type: RelaxedAtomicUint32
++  value: 0
++  mirror: always
++  rust: true
++
+ # Whether to send an mlkem768x25519 key share in HTTP/3 TLS handshakes.
+ # Has no effect unless security.tls.enable_kyber is true.
+ - name: network.http.http3.enable_kyber
+--- a/third_party/rust/neqo-http3/src/conn_params.rs	2026-04-18 23:52:27
++++ b/third_party/rust/neqo-http3/src/conn_params.rs	2026-04-18 23:53:10
+@@ -19,6 +19,31 @@
+ const CONNECT_DEFAULT: bool = false;
+ const HTTP3_DATAGRAM_DEFAULT: bool = true;
+ 
++/// Cloakfox: HTTP/3 fingerprint profile (Akamai h3fp / JA4H input).
++/// Selects which SETTINGS frame shape the client emits on its control
++/// stream. Matches `network.http.http3.fingerprint_profile`:
++///   0 => Firefox (default — original neqo emission order and set)
++///   1 => Chrome  (different order, extra max_header_list_size)
++///   2 => Safari  (sparse, just QPACK_MAX_TABLE_CAPACITY + BLOCKED_STREAMS)
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
++pub enum H3FingerprintProfile {
++    #[default]
++    Firefox,
++    Chrome,
++    Safari,
++}
++
++impl H3FingerprintProfile {
++    #[must_use]
++    pub const fn from_pref(v: u32) -> Self {
++        match v {
++            1 => Self::Chrome,
++            2 => Self::Safari,
++            _ => Self::Firefox,
++        }
++    }
++}
++
+ #[derive(Debug, Clone)]
+ pub struct Http3Parameters {
+     conn_params: ConnectionParameters,
+@@ -28,6 +53,8 @@
+     /// HTTP Extended CONNECT
+     connect: bool,
+     http3_datagram: bool,
++    /// Cloakfox: which browser's SETTINGS frame shape to emit.
++    fingerprint_profile: H3FingerprintProfile,
+ }
+ 
+ impl Default for Http3Parameters {
+@@ -43,6 +70,7 @@
+             webtransport: WEBTRANSPORT_DEFAULT,
+             connect: CONNECT_DEFAULT,
+             http3_datagram: HTTP3_DATAGRAM_DEFAULT,
++            fingerprint_profile: H3FingerprintProfile::default(),
+         }
+     }
+ }
+@@ -152,6 +180,19 @@
+         }
+         self.http3_datagram
+     }
++
++    /// Cloakfox: set the H3 fingerprint profile to emit.
++    #[must_use]
++    pub const fn fingerprint_profile(mut self, profile: H3FingerprintProfile) -> Self {
++        self.fingerprint_profile = profile;
++        self
++    }
++
++    /// Cloakfox: read the H3 fingerprint profile currently set.
++    #[must_use]
++    pub const fn get_fingerprint_profile(&self) -> H3FingerprintProfile {
++        self.fingerprint_profile
++    }
+ }
+ 
+ #[cfg(test)]
+--- a/third_party/rust/neqo-http3/src/lib.rs	2026-04-18 23:54:24
++++ b/third_party/rust/neqo-http3/src/lib.rs	2026-04-18 23:53:21
+@@ -163,7 +163,7 @@
+ 
+ use buffered_send_stream::BufferedStream;
+ pub use client_events::{ConnectUdpEvent, Http3ClientEvent, WebTransportEvent};
+-pub use conn_params::Http3Parameters;
++pub use conn_params::{H3FingerprintProfile, Http3Parameters};
+ pub use connection::{Http3State, SessionAcceptAction};
+ pub use connection_client::Http3Client;
+ use frames::HFrame;
+--- a/third_party/rust/neqo-http3/src/settings.rs	2026-04-18 23:52:27
++++ b/third_party/rust/neqo-http3/src/settings.rs	2026-04-18 23:54:43
+@@ -9,7 +9,7 @@
+ use neqo_common::{qdebug, Buffer, Decoder, Encoder};
+ use neqo_crypto::{ZeroRttCheckResult, ZeroRttChecker};
+ 
+-use crate::{Error, Http3Parameters, Res};
++use crate::{conn_params::H3FingerprintProfile, Error, Http3Parameters, Res};
+ 
+ type SettingsType = u64;
+ 
+@@ -214,30 +214,80 @@
+ 
+ impl From<&Http3Parameters> for HSettings {
+     fn from(conn_param: &Http3Parameters) -> Self {
+-        Self {
+-            settings: vec![
++        // Cloakfox: emit SETTINGS frame shape per the configured
++        // fingerprint profile. The Firefox arm preserves the original
++        // neqo emission exactly; Chrome and Safari arms reshape the
++        // frame to match each browser's h3fp signature.
++        let max_table = conn_param.get_max_table_size_decoder();
++        let blocked = u64::from(conn_param.get_max_blocked_streams());
++        let webtransport = u64::from(conn_param.get_webtransport());
++        let datagram = u64::from(conn_param.get_http3_datagram());
++        let connect = u64::from(conn_param.get_connect());
++
++        let settings = match conn_param.get_fingerprint_profile() {
++            H3FingerprintProfile::Firefox => vec![
+                 HSetting {
+                     setting_type: HSettingType::MaxTableCapacity,
+-                    value: conn_param.get_max_table_size_decoder(),
++                    value: max_table,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::BlockedStreams,
+-                    value: u64::from(conn_param.get_max_blocked_streams()),
++                    value: blocked,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::EnableWebTransport,
+-                    value: u64::from(conn_param.get_webtransport()),
++                    value: webtransport,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::EnableH3Datagram,
+-                    value: u64::from(conn_param.get_http3_datagram()),
++                    value: datagram,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::EnableConnect,
+-                    value: u64::from(conn_param.get_connect()),
++                    value: connect,
+                 },
+             ],
+-        }
++            // Chrome's h3fp: emits MaxTableCapacity first, then EnableConnect,
++            // BlockedStreams, MaxHeaderListSize(262144), EnableH3Datagram.
++            // No SETTINGS_ENABLE_WEB_TRANSPORT in Chrome's baseline frame.
++            H3FingerprintProfile::Chrome => vec![
++                HSetting {
++                    setting_type: HSettingType::MaxTableCapacity,
++                    value: max_table,
++                },
++                HSetting {
++                    setting_type: HSettingType::EnableConnect,
++                    value: 1,
++                },
++                HSetting {
++                    setting_type: HSettingType::BlockedStreams,
++                    value: 100,
++                },
++                HSetting {
++                    setting_type: HSettingType::MaxHeaderListSize,
++                    value: 262_144,
++                },
++                HSetting {
++                    setting_type: HSettingType::EnableH3Datagram,
++                    value: 1,
++                },
++            ],
++            // Safari's h3fp is sparse: only MaxTableCapacity=4096 and
++            // BlockedStreams=100, in that order. No datagram, no connect,
++            // no webtransport, no header-list-size.
++            H3FingerprintProfile::Safari => vec![
++                HSetting {
++                    setting_type: HSettingType::MaxTableCapacity,
++                    value: 4096,
++                },
++                HSetting {
++                    setting_type: HSettingType::BlockedStreams,
++                    value: 100,
++                },
++            ],
++        };
++
++        Self { settings }
+     }
+ }
+ 
+--- a/netwerk/socket/neqo_glue/src/lib.rs	2026-04-18 23:52:27
++++ b/netwerk/socket/neqo_glue/src/lib.rs	2026-04-18 23:54:56
+@@ -33,8 +33,9 @@
+ };
+ use neqo_crypto::{agent::CertificateCompressor, init, PRErrorCode};
+ use neqo_http3::{
+-    features::extended_connect::session, ConnectUdpEvent, Error as Http3Error, Http3Client,
+-    Http3ClientEvent, Http3Parameters, Http3State, Priority, WebTransportEvent,
++    features::extended_connect::session, ConnectUdpEvent, Error as Http3Error,
++    H3FingerprintProfile, Http3Client, Http3ClientEvent, Http3Parameters, Http3State, Priority,
++    WebTransportEvent,
+ };
+ use neqo_transport::{
+     stream_id::StreamType, CongestionControlAlgorithm, Connection, ConnectionParameters,
+@@ -448,6 +449,11 @@
+             params = params.idle_timeout(Duration::from_millis(10));
+         }
+ 
++        // Cloakfox: pick the H3 fingerprint profile from the pref.
++        let fp_profile = H3FingerprintProfile::from_pref(static_prefs::pref!(
++            "network.http.http3.fingerprint_profile"
++        ));
++
+         let http3_settings = Http3Parameters::default()
+             .max_table_size_encoder(max_table_size)
+             .max_table_size_decoder(max_table_size)
+@@ -456,7 +462,8 @@
+             .connection_parameters(params)
+             .webtransport(webtransport)
+             .connect(true)
+-            .http3_datagram(true);
++            .http3_datagram(true)
++            .fingerprint_profile(fp_profile);
+ 
+         let Ok(mut conn) = Connection::new_client(
+             origin_conv,

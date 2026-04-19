@@ -27,8 +27,12 @@ import browser from 'webextension-polyfill';
     const profile = globalSettings?.http2Profile;
     if (profile !== 'firefox' && profile !== 'chrome' && profile !== 'safari') return;
     const pageWin = (window as any).wrappedJSObject;
+    // One UI toggle drives both transports — coherent fingerprint.
     if (typeof pageWin?.setHttp2Profile === 'function') {
       pageWin.setHttp2Profile(profile);
+    }
+    if (typeof pageWin?.setHttp3Profile === 'function') {
+      pageWin.setHttp3Profile(profile);
     }
   } catch {}
 })();

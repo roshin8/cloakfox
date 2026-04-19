@@ -1,6 +1,6 @@
 --- a/dom/base/nsGlobalWindowInner.cpp	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-18 23:11:49
-@@ -7884,6 +7884,24 @@
++++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-18 23:55:32
+@@ -7884,6 +7884,48 @@
        JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
        JS_SetProperty(cx, global, "setWebGLRenderer", undef);
        JS_DeleteProperty(cx, global, "setWebGLRenderer");
@@ -22,31 +22,62 @@
 +      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
 +      JS_SetProperty(cx, global, "setHttp2Profile", undef);
 +      JS_DeleteProperty(cx, global, "setHttp2Profile");
++    }
++  }
++}
++
++void nsGlobalWindowInner::SetHttp3Profile(const nsAString& aProfile,
++                                          ErrorResult& aRv) {
++  NS_ConvertUTF16toUTF8 utf8(aProfile);
++  uint32_t value;
++  if (utf8.EqualsLiteral("firefox")) {
++    value = 0;
++  } else if (utf8.EqualsLiteral("chrome")) {
++    value = 1;
++  } else if (utf8.EqualsLiteral("safari")) {
++    value = 2;
++  } else {
++    return;
++  }
++  Preferences::SetUint("network.http.http3.fingerprint_profile", value);
++  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
++    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
++    if (global) {
++      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
++      JS_SetProperty(cx, global, "setHttp3Profile", undef);
++      JS_DeleteProperty(cx, global, "setHttp3Profile");
      }
    }
  }
 --- a/dom/base/nsGlobalWindowInner.h	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.h	2026-04-18 21:42:54
-@@ -722,6 +722,8 @@
++++ b/dom/base/nsGlobalWindowInner.h	2026-04-18 23:55:34
+@@ -722,6 +722,10 @@
    void SetWebGLRenderer(const nsAString& renderer, mozilla::ErrorResult& aRv);
  
    void SetCloakConfig(const nsAString& aJson, mozilla::ErrorResult& aRv);
 +
 +  void SetHttp2Profile(const nsAString& profile, mozilla::ErrorResult& aRv);
++
++  void SetHttp3Profile(const nsAString& profile, mozilla::ErrorResult& aRv);
  
   public:
    void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
 --- a/dom/webidl/Window.webidl	2026-04-18 21:43:52
-+++ b/dom/webidl/Window.webidl	2026-04-18 21:43:05
-@@ -968,6 +968,11 @@
++++ b/dom/webidl/Window.webidl	2026-04-18 23:55:36
+@@ -966,6 +966,16 @@
+ partial interface Window {
+   [Throws]
    undefined setCloakConfig(DOMString json);
- };
- 
++};
++
 +partial interface Window {
 +  [Throws]
 +  undefined setHttp2Profile(DOMString profile);
 +};
 +
++partial interface Window {
++  [Throws]
++  undefined setHttp3Profile(DOMString profile);
+ };
+ 
  // Used to assign marks to appear on the scrollbar when
- // finding on a page.
- partial interface Window {
