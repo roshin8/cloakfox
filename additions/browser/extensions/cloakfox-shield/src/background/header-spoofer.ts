@@ -202,11 +202,16 @@ export class HeaderSpoofer {
         const stored = await browser.storage.local.get(`activeProfile:${details.tabId}`) as Record<string, any>;
         const active = stored[`activeProfile:${details.tabId}`];
         if (active?.profile?.userAgent) {
+          const uaProfile = active.profile.userAgent;
           effectiveProfile = {
             ...effectiveProfile,
-            userAgent: active.profile.userAgent.userAgent,
-            language: active.profile.userAgent.languages?.[0] ?
-              active.profile.userAgent.languages.join(',') : effectiveProfile.language,
+            userAgent: uaProfile.userAgent,
+            language: uaProfile.languages?.[0] ?
+              uaProfile.languages.join(',') : effectiveProfile.language,
+            // Propagate Chromium UA-CH fields so HTTP headers match JS navigator.userAgentData.
+            brands: uaProfile.brands,
+            platformName: uaProfile.platformName,
+            mobile: uaProfile.mobile,
           };
         }
       } catch {}
@@ -237,11 +242,10 @@ export class HeaderSpoofer {
   ): browser.WebRequest.HttpHeaders {
     const ua = profile.userAgent || '';
     const isChrome = ua.includes('Chrome/') && !ua.includes('Firefox/');
+    // Safari UA: contains "Version/X.Y Safari/Z" and does NOT contain Chrome/.
+    const isSafari = !isChrome && /Version\/\d/.test(ua) && ua.includes('Safari/');
 
-    // Chrome typical order: Host, Connection, sec-ch-ua, sec-ch-ua-mobile,
-    // sec-ch-ua-platform, Upgrade-Insecure-Requests, User-Agent, Accept,
-    // Sec-Fetch-Site, Sec-Fetch-Mode, Sec-Fetch-User, Sec-Fetch-Dest,
-    // Accept-Encoding, Accept-Language
+    // Chrome typical order
     const chromeOrder = [
       'host', 'connection', 'cache-control', 'sec-ch-ua', 'sec-ch-ua-mobile',
       'sec-ch-ua-platform', 'upgrade-insecure-requests', 'user-agent',
@@ -249,15 +253,23 @@ export class HeaderSpoofer {
       'sec-fetch-dest', 'accept-encoding', 'accept-language', 'cookie',
     ];
 
-    // Firefox typical order: Host, User-Agent, Accept, Accept-Language,
-    // Accept-Encoding, Connection, Cookie, Upgrade-Insecure-Requests
+    // Safari typical order: Host, Accept, Cookie, User-Agent,
+    // Accept-Language, Accept-Encoding, Connection
+    // Safari does NOT send Sec-CH-UA-* nor most Sec-Fetch-* headers.
+    const safariOrder = [
+      'host', 'accept', 'cookie', 'user-agent',
+      'accept-language', 'accept-encoding', 'connection',
+      'upgrade-insecure-requests',
+    ];
+
+    // Firefox typical order
     const firefoxOrder = [
       'host', 'user-agent', 'accept', 'accept-language', 'accept-encoding',
       'connection', 'cookie', 'upgrade-insecure-requests',
       'sec-fetch-dest', 'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user',
     ];
 
-    const order = isChrome ? chromeOrder : firefoxOrder;
+    const order = isChrome ? chromeOrder : (isSafari ? safariOrder : firefoxOrder);
     const headerMap = new Map<string, browser.WebRequest.HttpHeaders[0]>();
     const remaining: browser.WebRequest.HttpHeaders = [];
 
@@ -361,6 +373,29 @@ export class HeaderSpoofer {
         modifiedHeaders.splice(viaIndex, 1);
       }
       modifiedHeaders.push({ name: 'Via', value: generateViaHeader() });
+    }
+
+    // Sec-CH-UA client hints — Chrome sends these on every request (low-entropy).
+    // A spoofed Chrome UA without matching Sec-CH-UA HTTP headers is a direct
+    // fingerprint mismatch: the JS layer (navigator.userAgentData) says Chrome
+    // but the HTTP request doesn't carry the headers. Here we inject them when
+    // the profile has a Chromium brands list. Firefox/Safari profiles skip.
+    const p = profile as Record<string, any>;
+    const chBrands: Array<{ brand: string; version: string }> | undefined = p.brands;
+    if (chBrands && chBrands.length > 0) {
+      const chUaValue = chBrands
+        .map((b) => `"${b.brand}";v="${b.version}"`)
+        .join(', ');
+      const upsert = (name: string, value: string) => {
+        const idx = modifiedHeaders.findIndex(
+          (h) => h.name.toLowerCase() === name.toLowerCase()
+        );
+        if (idx !== -1) modifiedHeaders.splice(idx, 1);
+        modifiedHeaders.push({ name, value });
+      };
+      upsert('Sec-CH-UA', chUaValue);
+      upsert('Sec-CH-UA-Mobile', p.mobile ? '?1' : '?0');
+      if (p.platformName) upsert('Sec-CH-UA-Platform', `"${p.platformName}"`);
     }
 
     return modifiedHeaders;
