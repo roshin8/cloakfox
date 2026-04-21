@@ -15,6 +15,40 @@ const PAGE_MSG_GET_RECOMMENDATIONS = 'CONTAINER_SHIELD_GET_RECOMMENDATIONS';
 
 import browser from 'webextension-polyfill';
 
+// SYNCHRONOUS: query the C++ cloakfoxIsConfigured() WebIDL method for
+// each per-container spoofer manager and store the result in
+// sessionStorage. This bridges ISOLATED → MAIN: the inject script in
+// MAIN world reads sessionStorage at document_start and uses the
+// cached state to decide whether to skip JS spoofers (because C++ is
+// already configured for this container).
+//
+// Why ISOLATED: the WebIDL method is Func-gated to require the
+// cloakfox-shield extension's principal — only ISOLATED-world content
+// scripts have that principal. MAIN-world inject script (or any page
+// script) calling cloakfoxIsConfigured gets `undefined`.
+//
+// Why sessionStorage: synchronous, scoped per-tab, persists across
+// same-tab navigations. The inject script is registered AFTER content
+// in manifest.json, so by the time MAIN runs, sessionStorage is set.
+(() => {
+  try {
+    const pageWin = (window as any).wrappedJSObject;
+    const isConfigured = pageWin?.cloakfoxIsConfigured;
+    if (typeof isConfigured !== 'function') return;
+    const NAMES = [
+      'canvas', 'audio', 'screen', 'webglVendor', 'webglRenderer',
+      'fontList', 'fontSpacing', 'speechVoices',
+      'navigatorUserAgent', 'navigatorPlatform', 'navigatorOscpu',
+      'navigatorHardwareConcurrency',
+    ];
+    const result: Record<string, boolean> = {};
+    for (const n of NAMES) {
+      try { result[n] = !!isConfigured.call(pageWin, n); } catch {}
+    }
+    sessionStorage.setItem('__cloakfox_configured', JSON.stringify(result));
+  } catch {}
+})();
+
 // Sync the HTTP/2 fingerprint profile into the page's privileged
 // window.setHttp2Profile() WebIDL method. Runs at document_start so the
 // pref change is visible before any H2 connection this tab establishes.

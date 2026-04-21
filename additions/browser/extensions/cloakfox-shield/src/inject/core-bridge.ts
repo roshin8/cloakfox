@@ -35,20 +35,31 @@ function callCore(method: string, ...args: unknown[]): boolean {
  * navigation in this container" — in which case the C++ value is
  * already in place and the JS fallback should NOT run.
  *
- * Returns false on builds without the cloakfoxIsConfigured WebIDL,
- * so behavior degrades to "always try the setter" on those builds.
+ * The actual cloakfoxIsConfigured WebIDL method is Func-gated to the
+ * cloakfox-shield extension's principal — page MAIN-world scripts
+ * (including this one) can't see it. So we read the cached state
+ * from sessionStorage, which is populated by content/index.ts (the
+ * ISOLATED-world content script that DOES have the right principal).
+ *
+ * Returns false on builds without the cloakfoxIsConfigured WebIDL OR
+ * before content/index.ts has had time to populate the cache, so
+ * behavior degrades safely to "always try the setter."
  *
  * Names accepted: canvas, screen, webglVendor, webglRenderer,
- * fontList, fontSpacing, audio, speechVoices.
+ * fontList, fontSpacing, audio, speechVoices, navigatorUserAgent,
+ * navigatorPlatform, navigatorOscpu, navigatorHardwareConcurrency.
  */
+let _configuredCache: Record<string, boolean> | null = null;
 function isCoreConfigured(name: string): boolean {
-  const fn = win['cloakfoxIsConfigured'];
-  if (typeof fn !== 'function') return false;
-  try {
-    return Boolean((fn as Function)(name));
-  } catch {
-    return false;
+  if (_configuredCache === null) {
+    try {
+      const raw = sessionStorage.getItem('__cloakfox_configured');
+      _configuredCache = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    } catch {
+      _configuredCache = {};
+    }
   }
+  return Boolean(_configuredCache[name]);
 }
 
 /**

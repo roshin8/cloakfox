@@ -1,6 +1,6 @@
 --- a/dom/base/nsGlobalWindowInner.cpp	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-20 20:40:21
-@@ -7884,10 +7884,117 @@
++++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-20 21:28:44
+@@ -7884,6 +7884,138 @@
        JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
        JS_SetProperty(cx, global, "setWebGLRenderer", undef);
        JS_DeleteProperty(cx, global, "setWebGLRenderer");
@@ -22,10 +22,35 @@
 +      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
 +      JS_SetProperty(cx, global, "setHttp2Profile", undef);
 +      JS_DeleteProperty(cx, global, "setHttp2Profile");
-     }
-   }
- }
- 
++    }
++  }
++}
++
++// Cloakfox: WebIDL Func gate — only the cloakfox-shield extension's
++// content scripts (which run with an ExpandedPrincipal containing the
++// addon's principal) can see cloakfoxIsConfigured on the window. Page
++// scripts in MAIN world get an undefined property: they can't probe
++// whether Cloakfox is installed by checking for this method.
++/* static */
++bool nsGlobalWindowInner::IsCloakfoxShieldCaller(JSContext* aCx,
++                                                  JSObject* /*aObj*/) {
++  nsIPrincipal* principal = nsContentUtils::SubjectPrincipal(aCx);
++  if (!principal) {
++    return false;
++  }
++  auto* basePrincipal = mozilla::BasePrincipal::Cast(principal);
++  // Direct addon principal (background scripts, options pages, etc.)
++  if (auto* policy = basePrincipal->AddonPolicy()) {
++    return policy->Id().EqualsLiteral("cloakfox-shield@cloakfox");
++  }
++  // Content script ExpandedPrincipal — the common case for ISOLATED-world
++  // content scripts that Want to call this from a page context.
++  if (auto* policy = basePrincipal->ContentScriptAddonPolicy()) {
++    return policy->Id().EqualsLiteral("cloakfox-shield@cloakfox");
++  }
++  return false;
++}
++
 +// Cloakfox: NON-self-destructing query for whether a per-container
 +// spoofer manager has been configured already. Used by the extension's
 +// core-bridge.ts to decide whether to add a signal to the `handled`
@@ -111,16 +136,12 @@
 +      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
 +      JS_SetProperty(cx, global, "setHttp3Profile", undef);
 +      JS_DeleteProperty(cx, global, "setHttp3Profile");
-+    }
-+  }
-+}
-+
- void nsGlobalWindowInner::SetCloakConfig(const nsAString& aJson,
-                                           ErrorResult& aRv) {
-   uint32_t userContextId = 0;
+     }
+   }
+ }
 --- a/dom/base/nsGlobalWindowInner.h	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.h	2026-04-20 20:37:19
-@@ -722,6 +722,12 @@
++++ b/dom/base/nsGlobalWindowInner.h	2026-04-20 21:28:23
+@@ -722,6 +722,18 @@
    void SetWebGLRenderer(const nsAString& renderer, mozilla::ErrorResult& aRv);
  
    void SetCloakConfig(const nsAString& aJson, mozilla::ErrorResult& aRv);
@@ -130,12 +151,18 @@
 +  void SetHttp3Profile(const nsAString& profile, mozilla::ErrorResult& aRv);
 +
 +  bool CloakfoxIsConfigured(const nsAString& name, mozilla::ErrorResult& aRv);
++
++  // WebIDL Func gate — restricts cloakfoxIsConfigured to the
++  // cloakfox-shield extension's content scripts. Page scripts in MAIN
++  // world get an undefined property and can't probe whether Cloakfox
++  // is installed via this method.
++  static bool IsCloakfoxShieldCaller(JSContext* aCx, JSObject* aObj);
  
   public:
    void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
 --- a/dom/webidl/Window.webidl	2026-04-18 21:43:52
-+++ b/dom/webidl/Window.webidl	2026-04-20 20:35:58
-@@ -966,8 +966,33 @@
++++ b/dom/webidl/Window.webidl	2026-04-20 21:29:27
+@@ -966,8 +966,43 @@
  partial interface Window {
    [Throws]
    undefined setCloakConfig(DOMString json);
@@ -144,13 +171,13 @@
 +partial interface Window {
 +  [Throws]
 +  undefined setHttp2Profile(DOMString profile);
-+};
-+
+ };
+ 
 +partial interface Window {
 +  [Throws]
 +  undefined setHttp3Profile(DOMString profile);
- };
- 
++};
++
 +// Cloakfox: NON-self-destructing query for whether the per-container
 +// "configured" flag is set for a given spoofer manager. Used by the
 +// extension's core-bridge.ts to decide whether to add a signal to the
@@ -159,10 +186,20 @@
 +// flag) and callCore() returns false. Without this query the JS
 +// fallback runs on every nav after the first, defeating C++.
 +//
-+// `name` accepts: "canvas", "screen", "webglVendor", "webglRenderer",
-+// "fontList", "fontSpacing", "audio", "speechVoices".
++// `name` accepts: canvas, screen, webglVendor, webglRenderer, fontList,
++// fontSpacing, audio, speechVoices, navigatorUserAgent, navigatorPlatform,
++// navigatorOscpu, navigatorHardwareConcurrency.
++//
++// PRIVILEGE GATE: only the cloakfox-shield extension's content scripts
++// (which run with an ExpandedPrincipal containing the addon's principal)
++// can see this method on the window. Page scripts in MAIN world get an
++// undefined property — they can't even probe whether Cloakfox is
++// installed via this method. The setHttp{2,3}Profile and other setters
++// remain in MAIN world (they self-destruct after first call so leakage
++// is bounded), but this query has no self-destruct so it gets a stricter
++// gate.
 +partial interface Window {
-+  [Throws]
++  [Throws, Func="nsGlobalWindowInner::IsCloakfoxShieldCaller"]
 +  boolean cloakfoxIsConfigured(DOMString name);
 +};
 +
