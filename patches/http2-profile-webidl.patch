@@ -1,6 +1,6 @@
 --- a/dom/base/nsGlobalWindowInner.cpp	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-18 23:55:32
-@@ -7884,6 +7884,48 @@
++++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-20 20:40:21
+@@ -7884,10 +7884,117 @@
        JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
        JS_SetProperty(cx, global, "setWebGLRenderer", undef);
        JS_DeleteProperty(cx, global, "setWebGLRenderer");
@@ -22,8 +22,73 @@
 +      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
 +      JS_SetProperty(cx, global, "setHttp2Profile", undef);
 +      JS_DeleteProperty(cx, global, "setHttp2Profile");
-+    }
+     }
+   }
+ }
+ 
++// Cloakfox: NON-self-destructing query for whether a per-container
++// spoofer manager has been configured already. Used by the extension's
++// core-bridge.ts to decide whether to add a signal to the `handled`
++// set on second+ navigations, where the matching setXxx WebIDL
++// method has been Func-gated off (callCore returns false). Without
++// this query the JS fallback runs on every nav after the first and
++// double-spoofs over the C++ stored value.
++bool nsGlobalWindowInner::CloakfoxIsConfigured(const nsAString& aName,
++                                                ErrorResult& aRv) {
++  JSContext* cx = nsContentUtils::GetCurrentJSContext();
++  if (!cx) return false;
++  JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
++  if (!global) return false;
++  NS_ConvertUTF16toUTF8 utf8(aName);
++  if (utf8.EqualsLiteral("canvas")) {
++    return !mozilla::dom::CanvasFingerprintManager::IsFunctionEnabledForWebIDL(
++        cx, global);
 +  }
++  if (utf8.EqualsLiteral("screen")) {
++    return !mozilla::dom::ScreenDimensionManager::IsFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("webglVendor")) {
++    return !mozilla::dom::WebGLParamsManager::IsVendorFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("webglRenderer")) {
++    return !mozilla::dom::WebGLParamsManager::IsRendererFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("fontList")) {
++    return !mozilla::dom::FontListManager::IsFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("fontSpacing")) {
++    return !mozilla::dom::FontSpacingSeedManager::IsFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("audio")) {
++    return !mozilla::dom::AudioFingerprintManager::IsFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("speechVoices")) {
++    return !mozilla::dom::SpeechVoicesManager::IsFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("navigatorUserAgent")) {
++    return !mozilla::dom::NavigatorManager::IsUaFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("navigatorPlatform")) {
++    return !mozilla::dom::NavigatorManager::IsPlatformFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("navigatorOscpu")) {
++    return !mozilla::dom::NavigatorManager::IsOscpuFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  if (utf8.EqualsLiteral("navigatorHardwareConcurrency")) {
++    return !mozilla::dom::NavigatorManager::IsHwcFunctionEnabledForWebIDL(
++        cx, global);
++  }
++  return false;
 +}
 +
 +void nsGlobalWindowInner::SetHttp3Profile(const nsAString& aProfile,
@@ -46,12 +111,16 @@
 +      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
 +      JS_SetProperty(cx, global, "setHttp3Profile", undef);
 +      JS_DeleteProperty(cx, global, "setHttp3Profile");
-     }
-   }
- }
++    }
++  }
++}
++
+ void nsGlobalWindowInner::SetCloakConfig(const nsAString& aJson,
+                                           ErrorResult& aRv) {
+   uint32_t userContextId = 0;
 --- a/dom/base/nsGlobalWindowInner.h	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.h	2026-04-18 23:55:34
-@@ -722,6 +722,10 @@
++++ b/dom/base/nsGlobalWindowInner.h	2026-04-20 20:37:19
+@@ -722,6 +722,12 @@
    void SetWebGLRenderer(const nsAString& renderer, mozilla::ErrorResult& aRv);
  
    void SetCloakConfig(const nsAString& aJson, mozilla::ErrorResult& aRv);
@@ -59,12 +128,14 @@
 +  void SetHttp2Profile(const nsAString& profile, mozilla::ErrorResult& aRv);
 +
 +  void SetHttp3Profile(const nsAString& profile, mozilla::ErrorResult& aRv);
++
++  bool CloakfoxIsConfigured(const nsAString& name, mozilla::ErrorResult& aRv);
  
   public:
    void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
 --- a/dom/webidl/Window.webidl	2026-04-18 21:43:52
-+++ b/dom/webidl/Window.webidl	2026-04-18 23:55:36
-@@ -966,6 +966,16 @@
++++ b/dom/webidl/Window.webidl	2026-04-20 20:35:58
+@@ -966,8 +966,33 @@
  partial interface Window {
    [Throws]
    undefined setCloakConfig(DOMString json);
@@ -80,4 +151,21 @@
 +  undefined setHttp3Profile(DOMString profile);
  };
  
++// Cloakfox: NON-self-destructing query for whether the per-container
++// "configured" flag is set for a given spoofer manager. Used by the
++// extension's core-bridge.ts to decide whether to add a signal to the
++// `handled` set on second+ navigations, where the corresponding
++// setXxx WebIDL method is no longer bound (Func-gated by the disabled
++// flag) and callCore() returns false. Without this query the JS
++// fallback runs on every nav after the first, defeating C++.
++//
++// `name` accepts: "canvas", "screen", "webglVendor", "webglRenderer",
++// "fontList", "fontSpacing", "audio", "speechVoices".
++partial interface Window {
++  [Throws]
++  boolean cloakfoxIsConfigured(DOMString name);
++};
++
  // Used to assign marks to appear on the scrollbar when
+ // finding on a page.
+ partial interface Window {

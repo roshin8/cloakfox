@@ -29,6 +29,41 @@ function callCore(method: string, ...args: unknown[]): boolean {
 }
 
 /**
+ * Ask C++ whether a per-container spoofer manager has already been
+ * configured for this userContext. Used to detect "WebIDL setter has
+ * been Func-gated off because we already configured this on a prior
+ * navigation in this container" — in which case the C++ value is
+ * already in place and the JS fallback should NOT run.
+ *
+ * Returns false on builds without the cloakfoxIsConfigured WebIDL,
+ * so behavior degrades to "always try the setter" on those builds.
+ *
+ * Names accepted: canvas, screen, webglVendor, webglRenderer,
+ * fontList, fontSpacing, audio, speechVoices.
+ */
+function isCoreConfigured(name: string): boolean {
+  const fn = win['cloakfoxIsConfigured'];
+  if (typeof fn !== 'function') return false;
+  try {
+    return Boolean((fn as Function)(name));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Combined "either we just called the setter OR C++ already had it
+ * configured from a prior nav" predicate. Returns true if we should
+ * mark the signal as handled.
+ */
+function callOrAlreadyConfigured(
+  setter: string, configuredName: string, ...args: unknown[]
+): boolean {
+  if (callCore(setter, ...args)) return true;
+  return isCoreConfigured(configuredName);
+}
+
+/**
  * Create an isolated sub-PRNG for a specific signal.
  * This ensures each signal's randomness is independent —
  * one signal's behavior cannot affect another's output.
@@ -209,7 +244,7 @@ export function applyCoreProtections(
   if (settings.graphics?.canvas !== 'off') {
     const rng = subPRNG(masterSeed, 'core.canvas');
     const seed = rng.nextInt(1, 2147483647);
-    if (callCore('setCanvasSeed', seed)) {
+    if (callOrAlreadyConfigured('setCanvasSeed', 'canvas', seed)) {
       handled.add('graphics.canvas');
       handled.add('graphics.offscreenCanvas'); // Same C++ seed covers both
     }
@@ -219,7 +254,7 @@ export function applyCoreProtections(
   if (settings.audio?.audioContext !== 'off') {
     const rng = subPRNG(masterSeed, 'core.audio');
     const seed = rng.nextInt(1, 2147483647);
-    if (callCore('setAudioFingerprintSeed', seed)) {
+    if (callOrAlreadyConfigured('setAudioFingerprintSeed', 'audio', seed)) {
       handled.add('audio.audioContext');
       handled.add('audio.offlineAudio');
       handled.add('audio.latency'); // Same C++ manager
@@ -230,9 +265,9 @@ export function applyCoreProtections(
   // Call all three independently — don't let one failure affect others
   if (settings.navigator?.userAgent !== 'off' && profile?.userAgent) {
     const ua = profile.userAgent;
-    const uaOk = callCore('setNavigatorUserAgent', ua.userAgent || '');
-    const platOk = callCore('setNavigatorPlatform', ua.platform || '');
-    const oscpuOk = callCore('setNavigatorOscpu', ua.oscpu || '');
+    const uaOk = callOrAlreadyConfigured('setNavigatorUserAgent', 'navigatorUserAgent', ua.userAgent || '');
+    const platOk = callOrAlreadyConfigured('setNavigatorPlatform', 'navigatorPlatform', ua.platform || '');
+    const oscpuOk = callOrAlreadyConfigured('setNavigatorOscpu', 'navigatorOscpu', ua.oscpu || '');
     // Only mark as handled if ALL succeeded — partial state is dangerous
     if (uaOk && platOk && oscpuOk) {
       handled.add('navigator.userAgent');
@@ -245,7 +280,7 @@ export function applyCoreProtections(
 
   if (settings.hardware?.hardwareConcurrency !== 'off' && profile) {
     const cores = profile.hardwareConcurrency || 8;
-    if (callCore('setNavigatorHardwareConcurrency', cores)) {
+    if (callOrAlreadyConfigured('setNavigatorHardwareConcurrency', 'navigatorHardwareConcurrency', cores)) {
       handled.add('hardware.hardwareConcurrency');
     }
   }
@@ -253,8 +288,10 @@ export function applyCoreProtections(
   // ─── Screen ──────────────────────────────────────────────────
   if (settings.hardware?.screen !== 'off' && profile?.screen) {
     const s = profile.screen;
-    const dimOk = callCore('setScreenDimensions', s.width, s.height);
-    const depthOk = callCore('setScreenColorDepth', s.colorDepth || 24);
+    // Both dim and depth share one ScreenDimensionManager → one
+    // configured-flag. If "screen" is configured, both are.
+    const dimOk = callOrAlreadyConfigured('setScreenDimensions', 'screen', s.width, s.height);
+    const depthOk = callOrAlreadyConfigured('setScreenColorDepth', 'screen', s.colorDepth || 24);
     if (dimOk) {
       handled.add('hardware.screen');
       handled.add('hardware.screenFrame'); // C++ dimensions cover frame too
@@ -272,7 +309,7 @@ export function applyCoreProtections(
   if (settings.fonts?.enumeration !== 'off' && profile?.userAgent) {
     const rng = subPRNG(masterSeed, 'core.fonts');
     const fontList = generateOSFontSubset(rng, profile.userAgent.platformName || '');
-    if (callCore('setFontList', fontList)) {
+    if (callOrAlreadyConfigured('setFontList', 'fontList', fontList)) {
       handled.add('fonts.enumeration');
     }
   }
@@ -280,7 +317,7 @@ export function applyCoreProtections(
   if (settings.fonts?.cssDetection !== 'off') {
     const rng = subPRNG(masterSeed, 'core.fontSpacing');
     const seed = rng.nextInt(1, 2147483647);
-    if (callCore('setFontSpacingSeed', seed)) {
+    if (callOrAlreadyConfigured('setFontSpacingSeed', 'fontSpacing', seed)) {
       handled.add('fonts.cssDetection');
     }
   }
@@ -290,8 +327,8 @@ export function applyCoreProtections(
   if (settings.graphics?.webgl !== 'off' && profile?.userAgent) {
     const rng = subPRNG(masterSeed, 'core.webgl');
     const gpu = pickPlatformGPU(rng, profile.userAgent.platformName || '');
-    const vendorOk = callCore('setWebGLVendor', gpu.vendor);
-    const rendererOk = callCore('setWebGLRenderer', gpu.renderer);
+    const vendorOk = callOrAlreadyConfigured('setWebGLVendor', 'webglVendor', gpu.vendor);
+    const rendererOk = callOrAlreadyConfigured('setWebGLRenderer', 'webglRenderer', gpu.renderer);
     if (vendorOk && rendererOk) {
       handled.add('graphics.webgl');
       handled.add('graphics.webgl2');
@@ -384,7 +421,7 @@ export function applyCoreProtections(
   // Use platform-appropriate voices
   if (settings.speech?.synthesis !== 'off' && profile?.userAgent) {
     const voices = pickVoicesForPlatform(profile.userAgent.platformName || '');
-    if (callCore('setSpeechVoices', voices)) {
+    if (callOrAlreadyConfigured('setSpeechVoices', 'speechVoices', voices)) {
       handled.add('speech.synthesis');
     }
   }
