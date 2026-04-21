@@ -6,6 +6,88 @@ revision control so we don't lose context between sessions.
 
 ## P0 — blocks release / blocks real-site validation
 
+### Self-destructing WebIDL setters defeat C++/JS skip-coordination
+
+**Root cause discovered while debugging the WebGL Chrome-UA mismatch.**
+
+How it's supposed to work: `core-bridge.ts` calls C++ WebIDL setters
+(`setCanvasSeed`, `setNavigatorUserAgent`, `setWebGLVendor`,
+`setWebGLRenderer`, `setScreen`, `setHardwareConcurrency`,
+`setFontList`, `setSpeechVoices`, etc.). If the call succeeds, it
+adds the corresponding signal name (e.g. `'graphics.webgl'`) to a
+`handled` Set. The JS spoofer registry then skips any spoofer whose
+name is in that set — leaving the C++ value as the only source.
+
+What actually happens after the FIRST navigation:
+1. WebIDL setter is called → C++ stores value in
+   RoverfoxStorageManager keyed by userContextId.
+2. C++ deletes the WebIDL property from the JS window AND sets a
+   "disabled" flag in storage (e.g. `webgl_vendor_disabled_<id>`).
+3. The disabled flag is checked at WebIDL binding time by `Func`
+   attribute (e.g. `IsVendorFunctionEnabledForWebIDL`). On every
+   subsequent window construction in the same userContext, the
+   property is **never bound** at all — `typeof setWebGLVendor`
+   returns `'undefined'` from the start, not "called and
+   self-destructed".
+4. `core-bridge.ts:callCore` returns `false` for
+   `setWebGLVendor` because the function isn't there.
+5. `handled.add('graphics.webgl')` doesn't fire.
+6. JS WebGL spoofer runs as fallback and overrides
+   `WebGLRenderingContext.prototype.getParameter` with its own
+   values — which used to be Firefox-style.
+
+The C++ stored values still persist in RoverfoxStorageManager, but
+the JS spoofer's getParameter override wins (it ran later, on the
+prototype). The C++ patch reads its stored values inside the
+GetParameter implementation (`webgl-spoofing.patch:2328`), but that
+implementation is bypassed by the JS prototype override.
+
+This is why all WebIDL-handled signals (canvas, screen, navigator UA,
+fonts, speech, timezone, etc.) end up "double-spoofed" — first by
+C++ on nav 1, then by JS on every subsequent nav. The JS values win
+at the prototype level. If the JS values diverge from the C++ values
+(or are not browser-coherent), you get fingerprint mismatches like
+the WebGL Chrome-UA bug.
+
+**Diagnostic verified live:** sentinels added to `webgl.ts` and
+`spoofers/index.ts` showed:
+- nav 1: `coreHandled` contains 31 entries including `graphics.webgl`,
+  `jsWebglRan` is false (skip works).
+- nav 2: `coreHandled` contains only 12 entries (the non-WebIDL ones
+  like `permissions.query`, `storage.estimate` that don't self-disable).
+  `jsWebglRan` is true. WebIDL setters all show typeof `undefined`
+  because they were never bound.
+
+**Workaround already applied (commit `d487e550c6`):** make the JS
+spoofer's GPU lists match what C++ would have emitted for each UA
+family, so coherent values either way.
+
+**Architectural fix paths (pick one):**
+
+1. **Add a non-self-destructing query method.** New WebIDL like
+   `__cloakfoxWebGLConfigured()` returns `true` if the disabled flag
+   is set for this userContext. core-bridge.ts checks it BEFORE
+   trying the setter; adds to `handled` based on either path. This
+   is the cleanest — C++ remains the source of truth, JS skips
+   correctly on nav 2+.
+2. **Persist the handled set in sessionStorage.** core-bridge.ts
+   reads sessionStorage on entry to remember "I configured WebGL
+   on a prior nav this tab"; uses that to populate `handled` even
+   when the setter is missing. Per-tab cache; per-container cache
+   needs cross-tab coordination (background script).
+3. **Don't self-destruct WebIDL after first call.** Re-bind on
+   every nav; have the C++ setter no-op (already-set guard) on
+   subsequent calls. Loses the security property of "page can't
+   keep probing the setter" but the page can't observe much from
+   a no-op anyway.
+
+Option 1 is most invasive but architecturally cleanest. Option 3 is
+smallest patch. Option 2 is workable but messy.
+
+**Files touched (any option):** `additions/browser/extensions/cloakfox-shield/src/inject/core-bridge.ts`,
+plus either C++ patches (option 1 or 3) or extension storage logic
+(option 2).
+
 ### WebGL emits Firefox-style strings under a Chrome UA (verified broken)
 
 **Symptom:** With the assigned UA = `Chrome/123 Mac OS X`, the WebGL
