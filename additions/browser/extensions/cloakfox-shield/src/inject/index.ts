@@ -1,149 +1,40 @@
 /**
- * Inject Script - Runs in page context (world: "MAIN")
+ * Inject Script — runs in the page MAIN world at document_start.
  *
- * Registered as a content script with world:"MAIN" in manifest.json.
- * Runs at document_start BEFORE any page scripts — guaranteed by the browser.
+ * In the stealth architecture (see content/index.ts for the other half):
+ * the ISOLATED-world content script calls all Cloakfox WebIDL setters
+ * (which are Func-gated to the cloakfox-shield extension principal and
+ * invisible from MAIN) and writes a bridge attribute onto
+ * document.documentElement containing the deterministic config plus the
+ * set of signals C++ already handled. This script reads that attribute
+ * and REMOVES it synchronously — by the time any page <script> tag runs
+ * the attribute is gone. No sessionStorage, no window globals, no
+ * postMessage, no CustomEvent. Nothing page-observable persists.
  *
- * Generates a deterministic fingerprint profile from the domain name,
- * ensuring consistent spoofed values across page loads for the same site.
+ * We still run JS-level fallback spoofers here (prototype overrides on
+ * navigator.*, screen.*, WebGLRenderingContext.prototype.*, etc.) for
+ * any signals C++ didn't handle. The handled set from the bridge gates
+ * them so C++ values are never overridden.
  *
- * No access to extension APIs in MAIN world — all config is self-generated.
+ * Fallback path: if the bridge attribute is missing (e.g. the content
+ * script didn't run for some reason — different run_at, extension
+ * disabled, etc.) we regenerate the config locally and run spoofers
+ * without the pre-handled set. Today that means JS does everything
+ * visible to the page, which is worse than the cross-world split but
+ * better than doing nothing.
  */
 
-import type { InjectConfig, SpooferSettings, AssignedProfileData } from '@/types';
 import { initStealth } from '@/lib/stealth';
 import { initializeSpoofers } from './spoofers';
 import { initFingerprintMonitor } from './monitor/fingerprint-monitor';
 import { buildWorkerPreamble } from './spoofers/workers/worker-fingerprint';
-import { createDefaultSettings } from '@/types/settings';
-import { ALL_PROFILES } from '@/lib/profiles/user-agents';
-import { PRNG, base64ToUint8Array } from '@/lib/crypto';
+import { generateConfig } from '@/lib/boot-config';
+import type { InjectConfig, SpooferSettings } from '@/types';
 
 // Patch Function.prototype.toString FIRST — before any spoofers
 initStealth();
 
-// DO NOT include the domain here. initializeSpoofers() XORs the domain into
-// this seed AGAIN to derive the per-page PRNG — if the seed already carried
-// domain bits, the two XORs cancel and every fallback-path page ends up with
-// the same PRNG state. The fallback seed is a fixed salt; all per-domain
-// entropy comes from the second XOR inside the spoofers module.
-const FALLBACK_SALT = ':cloakfox:fallback:seed:v1';
-
-// Old DESKTOP_SCREENS and LOCALE_TIMEZONE_PAIRS removed — now defined inside generateProfile
-// with platform-specific variants
-
-function generateSeed(_domain: string): string {
-  const bytes = new Uint8Array(32);
-  const saltBytes = new TextEncoder().encode(FALLBACK_SALT);
-  for (let i = 0; i < saltBytes.length; i++) {
-    bytes[i % 32] ^= saltBytes[i];
-  }
-  if (bytes.every(b => b === 0)) bytes[0] = 1;
-
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-// Platform-specific screen sizes
-const WINDOWS_SCREENS = [
-  { w: 1366, h: 768, dpr: 1 },
-  { w: 1440, h: 900, dpr: 1 },
-  { w: 1536, h: 864, dpr: 1.25 },
-  { w: 1600, h: 900, dpr: 1 },
-  { w: 1680, h: 1050, dpr: 1 },
-  { w: 1920, h: 1200, dpr: 1 },
-  { w: 2560, h: 1440, dpr: 1 },
-] as const;
-
-const MAC_SCREENS = [
-  { w: 1440, h: 900, dpr: 2 },
-  { w: 1512, h: 982, dpr: 2 },
-  { w: 1680, h: 1050, dpr: 2 },
-  { w: 1728, h: 1117, dpr: 2 },
-  { w: 1800, h: 1169, dpr: 2 },
-  { w: 2560, h: 1600, dpr: 2 },
-] as const;
-
-const LINUX_SCREENS = [
-  { w: 1366, h: 768, dpr: 1 },
-  { w: 1920, h: 1080, dpr: 1 },
-  { w: 2560, h: 1440, dpr: 1 },
-  { w: 3440, h: 1440, dpr: 1 },
-] as const;
-
-// Language-timezone pairs matched to common locales for each language
-const LOCALE_TIMEZONE_PAIRS = [
-  { lang: ['en-US', 'en'], tz: -300 },
-  { lang: ['en-US', 'en'], tz: -480 },
-  { lang: ['en-US', 'en'], tz: -360 },
-  { lang: ['en-GB', 'en'], tz: 0 },
-  { lang: ['de-DE', 'de', 'en'], tz: 60 },
-  { lang: ['fr-FR', 'fr', 'en'], tz: 60 },
-  { lang: ['ja-JP', 'ja'], tz: 540 },
-  { lang: ['es-ES', 'es', 'en'], tz: 60 },
-  { lang: ['pt-BR', 'pt', 'en'], tz: -180 },
-] as const;
-
-function generateProfile(seed: string): AssignedProfileData {
-  const prng = new PRNG(base64ToUint8Array(seed));
-  const pick = <T,>(arr: readonly T[]): T => arr[prng.nextInt(0, arr.length - 1)];
-
-  // Detect real platform to ensure we pick a DIFFERENT one
-  const realPlatform = navigator.platform;
-  const realIsMac = realPlatform === 'MacIntel' || realPlatform.includes('Mac');
-  const realIsWin = realPlatform === 'Win32' || realPlatform.includes('Win');
-  const realIsLinux = realPlatform.includes('Linux');
-
-  // Only recent desktop browsers (Chrome 120+, Firefox 120+)
-  // Exclude profiles matching the REAL platform to ensure visible spoofing
-  const recentDesktop = ALL_PROFILES.filter(p => {
-    if (p.mobile) return false;
-    const versionMatch = p.userAgent.match(/Chrome\/(\d+)|Firefox\/(\d+)/);
-    if (!versionMatch) return false;
-    const version = parseInt(versionMatch[1] || versionMatch[2], 10);
-    if (version < 120) return false;
-    // Exclude real platform
-    if (realIsMac && p.platformName === 'macOS') return false;
-    if (realIsWin && p.platformName === 'Windows') return false;
-    if (realIsLinux && p.platformName === 'Linux') return false;
-    return true;
-  });
-  const ua = pick(recentDesktop.length > 0 ? recentDesktop : ALL_PROFILES.filter(p => !p.mobile));
-
-  const isMac = ua.platformName === 'macOS';
-  const isLinux = ua.platformName === 'Linux';
-  const isFirefox = !ua.brands; // Firefox profiles don't have brands
-
-  // Screen matched to OS
-  const screenList: readonly { readonly w: number; readonly h: number; readonly dpr: number }[] =
-    isMac ? MAC_SCREENS : isLinux ? LINUX_SCREENS : WINDOWS_SCREENS;
-  const scr = pick(screenList);
-
-  // Language/timezone pair
-  const locale = pick(LOCALE_TIMEZONE_PAIRS);
-
-  return {
-    userAgent: {
-      id: ua.id, name: ua.name, userAgent: ua.userAgent, platform: ua.platform,
-      vendor: ua.vendor, appVersion: ua.appVersion, oscpu: ua.oscpu,
-      mobile: ua.mobile, platformName: ua.platformName, platformVersion: ua.platformVersion,
-      brands: ua.brands,
-    },
-    screen: {
-      width: scr.w, height: scr.h,
-      availWidth: scr.w, availHeight: scr.h - (isMac ? 25 : 40),
-      colorDepth: isMac ? 30 : 24, pixelDepth: isMac ? 30 : 24,
-      devicePixelRatio: scr.dpr,
-    },
-    hardwareConcurrency: pick(isMac ? [8, 10, 12] as const : [4, 8, 12, 16] as const),
-    deviceMemory: isFirefox ? undefined : pick([4, 8] as const), // Firefox doesn't expose deviceMemory
-    timezoneOffset: locale.tz,
-    languages: [...locale.lang],
-  };
-}
+const BRIDGE_ATTR = 'data-cfx-boot';
 
 function allSpoofersDisabled(settings: SpooferSettings): boolean {
   for (const category of Object.values(settings)) {
@@ -154,34 +45,43 @@ function allSpoofersDisabled(settings: SpooferSettings): boolean {
   return true;
 }
 
-// Build config deterministically from domain
-const domain = window.location.hostname || 'unknown';
-const seed = generateSeed(domain);
-const config: InjectConfig = {
-  containerId: 'fallback',
-  domain,
-  seed,
-  useCoreEngine: true,
-  settings: createDefaultSettings().spoofers,
-  profile: { mode: 'random' as const },
-  assignedProfile: generateProfile(seed),
-};
+// Try to read the bridge. ISOLATED content script populated it earlier
+// on this same navigation (manifest orders content/ before inject/).
+let config: InjectConfig;
+let preCoreHandled: Set<string> | undefined;
+
+const bridgeRaw = document.documentElement.getAttribute(BRIDGE_ATTR);
+if (bridgeRaw) {
+  // Synchronous read + remove — attribute is gone before page scripts run.
+  document.documentElement.removeAttribute(BRIDGE_ATTR);
+  try {
+    const parsed = JSON.parse(bridgeRaw) as { config: InjectConfig; handled: string[] };
+    config = parsed.config;
+    preCoreHandled = new Set(parsed.handled);
+  } catch {
+    // Malformed bridge payload — fall through to local config.
+    config = generateConfig(window.location.hostname || 'unknown', navigator.platform || '');
+  }
+} else {
+  // No bridge; content script didn't run. Regenerate locally so JS
+  // spoofers still fire (no C++ skip gating — JS will do everything).
+  config = generateConfig(window.location.hostname || 'unknown', navigator.platform || '');
+}
 
 if (allSpoofersDisabled(config.settings)) {
   initFingerprintMonitor();
 } else {
-  initializeSpoofers(config);
+  initializeSpoofers(config, preCoreHandled);
 }
 
 // Post the generated profile to the content script (ISOLATED world)
-// so the popup can display the actual spoofed values
+// so the popup can display the actual spoofed values.
 try {
-  // Send profile + worker preamble to background (for popup display + SW injection)
   const workerPreamble = buildWorkerPreamble(config.assignedProfile);
   window.postMessage({
     type: 'CONTAINER_SHIELD_ACTIVE_PROFILE',
     profile: config.assignedProfile,
-    domain,
+    domain: config.domain,
     workerPreamble,
   }, '*');
 } catch {}

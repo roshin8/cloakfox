@@ -78,6 +78,8 @@ index 0000000000..fe74a1f432
 +
 +/* static */ bool
 +FontSpacingSeedManager::IsFunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj) {
++  // Cloakfox stealth: gate WebIDL on cloakfox-shield caller.
++  if (!nsGlobalWindowInner::IsCloakfoxShieldCaller(aCx, aObj)) return false;
 +  nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
 +  if (!win) {
 +    return false;

@@ -161,20 +161,23 @@
   public:
    void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
 --- a/dom/webidl/Window.webidl	2026-04-18 21:43:52
-+++ b/dom/webidl/Window.webidl	2026-04-20 21:29:27
-@@ -966,8 +966,43 @@
++++ b/dom/webidl/Window.webidl	2026-04-21 02:15:13
+@@ -964,8 +964,44 @@
+ };
+ 
  partial interface Window {
-   [Throws]
+-  [Throws]
++  [Throws, Func="nsGlobalWindowInner::IsCloakfoxShieldCaller"]
    undefined setCloakConfig(DOMString json);
 +};
 +
 +partial interface Window {
-+  [Throws]
++  [Throws, Func="nsGlobalWindowInner::IsCloakfoxShieldCaller"]
 +  undefined setHttp2Profile(DOMString profile);
- };
- 
++};
++
 +partial interface Window {
-+  [Throws]
++  [Throws, Func="nsGlobalWindowInner::IsCloakfoxShieldCaller"]
 +  undefined setHttp3Profile(DOMString profile);
 +};
 +
@@ -194,15 +197,14 @@
 +// (which run with an ExpandedPrincipal containing the addon's principal)
 +// can see this method on the window. Page scripts in MAIN world get an
 +// undefined property — they can't even probe whether Cloakfox is
-+// installed via this method. The setHttp{2,3}Profile and other setters
-+// remain in MAIN world (they self-destruct after first call so leakage
-+// is bounded), but this query has no self-destruct so it gets a stricter
-+// gate.
++// installed via this method. Every Cloakfox setter (setHttp2Profile,
++// setHttp3Profile, setCloakConfig, setCanvasSeed, setWebGLVendor,
++// setWebGLRenderer, setScreenDimensions, setScreenColorDepth,
++// setFontList, setFontSpacingSeed, setAudioFingerprintSeed,
++// setSpeechVoices, setNavigator*) is gated the same way.
 +partial interface Window {
 +  [Throws, Func="nsGlobalWindowInner::IsCloakfoxShieldCaller"]
 +  boolean cloakfoxIsConfigured(DOMString name);
-+};
-+
+ };
+ 
  // Used to assign marks to appear on the scrollbar when
- // finding on a page.
- partial interface Window {

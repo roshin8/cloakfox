@@ -11,14 +11,24 @@
 import { PRNG, base64ToUint8Array } from '@/lib/crypto';
 import type { AssignedProfileData } from '@/types';
 
-const win = window as unknown as Record<string, unknown>;
+// Target window for C++ WebIDL setter calls. Defaults to the script's
+// own window but callers may pass `window.wrappedJSObject` when running
+// in ISOLATED world (cross-compartment), since the Cloakfox setters
+// are Func-gated to the cloakfox-shield extension principal and
+// invisible from the MAIN-world page principal.
+let _targetWin: Record<string, unknown> =
+  window as unknown as Record<string, unknown>;
 
-/** Try calling a C++ method. Returns true if it existed and was called. */
+export function setCoreTargetWindow(w: unknown): void {
+  _targetWin = w as Record<string, unknown>;
+}
+
+/** Try calling a C++ method on the configured target window. */
 function callCore(method: string, ...args: unknown[]): boolean {
-  const fn = win[method];
+  const fn = _targetWin[method];
   if (typeof fn === 'function') {
     try {
-      (fn as Function)(...args);
+      (fn as Function).apply(_targetWin, args);
       return true;
     } catch (e) {
       console.warn(`[Cloakfox Core] ${method} failed:`, e);

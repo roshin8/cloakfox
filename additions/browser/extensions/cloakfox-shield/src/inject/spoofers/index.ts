@@ -122,7 +122,7 @@ export function getPagePRNG(): PRNG | null {
 /**
  * Initialize all spoofers based on configuration
  */
-export function initializeSpoofers(config: InjectConfig): void {
+export function initializeSpoofers(config: InjectConfig, preCoreHandled?: Set<string>): void {
   markSpoofersInitialized();
 
   // Create page-specific PRNG by combining container seed with domain
@@ -145,9 +145,14 @@ export function initializeSpoofers(config: InjectConfig): void {
 
   const { settings, assignedProfile } = config;
 
-  // Try C++ Core protections first (unless user disabled Core engine)
-  let coreHandled = new Set<string>();
-  if (config.useCoreEngine !== false) {
+  // C++ Core protections: when preCoreHandled is provided (the stealth
+  // path — content/index.ts in ISOLATED has already called the C++
+  // setters and is reporting what it configured), skip the
+  // applyCoreProtections call here entirely. The Cloakfox WebIDL
+  // setters are Func-gated to the cloakfox-shield extension principal
+  // anyway, so calling them from MAIN world would all return false.
+  let coreHandled = preCoreHandled ?? new Set<string>();
+  if (!preCoreHandled && config.useCoreEngine !== false) {
     coreHandled = applyCoreProtections(
       hashedSeed,
       assignedProfile,

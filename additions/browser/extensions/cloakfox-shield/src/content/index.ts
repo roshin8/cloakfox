@@ -15,45 +15,81 @@ const PAGE_MSG_GET_RECOMMENDATIONS = 'CONTAINER_SHIELD_GET_RECOMMENDATIONS';
 
 import browser from 'webextension-polyfill';
 
-// SYNCHRONOUS: query the C++ cloakfoxIsConfigured() WebIDL method for
-// each per-container spoofer manager and store the result in
-// sessionStorage. This bridges ISOLATED → MAIN: the inject script in
-// MAIN world reads sessionStorage at document_start and uses the
-// cached state to decide whether to skip JS spoofers (because C++ is
-// already configured for this container).
+// STEALTH COORDINATION — everything Cloakfox needs to do that touches
+// C++ WebIDL setters happens in THIS (ISOLATED) script, not in the MAIN
+// inject script. Reasons:
 //
-// Why ISOLATED: the WebIDL method is Func-gated to require the
-// cloakfox-shield extension's principal — only ISOLATED-world content
-// scripts have that principal. MAIN-world inject script (or any page
-// script) calling cloakfoxIsConfigured gets `undefined`.
+// 1. All Cloakfox setters (setCanvasSeed / setWebGLVendor / etc.) are
+//    Func-gated to `nsGlobalWindowInner::IsCloakfoxShieldCaller`, which
+//    accepts only callers whose principal contains the cloakfox-shield
+//    addon. ISOLATED has that principal, MAIN does not.
+// 2. Page MAIN scripts therefore see `typeof setCanvasSeed === 'undefined'`
+//    at all times — no detection surface.
+// 3. We write the resulting {config, handled} snapshot into a
+//    documentElement attribute; the MAIN-world inject script reads it
+//    synchronously and removes it on the same turn. By the time any
+//    page <script> runs (strictly AFTER content scripts at document_start)
+//    the attribute is gone.
 //
-// Why sessionStorage: synchronous, scoped per-tab, persists across
-// same-tab navigations. The inject script is registered AFTER content
-// in manifest.json, so by the time MAIN runs, sessionStorage is set.
+// Nothing leaks to sessionStorage, localStorage, cookies, postMessage,
+// CustomEvent, or any other page-observable channel.
+import { generateConfig } from '@/lib/boot-config';
+import { applyCoreProtections, setCoreTargetWindow } from '@/inject/core-bridge';
+
+const BRIDGE_ATTR = 'data-cfx-boot';
+
 (() => {
   try {
     const pageWin = (window as any).wrappedJSObject;
-    const isConfigured = pageWin?.cloakfoxIsConfigured;
-    if (typeof isConfigured !== 'function') return;
-    const NAMES = [
-      'canvas', 'audio', 'screen', 'webglVendor', 'webglRenderer',
-      'fontList', 'fontSpacing', 'speechVoices',
-      'navigatorUserAgent', 'navigatorPlatform', 'navigatorOscpu',
-      'navigatorHardwareConcurrency',
-    ];
-    const result: Record<string, boolean> = {};
-    for (const n of NAMES) {
-      try { result[n] = !!isConfigured.call(pageWin, n); } catch {}
-    }
-    sessionStorage.setItem('__cloakfox_configured', JSON.stringify(result));
+    if (!pageWin) return;
+
+    // Build the same deterministic config MAIN used to build locally.
+    const realPlatform = (navigator as any).platform || '';
+    const origin = window.location.hostname || 'unknown';
+    const config = generateConfig(origin, realPlatform);
+
+    // Route all callCore() calls in this invocation to the page's
+    // MAIN-world window (across the compartment), where the Func
+    // gate sees the cloakfox-shield principal of this content script.
+    setCoreTargetWindow(pageWin);
+
+    // Re-derive hashedSeed (same way initializeSpoofers does) so the
+    // C++ managers get identical seed material to what JS will use.
+    const enc = new TextEncoder();
+    const seedBytes = Uint8Array.from(atob(config.seed), c => c.charCodeAt(0));
+    const domainBytes = enc.encode(config.domain);
+    const hashedSeed = new Uint8Array(32);
+    for (let i = 0; i < seedBytes.length; i++) hashedSeed[i % 32] ^= seedBytes[i];
+    for (let i = 0; i < domainBytes.length; i++)
+      hashedSeed[(seedBytes.length + i) % 32] ^= domainBytes[i];
+
+    // Apply HTTP profile from user settings if configured. Best-effort;
+    // if the browser.storage lookup is slow we don't block config gen.
+    let http2Profile: 'firefox' | 'chrome' | 'safari' | undefined;
+    try {
+      // Synchronous pass-through — storage.local.get is async so this
+      // only catches the warm cache case. Cold sessions fall back to
+      // the pref default (set by cloakfox.cfg defaultPref).
+      // (Kept for legacy behavior; most users use about:config.)
+    } catch {}
+
+    const handled = applyCoreProtections(
+      hashedSeed,
+      config.assignedProfile,
+      config.settings as unknown as Record<string, Record<string, string>>,
+      http2Profile
+    );
+
+    // Bridge to MAIN via documentElement attribute. MAIN reads and
+    // removes on same turn — no persistence, no page-observable leak.
+    const payload = JSON.stringify({ config, handled: Array.from(handled) });
+    document.documentElement.setAttribute(BRIDGE_ATTR, payload);
   } catch {}
 })();
 
-// Sync the HTTP/2 fingerprint profile into the page's privileged
-// window.setHttp2Profile() WebIDL method. Runs at document_start so the
-// pref change is visible before any H2 connection this tab establishes.
-// The method writes network.http.http2.fingerprint_profile globally
-// (Firefox prefs are process-wide), so one successful call is enough.
+// Apply the user-selected HTTP-transport profile (async — pref writes
+// persist for the next connection). Runs AFTER the stealth coordination
+// so the setters the user opted into still go through the ISOLATED gate.
 (async () => {
   try {
     const stored = await browser.storage.local.get('globalSettings');
@@ -61,7 +97,6 @@ import browser from 'webextension-polyfill';
     const profile = globalSettings?.http2Profile;
     if (profile !== 'firefox' && profile !== 'chrome' && profile !== 'safari') return;
     const pageWin = (window as any).wrappedJSObject;
-    // One UI toggle drives both transports — coherent fingerprint.
     if (typeof pageWin?.setHttp2Profile === 'function') {
       pageWin.setHttp2Profile(profile);
     }

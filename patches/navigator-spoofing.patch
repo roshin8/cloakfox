@@ -35,6 +35,8 @@ index 0000000000..37a1713159
 +/* static */
 +bool NavigatorManager::IsPlatformFunctionEnabledForWebIDL(JSContext* aCx,
 +                                                          JSObject* aObj) {
++  // Cloakfox stealth: gate WebIDL on cloakfox-shield caller.
++  if (!nsGlobalWindowInner::IsCloakfoxShieldCaller(aCx, aObj)) return false;
 +  nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
 +  if (!win) return false;
 +  uint32_t id = 0;
@@ -47,6 +49,8 @@ index 0000000000..37a1713159
 +/* static */
 +bool NavigatorManager::IsOscpuFunctionEnabledForWebIDL(JSContext* aCx,
 +                                                       JSObject* aObj) {
++  // Cloakfox stealth: gate WebIDL on cloakfox-shield caller.
++  if (!nsGlobalWindowInner::IsCloakfoxShieldCaller(aCx, aObj)) return false;
 +  nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
 +  if (!win) return false;
 +  uint32_t id = 0;
@@ -59,6 +63,8 @@ index 0000000000..37a1713159
 +/* static */
 +bool NavigatorManager::IsHwcFunctionEnabledForWebIDL(JSContext* aCx,
 +                                                     JSObject* aObj) {
++  // Cloakfox stealth: gate WebIDL on cloakfox-shield caller.
++  if (!nsGlobalWindowInner::IsCloakfoxShieldCaller(aCx, aObj)) return false;
 +  nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
 +  if (!win) return false;
 +  uint32_t id = 0;
@@ -71,6 +77,8 @@ index 0000000000..37a1713159
 +/* static */
 +bool NavigatorManager::IsUaFunctionEnabledForWebIDL(JSContext* aCx,
 +                                                    JSObject* aObj) {
++  // Cloakfox stealth: gate WebIDL on cloakfox-shield caller.
++  if (!nsGlobalWindowInner::IsCloakfoxShieldCaller(aCx, aObj)) return false;
 +  nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
 +  if (!win) return false;
 +  uint32_t id = 0;

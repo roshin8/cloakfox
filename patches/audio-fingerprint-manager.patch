@@ -93,6 +93,8 @@ index 0000000000..f47a35b2e3
 +
 +/* static */ bool
 +AudioFingerprintManager::IsFunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj) {
++  // Cloakfox stealth: gate WebIDL on cloakfox-shield caller.
++  if (!nsGlobalWindowInner::IsCloakfoxShieldCaller(aCx, aObj)) return false;
 +  nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
 +  if (!win) {
 +    return false;
