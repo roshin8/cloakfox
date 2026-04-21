@@ -22,7 +22,8 @@ const WINDOWS_GPUS = [
   { vendor: 'Google Inc. (AMD)', renderer: 'ANGLE (AMD Radeon RX 580 Direct3D11 vs_5_0 ps_5_0)' },
 ];
 
-const MAC_GPUS = [
+// Firefox-on-Mac WebGL strings — what real Firefox emits.
+const MAC_GPUS_FIREFOX = [
   { vendor: 'Apple Inc.', renderer: 'Apple M1' },
   { vendor: 'Apple Inc.', renderer: 'Apple M1 Pro' },
   { vendor: 'Apple Inc.', renderer: 'Apple M2' },
@@ -30,6 +31,25 @@ const MAC_GPUS = [
   { vendor: 'Apple Inc.', renderer: 'Apple M3' },
   { vendor: 'Apple Inc.', renderer: 'Apple M3 Pro' },
   { vendor: 'Apple Inc.', renderer: 'Apple M4' },
+];
+
+// Chrome-on-Mac WebGL strings — Chrome uses ANGLE+Metal everywhere.
+// Real string format: "ANGLE (Apple, ANGLE Metal Renderer: <model>, Unspecified Version)"
+// Backwards-compat alias for any external callers.
+const MAC_GPUS = MAC_GPUS_FIREFOX;
+const MAC_GPUS_CHROME = [
+  { vendor: 'Google Inc. (Apple)', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)' },
+  { vendor: 'Google Inc. (Apple)', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)' },
+  { vendor: 'Google Inc. (Apple)', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)' },
+  { vendor: 'Google Inc. (Apple)', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)' },
+  { vendor: 'Google Inc. (Apple)', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)' },
+  { vendor: 'Google Inc. (Apple)', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)' },
+  { vendor: 'Google Inc. (Apple)', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)' },
+];
+
+// Safari-on-Mac WebGL strings — WebKit-style, simpler.
+const MAC_GPUS_SAFARI = [
+  { vendor: 'Apple Inc.', renderer: 'Apple GPU' },
 ];
 
 const MOBILE_GPUS = [
@@ -40,12 +60,21 @@ const MOBILE_GPUS = [
   { vendor: 'ARM', renderer: 'Mali-G710 MC10' },
 ];
 
-const LINUX_GPUS = [
+// Firefox-on-Linux WebGL strings — what real Firefox emits with X.Org/Mesa.
+const LINUX_GPUS_FIREFOX = [
   { vendor: 'X.Org', renderer: 'AMD Radeon RX 580 (polaris10, DRM 3.49.0)' },
   { vendor: 'X.Org', renderer: 'AMD Radeon RX 6700 XT (navi22, DRM 3.49.0)' },
   { vendor: 'X.Org', renderer: 'AMD Radeon RX 7800 XT (navi32, DRM 3.54.0)' },
   { vendor: 'nouveau', renderer: 'NV136' },
   { vendor: 'nouveau', renderer: 'NV167' },
+];
+const LINUX_GPUS = LINUX_GPUS_FIREFOX;
+
+// Chrome-on-Linux WebGL strings — Chrome uses ANGLE on Linux too.
+const LINUX_GPUS_CHROME = [
+  { vendor: 'Google Inc. (NVIDIA Corporation)', renderer: 'ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3060/PCIe/SSE2, OpenGL 4.6.0 NVIDIA 535.146.02)' },
+  { vendor: 'Google Inc. (Intel)', renderer: 'ANGLE (Intel, Mesa Intel(R) UHD Graphics 630 (CFL GT2), OpenGL 4.6 (Compatibility Profile) Mesa 23.2.1-1ubuntu3)' },
+  { vendor: 'Google Inc. (AMD)', renderer: 'ANGLE (AMD, AMD Radeon RX 6700 XT (RADV NAVI22), OpenGL 4.6 (Core Profile) Mesa 23.2.1-1ubuntu3)' },
 ];
 
 // Module-level selected GPU so Worker spoofer can access it
@@ -61,10 +90,30 @@ export function getSelectedGPU(): { vendor: string; renderer: string } | null {
 export function selectGPUForProfile(prng: PRNG, assignedProfile?: AssignedProfileData): { vendor: string; renderer: string } {
   const platform = assignedProfile?.userAgent?.platformName?.toLowerCase() || '';
   const isMobile = assignedProfile?.userAgent?.mobile ?? false;
-  let gpuList = WINDOWS_GPUS;
-  if (isMobile) gpuList = MOBILE_GPUS;
-  else if (platform.includes('mac') || platform.includes('ios')) gpuList = MAC_GPUS;
-  else if (platform.includes('linux')) gpuList = LINUX_GPUS;
+  // Detect browser family from the UA string so we can pick the
+  // matching WebGL string style. Real Chrome on every desktop platform
+  // uses ANGLE (Direct3D11 on Win, Metal on Mac, NVIDIA/Mesa on Linux).
+  // Real Firefox uses raw driver strings ("Apple Inc." / "X.Org"). Real
+  // Safari uses minimal "Apple GPU". Mismatching the style with the UA
+  // is a direct fingerprint mismatch.
+  const ua = assignedProfile?.userAgent?.userAgent || '';
+  const isChrome = ua.includes('Chrome/') && !ua.includes('Firefox/');
+  const isSafari = !isChrome && ua.includes('Safari/') && !ua.includes('Chrome/');
+
+  let gpuList: { vendor: string; renderer: string }[] = WINDOWS_GPUS as any;
+  if (isMobile) {
+    gpuList = MOBILE_GPUS;
+  } else if (platform.includes('mac') || platform.includes('ios')) {
+    if (isSafari) gpuList = MAC_GPUS_SAFARI;
+    else if (isChrome) gpuList = MAC_GPUS_CHROME;
+    else gpuList = MAC_GPUS_FIREFOX;
+  } else if (platform.includes('linux')) {
+    if (isChrome) gpuList = LINUX_GPUS_CHROME;
+    else gpuList = LINUX_GPUS_FIREFOX;
+  }
+  // Windows GPUs are already ANGLE-style — Chrome's the dominant browser
+  // there and Firefox-on-Windows tends to also report ANGLE-similar
+  // strings since both go through D3D. Single list is fine.
   return prng.pick(gpuList);
 }
 
