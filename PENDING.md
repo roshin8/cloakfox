@@ -6,23 +6,52 @@ revision control so we don't lose context between sessions.
 
 ## P0 — blocks release / blocks real-site validation
 
-### Cross-platform WebGL mismatch (not yet verified broken; worth a test)
+### WebGL emits Firefox-style strings under a Chrome UA (verified broken)
 
-**Symptom (hypothesized, not observed):** When the UA profile is
-Chrome/Windows but the machine is a Mac, `webgl_renderer` might return
-"Apple M1" (real GPU family) instead of "ANGLE (NVIDIA ...)" or similar.
-Probe run so far only tested Mac-UA profiles, which correctly returned
-Apple GPUs (M2 Pro in first run, M1 in second — the rotation across
-runs proves webgl.ts IS spoofing within the platform family).
+**Symptom:** With the assigned UA = `Chrome/123 Mac OS X`, the WebGL
+debug-renderer extension returns:
+- `UNMASKED_VENDOR_WEBGL = "Apple Inc."`
+- `UNMASKED_RENDERER_WEBGL = "Apple M1"` (rotates across runs within
+  Apple family — M1, M1 Pro, M2, M2 Pro, M3, M4)
 
-**What to verify:** force the extension to assign a Windows or Linux UA
-profile, then check `webgl_renderer` — if it still says "Apple …", that's
-a cross-platform leak that identifies the real hardware platform despite
-the spoofed UA.
+But real Chrome on Mac uses ANGLE and returns:
+- `UNMASKED_VENDOR_WEBGL = "Google Inc. (Apple)"`
+- `UNMASKED_RENDERER_WEBGL = "ANGLE (Apple, ANGLE Metal Renderer: Apple
+  M1 Pro, Unspecified Version)"`
 
-**Files touched if broken:** `additions/browser/extensions/cloakfox-shield/src/inject/spoofers/graphics/webgl.ts`,
-`additions/browser/extensions/cloakfox-shield/src/inject/core-bridge.ts`
-(selectedGPU picker).
+The values we emit are FIREFOX-style. With a Chrome UA they're a direct
+mismatch any anti-bot would notice — Chrome ≠ ANGLE-renderer-string is
+a known fingerprint divergence. Same issue would apply for Chrome/Windows
+or Chrome/Linux profiles emitting Firefox-style Mesa/etc strings.
+
+**Diagnosis:** All four WebIDL setters self-destructed in the probe
+(`setWebGLVendor: undefined`, `setWebGLRenderer: undefined`,
+`setCanvasSeed: undefined`, `setNavigatorUserAgent: undefined`). C++
+WAS called. `core-bridge.ts:399` `pickPlatformGPU()` correctly returns
+ANGLE-style strings for Mac platform (`"Google Inc. (Apple)"` /
+`"ANGLE (Apple, ANGLE Metal Renderer: Apple M1, ...)"`). But what
+WebGL queries return is the JS spoofer's `MAC_GPUS` list values
+(`webgl.ts:` `"Apple Inc." / "Apple M1"`). Two scenarios:
+
+1. C++ stored the spoofed value but the parameter-resolver patch reads
+   from a different source / doesn't override `UNMASKED_*_WEBGL`.
+2. C++ ran successfully but the JS spoofer ran AFTER and overrode it
+   (the skip()/handled set didn't gate JS WebGL away).
+
+**Fix path:**
+- Verify which scenario via console.log injection in webgl.ts
+  `initWebGLSpoofer` — if it runs at all, scenario #2.
+- If scenario #2: fix the skip-gating in spoofers/index.ts so JS WebGL
+  doesn't run when C++ took ownership.
+- If scenario #1: fix the C++ webgl-spoofing.patch storage read at
+  parameter-resolution time.
+- Either way: align the JS MAC_GPUS list with the C++ ANGLE-style
+  strings so even when JS wins it emits Chrome-coherent values.
+
+**Files touched:** `additions/browser/extensions/cloakfox-shield/src/inject/core-bridge.ts`,
+`additions/browser/extensions/cloakfox-shield/src/inject/spoofers/graphics/webgl.ts`,
+`additions/browser/extensions/cloakfox-shield/src/inject/spoofers/index.ts`,
+possibly `patches/webgl-spoofing.patch`.
 
 
 
