@@ -250,6 +250,78 @@ Once CI `24637464609` (or its successor) goes green on both Linux + macOS:
   site, PerimeterX) with `chrome` profile active, confirm they don't
   immediately challenge.
 
+## P1 — Phase 3 JS→ISOLATED migration
+
+**Why:** After the stealth pass, Cloakfox's *presence* is undetectable
+from page MAIN. What's still detectable is the JS spoofer machinery —
+when `initCanvasSpoofer` / `initNavigatorSpoofer` / … run in MAIN,
+their `Object.defineProperty` getters leak via descriptor inspection,
+`Function.prototype.toString`, and stack traces.
+
+**Pattern:** move each JS spoofer to
+`additions/browser/extensions/cloakfox-shield/src/content/spoofers/`
+and use Firefox's `exportFunction(valueFn, pageWin, { defineAs: ... })`
+to plant a native-looking getter on the page's prototype. The exported
+function has `.toString() = "function <name>() { [native code] }"`,
+carries no extension-file references, and is invisible to the usual
+inspection class.
+
+Scaffold landed 2026-04-21: `content/spoofers/README.md` +
+`example-native-getter.ts` + commented template in place. The rest
+below.
+
+**Priority ordering** — start with spoofers that have NO C++ coverage,
+since those currently have no choice but to run in MAIN:
+
+1. `inject/spoofers/math/math.ts` — Math constants + trig noise.
+2. `inject/spoofers/keyboard/cadence.ts` — no C++ backing.
+3. `inject/spoofers/network/webrtc.ts` — SDP/ICE munging.
+4. `inject/spoofers/graphics/domrect.ts` — DOMRect jitter.
+5. `inject/spoofers/graphics/text-metrics.ts` — canvas text metrics.
+6. `inject/spoofers/timing/performance.ts` — performance.now() jitter.
+7. `inject/spoofers/storage/storage-estimate.ts` — navigator.storage.
+8. `inject/spoofers/permissions/permissions.ts` — Permissions API.
+9. `inject/spoofers/audio/audio-latency.ts` — AudioContext latency.
+10. `inject/spoofers/hardware/touch.ts` — ontouchstart et al.
+
+**Second tier** — signals with C++ coverage (JS is fallback only):
+
+11. `inject/spoofers/navigator/user-agent.ts`
+12. `inject/spoofers/graphics/canvas.ts`
+13. `inject/spoofers/graphics/webgl.ts` + `webgl-shaders.ts`
+14. `inject/spoofers/hardware/screen.ts` + `screen-frame.ts` +
+    `screen-orientation.ts`
+15. `inject/spoofers/fonts/font-enum.ts` + `css-fonts.ts`
+16. `inject/spoofers/audio/audio-context.ts` + `offline-audio.ts`
+17. `inject/spoofers/speech/synthesis.ts`
+
+**Third tier** — visual/UX-adjacent:
+
+18. `inject/spoofers/timezone/intl.ts`
+19. `inject/spoofers/css/media-queries.ts`
+20. `inject/spoofers/navigator/clipboard.ts`, `vibration.ts`,
+    `window-name.ts`, `tab-history.ts`, `media-capabilities.ts`,
+    `font-preferences.ts`
+21. `inject/spoofers/hardware/battery.ts`, `media-devices.ts`,
+    `architecture.ts`, `visual-viewport.ts`
+22. `inject/spoofers/timing/event-loop.ts`
+23. `inject/spoofers/iframe/*`, `rendering/*`, `devices/*`,
+    `errors/*`, `codecs/*`, `crypto/*`, `intl/*`
+
+**How to migrate one:**
+
+1. Create `content/spoofers/<signal>.ts` using the
+   `installNativeGetter` helper.
+2. Import in `content/index.ts`, call before the bridge-attribute write.
+3. `handled.add('<signal-name>')` so MAIN's registry skips the old
+   path — same mechanism C++ spoofers already use.
+4. Run `tests/fingerprint/probe_js_spoofers.py` to confirm the signal
+   is still spoofed; run `tests/fingerprint/probe_stealth.py` to
+   confirm `.toString()` reads as native code.
+5. Once green, delete the MAIN-world implementation.
+
+Keep changes surgical — one spoofer per commit so bisecting stays useful.
+
 ## P1 — JS spoofer audit (~55 files, only ~5 live-verified)
 
 Live testing of Math.PI surfaced four stacked bugs (double-XOR seed,
