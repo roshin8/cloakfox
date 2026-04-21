@@ -6,7 +6,31 @@ revision control so we don't lose context between sessions.
 
 ## P0 — blocks release / blocks real-site validation
 
-### Self-destructing WebIDL setters defeat C++/JS skip-coordination
+### ~~Self-destructing WebIDL setters defeat C++/JS skip-coordination~~ — FIXED in commit `4bb9a03edb`
+
+**Resolution (option 1 from below):** Added a non-self-destructing
+WebIDL query method `window.cloakfoxIsConfigured(name)` that returns
+true if a per-userContext spoofer manager has been configured already.
+
+In `core-bridge.ts`, every callCore for a Func-gated setter is now
+wrapped in `callOrAlreadyConfigured(setter, name, ...args)` which:
+1. Tries the setter (works on nav 1).
+2. Falls back to `cloakfoxIsConfigured(name)` (works on nav 2+).
+
+If either returns true, the signal goes into `handled` and the JS
+spoofer correctly skips. Covers all 12 self-destructing setters:
+canvas, audio, navigator UA/platform/oscpu/HWC, screen, fontList,
+fontSpacing, webglVendor, webglRenderer, speechVoices.
+
+Backward-compat: on builds without the new WebIDL, the helper returns
+false and behavior degrades to today's "always run JS fallback".
+
+CI build pending (run `24699715160`). Re-probe against the resulting
+DMG to verify `jsWebglRan: false` on second navigation.
+
+---
+
+### Original report (kept for historical context):
 
 **Root cause discovered while debugging the WebGL Chrome-UA mismatch.**
 
