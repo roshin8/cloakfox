@@ -1,0 +1,213 @@
+# cpp-first Math actor — prototype patch sketch
+#
+# NOT INTENDED TO APPLY CLEANLY. This is a design illustration showing
+# what the full patch WOULD look like. Converting to an applying patch
+# requires running mach build against a checked-out firefox-src with
+# the other 62 patches applied first, verifying paths, and regenerating.
+#
+# Review points:
+#   - Does JSWindowActor registration go in BrowserGlue or a dedicated
+#     registry module? (I've sketched the dedicated module.)
+#   - Is chrome://cloakfox/ manifest registration a separate patch or
+#     folded in here? (Separate — belongs with about:cloakfox patch.)
+#   - Does the pref schema match the one in about-cloakfox-design.md?
+#     (Yes — cloakfox.container.<id>.math_seed.)
+
+--- /dev/null
++++ b/browser/actors/CloakfoxMathChild.sys.mjs
+@@ -0,0 +1,123 @@
++/* Cloakfox: Math constants + trig noise per userContextId.
++ *
++ * Runs as a JSWindowActor child (chrome principal, content process,
++ * invoked on every DOMWindowCreated). Reads a per-container seed from
++ * prefs, derives xorshift128+ state, perturbs Math.PI / Math.E and
++ * noise-wraps the trig/log family. Page MAIN sees what looks like a
++ * native Math object (property-level replacement + exportFunction'd
++ * trig methods). No extension involved; no WebIDL setter round trip;
++ * no [Func=...] gates; no MAIN-world extension code.
++ *
++ * Scope: this is the prototype signal. Equivalent actors for keyboard
++ * cadence, WebRTC SDP munging, and other must-stay-JS signals follow
++ * the same pattern.
++ */
++
++const NOISE_MAG_CONST = 1e-13;  // above float64 ULP at ~3.14 (~4.44e-16)
++const NOISE_MAG_TRIG  = 1e-12;  // above float64 ULP for typical range
++
++// Simple xorshift128+ seeded from 32 bytes of seed material. Inline so
++// we don't carry the extension's lib/crypto.ts.
++function makePRNG(seedBytes) {
++  let s0 = 0n, s1 = 0n;
++  for (let i = 0; i < 16; i++) s0 = (s0 << 8n) | BigInt(seedBytes[i]);
++  for (let i = 16; i < 32; i++) s1 = (s1 << 8n) | BigInt(seedBytes[i]);
++  const MASK = (1n << 64n) - 1n;
++  return function next() {
++    let x = s0, y = s1;
++    s0 = y;
++    x = (x ^ (x << 23n)) & MASK;
++    s1 = (x ^ y ^ (x >> 17n) ^ (y >> 26n)) & MASK;
++    const combined = Number((s1 + y) & ((1n << 53n) - 1n));
++    return combined / Number(1n << 53n);
++  };
++}
++
++function b64ToBytes(b64) {
++  const bin = atob(b64);
++  const out = new Uint8Array(bin.length);
++  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
++  return out;
++}
++
++export class CloakfoxMathChild extends JSWindowActorChild {
++  handleEvent(event) {
++    if (event.type === "DOMWindowCreated") {
++      try { this.installMathSpoofer(); } catch (e) { /* never leak chrome:// in stacks */ }
++    }
++  }
++
++  installMathSpoofer() {
++    const win = this.contentWindow;
++    if (!win) return;
++    const pageWin = Cu.waiveXrays(win);  // wrappedJSObject equivalent
++
++    const seed = this._getSeed(win);
++    if (!seed) return;
++    const prng = makePRNG(b64ToBytes(seed));
++
++    const piOffset = (prng() - 0.5) * NOISE_MAG_CONST;
++    const eOffset  = (prng() - 0.5) * NOISE_MAG_CONST;
++
++    // Math is a namespace object. PI/E are non-configurable per spec,
++    // so we cannot Object.defineProperty them on pageWin.Math. The
++    // workaround (same one used by today's inject/spoofers/math):
++    // replace pageWin.Math with a fresh object that copies all other
++    // methods + carries our spoofed constants as own data properties.
++    //
++    // CRITICAL BUG WE ALREADY HIT ONCE: the plain copy loop preserved
++    // non-configurable descriptors from the source Math, which made
++    // the subsequent .PI override silently fail. Skip constants in
++    // the copy loop; set them explicitly afterwards.
++    const spoofedMath = Cu.cloneInto({}, pageWin);
++    const origMath = pageWin.Math;
++    const skip = new Set(["PI", "E", "LN2", "LN10", "LOG2E", "LOG10E", "SQRT2", "SQRT1_2"]);
++    for (const key of Object.getOwnPropertyNames(origMath)) {
++      if (skip.has(key)) continue;
++      const d = Object.getOwnPropertyDescriptor(origMath, key);
++      if (!d) continue;
++      Object.defineProperty(spoofedMath, key, d);
++    }
++    spoofedMath.PI = origMath.PI + piOffset;
++    spoofedMath.E  = origMath.E + eOffset;
++    // Other constants get tiny proportional nudges to stay internally
++    // consistent (Math.LN2 ≈ ln(2), etc.).
++    spoofedMath.LN2    = origMath.LN2 + (prng() - 0.5) * NOISE_MAG_CONST;
++    spoofedMath.LN10   = origMath.LN10 + (prng() - 0.5) * NOISE_MAG_CONST;
++    spoofedMath.LOG2E  = 1 / spoofedMath.LN2;
++    spoofedMath.LOG10E = 1 / spoofedMath.LN10;
++    spoofedMath.SQRT2  = origMath.SQRT2 + (prng() - 0.5) * NOISE_MAG_CONST;
++    spoofedMath.SQRT1_2 = 1 / spoofedMath.SQRT2;
++
++    // Trig/log noise: replace each function with an exportFunction'd
++    // version that calls the original + adds noise. Stringifies as
++    // `function <name>() { [native code] }` — no chrome:// leak.
++    const trigFns = ["sin", "cos", "tan", "asin", "acos", "atan", "atan2",
++                     "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
++                     "exp", "expm1", "log", "log2", "log10", "log1p",
++                     "sqrt", "cbrt", "hypot", "pow"];
++    for (const fn of trigFns) {
++      const orig = origMath[fn];
++      if (typeof orig !== "function") continue;
++      spoofedMath[fn] = Cu.exportFunction(function (...args) {
++        const r = orig.apply(origMath, args);
++        return Number.isFinite(r) && !Number.isInteger(r)
++          ? r + (prng() - 0.5) * NOISE_MAG_TRIG
++          : r;
++      }, pageWin, { defineAs: fn });
++    }
++
++    pageWin.Math = spoofedMath;
++  }
++
++  _getSeed(win) {
++    const bc = win.docShell?.browsingContext;
++    if (!bc) return null;
++    const uc = bc.originAttributes.userContextId ?? 0;
++    return Services.prefs.getStringPref(
++      `cloakfox.container.${uc}.math_seed`, ""
++    ) || null;
++  }
++}
++
+--- /dev/null
++++ b/browser/actors/CloakfoxMathParent.sys.mjs
+@@ -0,0 +1,6 @@
++/* Cloakfox Math actor parent half.
++ *
++ * JSWindowActor requires a parent class even if it only does child-
++ * side work. Keep it empty; the child does everything.
++ */
++export class CloakfoxMathParent extends JSWindowActorParent {}
++
+--- /dev/null
++++ b/browser/actors/CloakfoxActors.sys.mjs
+@@ -0,0 +1,19 @@
++/* Cloakfox: centralized JSWindowActor registration.
++ *
++ * Imported from BrowserGlue.sys.mjs at startup. One actor per signal
++ * family so feature flags / bisecting stay easy.
++ */
++
++export function registerCloakfoxActors() {
++  ChromeUtils.registerWindowActor("CloakfoxMath", {
++    parent: { esModuleURI: "chrome://cloakfox/content/actors/CloakfoxMathParent.sys.mjs" },
++    child: {
++      esModuleURI: "chrome://cloakfox/content/actors/CloakfoxMathChild.sys.mjs",
++      events: { DOMWindowCreated: { mozSystemGroup: true } },
++    },
++    allFrames: true,
++    matches: ["http://*/*", "https://*/*", "file:///*"],
++  });
++
++  // Future actors (one per must-stay-JS signal family):
++  // ChromeUtils.registerWindowActor("CloakfoxKeyboard", { ... });
++  // ChromeUtils.registerWindowActor("CloakfoxWebRTC", { ... });
++}
++
+--- a/browser/components/BrowserGlue.sys.mjs
++++ b/browser/components/BrowserGlue.sys.mjs
+@@ -XX,6 +XX,7 @@
+ // ... existing imports ...
++import { registerCloakfoxActors } from "resource:///actors/CloakfoxActors.sys.mjs";
+
+ // In BrowserGlue._onFirstWindowLoaded or similar early hook:
++    registerCloakfoxActors();
+
+# END OF SKETCH
+#
+# What's NOT in this sketch but IS needed for a working build:
+#
+# 1. chrome.manifest entry to serve chrome://cloakfox/content/* from
+#    the cloakfox-shield jar (or a new cloakfox-core jar). Lives in a
+#    separate chrome-registration patch.
+#
+# 2. Default-pref entries in cloakfox.cfg:
+#      defaultPref("cloakfox.container.0.math_seed", "...");
+#    These get written by the about:cloakfox page on container create.
+#
+# 3. Wire the existing extension's boot-config.ts seed derivation to
+#    write cloakfox.container.<id>.math_seed whenever a container is
+#    first spoofed. Or: generate seeds from a single master secret +
+#    userContextId at pref-read time (same determinism, less storage).
+#
+# 4. moz.build entries:
+#      EXTRA_JS_MODULES.actors += [
+#        "CloakfoxActors.sys.mjs",
+#        "CloakfoxMathChild.sys.mjs",
+#        "CloakfoxMathParent.sys.mjs",
+#      ]
+#
+# Regression test: after patch applies, load about:blank, run in
+# console (chrome context): `Services.prefs.setStringPref(
+#   "cloakfox.container.0.math_seed", btoa(crypto.getRandomValues(
+#     new Uint8Array(32)).reduce((s, b) => s + String.fromCharCode(b), ""))
+# );` then navigate to a page and check `Math.PI !== 3.141592653589793`.
