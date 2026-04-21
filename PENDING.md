@@ -6,7 +6,20 @@ revision control so we don't lose context between sessions.
 
 ## P0 — blocks release / blocks real-site validation
 
-### ~~Self-destructing WebIDL setters defeat C++/JS skip-coordination~~ — FIXED in commit `4bb9a03edb`
+### ~~Self-destructing WebIDL setters defeat C++/JS skip-coordination~~ — FIXED in commits `4bb9a03edb` + `20c5864f21`
+
+`20c5864f21` adds the privilege gate: `cloakfoxIsConfigured` is now
+`[Func='nsGlobalWindowInner::IsCloakfoxShieldCaller']` and only the
+cloakfox-shield extension's ISOLATED-world content script can see it.
+Page MAIN scripts get an undefined property — they can't probe whether
+Cloakfox is installed via this method.
+
+ISOLATED reads it at document_start, caches results in
+sessionStorage['__cloakfox_configured']. MAIN's core-bridge.ts reads
+sessionStorage instead. Manifest content_scripts order swapped so
+ISOLATED runs before MAIN.
+
+
 
 **Resolution (option 1 from below):** Added a non-self-destructing
 WebIDL query method `window.cloakfoxIsConfigured(name)` that returns
