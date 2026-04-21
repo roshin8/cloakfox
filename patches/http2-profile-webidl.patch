@@ -41,12 +41,12 @@
 +  auto* basePrincipal = mozilla::BasePrincipal::Cast(principal);
 +  // Direct addon principal (background scripts, options pages, etc.)
 +  if (auto* policy = basePrincipal->AddonPolicy()) {
-+    return policy->Id().EqualsLiteral("cloakfox-shield@cloakfox");
++    return policy->Id()->Equals(u"cloakfox-shield@cloakfox"_ns);
 +  }
 +  // Content script ExpandedPrincipal — the common case for ISOLATED-world
 +  // content scripts that Want to call this from a page context.
 +  if (auto* policy = basePrincipal->ContentScriptAddonPolicy()) {
-+    return policy->Id().EqualsLiteral("cloakfox-shield@cloakfox");
++    return policy->Id()->Equals(u"cloakfox-shield@cloakfox"_ns);
 +  }
 +  return false;
 +}
