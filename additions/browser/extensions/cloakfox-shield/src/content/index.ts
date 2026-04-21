@@ -87,24 +87,21 @@ const BRIDGE_ATTR = 'data-cfx-boot';
   } catch {}
 })();
 
-// Apply the user-selected HTTP-transport profile (async — pref writes
-// persist for the next connection). Runs AFTER the stealth coordination
-// so the setters the user opted into still go through the ISOLATED gate.
-(async () => {
-  try {
-    const stored = await browser.storage.local.get('globalSettings');
-    const globalSettings = stored.globalSettings as { http2Profile?: string } | undefined;
-    const profile = globalSettings?.http2Profile;
-    if (profile !== 'firefox' && profile !== 'chrome' && profile !== 'safari') return;
-    const pageWin = (window as any).wrappedJSObject;
-    if (typeof pageWin?.setHttp2Profile === 'function') {
-      pageWin.setHttp2Profile(profile);
-    }
-    if (typeof pageWin?.setHttp3Profile === 'function') {
-      pageWin.setHttp3Profile(profile);
-    }
-  } catch {}
-})();
+// NOTE: the HTTP/2 and HTTP/3 fingerprint profiles are configured via
+// `network.http.http2.fingerprint_profile` and
+// `network.http.http3.fingerprint_profile` prefs. The WebIDL setters
+// `setHttp2Profile` / `setHttp3Profile` exist but can't persist from a
+// content-process caller — Preferences::SetCString/SetUint runs in the
+// content process, and in e10s the parent owns the prefs DB, so the
+// write doesn't IPC up and doesn't affect the network stack (which
+// lives in the parent/socket process).
+//
+// Practical working path: `settings/cloakfox.cfg` sets these via
+// `defaultPref(...)` at browser start, which writes through the parent
+// process. about:config edits work the same way. The popup's
+// http2Profile toggle cannot take effect until Cloakfox ships a
+// WebExtensions Experiment API that lets the background script write
+// prefs through privileged APIs. Tracked in PENDING.md.
 
 // Page → Background: forward fingerprint reports
 window.addEventListener('message', async (event) => {

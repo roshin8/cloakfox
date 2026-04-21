@@ -174,7 +174,14 @@ possibly `patches/webgl-spoofing.patch`.
 
 
 
-### WebIDL setters don't actually persist prefs
+### WebIDL setters don't actually persist prefs — mitigated 2026-04-21
+
+**Status:** broken setter calls removed from `content/index.ts`;
+`cloakfox.cfg` `defaultPref` remains the working path. The underlying
+bug (below) is still real — the popup/options toggle won't take effect
+until the Experiment API lands. Tracked here; no user-facing regression
+because the calls weren't doing anything anyway.
+
 
 **Symptom:** `window.setHttp2Profile("chrome")` self-destructs (proving the
 method ran) but the `network.http.http2.fingerprint_profile` pref stays at
