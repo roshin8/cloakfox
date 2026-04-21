@@ -6,6 +6,26 @@ revision control so we don't lose context between sessions.
 
 ## P0 — blocks release / blocks real-site validation
 
+### Cross-platform WebGL mismatch (not yet verified broken; worth a test)
+
+**Symptom (hypothesized, not observed):** When the UA profile is
+Chrome/Windows but the machine is a Mac, `webgl_renderer` might return
+"Apple M1" (real GPU family) instead of "ANGLE (NVIDIA ...)" or similar.
+Probe run so far only tested Mac-UA profiles, which correctly returned
+Apple GPUs (M2 Pro in first run, M1 in second — the rotation across
+runs proves webgl.ts IS spoofing within the platform family).
+
+**What to verify:** force the extension to assign a Windows or Linux UA
+profile, then check `webgl_renderer` — if it still says "Apple …", that's
+a cross-platform leak that identifies the real hardware platform despite
+the spoofed UA.
+
+**Files touched if broken:** `additions/browser/extensions/cloakfox-shield/src/inject/spoofers/graphics/webgl.ts`,
+`additions/browser/extensions/cloakfox-shield/src/inject/core-bridge.ts`
+(selectedGPU picker).
+
+
+
 ### WebIDL setters don't actually persist prefs
 
 **Symptom:** `window.setHttp2Profile("chrome")` self-destructs (proving the
