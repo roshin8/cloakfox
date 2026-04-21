@@ -32,6 +32,47 @@ echo "Copying additions..."
 cd "$TEST_DIR"
 bash "$REPO_DIR/scripts/copy-additions.sh" "$version" "$release" "$REPO_DIR" >/dev/null 2>&1
 
+# Audit hunk line-counts for new-file hunks (@@ -0,0 +1,N @@).
+# `patch` silently truncates at the declared count, so a too-small N
+# drops trailing lines without any error — producing malformed C++ that
+# only manifests at compile time. This check catches that class of bug
+# at patch-generation time.
+echo ""
+echo "=== Auditing new-file hunk counts ==="
+MISMATCH=0
+for p in "$REPO_DIR"/patches/*.patch; do
+    out=$(awk '
+        function finish() {
+            if (hdr && count != declared) print path ":" hdr_line ": declared " declared ", actual " count
+            hdr = 0
+        }
+        # New-file hunk header — start counting.
+        /^@@ -0,0 \+1,([0-9]+) @@/ {
+            finish()
+            match($0, /\+1,[0-9]+/); declared = substr($0, RSTART+3, RLENGTH-3) + 0
+            hdr = 1; hdr_line = NR; count = 0; next
+        }
+        # Any other boundary ends the current hunk body. Note: a "--- "
+        # line starts a new file header and its following "+++ " line
+        # is NOT part of the previous hunk — that was the original bug.
+        /^@@/ || /^diff --git/ || /^Index: / || /^--- / { finish(); next }
+        # "+++ " appears at file-header position only; ignore it too.
+        /^\+\+\+ / { next }
+        /^\+/ { if (hdr) count++ }
+        END { finish() }
+    ' path="$(basename "$p")" "$p")
+    if [ -n "$out" ]; then
+        echo "$out" | sed 's/^/  /'
+        MISMATCH=1
+    fi
+done
+if [ $MISMATCH -ne 0 ]; then
+    echo ""
+    echo "FAIL: hunk count mismatches detected. Fix hunk headers before applying."
+    exit 1
+fi
+echo "  OK — all new-file hunks match declared line counts."
+
 # Apply all patches — respect order.txt first, then anything unlisted (alphabetical).
 echo ""
 echo "=== Applying patches ==="
