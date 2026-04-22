@@ -66,9 +66,46 @@ Two patches hook this into the Firefox tree:
 - The actor's `#installMathSpoofer` wraps every step in try/catch. An
   exception that escapes would leak `chrome://` paths in stack traces
   visible to page JS. Audit before shipping.
-- `DOMWindowCreated` fires before page `<script>` tags run, but *after*
-  the window global exists. So `pageWin.Math` is present and mutable at
-  that point — replacing it is safe.
-- The pref-read is synchronous via `Services.prefs.getStringPref`. On a
-  cold profile with no seed, the actor silently does nothing — no
+- `DOMDocElementInserted` fires before any page `<script>`, but after
+  the inner window global exists — so `pageWin.Math` is mutable at
+  that point. (The earlier `DOMWindowCreated` choice silently didn't
+  fire as a JSWindowActor trigger — confirmed empirically and matches
+  the fact that no Firefox builtin actor uses it.)
+- The pref-read is synchronous via `Services.prefs.getStringPref`. On
+  a cold profile with no seed, the actor silently does nothing — no
   spoofing until the user explicitly sets a seed via `about:cloakfox`.
+
+## Known detection surfaces (pending fix)
+
+The actor makes the *value* of `Math.PI` per-container-unique — which
+is the point — but there are still fingerprint signals a sophisticated
+probe can use to tell the spoofed Math apart from a native one:
+
+1. **Descriptor leak.** `Object.getOwnPropertyDescriptor(Math, "PI")`
+   on page code returns `{writable: true, configurable: true,
+   enumerable: true}`. Native Math.PI reads as
+   `{writable: false, configurable: false, enumerable: false}`. A
+   fingerprinter checking `.configurable === false` will catch the
+   spoof. The actor DOES attempt to install PI with the locked flags,
+   but the cross-compartment path strips them — `Cu.cloneInto` +
+   `Object.defineProperty` through the Xray boundary drops the
+   false-valued flags. Verified the actor's own view of the descriptor
+   via `pageWin.Object.getOwnPropertyDescriptor` correctly reports
+   `{writable: false, ...}`, so it's truly two views of the same
+   object. **Fix direction:** install descriptors via `pageWin.eval`
+   with the value pushed through a temporary global. POC of this
+   approach attempted but not yet stable. Tracked in PENDING.
+2. **Math.sin.toString()** — works as native (`function sin() {
+   [native code] }`) via `Cu.exportFunction`. ✓
+3. **`Object.prototype.toString.call(Math)`** returns `"[object Math]"` —
+   matches native. ✓ (`Math[Symbol.toStringTag]` is preserved somehow
+   despite the copy; need to verify this isn't an artifact of only
+   checking on the first navigation.)
+4. **No script injection** — actor does zero DOM writes; no
+   `<script>` tag, no `<meta>`, no attribute set. Invisible to
+   MutationObserver and document-load hooks. ✓
+
+So as-is, the POC defeats value-based fingerprinting (the primary use
+case) but not shape-based "is this browser spoofed" probes. The
+value-based coverage is what matters for per-container uniqueness;
+shape-based stealth is follow-up work.

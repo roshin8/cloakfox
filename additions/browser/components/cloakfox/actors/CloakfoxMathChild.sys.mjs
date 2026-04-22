@@ -91,18 +91,24 @@ export class CloakfoxMathChild extends JSWindowActorChild {
       "PI", "E", "LN2", "LN10", "LOG2E", "LOG10E", "SQRT2", "SQRT1_2",
     ]);
 
+    // KNOWN LIMITATION (see POC README, "Descriptor leak"):
+    // Cu.cloneInto + defineProperty across the Xray boundary doesn't
+    // preserve descriptor flags the way page-native defineProperty
+    // does. The spoofed values are correct but the descriptors read
+    // as {writable: true, configurable: true, enumerable: true} from
+    // page code — native Math.PI reads as {writable: false,
+    // configurable: false, enumerable: false}. A fingerprint script
+    // can probe this. Closing the gap is follow-up work — likely via
+    // pageWin.eval / Cu.Sandbox with a page-native defineProperty.
     for (const key of Object.getOwnPropertyNames(origMath)) {
       if (CONSTANTS.has(key)) continue;
       const d = Object.getOwnPropertyDescriptor(origMath, key);
       if (!d) continue;
-      try {
-        Object.defineProperty(spoofedMath, key, d);
-      } catch (_e) { /* best effort */ }
+      try { Object.defineProperty(spoofedMath, key, d); } catch (_e) {}
     }
-
     spoofedMath.PI      = origMath.PI + piOffset;
     spoofedMath.E       = origMath.E + eOffset;
-    spoofedMath.LN2     = origMath.LN2 + (prng() - 0.5) * NOISE_MAG_CONST;
+    spoofedMath.LN2     = origMath.LN2  + (prng() - 0.5) * NOISE_MAG_CONST;
     spoofedMath.LN10    = origMath.LN10 + (prng() - 0.5) * NOISE_MAG_CONST;
     spoofedMath.LOG2E   = 1 / spoofedMath.LN2;
     spoofedMath.LOG10E  = 1 / spoofedMath.LN10;
@@ -120,12 +126,13 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     for (const fn of TRIG_FNS) {
       const orig = origMath[fn];
       if (typeof orig !== "function") continue;
-      spoofedMath[fn] = Cu.exportFunction(function (...args) {
+      const wrapped = Cu.exportFunction(function (...args) {
         const r = orig.apply(origMath, args);
         return Number.isFinite(r) && !Number.isInteger(r)
           ? r + (prng() - 0.5) * NOISE_MAG_TRIG
           : r;
       }, pageWin, { defineAs: fn });
+      spoofedMath[fn] = wrapped;
     }
 
     pageWin.Math = spoofedMath;
