@@ -1,0 +1,43 @@
+Cloakfox: register CloakfoxMath JSWindowActor.
+
+Adds the CloakfoxMath actor to the declarative JSWINDOWACTORS table in
+ActorManagerParent. Fires on DOMWindowCreated for every http/https/file
+document, runs with chrome principal in the content process, spoofs
+Math.PI / Math.E / trig family per userContextId. No extension involved.
+
+Actor body ships at additions/browser/components/cloakfox/actors/
+CloakfoxMath{Child,Parent}.sys.mjs → lands at resource:///actors/ via
+FINAL_TARGET_FILES.actors in that dir's moz.build.
+
+Gated on cloakfox.enabled pref — the child actor checks this at entry
+and bails if unset, so the actor stays resident but has zero impact
+when Cloakfox is disabled.
+
+--- a/toolkit/modules/ActorManagerParent.sys.mjs
++++ b/toolkit/modules/ActorManagerParent.sys.mjs
+@@ -90,6 +90,25 @@
+  * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
+  */
+ let JSWINDOWACTORS = {
++  // Cloakfox: per-container Math fingerprint spoofing. See
++  // docs/cpp-first/README.md. Runs chrome-privileged in the content
++  // process for every web document; reads per-userContextId seed from
++  // prefs (cloakfox.container.<id>.math_seed) and replaces
++  // pageWin.Math with a perturbed copy before the first page script
++  // runs. No extension, no WebIDL setter, no [Func=...] gate.
++  CloakfoxMath: {
++    parent: {
++      esModuleURI: "resource:///actors/CloakfoxMathParent.sys.mjs",
++    },
++    child: {
++      esModuleURI: "resource:///actors/CloakfoxMathChild.sys.mjs",
++      events: {
++        DOMWindowCreated: { mozSystemGroup: true },
++      },
++    },
++    allFrames: true,
++    matches: ["http://*/*", "https://*/*", "file:///*"],
++  },
+   AboutCertViewer: {
+     parent: {
+       esModuleURI: "resource://gre/modules/AboutCertViewerParent.sys.mjs",

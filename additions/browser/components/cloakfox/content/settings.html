@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cloakfox Settings</title>
+  <link rel="stylesheet" href="chrome://browser/content/cloakfox/settings.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Cloakfox</h1>
+      <p class="tagline">Per-container fingerprint isolation</p>
+    </header>
+
+    <section id="primary-toggle">
+      <label class="toggle-row">
+        <input type="checkbox" id="cfx-enabled">
+        <span class="toggle-label">
+          <strong>Enable Cloakfox</strong>
+          <small>Global kill-switch. When off, Firefox behaves normally.</small>
+        </span>
+      </label>
+    </section>
+
+    <section id="container-status">
+      <h2>Current container</h2>
+      <div class="status-grid">
+        <div><strong>userContextId:</strong> <span id="cfx-ucid">—</span></div>
+        <div><strong>Math seed:</strong> <code id="cfx-seed">—</code></div>
+      </div>
+      <button id="cfx-regenerate">Regenerate seed for this container</button>
+    </section>
+
+    <section id="diagnostics">
+      <h2>Diagnostics</h2>
+      <p>Run these in the browser devtools chrome console to verify cpp-first
+         plumbing:</p>
+      <pre><code>// Read the pref this page writes:
+Services.prefs.getStringPref("cloakfox.enabled", "");
+
+// Check a container's math seed:
+Services.prefs.getStringPref("cloakfox.container.0.math_seed", "");</code></pre>
+    </section>
+  </main>
+
+  <script type="module" src="chrome://browser/content/cloakfox/settings.js"></script>
+</body>
+</html>
