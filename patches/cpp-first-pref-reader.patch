@@ -1,0 +1,82 @@
+--- a/dom/base/RoverfoxStorageManager.cpp
++++ b/dom/base/RoverfoxStorageManager.cpp
+@@ -26,6 +26,27 @@
+   return nsCString(prefName);
+ }
+ 
++/* static */ nsCString
++RoverfoxStorageManager::MakeCppFirstPrefName(const nsAString& key) {
++  // cpp-first pref namespace — written by about:cloakfox (chrome-
++  // privileged). Takes priority over roverfox.s.* (extension-written).
++  nsAutoCString prefName("cloakfox.s.");
++  AppendUTF16toUTF8(key, prefName);
++  return nsCString(prefName);
++}
++
++/* static */ bool
++RoverfoxStorageManager::TryGetCppFirstPref(const nsAString& key,
++                                            nsACString& outValue) {
++  nsAutoCString v;
++  if (NS_SUCCEEDED(Preferences::GetCString(MakeCppFirstPrefName(key).get(), v))
++      && !v.IsEmpty()) {
++    outValue = v;
++    return true;
++  }
++  return false;
++}
++
+ /* static */ void
+ RoverfoxStorageManager::SetPrefValue(const nsCString& prefName,
+                                       const nsCString& value) {
+@@ -55,6 +76,20 @@
+ 
+ /* static */ bool
+ RoverfoxStorageManager::GetUint(const nsAString& key, uint32_t& outValue) {
++  // cpp-first priority: cloakfox.s.<key> wins over the extension-
++  // populated roverfox.s.<key>. Lets about:cloakfox set authoritative
++  // values without racing the extension's setCanvasSeed calls.
++  {
++    nsAutoCString cppFirst;
++    if (TryGetCppFirstPref(key, cppFirst)) {
++      nsresult parseRv;
++      int64_t parsed = cppFirst.ToInteger64(&parseRv);
++      if (NS_SUCCEEDED(parseRv) && parsed >= 0) {
++        outValue = static_cast<uint32_t>(parsed);
++        return true;
++      }
++    }
++  }
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString strValue;
+   // Check local cache first (immediate reads for values set in this process)
+@@ -99,6 +134,15 @@
+ 
+ /* static */ bool
+ RoverfoxStorageManager::GetBool(const nsAString& key, bool& outValue) {
++  // cpp-first priority check.
++  {
++    nsAutoCString cppFirst;
++    if (TryGetCppFirstPref(key, cppFirst)) {
++      outValue = (cppFirst.EqualsLiteral("1") ||
++                  cppFirst.LowerCaseEqualsLiteral("true"));
++      return true;
++    }
++  }
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString strValue;
+   {
+@@ -139,6 +183,14 @@
+ 
+ /* static */ bool
+ RoverfoxStorageManager::GetString(const nsAString& key, nsAString& outValue) {
++  // cpp-first priority check.
++  {
++    nsAutoCString cppFirst;
++    if (TryGetCppFirstPref(key, cppFirst)) {
++      CopyUTF8toUTF16(cppFirst, outValue);
++      return true;
++    }
++  }
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString utf8Value;
+   {

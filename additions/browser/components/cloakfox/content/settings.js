@@ -27,7 +27,19 @@ function getCurrentUserContextId() {
 }
 
 function seedPrefName(ucid) {
+  // Math actor reads cloakfox.container.<ucid>.math_seed directly;
+  // C++ managers read via RoverfoxStorageManager which checks
+  // cloakfox.s.<key> first (cpp-first priority). Both live under
+  // pref namespaces we own.
   return `cloakfox.container.${ucid}.math_seed`;
+}
+
+// C++-side storage keys use underscores: canvas_seed_<ucid>,
+// webgl_vendor_<ucid>, etc. When we regenerate seeds here, we write
+// the cpp-first pref `cloakfox.s.<key>` which wins over the
+// extension-populated `roverfox.s.<key>`.
+function cppFirstPrefName(signal, ucid) {
+  return `cloakfox.s.${signal}_${ucid}`;
 }
 
 function randomSeedB64() {
@@ -60,10 +72,23 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Seed regen button: write a fresh 32-byte seed for the current
-  // container.
+  // container AND populate the cpp-first priority prefs so the C++
+  // managers (canvas, WebGL, audio, fonts) consume the new values
+  // without waiting for the extension's WebIDL setters to fire.
   regenBtn.addEventListener("click", () => {
     const seed = randomSeedB64();
     Services.prefs.setStringPref(seedPrefName(ucid), seed);
     seedEl.textContent = seed;
+
+    // Derive a deterministic uint32 per signal from the same seed
+    // bytes. POC: use the first N bytes of the seed for each signal's
+    // integer value. Real implementation would use a KDF (HMAC-SHA256
+    // with per-signal labels).
+    const bytes = Uint8Array.from(atob(seed), c => c.charCodeAt(0));
+    const u32 = (i) => new DataView(bytes.buffer).getUint32(i * 4);
+    Services.prefs.setStringPref(cppFirstPrefName("canvas_seed", ucid), String(u32(0)));
+    Services.prefs.setStringPref(cppFirstPrefName("audio_seed", ucid), String(u32(1)));
+    Services.prefs.setStringPref(cppFirstPrefName("font_seed", ucid), String(u32(2)));
+    Services.prefs.setStringPref(cppFirstPrefName("font_spacing_seed", ucid), String(u32(3)));
   });
 });
