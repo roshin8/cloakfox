@@ -32,7 +32,12 @@ when Cloakfox is disabled.
 +    child: {
 +      esModuleURI: "resource:///actors/CloakfoxMathChild.sys.mjs",
 +      events: {
-+        DOMWindowCreated: { mozSystemGroup: true },
++        // DOMDocElementInserted fires when <html> is inserted — before
++        // any page <script> runs but after the inner window global
++        // exists. DOMWindowCreated does NOT work as a JSWindowActor
++        // trigger (no instantiation occurs); every Firefox builtin
++        // actor uses DOMDocElementInserted or DOMContentLoaded.
++        DOMDocElementInserted: { capture: true },
 +      },
 +    },
 +    allFrames: true,

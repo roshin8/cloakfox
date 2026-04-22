@@ -5,7 +5,7 @@
 /* Cloakfox: Math constants + trig noise per userContextId.
  *
  * Runs as a JSWindowActor child (chrome principal, content process,
- * invoked on every DOMWindowCreated). Reads a per-container seed from
+ * invoked on every DOMDocElementInserted). Reads a per-container seed from
  * prefs, derives an xorshift state, perturbs Math.PI / Math.E and
  * noise-wraps the trig/log family. Page MAIN sees what looks like a
  * native Math object. No extension involved; no WebIDL setter round
@@ -46,7 +46,12 @@ function b64ToBytes(b64) {
 
 export class CloakfoxMathChild extends JSWindowActorChild {
   handleEvent(event) {
-    if (event.type !== "DOMWindowCreated") return;
+    // DOMDocElementInserted fires when <html> is inserted — before any
+    // page <script> runs but after the inner window global exists.
+    // DOMWindowCreated does NOT work as a JSWindowActor trigger
+    // (silently never fires); verified empirically, matches the
+    // pattern every Firefox builtin actor uses.
+    if (event.type !== "DOMDocElementInserted") return;
     try {
       this.#installMathSpoofer();
     } catch (_e) {
