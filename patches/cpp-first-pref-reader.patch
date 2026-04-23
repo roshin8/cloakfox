@@ -80,3 +80,17 @@
    nsCString prefName = MakePrefName(key);
    nsAutoCString utf8Value;
    {
+--- a/dom/base/RoverfoxStorageManager.h
++++ b/dom/base/RoverfoxStorageManager.h
+@@ -25,6 +25,11 @@
+ 
+  private:
+   static nsCString MakePrefName(const nsAString& key);
++  // cpp-first: separate pref namespace for values written by
++  // about:cloakfox (chrome-privileged). Checked first in the Get*
++  // helpers so chrome writes take priority over extension-set values.
++  static nsCString MakeCppFirstPrefName(const nsAString& key);
++  static bool TryGetCppFirstPref(const nsAString& key, nsACString& outValue);
+   static void SetPrefValue(const nsCString& prefName, const nsCString& value);
+   static nsTHashMap<nsCStringHashKey, nsCString>& GetLocalCache();
+   static mozilla::Mutex& GetLocalCacheMutex();
