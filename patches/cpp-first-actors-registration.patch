@@ -15,10 +15,28 @@ when Cloakfox is disabled.
 
 --- a/toolkit/modules/ActorManagerParent.sys.mjs
 +++ b/toolkit/modules/ActorManagerParent.sys.mjs
-@@ -90,6 +90,30 @@
+@@ -90,6 +90,48 @@
   * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
   */
  let JSWINDOWACTORS = {
++  // Cloakfox: per-container keyboard-cadence spoofing. Wraps
++  // EventTarget.prototype.addEventListener for key events and nudges
++  // event.timeStamp toward a minimum cadence of 30ms (+ up to 15ms
++  // jitter) to normalize typing-rhythm fingerprinting. Seed from
++  // cloakfox.container.<id>.keyboard_seed. Phase 2 cpp-first port.
++  CloakfoxKeyboard: {
++    parent: {
++      esModuleURI: "resource:///actors/CloakfoxKeyboardParent.sys.mjs",
++    },
++    child: {
++      esModuleURI: "resource:///actors/CloakfoxKeyboardChild.sys.mjs",
++      events: {
++        DOMDocElementInserted: { capture: true },
++      },
++    },
++    allFrames: true,
++    matches: ["http://*/*", "https://*/*", "file:///*"],
++  },
 +  // Cloakfox: per-container Math fingerprint spoofing. See
 +  // docs/cpp-first/README.md. Runs chrome-privileged in the content
 +  // process for every web document; reads per-userContextId seed from
