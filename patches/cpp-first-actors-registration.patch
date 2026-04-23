@@ -15,7 +15,7 @@ when Cloakfox is disabled.
 
 --- a/toolkit/modules/ActorManagerParent.sys.mjs
 +++ b/toolkit/modules/ActorManagerParent.sys.mjs
-@@ -90,6 +90,65 @@
+@@ -90,6 +90,82 @@
   * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
   */
  let JSWINDOWACTORS = {
@@ -30,6 +30,23 @@ when Cloakfox is disabled.
 +    },
 +    child: {
 +      esModuleURI: "resource:///actors/CloakfoxKeyboardChild.sys.mjs",
++      events: {
++        DOMDocElementInserted: { capture: true },
++      },
++    },
++    allFrames: true,
++    matches: ["http://*/*", "https://*/*", "file:///*"],
++  },
++  // Cloakfox: per-container window.history.length fake. Fingerprint
++  // sites read history.length to tell automation (length=1) from real
++  // browsing sessions. Returns a stable-per-container plausible
++  // length (3..50). Seed reuses math_seed.
++  CloakfoxTabHistory: {
++    parent: {
++      esModuleURI: "resource:///actors/CloakfoxTabHistoryParent.sys.mjs",
++    },
++    child: {
++      esModuleURI: "resource:///actors/CloakfoxTabHistoryChild.sys.mjs",
 +      events: {
 +        DOMDocElementInserted: { capture: true },
 +      },
