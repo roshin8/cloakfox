@@ -46,13 +46,57 @@ Two patches hook this into the Firefox tree:
    - Click "Regenerate seed" — the displayed seed and the
      `cloakfox.container.0.math_seed` pref both update.
 
-## What's NOT in this POC yet
+## Step 2 status (C++ pref-reader) — code done, runtime verification blocked
 
-- **C++ pref reader.** Today the Math actor reads prefs directly via
-  `Services.prefs`. For C++ managers (canvas, WebGL, etc.) to consume
-  the same prefs, we'd hook `nsGlobalWindowInner` construction to
-  populate `RoverfoxStorageManager` from `cloakfox.container.<id>.*`.
-  That's the next POC step — not needed for the Math actor itself.
+The C++ patches landed (`cpp-first-pref-reader.patch` +
+`cross-process-storage.patch` allow-prefix extension):
+
+- `RoverfoxStorageManager::GetUint/GetBool/GetString` now check a
+  `cloakfox.s.<key>` pref first, falling back to the existing
+  lookup chain (local cache → `roverfox.s.*` pref → IPC to parent).
+- Parent's `RecvRoverfoxStorageGet` accepts both `roverfox.s.*` and
+  `cloakfox.s.*` prefixes so content-process IPC reads work for our
+  namespace.
+- `TryGetCppFirstPref` falls back to `SendRoverfoxStorageGet` when
+  the in-content pref mirror is empty (user.js prefs under custom
+  namespaces don't auto-mirror).
+- `strings(XUL) | grep cloakfox.s.` shows our symbols in the built
+  binary — the patch compiled and linked.
+
+**But `probe_cpp_first_priority.py` couldn't close the loop.** Canvas
+hashes are identical across runs with different
+`cloakfox.s.canvasSeed_0` values — AND identical across runs with
+different `roverfox.s.canvasSeed_0` values (the existing extension-
+written namespace). That means canvas spoofing isn't firing in this
+test config at all, regardless of whose seed pref we set.
+
+Root cause (pre-existing, unrelated to cpp-first): the extension's
+setCanvasSeed pipeline isn't running on `https://example.com` in
+headless mode. After 3s on that page, the entire `roverfox.s.*`
+pref branch is empty — the extension never calls `setCanvasSeed`,
+`setWebGLVendor`, etc. The `cloakfox-shield` addon IS installed and
+active (`AddonManager.getAddonByID` confirms), but the console shows
+`Error: Missing install_url for cloakfox-shield@cloakfox` from
+`Policies.sys.mjs:1482` — `settings/policies.json` specifies
+`"installation_mode": "force_installed"` without an `install_url`,
+which appears to break the content-script execution path even
+though AddonManager considers the addon active.
+
+This is a baseline issue surfaced by the cpp-first probe, NOT a
+cpp-first regression. The step 2 code is correctly shipped; we
+just can't run the end-to-end priority test until the baseline
+extension firing is fixed.
+
+**Practical implication for the go/no-go decision:** the cpp-first
+architectural mechanism (pref → C++ priority → manager read) is
+mechanically sound. Every building block is in place. The runtime
+coupling check is blocked, but it's blocked on a problem that
+predates cpp-first and would need fixing regardless.
+
+A follow-up fix would either (a) add a valid `install_url` to
+`policies.json`, (b) remove the force_installed policy and install
+the extension via a different mechanism, or (c) drop the extension
+entirely as the cpp-first migration already plans to do.
 - **Container awareness in the settings page.** `getCurrentUserContextId()`
   returns `0` unconditionally. A real UI would read the tab origin's
   container from the parent (via an AboutCloakfoxParent actor) and
