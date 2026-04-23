@@ -2,14 +2,18 @@ diff --git a/dom/ipc/ContentParent.cpp b/dom/ipc/ContentParent.cpp
 index 1ff3195235..795cb05bc3 100644
 --- a/dom/ipc/ContentParent.cpp
 +++ b/dom/ipc/ContentParent.cpp
-@@ -1231,6 +1231,26 @@ mozilla::ipc::IPCResult ContentParent::RecvCreateGMPService() {
+@@ -1231,6 +1231,31 @@ mozilla::ipc::IPCResult ContentParent::RecvCreateGMPService() {
    return IPC_OK();
  }
  
 +mozilla::ipc::IPCResult ContentParent::RecvRoverfoxStoragePut(
 +    const nsCString& aPrefName, const nsCString& aValue) {
-+  // Only allow roverfox-namespaced prefs for security
-+  if (!StringBeginsWith(aPrefName, "roverfox.s."_ns)) {
++  // Allow roverfox.s.* (extension-populated) and cloakfox.s.*
++  // (cpp-first, written by about:cloakfox). Both prefixes are
++  // Cloakfox-owned; neither lets content processes write arbitrary
++  // browser prefs.
++  if (!StringBeginsWith(aPrefName, "roverfox.s."_ns) &&
++      !StringBeginsWith(aPrefName, "cloakfox.s."_ns)) {
 +    return IPC_OK();
 +  }
 +  Preferences::SetCString(aPrefName.get(), aValue);
@@ -18,7 +22,8 @@ index 1ff3195235..795cb05bc3 100644
 +
 +mozilla::ipc::IPCResult ContentParent::RecvRoverfoxStorageGet(
 +    const nsCString& aPrefName, nsCString* aOutValue) {
-+  if (!StringBeginsWith(aPrefName, "roverfox.s."_ns)) {
++  if (!StringBeginsWith(aPrefName, "roverfox.s."_ns) &&
++      !StringBeginsWith(aPrefName, "cloakfox.s."_ns)) {
 +    *aOutValue = ""_ns;
 +    return IPC_OK();
 +  }

@@ -86,9 +86,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // with per-signal labels).
     const bytes = Uint8Array.from(atob(seed), c => c.charCodeAt(0));
     const u32 = (i) => new DataView(bytes.buffer).getUint32(i * 4);
-    Services.prefs.setStringPref(cppFirstPrefName("canvas_seed", ucid), String(u32(0)));
-    Services.prefs.setStringPref(cppFirstPrefName("audio_seed", ucid), String(u32(1)));
-    Services.prefs.setStringPref(cppFirstPrefName("font_seed", ucid), String(u32(2)));
-    Services.prefs.setStringPref(cppFirstPrefName("font_spacing_seed", ucid), String(u32(3)));
+    // Keys must match the exact strings the C++ managers use with
+    // RoverfoxStorageManager::PutUint/GetUint. See
+    // patches/canvas-spoofing.patch ("canvasSeed_%u"),
+    // patches/audio-fingerprint-manager.patch ("audioFingerprintSeed_%u").
+    Services.prefs.setStringPref(cppFirstPrefName("canvasSeed", ucid), String(u32(0)));
+    Services.prefs.setStringPref(cppFirstPrefName("audioFingerprintSeed", ucid), String(u32(1)));
   });
 });
