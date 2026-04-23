@@ -12,6 +12,8 @@ JAR_MANIFESTS += ["jar.mn"]
 # declaratively via toolkit/modules/ActorManagerParent.sys.mjs (see
 # patches/cpp-first-math-actor-registration.patch).
 FINAL_TARGET_FILES.actors += [
+    "actors/CloakfoxGamepadChild.sys.mjs",
+    "actors/CloakfoxGamepadParent.sys.mjs",
     "actors/CloakfoxKeyboardChild.sys.mjs",
     "actors/CloakfoxKeyboardParent.sys.mjs",
     "actors/CloakfoxMathChild.sys.mjs",

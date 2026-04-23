@@ -15,7 +15,7 @@ when Cloakfox is disabled.
 
 --- a/toolkit/modules/ActorManagerParent.sys.mjs
 +++ b/toolkit/modules/ActorManagerParent.sys.mjs
-@@ -90,6 +90,82 @@
+@@ -90,6 +90,98 @@
   * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
   */
  let JSWINDOWACTORS = {
@@ -30,6 +30,22 @@ when Cloakfox is disabled.
 +    },
 +    child: {
 +      esModuleURI: "resource:///actors/CloakfoxKeyboardChild.sys.mjs",
++      events: {
++        DOMDocElementInserted: { capture: true },
++      },
++    },
++    allFrames: true,
++    matches: ["http://*/*", "https://*/*", "file:///*"],
++  },
++  // Cloakfox: navigator.getGamepads stub. Returns a 4-slot array of
++  // nulls (standard "no gamepad connected" shape). Page code that
++  // checks for gamepads gets no hardware info to fingerprint.
++  CloakfoxGamepad: {
++    parent: {
++      esModuleURI: "resource:///actors/CloakfoxGamepadParent.sys.mjs",
++    },
++    child: {
++      esModuleURI: "resource:///actors/CloakfoxGamepadChild.sys.mjs",
 +      events: {
 +        DOMDocElementInserted: { capture: true },
 +      },
