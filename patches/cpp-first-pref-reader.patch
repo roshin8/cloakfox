@@ -1,6 +1,6 @@
 --- a/dom/base/RoverfoxStorageManager.cpp
 +++ b/dom/base/RoverfoxStorageManager.cpp
-@@ -26,6 +26,46 @@
+@@ -26,6 +26,37 @@
    return nsCString(prefName);
  }
  
@@ -18,14 +18,7 @@
 +                                            nsACString& outValue) {
 +  nsCString prefName = MakeCppFirstPrefName(key);
 +  nsAutoCString v;
-+  nsresult rv = Preferences::GetCString(prefName.get(), v);
-+  // DIAGNOSTIC (temporary — strip before RFC lands): trace every
-+  // call so we can see what path TryGetCppFirstPref takes in each
-+  // process.
-+  printf_stderr("CFX-TRYCPP: key=%s rv=%x v='%s' parent=%d\n",
-+                prefName.get(), uint32_t(rv), v.get(),
-+                XRE_IsParentProcess() ? 1 : 0);
-+  if (NS_SUCCEEDED(rv) && !v.IsEmpty()) {
++  if (NS_SUCCEEDED(Preferences::GetCString(prefName.get(), v)) && !v.IsEmpty()) {
 +    outValue = v;
 +    return true;
 +  }
@@ -33,8 +26,6 @@
 +    ContentChild* cc = ContentChild::GetSingleton();
 +    if (cc) {
 +      cc->SendRoverfoxStorageGet(prefName, &v);
-+      printf_stderr("CFX-TRYCPP-IPC: key=%s v='%s'\n",
-+                    prefName.get(), v.get());
 +      if (!v.IsEmpty()) {
 +        outValue = v;
 +        return true;
@@ -47,7 +38,7 @@
  /* static */ void
  RoverfoxStorageManager::SetPrefValue(const nsCString& prefName,
                                        const nsCString& value) {
-@@ -55,6 +95,20 @@
+@@ -55,6 +86,20 @@
  
  /* static */ bool
  RoverfoxStorageManager::GetUint(const nsAString& key, uint32_t& outValue) {
@@ -68,7 +59,7 @@
    nsCString prefName = MakePrefName(key);
    nsAutoCString strValue;
    // Check local cache first (immediate reads for values set in this process)
-@@ -99,6 +153,15 @@
+@@ -99,6 +144,15 @@
  
  /* static */ bool
  RoverfoxStorageManager::GetBool(const nsAString& key, bool& outValue) {
@@ -84,7 +75,7 @@
    nsCString prefName = MakePrefName(key);
    nsAutoCString strValue;
    {
-@@ -139,6 +202,14 @@
+@@ -139,6 +193,14 @@
  
  /* static */ bool
  RoverfoxStorageManager::GetString(const nsAString& key, nsAString& outValue) {

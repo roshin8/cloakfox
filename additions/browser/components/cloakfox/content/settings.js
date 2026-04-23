@@ -86,11 +86,23 @@ document.addEventListener("DOMContentLoaded", () => {
     // with per-signal labels).
     const bytes = Uint8Array.from(atob(seed), c => c.charCodeAt(0));
     const u32 = (i) => new DataView(bytes.buffer).getUint32(i * 4);
-    // Keys must match the exact strings the C++ managers use with
-    // RoverfoxStorageManager::PutUint/GetUint. See
-    // patches/canvas-spoofing.patch ("canvasSeed_%u"),
-    // patches/audio-fingerprint-manager.patch ("audioFingerprintSeed_%u").
-    Services.prefs.setStringPref(cppFirstPrefName("canvasSeed", ucid), String(u32(0)));
-    Services.prefs.setStringPref(cppFirstPrefName("audioFingerprintSeed", ucid), String(u32(1)));
+    // The unified-maskconfig architecture routes every signal's per-
+    // container config through ONE JSON blob: `cloak_cfg_<ucid>`.
+    // MaskConfig::GetUint32("canvas:seed") reads it; same for other
+    // signals (audio:*, font:*, etc). Write the JSON, don't try to
+    // write each signal's key directly — the individual-key path
+    // (canvasSeed_<ucid>, audioFingerprintSeed_<ucid>) exists in
+    // canvas-spoofing.patch et al. but the unified path supersedes
+    // it and is what the live build actually consults.
+    const cfg = {
+      "canvas:seed": u32(0),
+      "audio:seed": u32(1),
+      "font:seed": u32(2),
+      "font:spacing_seed": u32(3),
+    };
+    Services.prefs.setStringPref(
+      cppFirstPrefName("cloak_cfg", ucid),
+      JSON.stringify(cfg),
+    );
   });
 });

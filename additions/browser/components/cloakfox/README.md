@@ -46,7 +46,33 @@ Two patches hook this into the Firefox tree:
    - Click "Regenerate seed" — the displayed seed and the
      `cloakfox.container.0.math_seed` pref both update.
 
-## Step 2 status (C++ pref-reader) — code done, runtime verification blocked
+## Step 2 status (C++ pref-reader) — VERIFIED END-TO-END 2026-04-23
+
+**PASS.** `probe_cpp_first_priority.py` produces different canvas
+hashes for two different cpp-first seeds:
+
+  `cloakfox.s.cloak_cfg_0 = {"canvas:seed":11111}` → `964a4e80...`
+  `cloakfox.s.cloak_cfg_0 = {"canvas:seed":99999}` → `2daebca1...`
+
+The cpp-first priority path is wired through C++ on the real
+canvas-rendering code path. Setting the pref with parent-process
+authority from about:cloakfox drives canvas spoofing output.
+
+**Schema note (from the debugging):** the unified-maskconfig
+architecture routes every per-container signal config through ONE
+JSON blob at `cloak_cfg_<ucid>` (read via `MaskConfig::GetUint32`
+etc.). Individual-key storage (`canvasSeed_<ucid>`,
+`audioFingerprintSeed_<ucid>` etc., created by the
+`setCanvasSeed` WebIDL path and used by
+`CanvasFingerprintManager::GetSeed`) exists as a fallback but is
+superseded by the JSON blob on live builds. Cpp-first writes
+to the JSON blob, not to the individual keys.
+
+Original section kept below for context.
+
+---
+
+## Step 2 status (earlier — resolved) — code done, runtime verification blocked
 
 The C++ patches landed (`cpp-first-pref-reader.patch` +
 `cross-process-storage.patch` allow-prefix extension):

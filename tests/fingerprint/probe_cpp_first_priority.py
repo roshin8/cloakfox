@@ -35,7 +35,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
-DEFAULT_DMG = "/tmp/cfx-artifact3/cloakfox-macos-arm64/Cloakfox-macos-arm64.dmg"
+DEFAULT_DMG = "/tmp/cfx-artifact/cloakfox-macos-arm64/Cloakfox-macos-arm64.dmg"
 
 
 def mount_and_extract(dmg_path, dest_dir):
@@ -72,7 +72,7 @@ def launch_and_hash_canvas(binary, canvas_seed_value):
     with open(os.path.join(profile_dir, "user.js"), "w") as f:
         f.write(f'''
 user_pref("cloakfox.enabled", true);
-user_pref("cloakfox.s.canvasSeed_0", "{canvas_seed_value}");
+user_pref("cloakfox.s.cloak_cfg_0", "{{\\"canvas:seed\\":{canvas_seed_value}}}");
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
 ''')
@@ -127,11 +127,11 @@ def main():
 
     binary = mount_and_extract(dmg, os.path.join(work_dir, "app"))
 
-    print("\n[test] Run 1: cloakfox.s.canvasSeed_0 = 11111")
+    print("\n[test] Run 1: cloakfox.s.cloak_cfg_0 = {'canvas:seed':11111}")
     hash_a = launch_and_hash_canvas(binary, 11111)
     print(f"[test] canvas hash A: {hash_a}")
 
-    print("\n[test] Run 2: cloakfox.s.canvasSeed_0 = 99999")
+    print("\n[test] Run 2: cloakfox.s.cloak_cfg_0 = {'canvas:seed':99999}")
     hash_b = launch_and_hash_canvas(binary, 99999)
     print(f"[test] canvas hash B: {hash_b}")
 
