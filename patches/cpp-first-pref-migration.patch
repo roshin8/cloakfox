@@ -12,8 +12,8 @@ DOMDocElementInserted see the migrated values immediately.
 
 --- a/browser/components/BrowserGlue.sys.mjs
 +++ b/browser/components/BrowserGlue.sys.mjs
-@@ -382,6 +382,18 @@
-
+@@ -382,5 +382,17 @@
+ 
    _beforeUIStartup: function BG__beforeUIStartup() {
 +    // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
 +    // cloakfox.s.* (cpp-first namespace). Idempotent; marks done on
@@ -28,5 +28,5 @@ DOMDocElementInserted see the migrated values immediately.
 +      // Migration module missing on non-Cloakfox builds — ignore.
 +    }
      lazy.SessionStartup.init();
-
+ 
      // check if we're in safe mode
