@@ -25,24 +25,50 @@
       </label>
     </section>
 
-    <section id="container-status">
-      <h2>Current container</h2>
-      <div class="status-grid">
-        <div><strong>userContextId:</strong> <span id="cfx-ucid">—</span></div>
-        <div><strong>Math seed:</strong> <code id="cfx-seed">—</code></div>
+    <section id="container-picker">
+      <h2>Container</h2>
+      <p class="help">
+        Each container has its own fingerprint seeds. Pick one to view
+        or regenerate its config.
+      </p>
+      <div class="picker-row">
+        <label for="cfx-container-select">Active container:</label>
+        <select id="cfx-container-select">
+          <option value="0">Default (no container)</option>
+        </select>
       </div>
-      <button id="cfx-regenerate">Regenerate seed for this container</button>
+    </section>
+
+    <section id="container-config">
+      <h2>Seeds for this container</h2>
+      <div class="seed-grid">
+        <div class="seed-row">
+          <span class="seed-label">Master seed (Math, Keyboard, Timing, TabHistory)</span>
+          <code id="cfx-seed-master" class="seed-value">—</code>
+        </div>
+        <div class="seed-row">
+          <span class="seed-label">Canvas / audio / fonts (cloak_cfg JSON)</span>
+          <code id="cfx-seed-cloakcfg" class="seed-value">—</code>
+        </div>
+      </div>
+      <div class="button-row">
+        <button id="cfx-regenerate">Regenerate all seeds for this container</button>
+        <button id="cfx-clear">Clear seeds (disable spoofing for this container)</button>
+      </div>
     </section>
 
     <section id="diagnostics">
       <h2>Diagnostics</h2>
-      <p>Run these in the browser devtools chrome console to verify cpp-first
-         plumbing:</p>
-      <pre><code>// Read the pref this page writes:
-Services.prefs.getStringPref("cloakfox.enabled", "");
+      <p>Run these in the browser toolbox (chrome context) to verify
+         the cpp-first pipeline is wired:</p>
+      <pre><code>// Enable check:
+Services.prefs.getBoolPref("cloakfox.enabled", false);
 
-// Check a container's math seed:
-Services.prefs.getStringPref("cloakfox.container.0.math_seed", "");</code></pre>
+// Per-container seed for container N:
+Services.prefs.getStringPref("cloakfox.container.N.math_seed", "");
+
+// The cpp-first JSON blob C++ reads:
+Services.prefs.getStringPref("cloakfox.s.cloak_cfg_N", "");</code></pre>
     </section>
   </main>
 

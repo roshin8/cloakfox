@@ -75,6 +75,68 @@ section h2 {
   font-size: 0.9rem;
 }
 
+.help {
+  color: #555;
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.picker-row label { font-weight: 500; }
+
+select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d0d0d5;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.seed-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+.seed-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.seed-label {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.seed-value {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.55rem;
+  background: #f7f7f9;
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+button + button {
+  background: #eee;
+  color: #1a1a1d;
+}
+
+button + button:hover { background: #ddd; }
+
 code {
   font-family: Menlo, Consolas, monospace;
   background: #f0f0f3;

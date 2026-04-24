@@ -1,0 +1,32 @@
+Cloakfox: invoke one-shot pref migration at BrowserGlue startup.
+
+On cpp-first build upgrades, existing profiles may have roverfox.s.*
+prefs (from the pre-cpp-first extension era) that need to be mirrored
+into cloakfox.s.* so the user's existing per-container seeds survive.
+CloakfoxPrefMigration.sys.mjs runs once, then marks
+cloakfox.migration.v1.done=true.
+
+Hooked into _beforeUIStartup so it runs before any window is
+constructed — so the cpp-first JSWindowActors that fire on
+DOMDocElementInserted see the migrated values immediately.
+
+--- a/browser/components/BrowserGlue.sys.mjs
++++ b/browser/components/BrowserGlue.sys.mjs
+@@ -382,6 +382,18 @@
+
+   _beforeUIStartup: function BG__beforeUIStartup() {
++    // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
++    // cloakfox.s.* (cpp-first namespace). Idempotent; marks done on
++    // first run. See additions/browser/components/cloakfox/
++    // CloakfoxPrefMigration.sys.mjs.
++    try {
++      const { runCloakfoxPrefMigration } = ChromeUtils.importESModule(
++        "resource:///modules/CloakfoxPrefMigration.sys.mjs"
++      );
++      runCloakfoxPrefMigration();
++    } catch (_e) {
++      // Migration module missing on non-Cloakfox builds — ignore.
++    }
+     lazy.SessionStartup.init();
+
+     // check if we're in safe mode

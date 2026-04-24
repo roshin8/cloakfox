@@ -8,6 +8,13 @@
 
 JAR_MANIFESTS += ["jar.mn"]
 
+# Module imported from BrowserGlue at startup to migrate legacy
+# roverfox.s.* extension prefs into the new cpp-first cloakfox.s.*
+# namespace. Idempotent.
+EXTRA_JS_MODULES += [
+    "CloakfoxPrefMigration.sys.mjs",
+]
+
 # JSWindowActor modules ship to resource:///actors/ and are registered
 # declaratively via toolkit/modules/ActorManagerParent.sys.mjs (see
 # patches/cpp-first-math-actor-registration.patch).

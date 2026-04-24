@@ -2,45 +2,33 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* Cloakfox settings page.
+/* Cloakfox settings page — container-aware version (Phase 3).
  *
- * Runs with chrome principal (IS_SECURE_CHROME_UI set in AboutRedirector)
- * so Services.prefs.setStringPref writes through the parent process —
- * the working path the cloakfox-shield extension couldn't use.
+ * Runs chrome-privileged (IS_SECURE_CHROME_UI set in AboutRedirector),
+ * so Services.prefs + Services.contextualIdentityService are available.
  *
- * Proof of concept for the cpp-first architecture: one toggle, one
- * per-container seed. Real settings UI is future work.
+ * Features:
+ *   - Master Enable toggle (cloakfox.enabled pref)
+ *   - Container dropdown built from ContextualIdentityService
+ *   - Per-container seed display + regen + clear buttons
+ *   - Regen writes:
+ *       cloakfox.container.<ucid>.math_seed    (32-byte base64 — used
+ *         by Math, Keyboard, Timing, TabHistory actors via
+ *         makePRNG(b64ToBytes(seedB64)))
+ *       cloakfox.s.cloak_cfg_<ucid>            (JSON blob consumed
+ *         by C++ canvas/audio/font managers via MaskConfig)
  */
 
-/* global Services, Components, ChromeUtils */
+/* global Services */
 
 const PREF_ENABLED = "cloakfox.enabled";
 
-// Helpers ---------------------------------------------------------
+// ── pref name helpers ───────────────────────────────────────────────
 
-function getCurrentUserContextId() {
-  // The settings page itself is opened in userContextId 0 (default
-  // container). For real per-container config we need this from the
-  // tab the user came from, not the settings page. POC just shows the
-  // mechanism; wire up tab origin later.
-  return 0;
-}
+const masterSeedPref = (ucid) => `cloakfox.container.${ucid}.math_seed`;
+const cloakCfgPref   = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
 
-function seedPrefName(ucid) {
-  // Math actor reads cloakfox.container.<ucid>.math_seed directly;
-  // C++ managers read via RoverfoxStorageManager which checks
-  // cloakfox.s.<key> first (cpp-first priority). Both live under
-  // pref namespaces we own.
-  return `cloakfox.container.${ucid}.math_seed`;
-}
-
-// C++-side storage keys use underscores: canvas_seed_<ucid>,
-// webgl_vendor_<ucid>, etc. When we regenerate seeds here, we write
-// the cpp-first pref `cloakfox.s.<key>` which wins over the
-// extension-populated `roverfox.s.<key>`.
-function cppFirstPrefName(signal, ucid) {
-  return `cloakfox.s.${signal}_${ucid}`;
-}
+// ── seed / config helpers ───────────────────────────────────────────
 
 function randomSeedB64() {
   const bytes = new Uint8Array(32);
@@ -48,61 +36,95 @@ function randomSeedB64() {
   return btoa(String.fromCharCode(...bytes));
 }
 
-// UI wiring -------------------------------------------------------
+// Derive a uint32 from the seed at offset i*4 (deterministic; gives
+// per-signal values that are stable per container without needing
+// extra prefs).
+function u32(seedB64, i) {
+  const bin = atob(seedB64);
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  return new DataView(bytes.buffer).getUint32(i * 4);
+}
+
+function buildCloakCfg(seedB64) {
+  return JSON.stringify({
+    "canvas:seed": u32(seedB64, 0),
+    "audio:seed": u32(seedB64, 1),
+    "font:seed": u32(seedB64, 2),
+    "font:spacing_seed": u32(seedB64, 3),
+  });
+}
+
+// ── container enumeration ──────────────────────────────────────────
+
+function getContainers() {
+  // Returns [{ucid, name}] for default + every user-defined container.
+  const list = [{ ucid: 0, name: "Default (no container)" }];
+  try {
+    const identities =
+      Services.contextualIdentityService.getPublicIdentities();
+    for (const id of identities) {
+      list.push({
+        ucid: id.userContextId,
+        name: id.name || `Container ${id.userContextId}`,
+      });
+    }
+  } catch (e) {
+    // If ContextualIdentityService isn't available, fall through to
+    // just the default container.
+  }
+  return list;
+}
+
+// ── wire up UI ─────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
-  const enabledEl = document.getElementById("cfx-enabled");
-  const ucidEl    = document.getElementById("cfx-ucid");
-  const seedEl    = document.getElementById("cfx-seed");
-  const regenBtn  = document.getElementById("cfx-regenerate");
+  const enabledEl  = document.getElementById("cfx-enabled");
+  const selectEl   = document.getElementById("cfx-container-select");
+  const masterEl   = document.getElementById("cfx-seed-master");
+  const cloakCfgEl = document.getElementById("cfx-seed-cloakcfg");
+  const regenBtn   = document.getElementById("cfx-regenerate");
+  const clearBtn   = document.getElementById("cfx-clear");
 
-  // Initial read.
-  const enabled = Services.prefs.getBoolPref(PREF_ENABLED, false);
-  enabledEl.checked = enabled;
-
-  const ucid = getCurrentUserContextId();
-  ucidEl.textContent = String(ucid);
-  seedEl.textContent = Services.prefs.getStringPref(seedPrefName(ucid), "(not set)");
-
-  // Toggle handler: write pref. The pref observer in C++ (see
-  // cpp-first-pref-reader.patch) picks this up on the next window
-  // construction and primes RoverfoxStorageManager accordingly.
+  // Populate master enable.
+  enabledEl.checked = Services.prefs.getBoolPref(PREF_ENABLED, false);
   enabledEl.addEventListener("change", () => {
     Services.prefs.setBoolPref(PREF_ENABLED, enabledEl.checked);
   });
 
-  // Seed regen button: write a fresh 32-byte seed for the current
-  // container AND populate the cpp-first priority prefs so the C++
-  // managers (canvas, WebGL, audio, fonts) consume the new values
-  // without waiting for the extension's WebIDL setters to fire.
-  regenBtn.addEventListener("click", () => {
-    const seed = randomSeedB64();
-    Services.prefs.setStringPref(seedPrefName(ucid), seed);
-    seedEl.textContent = seed;
+  // Populate container dropdown.
+  const containers = getContainers();
+  selectEl.innerHTML = "";
+  for (const c of containers) {
+    const opt = document.createElement("option");
+    opt.value = String(c.ucid);
+    opt.textContent = c.name;
+    selectEl.appendChild(opt);
+  }
 
-    // Derive a deterministic uint32 per signal from the same seed
-    // bytes. POC: use the first N bytes of the seed for each signal's
-    // integer value. Real implementation would use a KDF (HMAC-SHA256
-    // with per-signal labels).
-    const bytes = Uint8Array.from(atob(seed), c => c.charCodeAt(0));
-    const u32 = (i) => new DataView(bytes.buffer).getUint32(i * 4);
-    // The unified-maskconfig architecture routes every signal's per-
-    // container config through ONE JSON blob: `cloak_cfg_<ucid>`.
-    // MaskConfig::GetUint32("canvas:seed") reads it; same for other
-    // signals (audio:*, font:*, etc). Write the JSON, don't try to
-    // write each signal's key directly — the individual-key path
-    // (canvasSeed_<ucid>, audioFingerprintSeed_<ucid>) exists in
-    // canvas-spoofing.patch et al. but the unified path supersedes
-    // it and is what the live build actually consults.
-    const cfg = {
-      "canvas:seed": u32(0),
-      "audio:seed": u32(1),
-      "font:seed": u32(2),
-      "font:spacing_seed": u32(3),
-    };
-    Services.prefs.setStringPref(
-      cppFirstPrefName("cloak_cfg", ucid),
-      JSON.stringify(cfg),
+  function refreshSeeds() {
+    const ucid = parseInt(selectEl.value, 10) || 0;
+    masterEl.textContent = Services.prefs.getStringPref(
+      masterSeedPref(ucid), "(not set)"
     );
+    cloakCfgEl.textContent = Services.prefs.getStringPref(
+      cloakCfgPref(ucid), "(not set)"
+    );
+  }
+  selectEl.addEventListener("change", refreshSeeds);
+  refreshSeeds();
+
+  regenBtn.addEventListener("click", () => {
+    const ucid = parseInt(selectEl.value, 10) || 0;
+    const seed = randomSeedB64();
+    Services.prefs.setStringPref(masterSeedPref(ucid), seed);
+    Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed));
+    refreshSeeds();
+  });
+
+  clearBtn.addEventListener("click", () => {
+    const ucid = parseInt(selectEl.value, 10) || 0;
+    Services.prefs.clearUserPref(masterSeedPref(ucid));
+    Services.prefs.clearUserPref(cloakCfgPref(ucid));
+    refreshSeeds();
   });
 });
