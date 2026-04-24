@@ -46,6 +46,29 @@ Two patches hook this into the Firefox tree:
    - Click "Regenerate seed" — the displayed seed and the
      `cloakfox.container.0.math_seed` pref both update.
 
+## Phase 2 actor inventory — 9 of 13 must-stay-JS signals ported
+
+| Actor | Source spoofer | Status | Notes |
+|-------|---------------|--------|-------|
+| CloakfoxMath | math/math.ts | shipped | Math constants + trig noise |
+| CloakfoxKeyboard | keyboard/cadence.ts | shipped | Typing-rhythm normalization |
+| CloakfoxTiming | timing/event-loop.ts | shipped | setTimeout/rAF jitter |
+| CloakfoxTabHistory | navigator/tab-history.ts | shipped | history.length plausible-fake |
+| CloakfoxGamepad | devices/gamepad.ts | shipped | navigator.getGamepads → empty |
+| CloakfoxMidi | devices/midi.ts | shipped | navigator.requestMIDIAccess → reject |
+| CloakfoxWebGPU | graphics/webgpu.ts | shipped (simplified) | navigator.gpu → undefined; full GPU spoofer deferred |
+| CloakfoxFeatureDetect | features/feature-detection.ts | shipped (partial) | webdriver/DNT/GPC/pdfViewer/onLine/cookieEnabled/javaEnabled |
+| CloakfoxErrors | errors/stack-trace.ts | shipped (partial) | stackTraceLimit + captureStackTrace; window.Error replacement deferred |
+| **Skipped — already redundant** | crypto/webcrypto.ts | n/a | Source was logging-only, no spoofing |
+| **Skipped — already redundant** | rendering/emoji.ts, rendering/mathml.ts | n/a | Overlap with text-metrics-spoofing.patch |
+| **Deferred — large/complex** | workers/worker-fingerprint.ts | TODO | Worker global spoofing; needs cross-process plumbing for navigator.* inside workers (canvas already covered by canvas-spoofing.patch worker hooks) |
+| **Deferred — large/complex** | iframe/iframe-patcher.ts | TODO | Iframe content-script propagation; the JSWindowActor mechanism with `allFrames: true` already fires per-iframe, so this might not need a port at all — needs verification |
+
+The two deferred Worker + Iframe ports are the only non-trivial gaps.
+Worker spoofing for the must-stay-JS signals is its own design exercise
+(see RFC §"Open questions"). Iframe is likely already covered for free
+by `allFrames: true` on every Phase 2 actor — to be confirmed.
+
 ## Step 2 status (C++ pref-reader) — VERIFIED END-TO-END 2026-04-23
 
 **PASS.** `probe_cpp_first_priority.py` produces different canvas
