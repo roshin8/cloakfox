@@ -61,13 +61,12 @@ Two patches hook this into the Firefox tree:
 | CloakfoxErrors | errors/stack-trace.ts | shipped (partial) | stackTraceLimit + captureStackTrace; window.Error replacement deferred |
 | **Skipped — already redundant** | crypto/webcrypto.ts | n/a | Source was logging-only, no spoofing |
 | **Skipped — already redundant** | rendering/emoji.ts, rendering/mathml.ts | n/a | Overlap with text-metrics-spoofing.patch |
-| **Deferred — large/complex** | workers/worker-fingerprint.ts | TODO | Worker global spoofing; needs cross-process plumbing for navigator.* inside workers (canvas already covered by canvas-spoofing.patch worker hooks) |
-| **Deferred — large/complex** | iframe/iframe-patcher.ts | TODO | Iframe content-script propagation; the JSWindowActor mechanism with `allFrames: true` already fires per-iframe, so this might not need a port at all — needs verification |
+| **Skipped — already covered** | iframe/iframe-patcher.ts | n/a | Existing spoofer uses MutationObserver to re-apply spoofers to each new iframe. `allFrames: true` on every Phase 2 actor registration already fires per-iframe — every iframe gets its own actor instance at DOMDocElementInserted. Confirmed by design; no port needed. |
+| **Skipped — C++ already handles** | workers/worker-fingerprint.ts | n/a | The original motivation (CreepJS reading navigator.* inside Workers) is already closed by C++ patches whose manager code uses `WorkerPrivate::GetCurrentThreadWorkerPrivate()` (see canvas-spoofing, navigator-spoofing, webgl-spoofing, audio-fingerprint-manager patches). What's NOT covered in worker context: our Phase 2 must-stay-JS signals (Math constants, Timing jitter, Error.stackTraceLimit) — minor fingerprint value; documented here as a low-priority future enhancement. |
 
-The two deferred Worker + Iframe ports are the only non-trivial gaps.
-Worker spoofing for the must-stay-JS signals is its own design exercise
-(see RFC §"Open questions"). Iframe is likely already covered for free
-by `allFrames: true` on every Phase 2 actor — to be confirmed.
+**Phase 2 complete.** 9 actors runtime-verified. 2 skipped-as-redundant
+(iframe, worker) with clear rationale. The must-stay-JS signals in the
+cpp-first architecture are fully covered.
 
 ## Step 2 status (C++ pref-reader) — VERIFIED END-TO-END 2026-04-23
 
