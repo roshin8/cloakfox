@@ -61,19 +61,25 @@ jobs:
 
       - name: Build
         env:
-          # Set RUSTC_WRAPPER at step level so it's in the process
-          # environment before mach (and therefore cargo/rustc) runs.
-          # mk_add_options inside mozconfig didn't propagate reliably —
-          # an earlier attempt to set this via mozconfig produced
-          # '21 hits, 0 misses' on macOS, meaning Rust never went
-          # through sccache at all. Direct env-var works because
-          # rustc reads RUSTC_WRAPPER from its own env.
+          # Route rustc through sccache (mk_add_options in mozconfig
+          # didn't propagate). Step-level env reaches mach/cargo/rustc.
           RUSTC_WRAPPER: ${{ env.SCCACHE_PATH }}
-          # SCCACHE_GHA_ENABLED ensures the Github-Actions-cache
-          # backend is used (set automatically by sccache-action but
-          # we re-affirm to be explicit).
           SCCACHE_GHA_ENABLED: "true"
+          # Prevent the sccache daemon from idling out on macOS. On
+          # recent runs the daemon shut down mid-build with
+          # 'server looks like it shut down unexpectedly, compiling
+          # locally instead' — after which every compile bypasses
+          # the cache. SCCACHE_IDLE_TIMEOUT=0 disables the 600s-default
+          # idle timer. Also enable error logging so the next crash
+          # (if any) is diagnosable.
+          SCCACHE_IDLE_TIMEOUT: "0"
+          SCCACHE_ERROR_LOG: /tmp/sccache.log
+          SCCACHE_LOG: warn
         run: make build
+
+      - name: Dump sccache error log
+        if: always()
+        run: cat /tmp/sccache.log || true
 
       - name: Show sccache stats
         if: always()
@@ -207,19 +213,25 @@ jobs:
 
       - name: Build
         env:
-          # Set RUSTC_WRAPPER at step level so it's in the process
-          # environment before mach (and therefore cargo/rustc) runs.
-          # mk_add_options inside mozconfig didn't propagate reliably —
-          # an earlier attempt to set this via mozconfig produced
-          # '21 hits, 0 misses' on macOS, meaning Rust never went
-          # through sccache at all. Direct env-var works because
-          # rustc reads RUSTC_WRAPPER from its own env.
+          # Route rustc through sccache (mk_add_options in mozconfig
+          # didn't propagate). Step-level env reaches mach/cargo/rustc.
           RUSTC_WRAPPER: ${{ env.SCCACHE_PATH }}
-          # SCCACHE_GHA_ENABLED ensures the Github-Actions-cache
-          # backend is used (set automatically by sccache-action but
-          # we re-affirm to be explicit).
           SCCACHE_GHA_ENABLED: "true"
+          # Prevent the sccache daemon from idling out on macOS. On
+          # recent runs the daemon shut down mid-build with
+          # 'server looks like it shut down unexpectedly, compiling
+          # locally instead' — after which every compile bypasses
+          # the cache. SCCACHE_IDLE_TIMEOUT=0 disables the 600s-default
+          # idle timer. Also enable error logging so the next crash
+          # (if any) is diagnosable.
+          SCCACHE_IDLE_TIMEOUT: "0"
+          SCCACHE_ERROR_LOG: /tmp/sccache.log
+          SCCACHE_LOG: warn
         run: make build
+
+      - name: Dump sccache error log
+        if: always()
+        run: cat /tmp/sccache.log || true
 
       - name: Show sccache stats
         if: always()
