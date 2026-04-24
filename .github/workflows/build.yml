@@ -58,15 +58,21 @@ jobs:
           make dir
           python3 scripts/fix-mach-logging.py firefox-src
           echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
-          # Also wrap rustc with sccache. --with-ccache only handles
-          # C/C++; without RUSTC_WRAPPER every Rust crate (Firefox has
-          # hundreds, including all of Servo / WebRender / wgpu /
-          # Stylo) recompiles fresh on every CI run. macOS suffers
-          # disproportionately because much of the C++ compile time
-          # is already cached but Rust compilation isn't.
-          echo "mk_add_options 'export RUSTC_WRAPPER=$SCCACHE_PATH'" >> firefox-src/mozconfig
 
       - name: Build
+        env:
+          # Set RUSTC_WRAPPER at step level so it's in the process
+          # environment before mach (and therefore cargo/rustc) runs.
+          # mk_add_options inside mozconfig didn't propagate reliably —
+          # an earlier attempt to set this via mozconfig produced
+          # '21 hits, 0 misses' on macOS, meaning Rust never went
+          # through sccache at all. Direct env-var works because
+          # rustc reads RUSTC_WRAPPER from its own env.
+          RUSTC_WRAPPER: ${{ env.SCCACHE_PATH }}
+          # SCCACHE_GHA_ENABLED ensures the Github-Actions-cache
+          # backend is used (set automatically by sccache-action but
+          # we re-affirm to be explicit).
+          SCCACHE_GHA_ENABLED: "true"
         run: make build
 
       - name: Show sccache stats
@@ -191,13 +197,6 @@ jobs:
           make dir
           python3 scripts/fix-mach-logging.py firefox-src
           echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
-          # Also wrap rustc with sccache. --with-ccache only handles
-          # C/C++; without RUSTC_WRAPPER every Rust crate (Firefox has
-          # hundreds, including all of Servo / WebRender / wgpu /
-          # Stylo) recompiles fresh on every CI run. macOS suffers
-          # disproportionately because much of the C++ compile time
-          # is already cached but Rust compilation isn't.
-          echo "mk_add_options 'export RUSTC_WRAPPER=$SCCACHE_PATH'" >> firefox-src/mozconfig
 
       - name: Create swap space
         run: |
@@ -207,6 +206,19 @@ jobs:
           sudo swapon /swapfile
 
       - name: Build
+        env:
+          # Set RUSTC_WRAPPER at step level so it's in the process
+          # environment before mach (and therefore cargo/rustc) runs.
+          # mk_add_options inside mozconfig didn't propagate reliably —
+          # an earlier attempt to set this via mozconfig produced
+          # '21 hits, 0 misses' on macOS, meaning Rust never went
+          # through sccache at all. Direct env-var works because
+          # rustc reads RUSTC_WRAPPER from its own env.
+          RUSTC_WRAPPER: ${{ env.SCCACHE_PATH }}
+          # SCCACHE_GHA_ENABLED ensures the Github-Actions-cache
+          # backend is used (set automatically by sccache-action but
+          # we re-affirm to be explicit).
+          SCCACHE_GHA_ENABLED: "true"
         run: make build
 
       - name: Show sccache stats
