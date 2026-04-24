@@ -58,6 +58,13 @@ jobs:
           make dir
           python3 scripts/fix-mach-logging.py firefox-src
           echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
+          # Also wrap rustc with sccache. --with-ccache only handles
+          # C/C++; without RUSTC_WRAPPER every Rust crate (Firefox has
+          # hundreds, including all of Servo / WebRender / wgpu /
+          # Stylo) recompiles fresh on every CI run. macOS suffers
+          # disproportionately because much of the C++ compile time
+          # is already cached but Rust compilation isn't.
+          echo "mk_add_options 'export RUSTC_WRAPPER=$SCCACHE_PATH'" >> firefox-src/mozconfig
 
       - name: Build
         run: make build
@@ -184,6 +191,13 @@ jobs:
           make dir
           python3 scripts/fix-mach-logging.py firefox-src
           echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
+          # Also wrap rustc with sccache. --with-ccache only handles
+          # C/C++; without RUSTC_WRAPPER every Rust crate (Firefox has
+          # hundreds, including all of Servo / WebRender / wgpu /
+          # Stylo) recompiles fresh on every CI run. macOS suffers
+          # disproportionately because much of the C++ compile time
+          # is already cached but Rust compilation isn't.
+          echo "mk_add_options 'export RUSTC_WRAPPER=$SCCACHE_PATH'" >> firefox-src/mozconfig
 
       - name: Create swap space
         run: |
