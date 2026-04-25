@@ -115,42 +115,101 @@ What DOES change in this phase:
   reads any existing `roverfox.s.*` prefs (extension-written) and
   copies them to `cloakfox.s.*`. One-time, idempotent.
 
-### Phase 4 — Delete the extension (~2 days)
+### Phase 4 — Trim extension to popup-only (~2 days)
 
-- Remove `additions/browser/extensions/cloakfox-shield/` from the
-  tree.
-- Remove the entry from `browser/extensions/moz.build` (via an
-  update to `builtin-extension.patch`).
-- Remove the `ExtensionSettings` block from `settings/policies.json`.
-- Remove Func-gated WebIDL setters that exist solely to receive
-  extension calls: `setCanvasSeed`, `setCloakConfig`, `setHttp2/3
-  Profile`, `setNavigatorUserAgent`, etc. C++ managers still read
-  from `RoverfoxStorageManager`, which now only takes writes from
-  the new `about:cloakfox` page (chrome-privileged direct pref
-  writes, no need for WebIDL intermediary).
-- Drop the `IsCloakfoxShieldCaller` principal helper — nothing
-  needs to be gated to extension principal anymore.
-- Drop `cloakfoxIsConfigured` WebIDL — the cpp-first architecture
-  removes the self-destruct race it was designed around.
+**Revised plan (2026-04-24):** the original Phase 4 ("delete the
+extension entirely") + Phase 5 ("native customize-mode toolbar
+button") collapse into a single Phase 4: keep the extension as a
+**thin tab-aware popup**, delete everything else.
 
-### Phase 5 — Optional toolbar shim (~30 lines; ~1h)
+The motivation for the revision: `about:cloakfox` (Phase 3) doesn't
+know which container the user's *current tab* is in — extensions
+do, natively, via the tab's `cookieStoreId`. Building a dedicated
+parent actor just to thread that signal through to a chrome page
+is more code than keeping a 100-line popup in a thin extension.
+The popup ALSO solves Phase 5's "discoverable toolbar button"
+problem for free, since extensions get one by default.
 
-Decide: do we ship a minimal shim extension whose only job is a
-toolbar button that opens `about:cloakfox`? Tradeoffs:
+**What stays in the extension:**
 
-- **Pro:** discoverable UI entry. Users familiar with extensions
-  find the button intuitively. Matches Firefox's native-addon UX
-  (uBlock Origin, etc.).
-- **Con:** reintroduces an extension — however thin — into a
-  codebase designed to be extension-free. Signing, manifest
-  maintenance, review-process overhead for a single click handler.
-- **Alternative:** add a customize-mode button in
-  `browser/components/customizableui/` that opens `about:cloakfox`
-  directly. Native, no extension. More Firefox-style UI patch
-  work but matches how Firefox exposes its own features.
+- `manifest.json` (drastically slimmed: only `tabs` + `contextual
+  Identities` permissions, no `host_permissions`, no `content_scripts`)
+- `popup/popup.html` + `popup.js` + `popup.css` — vanilla HTML,
+  no React, no Vite, no bundler
+- icons
 
-**Recommendation:** Phase 5 is the customize-mode button, not an
-extension. Cpp-first goes fully zero-extension.
+**What gets deleted from the extension:**
+
+- All of `src/background/` — header spoofer, settings store,
+  profile manager, config injector
+- All of `src/content/` — ISOLATED-world content script, core-bridge
+- All of `src/inject/` — MAIN-world spoofers (already replaced by
+  cpp-first JSWindowActors)
+- `src/lib/` — crypto/PRNG/domain-matcher (cpp-first owns these)
+- All build infrastructure (vite, rolldown, tailwind, postcss, etc.)
+- `package.json` shrinks from ~200 deps to zero
+
+**What's NOT deleted from the C++ patches:**
+
+The Func-gated WebIDL setters (`setCanvasSeed`, `setCloakConfig`,
+`setHttp2/3Profile`, `setNavigatorUserAgent`, `setWebGLVendor`,
+`setWebGLRenderer`, `setScreen*`, `setFontList`,
+`setFontSpacingSeed`, `setAudioFingerprintSeed`, `setSpeechVoices`,
+`setNavigator{Platform,Oscpu,HardwareConcurrency}`) plus the
+`IsCloakfoxShieldCaller` principal helper plus `cloakfoxIsConfigured`
+WebIDL query stay in the tree.
+
+Rationale: every setter is `[Func="IsCloakfoxShieldCaller"]`. With
+the extension's content scripts gone, **no caller satisfies the
+gate** (no principal carries the cloakfox-shield@cloakfox addon
+policy in its expanded principal). Result: from any compartment,
+`typeof window.setCanvasSeed === "undefined"` — invisible to
+fingerprinting. Same for `cloakfoxIsConfigured`.
+
+Surgical removal would touch ~10 patches, each with hunk-count
+arithmetic, with high regression risk (cf. `cpp-first-pref-
+migration.patch`'s blank-line-context bug that took two CI runs to
+catch). Zero functional benefit since the setters are already
+unreachable. Marked as a future cleanup pass in PENDING.md.
+
+**What gets added to `about:cloakfox`:**
+
+- Accept a `?ucid=N` query param to auto-select container N in the
+  dropdown. The popup's "Configure for this container" button uses
+  this to deep-link.
+
+### Popup spec
+
+When the user clicks the toolbar icon:
+
+```
+┌─────────────────────────────────┐
+│  Cloakfox       [enabled ●]     │
+├─────────────────────────────────┤
+│  Container:    Personal         │
+│  This site:    https://nyt.com  │
+│  Seed status:  set (active)     │
+│                                 │
+│  [ Regenerate seeds ]           │
+│  [ Open full settings ]         │
+└─────────────────────────────────┘
+```
+
+`Regenerate seeds` writes to `cloakfox.container.<ucid>.math_seed`
++ `cloakfox.s.cloak_cfg_<ucid>` via an Experiment API (small,
+purpose-built; ~30 lines). `Open full settings` does
+`browser.tabs.create({ url: 'about:cloakfox?ucid=<N>' })`.
+
+The Experiment API is the only piece that needs privileged-extension
+plumbing. Without it, the popup can only display the URL/container
+and link out — `Regenerate` would have to happen on the settings
+page. Acceptable degraded behavior if the Experiment API turns out
+hard to ship.
+
+### Phase 5 — DELETED
+
+The native toolbar-button work is no longer needed; the popup
+provides the same affordance through extension UX.
 
 ## Config migration
 
@@ -194,11 +253,11 @@ are preserved — same values, new namespace.
 | Phase | Calendar | Person-effort |
 |-------|----------|---------------|
 | 1 (done) | — | — |
-| 2 | 2-3 weeks | ~14 actor ports × 1-2 days each = 2-4 weeks engineering, plus coupled test work |
-| 3 | 1 week | Settings-page UI + pref migration |
-| 4 | 2 days | Delete the extension, rip out setters |
-| 5 | 1 day | Customize-mode button |
-| **Total** | **~5 weeks** | Mostly actor ports |
+| 2 (done) | — | 9 actors landed; Worker + Iframe analyzed as redundant |
+| 3 (done) | — | Container-aware about:cloakfox + pref migration shipped |
+| 4 (revised) | 2 days | Trim extension to popup-only + drop Func-gated setters |
+| 5 (DELETED) | — | Popup provides the toolbar affordance for free |
+| **Total remaining** | **~2 days** | Mostly delete-and-rewrite |
 
 ## Open questions
 

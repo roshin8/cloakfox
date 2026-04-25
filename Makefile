@@ -65,7 +65,16 @@ set-target:
 	python3 scripts/patch.py $(version) $(release) --mozconfig-only
 
 extension:
-	cd additions/browser/extensions/cloakfox-shield && npm ci && npm run build
+	# Cloakfox extension — popup-only since the cpp-first refactor
+	# (RFC §Phase 4 revised). No bundler, no node_modules needed —
+	# `npm run build` is just mkdir+cp. Falls back gracefully if npm
+	# isn't installed.
+	cd additions/browser/extensions/cloakfox-shield && \
+		(npm run build 2>/dev/null || \
+			(mkdir -p dist/popup dist/icons && \
+			 cp manifest.json dist/ && \
+			 cp popup/popup.* dist/popup/ && \
+			 cp icons/icon-48.png icons/icon-128.png dist/icons/))
 
 build:
 	@if [ ! -f $(cf_source_dir)/_READY ]; then \

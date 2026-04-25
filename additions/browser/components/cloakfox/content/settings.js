@@ -101,6 +101,20 @@ document.addEventListener("DOMContentLoaded", () => {
     selectEl.appendChild(opt);
   }
 
+  // Honor ?ucid=N deep-link from the extension popup. Pre-selects
+  // the matching container so the user lands on their tab's
+  // settings without having to switch the dropdown manually.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("ucid");
+    if (requested !== null) {
+      const targetUcid = String(parseInt(requested, 10) || 0);
+      if (Array.from(selectEl.options).some(o => o.value === targetUcid)) {
+        selectEl.value = targetUcid;
+      }
+    }
+  } catch (_e) { /* deep-link is best-effort */ }
+
   function refreshSeeds() {
     const ucid = parseInt(selectEl.value, 10) || 0;
     masterEl.textContent = Services.prefs.getStringPref(

@@ -1,67 +1,9 @@
 {
   "name": "cloakfox-shield",
-  "version": "0.3.0",
-  "description": "Per-container fingerprint isolation for Cloakfox",
-  "type": "module",
+  "version": "0.6.0",
+  "description": "Cloakfox toolbar popup. Vanilla MV3, no bundler — all spoofing is in the browser core.",
   "scripts": {
-    "dev": "npm run build:dev && npm run copy-assets",
-    "build:dev": "vite build --mode development && node scripts/build-scripts.js",
-    "build": "npm run build:ui && npm run build:scripts && npm run copy-assets && npm run fix-html",
-    "build:ui": "vite build",
-    "build:scripts": "node scripts/build-scripts.js",
-    "build:prod": "vite build --mode production && node scripts/build-scripts.js --production && npm run copy-assets && npm run fix-html",
-    "copy-assets": "cp manifest.json dist/ && cp -r public/icons dist/",
-    "fix-html": "mv dist/src/popup/index.html dist/popup/ 2>/dev/null || true && mv dist/src/pages/*.html dist/pages/ 2>/dev/null || true && rm -rf dist/src 2>/dev/null || true && node scripts/fix-paths.js",
-    "preview": "vite preview",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext ts,tsx",
-    "test": "vitest",
-    "test:e2e": "npx playwright test",
-    "test:e2e:headed": "npx playwright test --headed",
-    "test:real": "npm run build && npx playwright test tests/e2e/real-extension-full.spec.ts --project=real-extension",
-    "test:real:headless": "npm run build && HEADLESS=1 npx playwright test tests/e2e/real-extension-full.spec.ts --project=real-extension",
-    "test:real:only": "npm run build && npx playwright test tests/e2e/real-extension-full.spec.ts --project=real-extension",
-    "test:e2e:debug": "npx playwright test --debug",
-    "test:fingerprint": "npx playwright test -g 'manual fingerprint check'",
-    "test:extension": "node scripts/test-extension.js",
-    "run:extension": "npx web-ext run --source-dir dist --start-url https://abrahamjuliot.github.io/creepjs/",
-    "package": "npm run build:prod && cd dist && zip -r ../container-shield.zip .",
-    "package:source": "git archive --format=zip --output=container-shield-source.zip HEAD"
+    "build": "mkdir -p dist/popup dist/icons && cp manifest.json dist/ && cp popup/popup.* dist/popup/ && cp icons/icon-48.png icons/icon-128.png dist/icons/"
   },
-  "keywords": [
-    "firefox",
-    "extension",
-    "privacy",
-    "fingerprinting",
-    "containers",
-    "webextension"
-  ],
-  "author": "",
-  "license": "GPL-3.0",
-  "repository": {
-    "type": "git",
-    "url": ""
-  },
-  "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "@tailwindcss/postcss": "^4.2.1",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@types/webextension-polyfill": "^0.12.5",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/coverage-v8": "^4.1.2",
-    "autoprefixer": "^10.4.27",
-    "esbuild": "^0.27.4",
-    "postcss": "^8.5.8",
-    "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3",
-    "vite": "^8.0.0",
-    "vitest": "^4.1.2",
-    "web-ext": "^10.0.0",
-    "webextension-polyfill": "^0.12.0"
-  }
+  "license": "GPL-3.0"
 }

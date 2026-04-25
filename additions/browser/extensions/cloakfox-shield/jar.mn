@@ -2,33 +2,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-# IMPORTANT: the destination paths MUST match the paths referenced in
-# manifest.json (content_scripts.js, background.scripts, default_popup,
-# options_ui.page, web_accessible_resources).
-# Previously these carried a `dist/` prefix in the destination, making
-# Firefox silently fail to load inject/content/background scripts and
-# leaving all JS-level spoofing inactive. Fix: strip `dist/` from dests.
+# Cloakfox extension — popup-only since the cpp-first refactor.
+# All fingerprint-spoofing logic lives in C++ patches + chrome-
+# privileged JSWindowActors (browser/components/cloakfox/actors/).
+# This extension exists only to host the toolbar popup; nothing
+# touches page content.
 
 browser.jar:
-    builtin-addons/cloakfox-shield/manifest.json                  (dist/manifest.json)
-    builtin-addons/cloakfox-shield/background/index.js            (dist/background/index.js)
-    builtin-addons/cloakfox-shield/content/index.js               (dist/content/index.js)
-    builtin-addons/cloakfox-shield/inject/index.js                (dist/inject/index.js)
-    builtin-addons/cloakfox-shield/popup/index.html               (dist/popup/index.html)
-    builtin-addons/cloakfox-shield/popup/index.js                 (dist/popup/index.js)
-    builtin-addons/cloakfox-shield/assets/styles.css              (dist/assets/styles.css)
-    builtin-addons/cloakfox-shield/chunks/rolldown-runtime.js     (dist/chunks/rolldown-runtime.js)
-    builtin-addons/cloakfox-shield/chunks/jsx-runtime.js          (dist/chunks/jsx-runtime.js)
-    builtin-addons/cloakfox-shield/chunks/browser-polyfill.js     (dist/chunks/browser-polyfill.js)
-    builtin-addons/cloakfox-shield/pages/onboarding.html          (dist/pages/onboarding.html)
-    builtin-addons/cloakfox-shield/pages/onboarding.js            (dist/pages/onboarding.js)
-    builtin-addons/cloakfox-shield/pages/ip-warning.html          (dist/pages/ip-warning.html)
-    builtin-addons/cloakfox-shield/pages/ip-warning.js            (dist/pages/ip-warning.js)
-    builtin-addons/cloakfox-shield/pages/options.html             (dist/pages/options.html)
-    builtin-addons/cloakfox-shield/pages/options.js               (dist/pages/options.js)
-    builtin-addons/cloakfox-shield/pages/test-runner.html         (dist/pages/test-runner.html)
-    builtin-addons/cloakfox-shield/test-runner.js                 (dist/test-runner.js)
-    builtin-addons/cloakfox-shield/icons/icon-16.png              (dist/icons/icon-16.png)
-    builtin-addons/cloakfox-shield/icons/icon-32.png              (dist/icons/icon-32.png)
-    builtin-addons/cloakfox-shield/icons/icon-48.png              (dist/icons/icon-48.png)
-    builtin-addons/cloakfox-shield/icons/icon-128.png             (dist/icons/icon-128.png)
+    builtin-addons/cloakfox-shield/manifest.json    (manifest.json)
+    builtin-addons/cloakfox-shield/popup/popup.html (popup/popup.html)
+    builtin-addons/cloakfox-shield/popup/popup.js   (popup/popup.js)
+    builtin-addons/cloakfox-shield/popup/popup.css  (popup/popup.css)
+    builtin-addons/cloakfox-shield/icons/icon-48.png  (icons/icon-48.png)
+    builtin-addons/cloakfox-shield/icons/icon-128.png (icons/icon-128.png)
