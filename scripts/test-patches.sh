@@ -73,6 +73,13 @@ if [ $MISMATCH -ne 0 ]; then
 fi
 echo "  OK — all new-file hunks match declared line counts."
 
+# Note: an earlier attempt added a stricter "all-hunk" audit (count
+# every regular hunk, not just new-file). It over-fired because GNU
+# patch's fuzzy-match accepts bare blank lines as context but our
+# awk counter didn't, leading to false positives on every existing
+# patch. The reliable signal is the new-file audit above; the apply
+# step below catches everything else by actually invoking patch.
+
 # Apply all patches — respect order.txt first, then anything unlisted (alphabetical).
 echo ""
 echo "=== Applying patches ==="
