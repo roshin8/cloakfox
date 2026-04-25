@@ -50,14 +50,13 @@ export class CloakfoxTabHistoryChild extends JSWindowActorChild {
     if (!win) return;
     if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
 
+    // Per-container seed from sharedData (parent-published — see
+    // CloakfoxSeedSync). cloakfox.container.* prefs don't auto-sync.
+    // TabHistory reuses math_seed since it only needs one stable
+    // per-container pick.
+    const seeds = Services.cpmm.sharedData.get("cloakfox-seeds") || {};
     const ucid = win.docShell?.browsingContext?.originAttributes?.userContextId ?? 0;
-    // Reuses the math_seed for its PRNG since tab-history only needs
-    // one stable-per-container pick. If the seed isn't set, don't
-    // spoof (avoids reporting length=50 for every fresh tab which
-    // would be its own tell).
-    const seedB64 = Services.prefs.getStringPref(
-      `cloakfox.container.${ucid}.math_seed`, ""
-    );
+    const seedB64 = seeds[`cloakfox.container.${ucid}.math_seed`] || "";
     if (!seedB64) return;
 
     const prng = makePRNG(b64ToBytes(seedB64));

@@ -66,8 +66,13 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     // Master enable check — one pref guards the whole cpp-first math layer.
     if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
 
+    // Per-container seeds live in cloakfox.container.<ucid>.* prefs
+    // which DON'T auto-sync to content processes. Read from
+    // Services.cpmm.sharedData where CloakfoxSeedSync (parent-side)
+    // keeps a live snapshot.
+    const seeds = Services.cpmm.sharedData.get("cloakfox-seeds") || {};
     const ucid = win.docShell?.browsingContext?.originAttributes?.userContextId ?? 0;
-    const seedB64 = Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`, "");
+    const seedB64 = seeds[`cloakfox.container.${ucid}.math_seed`] || "";
     if (!seedB64) return;  // No seed => no spoofing for this container.
 
     const prng = makePRNG(b64ToBytes(seedB64));

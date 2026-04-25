@@ -54,10 +54,11 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
     if (!win) return;
     if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
 
+    // Per-container seed from sharedData (parent-published — see
+    // CloakfoxSeedSync). cloakfox.container.* prefs don't auto-sync.
+    const seeds = Services.cpmm.sharedData.get("cloakfox-seeds") || {};
     const ucid = win.docShell?.browsingContext?.originAttributes?.userContextId ?? 0;
-    const seedB64 = Services.prefs.getStringPref(
-      `cloakfox.container.${ucid}.timing_seed`, ""
-    );
+    const seedB64 = seeds[`cloakfox.container.${ucid}.timing_seed`] || "";
     if (!seedB64) return;
 
     const prng = makePRNG(b64ToBytes(seedB64));

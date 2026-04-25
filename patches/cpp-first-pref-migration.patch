@@ -1,32 +1,46 @@
-Cloakfox: invoke one-shot pref migration at BrowserGlue startup.
+Cloakfox: invoke pref migration + seed sync at BrowserGlue startup.
 
-On cpp-first build upgrades, existing profiles may have roverfox.s.*
-prefs (from the pre-cpp-first extension era) that need to be mirrored
-into cloakfox.s.* so the user's existing per-container seeds survive.
-CloakfoxPrefMigration.sys.mjs runs once, then marks
-cloakfox.migration.v1.done=true.
+Two parent-process modules invoked at _beforeUIStartup:
 
-Hooked into _beforeUIStartup so it runs before any window is
-constructed — so the cpp-first JSWindowActors that fire on
-DOMDocElementInserted see the migrated values immediately.
+  1. CloakfoxPrefMigration: one-shot mirror of legacy roverfox.s.*
+     prefs (pre-cpp-first extension era) into cloakfox.s.*. Sets
+     cloakfox.migration.v1.done=true on first run.
+
+  2. CloakfoxSeedSync: continuous snapshot of cloakfox.container.*
+     and cloakfox.* prefs into Services.ppmm.sharedData, plus a
+     pref observer that keeps the snapshot live. JSWindowActor
+     children read seeds via Services.cpmm.sharedData.get since
+     user-set prefs in our custom namespaces don't auto-sync to
+     content processes (verified empirically).
+
+Order matters: migration first (so any roverfox.s.* legacy values
+land in cloakfox.s.* / cloakfox.container.* before sync snapshots
+them), then seed-sync.
 
 --- a/browser/components/BrowserGlue.sys.mjs
 +++ b/browser/components/BrowserGlue.sys.mjs
-@@ -382,5 +382,17 @@
- 
+@@ -382,5 +382,24 @@
+
    _beforeUIStartup: function BG__beforeUIStartup() {
 +    // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
-+    // cloakfox.s.* (cpp-first namespace). Idempotent; marks done on
-+    // first run. See additions/browser/components/cloakfox/
-+    // CloakfoxPrefMigration.sys.mjs.
++    // cloakfox.s.* (cpp-first namespace), then snapshot all cloakfox
++    // seeds into sharedData so JSWindowActor children can read them.
 +    try {
 +      const { runCloakfoxPrefMigration } = ChromeUtils.importESModule(
 +        "resource:///modules/CloakfoxPrefMigration.sys.mjs"
 +      );
 +      runCloakfoxPrefMigration();
 +    } catch (_e) {
-+      // Migration module missing on non-Cloakfox builds — ignore.
++      // Module missing on non-Cloakfox builds — ignore.
++    }
++    try {
++      const { initCloakfoxSeedSync } = ChromeUtils.importESModule(
++        "resource:///modules/CloakfoxSeedSync.sys.mjs"
++      );
++      initCloakfoxSeedSync();
++    } catch (_e) {
++      // Module missing on non-Cloakfox builds — ignore.
 +    }
      lazy.SessionStartup.init();
- 
+
      // check if we're in safe mode
