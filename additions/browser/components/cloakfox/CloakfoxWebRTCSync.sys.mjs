@@ -47,47 +47,69 @@ const { setTimeout, clearTimeout } = ChromeUtils.importESModule(
   "resource://gre/modules/Timer.sys.mjs"
 );
 
-const SHARED_KEY = "cloakfox-public-ipv4";
-const IP_SERVICES = [
+const SHARED_KEY_V4 = "cloakfox-public-ipv4";
+const SHARED_KEY_V6 = "cloakfox-public-ipv6";
+
+// Separate endpoints per family. api.ipify.org / icanhazip.com both
+// auto-pick whichever family the request came over; api64.ipify.org
+// and v6.ident.me are IPv6-preferring. We hit both to cover dual-
+// stacked hosts where each endpoint may resolve to a different family.
+const IPV4_SERVICES = [
   "https://api.ipify.org",
   "https://icanhazip.com",
 ];
+const IPV6_SERVICES = [
+  "https://api64.ipify.org",
+  "https://v6.ident.me",
+];
 const FETCH_TIMEOUT_MS = 4000;
 
-// Strict IPv4 dotted-quad with octet bounds. Filters HTML pages
-// (when an IP-echo URL accidentally serves a homepage), error
-// messages, and obvious garbage.
+// Strict IPv4 dotted-quad with octet bounds.
 const IPV4_RE = /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+// Loose IPv6 — accepts compressed forms (::), embedded IPv4, etc.
+// We just need "looks like an IPv6 the WebRTC setter would accept";
+// strict validation isn't worth the regex complexity.
+const IPV6_RE = /^[0-9a-fA-F:]+(?::\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})?$/;
 
-async function fetchPublicIPv4() {
-  for (const url of IP_SERVICES) {
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-      const r = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
-      clearTimeout(timer);
-      if (!r.ok) continue;
-      const txt = (await r.text()).trim();
-      if (IPV4_RE.test(txt)) return txt;
-    } catch (_e) { /* try next service */ }
+async function fetchOne(url, validator) {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    const r = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const txt = (await r.text()).trim();
+    return validator.test(txt) ? txt : null;
+  } catch (_e) { return null; }
+}
+
+async function fetchFromAny(services, validator) {
+  for (const url of services) {
+    const v = await fetchOne(url, validator);
+    if (v) return v;
   }
   return null;
 }
 
-function publish(ip) {
+function publish(key, ip) {
   try {
     if (ip) {
-      Services.ppmm.sharedData.set(SHARED_KEY, ip);
+      Services.ppmm.sharedData.set(key, ip);
     } else {
-      Services.ppmm.sharedData.delete(SHARED_KEY);
+      Services.ppmm.sharedData.delete(key);
     }
     Services.ppmm.sharedData.flush();
   } catch (_e) { /* sharedData may not be available pre-init */ }
 }
 
 async function refreshPublicIP() {
-  const ip = await fetchPublicIPv4();
-  publish(ip);
+  // Fetch both families in parallel — they're independent.
+  const [v4, v6] = await Promise.all([
+    fetchFromAny(IPV4_SERVICES, IPV4_RE),
+    fetchFromAny(IPV6_SERVICES, IPV6_RE),
+  ]);
+  publish(SHARED_KEY_V4, v4);
+  publish(SHARED_KEY_V6, v6);
 }
 
 const linkObserver = {

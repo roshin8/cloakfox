@@ -109,14 +109,12 @@ try {
   r.canvas_url_len = url.length;
 } catch (e) { r.canvas_err = String(e); }
 
-// CloakfoxWebRTC actor: setWebRTCIPv4 is a self-destructing C++ WebIDL
-// setter. After the actor fires, the function is undefined for that
-// userContextId. typeof === "undefined" → actor fired (and either
-// spoofed or, if sharedData was empty, no-op'd). typeof === "function"
-// → actor never reached the call site (cloakfox.enabled false, no IP
-// published, etc.). This is the only deterministic proof-of-life we
-// have without a known-fake IP to substitute.
+// CloakfoxWebRTC actor: setWebRTCIPv4 / setWebRTCIPv6 are self-
+// destructing C++ WebIDL setters. After the actor fires, both are
+// undefined for that userContextId. typeof === "undefined" → setter
+// was called. typeof === "function" → never called (sharedData empty).
 r.webrtc_setter_typeof = (typeof window.setWebRTCIPv4);
+r.webrtc_setter_v6_typeof = (typeof window.setWebRTCIPv6);
 
 // WebRTC IP — RTCPeerConnection ICE-gathering yields a public-IP
 // candidate (typ srflx). Should match what HTTP shows. We surface the
