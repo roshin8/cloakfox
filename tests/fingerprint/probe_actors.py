@@ -80,6 +80,10 @@ try { r.fd_javaEnabled = navigator.javaEnabled(); } catch (e) { r.fd_javaEnabled
 r.math_pi = Math.PI;
 r.math_pi_default = (Math.PI === 3.141592653589793);
 
+// Timezone: with CloakfoxTimezone actor + default UTC, both should report UTC.
+r.tz_intl = Intl.DateTimeFormat().resolvedOptions().timeZone;
+r.tz_offset = (new Date()).getTimezoneOffset();
+
 // Timing: spread of 100x setTimeout(50ms) — without jitter ~0, with 0..2ms jitter > 0
 const fires = [];
 const t0 = performance.now();
@@ -168,6 +172,13 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
     spread = float(result.get("timing_spread", "0"))
     if spread <= 1.0:
         fails.append(f"Timing actor: setTimeout spread = {spread}ms (expected > 1ms with 0..2ms jitter)")
+
+    # Timezone — CloakfoxTimezone actor should report UTC by default
+    tz = result.get("tz_intl", "")
+    if tz != "UTC":
+        fails.append(f"Timezone actor: Intl.DateTimeFormat resolvedOptions.timeZone = {tz!r}, want 'UTC'")
+    if result.get("tz_offset") != 0:
+        fails.append(f"Timezone actor: getTimezoneOffset() = {result.get('tz_offset')}, want 0 (UTC)")
 
     # Midi — Firefox 146 default disables WebMIDI, so 'fn-undefined' is OK.
     # Only flag if MIDI is exposed AND resolves (would mean the spoof failed).
