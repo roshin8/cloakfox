@@ -1,6 +1,6 @@
-Cloakfox: invoke pref migration + seed sync at BrowserGlue startup.
+Cloakfox: invoke pref migration + seed sync + WebRTC sync at BrowserGlue.
 
-Two parent-process modules invoked at _beforeUIStartup:
+Three parent-process modules invoked at _beforeUIStartup:
 
   1. CloakfoxPrefMigration: one-shot mirror of legacy roverfox.s.*
      prefs (pre-cpp-first extension era) into cloakfox.s.*. Sets
@@ -13,13 +13,20 @@ Two parent-process modules invoked at _beforeUIStartup:
      user-set prefs in our custom namespaces don't auto-sync to
      content processes (verified empirically).
 
+  3. CloakfoxWebRTCSync: async fetch of the user's current public
+     IPv4 from a public IP-echo endpoint, published to sharedData.
+     CloakfoxWebRTC actor reads the value and calls the C++
+     window.setWebRTCIPv4 setter so ICE candidates report the
+     same IP HTTP shows. Network-change observer refreshes on
+     link bounces (VPN connect/disconnect, sleep/wake).
+
 Order matters: migration first (so any roverfox.s.* legacy values
 land in cloakfox.s.* / cloakfox.container.* before sync snapshots
-them), then seed-sync.
+them), then seed-sync, then WebRTC sync (async, doesn't block).
 
 --- a/browser/components/BrowserGlue.sys.mjs
 +++ b/browser/components/BrowserGlue.sys.mjs
-@@ -382,5 +382,24 @@
+@@ -382,5 +382,32 @@
 
    _beforeUIStartup: function BG__beforeUIStartup() {
 +    // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
@@ -38,6 +45,14 @@ them), then seed-sync.
 +        "resource:///modules/CloakfoxSeedSync.sys.mjs"
 +      );
 +      initCloakfoxSeedSync();
++    } catch (_e) {
++      // Module missing on non-Cloakfox builds — ignore.
++    }
++    try {
++      const { initCloakfoxWebRTCSync } = ChromeUtils.importESModule(
++        "resource:///modules/CloakfoxWebRTCSync.sys.mjs"
++      );
++      initCloakfoxWebRTCSync();
 +    } catch (_e) {
 +      // Module missing on non-Cloakfox builds — ignore.
 +    }

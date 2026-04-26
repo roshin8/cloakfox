@@ -109,6 +109,35 @@ try {
   r.canvas_url_len = url.length;
 } catch (e) { r.canvas_err = String(e); }
 
+// WebRTC IP — RTCPeerConnection ICE-gathering yields a public-IP
+// candidate (typ srflx). Should match what HTTP shows. We surface the
+// raw candidate text and let the test compare against the HTTP-visible
+// IP captured from the parent side. Times out cleanly if no candidates.
+try {
+  const pc = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  });
+  pc.createDataChannel('cfx');
+  const cands = [];
+  pc.onicecandidate = (ev) => {
+    if (ev.candidate && ev.candidate.candidate) {
+      cands.push(ev.candidate.candidate);
+    }
+  };
+  pc.createOffer().then(o => pc.setLocalDescription(o));
+  setTimeout(() => {
+    r.webrtc_candidates = cands.slice();
+    // Public IP from srflx (server-reflexive) candidates only.
+    const srflx = cands.filter(c => c.includes(' typ srflx '));
+    const ips = srflx.map(c => {
+      const m = c.match(/(?:^|\s)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s/);
+      return m ? m[1] : null;
+    }).filter(Boolean);
+    r.webrtc_srflx_ips = [...new Set(ips)];
+    pc.close();
+  }, 1500);
+} catch (e) { r.webrtc_err = String(e); }
+
 // Audio fingerprint — patches/audio-fingerprint-manager.patch reads
 // cloak_cfg audio:seed and noises buffer-source output. We sum a slice
 // of the rendered buffer; per-container seed should produce a per-
@@ -156,11 +185,10 @@ function finalize() {
   document.documentElement.setAttribute('data-cfx-probe', JSON.stringify(r));
   document.title = 'PROBE_DONE';
 }
-// Give the OfflineAudioContext + setTimeout chain a moment to settle
-// before we serialize. 1.2s covers the 100x setTimeout(50ms) plus the
-// async audio render.
-setTimeout(() => { if (!finalized) finalize(); }, 1500);
-setTimeout(() => { if (!finalized) finalize(); }, 5000);
+// Give async chain (100x setTimeout(50ms) + offline audio render +
+// WebRTC ICE 1.5s gather window) time to settle.
+setTimeout(() => { if (!finalized) finalize(); }, 2000);
+setTimeout(() => { if (!finalized) finalize(); }, 6000);
 </script>
 </body>"""
 
@@ -242,6 +270,13 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
         fails.append(f"Audio spoof: OfflineAudioContext threw — {result['audio_err']}")
     elif "audio_sum" not in result:
         fails.append("Audio spoof: render didn't complete in time (no audio_sum)")
+
+    # WebRTC IP — informational only. Without an HTTP-visible IP captured
+    # outside the browser (we'd need a separate request from the test
+    # harness), we can't compare for divergence. The probe just records
+    # webrtc_srflx_ips so the operator can compare against what an HTTP
+    # request would show. A separate cross-network test verifies the
+    # actor actually substitutes the IP.
 
     # Timezone — CloakfoxTimezone actor should report UTC by default
     tz = result.get("tz_intl", "")

@@ -15,7 +15,7 @@ when Cloakfox is disabled.
 
 --- a/toolkit/modules/ActorManagerParent.sys.mjs
 +++ b/toolkit/modules/ActorManagerParent.sys.mjs
-@@ -90,6 +90,158 @@
+@@ -90,6 +90,179 @@
   * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
   */
  let JSWINDOWACTORS = {
@@ -140,6 +140,27 @@ when Cloakfox is disabled.
 +    },
 +    child: {
 +      esModuleURI: "resource:///actors/CloakfoxTimezoneChild.sys.mjs",
++      events: {
++        DOMDocElementInserted: { capture: true },
++      },
++    },
++    allFrames: true,
++    matches: ["http://*/*", "https://*/*", "file:///*"],
++  },
++  // Cloakfox: WebRTC public-IP spoof. Calls window.setWebRTCIPv4
++  // (self-destructing C++ WebIDL setter from patches/webrtc-ip-
++  // spoofing.patch) with the user's *current* public IPv4 detected
++  // by CloakfoxWebRTCSync (parent-side ipify lookup). Result: ICE
++  // candidates report the same IP HTTP shows, regardless of the
++  // interface ICE happened to enumerate. Closes IPv6, split-tunnel,
++  // and transient-VPN-drop leak windows that
++  // media.peerconnection.ice.default_address_only=true doesn't catch.
++  CloakfoxWebRTC: {
++    parent: {
++      esModuleURI: "resource:///actors/CloakfoxWebRTCParent.sys.mjs",
++    },
++    child: {
++      esModuleURI: "resource:///actors/CloakfoxWebRTCChild.sys.mjs",
 +      events: {
 +        DOMDocElementInserted: { capture: true },
 +      },
