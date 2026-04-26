@@ -64,17 +64,21 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
     const prng = makePRNG(b64ToBytes(seedB64));
     const pageWin = win.wrappedJSObject;
 
-    // Wrap setTimeout — add 0..MAX_JITTER_MS to the scheduled delay.
+    // Wrap setTimeout — add 0..MAX_JITTER_MS (inclusive) to the
+    // scheduled delay. Math.floor(prng() * (N+1)) yields 0..N inclusive
+    // since prng() ∈ [0,1). The previous form (* MAX_JITTER_MS) was an
+    // off-by-one and capped jitter at MAX_JITTER_MS - 1, which with
+    // MAX_JITTER_MS = 2 meant only {0, 1}.
     const origSetTimeout = pageWin.setTimeout;
     pageWin.setTimeout = Cu.exportFunction(function (handler, timeout, ...args) {
-      const jitter = Math.floor(prng() * MAX_JITTER_MS);
+      const jitter = Math.floor(prng() * (MAX_JITTER_MS + 1));
       return origSetTimeout.call(this, handler, (timeout || 0) + jitter, ...args);
     }, pageWin, { defineAs: "setTimeout" });
 
     // Wrap setInterval — same treatment.
     const origSetInterval = pageWin.setInterval;
     pageWin.setInterval = Cu.exportFunction(function (handler, timeout, ...args) {
-      const jitter = Math.floor(prng() * MAX_JITTER_MS);
+      const jitter = Math.floor(prng() * (MAX_JITTER_MS + 1));
       return origSetInterval.call(this, handler, (timeout || 0) + jitter, ...args);
     }, pageWin, { defineAs: "setInterval" });
 
