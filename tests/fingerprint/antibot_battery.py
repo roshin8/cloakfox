@@ -112,31 +112,35 @@ def _extract_navigator_row(driver) -> str:
 
 
 def _extract_creepjs(driver) -> str:
+    """
+    CreepJS rebrands its DOM frequently — older selectors like
+    .unblurred-trust-score are gone. Wait for the page to render an
+    "FP ID:" line (always present once compute completes), then text-
+    grep the body for the lines we actually care about: FP ID, headless
+    scores, the chromium/Resistance breakdown, and worker UA.
+    """
     try:
-        # Wait up to 20s for the dashboard; score usually appears as .unblurred-trust-score
-        deadline = time.time() + 20
+        deadline = time.time() + 25
+        body_text = ""
         while time.time() < deadline:
             try:
-                s = driver.find_element(
-                    "css selector", ".unblurred-trust-score, .trust-score"
-                )
-                if s.text.strip():
+                body_text = driver.find_element("css selector", "body").text
+                if "FP ID:" in body_text:
                     break
             except Exception:
                 pass
             time.sleep(0.5)
-        # Grab the summary area
-        try:
-            trust = driver.find_element(
-                "css selector", ".unblurred-trust-score"
-            ).text.strip()
-        except Exception:
-            trust = "?"
-        try:
-            fp = driver.find_element("css selector", ".fingerprint").text.strip()
-        except Exception:
-            fp = "?"
-        return f"trust: {trust}\nfp: {fp[:200]}"
+        if not body_text:
+            return "<no body text>"
+        keep_keywords = (
+            "FP ID:", "Fuzzy:", "trust ", "Trust ", "headless", "Headless",
+            "chromium:", "stealth", "Stealth", "Resistance",
+            "userAgent", "platform hints", "Webdriver", "webdriver",
+        )
+        lines = [l for l in body_text.split("\n") if any(k in l for k in keep_keywords)]
+        if not lines:
+            return body_text[:1500]
+        return "\n".join(lines[:25])
     except Exception as e:
         return f"<err: {e}>"
 
