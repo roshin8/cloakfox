@@ -10,10 +10,7 @@ MOZ_APP_BASENAME=Cloakfox
 MOZ_APP_DISPLAYNAME=Cloakfox
 MOZ_APP_REMOTINGNAME=cloakfox
 
-# Network-facing UA brand: pin to vanilla "Firefox" so the User-Agent
-# string reads `Firefox/<milestone>` instead of leaking the Cloakfox
-# brand. nsHttpHandler::InitUserAgentComponents reads MOZ_APP_UA_NAME
-# first and only falls back to MOZ_APP_NAME when this is empty.
-# MOZ_APP_UA_VERSION is auto-set from the Firefox milestone via
-# toolkit/moz.configure, so we don't override it here.
-MOZ_APP_UA_NAME=Firefox
+# MOZ_APP_UA_NAME=Firefox (pin UA brand to vanilla Firefox) is set
+# via imply_option() in browser/moz.configure — see the librewolf
+# disable-data-reporting-at-compile-time.patch. project_flag options
+# can't be set from confvars; mach hard-errors if you try.
