@@ -27,6 +27,49 @@
 const SHARED_KEY = "cloakfox-seeds";
 const PREF_BRANCHES = ["cloakfox.container.", "cloakfox."];
 
+// Per-signal seed pref names. Math/Keyboard/Timing/TabHistory all need
+// a seed; without one the actor early-returns. Auto-generate at parent
+// startup so out-of-box installs get full protection in the default
+// container without user intervention.
+const SEED_PREF_NAMES = [
+  "math_seed",
+  "keyboard_seed",
+  "timing_seed",
+];
+
+function randomSeedB64() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  // btoa needs a binary-string form
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+function ensureContainerSeeds(ucid) {
+  for (const name of SEED_PREF_NAMES) {
+    const pref = `cloakfox.container.${ucid}.${name}`;
+    try {
+      const cur = Services.prefs.getStringPref(pref, "");
+      if (!cur) {
+        Services.prefs.setStringPref(pref, randomSeedB64());
+      }
+    } catch (_e) { /* ignore */ }
+  }
+}
+
+function ensureSeedsForAllContainers() {
+  // Default container ucid=0 always.
+  ensureContainerSeeds(0);
+  // Plus every user-defined container.
+  try {
+    const ids = Services.contextualIdentityService.getPublicIdentities();
+    for (const id of ids) {
+      ensureContainerSeeds(id.userContextId);
+    }
+  } catch (_e) { /* CIS may not be ready yet */ }
+}
+
 function snapshot() {
   const out = {};
   for (const branchName of PREF_BRANCHES) {
@@ -64,6 +107,12 @@ const observer = {
 };
 
 export function initCloakfoxSeedSync() {
+  // First-launch seed generation: every container needs random math/
+  // keyboard/timing seeds for the JSWindowActors to produce per-user
+  // unique fingerprints. Without these, actors early-return and signals
+  // leak. Generated once at first launch and persisted in cloakfox.
+  // container.<ucid>.<seed_name> string prefs.
+  ensureSeedsForAllContainers();
   // Initial snapshot.
   publish();
   // Live updates.
