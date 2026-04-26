@@ -252,7 +252,14 @@ export function fillPersonaKeys(seedB64) {
     "navigator:webgpu:disabled": true,
     "document:lastModified:hidden": true,
     "indexedDB:databases:hidden": true,
-    "window:name:disabled": true,
+    // window:name:disabled is INTENTIONALLY off. The C++ patch
+    // silently truncates window.name reads AND ignores writes — this
+    // breaks fpscanner / sannysoft / any harness that uses
+    // window.name to pass state between popups, iframes, or workers.
+    // Bisected via tests/fingerprint runs: with the flag on, sannysoft's
+    // PHANTOM_* test section never renders. window.name isn't a strong
+    // fingerprint signal anyway (it's a per-tab string, not per-user),
+    // so the privacy gain doesn't justify the breakage.
 
     // ── Media features (avoid OS-theme leak) ─────────────────────
     "mediaFeature:invertedColors": false,
