@@ -1,0 +1,39 @@
+Cloakfox: cap Error.stack frame count at 20 to defeat PHANTOM_ETSL.
+
+Sannysoft / fpscanner classify a browser as PhantomJS-like when an
+Error's `.stack` string contains more than 30 newline-separated
+frames (PhantomJS used to ship 100+). Vanilla Firefox 146 uses
+MAX_REPORTED_STACK_DEPTH = 1u << 7 = 128, so deeply-nested test
+harnesses (CreepJS, sannysoft) routinely report 30+ and trip the
+detector.
+
+Setting the cap to 20 keeps Error.stack semantically useful for real
+debugging while landing well below Sannysoft's >30 FAIL threshold and
+matching the order of magnitude that Chrome (default 10) and
+Safari (~64 capped per-error) emit. The previous JS-actor approach
+(CloakfoxErrorsChild setting Error.stackTraceLimit = 10) was a no-op
+because SpiderMonkey doesn't honour the V8-style stackTraceLimit
+property — only this engine constant actually clamps the stack
+length the page reads.
+
+The constant is consumed by:
+  - js/src/jsexn.cpp:227          (CaptureStack callsite)
+  - js/src/vm/ErrorObject.cpp:1068 (ErrorObject construction)
+both wrapped in JS::StackCapture(JS::MaxFrames(MAX_REPORTED_STACK_DEPTH)).
+
+--- a/js/src/jsexn.h
++++ b/js/src/jsexn.h
+@@ -38,7 +38,12 @@ UniquePtr<JSErrorReport> CopyErrorReport(JSContext* cx, JSErrorReport* report);
+
+ // Cut off the stack if it gets too deep (most commonly for infinite recursion
+ // errors).
+-static const size_t MAX_REPORTED_STACK_DEPTH = 1u << 7;
++// Cloakfox: lowered from 128 to 20 so Error.stack stays under Sannysoft's
++// PHANTOM_ETSL FAIL threshold (>30 frames flags as PhantomJS-like). 20 is
++// large enough for real debugging, small enough to look like a normal
++// modern browser. Affects every site that reads `e.stack.split('\n').length`
++// — CreepJS and fpscanner-derived antibot scripts include this signal.
++static const size_t MAX_REPORTED_STACK_DEPTH = 20;
+
+ bool CaptureStack(JSContext* cx, MutableHandleObject stack);
+

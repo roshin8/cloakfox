@@ -79,7 +79,7 @@ coverage today, so each port is a net stealth improvement):
 10. `CloakfoxEventLoop` — setTimeout/setInterval coarsening.
 11. `CloakfoxTouchInput` — `navigator.maxTouchPoints`, `TouchEvent`.
 12. `CloakfoxRendering` — emoji/MathML render-variation.
-13. `CloakfoxErrors` — `Error.stack` chrome:// filtering.
+13. ~~`CloakfoxErrors`~~ — replaced by `cpp-first-error-stack-depth.patch` (clamps `MAX_REPORTED_STACK_DEPTH` in SpiderMonkey to 20; V8-style `Error.stackTraceLimit` JS property isn't honoured by SM).
 14. `CloakfoxHistory` — `window.history.length` floor.
 15. `CloakfoxWebCrypto` — `SubtleCrypto` algorithm disclosure.
 16. `CloakfoxWorkerInit` — `Worker`/`SharedWorker` startup config.

@@ -15,7 +15,7 @@ when Cloakfox is disabled.
 
 --- a/toolkit/modules/ActorManagerParent.sys.mjs
 +++ b/toolkit/modules/ActorManagerParent.sys.mjs
-@@ -90,6 +90,150 @@
+@@ -90,6 +90,137 @@
   * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
   */
  let JSWINDOWACTORS = {
@@ -71,19 +71,6 @@ when Cloakfox is disabled.
 +    parent: { esModuleURI: "resource:///actors/CloakfoxWebGPUParent.sys.mjs" },
 +    child: {
 +      esModuleURI: "resource:///actors/CloakfoxWebGPUChild.sys.mjs",
-+      events: { DOMDocElementInserted: { capture: true } },
-+    },
-+    allFrames: true,
-+    matches: ["http://*/*", "https://*/*", "file:///*"],
-+  },
-+  // Cloakfox: Error.stackTraceLimit + captureStackTrace normalization.
-+  // Pin stackTraceLimit to a common value (10) and truncate stacks
-+  // produced via captureStackTrace. Doesn't replace window.Error
-+  // constructor — that path is fragile (instanceof breakage).
-+  CloakfoxErrors: {
-+    parent: { esModuleURI: "resource:///actors/CloakfoxErrorsParent.sys.mjs" },
-+    child: {
-+      esModuleURI: "resource:///actors/CloakfoxErrorsChild.sys.mjs",
 +      events: { DOMDocElementInserted: { capture: true } },
 +    },
 +    allFrames: true,

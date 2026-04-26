@@ -58,7 +58,7 @@ Two patches hook this into the Firefox tree:
 | CloakfoxMidi | devices/midi.ts | shipped | navigator.requestMIDIAccess → reject |
 | CloakfoxWebGPU | graphics/webgpu.ts | shipped (simplified) | navigator.gpu → undefined; full GPU spoofer deferred |
 | CloakfoxFeatureDetect | features/feature-detection.ts | shipped (partial) | webdriver/DNT/GPC/pdfViewer/onLine/cookieEnabled/javaEnabled |
-| CloakfoxErrors | errors/stack-trace.ts | shipped (partial) | stackTraceLimit + captureStackTrace; window.Error replacement deferred |
+| ~~CloakfoxErrors~~ | errors/stack-trace.ts | **replaced by C++** | `MAX_REPORTED_STACK_DEPTH` capped at 20 in `js/src/jsexn.h` (see `patches/cpp-first-error-stack-depth.patch`). The actor-level approach was a no-op (SpiderMonkey doesn't honour V8's `Error.stackTraceLimit`); the C++ change actually clamps `e.stack` length so PHANTOM_ETSL stops flagging us. |
 | **Skipped — already redundant** | crypto/webcrypto.ts | n/a | Source was logging-only, no spoofing |
 | **Skipped — already redundant** | rendering/emoji.ts, rendering/mathml.ts | n/a | Overlap with text-metrics-spoofing.patch |
 | **Skipped — already covered** | iframe/iframe-patcher.ts | n/a | Existing spoofer uses MutationObserver to re-apply spoofers to each new iframe. `allFrames: true` on every Phase 2 actor registration already fires per-iframe — every iframe gets its own actor instance at DOMDocElementInserted. Confirmed by design; no port needed. |
