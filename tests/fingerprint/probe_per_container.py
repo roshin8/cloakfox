@@ -45,6 +45,19 @@ const r = {};
 r.math_pi = Math.PI;
 r.tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 r.history_length = window.history.length;
+r.ua = navigator.userAgent;
+r.platform = navigator.platform;
+r.oscpu = navigator.oscpu;
+r.hwc = navigator.hardwareConcurrency;
+r.lang = navigator.language;
+r.inner = window.innerWidth + "x" + window.innerHeight;
+r.dpr = window.devicePixelRatio;
+try {
+  const gl = document.createElement('canvas').getContext('webgl');
+  const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+  r.webgl_vendor = ext ? gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) : (gl && gl.getParameter(gl.VENDOR));
+  r.webgl_renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : (gl && gl.getParameter(gl.RENDERER));
+} catch (e) { r.webgl_err = String(e); }
 
 try {
   const c = document.createElement('canvas');
@@ -155,7 +168,13 @@ def main() -> None:
     print()
 
     fails: list[str] = []
-    for key in ("math_pi", "canvas_hash", "audio_sum"):
+    # Strict differential: should differ between profiles seeded with different math_seed.
+    STRICT = ("math_pi", "canvas_hash", "audio_sum")
+    # Persona-derived: with only 3 personas per OS, two random math_seeds may
+    # land on the same persona ~33% of the time. Treat as "diverse-aware" —
+    # report whether they varied without failing on a collision.
+    SOFT = ("ua", "platform", "hwc", "inner", "dpr", "webgl_renderer", "webgl_vendor")
+    for key in STRICT:
         a, b = result_a.get(key), result_b.get(key)
         if a is None or b is None:
             fails.append(f"{key}: missing in one of the runs (A={a!r}, B={b!r})")
@@ -163,6 +182,12 @@ def main() -> None:
             fails.append(f"{key}: identical across containers (A=B={a!r}) — spoofer not per-container")
         else:
             print(f"OK  {key}: A={a} vs B={b} (different ✓)")
+    print()
+    print("Persona-derived signals (may collide with 3 personas per OS):")
+    for key in SOFT:
+        a, b = result_a.get(key), result_b.get(key)
+        marker = "≠" if a != b else "="
+        print(f"  {key}: A={a!r} {marker} B={b!r}")
 
     if not fails:
         print("\nALL PER-CONTAINER VARIANCE CHECKS PASS")

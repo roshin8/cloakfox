@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { fillPersonaKeys } from "resource:///modules/CloakfoxPersonas.sys.mjs";
+
 /* Cloakfox: parent-side seed sync for content-process JSWindowActors.
  *
  * Why this exists: Firefox doesn't sync user-set prefs in unknown
@@ -57,18 +59,30 @@ function u32(seedB64, i) {
   return view.getUint32(0);
 }
 
-// MaskConfig JSON blob consumed by the C++ canvas / audio / font /
-// font-spacing managers. Without this pref set, those managers fall
-// through to system defaults (real canvas hash, real audio device
-// fingerprint, real font list) — i.e. NO C++ spoofing. Same shape as
-// content/settings.js#buildCloakCfg so the about:cloakfox UI and our
-// auto-generation are interchangeable.
+// Persona-driven cloak_cfg.
+//
+// Layer 1: the 4 hash-based MaskConfig keys (canvas / audio / font /
+// font-spacing) — drive the per-container noise on canvas pixel data,
+// audio buffer values, font list ordering, and font glyph spacing.
+//
+// Layer 2: persona keys — drive the navigator UA / platform / oscpu /
+// language, screen dimensions, WebGL renderer, AudioContext latency,
+// codec / media-capability spoof flags, and "disable leaky surface"
+// flags. Pulled from CloakfoxPersonas.fillPersonaKeys, picked
+// deterministically from math_seed and locked to the host OS family
+// (macOS host → macOS personas, etc.) so cross-OS UA mismatches
+// don't fingerprint us.
+//
+// Both layers share the same math_seed so a given container's JS-side
+// Math perturbations, C++ canvas/audio/font noise, and persona pick
+// are all derived from one source — coherent per-container identity.
 function buildCloakCfg(seedB64) {
   return JSON.stringify({
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
     "font:spacing_seed": u32(seedB64, 3),
+    ...fillPersonaKeys(seedB64),
   });
 }
 
