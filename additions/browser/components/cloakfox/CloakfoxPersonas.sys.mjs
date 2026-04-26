@@ -221,13 +221,16 @@ export function fillPersonaKeys(seedB64) {
     "locale:script": "Latn",
 
     // ── screen / window ───────────────────────────────────────────
-    "window.innerWidth": p.screen.width,
-    "window.innerHeight": p.screen.height,
-    "window.devicePixelRatio": p.screen.dpr,
+    // window.innerWidth/innerHeight/devicePixelRatio are intentionally
+    // NOT spoofed: there's no matching MaskConfig key for screen.width/
+    // height, so overriding window.* alone creates internal mismatch
+    // (window.innerWidth=1920 but screen.width=1440 — host real value).
+    // fpscanner / sannysoft break on the inconsistency. The persona
+    // pool still records screen dimensions for future use once a screen.
+    // width/height hook lands; for now they're informational only.
     "screen.pageXOffset": 0,
     "screen.pageYOffset": 0,
     "screen:orientation:type": "landscape-primary",
-    "mediaFeature:resolution": p.screen.dpr,
 
     // ── WebGL ─────────────────────────────────────────────────────
     "webGl:vendor": p.webGl.vendor,
