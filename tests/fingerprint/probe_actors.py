@@ -109,6 +109,15 @@ try {
   r.canvas_url_len = url.length;
 } catch (e) { r.canvas_err = String(e); }
 
+// CloakfoxWebRTC actor: setWebRTCIPv4 is a self-destructing C++ WebIDL
+// setter. After the actor fires, the function is undefined for that
+// userContextId. typeof === "undefined" → actor fired (and either
+// spoofed or, if sharedData was empty, no-op'd). typeof === "function"
+// → actor never reached the call site (cloakfox.enabled false, no IP
+// published, etc.). This is the only deterministic proof-of-life we
+// have without a known-fake IP to substitute.
+r.webrtc_setter_typeof = (typeof window.setWebRTCIPv4);
+
 // WebRTC IP — RTCPeerConnection ICE-gathering yields a public-IP
 // candidate (typ srflx). Should match what HTTP shows. We surface the
 // raw candidate text and let the test compare against the HTTP-visible
@@ -173,7 +182,9 @@ for (let i = 0; i < target; i++) {
       r.timing_min_minus_delay = (fires[0] - 50).toFixed(2);
       r.timing_max_minus_delay = (fires[fires.length-1] - 50).toFixed(2);
       r.timing_spread = (fires[fires.length-1] - fires[0]).toFixed(2);
-      finalize();
+      // Don't finalize here — WebRTC ICE gather (1500ms) and audio
+      // render are still pending. The 2.5s blanket timeout below
+      // catches everything.
     }
   }, 50);
 }
@@ -186,9 +197,9 @@ function finalize() {
   document.title = 'PROBE_DONE';
 }
 // Give async chain (100x setTimeout(50ms) + offline audio render +
-// WebRTC ICE 1.5s gather window) time to settle.
-setTimeout(() => { if (!finalized) finalize(); }, 2000);
-setTimeout(() => { if (!finalized) finalize(); }, 6000);
+// WebRTC ICE 1.5s gather window) time to settle. 2.5s covers the
+// ICE timeout + a margin.
+setTimeout(() => { if (!finalized) finalize(); }, 2500);
 </script>
 </body>"""
 

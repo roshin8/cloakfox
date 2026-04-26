@@ -39,6 +39,14 @@
  * advertised).
  */
 
+// setTimeout/clearTimeout aren't auto-globals in chrome JS modules —
+// they're page-window functions. Import explicitly from Timer.sys.mjs
+// so AbortController-style fetch timeouts work. Without this the fetch
+// throws "setTimeout is not defined" and falls through to no-spoof.
+const { setTimeout, clearTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
+);
+
 const SHARED_KEY = "cloakfox-public-ipv4";
 const IP_SERVICES = [
   "https://api.ipify.org",
