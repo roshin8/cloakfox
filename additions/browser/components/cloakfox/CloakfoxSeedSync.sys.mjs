@@ -46,7 +46,35 @@ function randomSeedB64() {
   return btoa(s);
 }
 
+// Derive a uint32 from the seed at offset i*4. Mirrors content/settings.js
+// — keeping the derivation identical means the about:cloakfox UI's
+// "regenerate" button and our auto-generation produce the same shape of
+// cloak_cfg blob, so nothing downstream cares which path created it.
+function u32(seedB64, i) {
+  const bin = atob(seedB64);
+  const view = new DataView(new ArrayBuffer(4));
+  for (let j = 0; j < 4; j++) view.setUint8(j, bin.charCodeAt(i * 4 + j));
+  return view.getUint32(0);
+}
+
+// MaskConfig JSON blob consumed by the C++ canvas / audio / font /
+// font-spacing managers. Without this pref set, those managers fall
+// through to system defaults (real canvas hash, real audio device
+// fingerprint, real font list) — i.e. NO C++ spoofing. Same shape as
+// content/settings.js#buildCloakCfg so the about:cloakfox UI and our
+// auto-generation are interchangeable.
+function buildCloakCfg(seedB64) {
+  return JSON.stringify({
+    "canvas:seed": u32(seedB64, 0),
+    "audio:seed": u32(seedB64, 1),
+    "font:seed": u32(seedB64, 2),
+    "font:spacing_seed": u32(seedB64, 3),
+  });
+}
+
 function ensureContainerSeeds(ucid) {
+  // First, the per-actor seeds (math/keyboard/timing) used by JSWindow
+  // Actors. Each is independent so a missing one doesn't gate the others.
   for (const name of SEED_PREF_NAMES) {
     const pref = `cloakfox.container.${ucid}.${name}`;
     try {
@@ -56,6 +84,24 @@ function ensureContainerSeeds(ucid) {
       }
     } catch (_e) { /* ignore */ }
   }
+
+  // Then the cloak_cfg JSON blob used by the C++ canvas / audio / font
+  // managers via MaskConfig. Derived from math_seed (already generated
+  // above if it was missing) so the per-container fingerprint stays
+  // coherent across both layers — same seed drives both the JS Math
+  // perturbations and the C++ canvas/audio/font noise.
+  const cfgPref = `cloakfox.s.cloak_cfg_${ucid}`;
+  try {
+    const curCfg = Services.prefs.getStringPref(cfgPref, "");
+    if (!curCfg) {
+      const masterSeed = Services.prefs.getStringPref(
+        `cloakfox.container.${ucid}.math_seed`, ""
+      );
+      if (masterSeed) {
+        Services.prefs.setStringPref(cfgPref, buildCloakCfg(masterSeed));
+      }
+    }
+  } catch (_e) { /* ignore */ }
 }
 
 function ensureSeedsForAllContainers() {
