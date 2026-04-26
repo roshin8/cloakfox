@@ -51,7 +51,20 @@ r.oscpu = navigator.oscpu;
 r.hwc = navigator.hardwareConcurrency;
 r.lang = navigator.language;
 r.inner = window.innerWidth + "x" + window.innerHeight;
+r.outer = window.outerWidth + "x" + window.outerHeight;
+r.screen = screen.width + "x" + screen.height;
+r.avail = screen.availWidth + "x" + screen.availHeight;
 r.dpr = window.devicePixelRatio;
+// Coherence check: avail dimensions must fit within screen, inner
+// must fit within outer, outer must fit within avail.
+r.dim_coherent = (
+  screen.availWidth <= screen.width &&
+  screen.availHeight <= screen.height &&
+  window.outerWidth <= screen.availWidth &&
+  window.outerHeight <= screen.availHeight &&
+  window.innerWidth <= window.outerWidth &&
+  window.innerHeight <= window.outerHeight
+);
 try {
   const gl = document.createElement('canvas').getContext('webgl');
   const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
@@ -173,7 +186,7 @@ def main() -> None:
     # Persona-derived: with only 3 personas per OS, two random math_seeds may
     # land on the same persona ~33% of the time. Treat as "diverse-aware" —
     # report whether they varied without failing on a collision.
-    SOFT = ("ua", "platform", "hwc", "inner", "dpr", "webgl_renderer", "webgl_vendor")
+    SOFT = ("ua", "platform", "hwc", "inner", "outer", "screen", "avail", "dpr", "webgl_renderer", "webgl_vendor")
     for key in STRICT:
         a, b = result_a.get(key), result_b.get(key)
         if a is None or b is None:
@@ -188,6 +201,14 @@ def main() -> None:
         a, b = result_a.get(key), result_b.get(key)
         marker = "≠" if a != b else "="
         print(f"  {key}: A={a!r} {marker} B={b!r}")
+    print()
+    # Hard requirement: dimensions must be internally coherent in BOTH
+    # profiles. Without sync, fpscanner-style consistency checks reject.
+    for k, name in [("dim_coherent", "screen/window dim coherence")]:
+        for label, res in [("A", result_a), ("B", result_b)]:
+            v = res.get(k)
+            if v is False:
+                fails.append(f"{name} ({label}): screen={res.get('screen')} avail={res.get('avail')} outer={res.get('outer')} inner={res.get('inner')} — geometry not nested correctly")
 
     if not fails:
         print("\nALL PER-CONTAINER VARIANCE CHECKS PASS")

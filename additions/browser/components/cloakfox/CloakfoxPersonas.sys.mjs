@@ -31,6 +31,27 @@
 
 const FIREFOX_VERSION = "146.0";
 
+/* ─── Chrome / OS-decoration heights ──────────────────────────────────
+ *
+ * Firefox chrome (URL bar + tab strip) and OS task/menu bar sizes,
+ * used to derive coherent inner / outer / avail dimensions from a
+ * persona's screen.width × screen.height.
+ *
+ * Approximate values — exact pixel counts depend on theme / DPI /
+ * compact mode, but the C++ MaskConfig consumers don't probe for
+ * theme accuracy; they just want internally-consistent numbers
+ * across screen.* / window.outer.* / window.inner.*.
+ */
+const CHROME_DECOR = {
+  darwin: { menuBar: 25, taskbar: 0,  firefoxChrome: 86 },  // OS X menubar at top, Dock auto-hides on Retina laptops, Firefox chrome ~86
+  winnt:  { menuBar: 0,  taskbar: 40, firefoxChrome: 90 },  // Win10/11 taskbar usually 40px, Firefox chrome ~90
+  linux:  { menuBar: 0,  taskbar: 32, firefoxChrome: 80 },  // GNOME / KDE typical ~32px panel
+};
+
+function decorFor(hostOS) {
+  return CHROME_DECOR[hostOS] || CHROME_DECOR.linux;
+}
+
 /* ─── Per-OS persona pools ───────────────────────────────────────────
  *
  * Three personas per OS family, picked to span common-laptop dimensions
@@ -201,10 +222,38 @@ export function pickPersona(seedB64, hostOS = detectHostOS()) {
   return pool[seedU32(seedB64) % pool.length];
 }
 
+/* User opt-in flags. Each persona-driven "disable" / "spoof" key that
+ * could plausibly break legitimate usage is gated on a Services.prefs
+ * boolean, default false. Set via about:cloakfox UI (or about:config
+ * for power users); no MaskConfig key is emitted unless the matching
+ * pref reads true. Lets users trade compatibility for stealth on
+ * surfaces that have legitimate cross-origin uses.
+ */
+function userOpt(name, def = false) {
+  try {
+    return Services.prefs.getBoolPref(`cloakfox.opt.${name}`, def);
+  } catch (_e) { return def; }
+}
+
 export function fillPersonaKeys(seedB64) {
-  const p = pickPersona(seedB64);
+  const hostOS = detectHostOS();
+  const p = pickPersona(seedB64, hostOS);
+  const decor = decorFor(hostOS);
   const ua = `Mozilla/5.0 (${p.uaSuffix}; rv:${FIREFOX_VERSION}) Gecko/20100101 Firefox/${FIREFOX_VERSION}`;
-  return {
+
+  // Coherent screen / window dimensions: derived from one source
+  // (persona's screen.width × screen.height) so window.innerWidth /
+  // outerWidth / screen.width / availWidth all line up. fpscanner-
+  // style consistency checks pass.
+  const sw = p.screen.width;
+  const sh = p.screen.height;
+  const dpr = p.screen.dpr;
+  const availTop = decor.menuBar;             // 25 on macOS, 0 elsewhere
+  const availHeight = sh - decor.menuBar - decor.taskbar;
+  const innerHeight = availHeight - decor.firefoxChrome;
+  const outerHeight = availHeight;            // browser maxed within avail area
+
+  const keys = {
     // ── UA + headers ─────────────────────────────────────────────
     "navigator.userAgent": ua,
     "navigator.appVersion": p.appVersion,
@@ -220,17 +269,30 @@ export function fillPersonaKeys(seedB64) {
     "locale:region": p.locale.lang.split("-")[1] || "US",
     "locale:script": "Latn",
 
-    // ── screen / window ───────────────────────────────────────────
-    // window.innerWidth/innerHeight/devicePixelRatio are intentionally
-    // NOT spoofed: there's no matching MaskConfig key for screen.width/
-    // height, so overriding window.* alone creates internal mismatch
-    // (window.innerWidth=1920 but screen.width=1440 — host real value).
-    // fpscanner / sannysoft break on the inconsistency. The persona
-    // pool still records screen dimensions for future use once a screen.
-    // width/height hook lands; for now they're informational only.
+    // ── screen + window (coherent set) ────────────────────────────
+    // All dimensions derived from persona.screen.width × .height so
+    // screen.width === window.outerWidth, screen.availWidth ≥
+    // window.innerWidth, etc. Required for fpscanner / sannysoft and
+    // generally any site that does dimension-consistency checks.
+    "screen.width": sw,
+    "screen.height": sh,
+    "screen.availLeft": 0,
+    "screen.availTop": availTop,
+    "screen.availWidth": sw,
+    "screen.availHeight": availHeight,
+    "window.innerWidth": sw,
+    "window.innerHeight": innerHeight,
+    "window.outerWidth": sw,
+    "window.outerHeight": outerHeight,
+    "window.devicePixelRatio": dpr,
+    "window.screenX": 0,
+    "window.screenY": 0,
+    "window.scrollMinX": 0,
+    "window.scrollMinY": 0,
     "screen.pageXOffset": 0,
     "screen.pageYOffset": 0,
     "screen:orientation:type": "landscape-primary",
+    "mediaFeature:resolution": dpr,
 
     // ── WebGL ─────────────────────────────────────────────────────
     "webGl:vendor": p.webGl.vendor,
@@ -238,6 +300,8 @@ export function fillPersonaKeys(seedB64) {
 
     // ── Audio ─────────────────────────────────────────────────────
     "AudioContext:outputLatency": p.audioOutputLatency,
+    "AudioContext:sampleRate": 48000,
+    "AudioContext:maxChannelCount": 2,
 
     // ── Spoof flags (bool=true means C++ patch substitutes) ──────
     "codecs:spoof": true,
@@ -247,23 +311,44 @@ export function fillPersonaKeys(seedB64) {
     "voices:fakeCompletion:charsPerSecond": 16,
     "voices:blockIfNotDefined": false,
 
-    // ── Disable noisy / leaky surfaces ───────────────────────────
+    // ── Always-safe disable flags ────────────────────────────────
     "navigator:vibrate:disabled": true,
     "navigator:webgpu:disabled": true,
     "document:lastModified:hidden": true,
     "indexedDB:databases:hidden": true,
-    // window:name:disabled is INTENTIONALLY off. The C++ patch
-    // silently truncates window.name reads AND ignores writes — this
-    // breaks fpscanner / sannysoft / any harness that uses
-    // window.name to pass state between popups, iframes, or workers.
-    // Bisected via tests/fingerprint runs: with the flag on, sannysoft's
-    // PHANTOM_* test section never renders. window.name isn't a strong
-    // fingerprint signal anyway (it's a per-tab string, not per-user),
-    // so the privacy gain doesn't justify the breakage.
 
     // ── Media features (avoid OS-theme leak) ─────────────────────
     "mediaFeature:invertedColors": false,
     "mediaFeature:prefersReducedMotion": false,
     "mediaFeature:prefersReducedTransparency": false,
   };
+
+  // ── User opt-in dangerous-disable flags ─────────────────────────
+  // window.name: breaks fpscanner / popup-orchestrated auth flows
+  // (window.opener.name pattern). Off by default. Power user can
+  // enable via cloakfox.opt.window_name_disabled = true.
+  if (userOpt("window_name_disabled")) keys["window:name:disabled"] = true;
+  // WebSocket: disabling breaks any site using realtime channels.
+  if (userOpt("websocket_disabled")) keys["webSocket:disabled"] = true;
+  // Clipboard read API: disabling breaks "paste" UX on some sites.
+  if (userOpt("clipboard_disabled")) keys["navigator:clipboard:disabled"] = true;
+  // EME: disabling breaks DRM-protected video (Netflix etc.).
+  if (userOpt("eme_disabled")) keys["navigator:eme:disabled"] = true;
+  // mediaDevices: disabling enumerateDevices breaks WebRTC/getUserMedia.
+  // Pref name uses _disabled for consistency, but underlying key is
+  // mediaDevices:enabled (set false to disable).
+  if (userOpt("mediadevices_disabled")) keys["mediaDevices:enabled"] = false;
+  // Notification permission: forces Notification.permission = "default",
+  // so sites can't tell if user granted/denied. Off by default — most
+  // users want this to follow real permission state.
+  if (userOpt("notification_permission_disabled")) {
+    keys["notification:permission:disabled"] = true;
+  }
+  // Storage persisted: forces navigator.storage.persisted() to false.
+  // Off by default — apps that legit need persistent storage break.
+  if (userOpt("storage_persisted_disabled")) {
+    keys["storage:persisted:disabled"] = true;
+  }
+
+  return keys;
 }
