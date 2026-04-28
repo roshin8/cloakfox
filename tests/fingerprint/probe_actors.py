@@ -78,7 +78,21 @@ r.fd_cookieEnabled = navigator.cookieEnabled;
 try { r.fd_javaEnabled = navigator.javaEnabled(); } catch (e) { r.fd_javaEnabled = 'err:' + e.message; }
 
 r.math_pi = Math.PI;
-r.math_pi_default = (Math.PI === 3.141592653589793);
+// With cloakfox.opt.math_constants_noise=false (default), Math.PI
+// must be the IEEE bit-exact value. Perturbing was self-flagging.
+r.math_pi_is_default = (Math.PI === 3.141592653589793);
+// Backwards-compat key — `math_pi_default` was the old name.
+r.math_pi_default = r.math_pi_is_default;
+// Trig functions still noised regardless of the constants pref.
+r.math_sin_half_jitter = Math.sin(0.5) - 0.479425538604203;
+
+// Timer precision: with default jitter ON, performance.now must
+// return non-integer-ms values (the bucket jitter adds 0..0.999ms).
+const t0 = performance.now();
+const t1 = performance.now();
+r.perf_now_t0 = t0;
+r.perf_now_fractional = (t0 !== Math.floor(t0));
+r.perf_now_monotonic = (t1 >= t0);
 
 // Timezone: with CloakfoxTimezone actor + default UTC, both should report UTC.
 r.tz_intl = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -225,9 +239,29 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
     """Returns (failure_count, list_of_failure_messages)."""
     fails: list[str] = []
 
-    # Math
-    if result.get("math_pi_default"):
-        fails.append(f"Math actor: Math.PI is the IEEE default (no spoof)")
+    # Math constants — with cloakfox.opt.math_constants_noise=false
+    # (default), Math.PI MUST equal the IEEE bit-exact value. The
+    # old behavior (perturbed) was self-flagging.
+    if not result.get("math_pi_is_default"):
+        fails.append(
+            f"Math constants: Math.PI = {result.get('math_pi')!r}, "
+            f"want exactly 3.141592653589793 (default, no constant noise)"
+        )
+    # Trig must still be noised — sin(0.5) should differ from spec value
+    # by ≤ NOISE_MAG_TRIG (1e-12). 0 = no noise = actor not firing.
+    sin_jitter = abs(float(result.get("math_sin_half_jitter") or 0))
+    if sin_jitter == 0:
+        fails.append("Math trig: sin(0.5) is exactly the spec value — actor not noising functions")
+
+    # Timer precision — with default jitter ON, performance.now should
+    # return fractional ms values (not exact integer ms multiples).
+    if not result.get("perf_now_fractional"):
+        fails.append(
+            f"Timer jitter: performance.now() = {result.get('perf_now_t0')!r} "
+            f"is exact integer ms — high-precision jitter wrap not active"
+        )
+    if not result.get("perf_now_monotonic"):
+        fails.append("Timer jitter: performance.now violated monotonicity")
 
     # TabHistory
     if not result.get("history_plausible"):

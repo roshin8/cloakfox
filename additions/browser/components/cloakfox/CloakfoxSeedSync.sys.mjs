@@ -166,6 +166,21 @@ const observer = {
   },
 };
 
+// Bridge cloakfox.opt.timer_quantization_off → privacy.reduceTimerPrecision.
+// Both prefs control the same Firefox engine setting, but the cloakfox.opt.*
+// namespace is what about:cloakfox UI exposes and what cloakfox.cfg
+// documents. When the user flips ours on, mirror to Firefox's. Done at
+// startup only — for live-toggle support we'd add a pref observer, but
+// performance.now precision is locked at process startup anyway, so the
+// re-mirror would still need a relaunch to take effect.
+function applyTimerQuantizationPref() {
+  try {
+    if (Services.prefs.getBoolPref("cloakfox.opt.timer_quantization_off", false)) {
+      Services.prefs.setBoolPref("privacy.reduceTimerPrecision", false);
+    }
+  } catch (_e) { /* ignore */ }
+}
+
 export function initCloakfoxSeedSync() {
   // First-launch seed generation: every container needs random math/
   // keyboard/timing seeds for the JSWindowActors to produce per-user
@@ -173,6 +188,7 @@ export function initCloakfoxSeedSync() {
   // leak. Generated once at first launch and persisted in cloakfox.
   // container.<ucid>.<seed_name> string prefs.
   ensureSeedsForAllContainers();
+  applyTimerQuantizationPref();
   // Initial snapshot.
   publish();
   // Live updates.

@@ -105,20 +105,44 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     // configurable: false, enumerable: false}. A fingerprint script
     // can probe this. Closing the gap is follow-up work — likely via
     // pageWin.eval / Cu.Sandbox with a page-native defineProperty.
+    // Math constants (PI, E, etc.) are IEEE 754 spec-defined values —
+    // every real browser produces them bit-exact. Perturbing them is a
+    // self-flagging signal: Math.PI === 3.141592653589793 returning
+    // false unambiguously means anti-fingerprinting is active.
+    //
+    // The trig FUNCTIONS below are different — sin/cos/exp/log results
+    // genuinely vary in last bits across CPUs and libm implementations,
+    // so noise-wrapping them is plausibly invisible.
+    //
+    // Default: only wrap the functions, leave constants bit-exact. Power
+    // users who want Spectre-style timing-attack defense via constant
+    // perturbation can flip cloakfox.opt.math_constants_noise = true.
+    const noiseConstants = Services.prefs.getBoolPref(
+      "cloakfox.opt.math_constants_noise", false
+    );
+
     for (const key of Object.getOwnPropertyNames(origMath)) {
-      if (CONSTANTS.has(key)) continue;
+      // Skip constants only when we plan to override them with
+      // perturbed values (descriptor copy would lock them in first
+      // and the assignment below would silently fail). When NOT
+      // perturbing, copy them normally so spoofedMath has all the
+      // constants the page expects, bit-exact.
+      if (noiseConstants && CONSTANTS.has(key)) continue;
       const d = Object.getOwnPropertyDescriptor(origMath, key);
       if (!d) continue;
       try { Object.defineProperty(spoofedMath, key, d); } catch (_e) {}
     }
-    spoofedMath.PI      = origMath.PI + piOffset;
-    spoofedMath.E       = origMath.E + eOffset;
-    spoofedMath.LN2     = origMath.LN2  + (prng() - 0.5) * NOISE_MAG_CONST;
-    spoofedMath.LN10    = origMath.LN10 + (prng() - 0.5) * NOISE_MAG_CONST;
-    spoofedMath.LOG2E   = 1 / spoofedMath.LN2;
-    spoofedMath.LOG10E  = 1 / spoofedMath.LN10;
-    spoofedMath.SQRT2   = origMath.SQRT2 + (prng() - 0.5) * NOISE_MAG_CONST;
-    spoofedMath.SQRT1_2 = 1 / spoofedMath.SQRT2;
+
+    if (noiseConstants) {
+      spoofedMath.PI      = origMath.PI + piOffset;
+      spoofedMath.E       = origMath.E + eOffset;
+      spoofedMath.LN2     = origMath.LN2  + (prng() - 0.5) * NOISE_MAG_CONST;
+      spoofedMath.LN10    = origMath.LN10 + (prng() - 0.5) * NOISE_MAG_CONST;
+      spoofedMath.LOG2E   = 1 / spoofedMath.LN2;
+      spoofedMath.LOG10E  = 1 / spoofedMath.LN10;
+      spoofedMath.SQRT2   = origMath.SQRT2 + (prng() - 0.5) * NOISE_MAG_CONST;
+      spoofedMath.SQRT1_2 = 1 / spoofedMath.SQRT2;
+    }
 
     // Trig / log / sqrt / pow family: exportFunction so the page sees
     // `function <name>() { [native code] }` when it introspects.

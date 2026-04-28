@@ -92,5 +92,32 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
         }, pageWin));
       }, pageWin, { defineAs: "requestAnimationFrame" });
     }
+
+    // Wrap performance.now — add deterministic per-ms-bucket fractional
+    // jitter so the JS-visible reading looks high-resolution despite
+    // Firefox's underlying 1ms quantization (privacy.reduceTimerPrecision).
+    //
+    // Why deterministic per bucket: performance.now is required by spec
+    // to be monotonic-non-decreasing. If we returned random jitter on
+    // every call, two consecutive calls in the same 1ms bucket could
+    // go backwards. Using a hash of the bucket id ensures both calls
+    // in the same bucket return the same jittered value, and adjacent
+    // buckets always advance by ≥1.0 - 0.999 = 0.001ms.
+    //
+    // Default ON. Power users wanting visibly Tor-style coarse precision
+    // (the "I'm a privacy browser" signal as deterrent) can flip
+    // cloakfox.opt.timer_high_precision_jitter = false.
+    if (Services.prefs.getBoolPref("cloakfox.opt.timer_high_precision_jitter", true)) {
+      const origPerfNow = pageWin.performance.now;
+      // Knuth multiplicative hash — fast deterministic 32-bit mix.
+      const bucketJitter = (ms) => {
+        const x = (Math.imul(ms | 0, 2654435761) ^ 0xdeadbeef) >>> 0;
+        return (x % 1000) / 1000;  // 0..0.999
+      };
+      pageWin.performance.now = Cu.exportFunction(function () {
+        const orig = origPerfNow.call(this);
+        return orig + bucketJitter(orig);
+      }, pageWin.performance, { defineAs: "now" });
+    }
   }
 }
