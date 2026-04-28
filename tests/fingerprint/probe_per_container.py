@@ -127,9 +127,10 @@ try {
     const data = buf.getChannelData(0);
     for (let i = 4000; i < 4400; i++) sum += Math.abs(data[i]);
     r.audio_sum = sum.toFixed(8);
-    finalize();
-  }).catch(e => { r.audio_err = String(e); finalize(); });
-} catch (e) { r.audio_err = String(e); finalize(); }
+    // Don't finalize here — geo callback may still be pending. Single
+    // 4000ms blanket below captures everything.
+  }).catch(e => { r.audio_err = String(e); });
+} catch (e) { r.audio_err = String(e); }
 
 let finalized = false;
 function finalize() {
