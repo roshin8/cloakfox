@@ -81,6 +81,25 @@ try { r.fd_javaEnabled = navigator.javaEnabled(); } catch (e) { r.fd_javaEnabled
 r.hwc = navigator.hardwareConcurrency;
 r.max_touch = navigator.maxTouchPoints;
 
+// UA Client Hints — Firefox 146 baseline. We identify as Firefox so
+// userAgentData should be undefined. If it appears non-undefined, we've
+// either accidentally enabled it or we're emulating Chrome (both bad —
+// would create a Firefox UA + Chromium UA-CH inconsistency a fingerprinter
+// instantly catches).
+r.uad_typeof = (typeof navigator.userAgentData);
+
+// Connection API — Firefox 146 baseline gates this on dom.netinfo.enabled
+// (default false). connection should be undefined; if it's an object,
+// we've accidentally enabled the pref OR a downstream patch leaked it.
+r.connection_typeof = (typeof navigator.connection);
+
+// Geolocation — when the persona has lat/lng/accuracy keys, the C++
+// patch auto-grants the permission and returns the spoofed coords.
+// We can't await getCurrentPosition synchronously here (it's async + needs
+// permission); just record that the API is exposed and let the per-container
+// probe validate per-container variance via lat/long differential.
+r.geolocation_in = ('geolocation' in navigator);
+
 r.math_pi = Math.PI;
 // With cloakfox.opt.math_constants_noise=false (default), Math.PI
 // must be the IEEE bit-exact value. Perturbing was self-flagging.
@@ -341,6 +360,23 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
         fails.append(f"hardwareConcurrency: {hwc!r} not in any persona's value set")
     if result.get("max_touch") != 0:
         fails.append(f"maxTouchPoints: {result.get('max_touch')!r}, want 0")
+
+    # UA-CH baseline — must NOT expose userAgentData (Chromium-only API).
+    # We identify as Firefox; emitting it would create a UA-vs-UA-CH
+    # inconsistency that anti-bot systems flag instantly.
+    if result.get("uad_typeof") not in ("undefined", "object"):
+        # Firefox 146 with dom.userAgentData.enabled returns 'object' —
+        # we should be 'undefined'. If something flipped, fail loud.
+        fails.append(f"navigator.userAgentData: typeof={result.get('uad_typeof')!r} (want 'undefined')")
+    elif result.get("uad_typeof") == "object":
+        fails.append("navigator.userAgentData is an object — Firefox 146 baseline is undefined; we accidentally enabled UA Client Hints")
+
+    # Connection API baseline — must NOT expose navigator.connection
+    # (Chromium-only). Firefox 146 gates on dom.netinfo.enabled (false
+    # by default). If we accidentally flipped the pref, navigator.connection
+    # becomes an object that leaks real network info.
+    if result.get("connection_typeof") != "undefined":
+        fails.append(f"navigator.connection: typeof={result.get('connection_typeof')!r} (want 'undefined' — dom.netinfo.enabled leaked)")
     if "audio_err" in result:
         fails.append(f"Audio spoof: OfflineAudioContext threw — {result['audio_err']}")
     elif "audio_sum" not in result:

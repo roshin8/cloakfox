@@ -41,6 +41,42 @@ try:
 except ImportError:
     sys.exit("browserforge not installed. Run: pip install browserforge")
 
+import random as _stdlib_random
+
+
+# US cities for geolocation spoofing. The locale we feed BrowserForge is
+# en-US, so coordinates need to land somewhere plausible-US. Top metros
+# by population — picked so a fingerprinter checking lat/long ↔ IANA
+# timezone consistency gets values that match (every entry below is
+# inside America/Chicago | America/Denver | America/Los_Angeles |
+# America/New_York | etc., all of which are subset-equivalent to
+# "UTC offset somewhere in the US" for the purposes of casual checks).
+#
+# Each persona gets ONE city plus a ±0.04° lat/long jitter (~5 km) so
+# different containers in the same city aren't pixel-perfect identical.
+US_CITIES = [
+    ("New York",      40.7128,  -74.0060),
+    ("Los Angeles",   34.0522, -118.2437),
+    ("Chicago",       41.8781,  -87.6298),
+    ("Houston",       29.7604,  -95.3698),
+    ("Phoenix",       33.4484, -112.0740),
+    ("Philadelphia",  39.9526,  -75.1652),
+    ("San Antonio",   29.4241,  -98.4936),
+    ("San Diego",     32.7157, -117.1611),
+    ("Dallas",        32.7767,  -96.7970),
+    ("San Jose",      37.3382, -121.8863),
+    ("Austin",        30.2672,  -97.7431),
+    ("Jacksonville",  30.3322,  -81.6557),
+    ("San Francisco", 37.7749, -122.4194),
+    ("Seattle",       47.6062, -122.3321),
+    ("Denver",        39.7392, -104.9903),
+    ("Boston",        42.3601,  -71.0589),
+    ("Miami",         25.7617,  -80.1918),
+    ("Atlanta",       33.7490,  -84.3880),
+    ("Portland",      45.5152, -122.6784),
+    ("Minneapolis",   44.9778,  -93.2650),
+]
+
 
 # How many personas per OS family. Larger pool = lower per-pair collision
 # rate when two random math_seeds pick the same persona, but bigger
@@ -116,6 +152,15 @@ def fingerprint_to_persona(fp, os: str) -> dict:
         gpu.vendor or "Intel Inc.", gpu.renderer or "Intel HD Graphics", os
     )
 
+    # Geolocation: pick one of the city-pool entries + ±5km jitter, with
+    # 50–150m accuracy (typical GPS-not-WiFi). Persistent per-persona so
+    # multiple getCurrentPosition() calls in the same container return
+    # consistent coords. Different containers see different cities.
+    city_name, base_lat, base_lng = _stdlib_random.choice(US_CITIES)
+    lat_jitter = (_stdlib_random.random() - 0.5) * 0.08
+    lng_jitter = (_stdlib_random.random() - 0.5) * 0.08
+    accuracy = 50.0 + _stdlib_random.random() * 100.0
+
     return {
         # UA + headers
         "navigator.userAgent": ua,
@@ -160,6 +205,14 @@ def fingerprint_to_persona(fp, os: str) -> dict:
         # WebGL
         "webGl:vendor": webgl_vendor,
         "webGl:renderer": webgl_renderer,
+
+        # Geolocation — consumed by patches/geolocation-spoofing.patch.
+        # When the keys are present, navigator.geolocation.getCurrentPosition
+        # returns these coords and the permission prompt is auto-granted.
+        # Per-persona values mean each container claims a different US metro.
+        "geolocation:latitude":  round(base_lat + lat_jitter, 6),
+        "geolocation:longitude": round(base_lng + lng_jitter, 6),
+        "geolocation:accuracy":  round(accuracy, 1),
 
         # Audio (BF doesn't surface outputLatency; sensible per-OS default)
         "AudioContext:outputLatency": (

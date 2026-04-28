@@ -94,6 +94,25 @@ try {
   r.canvas_hash = (h >>> 0).toString(16);
 } catch (e) { r.canvas_err = String(e); }
 
+// Geolocation — coords come from C++ when persona has the keys.
+// Async (callback). Fire it; finalize() is gated on completion below.
+r.geo_pending = true;
+try {
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      r.geo_lat = pos.coords.latitude;
+      r.geo_lng = pos.coords.longitude;
+      r.geo_acc = pos.coords.accuracy;
+      r.geo_pending = false;
+    },
+    (err) => {
+      r.geo_err = err.code + ": " + err.message;
+      r.geo_pending = false;
+    },
+    { timeout: 1000 }
+  );
+} catch (e) { r.geo_err = String(e); r.geo_pending = false; }
+
 try {
   const ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 4400, 44100);
   const osc = ac.createOscillator();
@@ -195,7 +214,7 @@ def main() -> None:
     # Persona-derived: with only 3 personas per OS, two random math_seeds may
     # land on the same persona ~33% of the time. Treat as "diverse-aware" —
     # report whether they varied without failing on a collision.
-    SOFT = ("ua", "platform", "hwc", "inner", "outer", "screen", "avail", "dpr", "webgl_renderer", "webgl_vendor")
+    SOFT = ("ua", "platform", "hwc", "inner", "outer", "screen", "avail", "dpr", "webgl_renderer", "webgl_vendor", "geo_lat", "geo_lng")
     for key in STRICT:
         a, b = result_a.get(key), result_b.get(key)
         if a is None or b is None:
