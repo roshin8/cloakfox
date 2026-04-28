@@ -152,11 +152,21 @@ export class CloakfoxMathChild extends JSWindowActorChild {
       "exp", "expm1", "log", "log2", "log10", "log1p",
       "sqrt", "cbrt", "hypot", "pow",
     ];
+    // The wrapped function is chrome-compartment (Cu.exportFunction). It
+    // captures `orig` and `origMath` from the page compartment. When the
+    // page calls Math.sin(0.5), the chrome wrapped fn gets `args` as a
+    // chrome-side rest-spread Array. Calling `orig.apply(origMath, args)`
+    // would invoke page-compartment Function.prototype.apply with a
+    // chrome array — apply reads `args.length`, the Xray boundary blocks
+    // it, and the page sees "Permission denied to access property
+    // 'length'". Using `.call(...args)` instead spreads the args in the
+    // chrome scope so each primitive marshals individually across the
+    // boundary — works without explicit Cu.cloneInto.
     for (const fn of TRIG_FNS) {
       const orig = origMath[fn];
       if (typeof orig !== "function") continue;
       const wrapped = Cu.exportFunction(function (...args) {
-        const r = orig.apply(origMath, args);
+        const r = orig.call(origMath, ...args);
         return Number.isFinite(r) && !Number.isInteger(r)
           ? r + (prng() - 0.5) * NOISE_MAG_TRIG
           : r;
