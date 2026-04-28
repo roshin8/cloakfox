@@ -186,21 +186,33 @@ def fingerprint_to_persona(fp, os: str) -> dict:
 
 
 def generate_pool(os: str, count: int) -> list[dict]:
-    """Generate N unique-ish personas for one OS family."""
+    """Generate N personas for one OS family.
+
+    No dedup — BrowserForge's per-OS distribution has a narrow set of
+    unique screens (≤ ~10 per OS), and tight dedup spins past
+    max_attempts. Natural variation across the other ~30 fields (UA
+    minor version, audio output latency, GPU model variant, font
+    list, etc.) keeps the pool diverse enough.
+
+    Skip mobile-ish screens (BF can return tiny dims for some niche
+    desktop configs); keep everything else.
+    """
+    import time
     fg = FingerprintGenerator(browser="firefox", os=os, device="desktop", locale="en-US")
     pool = []
-    seen_screens = set()
-    while len(pool) < count:
+    attempts = 0
+    max_attempts = count * 5
+    t0 = time.time()
+    while len(pool) < count and attempts < max_attempts:
+        attempts += 1
         fp = fg.generate()
-        # Skip mobile-ish screens (BF can sometimes return tiny dims).
         if fp.screen.width < 1024 or fp.screen.height < 600:
             continue
-        # Skip exact-screen duplicates to keep pool diverse.
-        screen_key = (fp.screen.width, fp.screen.height, fp.screen.devicePixelRatio)
-        if screen_key in seen_screens and len(pool) < count - 5:
-            continue
-        seen_screens.add(screen_key)
         pool.append(fingerprint_to_persona(fp, os))
+        if len(pool) % 10 == 0:
+            print(f"  {os}: {len(pool)}/{count}, {attempts} attempts, {time.time()-t0:.1f}s", flush=True)
+    if len(pool) < count:
+        print(f"  WARN: hit max_attempts ({max_attempts}); accepting {len(pool)} of {count}", flush=True)
     return pool
 
 
