@@ -110,8 +110,6 @@ const MAC_PERSONAS = [
   { ...MAC_BASE, label: "macOS-2560x1440-Int", screen: { width: 2560, height: 1440, dpr: 1.0 }, hardwareConcurrency: 16, deviceMemory: 32 },
 ];
 
-const WIN_PERSONAS = [
-  {
 // Windows GPU strings — ANGLE-prefixed, real samples from browserleaks
 // FP collection. Mix of Intel UHD/HD/Iris generations + NVIDIA + AMD.
 const WIN_GPU_INTEL_HD =     { vendor: "Google Inc. (Intel)",  renderer: "ANGLE (Intel, Intel(R) HD Graphics 4600 Direct3D11 vs_5_0 ps_5_0)" };
