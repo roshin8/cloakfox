@@ -88,11 +88,11 @@ r.math_sin_half_jitter = Math.sin(0.5) - 0.479425538604203;
 
 // Timer precision: with default jitter ON, performance.now must
 // return non-integer-ms values (the bucket jitter adds 0..0.999ms).
-const t0 = performance.now();
-const t1 = performance.now();
-r.perf_now_t0 = t0;
-r.perf_now_fractional = (t0 !== Math.floor(t0));
-r.perf_now_monotonic = (t1 >= t0);
+const perfA = performance.now();
+const perfB = performance.now();
+r.perf_now_t0 = perfA;
+r.perf_now_fractional = (perfA !== Math.floor(perfA));
+r.perf_now_monotonic = (perfB >= perfA);
 
 // Timezone: with CloakfoxTimezone actor + default UTC, both should report UTC.
 r.tz_intl = Intl.DateTimeFormat().resolvedOptions().timeZone;

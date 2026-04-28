@@ -43,6 +43,12 @@ PROBE_HTML = """<!doctype html>
 <script>
 const r = {};
 r.math_pi = Math.PI;
+// Math.sin is the per-container canary now: with cloakfox.opt.
+// math_constants_noise=false (default), Math.PI is bit-exact across
+// all containers (3.141592653589793). The trig FUNCTIONS still get
+// per-call noise from the timing seed, so Math.sin(0.5) varies per
+// container and serves as the strict-differential signal.
+r.math_sin_jitter = Math.sin(0.5);
 r.tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 r.history_length = window.history.length;
 r.ua = navigator.userAgent;
@@ -182,7 +188,10 @@ def main() -> None:
 
     fails: list[str] = []
     # Strict differential: should differ between profiles seeded with different math_seed.
-    STRICT = ("math_pi", "canvas_hash", "audio_sum")
+    # Math.PI is no longer the canary — it's intentionally bit-exact in
+    # the new default (math_constants_noise=false). Use Math.sin(0.5)
+    # which gets per-call noise from the timing seed.
+    STRICT = ("math_sin_jitter", "canvas_hash", "audio_sum")
     # Persona-derived: with only 3 personas per OS, two random math_seeds may
     # land on the same persona ~33% of the time. Treat as "diverse-aware" —
     # report whether they varied without failing on a collision.
