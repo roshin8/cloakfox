@@ -54,145 +54,99 @@ function decorFor(hostOS) {
 
 /* ─── Per-OS persona pools ───────────────────────────────────────────
  *
- * Three personas per OS family, picked to span common-laptop dimensions
- * and GPU vendors. Resolution + DPR pairs are realistic Apple / common
- * Windows / Linux configs. WebGL renderer strings match what real Firefox
- * reports for those GPUs (verified against browserleaks samples).
+ * Eight personas per OS family, picked to span common-laptop dimensions,
+ * core counts, and GPU vendors. Resolution + DPR pairs are realistic
+ * Apple / common Windows / Linux configs. WebGL renderer strings match
+ * what real Firefox reports for those GPUs (verified against browser-
+ * leaks samples). With ~8 personas/OS the pool is large enough that
+ * "you're one of N known Cloakfox personas" is a weaker correlation
+ * signal — random selection by seed gives ~1/8 collision rate per
+ * pair instead of the previous ~1/3.
+ *
+ * Each persona has identical UA-suffix / appVersion / platform / oscpu
+ * within its OS family — those can't vary on the same Firefox without
+ * looking like a different browser. The variance is in screen dims,
+ * GPU, hwc, and where applicable language.
  */
 
+// Shared OS-family fields, factored out to keep pools compact.
+const MAC_BASE = {
+  osVersion: "14.5",  // Sonoma
+  uaSuffix: "Macintosh; Intel Mac OS X 10.15",
+  appVersion: "5.0 (Macintosh)",
+  platform: "MacIntel",
+  oscpu: "Intel Mac OS X 10.15",
+  locale: { lang: "en-US", langs: ["en-US", "en"] },
+  audioOutputLatency: 0.005,
+  webGl: { vendor: "Apple Inc.", renderer: "Apple GPU" },
+};
+const WIN_BASE = {
+  osVersion: "10.0",
+  uaSuffix: "Windows NT 10.0; Win64; x64",
+  appVersion: "5.0 (Windows)",
+  platform: "Win32",
+  oscpu: "Windows NT 10.0; Win64; x64",
+  locale: { lang: "en-US", langs: ["en-US", "en"] },
+  audioOutputLatency: 0.012,
+};
+const LIN_BASE = {
+  osVersion: "x86_64",
+  uaSuffix: "X11; Linux x86_64",
+  appVersion: "5.0 (X11)",
+  platform: "Linux x86_64",
+  oscpu: "Linux x86_64",
+  locale: { lang: "en-US", langs: ["en-US", "en"] },
+  audioOutputLatency: 0.010,
+};
+
 const MAC_PERSONAS = [
-  {
-    label: "macOS-1440x900-AppleM1",
-    osVersion: "14.5",  // Sonoma
-    uaSuffix: "Macintosh; Intel Mac OS X 10.15",
-    appVersion: "5.0 (Macintosh)",
-    platform: "MacIntel",
-    oscpu: "Intel Mac OS X 10.15",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 1440, height: 900, dpr: 2.0 },
-    hardwareConcurrency: 8,
-    deviceMemory: 8,
-    webGl: { vendor: "Apple Inc.", renderer: "Apple GPU" },
-    audioOutputLatency: 0.005,
-  },
-  {
-    label: "macOS-1512x982-M2",
-    osVersion: "14.5",
-    uaSuffix: "Macintosh; Intel Mac OS X 10.15",
-    appVersion: "5.0 (Macintosh)",
-    platform: "MacIntel",
-    oscpu: "Intel Mac OS X 10.15",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 1512, height: 982, dpr: 2.0 },
-    hardwareConcurrency: 10,
-    deviceMemory: 8,
-    webGl: { vendor: "Apple Inc.", renderer: "Apple GPU" },
-    audioOutputLatency: 0.005,
-  },
-  {
-    label: "macOS-1920x1080-Intel",
-    osVersion: "14.5",
-    uaSuffix: "Macintosh; Intel Mac OS X 10.15",
-    appVersion: "5.0 (Macintosh)",
-    platform: "MacIntel",
-    oscpu: "Intel Mac OS X 10.15",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 1920, height: 1080, dpr: 1.0 },
-    hardwareConcurrency: 12,
-    deviceMemory: 16,
-    webGl: { vendor: "Apple Inc.", renderer: "Apple GPU" },
-    audioOutputLatency: 0.005,
-  },
+  { ...MAC_BASE, label: "macOS-1280x800-M1",   screen: { width: 1280, height: 800,  dpr: 2.0 }, hardwareConcurrency: 8,  deviceMemory: 8 },
+  { ...MAC_BASE, label: "macOS-1440x900-M1",   screen: { width: 1440, height: 900,  dpr: 2.0 }, hardwareConcurrency: 8,  deviceMemory: 8 },
+  { ...MAC_BASE, label: "macOS-1512x982-M2",   screen: { width: 1512, height: 982,  dpr: 2.0 }, hardwareConcurrency: 10, deviceMemory: 8 },
+  { ...MAC_BASE, label: "macOS-1680x1050-M2",  screen: { width: 1680, height: 1050, dpr: 2.0 }, hardwareConcurrency: 10, deviceMemory: 16 },
+  { ...MAC_BASE, label: "macOS-1728x1117-M3",  screen: { width: 1728, height: 1117, dpr: 2.0 }, hardwareConcurrency: 12, deviceMemory: 16 },
+  { ...MAC_BASE, label: "macOS-1920x1080-Int", screen: { width: 1920, height: 1080, dpr: 1.0 }, hardwareConcurrency: 12, deviceMemory: 16 },
+  { ...MAC_BASE, label: "macOS-2056x1329-M3M", screen: { width: 2056, height: 1329, dpr: 2.0 }, hardwareConcurrency: 14, deviceMemory: 32 },
+  { ...MAC_BASE, label: "macOS-2560x1440-Int", screen: { width: 2560, height: 1440, dpr: 1.0 }, hardwareConcurrency: 16, deviceMemory: 32 },
 ];
 
 const WIN_PERSONAS = [
   {
-    label: "Win10-1920x1080-Intel",
-    osVersion: "10.0",
-    uaSuffix: "Windows NT 10.0; Win64; x64",
-    appVersion: "5.0 (Windows)",
-    platform: "Win32",
-    oscpu: "Windows NT 10.0; Win64; x64",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 1920, height: 1080, dpr: 1.0 },
-    hardwareConcurrency: 8,
-    deviceMemory: 8,
-    webGl: { vendor: "Google Inc. (Intel)", renderer: "ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0)" },
-    audioOutputLatency: 0.012,
-  },
-  {
-    label: "Win11-1366x768-Intel",
-    osVersion: "10.0",
-    uaSuffix: "Windows NT 10.0; Win64; x64",
-    appVersion: "5.0 (Windows)",
-    platform: "Win32",
-    oscpu: "Windows NT 10.0; Win64; x64",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 1366, height: 768, dpr: 1.0 },
-    hardwareConcurrency: 4,
-    deviceMemory: 8,
-    webGl: { vendor: "Google Inc. (Intel)", renderer: "ANGLE (Intel, Intel(R) HD Graphics 4600 Direct3D11 vs_5_0 ps_5_0)" },
-    audioOutputLatency: 0.012,
-  },
-  {
-    label: "Win11-2560x1440-NVIDIA",
-    osVersion: "10.0",
-    uaSuffix: "Windows NT 10.0; Win64; x64",
-    appVersion: "5.0 (Windows)",
-    platform: "Win32",
-    oscpu: "Windows NT 10.0; Win64; x64",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 2560, height: 1440, dpr: 1.0 },
-    hardwareConcurrency: 16,
-    deviceMemory: 16,
-    webGl: { vendor: "Google Inc. (NVIDIA)", renderer: "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0)" },
-    audioOutputLatency: 0.012,
-  },
+// Windows GPU strings — ANGLE-prefixed, real samples from browserleaks
+// FP collection. Mix of Intel UHD/HD/Iris generations + NVIDIA + AMD.
+const WIN_GPU_INTEL_HD =     { vendor: "Google Inc. (Intel)",  renderer: "ANGLE (Intel, Intel(R) HD Graphics 4600 Direct3D11 vs_5_0 ps_5_0)" };
+const WIN_GPU_INTEL_UHD =    { vendor: "Google Inc. (Intel)",  renderer: "ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0)" };
+const WIN_GPU_INTEL_IRIS =   { vendor: "Google Inc. (Intel)",  renderer: "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0)" };
+const WIN_GPU_NVIDIA_3060 =  { vendor: "Google Inc. (NVIDIA)", renderer: "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0)" };
+const WIN_GPU_NVIDIA_3070 =  { vendor: "Google Inc. (NVIDIA)", renderer: "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Direct3D11 vs_5_0 ps_5_0)" };
+const WIN_GPU_AMD_RX580 =    { vendor: "Google Inc. (AMD)",    renderer: "ANGLE (AMD, AMD Radeon RX 580 Direct3D11 vs_5_0 ps_5_0)" };
+
+const WIN_PERSONAS = [
+  { ...WIN_BASE, label: "Win10-1366x768-IntelHD",       screen: { width: 1366, height: 768,  dpr: 1.0 }, hardwareConcurrency: 4,  deviceMemory: 8,  webGl: WIN_GPU_INTEL_HD },
+  { ...WIN_BASE, label: "Win10-1920x1080-IntelUHD",     screen: { width: 1920, height: 1080, dpr: 1.0 }, hardwareConcurrency: 8,  deviceMemory: 8,  webGl: WIN_GPU_INTEL_UHD },
+  { ...WIN_BASE, label: "Win11-1920x1080-IrisXe",       screen: { width: 1920, height: 1080, dpr: 1.25 },hardwareConcurrency: 12, deviceMemory: 16, webGl: WIN_GPU_INTEL_IRIS },
+  { ...WIN_BASE, label: "Win11-1920x1200-IntelUHD",     screen: { width: 1920, height: 1200, dpr: 1.0 }, hardwareConcurrency: 8,  deviceMemory: 16, webGl: WIN_GPU_INTEL_UHD },
+  { ...WIN_BASE, label: "Win11-2560x1440-NVIDIA-3060",  screen: { width: 2560, height: 1440, dpr: 1.0 }, hardwareConcurrency: 12, deviceMemory: 16, webGl: WIN_GPU_NVIDIA_3060 },
+  { ...WIN_BASE, label: "Win11-2560x1440-NVIDIA-3070",  screen: { width: 2560, height: 1440, dpr: 1.0 }, hardwareConcurrency: 16, deviceMemory: 32, webGl: WIN_GPU_NVIDIA_3070 },
+  { ...WIN_BASE, label: "Win11-1920x1080-AMD-RX580",    screen: { width: 1920, height: 1080, dpr: 1.0 }, hardwareConcurrency: 8,  deviceMemory: 16, webGl: WIN_GPU_AMD_RX580 },
+  { ...WIN_BASE, label: "Win11-3840x2160-NVIDIA-3070",  screen: { width: 3840, height: 2160, dpr: 1.5 }, hardwareConcurrency: 16, deviceMemory: 32, webGl: WIN_GPU_NVIDIA_3070 },
 ];
 
+const LIN_GPU_INTEL =  { vendor: "Mesa",                renderer: "Mesa Intel(R) UHD Graphics 620 (KBL GT2)" };
+const LIN_GPU_INTEL2 = { vendor: "Mesa",                renderer: "Mesa Intel(R) Iris(R) Plus Graphics (ICL GT2)" };
+const LIN_GPU_AMD =    { vendor: "Mesa",                renderer: "AMD Radeon Graphics (radeonsi, raphael_mendocino, LLVM 17.0.6, DRM 3.57, 6.8.0)" };
+const LIN_GPU_AMD2 =   { vendor: "Mesa",                renderer: "AMD Radeon RX 6700 XT (radeonsi, navi22, LLVM 17.0.6, DRM 3.57, 6.8.0)" };
+const LIN_GPU_NVIDIA = { vendor: "NVIDIA Corporation",  renderer: "NVIDIA GeForce RTX 3060/PCIe/SSE2" };
+
 const LINUX_PERSONAS = [
-  {
-    label: "Linux-1920x1080-Intel",
-    osVersion: "x86_64",
-    uaSuffix: "X11; Linux x86_64",
-    appVersion: "5.0 (X11)",
-    platform: "Linux x86_64",
-    oscpu: "Linux x86_64",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 1920, height: 1080, dpr: 1.0 },
-    hardwareConcurrency: 8,
-    deviceMemory: 16,
-    webGl: { vendor: "Mesa", renderer: "Mesa Intel(R) UHD Graphics 620 (KBL GT2)" },
-    audioOutputLatency: 0.010,
-  },
-  {
-    label: "Linux-1440x900-AMD",
-    osVersion: "x86_64",
-    uaSuffix: "X11; Linux x86_64",
-    appVersion: "5.0 (X11)",
-    platform: "Linux x86_64",
-    oscpu: "Linux x86_64",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 1440, height: 900, dpr: 1.0 },
-    hardwareConcurrency: 12,
-    deviceMemory: 16,
-    webGl: { vendor: "Mesa", renderer: "AMD Radeon Graphics (radeonsi, raphael_mendocino, LLVM 17.0.6, DRM 3.57, 6.8.0)" },
-    audioOutputLatency: 0.010,
-  },
-  {
-    label: "Linux-2560x1440-NVIDIA",
-    osVersion: "x86_64",
-    uaSuffix: "X11; Linux x86_64",
-    appVersion: "5.0 (X11)",
-    platform: "Linux x86_64",
-    oscpu: "Linux x86_64",
-    locale: { lang: "en-US", langs: ["en-US", "en"] },
-    screen: { width: 2560, height: 1440, dpr: 1.0 },
-    hardwareConcurrency: 16,
-    deviceMemory: 32,
-    webGl: { vendor: "NVIDIA Corporation", renderer: "NVIDIA GeForce RTX 3060/PCIe/SSE2" },
-    audioOutputLatency: 0.010,
-  },
+  { ...LIN_BASE, label: "Linux-1366x768-Intel",  screen: { width: 1366, height: 768,  dpr: 1.0 }, hardwareConcurrency: 4,  deviceMemory: 8,  webGl: LIN_GPU_INTEL },
+  { ...LIN_BASE, label: "Linux-1440x900-AMD",    screen: { width: 1440, height: 900,  dpr: 1.0 }, hardwareConcurrency: 12, deviceMemory: 16, webGl: LIN_GPU_AMD },
+  { ...LIN_BASE, label: "Linux-1680x1050-Intel", screen: { width: 1680, height: 1050, dpr: 1.0 }, hardwareConcurrency: 8,  deviceMemory: 16, webGl: LIN_GPU_INTEL2 },
+  { ...LIN_BASE, label: "Linux-1920x1080-IntelU",screen: { width: 1920, height: 1080, dpr: 1.0 }, hardwareConcurrency: 8,  deviceMemory: 16, webGl: LIN_GPU_INTEL },
+  { ...LIN_BASE, label: "Linux-1920x1080-AMD",   screen: { width: 1920, height: 1080, dpr: 1.0 }, hardwareConcurrency: 16, deviceMemory: 32, webGl: LIN_GPU_AMD2 },
+  { ...LIN_BASE, label: "Linux-2560x1440-NVIDIA",screen: { width: 2560, height: 1440, dpr: 1.0 }, hardwareConcurrency: 16, deviceMemory: 32, webGl: LIN_GPU_NVIDIA },
+  { ...LIN_BASE, label: "Linux-2560x1600-Intel", screen: { width: 2560, height: 1600, dpr: 1.0 }, hardwareConcurrency: 12, deviceMemory: 32, webGl: LIN_GPU_INTEL2 },
+  { ...LIN_BASE, label: "Linux-3840x2160-NVIDIA",screen: { width: 3840, height: 2160, dpr: 1.5 }, hardwareConcurrency: 16, deviceMemory: 64, webGl: LIN_GPU_NVIDIA },
 ];
 
 const POOLS = {
@@ -268,6 +222,16 @@ export function fillPersonaKeys(seedB64) {
     "locale:language": p.locale.lang.split("-")[0],
     "locale:region": p.locale.lang.split("-")[1] || "US",
     "locale:script": "Latn",
+
+    // ── Hardware identity ─────────────────────────────────────────
+    // navigator.hardwareConcurrency hook lives in patches/navigator-
+    // spoofing.patch (MaskConfig::GetUint64). Without this key the
+    // hooked function falls through to the real OS core count —
+    // persona-vs-host mismatch (Windows persona reporting 12 cores
+    // from host's Mac) catches us on consistency probes.
+    "navigator.hardwareConcurrency": p.hardwareConcurrency,
+    // maxTouchPoints: 0 = no touch input. Desktop personas always.
+    "navigator:maxTouchPoints": 0,
 
     // ── screen + window (coherent set) ────────────────────────────
     // All dimensions derived from persona.screen.width × .height so
