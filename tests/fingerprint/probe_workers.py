@@ -25,8 +25,10 @@ Run:
 
 from __future__ import annotations
 
+import base64
 import json
 import os
+import secrets
 import sys
 import tempfile
 import time
@@ -116,13 +118,24 @@ setTimeout(() => { if (!finalized) { r.worker_timeout = true; finalize(); } }, 4
 
 
 def _build_driver(bin_path: str, profile_dir: str):
+    """Profile pre-seeded with cloakfox.enabled + a math_seed so SeedSync
+    derives math:trig_seed into cloak_cfg before any worker can spawn —
+    otherwise MaskConfig::GetUint32 returns nullopt and the worker
+    spoofer is a no-op."""
+    Path(profile_dir).mkdir(parents=True, exist_ok=True)
+    seed = base64.b64encode(secrets.token_bytes(32)).decode()
+    (Path(profile_dir) / "user.js").write_text(
+        f'user_pref("cloakfox.enabled", true);\n'
+        f'user_pref("cloakfox.container.0.math_seed", "{seed}");\n'
+        f'user_pref("cloakfox.container.0.timing_seed", "{seed}");\n'
+    )
     opts = Options()
     opts.binary_location = bin_path
+    opts.add_argument("--headless")
     opts.add_argument("-profile")
     opts.add_argument(profile_dir)
-    # Cloakfox enable + a fresh container default seed are auto-set by
-    # CloakfoxSeedSync at first launch — no pre-config needed.
-    return webdriver.Firefox(service=Service(log_output=os.devnull), options=opts)
+    svc = Service(log_path=str(Path(profile_dir) / "geckodriver.log"))
+    return webdriver.Firefox(options=opts, service=svc)
 
 
 def assert_workers(r: dict) -> tuple[int, list[str]]:
