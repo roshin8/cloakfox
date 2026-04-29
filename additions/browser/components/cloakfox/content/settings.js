@@ -2,24 +2,39 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* Cloakfox settings page — container-aware version (Phase 3).
+/* Cloakfox settings page.
  *
- * Runs chrome-privileged (IS_SECURE_CHROME_UI set in AboutRedirector),
- * so Services.prefs + Services.contextualIdentityService are available.
+ * Runs chrome-privileged (IS_SECURE_CHROME_UI in AboutRedirector), so
+ * Services.prefs / Services.contextualIdentityService are available.
  *
- * Features:
- *   - Master Enable toggle (cloakfox.enabled pref)
- *   - Container dropdown built from ContextualIdentityService
- *   - Per-container seed display + regen + clear buttons
- *   - Regen writes:
- *       cloakfox.container.<ucid>.math_seed    (32-byte base64 — used
- *         by Math, Keyboard, Timing, TabHistory actors via
- *         makePRNG(b64ToBytes(seedB64)))
- *       cloakfox.s.cloak_cfg_<ucid>            (JSON blob consumed
- *         by C++ canvas/audio/font managers via MaskConfig)
+ * Surfaces the prefs that live elsewhere in the codebase as a UI:
+ *
+ *   - cloakfox.enabled                    — global on/off
+ *   - cloakfox.container.<ucid>.math_seed — per-container PRNG seed
+ *   - cloakfox.container.<ucid>.timezone  — per-container IANA tz
+ *   - cloakfox.opt.*                       — 10 stealth-vs-compat toggles
+ *   - cloakfox.s.cloak_cfg_<ucid>         — derived JSON the C++ MaskConfig
+ *                                            patches consume (regen-only,
+ *                                            not user-editable)
+ *
+ * The "Regenerate" button mirrors what SeedSync does at startup —
+ * generates a new math_seed + writes the persona-derived cloak_cfg.
+ * Importantly, it shares the SAME fillPersonaKeys path as SeedSync so
+ * the JSON shape stays identical (otherwise users who regenerated would
+ * end up with a stripped-down cloak_cfg, downgrading their spoof
+ * coverage versus a fresh install).
  */
 
-/* global Services */
+/* global Services, ChromeUtils */
+
+// Chrome pages use ChromeUtils.importESModule rather than raw `import`
+// for resource:// modules — the static import syntax doesn't resolve
+// resource:// URLs the way it does in .sys.mjs files. importESModule
+// returns the module's exports synchronously and works inside the
+// document's chrome principal.
+const { fillPersonaKeys, pickPersona } = ChromeUtils.importESModule(
+  "resource:///modules/CloakfoxPersonas.sys.mjs"
+);
 
 const PREF_ENABLED = "cloakfox.enabled";
 
@@ -27,6 +42,7 @@ const PREF_ENABLED = "cloakfox.enabled";
 
 const masterSeedPref = (ucid) => `cloakfox.container.${ucid}.math_seed`;
 const cloakCfgPref   = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
+const tzPref         = (ucid) => `cloakfox.container.${ucid}.timezone`;
 
 // ── seed / config helpers ───────────────────────────────────────────
 
@@ -36,74 +52,110 @@ function randomSeedB64() {
   return btoa(String.fromCharCode(...bytes));
 }
 
-// Derive a uint32 from the seed at offset i*4 (deterministic; gives
-// per-signal values that are stable per container without needing
-// extra prefs).
 function u32(seedB64, i) {
   const bin = atob(seedB64);
   const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
   return new DataView(bytes.buffer).getUint32(i * 4);
 }
 
+// MUST match SeedSync.buildCloakCfg shape — the persona keys come from
+// fillPersonaKeys (BF-driven pool); the 4 hash-based seeds come from
+// u32 derivation. If either layer drifts, regen and SeedSync auto-gen
+// produce different configs and downstream spoof coverage diverges.
 function buildCloakCfg(seedB64) {
   return JSON.stringify({
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
     "font:spacing_seed": u32(seedB64, 3),
+    ...fillPersonaKeys(seedB64),
   });
 }
 
 // ── container enumeration ──────────────────────────────────────────
 
 function getContainers() {
-  // Returns [{ucid, name}] for default + every user-defined container.
   const list = [{ ucid: 0, name: "Default (no container)" }];
   try {
-    const identities =
-      Services.contextualIdentityService.getPublicIdentities();
+    const identities = Services.contextualIdentityService.getPublicIdentities();
     for (const id of identities) {
       list.push({
         ucid: id.userContextId,
         name: id.name || `Container ${id.userContextId}`,
       });
     }
-  } catch (e) {
-    // If ContextualIdentityService isn't available, fall through to
-    // just the default container.
-  }
+  } catch (_e) { /* CIS may be unavailable in some build configs */ }
   return list;
 }
 
-// ── wire up UI ─────────────────────────────────────────────────────
+// ── persona summary ─────────────────────────────────────────────────
+
+// Render the picked persona as a human-readable one-liner so users can
+// see what each container is pretending to be. Pulls a few key fields
+// out of the persona dict; full dict is available in the cloak_cfg pref.
+function personaSummary(seedB64) {
+  if (!seedB64) return "(not set)";
+  try {
+    const p = pickPersona(seedB64);
+    const platform = p["navigator.platform"] || "?";
+    const w = p["screen.width"] ?? "?";
+    const h = p["screen.height"] ?? "?";
+    const dpr = p["window.devicePixelRatio"] ?? "?";
+    const renderer = (p["webGl:renderer"] || "?").slice(0, 40);
+    const hwc = p["navigator.hardwareConcurrency"] ?? "?";
+    return `${platform} · ${w}×${h}@${dpr}x · ${hwc}-core · ${renderer}`;
+  } catch (e) {
+    return `(error: ${e.message})`;
+  }
+}
+
+// ── timezone list ───────────────────────────────────────────────────
+
+// Common IANA names. Not exhaustive — power users can set any IANA
+// string via about:config (cloakfox.container.<ucid>.timezone). This
+// list covers the common cases without being a 600-entry dropdown.
+const TIMEZONES = [
+  "UTC",
+  "America/Los_Angeles", "America/Denver", "America/Chicago", "America/New_York",
+  "America/Toronto", "America/Sao_Paulo", "America/Mexico_City",
+  "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Moscow",
+  "Asia/Tokyo", "Asia/Shanghai", "Asia/Singapore", "Asia/Kolkata", "Asia/Dubai",
+  "Australia/Sydney", "Pacific/Auckland",
+];
+
+// ── wire up UI ──────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
-  const enabledEl  = document.getElementById("cfx-enabled");
-  const selectEl   = document.getElementById("cfx-container-select");
-  const masterEl   = document.getElementById("cfx-seed-master");
-  const cloakCfgEl = document.getElementById("cfx-seed-cloakcfg");
-  const regenBtn   = document.getElementById("cfx-regenerate");
-  const clearBtn   = document.getElementById("cfx-clear");
+  const enabledEl   = document.getElementById("cfx-enabled");
+  const selectEl    = document.getElementById("cfx-container-select");
+  const masterEl    = document.getElementById("cfx-seed-master");
+  const personaEl   = document.getElementById("cfx-persona-summary");
+  const tzSelectEl  = document.getElementById("cfx-tz-select");
+  const regenBtn    = document.getElementById("cfx-regenerate");
+  const clearBtn    = document.getElementById("cfx-clear");
 
-  // Populate master enable.
+  // Master enable toggle.
   enabledEl.checked = Services.prefs.getBoolPref(PREF_ENABLED, false);
   enabledEl.addEventListener("change", () => {
     Services.prefs.setBoolPref(PREF_ENABLED, enabledEl.checked);
   });
 
-  // Populate container dropdown.
-  const containers = getContainers();
-  selectEl.innerHTML = "";
-  for (const c of containers) {
+  // Container dropdown.
+  for (const c of getContainers()) {
     const opt = document.createElement("option");
     opt.value = String(c.ucid);
     opt.textContent = c.name;
     selectEl.appendChild(opt);
   }
+  // Skip the prepopulated "Default" option in the HTML — we just
+  // re-added it above. Strip the duplicate.
+  if (selectEl.options.length > 1 && selectEl.options[0].value === "0" &&
+      selectEl.options[1].value === "0") {
+    selectEl.options[0].remove();
+  }
 
-  // Honor ?ucid=N deep-link from the extension popup. Pre-selects
-  // the matching container so the user lands on their tab's
-  // settings without having to switch the dropdown manually.
+  // Honor ?ucid=N deep-link from the popup — pre-selects the matching
+  // container so the user lands on their tab's settings.
   try {
     const params = new URLSearchParams(window.location.search);
     const requested = params.get("ucid");
@@ -115,30 +167,67 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   } catch (_e) { /* deep-link is best-effort */ }
 
-  function refreshSeeds() {
-    const ucid = parseInt(selectEl.value, 10) || 0;
-    masterEl.textContent = Services.prefs.getStringPref(
-      masterSeedPref(ucid), "(not set)"
-    );
-    cloakCfgEl.textContent = Services.prefs.getStringPref(
-      cloakCfgPref(ucid), "(not set)"
-    );
+  // Timezone dropdown.
+  for (const tz of TIMEZONES) {
+    const opt = document.createElement("option");
+    opt.value = tz;
+    opt.textContent = tz;
+    tzSelectEl.appendChild(opt);
   }
-  selectEl.addEventListener("change", refreshSeeds);
-  refreshSeeds();
 
+  function refreshContainer() {
+    const ucid = parseInt(selectEl.value, 10) || 0;
+    const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
+    masterEl.textContent = seed
+      ? seed.slice(0, 28) + "…" + seed.slice(-4)  // truncate for display
+      : "(not set)";
+    personaEl.textContent = personaSummary(seed);
+    tzSelectEl.value = Services.prefs.getStringPref(tzPref(ucid), "");
+  }
+  selectEl.addEventListener("change", refreshContainer);
+  refreshContainer();
+
+  // Timezone picker — empty value clears the pref so the global UTC
+  // default applies; any other value pins this container's timezone.
+  tzSelectEl.addEventListener("change", () => {
+    const ucid = parseInt(selectEl.value, 10) || 0;
+    if (tzSelectEl.value === "") {
+      Services.prefs.clearUserPref(tzPref(ucid));
+    } else {
+      Services.prefs.setStringPref(tzPref(ucid), tzSelectEl.value);
+    }
+  });
+
+  // Regenerate persona — share the same path as SeedSync so the
+  // resulting cloak_cfg matches what auto-gen produces.
   regenBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const seed = randomSeedB64();
     Services.prefs.setStringPref(masterSeedPref(ucid), seed);
     Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed));
-    refreshSeeds();
+    refreshContainer();
   });
 
+  // Clear — strips both seed AND cloak_cfg so the container falls back
+  // to host's real values (no spoofing). Useful for debugging or for
+  // a "trusted" container that needs to look like real Firefox.
   clearBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     Services.prefs.clearUserPref(masterSeedPref(ucid));
     Services.prefs.clearUserPref(cloakCfgPref(ucid));
-    refreshSeeds();
+    Services.prefs.clearUserPref(tzPref(ucid));
+    refreshContainer();
   });
+
+  // ── Opt-in flag toggles ────────────────────────────────────────
+  // Each <input data-pref="cloakfox.opt.foo"> auto-binds to its pref.
+  // Changes write through immediately. Default reads from
+  // getBoolPref's fallback, which honors the cloakfox.cfg defaultPref.
+  for (const el of document.querySelectorAll("input[data-pref]")) {
+    const pref = el.dataset.pref;
+    el.checked = Services.prefs.getBoolPref(pref, false);
+    el.addEventListener("change", () => {
+      Services.prefs.setBoolPref(pref, el.checked);
+    });
+  }
 });

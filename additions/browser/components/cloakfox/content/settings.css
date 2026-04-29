@@ -165,3 +165,42 @@ pre {
   overflow-x: auto;
   font-size: 0.8rem;
 }
+
+/* Opt-in flag grid — denser layout than the primary toggle so we
+ * can fit ~10 items without the page becoming excessively long. */
+.flag-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.flag-grid .toggle-row {
+  align-items: flex-start;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #ececf0;
+  border-radius: 6px;
+  background: #fafafc;
+}
+
+.flag-grid .toggle-row:hover {
+  background: #f5f5f8;
+  border-color: #d8d8df;
+}
+
+.flag-grid .toggle-row input[type="checkbox"] {
+  margin-top: 0.15rem;
+}
+
+.flag-grid .toggle-label strong {
+  font-size: 0.92rem;
+}
+
+#container-config .picker-row {
+  margin-top: 1rem;
+}
+
+/* Persona summary code is wider than the master seed — give it a bit
+ * more breathing room without scrunching the seed row. */
+#cfx-persona-summary {
+  font-size: 0.78rem;
+}
