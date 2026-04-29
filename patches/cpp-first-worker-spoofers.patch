@@ -1,15 +1,16 @@
 diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 --- a/dom/workers/WorkerPrivate.cpp
 +++ b/dom/workers/WorkerPrivate.cpp
-@@ -23,6 +23,7 @@
+@@ -23,6 +23,8 @@
  #include "js/CallAndConstruct.h"  // JS_CallFunctionValue
  #include "js/CompilationAndEvaluation.h"
  #include "js/ContextOptions.h"
 +#include "MaskConfig.hpp"
++#include "mozilla/Utf8.h"
  #include "js/Date.h"
  #include "TimezoneManager.h"
  #include "js/Exception.h"
-@@ -6360,6 +6361,49 @@ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalScope(JSContext* aCx) {
+@@ -6360,6 +6362,49 @@ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalScope(JSContext* aCx) {
      }
    }
 
