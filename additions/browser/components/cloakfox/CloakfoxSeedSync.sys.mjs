@@ -82,6 +82,12 @@ function buildCloakCfg(seedB64, ucid = null) {
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
     "font:spacing_seed": u32(seedB64, 3),
+    // math:trig_seed drives Math.sin/cos/exp/log noise in worker scope
+    // (the Math JSWindowActor only fires on windows; worker realms have
+    // their own Math intrinsic). The C++ worker-spoofer injection in
+    // WorkerPrivate::GetOrCreateGlobalScope reads this via MaskConfig
+    // and embeds it in a per-realm JS spoofer at worker init time.
+    "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   });
 }

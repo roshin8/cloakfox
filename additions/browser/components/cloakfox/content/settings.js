@@ -74,6 +74,7 @@ function buildCloakCfg(seedB64, ucid = null) {
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
     "font:spacing_seed": u32(seedB64, 3),
+    "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   });
 }

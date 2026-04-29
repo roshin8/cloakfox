@@ -1,0 +1,61 @@
+diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -23,6 +23,7 @@
+ #include "js/CallAndConstruct.h"  // JS_CallFunctionValue
+ #include "js/CompilationAndEvaluation.h"
+ #include "js/ContextOptions.h"
++#include "MaskConfig.hpp"
+ #include "js/Date.h"
+ #include "TimezoneManager.h"
+ #include "js/Exception.h"
+@@ -6360,6 +6361,49 @@ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalScope(JSContext* aCx) {
+     }
+   }
+
++  // Cloakfox: Worker-scope Math spoofer. The window-side CloakfoxMath
++  // JSWindowActor doesn't fire in worker realms (workers have their own
++  // SpiderMonkey context); without this injection, sites that probe
++  // Math.sin/cos/etc. inside a Worker / OffscreenCanvas worker would
++  // see real libm output while the same probe in the main thread sees
++  // noised output, exposing the spoof. Inject a small IIFE here, after
++  // bindings are registered and before any user script runs. Seed comes
++  // from MaskConfig "math:trig_seed" (emitted by SeedSync into
++  // cloak_cfg); per-call deterministic noise of ~1e-12 ULP magnitude
++  // matches CloakfoxMathChild's window-scope behavior so worker and
++  // window fingerprints stay coherent within a container.
++  //
++  // Does not perturb constants (Math.PI, Math.E) — same default as the
++  // window actor; constant noise is opt-in via cloakfox.opt.math_constants_noise
++  // and is window-only because it's self-flagging anyway.
++  if (auto seedOpt = MaskConfig::GetUint32("math:trig_seed");
++      seedOpt.has_value() && seedOpt.value() != 0) {
++    nsCString src;
++    src.AppendPrintf(
++        "(()=>{if(typeof Math.__cfx_done__!=='undefined')return;"
++        "Math.__cfx_done__=1;let s=%u;"
++        "const n=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};"
++        "const N=1e-12;const T=['sin','cos','tan','asin','acos','atan',"
++        "'atan2','sinh','cosh','tanh','asinh','acosh','atanh',"
++        "'exp','expm1','log','log2','log10','log1p',"
++        "'sqrt','cbrt','hypot','pow'];for(const k of T){const f=Math[k];"
++        "if(typeof f!=='function')continue;Math[k]=function(...a){"
++        "const r=f.apply(Math,a);return Number.isFinite(r)&&"
++        "!Number.isInteger(r)?r+(n()-0.5)*N:r;};}})();",
++        seedOpt.value());
++    JS::CompileOptions options(aCx);
++    options.setFileAndLine("CloakfoxWorker.js", 1);
++    JS::SourceText<mozilla::Utf8Unit> sourceText;
++    if (sourceText.init(aCx, src.get(), src.Length(),
++                        JS::SourceOwnership::Borrowed)) {
++      JS::RootedValue rval(aCx);
++      // Best-effort eval; clear any pending exception so user code starts
++      // with a clean slate even if our injection fails.
++      JS::Evaluate(aCx, options, sourceText, &rval);
++      JS_ClearPendingException(aCx);
++    }
++  }
++
+   JS_FireOnNewGlobalObject(aCx, global);
+
+   return data->mScope;
