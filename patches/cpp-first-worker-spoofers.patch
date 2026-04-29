@@ -10,7 +10,7 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
  #include "js/Date.h"
  #include "TimezoneManager.h"
  #include "js/Exception.h"
-@@ -6360,6 +6362,49 @@ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalScope(JSContext* aCx) {
+@@ -6360,6 +6362,87 @@ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalScope(JSContext* aCx) {
      }
    }
 
@@ -26,23 +26,61 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 +  // matches CloakfoxMathChild's window-scope behavior so worker and
 +  // window fingerprints stay coherent within a container.
 +  //
++  // Stealth design (vs the naive earlier draft):
++  //   1. PURITY — noise hashes the result's IEEE 754 bits + seed via
++  //      xorshift, so Math.sin(0.5) === Math.sin(0.5). Real Math is
++  //      pure; a per-call PRNG (which the first cut used) gives
++  //      different values on repeat calls — instantly self-flagging.
++  //   2. NO SENTINEL — the earlier `Math.__cfx_done__` idempotence flag
++  //      was readable from page-side code. GetOrCreateGlobalScope is
++  //      single-shot per realm anyway, so no flag is needed.
++  //   3. TOSTRING/NAME/LENGTH CAMOUFLAGE — Function.prototype.toString
++  //      is replaced with a "lying" version that returns
++  //      "function NAME() { [native code] }" for any function in our
++  //      WeakSet (including the lying toString itself, so toString()
++  //      .toString() also looks native). Each wrapped Math method has
++  //      its name and length restored to native values via
++  //      defineProperty. Non-wrapped functions still see the real
++  //      toString output. Window-scope spoofer relies on
++  //      Cu.exportFunction for the same effect; workers have no Cu so
++  //      we recreate the camouflage in pure JS.
++  //
 +  // Does not perturb constants (Math.PI, Math.E) — same default as the
-+  // window actor; constant noise is opt-in via cloakfox.opt.math_constants_noise
-+  // and is window-only because it's self-flagging anyway.
++  // window actor; constant noise is opt-in via
++  // cloakfox.opt.math_constants_noise and is self-flagging.
 +  if (auto seedOpt = MaskConfig::GetUint32("math:trig_seed");
 +      seedOpt.has_value() && seedOpt.value() != 0) {
 +    nsCString src;
 +    src.AppendPrintf(
-+        "(()=>{if(typeof Math.__cfx_done__!=='undefined')return;"
-+        "Math.__cfx_done__=1;let s=%u;"
-+        "const n=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};"
-+        "const N=1e-12;const T=['sin','cos','tan','asin','acos','atan',"
-+        "'atan2','sinh','cosh','tanh','asinh','acosh','atanh',"
-+        "'exp','expm1','log','log2','log10','log1p',"
-+        "'sqrt','cbrt','hypot','pow'];for(const k of T){const f=Math[k];"
-+        "if(typeof f!=='function')continue;Math[k]=function(...a){"
-+        "const r=f.apply(Math,a);return Number.isFinite(r)&&"
-+        "!Number.isInteger(r)?r+(n()-0.5)*N:r;};}})();",
++        "(()=>{const M=Math,imul=M.imul,oFPTS=Function.prototype.toString;"
++        "const ab=new ArrayBuffer(8),f64=new Float64Array(ab),u32=new Uint32Array(ab);"
++        "const SEED=%u;"
++        "const noise=(r)=>{f64[0]=r;"
++        "let h=(u32[0]^u32[1]^SEED)>>>0;"
++        "h=imul(h^(h>>>16),2246822507)>>>0;"
++        "h=imul(h^(h>>>13),3266489909)>>>0;"
++        "h=(h^(h>>>16))>>>0;"
++        "return (h/4294967296-0.5)*1e-12;};"
++        "const lies=new WeakSet();"
++        "const lyingTS=function toString(){"
++        "if(lies.has(this))return 'function '+(this.name||'')+'() { [native code] }';"
++        "return oFPTS.call(this);};"
++        "Object.defineProperty(lyingTS,'name',{value:'toString'});"
++        "Object.defineProperty(lyingTS,'length',{value:0});"
++        "lies.add(lyingTS);"
++        "Object.defineProperty(Function.prototype,'toString',"
++        "{value:lyingTS,writable:true,configurable:true});"
++        "const META={sin:1,cos:1,tan:1,asin:1,acos:1,atan:1,atan2:2,"
++        "sinh:1,cosh:1,tanh:1,asinh:1,acosh:1,atanh:1,"
++        "exp:1,expm1:1,log:1,log2:1,log10:1,log1p:1,"
++        "sqrt:1,cbrt:1,hypot:2,pow:2};"
++        "for(const k of Object.keys(META)){const f=M[k];"
++        "if(typeof f!=='function')continue;"
++        "const w=function(...a){const r=f.apply(M,a);"
++        "return Number.isFinite(r)&&!Number.isInteger(r)?r+noise(r):r;};"
++        "Object.defineProperty(w,'name',{value:k});"
++        "Object.defineProperty(w,'length',{value:META[k]});"
++        "lies.add(w);M[k]=w;}})();",
 +        seedOpt.value());
 +    JS::CompileOptions options(aCx);
 +    options.setFileAndLine("CloakfoxWorker.js", 1);

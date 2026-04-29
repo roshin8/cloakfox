@@ -72,6 +72,11 @@ r.main_atan_1   = Math.atan(1);
 // Sanity: integer result should NOT be perturbed (wrap skips Number.isInteger)
 r.main_sqrt_4 = Math.sqrt(4);  // expect exactly 2
 
+// Main-thread purity (CloakfoxMath actor). Same input → same output.
+r.main_pure = (Math.sin(0.5) === Math.sin(0.5));
+r.main_sin_tostring = Math.sin.toString();
+r.main_sin_name = Math.sin.name;
+
 // Worker spawn via Blob URL — inline source avoids needing a separate
 // .js file and keeps CSP simple for file:// load.
 const workerSrc = `
@@ -84,8 +89,26 @@ const workerSrc = `
   out.worker_asin_0_5 = Math.asin(0.5);
   out.worker_atan_1   = Math.atan(1);
   out.worker_sqrt_4   = Math.sqrt(4);
-  // Probe whether the spoofer flag was installed (debug).
-  out.worker_cfx_done = (typeof Math.__cfx_done__ !== 'undefined');
+
+  // Stealth checks — these are the bits a fingerprinter probes to
+  // tell whether the spoof itself is detectable.
+  // Purity: Math should be spec-pure. Repeated call on same input
+  // must return same value. Real browsers always pass; a per-call PRNG
+  // wrap (the earlier draft) fails.
+  out.worker_pure = (Math.sin(0.5) === Math.sin(0.5));
+  // toString camouflage: native sin reads '[native code]'. A naked
+  // function wrapper would expose its source.
+  out.worker_sin_tostring = Math.sin.toString();
+  out.worker_sin_name = Math.sin.name;
+  out.worker_sin_length = Math.sin.length;
+  // The lying Function.prototype.toString must itself look native
+  // when introspected — otherwise a probe of toString.toString()
+  // exposes the override.
+  out.worker_fpts_tostring = Function.prototype.toString.toString();
+  // Sentinel must NOT exist (earlier draft set Math.__cfx_done__ which
+  // was trivially detectable).
+  out.worker_no_sentinel = (typeof Math.__cfx_done__ === 'undefined');
+
   postMessage(out);
 `;
 
@@ -152,12 +175,47 @@ def assert_workers(r: dict) -> tuple[int, list[str]]:
         fails.append("Worker never posted message — patch may not have applied")
         return len(fails), fails
 
-    # 2. Spoofer marker installed.
-    if not r.get("worker_cfx_done"):
+    # 2. No detectable sentinel — spoofer must not leave page-readable
+    # markers on Math itself. Earlier drafts set Math.__cfx_done__.
+    if not r.get("worker_no_sentinel"):
         fails.append(
-            "Math.__cfx_done__ marker missing in worker — IIFE didn't run "
-            "(check WorkerPrivate.cpp injection compiled in, math:trig_seed "
-            "non-zero in cloak_cfg)"
+            "Math.__cfx_done__ leaked to page — sentinel must not be "
+            "set on Math (any page can read it and detect the spoof)"
+        )
+
+    # 3. PURITY — Math.sin(0.5) === Math.sin(0.5). Real browsers always
+    # pass this; a per-call PRNG wrap fails it (the original draft's
+    # behavior). High-detectability if violated.
+    if not r.get("worker_pure"):
+        fails.append(
+            "Worker Math is NOT pure — Math.sin(0.5) returns different "
+            "values across calls. Noise must hash on input, not advance "
+            "PRNG state per call."
+        )
+
+    # 4. toString camouflage — native sin reads '[native code]' inside
+    # the toString output. A naked function wrapper exposes its source.
+    sin_ts = r.get("worker_sin_tostring", "")
+    if "[native code]" not in sin_ts:
+        fails.append(
+            f"Math.sin.toString() = {sin_ts!r} — wrapper source leaked "
+            f"(should match native '[native code]' format)"
+        )
+    fpts_ts = r.get("worker_fpts_tostring", "")
+    if "[native code]" not in fpts_ts:
+        fails.append(
+            f"Function.prototype.toString.toString() = {fpts_ts!r} — "
+            f"the lying toString itself is detectable"
+        )
+
+    # 5. name + length camouflage
+    if r.get("worker_sin_name") != "sin":
+        fails.append(
+            f"Math.sin.name = {r.get('worker_sin_name')!r}, want 'sin'"
+        )
+    if r.get("worker_sin_length") != 1:
+        fails.append(
+            f"Math.sin.length = {r.get('worker_sin_length')}, want 1"
         )
 
     # 3. Each sampled Math.foo() in the worker must NOT equal the native
@@ -197,6 +255,22 @@ def assert_workers(r: dict) -> tuple[int, list[str]]:
         fails.append(
             f"main_sqrt_4 = {r.get('main_sqrt_4')!r}, want 2 — "
             f"integer-pass-through guard broken in main-thread spoofer"
+        )
+
+    # 6. Main-thread stealth parity.
+    if not r.get("main_pure"):
+        fails.append(
+            "Main thread Math is NOT pure — CloakfoxMath actor still "
+            "uses per-call PRNG instead of input-hashed noise"
+        )
+    if "[native code]" not in r.get("main_sin_tostring", ""):
+        fails.append(
+            f"Main Math.sin.toString() = {r.get('main_sin_tostring')!r} — "
+            f"Cu.exportFunction camouflage failed (or not used)"
+        )
+    if r.get("main_sin_name") != "sin":
+        fails.append(
+            f"Main Math.sin.name = {r.get('main_sin_name')!r}, want 'sin'"
         )
 
     return len(fails), fails

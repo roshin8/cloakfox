@@ -162,14 +162,36 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     // 'length'". Using `.call(...args)` instead spreads the args in the
     // chrome scope so each primitive marshals individually across the
     // boundary — works without explicit Cu.cloneInto.
+    //
+    // PURITY: noise is derived from (result, trigSeed) via Float64-bit
+    // hashing — Math.sin(0.5) === Math.sin(0.5) holds. The earlier
+    // implementation advanced `prng()` per call, which made repeated
+    // calls on the same input return different values — a self-flagging
+    // signal since real Math is spec-pure. We keep the master prng()
+    // alive only for one-time initialization (constants); the trig
+    // wrap uses input-deterministic hashing exclusively.
+    const trigSeedBytes = b64ToBytes(seedB64).slice(28, 32);
+    const trigSeed = (trigSeedBytes[0] << 24 |
+                      trigSeedBytes[1] << 16 |
+                      trigSeedBytes[2] <<  8 |
+                      trigSeedBytes[3]) >>> 0;
+    const _ab  = new ArrayBuffer(8);
+    const _f64 = new Float64Array(_ab);
+    const _u32 = new Uint32Array(_ab);
+    const noise = (r) => {
+      _f64[0] = r;
+      let h = (_u32[0] ^ _u32[1] ^ trigSeed) >>> 0;
+      h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
+      h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+      h = (h ^ (h >>> 16)) >>> 0;
+      return (h / 4294967296 - 0.5) * NOISE_MAG_TRIG;
+    };
     for (const fn of TRIG_FNS) {
       const orig = origMath[fn];
       if (typeof orig !== "function") continue;
       const wrapped = Cu.exportFunction(function (...args) {
         const r = orig.call(origMath, ...args);
-        return Number.isFinite(r) && !Number.isInteger(r)
-          ? r + (prng() - 0.5) * NOISE_MAG_TRIG
-          : r;
+        return Number.isFinite(r) && !Number.isInteger(r) ? r + noise(r) : r;
       }, pageWin, { defineAs: fn });
       spoofedMath[fn] = wrapped;
     }
