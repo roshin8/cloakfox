@@ -12,78 +12,121 @@
   <main>
     <header>
       <h1>Cloakfox</h1>
-      <p class="tagline">Per-container fingerprint isolation</p>
+      <p class="tagline">Each container shows websites a different fake hardware identity. This page is what every container is currently spoofing.</p>
     </header>
 
-    <section id="primary-toggle">
-      <label class="toggle-row">
+    <section id="status-bar">
+      <label class="toggle-row inline">
         <input type="checkbox" id="cfx-enabled">
-        <span class="toggle-label">
-          <strong>Enable Cloakfox</strong>
-          <small>Global kill-switch. When off, Firefox behaves normally.</small>
-        </span>
+        <span class="toggle-label-inline"><strong>Cloakfox enabled</strong></span>
       </label>
-    </section>
-
-    <section id="container-picker">
-      <h2>Container</h2>
-      <p class="help">
-        Each container has its own fingerprint. Pick one to view or
-        regenerate its persona.
-      </p>
-      <div class="picker-row">
-        <label for="cfx-container-select">Active container:</label>
+      <div class="picker-row inline">
+        <label for="cfx-container-select">Container:</label>
         <select id="cfx-container-select">
           <option value="0">Default (no container)</option>
         </select>
       </div>
     </section>
 
-    <section id="container-config">
-      <h2>Persona for this container</h2>
-      <div class="seed-grid">
-        <div class="seed-row">
-          <span class="seed-label">Master seed</span>
-          <code id="cfx-seed-master" class="seed-value">—</code>
-        </div>
-        <div class="seed-row">
-          <span class="seed-label">Persona summary</span>
-          <code id="cfx-persona-summary" class="seed-value">—</code>
-        </div>
-      </div>
-
+    <section id="headline">
+      <p class="headline-eyebrow">This container appears as</p>
+      <p class="headline-summary"><span id="cfx-headline-text">—</span></p>
       <div class="picker-row">
-        <label for="cfx-persona-override-select">Persona override:</label>
+        <label for="cfx-persona-override-select">Persona:</label>
         <select id="cfx-persona-override-select">
           <option value="-1">(auto — pick from seed)</option>
         </select>
-      </div>
-
-      <div class="picker-row">
-        <label for="cfx-tz-select">Timezone:</label>
-        <select id="cfx-tz-select">
-          <option value="">(default — UTC)</option>
-        </select>
-      </div>
-
-      <div class="button-row">
-        <button id="cfx-regenerate">Regenerate persona for this container</button>
-        <button id="cfx-clear">Clear (disable spoofing for this container)</button>
+        <button id="cfx-regenerate" class="btn-primary">Regenerate</button>
+        <button id="cfx-clear" class="btn-secondary">Clear</button>
       </div>
     </section>
 
-    <section id="opt-flags">
-      <h2>Stronger spoofing (may break sites)</h2>
-      <p class="help">
-        Each toggle below trades site compatibility for stealth. Off by
-        default — flip on if you understand the cost.
-      </p>
+    <details class="spoof-group" open>
+      <summary>Navigator &amp; user-agent</summary>
+      <div class="spoof-grid" id="grp-navigator"></div>
+    </details>
+
+    <details class="spoof-group" open>
+      <summary>Screen &amp; window</summary>
+      <div class="spoof-grid" id="grp-screen"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Graphics (canvas, WebGL)</summary>
+      <div class="spoof-grid" id="grp-graphics"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Audio</summary>
+      <div class="spoof-grid" id="grp-audio"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Fonts</summary>
+      <div class="spoof-grid" id="grp-fonts"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Locale</summary>
+      <div class="spoof-grid" id="grp-locale"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Timezone</summary>
+      <div class="spoof-grid" id="grp-timezone">
+        <div class="spoof-row">
+          <span class="k">Active timezone</span>
+          <span class="v" id="cfx-tz-current">—</span>
+        </div>
+        <div class="spoof-row picker-row">
+          <label for="cfx-tz-select" class="k">Override</label>
+          <select id="cfx-tz-select" class="v">
+            <option value="">(default — UTC)</option>
+          </select>
+        </div>
+      </div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Geolocation</summary>
+      <div class="spoof-grid" id="grp-geo"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Network &amp; WebRTC</summary>
+      <div class="spoof-grid" id="grp-network"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Media (codecs, capabilities)</summary>
+      <div class="spoof-grid" id="grp-media"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Speech synthesis</summary>
+      <div class="spoof-grid" id="grp-voices"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Hidden surfaces (defaults applied silently)</summary>
+      <div class="spoof-grid" id="grp-hidden"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Per-vector noise seeds</summary>
+      <p class="help">Each seed drives one fingerprint vector at the C++ level. Regenerating the persona above rotates all of these together.</p>
+      <div class="spoof-grid" id="grp-seeds"></div>
+    </details>
+
+    <details class="spoof-group">
+      <summary>Optional hardening (may break sites)</summary>
+      <p class="help">Each toggle trades site compatibility for stealth. Off by default unless you flip it on.</p>
       <div class="flag-grid">
         <label class="toggle-row">
           <input type="checkbox" data-pref="cloakfox.opt.window_name_disabled">
           <span class="toggle-label">
             <strong>Disable window.name</strong>
-            <small>Reads return empty, writes ignored. Breaks fpscanner, popup-orchestrated auth flows (window.opener.name pattern).</small>
+            <small>Reads return empty, writes ignored. Breaks fpscanner, popup-orchestrated auth flows.</small>
           </span>
         </label>
         <label class="toggle-row">
@@ -111,7 +154,7 @@
           <input type="checkbox" data-pref="cloakfox.opt.mediadevices_disabled">
           <span class="toggle-label">
             <strong>Disable mediaDevices</strong>
-            <small>navigator.mediaDevices.enumerateDevices returns empty. Breaks WebRTC / Meet / Zoom / Discord / OBS browser source.</small>
+            <small>navigator.mediaDevices.enumerateDevices returns empty. Breaks WebRTC / Meet / Zoom / Discord.</small>
           </span>
         </label>
         <label class="toggle-row">
@@ -125,51 +168,42 @@
           <input type="checkbox" data-pref="cloakfox.opt.storage_persisted_disabled">
           <span class="toggle-label">
             <strong>Hide storage.persisted state</strong>
-            <small>navigator.storage.persisted() resolves false. Apps that legitimately need persistent storage break.</small>
+            <small>navigator.storage.persisted() resolves false. Apps that need persistent storage break.</small>
           </span>
         </label>
         <label class="toggle-row">
           <input type="checkbox" data-pref="cloakfox.opt.math_constants_noise">
           <span class="toggle-label">
             <strong>Perturb Math.PI / Math.E etc.</strong>
-            <small>Off by default. Spec-defined IEEE constants — perturbing them flags as anti-fingerprinting. Trig functions (sin/cos) are still noised regardless.</small>
+            <small>Off by default. Spec-defined IEEE constants — perturbing them flags as anti-fingerprinting. Trig functions are noised regardless.</small>
           </span>
         </label>
         <label class="toggle-row">
           <input type="checkbox" data-pref="cloakfox.opt.timer_high_precision_jitter">
           <span class="toggle-label">
             <strong>Hide timer-precision quantization</strong>
-            <small>On by default. performance.now() returns fractional ms via deterministic jitter, hiding Firefox's underlying 1ms quantization. Off → visibly Tor-style coarse precision.</small>
+            <small>On by default. performance.now() returns fractional ms via deterministic jitter, hiding Firefox's 1ms quantization.</small>
           </span>
         </label>
         <label class="toggle-row">
           <input type="checkbox" data-pref="cloakfox.opt.timer_quantization_off">
           <span class="toggle-label">
             <strong>Disable timer quantization entirely</strong>
-            <small>Off by default. Drops Spectre / audio-FP timing defenses. Only flip if you specifically want raw precision.</small>
+            <small>Off by default. Drops Spectre / audio-FP timing defenses. Only flip if you want raw precision.</small>
           </span>
         </label>
       </div>
-    </section>
+    </details>
 
-    <section id="diagnostics">
-      <h2>Diagnostics</h2>
-      <p class="help">
-        Run these in the browser toolbox (chrome context) to inspect the cpp-first pipeline:
-      </p>
-      <pre><code>// Master enable
-Services.prefs.getBoolPref("cloakfox.enabled", false);
-
-// Per-container seed (replace 0 with your container's userContextId)
+    <details class="spoof-group">
+      <summary>Diagnostics</summary>
+      <p class="help">Run these in the Browser Toolbox (chrome scope) to inspect the C++ pipeline:</p>
+<pre><code>Services.prefs.getBoolPref("cloakfox.enabled", false);
 Services.prefs.getStringPref("cloakfox.container.0.math_seed", "");
-
-// The cloak_cfg JSON the C++ patches consume
 Services.prefs.getStringPref("cloakfox.s.cloak_cfg_0", "");
-
-// Snapshot the parent-side sharedData (run in Browser Toolbox)
 Services.ppmm.sharedData.get("cloakfox-seeds");
 Services.ppmm.sharedData.get("cloakfox-public-ipv4");</code></pre>
-    </section>
+    </details>
   </main>
 
   <script type="module" src="chrome://browser/content/cloakfox/settings.js"></script>

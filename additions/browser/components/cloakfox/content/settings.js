@@ -4,46 +4,29 @@
 
 /* Cloakfox settings page.
  *
- * Runs chrome-privileged (IS_SECURE_CHROME_UI in AboutRedirector), so
- * Services.prefs / Services.contextualIdentityService are available.
+ * Renders every spoofed signal grouped by category. Live values come
+ * from the per-container cloak_cfg JSON (Services.prefs.getStringPref
+ * "cloakfox.s.cloak_cfg_<ucid>") plus a few per-container prefs
+ * (math_seed, persona_index, timezone) and the 10 cloakfox.opt.* flags.
  *
- * Surfaces the prefs that live elsewhere in the codebase as a UI:
- *
- *   - cloakfox.enabled                    — global on/off
- *   - cloakfox.container.<ucid>.math_seed — per-container PRNG seed
- *   - cloakfox.container.<ucid>.timezone  — per-container IANA tz
- *   - cloakfox.opt.*                       — 10 stealth-vs-compat toggles
- *   - cloakfox.s.cloak_cfg_<ucid>         — derived JSON the C++ MaskConfig
- *                                            patches consume (regen-only,
- *                                            not user-editable)
- *
- * The "Regenerate" button mirrors what SeedSync does at startup —
- * generates a new math_seed + writes the persona-derived cloak_cfg.
- * Importantly, it shares the SAME fillPersonaKeys path as SeedSync so
- * the JSON shape stays identical (otherwise users who regenerated would
- * end up with a stripped-down cloak_cfg, downgrading their spoof
- * coverage versus a fresh install).
+ * The cloak_cfg JSON is the same blob the C++ MaskConfig patches
+ * consume — what you see here is exactly what websites see.
  */
 
 /* global Services, ChromeUtils */
 
-// Chrome pages use ChromeUtils.importESModule rather than raw `import`
-// for resource:// modules — the static import syntax doesn't resolve
-// resource:// URLs the way it does in .sys.mjs files. importESModule
-// returns the module's exports synchronously and works inside the
-// document's chrome principal.
 const { fillPersonaKeys, pickPersona, listPersonas } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxPersonas.sys.mjs"
 );
 
 const PREF_ENABLED = "cloakfox.enabled";
 
-// ── pref name helpers ───────────────────────────────────────────────
-
-const masterSeedPref      = (ucid) => `cloakfox.container.${ucid}.math_seed`;
-const cloakCfgPref        = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
-const tzPref              = (ucid) => `cloakfox.container.${ucid}.timezone`;
-const personaIndexPref    = (ucid) => `cloakfox.container.${ucid}.persona_index`;
+const masterSeedPref   = (ucid) => `cloakfox.container.${ucid}.math_seed`;
+const cloakCfgPref     = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
+const tzPref           = (ucid) => `cloakfox.container.${ucid}.timezone`;
+const personaIndexPref = (ucid) => `cloakfox.container.${ucid}.persona_index`;
+const keyboardSeedPref = (ucid) => `cloakfox.container.${ucid}.keyboard_seed`;
+const timingSeedPref   = (ucid) => `cloakfox.container.${ucid}.timing_seed`;
 
 // ── seed / config helpers ───────────────────────────────────────────
 
@@ -59,15 +42,7 @@ function u32(seedB64, i) {
   return new DataView(bytes.buffer).getUint32(i * 4);
 }
 
-// MUST match SeedSync.buildCloakCfg shape — the persona keys come from
-// fillPersonaKeys (BF-driven pool); the 4 hash-based seeds come from
-// u32 derivation. If either layer drifts, regen and SeedSync auto-gen
-// produce different configs and downstream spoof coverage diverges.
-//
-// ucid forwarded to fillPersonaKeys so any per-container persona_index
-// override is honored when the user clicks "Regenerate" or changes the
-// persona dropdown — otherwise the override would be silently ignored
-// on the regen path and only take effect at next browser startup.
+// MUST match SeedSync.buildCloakCfg shape — see CloakfoxSeedSync.sys.mjs.
 function buildCloakCfg(seedB64, ucid = null) {
   return JSON.stringify({
     "canvas:seed": u32(seedB64, 0),
@@ -84,43 +59,222 @@ function buildCloakCfg(seedB64, ucid = null) {
 function getContainers() {
   const list = [{ ucid: 0, name: "Default (no container)" }];
   try {
-    const identities = Services.contextualIdentityService.getPublicIdentities();
-    for (const id of identities) {
-      list.push({
-        ucid: id.userContextId,
-        name: id.name || `Container ${id.userContextId}`,
-      });
+    for (const id of Services.contextualIdentityService.getPublicIdentities()) {
+      list.push({ ucid: id.userContextId, name: id.name || `Container ${id.userContextId}` });
     }
-  } catch (_e) { /* CIS may be unavailable in some build configs */ }
+  } catch (_e) { /* CIS may be unavailable */ }
   return list;
 }
 
-// ── persona summary ─────────────────────────────────────────────────
+// ── cloak_cfg parsing ──────────────────────────────────────────────
 
-// Render the picked persona as a human-readable one-liner so users can
-// see what each container is pretending to be. Pulls a few key fields
-// out of the persona dict; full dict is available in the cloak_cfg pref.
-function personaSummary(seedB64) {
-  if (!seedB64) return "(not set)";
-  try {
-    const p = pickPersona(seedB64);
-    const platform = p["navigator.platform"] || "?";
-    const w = p["screen.width"] ?? "?";
-    const h = p["screen.height"] ?? "?";
-    const dpr = p["window.devicePixelRatio"] ?? "?";
-    const renderer = (p["webGl:renderer"] || "?").slice(0, 40);
-    const hwc = p["navigator.hardwareConcurrency"] ?? "?";
-    return `${platform} · ${w}×${h}@${dpr}x · ${hwc}-core · ${renderer}`;
-  } catch (e) {
-    return `(error: ${e.message})`;
+function getCloakCfg(ucid) {
+  const raw = Services.prefs.getStringPref(cloakCfgPref(ucid), "");
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch (_e) { return null; }
+}
+
+// Truncate a long string to display length for readability — full
+// value still stored in the title attribute via row creation.
+function trunc(s, n = 64) {
+  if (typeof s !== "string") return String(s);
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+function fmtSeed(b64) {
+  if (!b64) return "(not set)";
+  return b64.slice(0, 12) + "…" + b64.slice(-4);
+}
+
+// ── grid population ────────────────────────────────────────────────
+
+// Each group is a list of [label, getter(cfg) → string]. Missing keys
+// render as "(not spoofed)" so the user can distinguish "not yet
+// generated" from "intentionally bypassed".
+const GROUPS = {
+  "grp-navigator": [
+    ["navigator.platform",            (c) => c["navigator.platform"]],
+    ["navigator.userAgent",           (c) => c["navigator.userAgent"]],
+    ["navigator.appVersion",          (c) => c["navigator.appVersion"]],
+    ["navigator.oscpu",               (c) => c["navigator.oscpu"]],
+    ["navigator.hardwareConcurrency", (c) => c["navigator.hardwareConcurrency"]],
+    ["navigator:maxTouchPoints",      (c) => c["navigator:maxTouchPoints"]],
+    ["navigator.language",            (c) => c["navigator.language"]],
+    ["Accept-Language header",        (c) => c["headers.Accept-Language"]],
+    ["Accept-Encoding header",        (c) => c["headers.Accept-Encoding"]],
+    ["User-Agent header",             (c) => c["headers.User-Agent"]],
+  ],
+  "grp-screen": [
+    ["screen.width",            (c) => c["screen.width"]],
+    ["screen.height",           (c) => c["screen.height"]],
+    ["screen.availWidth",       (c) => c["screen.availWidth"]],
+    ["screen.availHeight",      (c) => c["screen.availHeight"]],
+    ["screen.availLeft / availTop", (c) => `${c["screen.availLeft"]} / ${c["screen.availTop"]}`],
+    ["window.outerWidth",       (c) => c["window.outerWidth"]],
+    ["window.outerHeight",      (c) => c["window.outerHeight"]],
+    ["window.innerWidth",       (c) => c["window.innerWidth"]],
+    ["window.innerHeight",      (c) => c["window.innerHeight"]],
+    ["window.devicePixelRatio", (c) => c["window.devicePixelRatio"]],
+    ["window.screenX / screenY",(c) => `${c["window.screenX"]} / ${c["window.screenY"]}`],
+    ["screen.orientation.type", (c) => c["screen:orientation:type"]],
+  ],
+  "grp-graphics": [
+    ["webGl.vendor",            (c) => c["webGl:vendor"]],
+    ["webGl.renderer",          (c) => c["webGl:renderer"]],
+  ],
+  "grp-audio": [
+    ["AudioContext.sampleRate",      (c) => c["AudioContext:sampleRate"]],
+    ["AudioContext.maxChannelCount", (c) => c["AudioContext:maxChannelCount"]],
+    ["AudioContext.outputLatency",   (c) => c["AudioContext:outputLatency"]],
+  ],
+  "grp-fonts": [],   // populated from seeds; see populateFonts
+  "grp-locale": [
+    ["locale.language",  (c) => c["locale:language"]],
+    ["locale.region",    (c) => c["locale:region"]],
+    ["locale.script",    (c) => c["locale:script"]],
+  ],
+  "grp-geo": [
+    ["latitude",  (c) => c["geolocation:latitude"]],
+    ["longitude", (c) => c["geolocation:longitude"]],
+    ["accuracy",  (c) => c["geolocation:accuracy"]],
+  ],
+  "grp-network": [],   // populated below; sources parent sharedData
+  "grp-media": [
+    ["codecs:spoof",                        (c) => boolish(c["codecs:spoof"])],
+    ["mediaCapabilities:spoof",             (c) => boolish(c["mediaCapabilities:spoof"])],
+    ["mediaFeature:resolution",             (c) => c["mediaFeature:resolution"]],
+    ["mediaFeature:invertedColors",         (c) => boolish(c["mediaFeature:invertedColors"])],
+    ["mediaFeature:prefersReducedMotion",   (c) => boolish(c["mediaFeature:prefersReducedMotion"])],
+    ["mediaFeature:prefersReducedTransparency", (c) => boolish(c["mediaFeature:prefersReducedTransparency"])],
+  ],
+  "grp-voices": [
+    ["voices:blockIfNotDefined",         (c) => boolish(c["voices:blockIfNotDefined"])],
+    ["voices:fakeCompletion",            (c) => boolish(c["voices:fakeCompletion"])],
+    ["voices:fakeCompletion:charsPerSecond", (c) => c["voices:fakeCompletion:charsPerSecond"]],
+  ],
+  "grp-hidden": [
+    ["permissions:spoof",          (c) => boolish(c["permissions:spoof"])],
+    ["indexedDB:databases:hidden", (c) => boolish(c["indexedDB:databases:hidden"])],
+    ["document:lastModified:hidden", (c) => boolish(c["document:lastModified:hidden"])],
+    ["navigator:vibrate:disabled", (c) => boolish(c["navigator:vibrate:disabled"])],
+    ["navigator:webgpu:disabled",  (c) => boolish(c["navigator:webgpu:disabled"])],
+  ],
+};
+
+// MaskConfig keys are mostly "true if present, else absent". Render
+// presence as the active state since absence means the spoof isn't
+// applied to this container.
+function boolish(v) {
+  if (v === undefined || v === null) return undefined;
+  return v ? "spoofed (on)" : "off";
+}
+
+function makeRow(label, value) {
+  const row = document.createElement("div");
+  row.className = "spoof-row";
+  const k = document.createElement("span");
+  k.className = "k";
+  k.textContent = label;
+  const v = document.createElement("span");
+  v.className = "v";
+  const sval = (value === undefined || value === null || value === "")
+    ? "(not spoofed)"
+    : String(value);
+  v.textContent = trunc(sval, 80);
+  v.title = sval;        // full value on hover
+  if (sval === "(not spoofed)") v.classList.add("v-empty");
+  row.appendChild(k);
+  row.appendChild(v);
+  return row;
+}
+
+function populateGrid(id, cfg, rows) {
+  const grid = document.getElementById(id);
+  if (!grid) return;
+  // Clear existing children EXCEPT static elements declared in HTML
+  // (e.g. timezone group has a <select>; we never wipe that).
+  Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
+  for (const [label, getter] of rows) {
+    const row = makeRow(label, getter(cfg || {}));
+    row.classList.add("dyn");
+    grid.appendChild(row);
   }
+}
+
+function populateFonts(cfg, ucid) {
+  const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
+  const rows = [
+    ["font:seed (ordering)", cfg ? cfg["font:seed"] : null],
+    ["font:spacing_seed",    cfg ? cfg["font:spacing_seed"] : null],
+    ["master seed (drives both)", fmtSeed(seedB64)],
+  ];
+  const grid = document.getElementById("grp-fonts");
+  Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
+  for (const [label, value] of rows) {
+    const row = makeRow(label, value);
+    row.classList.add("dyn");
+    grid.appendChild(row);
+  }
+}
+
+function populateSeeds(cfg, ucid) {
+  const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
+  const kbd = Services.prefs.getStringPref(keyboardSeedPref(ucid), "");
+  const tim = Services.prefs.getStringPref(timingSeedPref(ucid), "");
+  const rows = [
+    ["master seed (32 bytes)",     fmtSeed(seedB64)],
+    ["canvas:seed (u32)",          cfg ? cfg["canvas:seed"] : null],
+    ["audio:seed (u32)",           cfg ? cfg["audio:seed"] : null],
+    ["font:seed (u32)",            cfg ? cfg["font:seed"] : null],
+    ["font:spacing_seed (u32)",    cfg ? cfg["font:spacing_seed"] : null],
+    ["math:trig_seed (u32)",       cfg ? cfg["math:trig_seed"] : null],
+    ["keyboard timing seed",       fmtSeed(kbd)],
+    ["setTimeout jitter seed",     fmtSeed(tim)],
+  ];
+  const grid = document.getElementById("grp-seeds");
+  Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
+  for (const [label, value] of rows) {
+    const row = makeRow(label, value);
+    row.classList.add("dyn");
+    grid.appendChild(row);
+  }
+}
+
+function populateNetwork() {
+  // Public IPs come from CloakfoxWebRTCSync (parent process), pushed
+  // into Services.ppmm.sharedData. Read via sharedData since prefs
+  // would race the parent fetch on first launch.
+  const v4 = Services.ppmm.sharedData.get("cloakfox-public-ipv4") || "";
+  const v6 = Services.ppmm.sharedData.get("cloakfox-public-ipv6") || "";
+  const rows = [
+    ["WebRTC public IPv4", v4 || "(not yet detected)"],
+    ["WebRTC public IPv6", v6 || "(not yet detected)"],
+  ];
+  const grid = document.getElementById("grp-network");
+  Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
+  for (const [label, value] of rows) {
+    const row = makeRow(label, value);
+    row.classList.add("dyn");
+    grid.appendChild(row);
+  }
+}
+
+// ── headline summary ───────────────────────────────────────────────
+
+function updateHeadline(cfg) {
+  const el = document.getElementById("cfx-headline-text");
+  if (!cfg) { el.textContent = "(not yet generated — click Regenerate)"; return; }
+  const platform = cfg["navigator.platform"] || "?";
+  const w = cfg["screen.width"] ?? "?";
+  const h = cfg["screen.height"] ?? "?";
+  const dpr = cfg["window.devicePixelRatio"] ?? "?";
+  const hwc = cfg["navigator.hardwareConcurrency"] ?? "?";
+  const renderer = (cfg["webGl:renderer"] || "?").slice(0, 50);
+  el.textContent = `${platform} · ${w}×${h}@${dpr}x · ${hwc}-core · ${renderer}`;
 }
 
 // ── timezone list ───────────────────────────────────────────────────
 
-// Common IANA names. Not exhaustive — power users can set any IANA
-// string via about:config (cloakfox.container.<ucid>.timezone). This
-// list covers the common cases without being a 600-entry dropdown.
 const TIMEZONES = [
   "UTC",
   "America/Los_Angeles", "America/Denver", "America/Chicago", "America/New_York",
@@ -135,14 +289,13 @@ const TIMEZONES = [
 document.addEventListener("DOMContentLoaded", () => {
   const enabledEl       = document.getElementById("cfx-enabled");
   const selectEl        = document.getElementById("cfx-container-select");
-  const masterEl        = document.getElementById("cfx-seed-master");
-  const personaEl       = document.getElementById("cfx-persona-summary");
   const personaPickerEl = document.getElementById("cfx-persona-override-select");
   const tzSelectEl      = document.getElementById("cfx-tz-select");
+  const tzCurrentEl     = document.getElementById("cfx-tz-current");
   const regenBtn        = document.getElementById("cfx-regenerate");
   const clearBtn        = document.getElementById("cfx-clear");
 
-  // Master enable toggle.
+  // Master enable.
   enabledEl.checked = Services.prefs.getBoolPref(PREF_ENABLED, false);
   enabledEl.addEventListener("change", () => {
     Services.prefs.setBoolPref(PREF_ENABLED, enabledEl.checked);
@@ -155,22 +308,17 @@ document.addEventListener("DOMContentLoaded", () => {
     opt.textContent = c.name;
     selectEl.appendChild(opt);
   }
-  // Skip the prepopulated "Default" option in the HTML — we just
-  // re-added it above. Strip the duplicate.
   if (selectEl.options.length > 1 && selectEl.options[0].value === "0" &&
       selectEl.options[1].value === "0") {
     selectEl.options[0].remove();
   }
-
-  // Honor ?ucid=N deep-link from the popup — pre-selects the matching
-  // container so the user lands on their tab's settings.
+  // ?ucid=N deep-link from the popup.
   try {
-    const params = new URLSearchParams(window.location.search);
-    const requested = params.get("ucid");
+    const requested = new URLSearchParams(window.location.search).get("ucid");
     if (requested !== null) {
-      const targetUcid = String(parseInt(requested, 10) || 0);
-      if (Array.from(selectEl.options).some(o => o.value === targetUcid)) {
-        selectEl.value = targetUcid;
+      const target = String(parseInt(requested, 10) || 0);
+      if (Array.from(selectEl.options).some(o => o.value === target)) {
+        selectEl.value = target;
       }
     }
   } catch (_e) { /* deep-link is best-effort */ }
@@ -183,11 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tzSelectEl.appendChild(opt);
   }
 
-  // Persona override dropdown — populated from the host-OS pool.
-  // Default option (-1, "auto from seed") stays first; any explicit
-  // pick pins this container to the selected persona regardless of
-  // seed value, so users who want a specific config (e.g. "always a
-  // Win11 1366×768 user") can lock it in.
+  // Persona override dropdown.
   for (const p of listPersonas()) {
     const opt = document.createElement("option");
     opt.value = String(p.index);
@@ -197,11 +341,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function refreshContainer() {
     const ucid = parseInt(selectEl.value, 10) || 0;
-    const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
-    masterEl.textContent = seed
-      ? seed.slice(0, 28) + "…" + seed.slice(-4)  // truncate for display
-      : "(not set)";
-    personaEl.textContent = personaSummary(seed);
+    const cfg = getCloakCfg(ucid);
+    updateHeadline(cfg);
+    populateGrid("grp-navigator", cfg, GROUPS["grp-navigator"]);
+    populateGrid("grp-screen",    cfg, GROUPS["grp-screen"]);
+    populateGrid("grp-graphics",  cfg, GROUPS["grp-graphics"]);
+    populateGrid("grp-audio",     cfg, GROUPS["grp-audio"]);
+    populateFonts(cfg, ucid);
+    populateGrid("grp-locale",    cfg, GROUPS["grp-locale"]);
+    populateGrid("grp-geo",       cfg, GROUPS["grp-geo"]);
+    populateGrid("grp-media",     cfg, GROUPS["grp-media"]);
+    populateGrid("grp-voices",    cfg, GROUPS["grp-voices"]);
+    populateGrid("grp-hidden",    cfg, GROUPS["grp-hidden"]);
+    populateNetwork();
+    populateSeeds(cfg, ucid);
+    tzCurrentEl.textContent = Services.prefs.getStringPref(tzPref(ucid), "") || "UTC (default)";
     tzSelectEl.value = Services.prefs.getStringPref(tzPref(ucid), "");
     const idx = Services.prefs.getIntPref(personaIndexPref(ucid), -1);
     personaPickerEl.value = String(idx);
@@ -209,8 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
   selectEl.addEventListener("change", refreshContainer);
   refreshContainer();
 
-  // Timezone picker — empty value clears the pref so the global UTC
-  // default applies; any other value pins this container's timezone.
+  // Timezone picker.
   tzSelectEl.addEventListener("change", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     if (tzSelectEl.value === "") {
@@ -218,12 +371,12 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       Services.prefs.setStringPref(tzPref(ucid), tzSelectEl.value);
     }
+    refreshContainer();
   });
 
-  // Persona override picker — -1 clears the pref so picking falls back
-  // to seed-based; any other index pins this container's persona. We
-  // also rewrite cloak_cfg here so the change takes effect immediately
-  // for new tabs in this container, not just at next browser startup.
+  // Persona override picker. Writes pref + rewrites cloak_cfg so the
+  // new persona's keys take effect for new tabs immediately, not just
+  // at next browser startup.
   personaPickerEl.addEventListener("change", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const idx = parseInt(personaPickerEl.value, 10);
@@ -239,9 +392,8 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshContainer();
   });
 
-  // Regenerate persona — share the same path as SeedSync so the
-  // resulting cloak_cfg matches what auto-gen produces. Forward ucid
-  // so any persona_index override is honored.
+  // Regenerate persona — same path as SeedSync; ucid forwarded so any
+  // persona_index override is honored.
   regenBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const seed = randomSeedB64();
@@ -250,10 +402,8 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshContainer();
   });
 
-  // Clear — strips seed, cloak_cfg, timezone, AND persona override so
-  // the container falls back to host's real values (no spoofing).
-  // Useful for debugging or for a "trusted" container that needs to
-  // look like real Firefox.
+  // Clear — strips seeds, cloak_cfg, timezone, AND persona override so
+  // the container falls back to host's real values.
   clearBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     Services.prefs.clearUserPref(masterSeedPref(ucid));
@@ -263,10 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshContainer();
   });
 
-  // ── Opt-in flag toggles ────────────────────────────────────────
-  // Each <input data-pref="cloakfox.opt.foo"> auto-binds to its pref.
-  // Changes write through immediately. Default reads from
-  // getBoolPref's fallback, which honors the cloakfox.cfg defaultPref.
+  // Opt-in flag toggles auto-bind via data-pref.
   for (const el of document.querySelectorAll("input[data-pref]")) {
     const pref = el.dataset.pref;
     el.checked = Services.prefs.getBoolPref(pref, false);

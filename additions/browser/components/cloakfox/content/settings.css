@@ -9,165 +9,228 @@ body {
   background: #f7f7f9;
   color: #1a1a1d;
   margin: 0;
-  padding: 2rem;
-  line-height: 1.5;
+  padding: 2rem 1.5rem;
+  line-height: 1.45;
 }
 
 main {
-  max-width: 640px;
+  max-width: 760px;
   margin: 0 auto;
 }
 
 header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
 }
 
 header h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.85rem;
   font-weight: 600;
 }
 
 header .tagline {
-  margin: 0.25rem 0 0;
-  color: #666;
+  margin: 0.35rem 0 0;
+  color: #555;
+  font-size: 0.92rem;
 }
 
-section {
+/* ── status bar (enable + container picker, inline) ─────────── */
+
+#status-bar {
   background: #fff;
   border: 1px solid #e1e1e5;
   border-radius: 8px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1rem;
-}
-
-section h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.toggle-row {
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 0.9rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  cursor: pointer;
-}
-
-.toggle-row input[type="checkbox"] {
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-}
-
-.toggle-label small {
-  display: block;
-  color: #666;
-  font-size: 0.85rem;
-  margin-top: 0.15rem;
-}
-
-.status-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.5rem 1rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
-}
-
-.help {
-  color: #555;
-  font-size: 0.85rem;
-  margin: 0 0 0.75rem;
-}
-
-.picker-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.picker-row label { font-weight: 500; }
-
-select {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid #d0d0d5;
-  border-radius: 4px;
-  background: #fff;
-  font-size: 0.9rem;
-  flex: 1;
-}
-
-.seed-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-bottom: 0.85rem;
-}
-
-.seed-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.seed-label {
-  font-size: 0.85rem;
-  color: #555;
-}
-
-.seed-value {
-  font-size: 0.75rem;
-  padding: 0.4rem 0.55rem;
-  background: #f7f7f9;
-  border-radius: 3px;
-  word-break: break-all;
-}
-
-.button-row {
-  display: flex;
-  gap: 0.5rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
 }
 
-button + button {
-  background: #eee;
-  color: #1a1a1d;
+.toggle-row.inline,
+.picker-row.inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
 }
 
-button + button:hover { background: #ddd; }
-
-code {
-  font-family: Menlo, Consolas, monospace;
-  background: #f0f0f3;
-  padding: 0.1rem 0.35rem;
-  border-radius: 3px;
-  font-size: 0.85rem;
-  word-break: break-all;
+.toggle-label-inline strong {
+  font-weight: 500;
+  font-size: 0.95rem;
 }
 
-button {
-  background: #0061e0;
-  color: #fff;
-  border: 0;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
+#status-bar input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
   cursor: pointer;
 }
 
-button:hover { background: #004bb6; }
+#status-bar .picker-row.inline { flex: 1; min-width: 0; }
+#status-bar select { flex: 1; min-width: 0; }
 
-pre {
-  background: #f0f0f3;
-  padding: 0.75rem;
-  border-radius: 4px;
-  overflow-x: auto;
-  font-size: 0.8rem;
+/* ── headline (active persona summary) ──────────────────────── */
+
+#headline {
+  background: linear-gradient(135deg, #0061e0 0%, #4b8cee 100%);
+  color: #fff;
+  border-radius: 10px;
+  padding: 1.1rem 1.4rem;
+  margin-bottom: 1rem;
 }
 
-/* Opt-in flag grid — denser layout than the primary toggle so we
- * can fit ~10 items without the page becoming excessively long. */
+.headline-eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.headline-summary {
+  margin: 0.2rem 0 0.95rem;
+  font-size: 1.08rem;
+  font-weight: 500;
+  font-family: Menlo, Consolas, monospace;
+  word-break: break-word;
+}
+
+#headline .picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+#headline label { font-size: 0.85rem; opacity: 0.9; }
+
+#headline select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border: 0;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a1a1d;
+}
+
+#headline button {
+  padding: 0.4rem 0.85rem;
+  border: 0;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-primary  { background: #fff;            color: #0061e0; }
+.btn-primary:hover  { background: #f0f4ff; }
+.btn-secondary { background: rgba(255,255,255,0.18); color: #fff; }
+.btn-secondary:hover { background: rgba(255,255,255,0.28); }
+
+/* ── collapsible spoof groups ───────────────────────────────── */
+
+details.spoof-group {
+  background: #fff;
+  border: 1px solid #e1e1e5;
+  border-radius: 8px;
+  padding: 0;
+  margin-bottom: 0.65rem;
+}
+
+details.spoof-group > summary {
+  padding: 0.85rem 1.1rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.98rem;
+  list-style: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+details.spoof-group > summary::-webkit-details-marker { display: none; }
+
+details.spoof-group > summary::before {
+  content: "▶";
+  font-size: 0.7rem;
+  color: #777;
+  transition: transform 120ms ease;
+  width: 0.8rem;
+}
+
+details.spoof-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.spoof-group > .spoof-grid,
+details.spoof-group > .flag-grid,
+details.spoof-group > pre,
+details.spoof-group > p.help {
+  margin: 0;
+  padding: 0 1.1rem 1rem;
+}
+
+details.spoof-group > p.help {
+  color: #555;
+  font-size: 0.85rem;
+  padding-top: 0.1rem;
+}
+
+/* ── spoof rows (label + value) ─────────────────────────────── */
+
+.spoof-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, max-content) 1fr;
+  gap: 0.45rem 1.2rem;
+  font-size: 0.88rem;
+}
+
+.spoof-row {
+  display: contents;  /* row contributes its k+v cells directly to the grid */
+}
+
+.spoof-row .k {
+  color: #555;
+  font-family: Menlo, Consolas, monospace;
+  font-size: 0.83rem;
+  white-space: nowrap;
+}
+
+.spoof-row .v {
+  color: #1a1a1d;
+  font-family: Menlo, Consolas, monospace;
+  font-size: 0.83rem;
+  word-break: break-all;
+  background: #f7f7f9;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+}
+
+.spoof-row .v.v-empty {
+  color: #999;
+  font-style: italic;
+  background: transparent;
+}
+
+/* timezone group's inline picker row */
+.spoof-row.picker-row .v {
+  padding: 0;
+  background: transparent;
+}
+.spoof-row.picker-row select {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #d0d0d5;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+/* ── opt-in flags (kept from prior design) ──────────────────── */
+
 .flag-grid {
   display: flex;
   flex-direction: column;
@@ -175,11 +238,14 @@ pre {
 }
 
 .flag-grid .toggle-row {
+  display: flex;
   align-items: flex-start;
-  padding: 0.45rem 0.6rem;
+  gap: 0.7rem;
+  padding: 0.55rem 0.65rem;
   border: 1px solid #ececf0;
   border-radius: 6px;
   background: #fafafc;
+  cursor: pointer;
 }
 
 .flag-grid .toggle-row:hover {
@@ -189,18 +255,45 @@ pre {
 
 .flag-grid .toggle-row input[type="checkbox"] {
   margin-top: 0.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .flag-grid .toggle-label strong {
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
-#container-config .picker-row {
-  margin-top: 1rem;
+.flag-grid .toggle-label small {
+  display: block;
+  color: #666;
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+  line-height: 1.4;
 }
 
-/* Persona summary code is wider than the master seed — give it a bit
- * more breathing room without scrunching the seed row. */
-#cfx-persona-summary {
+/* ── diagnostics pre block ──────────────────────────────────── */
+
+pre {
+  background: #1a1a1d;
+  color: #e7e7ea;
+  padding: 0.85rem 1rem;
+  border-radius: 5px;
+  overflow-x: auto;
   font-size: 0.78rem;
+  font-family: Menlo, Consolas, monospace;
+  line-height: 1.55;
+  margin: 0.4rem 0 0;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+
+code {
+  font-family: Menlo, Consolas, monospace;
+  background: #f0f0f3;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  word-break: break-all;
 }
