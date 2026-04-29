@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { fillPersonaKeys } from "resource:///modules/CloakfoxPersonas.sys.mjs";
+import { applyOverrides } from "resource:///modules/CloakfoxOverrides.sys.mjs";
 
 /* Cloakfox: parent-side seed sync for content-process JSWindowActors.
  *
@@ -77,7 +78,11 @@ function u32(seedB64, i) {
 // Math perturbations, C++ canvas/audio/font noise, and persona pick
 // are all derived from one source — coherent per-container identity.
 function buildCloakCfg(seedB64, ucid = null) {
-  return JSON.stringify({
+  // Layer order matters: hash seeds → persona → user overrides. User
+  // overrides win because they're applied last. This lets a user pin
+  // individual fields (hwc=16, timezone=Berlin) without losing the
+  // rest of the persona's coherent identity.
+  const base = {
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
@@ -89,7 +94,8 @@ function buildCloakCfg(seedB64, ucid = null) {
     // and embeds it in a per-realm JS spoofer at worker init time.
     "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
-  });
+  };
+  return JSON.stringify(ucid !== null ? applyOverrides(ucid, base) : base);
 }
 
 function ensureContainerSeeds(ucid) {

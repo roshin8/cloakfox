@@ -39,6 +39,17 @@
         <button id="cfx-regenerate" class="btn-primary">Regenerate</button>
         <button id="cfx-clear" class="btn-secondary">Clear</button>
       </div>
+      <p id="cfx-override-count" class="headline-overrides">No field overrides — every value comes from the persona.</p>
+    </section>
+
+    <section id="override-actions">
+      <p class="help">
+        Each row below shows a single fingerprint signal websites see. Click any value to override it for this container — your edit
+        wins over the persona. Empty / unset = the persona's value applies. The headline above always reflects the live persona.
+      </p>
+      <div class="button-row">
+        <button id="cfx-clear-overrides" class="btn-tertiary">Clear all field overrides</button>
+      </div>
     </section>
 
     <details class="spoof-group" open>
@@ -94,6 +105,7 @@
 
     <details class="spoof-group">
       <summary>Network &amp; WebRTC</summary>
+      <p class="help" id="cfx-network-detected">Auto-detected — IPv4: — · IPv6: —</p>
       <div class="spoof-grid" id="grp-network"></div>
     </details>
 

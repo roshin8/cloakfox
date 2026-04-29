@@ -179,17 +179,18 @@ details.spoof-group > p.help {
   padding-top: 0.1rem;
 }
 
-/* ── spoof rows (label + value) ─────────────────────────────── */
+/* ── spoof rows (label + value + edit/reset buttons) ────────── */
 
 .spoof-grid {
   display: grid;
-  grid-template-columns: minmax(180px, max-content) 1fr;
-  gap: 0.45rem 1.2rem;
+  grid-template-columns: minmax(180px, max-content) 1fr auto auto;
+  gap: 0.45rem 0.9rem;
   font-size: 0.88rem;
+  align-items: center;
 }
 
 .spoof-row {
-  display: contents;  /* row contributes its k+v cells directly to the grid */
+  display: contents;
 }
 
 .spoof-row .k {
@@ -207,7 +208,9 @@ details.spoof-group > p.help {
   background: #f7f7f9;
   padding: 0.15rem 0.45rem;
   border-radius: 3px;
+  cursor: pointer;
 }
+.spoof-row .v:hover { background: #ececf0; }
 
 .spoof-row .v.v-empty {
   color: #999;
@@ -215,11 +218,47 @@ details.spoof-group > p.help {
   background: transparent;
 }
 
+.spoof-row .v.v-overridden {
+  background: #fff5e0;
+  border: 1px solid #f5b85e;
+  font-weight: 500;
+  color: #8a4d00;
+}
+.spoof-row .v.v-overridden:hover { background: #ffe9c2; }
+
+.row-edit, .row-reset, .row-save, .row-cancel {
+  font-size: 0.72rem;
+  padding: 0.18rem 0.45rem;
+  border: 1px solid #d0d0d5;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  color: #555;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.row-edit:hover, .row-reset:hover { background: #f0f0f3; }
+.row-reset { color: #c84a00; border-color: #ecbf99; }
+.row-save  { background: #0061e0; color: #fff; border-color: #0061e0; }
+.row-save:hover  { background: #004bb6; }
+.row-cancel:hover { background: #f0f0f3; }
+
+.row-input {
+  font-family: Menlo, Consolas, monospace;
+  font-size: 0.83rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #0061e0;
+  border-radius: 3px;
+  background: #fff;
+  width: 100%;
+}
+
 /* timezone group's inline picker row */
 .spoof-row.picker-row .v {
   padding: 0;
   background: transparent;
+  cursor: default;
 }
+.spoof-row.picker-row .v:hover { background: transparent; }
 .spoof-row.picker-row select {
   padding: 0.3rem 0.5rem;
   border: 1px solid #d0d0d5;
@@ -228,6 +267,47 @@ details.spoof-group > p.help {
   font-size: 0.85rem;
   width: 100%;
 }
+
+/* ── override-count indicator + clear-all action ────────────── */
+
+.headline-overrides {
+  margin: 0.85rem 0 0;
+  font-size: 0.82rem;
+  opacity: 0.85;
+  font-family: Menlo, Consolas, monospace;
+}
+.headline-overrides[data-count="0"] { opacity: 0.6; }
+
+#override-actions {
+  background: #fff;
+  border: 1px solid #e1e1e5;
+  border-radius: 8px;
+  padding: 0.95rem 1.1rem;
+  margin-bottom: 0.9rem;
+}
+
+#override-actions .help {
+  margin: 0 0 0.7rem;
+  font-size: 0.86rem;
+  color: #444;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-tertiary {
+  background: #fff5e0;
+  color: #8a4d00;
+  border: 1px solid #f5b85e;
+  border-radius: 5px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.btn-tertiary:hover { background: #ffe9c2; }
 
 /* ── opt-in flags (kept from prior design) ──────────────────── */
 

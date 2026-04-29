@@ -18,6 +18,8 @@
 const { fillPersonaKeys, pickPersona, listPersonas } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxPersonas.sys.mjs"
 );
+const { KEY_TYPES, readOverrides, setOverride, clearOverride, clearAllOverrides } =
+  ChromeUtils.importESModule("resource:///modules/CloakfoxOverrides.sys.mjs");
 
 const PREF_ENABLED = "cloakfox.enabled";
 
@@ -88,116 +90,207 @@ function fmtSeed(b64) {
 
 // ── grid population ────────────────────────────────────────────────
 
-// Each group is a list of [label, getter(cfg) → string]. Missing keys
-// render as "(not spoofed)" so the user can distinguish "not yet
-// generated" from "intentionally bypassed".
+// Each group is a list of [label, cloak_cfg_key]. Type comes from
+// KEY_TYPES (CloakfoxOverrides). Missing keys render as "(not spoofed)"
+// so the user can distinguish "not yet generated" from "intentionally
+// bypassed". Every key here is editable in-place via the row's edit
+// affordance — the input widget is selected by KEY_TYPES[key].
 const GROUPS = {
   "grp-navigator": [
-    ["navigator.platform",            (c) => c["navigator.platform"]],
-    ["navigator.userAgent",           (c) => c["navigator.userAgent"]],
-    ["navigator.appVersion",          (c) => c["navigator.appVersion"]],
-    ["navigator.oscpu",               (c) => c["navigator.oscpu"]],
-    ["navigator.hardwareConcurrency", (c) => c["navigator.hardwareConcurrency"]],
-    ["navigator:maxTouchPoints",      (c) => c["navigator:maxTouchPoints"]],
-    ["navigator.language",            (c) => c["navigator.language"]],
-    ["Accept-Language header",        (c) => c["headers.Accept-Language"]],
-    ["Accept-Encoding header",        (c) => c["headers.Accept-Encoding"]],
-    ["User-Agent header",             (c) => c["headers.User-Agent"]],
+    ["navigator.platform",            "navigator.platform"],
+    ["navigator.userAgent",           "navigator.userAgent"],
+    ["navigator.appVersion",          "navigator.appVersion"],
+    ["navigator.oscpu",               "navigator.oscpu"],
+    ["navigator.hardwareConcurrency", "navigator.hardwareConcurrency"],
+    ["navigator:maxTouchPoints",      "navigator:maxTouchPoints"],
+    ["navigator.language",            "navigator.language"],
+    ["Accept-Language header",        "headers.Accept-Language"],
+    ["Accept-Encoding header",        "headers.Accept-Encoding"],
+    ["User-Agent header",             "headers.User-Agent"],
   ],
   "grp-screen": [
-    ["screen.width",            (c) => c["screen.width"]],
-    ["screen.height",           (c) => c["screen.height"]],
-    ["screen.availWidth",       (c) => c["screen.availWidth"]],
-    ["screen.availHeight",      (c) => c["screen.availHeight"]],
-    ["screen.availLeft / availTop", (c) => `${c["screen.availLeft"]} / ${c["screen.availTop"]}`],
-    ["window.outerWidth",       (c) => c["window.outerWidth"]],
-    ["window.outerHeight",      (c) => c["window.outerHeight"]],
-    ["window.innerWidth",       (c) => c["window.innerWidth"]],
-    ["window.innerHeight",      (c) => c["window.innerHeight"]],
-    ["window.devicePixelRatio", (c) => c["window.devicePixelRatio"]],
-    ["window.screenX / screenY",(c) => `${c["window.screenX"]} / ${c["window.screenY"]}`],
-    ["screen.orientation.type", (c) => c["screen:orientation:type"]],
+    ["screen.width",            "screen.width"],
+    ["screen.height",           "screen.height"],
+    ["screen.availWidth",       "screen.availWidth"],
+    ["screen.availHeight",      "screen.availHeight"],
+    ["screen.availLeft",        "screen.availLeft"],
+    ["screen.availTop",         "screen.availTop"],
+    ["window.outerWidth",       "window.outerWidth"],
+    ["window.outerHeight",      "window.outerHeight"],
+    ["window.innerWidth",       "window.innerWidth"],
+    ["window.innerHeight",      "window.innerHeight"],
+    ["window.devicePixelRatio", "window.devicePixelRatio"],
+    ["window.screenX",          "window.screenX"],
+    ["window.screenY",          "window.screenY"],
+    ["screen.orientation.type", "screen:orientation:type"],
   ],
   "grp-graphics": [
-    ["webGl.vendor",            (c) => c["webGl:vendor"]],
-    ["webGl.renderer",          (c) => c["webGl:renderer"]],
+    ["webGl.vendor",   "webGl:vendor"],
+    ["webGl.renderer", "webGl:renderer"],
   ],
   "grp-audio": [
-    ["AudioContext.sampleRate",      (c) => c["AudioContext:sampleRate"]],
-    ["AudioContext.maxChannelCount", (c) => c["AudioContext:maxChannelCount"]],
-    ["AudioContext.outputLatency",   (c) => c["AudioContext:outputLatency"]],
+    ["AudioContext.sampleRate",      "AudioContext:sampleRate"],
+    ["AudioContext.maxChannelCount", "AudioContext:maxChannelCount"],
+    ["AudioContext.outputLatency",   "AudioContext:outputLatency"],
   ],
-  "grp-fonts": [],   // populated from seeds; see populateFonts
+  "grp-fonts": [],   // populated below from seeds (no overrides — derived)
   "grp-locale": [
-    ["locale.language",  (c) => c["locale:language"]],
-    ["locale.region",    (c) => c["locale:region"]],
-    ["locale.script",    (c) => c["locale:script"]],
+    ["locale.language", "locale:language"],
+    ["locale.region",   "locale:region"],
+    ["locale.script",   "locale:script"],
   ],
   "grp-geo": [
-    ["latitude",  (c) => c["geolocation:latitude"]],
-    ["longitude", (c) => c["geolocation:longitude"]],
-    ["accuracy",  (c) => c["geolocation:accuracy"]],
+    ["latitude",  "geolocation:latitude"],
+    ["longitude", "geolocation:longitude"],
+    ["accuracy",  "geolocation:accuracy"],
   ],
-  "grp-network": [],   // populated below; sources parent sharedData
+  "grp-network": [   // public IPs sourced from parent sharedData; the
+                     // override fields below let the user pin custom ones.
+    ["WebRTC IPv4 override", "webrtc:ipv4"],
+    ["WebRTC IPv6 override", "webrtc:ipv6"],
+  ],
   "grp-media": [
-    ["codecs:spoof",                        (c) => boolish(c["codecs:spoof"])],
-    ["mediaCapabilities:spoof",             (c) => boolish(c["mediaCapabilities:spoof"])],
-    ["mediaFeature:resolution",             (c) => c["mediaFeature:resolution"]],
-    ["mediaFeature:invertedColors",         (c) => boolish(c["mediaFeature:invertedColors"])],
-    ["mediaFeature:prefersReducedMotion",   (c) => boolish(c["mediaFeature:prefersReducedMotion"])],
-    ["mediaFeature:prefersReducedTransparency", (c) => boolish(c["mediaFeature:prefersReducedTransparency"])],
+    ["codecs:spoof",                              "codecs:spoof"],
+    ["mediaCapabilities:spoof",                   "mediaCapabilities:spoof"],
+    ["mediaFeature:resolution",                   "mediaFeature:resolution"],
+    ["mediaFeature:invertedColors",               "mediaFeature:invertedColors"],
+    ["mediaFeature:prefersReducedMotion",         "mediaFeature:prefersReducedMotion"],
+    ["mediaFeature:prefersReducedTransparency",   "mediaFeature:prefersReducedTransparency"],
   ],
   "grp-voices": [
-    ["voices:blockIfNotDefined",         (c) => boolish(c["voices:blockIfNotDefined"])],
-    ["voices:fakeCompletion",            (c) => boolish(c["voices:fakeCompletion"])],
-    ["voices:fakeCompletion:charsPerSecond", (c) => c["voices:fakeCompletion:charsPerSecond"]],
+    ["voices:blockIfNotDefined",             "voices:blockIfNotDefined"],
+    ["voices:fakeCompletion",                "voices:fakeCompletion"],
+    ["voices:fakeCompletion:charsPerSecond", "voices:fakeCompletion:charsPerSecond"],
   ],
   "grp-hidden": [
-    ["permissions:spoof",          (c) => boolish(c["permissions:spoof"])],
-    ["indexedDB:databases:hidden", (c) => boolish(c["indexedDB:databases:hidden"])],
-    ["document:lastModified:hidden", (c) => boolish(c["document:lastModified:hidden"])],
-    ["navigator:vibrate:disabled", (c) => boolish(c["navigator:vibrate:disabled"])],
-    ["navigator:webgpu:disabled",  (c) => boolish(c["navigator:webgpu:disabled"])],
+    ["permissions:spoof",            "permissions:spoof"],
+    ["indexedDB:databases:hidden",   "indexedDB:databases:hidden"],
+    ["document:lastModified:hidden", "document:lastModified:hidden"],
+    ["navigator:vibrate:disabled",   "navigator:vibrate:disabled"],
+    ["navigator:webgpu:disabled",    "navigator:webgpu:disabled"],
   ],
 };
 
-// MaskConfig keys are mostly "true if present, else absent". Render
-// presence as the active state since absence means the spoof isn't
-// applied to this container.
-function boolish(v) {
-  if (v === undefined || v === null) return undefined;
-  return v ? "spoofed (on)" : "off";
+// Boolean cloak_cfg keys render presence-as-on. Absence = no spoof.
+function fmtValue(key, v) {
+  if (v === undefined || v === null || v === "") return "(not spoofed)";
+  if (KEY_TYPES[key] === "bool") return v ? "spoofed (on)" : "off";
+  return String(v);
 }
 
-function makeRow(label, value) {
+// Build an editable row. Each row knows its cloak_cfg key so it can
+// write overrides directly. If the key is in `overrides` (user-set),
+// the row is marked .v-overridden and gets a "× reset" button. Click
+// the value to edit; the input type is chosen by KEY_TYPES[key].
+function makeRow(label, key, cfg, ucid, overrides, onChange) {
   const row = document.createElement("div");
-  row.className = "spoof-row";
+  row.className = "spoof-row dyn";
+
   const k = document.createElement("span");
   k.className = "k";
   k.textContent = label;
+  k.title = key;  // hover the label to see the canonical cloak_cfg key
+
   const v = document.createElement("span");
   v.className = "v";
-  const sval = (value === undefined || value === null || value === "")
-    ? "(not spoofed)"
-    : String(value);
+  const rawVal = cfg ? cfg[key] : undefined;
+  const sval = fmtValue(key, rawVal);
   v.textContent = trunc(sval, 80);
-  v.title = sval;        // full value on hover
+  v.title = String(rawVal ?? sval);
   if (sval === "(not spoofed)") v.classList.add("v-empty");
+  if (key in overrides) v.classList.add("v-overridden");
+
+  // Edit pencil — clicking either the value or the pencil opens edit.
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.className = "row-edit";
+  editBtn.textContent = "edit";
+  editBtn.title = "Override this value";
+
+  const resetBtn = document.createElement("button");
+  resetBtn.type = "button";
+  resetBtn.className = "row-reset";
+  resetBtn.textContent = "reset";
+  resetBtn.title = "Clear override (revert to persona value)";
+  resetBtn.style.display = (key in overrides) ? "" : "none";
+  resetBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearOverride(ucid, key);
+    onChange();
+  });
+
+  function openEdit() {
+    const existing = (key in overrides) ? overrides[key]
+                   : (rawVal ?? "");
+    let input;
+    if (KEY_TYPES[key] === "bool") {
+      input = document.createElement("select");
+      for (const opt of [["", "(not spoofed — clear override)"],
+                         ["true", "spoofed (on)"], ["false", "off"]]) {
+        const o = document.createElement("option");
+        o.value = opt[0]; o.textContent = opt[1];
+        input.appendChild(o);
+      }
+      input.value = (key in overrides) ? String(overrides[key]) : "";
+    } else if (KEY_TYPES[key] === "int" || KEY_TYPES[key] === "float") {
+      input = document.createElement("input");
+      input.type = "number";
+      if (KEY_TYPES[key] === "float") input.step = "any";
+      input.value = String(existing);
+    } else {
+      input = document.createElement("input");
+      input.type = "text";
+      input.value = String(existing);
+    }
+    input.className = "row-input";
+    v.replaceWith(input);
+    editBtn.style.display = "none";
+    resetBtn.style.display = "none";
+
+    const save = document.createElement("button");
+    save.type = "button"; save.className = "row-save"; save.textContent = "save";
+    const cancel = document.createElement("button");
+    cancel.type = "button"; cancel.className = "row-cancel"; cancel.textContent = "cancel";
+    row.appendChild(save);
+    row.appendChild(cancel);
+
+    save.addEventListener("click", () => {
+      let toSave = input.value;
+      if (KEY_TYPES[key] === "bool") {
+        // Empty string = clear; "true"/"false" = boolean
+        if (toSave === "") { clearOverride(ucid, key); }
+        else { setOverride(ucid, key, toSave === "true"); }
+      } else {
+        setOverride(ucid, key, toSave);
+      }
+      onChange();
+    });
+    cancel.addEventListener("click", () => { onChange(); });
+    input.focus();
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") save.click();
+      else if (e.key === "Escape") cancel.click();
+    });
+  }
+
+  v.addEventListener("click", openEdit);
+  editBtn.addEventListener("click", openEdit);
+
   row.appendChild(k);
   row.appendChild(v);
+  row.appendChild(editBtn);
+  row.appendChild(resetBtn);
   return row;
 }
 
-function populateGrid(id, cfg, rows) {
+function populateGrid(id, cfg, rows, ucid, overrides, onChange) {
   const grid = document.getElementById(id);
   if (!grid) return;
   // Clear existing children EXCEPT static elements declared in HTML
   // (e.g. timezone group has a <select>; we never wipe that).
   Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
-  for (const [label, getter] of rows) {
-    const row = makeRow(label, getter(cfg || {}));
-    row.classList.add("dyn");
-    grid.appendChild(row);
+  for (const [label, key] of rows) {
+    grid.appendChild(makeRow(label, key, cfg, ucid, overrides, onChange));
   }
 }
 
@@ -240,23 +333,15 @@ function populateSeeds(cfg, ucid) {
   }
 }
 
-function populateNetwork() {
-  // Public IPs come from CloakfoxWebRTCSync (parent process), pushed
-  // into Services.ppmm.sharedData. Read via sharedData since prefs
-  // would race the parent fetch on first launch.
-  const v4 = Services.ppmm.sharedData.get("cloakfox-public-ipv4") || "";
-  const v6 = Services.ppmm.sharedData.get("cloakfox-public-ipv6") || "";
-  const rows = [
-    ["WebRTC public IPv4", v4 || "(not yet detected)"],
-    ["WebRTC public IPv6", v6 || "(not yet detected)"],
-  ];
-  const grid = document.getElementById("grp-network");
-  Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
-  for (const [label, value] of rows) {
-    const row = makeRow(label, value);
-    row.classList.add("dyn");
-    grid.appendChild(row);
-  }
+// Auto-detected public IPs from CloakfoxWebRTCSync (parent process,
+// via Services.ppmm.sharedData). These show what the host actually
+// leaks through WebRTC ICE candidates by default; the override fields
+// in grp-network let the user pin different values.
+function updateAutoDetectedIPs() {
+  const v4 = Services.ppmm.sharedData.get("cloakfox-public-ipv4") || "(not yet detected)";
+  const v6 = Services.ppmm.sharedData.get("cloakfox-public-ipv6") || "(not yet detected)";
+  const el = document.getElementById("cfx-network-detected");
+  if (el) el.textContent = `Auto-detected — IPv4: ${v4} · IPv6: ${v6}`;
 }
 
 // ── headline summary ───────────────────────────────────────────────
@@ -339,26 +424,50 @@ document.addEventListener("DOMContentLoaded", () => {
     personaPickerEl.appendChild(opt);
   }
 
+  // Editing a field rewrites cloak_cfg so the change takes effect for
+  // new tabs immediately, then refreshes the UI to show the new state.
+  function rebuildCloakCfg(ucid) {
+    const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
+    if (seed) {
+      Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
+    }
+  }
+
   function refreshContainer() {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const cfg = getCloakCfg(ucid);
+    const overrides = readOverrides(ucid);
+    const onEdit = () => { rebuildCloakCfg(ucid); refreshContainer(); };
+
     updateHeadline(cfg);
-    populateGrid("grp-navigator", cfg, GROUPS["grp-navigator"]);
-    populateGrid("grp-screen",    cfg, GROUPS["grp-screen"]);
-    populateGrid("grp-graphics",  cfg, GROUPS["grp-graphics"]);
-    populateGrid("grp-audio",     cfg, GROUPS["grp-audio"]);
+    populateGrid("grp-navigator", cfg, GROUPS["grp-navigator"], ucid, overrides, onEdit);
+    populateGrid("grp-screen",    cfg, GROUPS["grp-screen"],    ucid, overrides, onEdit);
+    populateGrid("grp-graphics",  cfg, GROUPS["grp-graphics"],  ucid, overrides, onEdit);
+    populateGrid("grp-audio",     cfg, GROUPS["grp-audio"],     ucid, overrides, onEdit);
     populateFonts(cfg, ucid);
-    populateGrid("grp-locale",    cfg, GROUPS["grp-locale"]);
-    populateGrid("grp-geo",       cfg, GROUPS["grp-geo"]);
-    populateGrid("grp-media",     cfg, GROUPS["grp-media"]);
-    populateGrid("grp-voices",    cfg, GROUPS["grp-voices"]);
-    populateGrid("grp-hidden",    cfg, GROUPS["grp-hidden"]);
-    populateNetwork();
+    populateGrid("grp-locale",    cfg, GROUPS["grp-locale"],    ucid, overrides, onEdit);
+    populateGrid("grp-geo",       cfg, GROUPS["grp-geo"],       ucid, overrides, onEdit);
+    populateGrid("grp-network",   cfg, GROUPS["grp-network"],   ucid, overrides, onEdit);
+    populateGrid("grp-media",     cfg, GROUPS["grp-media"],     ucid, overrides, onEdit);
+    populateGrid("grp-voices",    cfg, GROUPS["grp-voices"],    ucid, overrides, onEdit);
+    populateGrid("grp-hidden",    cfg, GROUPS["grp-hidden"],    ucid, overrides, onEdit);
+    updateAutoDetectedIPs();
     populateSeeds(cfg, ucid);
+
     tzCurrentEl.textContent = Services.prefs.getStringPref(tzPref(ucid), "") || "UTC (default)";
     tzSelectEl.value = Services.prefs.getStringPref(tzPref(ucid), "");
     const idx = Services.prefs.getIntPref(personaIndexPref(ucid), -1);
     personaPickerEl.value = String(idx);
+
+    // Show "N overrides active" indicator + clear-all button.
+    const overrideCount = Object.keys(overrides).length;
+    const indicator = document.getElementById("cfx-override-count");
+    if (indicator) {
+      indicator.textContent = overrideCount === 0
+        ? "No field overrides — every value comes from the persona."
+        : `${overrideCount} field override${overrideCount === 1 ? "" : "s"} active.`;
+      indicator.dataset.count = String(overrideCount);
+    }
   }
   selectEl.addEventListener("change", refreshContainer);
   refreshContainer();
@@ -402,16 +511,33 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshContainer();
   });
 
-  // Clear — strips seeds, cloak_cfg, timezone, AND persona override so
-  // the container falls back to host's real values.
+  // Clear — strips seeds, cloak_cfg, timezone, persona override, AND
+  // every per-field override so the container falls back to host's
+  // real values.
   clearBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     Services.prefs.clearUserPref(masterSeedPref(ucid));
     Services.prefs.clearUserPref(cloakCfgPref(ucid));
     Services.prefs.clearUserPref(tzPref(ucid));
     Services.prefs.clearUserPref(personaIndexPref(ucid));
+    clearAllOverrides(ucid);
     refreshContainer();
   });
+
+  // Clear-all-overrides button — keeps the persona/seed but drops
+  // every field-level pin. Useful after experimenting with overrides.
+  const clearOverridesBtn = document.getElementById("cfx-clear-overrides");
+  if (clearOverridesBtn) {
+    clearOverridesBtn.addEventListener("click", () => {
+      const ucid = parseInt(selectEl.value, 10) || 0;
+      clearAllOverrides(ucid);
+      const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
+      if (seed) {
+        Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
+      }
+      refreshContainer();
+    });
+  }
 
   // Opt-in flag toggles auto-bind via data-pref.
   for (const el of document.querySelectorAll("input[data-pref]")) {
