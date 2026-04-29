@@ -40,9 +40,37 @@ function seedU32(seedB64) {
            bin.charCodeAt(3)) >>> 0;
 }
 
-export function pickPersona(seedB64, hostOS = detectHostOS()) {
+export function pickPersona(seedB64, hostOS = detectHostOS(), ucid = null) {
   const pool = PERSONAS[hostOS] || PERSONAS.linux;
+  // Per-container override: cloakfox.container.<ucid>.persona_index pins
+  // a specific persona regardless of seed. Set via about:cloakfox UI for
+  // users who want a particular config (e.g. "always make this container
+  // a Win11-1366x768 user"). Out-of-range / unset → fall through to
+  // seed-based pick.
+  if (ucid !== null) {
+    try {
+      const override = Services.prefs.getIntPref(
+        `cloakfox.container.${ucid}.persona_index`, -1
+      );
+      if (override >= 0 && override < pool.length) {
+        return pool[override];
+      }
+    } catch (_e) { /* ignore */ }
+  }
   return pool[seedU32(seedB64) % pool.length];
+}
+
+/* Public list-personas API for the about:cloakfox UI: returns the
+ * host-OS pool with human-readable labels and indices the dropdown
+ * binds to. Label format is the same one personaSummary renders for
+ * the active persona, so users see consistent strings.
+ */
+export function listPersonas(hostOS = detectHostOS()) {
+  const pool = PERSONAS[hostOS] || PERSONAS.linux;
+  return pool.map((p, i) => ({
+    index: i,
+    label: `${p["navigator.platform"]} · ${p["screen.width"]}×${p["screen.height"]}@${p["window.devicePixelRatio"]}x · ${p["navigator.hardwareConcurrency"]}c · ${(p["webGl:renderer"] || "?").slice(0, 40)}`,
+  }));
 }
 
 /* User opt-in flags. Each persona-driven "disable" / "spoof" key that
@@ -58,9 +86,10 @@ function userOpt(name, def = false) {
   } catch (_e) { return def; }
 }
 
-export function fillPersonaKeys(seedB64) {
+export function fillPersonaKeys(seedB64, ucid = null) {
   // BrowserForge-generated persona is already a flat MaskConfig dict.
-  const persona = pickPersona(seedB64);
+  // ucid lets pickPersona honor any per-container persona_index override.
+  const persona = pickPersona(seedB64, detectHostOS(), ucid);
   const keys = { ...persona };
 
   // ── User opt-in dangerous-disable flags ─────────────────────────

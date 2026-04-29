@@ -76,13 +76,13 @@ function u32(seedB64, i) {
 // Both layers share the same math_seed so a given container's JS-side
 // Math perturbations, C++ canvas/audio/font noise, and persona pick
 // are all derived from one source — coherent per-container identity.
-function buildCloakCfg(seedB64) {
+function buildCloakCfg(seedB64, ucid = null) {
   return JSON.stringify({
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
     "font:spacing_seed": u32(seedB64, 3),
-    ...fillPersonaKeys(seedB64),
+    ...fillPersonaKeys(seedB64, ucid),
   });
 }
 
@@ -112,7 +112,7 @@ function ensureContainerSeeds(ucid) {
         `cloakfox.container.${ucid}.math_seed`, ""
       );
       if (masterSeed) {
-        Services.prefs.setStringPref(cfgPref, buildCloakCfg(masterSeed));
+        Services.prefs.setStringPref(cfgPref, buildCloakCfg(masterSeed, ucid));
       }
     }
   } catch (_e) { /* ignore */ }

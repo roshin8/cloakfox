@@ -32,7 +32,7 @@
 // resource:// URLs the way it does in .sys.mjs files. importESModule
 // returns the module's exports synchronously and works inside the
 // document's chrome principal.
-const { fillPersonaKeys, pickPersona } = ChromeUtils.importESModule(
+const { fillPersonaKeys, pickPersona, listPersonas } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxPersonas.sys.mjs"
 );
 
@@ -40,9 +40,10 @@ const PREF_ENABLED = "cloakfox.enabled";
 
 // ── pref name helpers ───────────────────────────────────────────────
 
-const masterSeedPref = (ucid) => `cloakfox.container.${ucid}.math_seed`;
-const cloakCfgPref   = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
-const tzPref         = (ucid) => `cloakfox.container.${ucid}.timezone`;
+const masterSeedPref      = (ucid) => `cloakfox.container.${ucid}.math_seed`;
+const cloakCfgPref        = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
+const tzPref              = (ucid) => `cloakfox.container.${ucid}.timezone`;
+const personaIndexPref    = (ucid) => `cloakfox.container.${ucid}.persona_index`;
 
 // ── seed / config helpers ───────────────────────────────────────────
 
@@ -62,13 +63,18 @@ function u32(seedB64, i) {
 // fillPersonaKeys (BF-driven pool); the 4 hash-based seeds come from
 // u32 derivation. If either layer drifts, regen and SeedSync auto-gen
 // produce different configs and downstream spoof coverage diverges.
-function buildCloakCfg(seedB64) {
+//
+// ucid forwarded to fillPersonaKeys so any per-container persona_index
+// override is honored when the user clicks "Regenerate" or changes the
+// persona dropdown — otherwise the override would be silently ignored
+// on the regen path and only take effect at next browser startup.
+function buildCloakCfg(seedB64, ucid = null) {
   return JSON.stringify({
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
     "font:spacing_seed": u32(seedB64, 3),
-    ...fillPersonaKeys(seedB64),
+    ...fillPersonaKeys(seedB64, ucid),
   });
 }
 
@@ -126,13 +132,14 @@ const TIMEZONES = [
 // ── wire up UI ──────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
-  const enabledEl   = document.getElementById("cfx-enabled");
-  const selectEl    = document.getElementById("cfx-container-select");
-  const masterEl    = document.getElementById("cfx-seed-master");
-  const personaEl   = document.getElementById("cfx-persona-summary");
-  const tzSelectEl  = document.getElementById("cfx-tz-select");
-  const regenBtn    = document.getElementById("cfx-regenerate");
-  const clearBtn    = document.getElementById("cfx-clear");
+  const enabledEl       = document.getElementById("cfx-enabled");
+  const selectEl        = document.getElementById("cfx-container-select");
+  const masterEl        = document.getElementById("cfx-seed-master");
+  const personaEl       = document.getElementById("cfx-persona-summary");
+  const personaPickerEl = document.getElementById("cfx-persona-override-select");
+  const tzSelectEl      = document.getElementById("cfx-tz-select");
+  const regenBtn        = document.getElementById("cfx-regenerate");
+  const clearBtn        = document.getElementById("cfx-clear");
 
   // Master enable toggle.
   enabledEl.checked = Services.prefs.getBoolPref(PREF_ENABLED, false);
@@ -175,6 +182,18 @@ document.addEventListener("DOMContentLoaded", () => {
     tzSelectEl.appendChild(opt);
   }
 
+  // Persona override dropdown — populated from the host-OS pool.
+  // Default option (-1, "auto from seed") stays first; any explicit
+  // pick pins this container to the selected persona regardless of
+  // seed value, so users who want a specific config (e.g. "always a
+  // Win11 1366×768 user") can lock it in.
+  for (const p of listPersonas()) {
+    const opt = document.createElement("option");
+    opt.value = String(p.index);
+    opt.textContent = `${p.index}: ${p.label}`;
+    personaPickerEl.appendChild(opt);
+  }
+
   function refreshContainer() {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
@@ -183,6 +202,8 @@ document.addEventListener("DOMContentLoaded", () => {
       : "(not set)";
     personaEl.textContent = personaSummary(seed);
     tzSelectEl.value = Services.prefs.getStringPref(tzPref(ucid), "");
+    const idx = Services.prefs.getIntPref(personaIndexPref(ucid), -1);
+    personaPickerEl.value = String(idx);
   }
   selectEl.addEventListener("change", refreshContainer);
   refreshContainer();
@@ -198,24 +219,46 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Persona override picker — -1 clears the pref so picking falls back
+  // to seed-based; any other index pins this container's persona. We
+  // also rewrite cloak_cfg here so the change takes effect immediately
+  // for new tabs in this container, not just at next browser startup.
+  personaPickerEl.addEventListener("change", () => {
+    const ucid = parseInt(selectEl.value, 10) || 0;
+    const idx = parseInt(personaPickerEl.value, 10);
+    if (Number.isNaN(idx) || idx < 0) {
+      Services.prefs.clearUserPref(personaIndexPref(ucid));
+    } else {
+      Services.prefs.setIntPref(personaIndexPref(ucid), idx);
+    }
+    const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
+    if (seed) {
+      Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
+    }
+    refreshContainer();
+  });
+
   // Regenerate persona — share the same path as SeedSync so the
-  // resulting cloak_cfg matches what auto-gen produces.
+  // resulting cloak_cfg matches what auto-gen produces. Forward ucid
+  // so any persona_index override is honored.
   regenBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const seed = randomSeedB64();
     Services.prefs.setStringPref(masterSeedPref(ucid), seed);
-    Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed));
+    Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
     refreshContainer();
   });
 
-  // Clear — strips both seed AND cloak_cfg so the container falls back
-  // to host's real values (no spoofing). Useful for debugging or for
-  // a "trusted" container that needs to look like real Firefox.
+  // Clear — strips seed, cloak_cfg, timezone, AND persona override so
+  // the container falls back to host's real values (no spoofing).
+  // Useful for debugging or for a "trusted" container that needs to
+  // look like real Firefox.
   clearBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     Services.prefs.clearUserPref(masterSeedPref(ucid));
     Services.prefs.clearUserPref(cloakCfgPref(ucid));
     Services.prefs.clearUserPref(tzPref(ucid));
+    Services.prefs.clearUserPref(personaIndexPref(ucid));
     refreshContainer();
   });
 
