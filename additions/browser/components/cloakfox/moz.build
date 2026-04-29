@@ -12,8 +12,9 @@ JAR_MANIFESTS += ["jar.mn"]
 # roverfox.s.* extension prefs into the new cpp-first cloakfox.s.*
 # namespace. Idempotent.
 EXTRA_JS_MODULES += [
+    "CloakfoxBayesianNetwork.sys.mjs",
+    "CloakfoxBFNetwork.sys.mjs",
     "CloakfoxOverrides.sys.mjs",
-    "CloakfoxPersonaData.sys.mjs",
     "CloakfoxPersonas.sys.mjs",
     "CloakfoxPrefMigration.sys.mjs",
     "CloakfoxSeedSync.sys.mjs",
