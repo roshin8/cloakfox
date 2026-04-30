@@ -243,21 +243,22 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
       input.value = String(existing);
     }
     input.className = "row-input";
-    v.replaceWith(input);
-    editBtn.style.display = "none";
-    resetBtn.style.display = "none";
 
+    // Swap the value cell for the input AND the actions content for
+    // save/cancel — staying within the row's existing 3 grid cells so
+    // the surrounding rows don't reflow.
+    v.replaceWith(input);
+    actions.innerHTML = "";
     const save = document.createElement("button");
     save.type = "button"; save.className = "row-save"; save.textContent = "save";
     const cancel = document.createElement("button");
     cancel.type = "button"; cancel.className = "row-cancel"; cancel.textContent = "cancel";
-    row.appendChild(save);
-    row.appendChild(cancel);
+    actions.appendChild(save);
+    actions.appendChild(cancel);
 
     save.addEventListener("click", () => {
       let toSave = input.value;
       if (KEY_TYPES[key] === "bool") {
-        // Empty string = clear; "true"/"false" = boolean
         if (toSave === "") { clearOverride(ucid, key); }
         else { setOverride(ucid, key, toSave === "true"); }
       } else {
@@ -267,6 +268,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     });
     cancel.addEventListener("click", () => { onChange(); });
     input.focus();
+    if (input.tagName === "INPUT") input.select();
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") save.click();
       else if (e.key === "Escape") cancel.click();
