@@ -20,9 +20,14 @@
       "parent": {
         "scopes": ["addon_parent"],
         "script": "experiment-apis/cloakfox.js",
+        "events": ["startup"],
         "paths": [["cloakfox"]]
       }
     }
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
   },
   "browser_action": {
     "default_icon": {
