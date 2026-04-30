@@ -220,6 +220,29 @@
     </section>
 
     <details class="card collapsible">
+      <summary>How Cloakfox works</summary>
+      <p class="card-help">
+        Cloakfox is a Firefox build, so it always claims to be Firefox. Per-container privacy comes from
+        <strong>which Firefox user you appear to be</strong> — Mac, Windows, or Linux Firefox with varied
+        hardware, screen, GPU, fonts, and audio characteristics drawn from <strong>BrowserForge</strong>'s
+        real-world joint distribution.
+      </p>
+      <p class="card-help">
+        Each container's master seed deterministically samples one fingerprint at first launch. The sample
+        is <em>coherent</em> — webGl renderer matches platform matches screen — so individual fields don't
+        contradict each other. Click <em>Sample a new persona</em> to roll a new master seed and draw a new
+        Firefox identity. Click any field below to override that one value while keeping the rest of the
+        persona intact.
+      </p>
+      <p class="card-help">
+        We can't credibly spoof <em>as Chrome / Safari / Edge</em> because the JS engine (SpiderMonkey),
+        CSS engine (Gecko), TLS fingerprint, and WebRTC stack are all Firefox-specific and visible to
+        sophisticated probes. A shallow Chrome UA disguise (for sites that only check the UA string) is
+        a future opt-in feature.
+      </p>
+    </details>
+
+    <details class="card collapsible">
       <summary>Diagnostics</summary>
       <p class="card-help">Run these in the Browser Toolbox (chrome scope) to inspect the C++ pipeline:</p>
 <pre><code>Services.prefs.getBoolPref("cloakfox.enabled", false);
