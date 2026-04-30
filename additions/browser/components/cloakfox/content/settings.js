@@ -376,7 +376,22 @@ function updateAutoDetectedIPs() {
 
 // ── headline summary ───────────────────────────────────────────────
 
-function updateHeadline(cfg) {
+// 6-char hex tag derived from the master seed's first 3 bytes. Lets
+// the user tell two visually-similar personas apart at a glance —
+// regenerating always changes the seed, so the tag always changes too,
+// even when BF happens to sample a similar persona.
+function shortSeedTag(seedB64) {
+  if (!seedB64) return "";
+  try {
+    const bin = atob(seedB64);
+    const hex = [0, 1, 2]
+      .map(i => bin.charCodeAt(i).toString(16).padStart(2, "0"))
+      .join("");
+    return "#" + hex;
+  } catch (_e) { return ""; }
+}
+
+function updateHeadline(cfg, seedB64) {
   const el = document.getElementById("cfx-headline-text");
   if (!cfg) { el.textContent = "(not yet generated — click Regenerate)"; return; }
   const platform = cfg["navigator.platform"] || "?";
@@ -385,7 +400,8 @@ function updateHeadline(cfg) {
   const dpr = cfg["window.devicePixelRatio"] ?? "?";
   const hwc = cfg["navigator.hardwareConcurrency"] ?? "?";
   const renderer = (cfg["webGl:renderer"] || "?").slice(0, 50);
-  el.textContent = `${platform} · ${w}×${h}@${dpr}x · ${hwc}-core · ${renderer}`;
+  const tag = shortSeedTag(seedB64);
+  el.textContent = `${platform} · ${w}×${h}@${dpr}x · ${hwc}-core · ${renderer}${tag ? "  " + tag : ""}`;
 }
 
 // ── timezone list ───────────────────────────────────────────────────
@@ -465,9 +481,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const cfg = getCloakCfg(ucid);
     const overrides = readOverrides(ucid);
+    const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
     const onEdit = () => { rebuildCloakCfg(ucid); refreshContainer(); };
 
-    updateHeadline(cfg);
+    updateHeadline(cfg, seedB64);
     populateGrid("grp-navigator", cfg, GROUPS["grp-navigator"], ucid, overrides, onEdit);
     populateGrid("grp-screen",    cfg, GROUPS["grp-screen"],    ucid, overrides, onEdit);
     populateGrid("grp-graphics",  cfg, GROUPS["grp-graphics"],  ucid, overrides, onEdit);
