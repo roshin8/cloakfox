@@ -102,6 +102,24 @@ this.cloakfox = class extends ExtensionAPI {
           Services.prefs.setStringPref(cloakCfgPref(u), buildCloakCfg(seed, u));
           return { ucid: u, tag: shortSeedTag(seed) };
         },
+
+        // Workaround for AboutRedirector flags missing
+        // URI_MUST_LOAD_IN_CHILD + URI_CAN_LOAD_IN_PRIVILEGEDABOUT_PROCESS
+        // (fixed in patches/cpp-first-about-cloakfox.patch but needs a
+        // CI rebuild to take effect). The Experiment API runs in
+        // addon_parent scope where chrome priv exists, so we can open
+        // about:cloakfox directly via gBrowser.loadOneTab.
+        async openSettings({ ucid }) {
+          const u = parseInt(ucid, 10) || 0;
+          const url = `about:cloakfox?ucid=${u}`;
+          const win = Services.wm.getMostRecentWindow("navigator:browser");
+          if (!win) throw new Error("No browser window available");
+          const tab = win.gBrowser.addTab(url, {
+            triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+          });
+          win.gBrowser.selectedTab = tab;
+          return { ok: true };
+        },
       },
     };
   }

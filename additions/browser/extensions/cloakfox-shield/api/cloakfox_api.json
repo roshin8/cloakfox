@@ -30,6 +30,13 @@
         "description": "Roll a new master seed for the given container and rebuild cloak_cfg. Same code path as about:cloakfox's New persona button.",
         "async": true,
         "parameters": [{ "name": "options", "type": "object", "properties": { "ucid": { "type": "integer" } } }]
+      },
+      {
+        "name": "openSettings",
+        "type": "function",
+        "description": "Open about:cloakfox in a new tab from chrome scope (works around AboutRedirector flags that block extension-side navigation).",
+        "async": true,
+        "parameters": [{ "name": "options", "type": "object", "properties": { "ucid": { "type": "integer" } } }]
       }
     ]
   }
