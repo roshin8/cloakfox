@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Cloakfox toolbar popup — tab-aware indicator. -->
+<!-- Cloakfox toolbar popup. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -8,7 +8,10 @@
 </head>
 <body>
   <header>
-    <h1>Cloakfox</h1>
+    <div class="brand">
+      <span class="brand-mark">⬢</span>
+      <span class="brand-name">Cloakfox</span>
+    </div>
     <span id="cfx-status" class="status">—</span>
   </header>
 
@@ -23,13 +26,17 @@
     </div>
   </section>
 
-  <section id="actions">
-    <button id="cfx-open-settings" class="primary">Open full settings</button>
-    <p class="hint">
-      Spoofing is per-container. Open settings to inspect or
-      regenerate seeds for the active container.
-    </p>
+  <section id="persona-preview">
+    <div class="preview-eyebrow">Active persona <span id="cfx-seed-tag" class="seed-tag"></span></div>
+    <div id="cfx-persona-preview" class="preview-body">…</div>
+    <button id="cfx-popup-regen" class="btn-primary">New persona</button>
   </section>
+
+  <section id="actions">
+    <button id="cfx-open-settings" class="btn-secondary">Open full settings →</button>
+  </section>
+
+  <p id="cfx-popup-err" class="err" hidden></p>
 
   <script src="popup.js"></script>
 </body>

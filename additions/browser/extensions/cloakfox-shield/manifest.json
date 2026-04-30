@@ -14,6 +14,16 @@
     "tabs",
     "contextualIdentities"
   ],
+  "experiment_apis": {
+    "cloakfox": {
+      "schema": "api/cloakfox_api.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "script": "api/cloakfox_api.js",
+        "paths": [["cloakfox"]]
+      }
+    }
+  },
   "action": {
     "default_icon": {
       "48": "icons/icon-48.png",

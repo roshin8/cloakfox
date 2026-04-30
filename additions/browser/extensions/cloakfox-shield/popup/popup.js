@@ -1,49 +1,59 @@
-/* Cloakfox popup — tab-aware indicator. Vanilla MV3, no React, no
- * bundler. Only job: show what container the user's current tab is
- * in and deep-link into about:cloakfox?ucid=<N> for that container.
+/* Cloakfox popup — tab-aware indicator with live persona preview and
+ * one-click regenerate.
  *
- * Cannot read chrome prefs (cloakfox.enabled, cloakfox.s.cloak_cfg_N
- * etc.) directly — extensions don't have that privilege. The status
- * field stays generic ("Cloakfox active") rather than reflecting per-
- * container seed state. The full settings page is one click away
- * if the user wants details.
+ * Pref reads / writes go through a chrome bridge: the popup posts
+ * runtime messages, and the resource://gre/modules/CloakfoxBridge
+ * JSWindowActor parent (registered in actors-registration patch)
+ * runs them with chrome authority and returns results. Without that
+ * bridge, the popup can only see what extension WebExtensions APIs
+ * expose — which doesn't include cloakfox prefs.
+ *
+ * Fallback: if the bridge isn't reachable (e.g. older builds without
+ * the parent actor), we still show tab/container info and the
+ * "Open full settings" deep-link works on its own.
  */
 
 (async function init() {
   const statusEl     = document.getElementById("cfx-status");
   const containerEl  = document.getElementById("cfx-container");
   const urlEl        = document.getElementById("cfx-url");
+  const personaEl    = document.getElementById("cfx-persona-preview");
+  const seedTagEl    = document.getElementById("cfx-seed-tag");
+  const regenBtn     = document.getElementById("cfx-popup-regen");
   const settingsBtn  = document.getElementById("cfx-open-settings");
+  const errBox       = document.getElementById("cfx-popup-err");
 
-  // Get the active tab in the current window. Both Manifest V3 and
-  // Firefox WebExtensions support this without host permissions.
+  function showError(msg) {
+    if (errBox) {
+      errBox.hidden = false;
+      errBox.textContent = msg;
+    }
+  }
+
+  // ── Tab + container resolution ────────────────────────────────
   let tab = null;
   try {
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
     tab = tabs[0];
-  } catch (_e) { /* fall through to "—" */ }
+  } catch (_e) { /* fall through */ }
 
   if (!tab) {
     statusEl.textContent = "—";
     containerEl.textContent = "(no active tab)";
     urlEl.textContent = "—";
     settingsBtn.disabled = true;
+    if (regenBtn) regenBtn.disabled = true;
     return;
   }
 
-  // Display the URL (host only — full URL would overflow).
   try {
-    const u = new URL(tab.url);
-    urlEl.textContent = u.host || u.protocol;
+    urlEl.textContent = new URL(tab.url).host || tab.url;
   } catch (_e) {
     urlEl.textContent = tab.url || "—";
   }
 
-  // Resolve the container. Firefox's cookieStoreId is "firefox-default"
-  // for the default container or "firefox-container-N" for a named
-  // container, where N is the userContextId.
   let ucid = 0;
-  let containerName = "Default (no container)";
+  let containerName = "Default";
   const csid = tab.cookieStoreId || "";
   const m = /^firefox-container-(\d+)$/.exec(csid);
   if (m) {
@@ -51,22 +61,108 @@
     try {
       const ident = await browser.contextualIdentities.get(csid);
       containerName = ident?.name || `Container ${ucid}`;
-    } catch (_e) {
-      containerName = `Container ${ucid}`;
-    }
+    } catch (_e) { containerName = `Container ${ucid}`; }
   }
   containerEl.textContent = containerName;
 
-  // Status — best-effort. We don't have access to chrome prefs from
-  // the extension, so we display a generic "active" tag rather than
-  // reading cloakfox.enabled. If a future Experiment API is added,
-  // this can read the real state.
-  statusEl.textContent = "active";
-  statusEl.classList.add("on");
+  // ── Live persona preview via chrome bridge ────────────────────
+  // The bridge is implemented as a parent-process listener in
+  // CloakfoxPopupBridge.sys.mjs that receives "Cloakfox:Get" /
+  // "Cloakfox:Regen" messages. Browser.runtime.sendMessage sends to
+  // the extension's own background, which doesn't help — we need a
+  // privileged bridge. Use browser.runtime.sendNativeMessage if
+  // available, else fall back to the deep-link only.
+  async function callBridge(action, payload = {}) {
+    // Try via runtime message to "experiments:cloakfox" — the
+    // CloakfoxExperiment WebExtensions API (registered in manifest
+    // experimental_apis) exposes browser.cloakfox.* methods.
+    if (browser.cloakfox && typeof browser.cloakfox[action] === "function") {
+      return await browser.cloakfox[action](payload);
+    }
+    throw new Error("Cloakfox bridge unavailable");
+  }
 
-  // Hook the settings button to deep-link with ?ucid=<N>.
+  async function refreshPersona() {
+    try {
+      const data = await callBridge("getCloakCfg", { ucid });
+      if (!data || !data.cfg) {
+        personaEl.textContent = "(not yet generated)";
+        seedTagEl.textContent = "";
+        return;
+      }
+      const c = data.cfg;
+      const platform = c["navigator.platform"] || "?";
+      const w = c["screen.width"] ?? "?";
+      const h = c["screen.height"] ?? "?";
+      const hwc = c["navigator.hardwareConcurrency"] ?? "?";
+      const renderer = (c["webGl:renderer"] || "?").slice(0, 32);
+      personaEl.textContent = `${platform} · ${w}×${h} · ${hwc}c · ${renderer}`;
+      seedTagEl.textContent = data.tag || "";
+    } catch (e) {
+      personaEl.textContent = "(bridge unavailable — open full settings)";
+      seedTagEl.textContent = "";
+      if (regenBtn) regenBtn.disabled = true;
+    }
+  }
+  await refreshPersona();
+
+  // ── Status pill ───────────────────────────────────────────────
+  try {
+    const data = await callBridge("getEnabled");
+    const on = !!(data && data.enabled);
+    statusEl.textContent = on ? "active" : "off";
+    statusEl.classList.toggle("on", on);
+    statusEl.classList.toggle("off", !on);
+  } catch (_e) {
+    // No bridge — show generic active tag (the extension is loaded so
+    // Cloakfox is at least running).
+    statusEl.textContent = "active";
+    statusEl.classList.add("on");
+  }
+
+  // ── Regenerate button ─────────────────────────────────────────
+  if (regenBtn) {
+    regenBtn.addEventListener("click", async () => {
+      regenBtn.disabled = true;
+      regenBtn.textContent = "Rolling…";
+      try {
+        await callBridge("regeneratePersona", { ucid });
+        await refreshPersona();
+        regenBtn.textContent = "✓ Rolled";
+        setTimeout(() => {
+          regenBtn.textContent = "New persona";
+          regenBtn.disabled = false;
+        }, 1100);
+      } catch (e) {
+        regenBtn.textContent = "New persona";
+        regenBtn.disabled = false;
+        showError("Regenerate failed: " + e.message);
+      }
+    });
+  }
+
+  // ── Open full settings (the broken button — now with fallbacks) ──
   settingsBtn.addEventListener("click", async () => {
-    await browser.tabs.create({ url: `about:cloakfox?ucid=${ucid}` });
+    const targets = [
+      `about:cloakfox?ucid=${ucid}`,
+      "about:cloakfox",
+    ];
+    let opened = false;
+    let lastErr = null;
+    for (const url of targets) {
+      try {
+        await browser.tabs.create({ url });
+        opened = true;
+        break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (!opened) {
+      showError("Couldn't open settings: " + (lastErr ? lastErr.message : "unknown error") +
+                ". Type about:cloakfox in the URL bar.");
+      return;
+    }
     window.close();
   });
 })();

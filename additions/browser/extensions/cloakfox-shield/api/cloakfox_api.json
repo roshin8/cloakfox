@@ -1,0 +1,36 @@
+[
+  {
+    "namespace": "cloakfox",
+    "description": "Bridge between the cloakfox-shield popup and chrome-priv state (prefs, cloak_cfg, persona regeneration). Exposes a small read/write surface so the popup can preview and act on per-container persona without leaving the toolbar.",
+    "functions": [
+      {
+        "name": "getEnabled",
+        "type": "function",
+        "description": "Read cloakfox.enabled (master kill-switch).",
+        "async": true,
+        "parameters": []
+      },
+      {
+        "name": "setEnabled",
+        "type": "function",
+        "description": "Write cloakfox.enabled.",
+        "async": true,
+        "parameters": [{ "name": "options", "type": "object", "properties": { "enabled": { "type": "boolean" } } }]
+      },
+      {
+        "name": "getCloakCfg",
+        "type": "function",
+        "description": "Return parsed cloak_cfg JSON for the given container plus a 6-hex-char seed tag derived from the master seed.",
+        "async": true,
+        "parameters": [{ "name": "options", "type": "object", "properties": { "ucid": { "type": "integer" } } }]
+      },
+      {
+        "name": "regeneratePersona",
+        "type": "function",
+        "description": "Roll a new master seed for the given container and rebuild cloak_cfg. Same code path as about:cloakfox's New persona button.",
+        "async": true,
+        "parameters": [{ "name": "options", "type": "object", "properties": { "ucid": { "type": "integer" } } }]
+      }
+    ]
+  }
+]
