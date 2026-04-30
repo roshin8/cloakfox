@@ -26,7 +26,7 @@ them), then seed-sync, then WebRTC sync (async, doesn't block).
 
 --- a/browser/components/BrowserGlue.sys.mjs
 +++ b/browser/components/BrowserGlue.sys.mjs
-@@ -382,5 +382,32 @@
+@@ -382,5 +382,40 @@
 
    _beforeUIStartup: function BG__beforeUIStartup() {
 +    // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
@@ -56,6 +56,16 @@ them), then seed-sync, then WebRTC sync (async, doesn't block).
 +    } catch (_e) {
 +      // Module missing on non-Cloakfox builds — ignore.
 +    }
++    // Pin the cloakfox-shield browser_action to the navbar on first
++    // launch so the icon is actually visible (default Firefox behavior
++    // for new WebExtensions is to hide them in the unified-extensions
++    // overflow panel). Idempotent via cloakfox.toolbar.pinned.v1 pref.
++    try {
++      const { ensureCloakfoxPinned } = ChromeUtils.importESModule(
++        "resource:///modules/CloakfoxToolbarPin.sys.mjs"
++      );
++      ensureCloakfoxPinned();
++    } catch (_e) { /* non-Cloakfox builds — ignore */ }
      lazy.SessionStartup.init();
 
      // check if we're in safe mode
