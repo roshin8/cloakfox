@@ -169,6 +169,29 @@ function bfToCloakKeys(fp, prng) {
   keys["geolocation:longitude"] = city[2] + (prng() - 0.5) * 0.08;
   keys["geolocation:accuracy"]  = 30 + Math.floor(prng() * 50);
 
+  // Always-on persona-level spoofs. The predefined-pool generator
+  // emitted these on every persona; preserving that behavior keeps
+  // the C++ MaskConfig patches activated for every container by
+  // default. The about:cloakfox UI surfaces them as "spoofed (on)" /
+  // editable so power users can flip them off via per-field override.
+  keys["codecs:spoof"]              = true;
+  keys["mediaCapabilities:spoof"]   = true;
+  keys["mediaFeature:invertedColors"]             = false;
+  keys["mediaFeature:prefersReducedMotion"]       = false;
+  keys["mediaFeature:prefersReducedTransparency"] = false;
+  // matchMedia resolution = 96 dpi × dpr (rounded). Real Firefox emits
+  // ~96 on standard displays, ~192 on 2x.
+  const dpr = keys["window.devicePixelRatio"] || 1;
+  keys["mediaFeature:resolution"]   = Math.round(96 * dpr);
+  keys["voices:blockIfNotDefined"]              = true;
+  keys["voices:fakeCompletion"]                 = true;
+  keys["voices:fakeCompletion:charsPerSecond"]  = 12;
+  keys["permissions:spoof"]            = true;
+  keys["indexedDB:databases:hidden"]   = true;
+  keys["document:lastModified:hidden"] = true;
+  keys["navigator:vibrate:disabled"]   = true;
+  keys["navigator:webgpu:disabled"]    = true;
+
   return keys;
 }
 

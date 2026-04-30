@@ -5,215 +5,226 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Cloakfox Settings</title>
+  <title>Cloakfox</title>
   <link rel="stylesheet" href="chrome://browser/content/cloakfox/settings.css">
 </head>
 <body>
-  <main>
-    <header>
-      <h1>Cloakfox</h1>
-      <p class="tagline">Each container shows websites a different fake hardware identity. This page is what every container is currently spoofing.</p>
-    </header>
-
-    <section id="status-bar">
-      <label class="toggle-row inline">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">⬢</span>
+      <span class="brand-name">Cloakfox</span>
+    </div>
+    <div class="topbar-right">
+      <label class="status-toggle">
         <input type="checkbox" id="cfx-enabled">
-        <span class="toggle-label-inline"><strong>Cloakfox enabled</strong></span>
+        <span class="status-pill"><span class="status-dot"></span><span id="cfx-status-label">Enabled</span></span>
       </label>
-      <div class="picker-row inline">
-        <label for="cfx-container-select">Container:</label>
-        <select id="cfx-container-select">
-          <option value="0">Default (no container)</option>
-        </select>
-      </div>
-    </section>
+    </div>
+  </header>
 
-    <section id="headline">
-      <p class="headline-eyebrow">This container appears as</p>
-      <p class="headline-summary"><span id="cfx-headline-text">—</span></p>
-      <div class="picker-row">
-        <label for="cfx-persona-override-select">Persona:</label>
-        <select id="cfx-persona-override-select">
-          <option value="-1">(auto — pick from seed)</option>
-        </select>
-        <button id="cfx-regenerate" class="btn-primary">Regenerate</button>
-        <button id="cfx-clear" class="btn-secondary">Clear</button>
+  <main>
+    <section class="hero">
+      <div class="hero-row">
+        <div class="hero-col">
+          <p class="hero-eyebrow">Active container</p>
+          <select id="cfx-container-select" class="hero-select">
+            <option value="0">Default (no container)</option>
+          </select>
+        </div>
+        <div class="hero-col hero-col-summary">
+          <p class="hero-eyebrow">This container appears as</p>
+          <p class="hero-summary" id="cfx-headline-text">—</p>
+        </div>
       </div>
-      <p id="cfx-override-count" class="headline-overrides">No field overrides — every value comes from the persona.</p>
-    </section>
-
-    <section id="override-actions">
-      <p class="help">
-        Each row below shows a single fingerprint signal websites see. Click any value to override it for this container — your edit
-        wins over the persona. Empty / unset = the persona's value applies. The headline above always reflects the live persona.
+      <div class="hero-actions">
+        <button id="cfx-regenerate" class="btn btn-primary">
+          <span class="btn-icon">⟳</span> Sample a new persona
+        </button>
+        <button id="cfx-clear" class="btn btn-ghost">Reset container</button>
+        <span class="hero-overrides" id="cfx-override-count">No field overrides — every value comes from the persona.</span>
+        <button id="cfx-clear-overrides" class="btn btn-ghost btn-small" hidden>Clear overrides</button>
+      </div>
+      <p class="hero-note">
+        Personas are sampled at runtime from <strong>BrowserForge</strong>'s real-world Bayesian network — coherent fingerprints
+        (matching webGl ↔ platform ↔ screen) drawn fresh each time you click <em>Sample a new persona</em>.
+        Click any value below to override it for this container; the persona keeps its other fields.
       </p>
-      <div class="button-row">
-        <button id="cfx-clear-overrides" class="btn-tertiary">Clear all field overrides</button>
-      </div>
     </section>
 
-    <details class="spoof-group" open>
-      <summary>Navigator &amp; user-agent</summary>
+    <nav class="section-nav">
+      <a href="#sec-identity">Identity</a>
+      <a href="#sec-display">Display</a>
+      <a href="#sec-graphics">Graphics</a>
+      <a href="#sec-audio">Audio</a>
+      <a href="#sec-locale">Locale</a>
+      <a href="#sec-geo">Geo &amp; network</a>
+      <a href="#sec-media">Media</a>
+      <a href="#sec-seeds">Seeds</a>
+      <a href="#sec-hardening">Hardening</a>
+    </nav>
+
+    <section class="card" id="sec-identity">
+      <header class="card-header">
+        <span class="card-icon" data-color="violet">⌬</span>
+        <div>
+          <h2>Identity</h2>
+          <p class="card-help">Navigator and User-Agent fields every page reads.</p>
+        </div>
+      </header>
       <div class="spoof-grid" id="grp-navigator"></div>
-    </details>
+    </section>
 
-    <details class="spoof-group" open>
-      <summary>Screen &amp; window</summary>
+    <section class="card" id="sec-display">
+      <header class="card-header">
+        <span class="card-icon" data-color="cyan">▢</span>
+        <div>
+          <h2>Display</h2>
+          <p class="card-help">Screen and window dimensions websites measure.</p>
+        </div>
+      </header>
       <div class="spoof-grid" id="grp-screen"></div>
-    </details>
+    </section>
 
-    <details class="spoof-group">
-      <summary>Graphics (canvas, WebGL)</summary>
+    <section class="card" id="sec-graphics">
+      <header class="card-header">
+        <span class="card-icon" data-color="green">◢</span>
+        <div>
+          <h2>Graphics</h2>
+          <p class="card-help">WebGL vendor and renderer (GPU fingerprint).</p>
+        </div>
+      </header>
       <div class="spoof-grid" id="grp-graphics"></div>
-    </details>
+    </section>
 
-    <details class="spoof-group">
-      <summary>Audio</summary>
+    <section class="card" id="sec-audio">
+      <header class="card-header">
+        <span class="card-icon" data-color="amber">♪</span>
+        <div>
+          <h2>Audio</h2>
+          <p class="card-help">AudioContext fields tied to sound hardware.</p>
+        </div>
+      </header>
       <div class="spoof-grid" id="grp-audio"></div>
-    </details>
+    </section>
 
-    <details class="spoof-group">
-      <summary>Fonts</summary>
-      <div class="spoof-grid" id="grp-fonts"></div>
-    </details>
-
-    <details class="spoof-group">
-      <summary>Locale</summary>
+    <section class="card" id="sec-locale">
+      <header class="card-header">
+        <span class="card-icon" data-color="rose">◑</span>
+        <div>
+          <h2>Locale &amp; timezone</h2>
+          <p class="card-help">Language, region, and IANA timezone.</p>
+        </div>
+      </header>
       <div class="spoof-grid" id="grp-locale"></div>
-    </details>
-
-    <details class="spoof-group">
-      <summary>Timezone</summary>
       <div class="spoof-grid" id="grp-timezone">
         <div class="spoof-row">
           <span class="k">Active timezone</span>
           <span class="v" id="cfx-tz-current">—</span>
         </div>
         <div class="spoof-row picker-row">
-          <label for="cfx-tz-select" class="k">Override</label>
+          <label for="cfx-tz-select" class="k">Override timezone</label>
           <select id="cfx-tz-select" class="v">
             <option value="">(default — UTC)</option>
           </select>
         </div>
       </div>
-    </details>
+    </section>
 
-    <details class="spoof-group">
-      <summary>Geolocation</summary>
+    <section class="card" id="sec-geo">
+      <header class="card-header">
+        <span class="card-icon" data-color="blue">⊕</span>
+        <div>
+          <h2>Geolocation &amp; network</h2>
+          <p class="card-help">Coordinates websites get from <code>navigator.geolocation</code>, plus public IP overrides for WebRTC.</p>
+        </div>
+      </header>
       <div class="spoof-grid" id="grp-geo"></div>
-    </details>
-
-    <details class="spoof-group">
-      <summary>Network &amp; WebRTC</summary>
-      <p class="help" id="cfx-network-detected">Auto-detected — IPv4: — · IPv6: —</p>
+      <p class="card-note" id="cfx-network-detected">Auto-detected — IPv4: — · IPv6: —</p>
       <div class="spoof-grid" id="grp-network"></div>
-    </details>
+    </section>
 
-    <details class="spoof-group">
-      <summary>Media (codecs, capabilities)</summary>
+    <section class="card" id="sec-media">
+      <header class="card-header">
+        <span class="card-icon" data-color="violet">▶</span>
+        <div>
+          <h2>Media &amp; surfaces</h2>
+          <p class="card-help">Codec support, voices, and other browser surfaces fingerprinters probe.</p>
+        </div>
+      </header>
       <div class="spoof-grid" id="grp-media"></div>
-    </details>
-
-    <details class="spoof-group">
-      <summary>Speech synthesis</summary>
       <div class="spoof-grid" id="grp-voices"></div>
-    </details>
-
-    <details class="spoof-group">
-      <summary>Hidden surfaces (defaults applied silently)</summary>
       <div class="spoof-grid" id="grp-hidden"></div>
-    </details>
+    </section>
 
-    <details class="spoof-group">
-      <summary>Per-vector noise seeds</summary>
-      <p class="help">Each seed drives one fingerprint vector at the C++ level. Regenerating the persona above rotates all of these together.</p>
+    <section class="card" id="sec-seeds">
+      <header class="card-header">
+        <span class="card-icon" data-color="slate">∎</span>
+        <div>
+          <h2>Per-vector noise seeds</h2>
+          <p class="card-help">Each seed drives one fingerprint vector at the C++ level. Regenerating the persona rotates all of these together.</p>
+        </div>
+      </header>
       <div class="spoof-grid" id="grp-seeds"></div>
-    </details>
+    </section>
 
-    <details class="spoof-group">
-      <summary>Optional hardening (may break sites)</summary>
-      <p class="help">Each toggle trades site compatibility for stealth. Off by default unless you flip it on.</p>
+    <section class="card" id="sec-hardening">
+      <header class="card-header">
+        <span class="card-icon" data-color="red">⚠</span>
+        <div>
+          <h2>Optional hardening</h2>
+          <p class="card-help">Each toggle trades compatibility for stealth. Off by default unless you flip it on.</p>
+        </div>
+      </header>
       <div class="flag-grid">
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.window_name_disabled">
-          <span class="toggle-label">
-            <strong>Disable window.name</strong>
-            <small>Reads return empty, writes ignored. Breaks fpscanner, popup-orchestrated auth flows.</small>
-          </span>
+          <span><strong>Disable window.name</strong><small>Reads return empty, writes ignored. Breaks fpscanner, popup-orchestrated auth flows.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.websocket_disabled">
-          <span class="toggle-label">
-            <strong>Disable WebSocket</strong>
-            <small>Breaks any site with realtime chat / live data feeds.</small>
-          </span>
+          <span><strong>Disable WebSocket</strong><small>Breaks any site with realtime chat / live data feeds.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.clipboard_disabled">
-          <span class="toggle-label">
-            <strong>Disable clipboard API</strong>
-            <small>navigator.clipboard.read/write fails. Breaks paste-from-image and copy buttons.</small>
-          </span>
+          <span><strong>Disable clipboard API</strong><small>navigator.clipboard.read/write fails. Breaks paste-from-image and copy buttons.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.eme_disabled">
-          <span class="toggle-label">
-            <strong>Disable EME (DRM)</strong>
-            <small>Breaks Netflix, Spotify Web Player, Disney+, Prime Video.</small>
-          </span>
+          <span><strong>Disable EME (DRM)</strong><small>Breaks Netflix, Spotify Web Player, Disney+, Prime Video.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.mediadevices_disabled">
-          <span class="toggle-label">
-            <strong>Disable mediaDevices</strong>
-            <small>navigator.mediaDevices.enumerateDevices returns empty. Breaks WebRTC / Meet / Zoom / Discord.</small>
-          </span>
+          <span><strong>Disable mediaDevices</strong><small>navigator.mediaDevices.enumerateDevices returns empty. Breaks WebRTC / Meet / Zoom / Discord.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.notification_permission_disabled">
-          <span class="toggle-label">
-            <strong>Hide notification permission state</strong>
-            <small>Notification.permission always returns "default". Sites can't tell granted/denied.</small>
-          </span>
+          <span><strong>Hide notification permission state</strong><small>Notification.permission always returns "default". Sites can't tell granted/denied.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.storage_persisted_disabled">
-          <span class="toggle-label">
-            <strong>Hide storage.persisted state</strong>
-            <small>navigator.storage.persisted() resolves false. Apps that need persistent storage break.</small>
-          </span>
+          <span><strong>Hide storage.persisted state</strong><small>navigator.storage.persisted() resolves false. Apps that need persistent storage break.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.math_constants_noise">
-          <span class="toggle-label">
-            <strong>Perturb Math.PI / Math.E etc.</strong>
-            <small>Off by default. Spec-defined IEEE constants — perturbing them flags as anti-fingerprinting. Trig functions are noised regardless.</small>
-          </span>
+          <span><strong>Perturb Math.PI / Math.E etc.</strong><small>Off by default. Spec-defined IEEE constants — perturbing them flags as anti-fingerprinting. Trig functions are noised regardless.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.timer_high_precision_jitter">
-          <span class="toggle-label">
-            <strong>Hide timer-precision quantization</strong>
-            <small>On by default. performance.now() returns fractional ms via deterministic jitter, hiding Firefox's 1ms quantization.</small>
-          </span>
+          <span><strong>Hide timer-precision quantization</strong><small>On by default. performance.now() returns fractional ms via deterministic jitter, hiding Firefox's 1ms quantization.</small></span>
         </label>
-        <label class="toggle-row">
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.timer_quantization_off">
-          <span class="toggle-label">
-            <strong>Disable timer quantization entirely</strong>
-            <small>Off by default. Drops Spectre / audio-FP timing defenses. Only flip if you want raw precision.</small>
-          </span>
+          <span><strong>Disable timer quantization entirely</strong><small>Off by default. Drops Spectre / audio-FP timing defenses. Only flip if you want raw precision.</small></span>
         </label>
       </div>
-    </details>
+    </section>
 
-    <details class="spoof-group">
+    <details class="card collapsible">
       <summary>Diagnostics</summary>
-      <p class="help">Run these in the Browser Toolbox (chrome scope) to inspect the C++ pipeline:</p>
+      <p class="card-help">Run these in the Browser Toolbox (chrome scope) to inspect the C++ pipeline:</p>
 <pre><code>Services.prefs.getBoolPref("cloakfox.enabled", false);
 Services.prefs.getStringPref("cloakfox.container.0.math_seed", "");
 Services.prefs.getStringPref("cloakfox.s.cloak_cfg_0", "");
-Services.ppmm.sharedData.get("cloakfox-seeds");
 Services.ppmm.sharedData.get("cloakfox-public-ipv4");</code></pre>
     </details>
   </main>

@@ -15,7 +15,7 @@
 
 /* global Services, ChromeUtils */
 
-const { fillPersonaKeys, pickPersona, listPersonas } = ChromeUtils.importESModule(
+const { fillPersonaKeys } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxPersonas.sys.mjs"
 );
 const { KEY_TYPES, readOverrides, setOverride, clearOverride, clearAllOverrides } =
@@ -372,18 +372,24 @@ const TIMEZONES = [
 // ── wire up UI ──────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
-  const enabledEl       = document.getElementById("cfx-enabled");
-  const selectEl        = document.getElementById("cfx-container-select");
-  const personaPickerEl = document.getElementById("cfx-persona-override-select");
-  const tzSelectEl      = document.getElementById("cfx-tz-select");
-  const tzCurrentEl     = document.getElementById("cfx-tz-current");
-  const regenBtn        = document.getElementById("cfx-regenerate");
-  const clearBtn        = document.getElementById("cfx-clear");
+  const enabledEl    = document.getElementById("cfx-enabled");
+  const statusLabel  = document.getElementById("cfx-status-label");
+  const selectEl     = document.getElementById("cfx-container-select");
+  const tzSelectEl   = document.getElementById("cfx-tz-select");
+  const tzCurrentEl  = document.getElementById("cfx-tz-current");
+  const regenBtn     = document.getElementById("cfx-regenerate");
+  const clearBtn     = document.getElementById("cfx-clear");
 
   // Master enable.
-  enabledEl.checked = Services.prefs.getBoolPref(PREF_ENABLED, false);
+  function syncStatus() {
+    const on = Services.prefs.getBoolPref(PREF_ENABLED, false);
+    enabledEl.checked = on;
+    if (statusLabel) statusLabel.textContent = on ? "Enabled" : "Disabled";
+  }
+  syncStatus();
   enabledEl.addEventListener("change", () => {
     Services.prefs.setBoolPref(PREF_ENABLED, enabledEl.checked);
+    syncStatus();
   });
 
   // Container dropdown.
@@ -416,14 +422,6 @@ document.addEventListener("DOMContentLoaded", () => {
     tzSelectEl.appendChild(opt);
   }
 
-  // Persona override dropdown.
-  for (const p of listPersonas()) {
-    const opt = document.createElement("option");
-    opt.value = String(p.index);
-    opt.textContent = `${p.index}: ${p.label}`;
-    personaPickerEl.appendChild(opt);
-  }
-
   // Editing a field rewrites cloak_cfg so the change takes effect for
   // new tabs immediately, then refreshes the UI to show the new state.
   function rebuildCloakCfg(ucid) {
@@ -444,7 +442,6 @@ document.addEventListener("DOMContentLoaded", () => {
     populateGrid("grp-screen",    cfg, GROUPS["grp-screen"],    ucid, overrides, onEdit);
     populateGrid("grp-graphics",  cfg, GROUPS["grp-graphics"],  ucid, overrides, onEdit);
     populateGrid("grp-audio",     cfg, GROUPS["grp-audio"],     ucid, overrides, onEdit);
-    populateFonts(cfg, ucid);
     populateGrid("grp-locale",    cfg, GROUPS["grp-locale"],    ucid, overrides, onEdit);
     populateGrid("grp-geo",       cfg, GROUPS["grp-geo"],       ucid, overrides, onEdit);
     populateGrid("grp-network",   cfg, GROUPS["grp-network"],   ucid, overrides, onEdit);
@@ -456,18 +453,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tzCurrentEl.textContent = Services.prefs.getStringPref(tzPref(ucid), "") || "UTC (default)";
     tzSelectEl.value = Services.prefs.getStringPref(tzPref(ucid), "");
-    const idx = Services.prefs.getIntPref(personaIndexPref(ucid), -1);
-    personaPickerEl.value = String(idx);
 
     // Show "N overrides active" indicator + clear-all button.
     const overrideCount = Object.keys(overrides).length;
     const indicator = document.getElementById("cfx-override-count");
+    const clearOvBtn = document.getElementById("cfx-clear-overrides");
     if (indicator) {
       indicator.textContent = overrideCount === 0
         ? "No field overrides — every value comes from the persona."
         : `${overrideCount} field override${overrideCount === 1 ? "" : "s"} active.`;
       indicator.dataset.count = String(overrideCount);
     }
+    if (clearOvBtn) clearOvBtn.hidden = overrideCount === 0;
   }
   selectEl.addEventListener("change", refreshContainer);
   refreshContainer();
@@ -483,26 +480,8 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshContainer();
   });
 
-  // Persona override picker. Writes pref + rewrites cloak_cfg so the
-  // new persona's keys take effect for new tabs immediately, not just
-  // at next browser startup.
-  personaPickerEl.addEventListener("change", () => {
-    const ucid = parseInt(selectEl.value, 10) || 0;
-    const idx = parseInt(personaPickerEl.value, 10);
-    if (Number.isNaN(idx) || idx < 0) {
-      Services.prefs.clearUserPref(personaIndexPref(ucid));
-    } else {
-      Services.prefs.setIntPref(personaIndexPref(ucid), idx);
-    }
-    const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
-    if (seed) {
-      Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
-    }
-    refreshContainer();
-  });
-
   // Regenerate persona — same path as SeedSync; ucid forwarded so any
-  // persona_index override is honored.
+  // per-container override prefs are honored.
   regenBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const seed = randomSeedB64();
