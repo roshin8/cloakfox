@@ -276,10 +276,18 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
   v.addEventListener("click", openEdit);
   editBtn.addEventListener("click", openEdit);
 
+  // Edit + reset share one grid cell so a row always contributes
+  // exactly 3 cells. Putting them in separate cells with the reset
+  // hidden via display:none broke alignment because the hidden cell
+  // collapsed and the next row's first cell flowed into column 3.
+  const actions = document.createElement("span");
+  actions.className = "row-actions";
+  actions.appendChild(editBtn);
+  actions.appendChild(resetBtn);
+
   row.appendChild(k);
   row.appendChild(v);
-  row.appendChild(editBtn);
-  row.appendChild(resetBtn);
+  row.appendChild(actions);
   return row;
 }
 

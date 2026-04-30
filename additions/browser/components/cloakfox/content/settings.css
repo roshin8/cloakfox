@@ -321,10 +321,15 @@ main {
 
 .spoof-grid {
   display: grid;
-  grid-template-columns: minmax(180px, max-content) 1fr auto auto;
-  column-gap: 0.85rem;
-  row-gap: 0.32rem;
+  grid-template-columns: minmax(200px, max-content) 1fr auto;
+  column-gap: 0.9rem;
+  row-gap: 0.4rem;
   align-items: center;
+}
+
+.row-actions {
+  display: inline-flex;
+  gap: 0.35rem;
 }
 .spoof-grid + .spoof-grid { margin-top: 0.32rem; }
 
