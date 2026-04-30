@@ -397,8 +397,33 @@ main {
   background: var(--bg-input);
   color: var(--text);
   width: 100%;
+  resize: vertical;
+  line-height: 1.45;
 }
 .row-input:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-bg); }
+textarea.row-input { min-height: 4.5rem; }
+
+/* Disabled save while input hasn't changed — visually muted so the
+ * user knows there's nothing to save yet. */
+.row-save:disabled {
+  background: var(--bg-elev-2);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.row-save:disabled:hover { background: var(--bg-elev-2); }
+
+/* Headline flash: confirms a regen actually fired. The hero panel
+ * pulses its border + a subtle glow when a new persona is sampled. */
+@keyframes hero-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(106, 169, 255, 0.55); }
+  60%  { box-shadow: 0 0 0 14px rgba(106, 169, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(106, 169, 255, 0); }
+}
+.hero.hero-flash {
+  animation: hero-pulse 720ms ease-out;
+}
 
 /* timezone picker row inline */
 .spoof-row.picker-row .v {

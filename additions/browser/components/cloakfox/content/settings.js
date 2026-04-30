@@ -222,6 +222,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
   function openEdit() {
     const existing = (key in overrides) ? overrides[key]
                    : (rawVal ?? "");
+    const initialValue = String(existing);
     let input;
     if (KEY_TYPES[key] === "bool") {
       input = document.createElement("select");
@@ -238,8 +239,15 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
       if (KEY_TYPES[key] === "float") input.step = "any";
       input.value = String(existing);
     } else {
-      input = document.createElement("input");
-      input.type = "text";
+      // Long string values (UA strings, header values, oscpu) don't
+      // fit in a single-line input. Use textarea when the current
+      // value is wider than ~50 chars OR when the key is a known-long
+      // field so the user can see the whole string while editing.
+      const isLong = String(existing).length > 50
+        || /^(headers\.|navigator\.user(Agent|Version)|navigator\.oscpu|webGl:renderer)/.test(key);
+      input = document.createElement(isLong ? "textarea" : "input");
+      if (input.tagName === "INPUT") input.type = "text";
+      else input.rows = Math.min(6, Math.max(2, Math.ceil(String(existing).length / 60)));
       input.value = String(existing);
     }
     input.className = "row-input";
@@ -251,12 +259,21 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     actions.innerHTML = "";
     const save = document.createElement("button");
     save.type = "button"; save.className = "row-save"; save.textContent = "save";
+    save.disabled = true;   // gated until value actually changes
     const cancel = document.createElement("button");
     cancel.type = "button"; cancel.className = "row-cancel"; cancel.textContent = "cancel";
     actions.appendChild(save);
     actions.appendChild(cancel);
 
+    function syncSaveEnabled() {
+      const dirty = input.value !== initialValue;
+      save.disabled = !dirty;
+    }
+    input.addEventListener("input", syncSaveEnabled);
+    input.addEventListener("change", syncSaveEnabled);
+
     save.addEventListener("click", () => {
+      if (save.disabled) return;
       let toSave = input.value;
       if (KEY_TYPES[key] === "bool") {
         if (toSave === "") { clearOverride(ucid, key); }
@@ -270,8 +287,11 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     input.focus();
     if (input.tagName === "INPUT") input.select();
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") save.click();
-      else if (e.key === "Escape") cancel.click();
+      if (e.key === "Enter" && !e.shiftKey && input.tagName !== "TEXTAREA") {
+        e.preventDefault(); save.click();
+      } else if (e.key === "Escape") {
+        cancel.click();
+      }
     });
   }
 
@@ -491,13 +511,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Regenerate persona — same path as SeedSync; ucid forwarded so any
-  // per-container override prefs are honored.
+  // per-container override prefs are honored. Flash the headline on
+  // update so the user has visible confirmation that something changed
+  // (BF samples can be similar at first glance).
   regenBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     const seed = randomSeedB64();
     Services.prefs.setStringPref(masterSeedPref(ucid), seed);
     Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
     refreshContainer();
+    const hero = document.querySelector(".hero");
+    if (hero) {
+      hero.classList.remove("hero-flash");
+      void hero.offsetWidth;   // force reflow so the animation restarts
+      hero.classList.add("hero-flash");
+    }
   });
 
   // Clear — strips seeds, cloak_cfg, timezone, persona override, AND
