@@ -1,8 +1,8 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "Cloakfox",
   "version": "0.6.0",
-  "description": "Tab-aware indicator for the Cloakfox per-container fingerprint isolation engine. All spoofing happens in the browser core; this extension only provides the toolbar popup.",
+  "description": "Tab-aware toolbar popup for Cloakfox per-container fingerprint isolation. Surfaces the active container's persona, lets you regenerate it, and links to the full settings page.",
   "author": "Cloakfox",
   "homepage_url": "https://github.com/roshin8/cloakfox",
   "icons": {
@@ -16,15 +16,15 @@
   ],
   "experiment_apis": {
     "cloakfox": {
-      "schema": "api/cloakfox_api.json",
+      "schema": "experiment-apis/cloakfox.json",
       "parent": {
         "scopes": ["addon_parent"],
-        "script": "api/cloakfox_api.js",
+        "script": "experiment-apis/cloakfox.js",
         "paths": [["cloakfox"]]
       }
     }
   },
-  "action": {
+  "browser_action": {
     "default_icon": {
       "48": "icons/icon-48.png",
       "96": "icons/icon-128.png"
@@ -33,7 +33,7 @@
     "default_popup": "popup/popup.html"
   },
   "commands": {
-    "_execute_action": {
+    "_execute_browser_action": {
       "suggested_key": {
         "default": "Alt+Shift+C",
         "mac": "MacCtrl+Shift+C"
