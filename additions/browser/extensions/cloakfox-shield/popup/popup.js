@@ -142,27 +142,31 @@
   }
 
   // ── Open full settings ────────────────────────────────────────
-  // about:cloakfox can't be opened via browser.tabs.create — its
-  // AboutRedirector flags don't allow extension navigation
-  // ("Illegal URL"). The bridge's openSettings runs in chrome scope
-  // and uses gBrowser.addTab with a system principal, which works.
-  // The C++ flag fix in cpp-first-about-cloakfox.patch is the real
-  // long-term fix; this is the workaround until that ships.
+  // Tries three paths in order:
+  //   1. browser.cloakfox.openSettings (chrome bridge — works once
+  //      the experiment_apis registration succeeds)
+  //   2. browser.tabs.create (works once the AboutRedirector C++
+  //      flag fix lands via CI rebuild)
+  //   3. Clipboard fallback — copy the URL so the user can paste it
+  //      into the URL bar one keystroke away.
   settingsBtn.addEventListener("click", async () => {
+    const url = `about:cloakfox?ucid=${ucid}`;
     try {
       await callBridge("openSettings", { ucid });
       window.close();
       return;
-    } catch (e1) {
-      // Bridge unreachable — fall back to browser.tabs.create which
-      // will produce a clearer error if the C++ flag fix is missing.
-      try {
-        await browser.tabs.create({ url: `about:cloakfox?ucid=${ucid}` });
-        window.close();
-      } catch (e2) {
-        showError("Couldn't open settings (bridge: " + e1.message +
-                  ", direct: " + e2.message + "). Type about:cloakfox in the URL bar.");
-      }
+    } catch (_e1) { /* fall through */ }
+    try {
+      await browser.tabs.create({ url });
+      window.close();
+      return;
+    } catch (_e2) { /* fall through */ }
+    // Last-resort fallback — copy URL + tell the user to paste.
+    try {
+      await navigator.clipboard.writeText(url);
+      showError(`URL copied — paste in URL bar to open settings: ${url}`);
+    } catch (_e3) {
+      showError(`Type ${url} in the URL bar to open settings.`);
     }
   });
 })();
