@@ -370,23 +370,34 @@ main {
   font-weight: 500;
 }
 
-.row-edit, .row-reset, .row-save, .row-cancel {
+/* Buttons-as-values for booleans cycle on click — match the value
+ * pill styling so the affordance reads identically. */
+button.v {
+  font-family: var(--mono);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Tiny × button for resetting an override inline. Only shown when the
+ * row has an override; clicking it clears + reverts to persona. */
+.row-reset-x {
   font-family: var(--sans);
-  font-size: 0.72rem;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: var(--bg-elev-2);
-  color: var(--text-dim);
+  font-size: 0.95rem;
+  line-height: 1;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--warn-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--warn);
   cursor: pointer;
   transition: all 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.row-edit:hover  { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
-.row-reset       { color: var(--warn); border-color: var(--warn-border); }
-.row-reset:hover { background: var(--warn-bg); }
-.row-save  { background: var(--accent); color: white; border-color: var(--accent); }
-.row-save:hover  { background: var(--accent-hover); }
-.row-cancel:hover { background: var(--bg-elev-2); }
+.row-reset-x:hover { background: var(--warn-bg); }
 
 .row-input {
   font-family: var(--mono);

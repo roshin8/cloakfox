@@ -178,10 +178,12 @@ function fmtValue(key, v) {
   return String(v);
 }
 
-// Build an editable row. Each row knows its cloak_cfg key so it can
-// write overrides directly. If the key is in `overrides` (user-set),
-// the row is marked .v-overridden and gets a "× reset" button. Click
-// the value to edit; the input type is chosen by KEY_TYPES[key].
+// Build an editable row. UX:
+//   • Click the VALUE to edit — no separate edit button.
+//   • Text/number inputs auto-save on blur (no save button to click).
+//   • Booleans are inline cycle buttons: click → cycles between
+//     "spoofed (on)" / "off" / "auto (from persona)" with no popup.
+//   • Overridden rows show a small × at the end to reset to persona.
 function makeRow(label, key, cfg, ucid, overrides, onChange) {
   const row = document.createElement("div");
   row.className = "spoof-row dyn";
@@ -189,123 +191,97 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
   const k = document.createElement("span");
   k.className = "k";
   k.textContent = label;
-  k.title = key;  // hover the label to see the canonical cloak_cfg key
+  k.title = key;
 
-  const v = document.createElement("span");
-  v.className = "v";
   const rawVal = cfg ? cfg[key] : undefined;
+  const isBool = KEY_TYPES[key] === "bool";
+
+  const v = document.createElement(isBool ? "button" : "span");
+  v.className = "v";
+  if (isBool) v.type = "button";
   const sval = fmtValue(key, rawVal);
   v.textContent = trunc(sval, 80);
   v.title = String(rawVal ?? sval);
   if (sval === "(not spoofed)") v.classList.add("v-empty");
   if (key in overrides) v.classList.add("v-overridden");
 
-  // Edit pencil — clicking either the value or the pencil opens edit.
-  const editBtn = document.createElement("button");
-  editBtn.type = "button";
-  editBtn.className = "row-edit";
-  editBtn.textContent = "edit";
-  editBtn.title = "Override this value";
+  const actions = document.createElement("span");
+  actions.className = "row-actions";
 
-  const resetBtn = document.createElement("button");
-  resetBtn.type = "button";
-  resetBtn.className = "row-reset";
-  resetBtn.textContent = "reset";
-  resetBtn.title = "Clear override (revert to persona value)";
-  resetBtn.style.display = (key in overrides) ? "" : "none";
-  resetBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    clearOverride(ucid, key);
-    onChange();
-  });
-
-  function openEdit() {
-    const existing = (key in overrides) ? overrides[key]
-                   : (rawVal ?? "");
-    const initialValue = String(existing);
-    let input;
-    if (KEY_TYPES[key] === "bool") {
-      input = document.createElement("select");
-      for (const opt of [["", "(not spoofed — clear override)"],
-                         ["true", "spoofed (on)"], ["false", "off"]]) {
-        const o = document.createElement("option");
-        o.value = opt[0]; o.textContent = opt[1];
-        input.appendChild(o);
-      }
-      input.value = (key in overrides) ? String(overrides[key]) : "";
-    } else if (KEY_TYPES[key] === "int" || KEY_TYPES[key] === "float") {
-      input = document.createElement("input");
-      input.type = "number";
-      if (KEY_TYPES[key] === "float") input.step = "any";
-      input.value = String(existing);
-    } else {
-      // Long string values (UA strings, header values, oscpu) don't
-      // fit in a single-line input. Use textarea when the current
-      // value is wider than ~50 chars OR when the key is a known-long
-      // field so the user can see the whole string while editing.
-      const isLong = String(existing).length > 50
-        || /^(headers\.|navigator\.user(Agent|Version)|navigator\.oscpu|webGl:renderer)/.test(key);
-      input = document.createElement(isLong ? "textarea" : "input");
-      if (input.tagName === "INPUT") input.type = "text";
-      else input.rows = Math.min(6, Math.max(2, Math.ceil(String(existing).length / 60)));
-      input.value = String(existing);
-    }
-    input.className = "row-input";
-
-    // Swap the value cell for the input AND the actions content for
-    // save/cancel — staying within the row's existing 3 grid cells so
-    // the surrounding rows don't reflow.
-    v.replaceWith(input);
-    actions.innerHTML = "";
-    const save = document.createElement("button");
-    save.type = "button"; save.className = "row-save"; save.textContent = "save";
-    save.disabled = true;   // gated until value actually changes
-    const cancel = document.createElement("button");
-    cancel.type = "button"; cancel.className = "row-cancel"; cancel.textContent = "cancel";
-    actions.appendChild(save);
-    actions.appendChild(cancel);
-
-    function syncSaveEnabled() {
-      const dirty = input.value !== initialValue;
-      save.disabled = !dirty;
-    }
-    input.addEventListener("input", syncSaveEnabled);
-    input.addEventListener("change", syncSaveEnabled);
-
-    save.addEventListener("click", () => {
-      if (save.disabled) return;
-      let toSave = input.value;
-      if (KEY_TYPES[key] === "bool") {
-        if (toSave === "") { clearOverride(ucid, key); }
-        else { setOverride(ucid, key, toSave === "true"); }
-      } else {
-        setOverride(ucid, key, toSave);
-      }
+  if (key in overrides) {
+    const resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "row-reset-x";
+    resetBtn.textContent = "×";
+    resetBtn.title = "Reset to persona value";
+    resetBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clearOverride(ucid, key);
       onChange();
     });
-    cancel.addEventListener("click", () => { onChange(); });
+    actions.appendChild(resetBtn);
+  }
+
+  if (isBool) {
+    // Click cycles: spoofed(true) → off(false) → auto(unset) → spoofed
+    v.addEventListener("click", () => {
+      const cur = (key in overrides) ? overrides[key] : (rawVal ? true : (rawVal === false ? false : null));
+      let next;
+      if (cur === true) next = false;
+      else if (cur === false) next = null;
+      else next = true;
+      if (next === null) clearOverride(ucid, key);
+      else setOverride(ucid, key, next);
+      onChange();
+    });
+  } else {
+    v.addEventListener("click", openEditMode);
+  }
+
+  function openEditMode() {
+    const existing = (key in overrides) ? overrides[key] : (rawVal ?? "");
+    const initialValue = String(existing);
+    const isLong = initialValue.length > 50
+      || /^(headers\.|navigator\.user(Agent|Version)|navigator\.oscpu|webGl:renderer)/.test(key);
+    const input = document.createElement(isLong ? "textarea" : "input");
+    if (input.tagName === "INPUT") {
+      input.type = (KEY_TYPES[key] === "int" || KEY_TYPES[key] === "float") ? "number" : "text";
+      if (KEY_TYPES[key] === "float") input.step = "any";
+    } else {
+      input.rows = Math.min(6, Math.max(2, Math.ceil(initialValue.length / 60)));
+    }
+    input.value = initialValue;
+    input.className = "row-input";
+    v.replaceWith(input);
+
+    let committed = false;
+    function commit() {
+      if (committed) return;
+      committed = true;
+      if (input.value !== initialValue) {
+        setOverride(ucid, key, input.value);
+        onChange();
+      } else {
+        onChange();   // re-render to swap input back to value pill
+      }
+    }
+    function cancel() {
+      if (committed) return;
+      committed = true;
+      onChange();
+    }
+
     input.focus();
     if (input.tagName === "INPUT") input.select();
+    input.addEventListener("blur", commit);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey && input.tagName !== "TEXTAREA") {
-        e.preventDefault(); save.click();
+        e.preventDefault(); commit();
       } else if (e.key === "Escape") {
-        cancel.click();
+        e.preventDefault(); cancel();
       }
     });
   }
-
-  v.addEventListener("click", openEdit);
-  editBtn.addEventListener("click", openEdit);
-
-  // Edit + reset share one grid cell so a row always contributes
-  // exactly 3 cells. Putting them in separate cells with the reset
-  // hidden via display:none broke alignment because the hidden cell
-  // collapsed and the next row's first cell flowed into column 3.
-  const actions = document.createElement("span");
-  actions.className = "row-actions";
-  actions.appendChild(editBtn);
-  actions.appendChild(resetBtn);
 
   row.appendChild(k);
   row.appendChild(v);
@@ -340,25 +316,36 @@ function populateFonts(cfg, ucid) {
   }
 }
 
+// Seeds are derived from the master seed (regenerating rolls them all
+// together) so the rows are read-only — render manually instead of
+// going through makeRow's editable path.
 function populateSeeds(cfg, ucid) {
   const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
   const kbd = Services.prefs.getStringPref(keyboardSeedPref(ucid), "");
   const tim = Services.prefs.getStringPref(timingSeedPref(ucid), "");
   const rows = [
-    ["master seed (32 bytes)",     fmtSeed(seedB64)],
-    ["canvas:seed (u32)",          cfg ? cfg["canvas:seed"] : null],
-    ["audio:seed (u32)",           cfg ? cfg["audio:seed"] : null],
-    ["font:seed (u32)",            cfg ? cfg["font:seed"] : null],
-    ["font:spacing_seed (u32)",    cfg ? cfg["font:spacing_seed"] : null],
-    ["math:trig_seed (u32)",       cfg ? cfg["math:trig_seed"] : null],
-    ["keyboard timing seed",       fmtSeed(kbd)],
-    ["setTimeout jitter seed",     fmtSeed(tim)],
+    ["master seed (32 bytes)",  fmtSeed(seedB64)],
+    ["canvas:seed (u32)",       cfg ? cfg["canvas:seed"] : null],
+    ["audio:seed (u32)",        cfg ? cfg["audio:seed"] : null],
+    ["font:seed (u32)",         cfg ? cfg["font:seed"] : null],
+    ["font:spacing_seed (u32)", cfg ? cfg["font:spacing_seed"] : null],
+    ["math:trig_seed (u32)",    cfg ? cfg["math:trig_seed"] : null],
+    ["keyboard timing seed",    fmtSeed(kbd)],
+    ["setTimeout jitter seed",  fmtSeed(tim)],
   ];
   const grid = document.getElementById("grp-seeds");
+  if (!grid) return;
   Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
   for (const [label, value] of rows) {
-    const row = makeRow(label, value);
-    row.classList.add("dyn");
+    const row = document.createElement("div");
+    row.className = "spoof-row dyn";
+    const k = document.createElement("span"); k.className = "k"; k.textContent = label;
+    const v = document.createElement("span"); v.className = "v";
+    const sval = (value === null || value === undefined || value === "") ? "(not set)" : String(value);
+    v.textContent = sval;
+    if (sval === "(not set)") v.classList.add("v-empty");
+    const actions = document.createElement("span"); actions.className = "row-actions";
+    row.appendChild(k); row.appendChild(v); row.appendChild(actions);
     grid.appendChild(row);
   }
 }
@@ -529,19 +516,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Regenerate persona — same path as SeedSync; ucid forwarded so any
   // per-container override prefs are honored. Flash the headline on
-  // update so the user has visible confirmation that something changed
-  // (BF samples can be similar at first glance).
+  // update so the user has visible confirmation. Errors surface via
+  // Cu.reportError so a silent build failure doesn't look like the
+  // button does nothing.
   regenBtn.addEventListener("click", () => {
-    const ucid = parseInt(selectEl.value, 10) || 0;
-    const seed = randomSeedB64();
-    Services.prefs.setStringPref(masterSeedPref(ucid), seed);
-    Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
-    refreshContainer();
-    const hero = document.querySelector(".hero");
-    if (hero) {
-      hero.classList.remove("hero-flash");
-      void hero.offsetWidth;   // force reflow so the animation restarts
-      hero.classList.add("hero-flash");
+    try {
+      const ucid = parseInt(selectEl.value, 10) || 0;
+      const seed = randomSeedB64();
+      Services.prefs.setStringPref(masterSeedPref(ucid), seed);
+      Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
+      refreshContainer();
+      const hero = document.querySelector(".hero");
+      if (hero) {
+        hero.classList.remove("hero-flash");
+        void hero.offsetWidth;
+        hero.classList.add("hero-flash");
+      }
+    } catch (e) {
+      Cu.reportError("Cloakfox regenerate failed: " + e.message + "\n" + e.stack);
+      const note = document.createElement("p");
+      note.className = "card-note";
+      note.style.color = "var(--danger)";
+      note.textContent = "Regenerate failed: " + e.message + " (see Browser Console)";
+      regenBtn.parentElement.appendChild(note);
     }
   });
 
