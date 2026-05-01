@@ -9,6 +9,38 @@
 
 "use strict";
 
+// btoa/atob aren't globals in experiment-api parent sandboxes.
+// Inline minimal implementations.
+const B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+function bytesToB64(bytes) {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i], b = bytes[i+1] ?? 0, c = bytes[i+2] ?? 0;
+    const t = (a << 16) | (b << 8) | c;
+    out += B64_CHARS[(t >> 18) & 63];
+    out += B64_CHARS[(t >> 12) & 63];
+    out += i+1 < bytes.length ? B64_CHARS[(t >> 6) & 63] : "=";
+    out += i+2 < bytes.length ? B64_CHARS[t & 63] : "=";
+  }
+  return out;
+}
+function b64ToBytes(b64) {
+  const clean = b64.replace(/=+$/, "");
+  const out = new Uint8Array(Math.floor(clean.length * 3 / 4));
+  let bits = 0, value = 0, idx = 0;
+  for (const ch of clean) {
+    const v = B64_CHARS.indexOf(ch);
+    if (v < 0) continue;
+    value = (value << 6) | v;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[idx++] = (value >> bits) & 0xff;
+    }
+  }
+  return out.subarray(0, idx);
+}
+
 const PREF_ENABLED = "cloakfox.enabled";
 
 const masterSeedPref = (ucid) => `cloakfox.container.${ucid}.math_seed`;
@@ -16,10 +48,6 @@ const cloakCfgPref   = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
 
 function randomSeedB64() {
   const bytes = new Uint8Array(32);
-  // crypto in chrome scope is the WebCrypto subtle API. ChromeUtils
-  // exposes generateRandomBytes via the underlying nsIRandomGenerator.
-  for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-  // Mix in real cryptographic entropy if available.
   try {
     if (typeof crypto !== "undefined" && crypto.getRandomValues) {
       crypto.getRandomValues(bytes);
@@ -29,21 +57,24 @@ function randomSeedB64() {
       const out = rng.generateRandomBytes(32);
       for (let i = 0; i < 32; i++) bytes[i] = out[i];
     }
-  } catch (_e) { /* fall back to Math.random — only used if both APIs missing */ }
-  return btoa(String.fromCharCode(...bytes));
+  } catch (_e) {
+    // Last-resort: weak Math.random — chrome scope should always have
+    // one of the above, but don't crash if neither materializes.
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return bytesToB64(bytes);
 }
 
 function u32(seedB64, i) {
-  const bin = atob(seedB64);
-  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
-  return new DataView(bytes.buffer).getUint32(i * 4);
+  const bytes = b64ToBytes(seedB64);
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(i * 4);
 }
 
 function shortSeedTag(seedB64) {
   if (!seedB64) return "";
   try {
-    const bin = atob(seedB64);
-    return "#" + [0,1,2].map(i => bin.charCodeAt(i).toString(16).padStart(2,"0")).join("");
+    const bytes = b64ToBytes(seedB64);
+    return "#" + [0,1,2].map(i => bytes[i].toString(16).padStart(2,"0")).join("");
   } catch (_e) { return ""; }
 }
 
