@@ -39,17 +39,14 @@ additions/browser/components/cloakfox/ — no other Firefox files touched.
      'downloads',
 --- a/browser/components/about/AboutRedirector.cpp
 +++ b/browser/components/about/AboutRedirector.cpp
-@@ -63,6 +63,11 @@
+@@ -63,7 +63,12 @@
      {"framecrashed", "chrome://browser/content/aboutFrameCrashed.html",
       nsIAboutModule::URI_SAFE_FOR_UNTRUSTED_CONTENT |
           nsIAboutModule::URI_CAN_LOAD_IN_CHILD |
           nsIAboutModule::HIDE_FROM_ABOUTABOUT},
-+    // Cloakfox: native settings page. IS_SECURE_CHROME_UI grants the
-+    // page Services.prefs write authority — needed so per-container
-+    // seeds can be persisted from the UI. The page loads in the parent
-+    // process; URI_MUST_LOAD_IN_CHILD would force a child process and
-+    // break chrome-priv access. Extension navigation is bridged via
-+    // the cloakfox.openSettings WebExtensions API (chrome scope).
++    // Cloakfox: native settings page. ALLOW_SCRIPT lets the page run
++    // its scripts; IS_SECURE_CHROME_UI grants chrome-priv so
++    // Services.prefs is callable. Same flag pair as about:preferences.
 +    {"cloakfox", "chrome://browser/content/cloakfox/settings.html",
 +     nsIAboutModule::ALLOW_SCRIPT | nsIAboutModule::IS_SECURE_CHROME_UI},
      {"logins", "chrome://browser/content/aboutlogins/aboutLogins.html",
