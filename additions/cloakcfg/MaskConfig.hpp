@@ -91,7 +91,7 @@ inline bool HasKey(const std::string& key, const nlohmann::json& data) {
   return data.contains(key);
 }
 
-inline std::optional<std::string> GetString(const std::string& key) {
+inline std::optional<std::string> GetString(const std::string& key, uint32_t userContextId = 0) {
   const auto& data = GetJson();
   if (!HasKey(key, data)) return std::nullopt;
   return data[key].get<std::string>();
@@ -117,7 +117,7 @@ inline std::vector<std::string> GetStringListLower(const std::string& key) {
 }
 
 template <typename T>
-inline std::optional<T> GetUintImpl(const std::string& key) {
+inline std::optional<T> GetUintImpl(const std::string& key, uint32_t userContextId = 0) {
   const auto& data = GetJson();
   if (!HasKey(key, data)) return std::nullopt;
   if (data[key].is_number_unsigned()) return data[key].get<T>();
@@ -130,8 +130,8 @@ inline std::optional<uint64_t> GetUint64(const std::string& key) {
   return GetUintImpl<uint64_t>(key);
 }
 
-inline std::optional<uint32_t> GetUint32(const std::string& key) {
-  return GetUintImpl<uint32_t>(key);
+inline std::optional<uint32_t> GetUint32(const std::string& key, uint32_t userContextId = 0) {
+  return GetUintImpl<uint32_t>(key, userContextId);
 }
 
 inline std::optional<int32_t> GetInt32(const std::string& key) {

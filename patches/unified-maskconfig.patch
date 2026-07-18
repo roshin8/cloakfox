@@ -23,7 +23,7 @@
 -  if (auto val = MaskConfig::GetUint32("audio:seed")) {
 -    return val.value();
 -  }
-+  if (auto val = MaskConfig::GetUint32("audio:seed")) return val.value();
++  if (auto val = MaskConfig::GetUint32("audio:seed", aUserContextId)) return val.value();
    return 0;
  }
  
@@ -50,7 +50,7 @@
 -  if (auto val = MaskConfig::GetUint32("canvas:seed")) {
 -    return val.value();
 -  }
-+  if (auto val = MaskConfig::GetUint32("canvas:seed")) return val.value();
++  if (auto val = MaskConfig::GetUint32("canvas:seed", aId)) return val.value();
    return 0;
  }
  
@@ -80,7 +80,7 @@
 -  if (auto val = MaskConfig::GetUint32("fonts:spacing_seed")) {
 -    return val.value();
 -  }
-+  if (auto val = MaskConfig::GetUint32("fonts:spacing_seed")) return val.value();
++  if (auto val = MaskConfig::GetUint32("fonts:spacing_seed", userContextId)) return val.value();
    return 0;
  }
  
@@ -89,7 +89,7 @@
 -  nsString key = KeyForUserContext(userContextId);
 -  uint32_t seed = 0;
 -  return RoverfoxStorageManager::GetUint(key, seed);
-+  return MaskConfig::GetUint32("fonts:spacing_seed").has_value();
++  return MaskConfig::GetUint32("fonts:spacing_seed", userContextId).has_value();
  }
  
  /* static */ bool
@@ -125,8 +125,8 @@
    uint32_t width = 0, height = 0;
 -  RoverfoxStorageManager::GetUint(widthKey, width);
 -  RoverfoxStorageManager::GetUint(heightKey, height);
-+  if (auto w = MaskConfig::GetUint32("screen.width")) width = w.value();
-+  if (auto h = MaskConfig::GetUint32("screen.height")) height = h.value();
++  if (auto w = MaskConfig::GetUint32("screen.width", aUserContextId)) width = w.value();
++  if (auto h = MaskConfig::GetUint32("screen.height", aUserContextId)) height = h.value();
  
    if (width > 0 && height > 0) {
      *aWidth = static_cast<int32_t>(width);
@@ -147,7 +147,7 @@
 -  uint32_t depth = 0;
 -  RoverfoxStorageManager::GetUint(key, depth);
 -  return static_cast<int32_t>(depth);
-+  if (auto d = MaskConfig::GetUint32("screen.colorDepth")) return static_cast<int32_t>(d.value());
++  if (auto d = MaskConfig::GetUint32("screen.colorDepth", aUserContextId)) return static_cast<int32_t>(d.value());
 +  return 0;
  }
  
@@ -176,7 +176,7 @@
 -  nsAutoString key;
 -  key.AppendPrintf("webgl_vendor_%u", aId);
 -  return RoverfoxStorageManager::GetString(key, aOut);
-+  if (auto val = MaskConfig::GetString("webGl:vendor")) {
++  if (auto val = MaskConfig::GetString("webGl:vendor", aId)) {
 +    aOut = NS_ConvertUTF8toUTF16(val.value().c_str());
 +    return true;
 +  }
@@ -195,7 +195,7 @@
 -  nsAutoString key;
 -  key.AppendPrintf("webgl_renderer_%u", aId);
 -  return RoverfoxStorageManager::GetString(key, aOut);
-+  if (auto val = MaskConfig::GetString("webGl:renderer")) {
++  if (auto val = MaskConfig::GetString("webGl:renderer", aId)) {
 +    aOut = NS_ConvertUTF8toUTF16(val.value().c_str());
 +    return true;
 +  }
@@ -231,7 +231,7 @@
  WebRTCIPManager::GetIPv4(uint32_t userContextId, nsAString& outIPv4) {
 -  nsString key = IPv4KeyForUserContext(userContextId);
 -  return RoverfoxStorageManager::GetString(key, outIPv4);
-+  if (auto val = MaskConfig::GetString("webrtc:ipv4")) {
++  if (auto val = MaskConfig::GetString("webrtc:ipv4", userContextId)) {
 +    outIPv4 = NS_ConvertUTF8toUTF16(val.value().c_str());
 +    return true;
 +  }
@@ -254,7 +254,7 @@
  WebRTCIPManager::GetIPv6(uint32_t userContextId, nsAString& outIPv6) {
 -  nsString key = IPv6KeyForUserContext(userContextId);
 -  return RoverfoxStorageManager::GetString(key, outIPv6);
-+  if (auto val = MaskConfig::GetString("webrtc:ipv6")) {
++  if (auto val = MaskConfig::GetString("webrtc:ipv6", userContextId)) {
 +    outIPv6 = NS_ConvertUTF8toUTF16(val.value().c_str());
 +    return true;
 +  }

@@ -69,9 +69,9 @@
    return data.contains(key);
  }
  
- inline std::optional<std::string> GetString(const std::string& key) {
-+  auto ctx = GetContextOverlay();
-+  if (HasKey(key, ctx)) return ctx[key].get<std::string>();
+ inline std::optional<std::string> GetString(const std::string& key, uint32_t userContextId = 0) {
++  auto ctx = GetContextOverlay(userContextId);
++  if (HasKey(key, ctx) && ctx[key].is_string()) return ctx[key].get<std::string>();
    const auto& data = GetJson();
    if (!HasKey(key, data)) return std::nullopt;
    return data[key].get<std::string>();
@@ -83,7 +83,7 @@
 -  if (!HasKey(key, data)) return {};
 -  for (const auto& item : data[key]) {
 +  auto ctx = GetContextOverlay();
-+  const auto& src = HasKey(key, ctx) ? ctx : GetJson();
++  const auto& src = (HasKey(key, ctx) && ctx[key].is_array()) ? ctx : GetJson();
 +  if (!HasKey(key, src)) return {};
 +  for (const auto& item : src[key]) {
      result.push_back(item.get<std::string>());
@@ -92,8 +92,8 @@
 @@ -118,6 +133,8 @@
  
  template <typename T>
- inline std::optional<T> GetUintImpl(const std::string& key) {
-+  auto ctx = GetContextOverlay();
+ inline std::optional<T> GetUintImpl(const std::string& key, uint32_t userContextId = 0) {
++  auto ctx = GetContextOverlay(userContextId);
 +  if (HasKey(key, ctx) && ctx[key].is_number_unsigned()) return ctx[key].get<T>();
    const auto& data = GetJson();
    if (!HasKey(key, data)) return std::nullopt;
