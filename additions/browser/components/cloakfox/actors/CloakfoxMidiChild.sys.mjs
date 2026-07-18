@@ -31,6 +31,6 @@ export class CloakfoxMidiChild extends JSWindowActorChild {
       return pageWin.Promise.reject(
         new pageWin.DOMException("Permission denied", "NotAllowedError")
       );
-    }, pageWin, { defineAs: "requestMIDIAccess" });
+    }, pageWin);
   }
 }

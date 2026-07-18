@@ -90,12 +90,38 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
       lastEventTime = now;
     };
 
+    // Registry mapping an original page listener to the wrapper we
+    // actually registered, so removeEventListener can find and remove
+    // it. Keyed per (target, type, capture) to mirror native semantics:
+    // the same listener on different targets — or with different capture
+    // flags — is a distinct registration. WeakMaps keep this from
+    // retaining targets/listeners past their lifetime.
+    const perTarget = new WeakMap();
+    const captureFlag = (options) =>
+      (typeof options === "object" && options !== null)
+        ? !!options.capture
+        : !!options;
+    const wrapperMapFor = (target, type, capture) => {
+      let byKey = perTarget.get(target);
+      if (!byKey) { byKey = new Map(); perTarget.set(target, byKey); }
+      const key = `${type}|${capture}`;
+      let wm = byKey.get(key);
+      if (!wm) { wm = new WeakMap(); byKey.set(key, wm); }
+      return wm;
+    };
+
     // Patch EventTarget.prototype.addEventListener via exportFunction
     // so the replacement stringifies as native code. Wrap the page's
     // listener with our normalizer only if it's a keyboard event.
     const origAdd = pageWin.EventTarget.prototype.addEventListener;
     const wrapped = Cu.exportFunction(function (type, listener, options) {
       if (KEY_EVENTS.has(String(type)) && typeof listener === "function") {
+        const capture = captureFlag(options);
+        const wm = wrapperMapFor(this, String(type), capture);
+        // Mirror native dedup: adding an identical (target, type,
+        // listener, capture) registration is a no-op, so don't stack a
+        // second wrapper.
+        if (wm.has(listener)) return undefined;
         const origListener = listener;
         // New listener function, exported back into the page
         // compartment so it appears native from the page's POV.
@@ -103,15 +129,34 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
           normalize(event);
           return origListener.apply(this, arguments);
         }, pageWin);
+        wm.set(listener, newListener);
         return origAdd.call(this, type, newListener, options);
       }
       return origAdd.call(this, type, listener, options);
-    }, pageWin, { defineAs: "addEventListener" });
+    }, pageWin);
+
+    // Patch removeEventListener to unregister the wrapper we swapped in.
+    // Without this the native remove can't match our wrapper, so key
+    // listeners leak and identity-dedup breaks.
+    const origRemove = pageWin.EventTarget.prototype.removeEventListener;
+    const wrappedRemove = Cu.exportFunction(function (type, listener, options) {
+      if (KEY_EVENTS.has(String(type)) && typeof listener === "function") {
+        const capture = captureFlag(options);
+        const wm = wrapperMapFor(this, String(type), capture);
+        const newListener = wm.get(listener);
+        if (newListener) {
+          wm.delete(listener);
+          return origRemove.call(this, type, newListener, options);
+        }
+      }
+      return origRemove.call(this, type, listener, options);
+    }, pageWin);
 
     // Known limitation (same as CloakfoxMath): descriptor flags on
     // pageWin.EventTarget.prototype don't fully lock across the Xray
     // boundary. Setting wrapped as the property value still works;
     // descriptor-probe detection is documented as future work.
     pageWin.EventTarget.prototype.addEventListener = wrapped;
+    pageWin.EventTarget.prototype.removeEventListener = wrappedRemove;
   }
 }

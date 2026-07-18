@@ -31,12 +31,12 @@ export class CloakfoxGamepadChild extends JSWindowActorChild {
     if (typeof pageWin.navigator?.getGamepads !== "function") return;
 
     // Return a 4-slot array of nulls, matching the standard "no
-    // gamepad connected" shape. Must be cloneInto'd so the page
-    // sees a page-compartment array, not an Xray-wrapped chrome one.
-    const emptyGamepads = Cu.cloneInto([null, null, null, null], pageWin);
-
+    // gamepad connected" shape. Real getGamepads() returns a fresh
+    // snapshot each call, so clone a NEW page-compartment array per
+    // invocation rather than sharing one mutable reference (a page
+    // could otherwise mutate the shared array and observe it later).
     pageWin.navigator.getGamepads = Cu.exportFunction(function () {
-      return emptyGamepads;
-    }, pageWin, { defineAs: "getGamepads" });
+      return Cu.cloneInto([null, null, null, null], pageWin);
+    }, pageWin);
   }
 }

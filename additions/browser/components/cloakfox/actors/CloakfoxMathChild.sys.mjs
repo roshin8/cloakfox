@@ -192,9 +192,23 @@ export class CloakfoxMathChild extends JSWindowActorChild {
       const wrapped = Cu.exportFunction(function (...args) {
         const r = orig.call(origMath, ...args);
         return Number.isFinite(r) && !Number.isInteger(r) ? r + noise(r) : r;
-      }, pageWin, { defineAs: fn });
+      }, pageWin);
       spoofedMath[fn] = wrapped;
     }
+
+    // Restore the [object Math] brand. cloneInto({}) + copying own
+    // property names omits Symbol.toStringTag, so without this
+    // Object.prototype.toString.call(Math) would read "[object Object]"
+    // — a tamper tell. spoofedMath lives in the page compartment, so
+    // define the tag through a waived Xray to match native.
+    try {
+      Reflect.defineProperty(Cu.waiveXrays(spoofedMath), Symbol.toStringTag, {
+        value: "Math",
+        writable: false,
+        enumerable: false,
+        configurable: true,
+      });
+    } catch (_e) { /* best effort — brand restore is defense in depth */ }
 
     pageWin.Math = spoofedMath;
   }

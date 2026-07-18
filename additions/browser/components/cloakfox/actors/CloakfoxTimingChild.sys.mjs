@@ -98,11 +98,15 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
     // Firefox's underlying 1ms quantization (privacy.reduceTimerPrecision).
     //
     // Why deterministic per bucket: performance.now is required by spec
-    // to be monotonic-non-decreasing. If we returned random jitter on
-    // every call, two consecutive calls in the same 1ms bucket could
-    // go backwards. Using a hash of the bucket id ensures both calls
-    // in the same bucket return the same jittered value, and adjacent
-    // buckets always advance by ≥1.0 - 0.999 = 0.001ms.
+    // to be monotonic-non-decreasing. Using a hash of the bucket id
+    // makes repeated calls in the same 1ms bucket return the same
+    // jittered value. That alone only preserves monotonicity when the
+    // raw reading is whole-ms (privacy.reduceTimerPrecision ON). When
+    // that pref is OFF the raw reading is sub-ms, so a high-jitter
+    // bucket followed by a low-jitter bucket could go backwards across
+    // a bucket boundary. To guarantee non-decreasing output regardless
+    // of the pref, we additionally clamp each return to be ≥ the last
+    // value we returned (tracked in the closure below).
     //
     // Default ON. Power users wanting visibly Tor-style coarse precision
     // (the "I'm a privacy browser" signal as deterrent) can flip
@@ -114,9 +118,15 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
         const x = (Math.imul(ms | 0, 2654435761) ^ 0xdeadbeef) >>> 0;
         return (x % 1000) / 1000;  // 0..0.999
       };
+      let lastReturned = -Infinity;
       pageWin.performance.now = Cu.exportFunction(function () {
         const orig = origPerfNow.call(this);
-        return orig + bucketJitter(orig);
+        let val = orig + bucketJitter(orig);
+        // Clamp to keep the sequence monotonically non-decreasing even
+        // when the raw reading is sub-ms (reduceTimerPrecision OFF).
+        if (val < lastReturned) val = lastReturned;
+        lastReturned = val;
+        return val;
       }, pageWin.performance, { defineAs: "now" });
     }
   }

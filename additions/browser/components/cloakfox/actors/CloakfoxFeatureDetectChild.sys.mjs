@@ -51,7 +51,7 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
     if (typeof pageWin.navigator?.javaEnabled === "function") {
       pageWin.navigator.javaEnabled = Cu.exportFunction(function () {
         return false;
-      }, pageWin, { defineAs: "javaEnabled" });
+      }, pageWin);
     }
   }
 }
