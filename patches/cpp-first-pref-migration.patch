@@ -26,7 +26,7 @@ them), then seed-sync, then WebRTC sync (async, doesn't block).
 
 --- a/browser/components/BrowserGlue.sys.mjs
 +++ b/browser/components/BrowserGlue.sys.mjs
-@@ -382,5 +382,40 @@
+@@ -382,5 +382,42 @@
 
    _beforeUIStartup: function BG__beforeUIStartup() {
 +    // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
