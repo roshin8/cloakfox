@@ -72,12 +72,17 @@
   // the extension's own background, which doesn't help — we need a
   // privileged bridge. Use browser.runtime.sendNativeMessage if
   // available, else fall back to the deep-link only.
-  async function callBridge(action, payload = {}) {
+  async function callBridge(action, payload) {
     // Try via runtime message to "experiments:cloakfox" — the
     // CloakfoxExperiment WebExtensions API (registered in manifest
     // experimental_apis) exposes browser.cloakfox.* methods.
     if (browser.cloakfox && typeof browser.cloakfox[action] === "function") {
-      return await browser.cloakfox[action](payload);
+      // Forward no argument when the caller passes no payload, so
+      // zero-param methods (e.g. getEnabled, schema "parameters": [])
+      // don't receive an unexpected {} and fail schema validation.
+      return payload === undefined
+        ? await browser.cloakfox[action]()
+        : await browser.cloakfox[action](payload);
     }
     throw new Error("Cloakfox bridge unavailable");
   }

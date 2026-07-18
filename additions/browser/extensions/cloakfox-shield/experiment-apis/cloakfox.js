@@ -86,6 +86,15 @@ function buildCloakCfg(seedB64, ucid) {
   const { fillPersonaKeys } = ChromeUtils.importESModule(
     "resource:///modules/CloakfoxPersonas.sys.mjs"
   );
+  // Override typing is sourced from CloakfoxOverrides (KEY_TYPES) —
+  // do NOT re-derive types from the pref storage type. Float override
+  // keys (e.g. geolocation:latitude, window.devicePixelRatio) are
+  // deliberately stored as STRING prefs; applyOverrides parses them
+  // back to JSON numbers via KEY_TYPES so the C++ consumer receives
+  // numbers, not quoted strings. int/bool/string keep their types.
+  const { applyOverrides } = ChromeUtils.importESModule(
+    "resource:///modules/CloakfoxOverrides.sys.mjs"
+  );
   const base = {
     "canvas:seed": u32(seedB64, 0),
     "audio:seed":  u32(seedB64, 1),
@@ -94,17 +103,7 @@ function buildCloakCfg(seedB64, ucid) {
     "math:trig_seed":    u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   };
-  const branch = Services.prefs.getBranch(`cloakfox.container.${ucid}.override.`);
-  for (const key of branch.getChildList("")) {
-    const fullName = `cloakfox.container.${ucid}.override.${key}`;
-    try {
-      const t = Services.prefs.getPrefType(fullName);
-      if (t === Services.prefs.PREF_INT)       base[key] = Services.prefs.getIntPref(fullName);
-      else if (t === Services.prefs.PREF_BOOL) base[key] = Services.prefs.getBoolPref(fullName);
-      else                                     base[key] = Services.prefs.getStringPref(fullName);
-    } catch (_e) { /* skip malformed */ }
-  }
-  return JSON.stringify(base);
+  return JSON.stringify(applyOverrides(ucid, base));
 }
 
 // Wrap a method to surface real errors to the popup. WebExtensions
@@ -154,8 +153,12 @@ this.cloakfox = class extends ExtensionAPI {
         regeneratePersona: wrap(async ({ ucid }) => {
           const u = parseInt(ucid, 10) || 0;
           const seed = randomSeedB64();
+          // Build cfg BEFORE writing any pref: buildCloakCfg does a lazy
+          // importESModule that can throw. If it fails, write neither pref
+          // so the master seed and cloak_cfg can't drift out of sync.
+          const cfg = buildCloakCfg(seed, u);
           Services.prefs.setStringPref(masterSeedPref(u), seed);
-          Services.prefs.setStringPref(cloakCfgPref(u), buildCloakCfg(seed, u));
+          Services.prefs.setStringPref(cloakCfgPref(u), cfg);
           return { ucid: u, tag: shortSeedTag(seed) };
         }),
 
