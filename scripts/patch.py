@@ -144,6 +144,18 @@ class Patcher:
         for rej in rejects:
             os.remove(rej)
 
+        # A return code >= 2 means patch hit serious trouble (malformed hunk
+        # header, missing target file) and aborted WITHOUT writing a .rej file,
+        # so the reject scan above misses it entirely. Surface it as a failure
+        # so a broken patch can't slip through as success. (rc 1 == some hunks
+        # rejected, already handled via .rej; rc 1 with no .rej is the
+        # --forward "already applied" skip, which is not an error.)
+        if result.returncode >= 2:
+            rejects.append(
+                f'patch exited {result.returncode} '
+                '(malformed patch or missing target file)'
+            )
+
         return rejects
 
     def _update_mozconfig(self):
