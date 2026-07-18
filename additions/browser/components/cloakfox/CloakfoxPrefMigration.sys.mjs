@@ -65,10 +65,15 @@ export function runCloakfoxPrefMigration() {
         }
       } catch (_e) { /* skip individual key on error */ }
     }
-  } finally {
-    // Mark done whether or not we migrated anything — prevents the
-    // whole scan from re-running on every startup.
+    // Only mark done on the SUCCESS path — after the scan completes
+    // without throwing. If enumerating roverfox.s.* threw transiently,
+    // we must NOT set the flag, or migration would be permanently
+    // recorded as complete having migrated nothing; leaving it unset
+    // lets the migration retry on the next launch.
     Services.prefs.setBoolPref(MIGRATION_DONE_PREF, true);
+  } catch (e) {
+    console.error("Cloakfox pref migration failed; will retry next launch", e);
+    return { migrated, skipped: false, failed: true };
   }
 
   return { migrated, skipped: false };

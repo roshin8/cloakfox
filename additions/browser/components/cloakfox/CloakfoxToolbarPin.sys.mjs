@@ -37,9 +37,17 @@ export function ensureCloakfoxPinned() {
   // The widget may not exist yet if the extension hasn't finished
   // loading. CustomizableUI.addListener fires onWidgetAdded for any
   // widget — we listen until ours appears, then place it.
+  //
+  // Returns true on any *terminal* outcome (placed, or already placed),
+  // false only when the widget isn't registered yet and we should keep
+  // waiting. Terminal outcomes set PINNED_PREF so we never re-run.
   const tryPin = () => {
-    const placement = CustomizableUI.getPlacementOfWidget(wid);
-    if (placement) return false;   // already placed (user moved it)
+    // Already has a placement (user moved it, or a prior run pinned it):
+    // treat as done — record it and stop, don't leave the pref unset.
+    if (CustomizableUI.getPlacementOfWidget(wid)) {
+      Services.prefs.setBoolPref(PINNED_PREF, true);
+      return true;
+    }
     try {
       CustomizableUI.addWidgetToArea(wid, CustomizableUI.AREA_NAVBAR);
       Services.prefs.setBoolPref(PINNED_PREF, true);
@@ -54,6 +62,8 @@ export function ensureCloakfoxPinned() {
   const listener = {
     onWidgetAdded(addedId) {
       if (addedId !== wid) return;
+      // Remove the listener on every terminal outcome so it can't leak
+      // for the session; only a not-yet-registered widget keeps it live.
       if (tryPin()) {
         CustomizableUI.removeListener(listener);
       }

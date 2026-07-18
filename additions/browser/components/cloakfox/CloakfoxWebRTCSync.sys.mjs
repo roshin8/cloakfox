@@ -50,6 +50,28 @@ const { setTimeout, clearTimeout } = ChromeUtils.importESModule(
 const SHARED_KEY_V4 = "cloakfox-public-ipv4";
 const SHARED_KEY_V6 = "cloakfox-public-ipv6";
 
+// Gate the whole sync on the same pref the CloakfoxWebRTCChild actor
+// consumes (default false). No IP-echo fetch should ever fire while
+// spoofing is disabled.
+const ENABLED_PREF = "cloakfox.enabled";
+
+// Monotonic generation counter for overlapping-refresh races. Each
+// refresh captures the current value; only the latest in-flight refresh
+// is allowed to publish, so a slow stale fetch can't clobber a fresher
+// one. Plain incrementing integer — never Date.now().
+let refreshGeneration = 0;
+
+// Whether the link observers are currently registered / sync is active.
+let syncStarted = false;
+
+function isEnabled() {
+  try {
+    return Services.prefs.getBoolPref(ENABLED_PREF, false);
+  } catch (_e) {
+    return false;
+  }
+}
+
 // Separate endpoints per family. api.ipify.org / icanhazip.com both
 // auto-pick whichever family the request came over; api64.ipify.org
 // and v6.ident.me are IPv6-preferring. We hit both to cover dual-
@@ -92,22 +114,47 @@ async function fetchFromAny(services, validator) {
 }
 
 function publish(key, ip) {
+  // Only overwrite on a successful fetch. A null/failed fetch (offline,
+  // VPN reconnect gap) must NOT delete the last-known-good value — doing
+  // so would let pages read the real IP in the gap. Keep the previous
+  // value in sharedData until a fresh good one replaces it.
+  if (!ip) return;
   try {
-    if (ip) {
-      Services.ppmm.sharedData.set(key, ip);
-    } else {
-      Services.ppmm.sharedData.delete(key);
-    }
+    Services.ppmm.sharedData.set(key, ip);
+    Services.ppmm.sharedData.flush();
+  } catch (_e) { /* sharedData may not be available pre-init */ }
+}
+
+// Explicitly drop published keys when sync is turned off, so a disabled
+// browser doesn't keep advertising a stale spoof IP to content.
+function clearPublished() {
+  try {
+    Services.ppmm.sharedData.delete(SHARED_KEY_V4);
+    Services.ppmm.sharedData.delete(SHARED_KEY_V6);
     Services.ppmm.sharedData.flush();
   } catch (_e) { /* sharedData may not be available pre-init */ }
 }
 
 async function refreshPublicIP() {
+  // Never fetch while spoofing is disabled — the fetch itself is the
+  // third-party IP beacon we're gating.
+  if (!isEnabled()) return;
+
+  // Capture our generation before awaiting. If another refresh starts
+  // while this one is in flight, refreshGeneration moves past `gen` and
+  // we drop this (now stale) result rather than let it clobber a fresher
+  // publish.
+  const gen = ++refreshGeneration;
+
   // Fetch both families in parallel — they're independent.
   const [v4, v6] = await Promise.all([
     fetchFromAny(IPV4_SERVICES, IPV4_RE),
     fetchFromAny(IPV6_SERVICES, IPV6_RE),
   ]);
+
+  // A newer refresh superseded us — discard this result.
+  if (gen !== refreshGeneration) return;
+
   publish(SHARED_KEY_V4, v4);
   publish(SHARED_KEY_V6, v6);
 }
@@ -123,7 +170,22 @@ const linkObserver = {
   },
 };
 
-export function initCloakfoxWebRTCSync() {
+// React to the user toggling cloakfox.enabled at runtime: start sync
+// when enabled, stop and clear published keys when disabled.
+const enabledObserver = {
+  observe(_subject, topic, data) {
+    if (topic !== "nsPref:changed" || data !== ENABLED_PREF) return;
+    if (isEnabled()) {
+      startSync();
+    } else {
+      stopSync();
+    }
+  },
+};
+
+function startSync() {
+  if (syncStarted) return;
+  syncStarted = true;
   // Kick off initial detection asynchronously. The first page load
   // after launch may race ahead of this fetch and miss the spoof —
   // acceptable, since the second load and onward see the cached
@@ -133,4 +195,21 @@ export function initCloakfoxWebRTCSync() {
   refreshPublicIP();
   Services.obs.addObserver(linkObserver, "network:link-status-changed");
   Services.obs.addObserver(linkObserver, "network:offline-status-changed");
+}
+
+function stopSync() {
+  if (!syncStarted) return;
+  syncStarted = false;
+  Services.obs.removeObserver(linkObserver, "network:link-status-changed");
+  Services.obs.removeObserver(linkObserver, "network:offline-status-changed");
+  clearPublished();
+}
+
+export function initCloakfoxWebRTCSync() {
+  // Observe the enable pref so a later toggle can start/stop sync.
+  Services.prefs.addObserver(ENABLED_PREF, enabledObserver);
+  // Do nothing more — no fetch, no link observers — while disabled.
+  if (isEnabled()) {
+    startSync();
+  }
 }

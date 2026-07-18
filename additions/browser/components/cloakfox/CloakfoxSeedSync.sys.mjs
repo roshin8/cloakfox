@@ -28,7 +28,13 @@ import { applyOverrides } from "resource:///modules/CloakfoxOverrides.sys.mjs";
  */
 
 const SHARED_KEY = "cloakfox-seeds";
-const PREF_BRANCHES = ["cloakfox.container.", "cloakfox."];
+// Single broad branch. "cloakfox." already matches every
+// cloakfox.container.* pref (and cloakfox.s.*, cloakfox.enabled, etc.),
+// so listing a narrower "cloakfox.container." branch alongside it would
+// only double-register the observer and double-snapshot the same prefs —
+// causing observe()/snapshot()/flush() to run twice per container-pref
+// change. One branch covers everything exactly once.
+const PREF_BRANCHES = ["cloakfox."];
 
 // Per-signal seed pref names. Math/Keyboard/Timing/TabHistory all need
 // a seed; without one the actor early-returns. Auto-generate at parent
