@@ -1,0 +1,18 @@
+Cloakfox: make the macOS Assets.car copy optional.
+
+The fork ships its own firefox.icns (referenced by CFBundleIconFile) and
+only an uncompiled Assets.xcassets; producing Assets.car needs Xcode's
+actool, which isn't available in every build environment. Copy the
+compiled asset catalog only when a prebuilt one is present so `mach
+build` doesn't hard-fail at packaging on machines without Xcode.
+
+--- a/browser/app/Makefile.in
++++ b/browser/app/Makefile.in
+@@ -93,4 +93,6 @@
+ 	cp -RL $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/firefox.icns '$(dist_dest)/Contents/Resources/firefox.icns'
+ 	cp -RL $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/document.icns '$(dist_dest)/Contents/Resources/document.icns'
+-	cp -RL $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/Assets.car '$(dist_dest)/Contents/Resources/Assets.car'
++	# Cloakfox: Assets.car is optional (fork ships firefox.icns; the
++	# compiled asset catalog needs Xcode actool). Copy only if present.
++	if test -f $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/Assets.car; then cp -RL $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/Assets.car '$(dist_dest)/Contents/Resources/Assets.car'; fi
+ 	$(MKDIR) -p '$(dist_dest)/Contents/Library/LaunchServices'
