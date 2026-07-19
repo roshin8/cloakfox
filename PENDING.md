@@ -4,6 +4,76 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-07-18 — full-branch code review fix pass
+
+A high-effort review of the whole `cpp-first-exploration` branch landed 15
+fixes across 5 commits (`1f92a0cd5b`..`76b9357385`). Highlights + what's
+still open below.
+
+**Fixed + validated with a full build:**
+
+- **Per-container C++ isolation (was release-blocking).** `MaskConfig`
+  getters dropped the container id and always read `cloak_cfg_0`, so every
+  non-default container reused container 0's fingerprint. `GetString`/
+  `GetUintImpl`/`GetUint32` now take an optional `userContextId` and the six
+  per-container managers pass their id. Verified end-to-end by the new
+  `tests/fingerprint/probe_container_isolation.py`: containers 0 and 1 with
+  different `cloak_cfg_<ucid>` overlays now produce different canvas + audio
+  fingerprints (they were identical before the fix). Build compiles, links,
+  runs.
+- Actor `exportFunction` global leaks, `Math` brand, keyboard
+  `removeEventListener`, timing monotonicity, gamepad array; WebRTC beacon
+  gating + IP-race; ToolbarPin idempotency; SeedSync double-observer;
+  PrefMigration one-shot; extension float-override corruption + status pill;
+  build order.txt + dead generator + cfg comment. See the commit messages.
+
+**Still open (need a build-verified pass — NOT done in the review):**
+
+- **P0 — cross-container contamination of persona-blob values.** The
+  `SetCloakConfig` ctx-0 mirror (`cloak-config-webidl.patch`) is still needed
+  by the context-blind getters used by non-manager spoofers (navigator,
+  timezone, fonts). Two simultaneously-open non-default containers still
+  overwrite each other's `cloak_cfg_0`. Full fix: resolve the current
+  container inside every getter (thread it through all ~40 call sites, or
+  look up the current window's `mUserContextId` in `GetContextOverlay`,
+  falling back to 0 in workers). Bigger change; must be built + re-run
+  against `probe_container_isolation.py` extended to open two non-default
+  containers concurrently.
+- **P1 — `MergeUint`/`MergeString` non-atomic read-modify-write** over
+  cross-process storage (`cloak-config-webidl.patch`); concurrent writes to
+  the same container can lose a seed update. Needs an atomic/locked path in
+  `RoverfoxStorageManager`.
+- **P1 — HTTP/2-3 profile setters still write prefs from a content process**
+  (`http2-profile-webidl.patch`) — already tracked below; route through the
+  now-existing Experiment API in `cloakfox.js`.
+
+**Build/infra gaps surfaced during validation:**
+
+- **P0 for non-Xcode machines — missing `browser/branding/cloakfox/Assets.car`.**
+  `browser/app/Makefile.in` copies a prebuilt macOS asset catalog, but the
+  cloakfox branding ships only the uncompiled `Assets.xcassets`, so
+  `make build` fails at the packaging `tools` step with
+  `cp: .../Assets.car: No such file or directory`. Generating it needs Apple's
+  `actool`, which requires **full Xcode** (Command Line Tools alone is not
+  enough). Fix: on a machine with Xcode, run
+  `actool additions/browser/branding/cloakfox/Assets.xcassets --compile <out> --platform macosx --minimum-deployment-target 10.15 --app-icon AppIcon --output-partial-info-plist <plist>`
+  and commit the resulting `Assets.car` into
+  `additions/browser/branding/cloakfox/` (matches how upstream `official`/
+  `nightly` branding ship a prebuilt `Assets.car`). The 2026-07-18 validation
+  build used the `official` `Assets.car` as an uncommitted placeholder.
+
+- **P2 — window inner/outer/screen dimension incoherence under headless.**
+  `probe_per_container.py` reports `dim_coherent: false` (e.g.
+  `innerWidth 1440 > outerWidth 1150`). Root cause: inner/outer nesting is
+  established by `browser-init.patch` via `window.resizeTo` + chrome CSS
+  injection on the chrome window, which does not engage in `--headless`
+  (no real chrome window / no resize). Appears to be a headless-only test
+  artifact rather than a real-window bug; confirm by running the probe
+  non-headless before spending effort. If real in a windowed browser, the
+  fix is to also spoof `window.innerWidth/Height` to nest under the spoofed
+  outer/screen. Not caused by the review fixes (they touch seed reads, not
+  dimension values).
+
 ## P0 — blocks release / blocks real-site validation
 
 ### ~~Self-destructing WebIDL setters defeat C++/JS skip-coordination~~ — FIXED in commits `4bb9a03edb` + `20c5864f21`
