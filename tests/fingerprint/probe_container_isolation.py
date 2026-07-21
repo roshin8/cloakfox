@@ -8,19 +8,27 @@ cloak_cfg_<ucid>. That gap mattered: the C++ MaskConfig getters used to
 drop the container id and always read cloak_cfg_0, so every non-default
 container silently reused container 0's fingerprint.
 
-Here we run ONE browser with two different per-container overlays:
+Here we run ONE browser with two TWO NON-DEFAULT containers, each with
+its own overlay:
 
-    cloakfox.s.cloak_cfg_0 = {"canvas:seed": SEED_0, "audio:seed": SEED_0}
-    cloakfox.s.cloak_cfg_1 = {"canvas:seed": SEED_1, "audio:seed": SEED_1}
+    cloakfox.s.cloak_cfg_1 = {canvas/audio seed A, navigator.userAgent A}
+    cloakfox.s.cloak_cfg_2 = {canvas/audio seed B, navigator.userAgent B}
 
-then open the probe page once in the default container (userContextId=0)
-and once in container 1 (userContextId=1), via a chrome-context
-gBrowser.addTab (Selenium can't set userContextId itself). We assert the
-canvas + audio fingerprints DIFFER between the two containers.
+then open the probe in container 1 and container 2 via a chrome-context
+gBrowser.addTab (Selenium can't set userContextId itself) and assert the
+canvas, audio, AND navigator.userAgent all DIFFER.
 
-Without the getter fix, GetSeed(1) resolves cloak_cfg_0 and the two
-containers produce identical hashes -> this test fails. With the fix,
-GetSeed(1) resolves cloak_cfg_1 -> hashes differ -> pass.
+Two axes are covered:
+  - canvas/audio: the *manager* getters (they pass an explicit ucid).
+  - navigator.userAgent: the *context-blind* getters that call
+    MaskConfig::GetString with no ucid; these resolve the current
+    container via GetContextOverlay's auto-resolve.
+
+Using two NON-DEFAULT containers (1 and 2, not 0 and 1) is the point:
+the old ctx-0 mirror could make one non-default container work, but two
+simultaneously-configured non-default containers overwrote each other's
+cloak_cfg_0 and leaked into one another. If the fixes regress, at least
+one signal comes back identical and this test fails.
 
 Run:
     CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \\
@@ -40,16 +48,31 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
-# Two clearly-distinct seeds. The C++ canvas/audio noise is a function of
-# the seed, so different seeds must yield different fingerprints.
-SEED_0 = 11111
-SEED_1 = 99999
+# Two NON-DEFAULT containers with distinct overlays. Using 1 and 2 (not
+# 0 and 1) is deliberate: the old ctx-0 mirror could make a single
+# non-default container work, but two simultaneously-configured
+# non-default containers overwrote each other's cloak_cfg_0. This checks
+# both the manager path (canvas/audio seeds) and the context-blind path
+# (navigator.userAgent, read via MaskConfig::GetString with no explicit
+# ucid -> the GetContextOverlay auto-resolve).
+UCID_A, UCID_B = 1, 2
+CFG_A = {
+    "canvas:seed": 11111,
+    "audio:seed": 11111,
+    "navigator.userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0",
+}
+CFG_B = {
+    "canvas:seed": 99999,
+    "audio:seed": 99999,
+    "navigator.userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0",
+}
 
 PROBE_HTML = """<!doctype html>
 <title>cfx-container</title>
 <body>
 <script>
 const r = {};
+r.ua = navigator.userAgent;
 try {
   const c = document.createElement('canvas');
   c.width = 200; c.height = 60;
@@ -146,13 +169,13 @@ def _read_probe_in_container(driver, probe_url: str, ucid: int) -> dict:
 
 def _profile(profile_dir: str) -> None:
     Path(profile_dir).mkdir(parents=True, exist_ok=True)
-    cfg0 = json.dumps({"canvas:seed": SEED_0, "audio:seed": SEED_0})
-    cfg1 = json.dumps({"canvas:seed": SEED_1, "audio:seed": SEED_1})
+    cfg_a = json.dumps(CFG_A)
+    cfg_b = json.dumps(CFG_B)
     Path(profile_dir, "user.js").write_text(
         'user_pref("cloakfox.enabled", true);\n'
         'user_pref("privacy.userContext.enabled", true);\n'
-        f'user_pref("cloakfox.s.cloak_cfg_0", {json.dumps(cfg0)});\n'
-        f'user_pref("cloakfox.s.cloak_cfg_1", {json.dumps(cfg1)});\n'
+        f'user_pref("cloakfox.s.cloak_cfg_{UCID_A}", {json.dumps(cfg_a)});\n'
+        f'user_pref("cloakfox.s.cloak_cfg_{UCID_B}", {json.dumps(cfg_b)});\n'
     )
 
 
@@ -180,29 +203,32 @@ def main() -> None:
         svc = Service(log_path=str(Path(prof) / "geckodriver.log"))
         driver = webdriver.Firefox(options=opts, service=svc)
         try:
-            res0 = _read_probe_in_container(driver, probe_url, 0)
-            res1 = _read_probe_in_container(driver, probe_url, 1)
+            res_a = _read_probe_in_container(driver, probe_url, UCID_A)
+            res_b = _read_probe_in_container(driver, probe_url, UCID_B)
         finally:
             driver.quit()
 
-    print("=== container 0 (cloak_cfg_0, seed %d) ===" % SEED_0)
-    print(json.dumps(res0, indent=2))
-    print("\n=== container 1 (cloak_cfg_1, seed %d) ===" % SEED_1)
-    print(json.dumps(res1, indent=2))
+    print(f"=== container {UCID_A} (cloak_cfg_{UCID_A}) ===")
+    print(json.dumps(res_a, indent=2))
+    print(f"\n=== container {UCID_B} (cloak_cfg_{UCID_B}) ===")
+    print(json.dumps(res_b, indent=2))
     print()
 
+    # canvas_hash / audio_sum: manager path (explicit ucid). ua: context-blind
+    # path (MaskConfig::GetString with no ucid -> GetContextOverlay auto-resolve).
     fails: list[str] = []
-    for key in ("canvas_hash", "audio_sum"):
-        a, b = res0.get(key), res1.get(key)
+    for key in ("canvas_hash", "audio_sum", "ua"):
+        a, b = res_a.get(key), res_b.get(key)
         if a is None or b is None:
-            fails.append(f"{key}: missing (c0={a!r} c1={b!r}) — probe error?")
+            fails.append(f"{key}: missing (c{UCID_A}={a!r} c{UCID_B}={b!r}) — probe error?")
         elif a == b:
+            path = "context-blind auto-resolve" if key == "ua" else "manager getter"
             fails.append(
-                f"{key}: IDENTICAL across containers ({a!r}) — non-default "
-                f"container is reading cloak_cfg_0, the getter fix is not engaging"
+                f"{key}: IDENTICAL across two non-default containers ({a!r}) — "
+                f"the {path} is not isolating per container"
             )
         else:
-            print(f"OK  {key}: c0={a!r} != c1={b!r} (per-container ✓)")
+            print(f"OK  {key}: c{UCID_A}={a!r} != c{UCID_B}={b!r} (per-container ✓)")
 
     if fails:
         print("\nFAIL:")

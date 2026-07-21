@@ -29,16 +29,16 @@ still open below.
 
 **Still open (need a build-verified pass — NOT done in the review):**
 
-- **P0 — cross-container contamination of persona-blob values.** The
-  `SetCloakConfig` ctx-0 mirror (`cloak-config-webidl.patch`) is still needed
-  by the context-blind getters used by non-manager spoofers (navigator,
-  timezone, fonts). Two simultaneously-open non-default containers still
-  overwrite each other's `cloak_cfg_0`. Full fix: resolve the current
-  container inside every getter (thread it through all ~40 call sites, or
-  look up the current window's `mUserContextId` in `GetContextOverlay`,
-  falling back to 0 in workers). Bigger change; must be built + re-run
-  against `probe_container_isolation.py` extended to open two non-default
-  containers concurrently.
+- ~~**P0 — cross-container contamination of persona-blob values.**~~ FIXED
+  2026-07-21. `GetContextOverlay` now auto-resolves the current window's
+  container (via `CloakConfigOverlay_CurrentUserContextId()` →
+  `xpc::CurrentWindowOrNull`, main-thread-guarded, 0 in workers) whenever
+  no explicit ucid is given, so the context-blind getters (navigator,
+  timezone, fonts) read their own `cloak_cfg_<ucid>`. The `SetCloakConfig`
+  ctx-0 mirror is removed. Validated end-to-end: `probe_container_isolation.py`
+  now opens two NON-default containers (1 and 2) and asserts canvas, audio,
+  AND `navigator.userAgent` all differ — the context-blind UA path exercises
+  the auto-resolve. Built clean, test passes.
 - **P1 — `MergeUint`/`MergeString` non-atomic read-modify-write** over
   cross-process storage (`cloak-config-webidl.patch`); concurrent writes to
   the same container can lose a seed update. Needs an atomic/locked path in

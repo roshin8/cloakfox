@@ -1,10 +1,15 @@
 --- a/b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:16:00
 +++ b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:15:37
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,62 @@
 +/* Cloakfox: Per-context MaskConfig overlay via RoverfoxStorageManager. */
 +#include "RoverfoxStorageManager.h"
 +#include "json.hpp"
 +#include "nsString.h"
++#include "nsContentUtils.h"
++#include "nsGlobalWindowInner.h"
++#include "xpcpublic.h"
++#include "mozilla/dom/BrowsingContext.h"
++#include "nsThreadUtils.h"
 +#include <string>
 +
 +std::string CloakConfigOverlay_Get(uint32_t userContextId) {
@@ -40,9 +45,27 @@
 +  j[key] = value;
 +  CloakConfigOverlay_Set(userContextId, j.dump());
 +}
++
++uint32_t CloakConfigOverlay_CurrentUserContextId() {
++  // Window/container resolution is main-thread only; workers fall back
++  // to the ctx-0 / env overlay (their fingerprints come via other paths).
++  if (!NS_IsMainThread()) return 0;
++  // Container of the currently-executing window, so the context-blind
++  // MaskConfig getters resolve their own cloak_cfg_<ucid> instead of
++  // always reading ctx 0. Returns 0 in workers / no-JS contexts, which
++  // preserves the old ctx-0 / env fallback there.
++  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
++    if (nsGlobalWindowInner* win = xpc::CurrentWindowOrNull(cx)) {
++      if (mozilla::dom::BrowsingContext* bc = win->GetBrowsingContext()) {
++        return bc->OriginAttributesRef().mUserContextId;
++      }
++    }
++  }
++  return 0;
++}
 --- a/b/cloakcfg/MaskConfig.hpp	2026-04-16 21:14:45
 +++ b/cloakcfg/MaskConfig.hpp	2026-04-16 21:15:37
-@@ -23,6 +23,12 @@
+@@ -23,6 +23,13 @@
  #  include <windows.h>
  #endif
  
@@ -51,15 +74,20 @@
 +extern void CloakConfigOverlay_Set(uint32_t userContextId, const std::string& jsonStr);
 +extern void CloakConfigOverlay_MergeUint(uint32_t userContextId, const std::string& key, uint32_t value);
 +extern void CloakConfigOverlay_MergeString(uint32_t userContextId, const std::string& key, const std::string& value);
++extern uint32_t CloakConfigOverlay_CurrentUserContextId();
 +
  namespace MaskConfig {
  
  // Function to get the value of an environment variable as a UTF-8 string.
-@@ -87,11 +93,19 @@
+@@ -87,11 +93,23 @@
    return jsonConfig;
  }
  
 +inline nlohmann::json GetContextOverlay(uint32_t userContextId = 0) {
++  // userContextId==0 means the default container OR "caller didn't
++  // specify" (the context-blind getters). Resolve the current window's
++  // container so non-manager spoofers read their own overlay, not ctx 0.
++  if (userContextId == 0) userContextId = CloakConfigOverlay_CurrentUserContextId();
 +  std::string jsonStr = CloakConfigOverlay_Get(userContextId);
 +  if (!jsonStr.empty() && nlohmann::json::accept(jsonStr)) return nlohmann::json::parse(jsonStr);
 +  return nlohmann::json{};
@@ -158,7 +186,7 @@
 +  NS_ConvertUTF16toUTF8 utf8(aJson);
 +  std::string jsonStr(utf8.get());
 +  CloakConfigOverlay_Set(userContextId, jsonStr);
-+  if (userContextId != 0) CloakConfigOverlay_Set(0, jsonStr);
++  // No ctx-0 mirror: context-blind getters now auto-resolve the container.
 +  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
 +    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
 +    if (global) {
