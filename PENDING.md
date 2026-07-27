@@ -91,13 +91,27 @@ still open below.
   now opens two NON-default containers (1 and 2) and asserts canvas, audio,
   AND `navigator.userAgent` all differ — the context-blind UA path exercises
   the auto-resolve. Built clean, test passes.
-- **P1 — `MergeUint`/`MergeString` non-atomic read-modify-write** over
-  cross-process storage (`cloak-config-webidl.patch`); concurrent writes to
-  the same container can lose a seed update. Needs an atomic/locked path in
-  `RoverfoxStorageManager`.
-- **P1 — HTTP/2-3 profile setters still write prefs from a content process**
-  (`http2-profile-webidl.patch`) — already tracked below; route through the
-  now-existing Experiment API in `cloakfox.js`.
+- ~~**P1 — `MergeUint`/`MergeString` non-atomic read-modify-write.**~~
+  NOT A LIVE BUG (verified 2026-07-26). `CloakConfigOverlay_MergeUint/
+  MergeString` (and `SetCloakConfig`) are only reachable via the
+  self-destructing per-vector WebIDL setters (`window.setCanvasSeed`, …),
+  and a tree-wide grep finds **no JS caller** for any of them — the old
+  inject/core-bridge that called them was deleted in the cpp-first pivot.
+  At runtime `cloak_cfg` is written *exclusively* as the pref
+  `cloakfox.s.cloak_cfg_<ucid>` (experiment-API `cloakfox.js` + `content/
+  settings.js`) and read by the C++ pref-reader, so the RMW race cannot
+  occur. The merge/setter C++ is now vestigial — optional low-priority
+  cleanup (removing it edits applied patches + needs a rebuild, for dead
+  code that's harmless), not a bug.
+- ~~**P1 — HTTP/2-3 profile setters write prefs from a content process.**~~
+  NOT A LIVE BUG (verified 2026-07-26). The broken content-process setter
+  *calls* were already removed; `setHttp2Profile`/`setHttp3Profile` remain
+  in WebIDL but have no callers. The profile is set at startup via
+  `defaultPref("network.http.http{2,3}.fingerprint_profile", …)` in
+  `cloakfox.cfg` (parent process — correct). What's missing is only a
+  *runtime, per-container* toggle, which is a FEATURE (would add a
+  `setHttpProfile` method to the Experiment API + UI), not a bugfix.
+  Deferred as a feature, not tracked as a defect.
 
 **Build/infra gaps surfaced during validation:**
 
