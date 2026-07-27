@@ -74,6 +74,16 @@ whole C1–C4 feature is verified end-to-end from a clean build.
 does NOT re-package `dist/<App>.app`; use `make relink` (added) after C++/Rust
 edits so the packaged `.app` gets the fresh library.
 
+## 2026-07-27 — WebRTC leak check
+
+`tests/fingerprint/probe_webrtc_leak.py` (new): gathers ICE candidates and
+checks for the machine's real local IP. Result: **PASS — no local-IP leak.**
+Host candidates are mDNS-obfuscated (`*.local`); the real local IP
+(`172.20.20.20`) never appears. The public IP shows via STUN srflx (by
+design — the site already sees it over HTTP; `cloakfox.cfg` documents this
+as the accepted position, with `setWebRTCIPv4` available for per-container
+overrides). The dangerous vector (local/internal IP behind NAT) is closed.
+
 ## 2026-07-26 — first real-site anti-bot battery + fixes
 
 Ran `antibot_battery.py` against the built app (firefox/chrome/safari HTTP
