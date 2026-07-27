@@ -24,14 +24,16 @@ can sample a Windows set), which is the incoherence being fixed. Verified: with
 the persona active, host-distinctive fonts (Helvetica Neue, Menlo, Zapfino on
 the Mac) are BLOCKED and the whitelist matches the persona OS.
 
-**Known limitations (documented, not yet fixed):**
-1. **First-launch gap.** `gfxPlatformFontList` reads the allowlist at gfx init,
-   before the persona's `cloak_cfg_0` pref exists on a fresh profile — so the
-   FIRST launch of a new profile still leaks host fonts; it self-corrects from
-   launch 2 (pref persisted). Proper fix: a C++ conservative-default allowlist
-   in `font-hijacker.patch` when `GetStringList("fonts")` is empty (needs a
-   rebuild). A `font.system.whitelist` pref default does NOT work — gfx reads
-   it before profile prefs load.
+**Known limitations:**
+1. ~~**First-launch gap.**~~ FIXED 2026-07-27. `font-hijacker.patch` now sets a
+   conservative cross-platform web-safe allowlist in the gfxPlatformFontList
+   ctor when `GetStringList("fonts")` is empty AND `cloakfox.enabled` (default
+   true) — the same in-ctor `Preferences::SetCString` path that already worked
+   on launch 2, so it takes effect on launch 1 (unlike a plain
+   `font.system.whitelist` pref default, which gfx reads before profile prefs
+   load). Verified: fresh-profile launch 1 now BLOCKS host Mac fonts
+   (Helvetica Neue/Menlo/Zapfino); `enabled=false` correctly skips the fallback.
+   Built + relinked (compile 15s, XUL relink 22s).
 2. **Cross-OS ceiling.** An allowlist can only REMOVE fonts, not add ones the
    host lacks. A Windows persona on a Mac host shows only the common web-safe
    intersection, not the full Windows set. It no longer self-contradicts (no

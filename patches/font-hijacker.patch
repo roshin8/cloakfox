@@ -10,7 +10,7 @@ index bc0e123f85..52ec46f76b 100644
  
  #include "GeckoProfiler.h"
  #include "nsCRT.h"
-@@ -303,6 +304,16 @@ gfxPlatformFontList::gfxPlatformFontList(bool aNeedFullnamePostscriptNames)
+@@ -303,6 +304,27 @@ gfxPlatformFontList::gfxPlatformFontList(bool aNeedFullnamePostscriptNames)
  
    mFontPrefs = MakeUnique<FontPrefs>();
  
@@ -23,6 +23,17 @@ index bc0e123f85..52ec46f76b 100644
 +                          return acc.empty() ? s : acc + "," + s;
 +                        });
 +    Preferences::SetCString(kFontSystemWhitelistPref, fontValuesJoined.data());
++  } else if (Preferences::GetBool("cloakfox.enabled", true)) {
++    // Cloakfox: no per-container font list yet — e.g. the FIRST launch of a
++    // fresh profile, before the default persona's cloak_cfg_0 pref is written.
++    // gfxPlatformFontList is constructed this early in startup, so without a
++    // fallback the first session would expose the REAL host system fonts and
++    // leak the true OS. Pin a conservative cross-platform web-safe allowlist
++    // until the persona list takes over from the next launch onward.
++    Preferences::SetCString(
++        kFontSystemWhitelistPref,
++        "Arial,Arial Black,Comic Sans MS,Courier New,Georgia,Impact,"
++        "Times New Roman,Trebuchet MS,Verdana,Tahoma,Courier,Helvetica");
 +  }
    gfxFontUtils::GetPrefsFontList(kFontSystemWhitelistPref, mEnabledFontsList);
    mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty();
