@@ -72,6 +72,69 @@ const NAV_IDENTITY = {
   linux:   { platform: "Linux x86_64", oscpu: "Linux x86_64" },
 };
 
+// Canonical per-OS system-font sets. The C++ font-hijacker treats the
+// cloak_cfg "fonts" key as an ALLOWLIST — only listed system fonts are
+// exposed to enumeration and rendering. Each OS has a `base` (always
+// present on a stock install — includes the web-safe families so generic
+// CSS fallbacks resolve, and the OS emoji font) plus an `optional` pool
+// (fonts that vary machine-to-machine) that we seed-sample per container
+// for entropy. We do NOT reuse BrowserForge's sampled `fonts` field: its
+// values are cross-OS-contaminated (a Mac UA can sample a Windows font
+// set), which is exactly the incoherence this replaces.
+const CANONICAL_FONTS = {
+  windows: {
+    base: [
+      "Arial", "Arial Black", "Bahnschrift", "Calibri", "Cambria",
+      "Cambria Math", "Comic Sans MS", "Consolas", "Constantia", "Corbel",
+      "Courier New", "Ebrima", "Franklin Gothic Medium", "Gadugi", "Georgia",
+      "Impact", "Lucida Console", "Lucida Sans Unicode", "Malgun Gothic",
+      "Marlett", "Microsoft Sans Serif", "MS Gothic", "MV Boli",
+      "Palatino Linotype", "Segoe UI", "Segoe UI Emoji", "Segoe UI Symbol",
+      "SimSun", "Sylfaen", "Tahoma", "Times New Roman", "Trebuchet MS",
+      "Verdana", "Webdings", "Wingdings",
+    ],
+    optional: [
+      "Candara", "Gabriola", "Ink Free", "Javanese Text", "Leelawadee UI",
+      "Microsoft Himalaya", "Microsoft JhengHei", "Microsoft YaHei",
+      "Mongolian Baiti", "Myanmar Text", "Nirmala UI", "Segoe Print",
+      "Segoe Script", "Sitka", "Yu Gothic", "MingLiU-ExtB",
+    ],
+  },
+  macos: {
+    base: [
+      "American Typewriter", "Andale Mono", "Apple Color Emoji", "Arial",
+      "Arial Black", "Arial Narrow", "Arial Unicode MS", "Avenir",
+      "Avenir Next", "Baskerville", "Big Caslon", "Bodoni 72", "Bradley Hand",
+      "Brush Script MT", "Chalkboard", "Chalkduster", "Cochin", "Comic Sans MS",
+      "Copperplate", "Courier", "Courier New", "Didot", "Futura", "Geneva",
+      "Georgia", "Gill Sans", "Helvetica", "Helvetica Neue", "Hoefler Text",
+      "Impact", "Lucida Grande", "Menlo", "Microsoft Sans Serif", "Monaco",
+      "Optima", "Palatino", "Papyrus", "Times", "Times New Roman",
+      "Trebuchet MS", "Verdana", "Zapfino",
+    ],
+    optional: [
+      "Apple Chancery", "Apple SD Gothic Neo", "Avenir Next Condensed",
+      "Chalkboard SE", "DIN Alternate", "DIN Condensed", "Herculanum",
+      "Luminari", "Marker Felt", "Noteworthy", "Phosphate", "Rockwell",
+      "Savoye LET", "SignPainter", "Skia", "Snell Roundhand", "Trattatello",
+    ],
+  },
+  linux: {
+    base: [
+      "Cantarell", "DejaVu Sans", "DejaVu Sans Mono", "DejaVu Serif",
+      "FreeMono", "FreeSans", "FreeSerif", "Liberation Mono",
+      "Liberation Sans", "Liberation Serif", "Noto Color Emoji", "Noto Mono",
+      "Noto Sans", "Noto Serif", "Ubuntu", "Ubuntu Condensed", "Ubuntu Mono",
+    ],
+    optional: [
+      "Bitstream Vera Sans", "Bitstream Vera Sans Mono", "Bitstream Vera Serif",
+      "Century Schoolbook L", "Droid Sans", "Droid Sans Mono", "Droid Serif",
+      "Nimbus Mono PS", "Nimbus Roman", "Nimbus Sans", "Noto Sans CJK JP",
+      "Noto Sans Mono", "Standard Symbols PS", "URW Bookman", "URW Gothic",
+    ],
+  },
+};
+
 function detectOSFromUA(ua) {
   if (!ua) return "linux";
   if (ua.includes("Macintosh") || ua.includes("Mac OS")) return "macos";
@@ -197,6 +260,19 @@ function bfToCloakKeys(fp, prng) {
     if (fp.videoCard.vendor)   keys["webGl:vendor"]   = fp.videoCard.vendor;
     if (fp.videoCard.renderer) keys["webGl:renderer"] = fp.videoCard.renderer;
   }
+
+  // Fonts — coherent per-OS system-font allowlist. The C++ font-hijacker
+  // exposes ONLY the fonts in cloak_cfg "fonts"; without this key the real
+  // host fonts leak (uncoordinated with the persona OS, identical across
+  // containers). Pin the OS base set + a seed-varied subset of the optional
+  // pool so same-OS containers still differ. Sorted so ordering isn't a
+  // signal.
+  const fontSet = CANONICAL_FONTS[os] || CANONICAL_FONTS.linux;
+  const fonts = fontSet.base.slice();
+  for (const f of fontSet.optional) {
+    if (prng() < 0.6) fonts.push(f);
+  }
+  keys["fonts"] = fonts.sort();
 
   // Audio context — not in BF; pick plausible values per-container.
   keys["AudioContext:sampleRate"] = [44100, 48000][Math.floor(prng() * 2)];

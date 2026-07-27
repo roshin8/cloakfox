@@ -4,6 +4,44 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-07-27 — font list was never spoofed (persona mapper dropped it)
+
+**Root cause.** `bfToCloakKeys` in `CloakfoxPersonas.sys.mjs` mapped navigator/
+screen/WebGL/audio/locale/geo but **never set `keys["fonts"]`** — the
+BrowserForge-sampled `fonts` field was silently dropped. The C++ font-hijacker
+treats `cloak_cfg "fonts"` as an allowlist that only activates when non-empty
+(`mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty()`; `IsFontAllowed`
+returns true when empty). So the allowlist was **inactive** and the browser
+exposed the **real host system fonts**, unspoofed and identical across every
+container — a per-container isolation hole. CreepJS's "Like Windows 11" on a
+Mac was reading the host's real MS-Office fonts.
+
+**Fix (landed).** Added a curated per-OS `CANONICAL_FONTS` table (Windows/
+macOS/Linux, `base` + seed-varied `optional`) and `bfToCloakKeys` now sets
+`keys["fonts"]` from the persona's detected OS. We deliberately do NOT reuse
+BrowserForge's `fonts` field — its values are cross-OS-contaminated (a Mac UA
+can sample a Windows set), which is the incoherence being fixed. Verified: with
+the persona active, host-distinctive fonts (Helvetica Neue, Menlo, Zapfino on
+the Mac) are BLOCKED and the whitelist matches the persona OS.
+
+**Known limitations (documented, not yet fixed):**
+1. **First-launch gap.** `gfxPlatformFontList` reads the allowlist at gfx init,
+   before the persona's `cloak_cfg_0` pref exists on a fresh profile — so the
+   FIRST launch of a new profile still leaks host fonts; it self-corrects from
+   launch 2 (pref persisted). Proper fix: a C++ conservative-default allowlist
+   in `font-hijacker.patch` when `GetStringList("fonts")` is empty (needs a
+   rebuild). A `font.system.whitelist` pref default does NOT work — gfx reads
+   it before profile prefs load.
+2. **Cross-OS ceiling.** An allowlist can only REMOVE fonts, not add ones the
+   host lacks. A Windows persona on a Mac host shows only the common web-safe
+   intersection, not the full Windows set. It no longer self-contradicts (no
+   Mac-only fonts under a Win UA), but shows fewer fonts than a real Windows
+   box. True cross-OS font faking needs font-metric bundling — large, separate.
+3. **Global, not per-container.** The system-font allowlist is process-wide
+   (set once at gfx init from ctx-0's persona), so non-default containers get
+   ctx-0's font set for system-font enumeration regardless of their own persona
+   OS. `IsFontAllowed` is per-context but only gates @font-face load status.
+
 ## 2026-07-27 — actor descriptor-leak fixes + architecture reconciliation
 
 **Architecture reality check (this file was badly stale below).** The
