@@ -150,6 +150,47 @@ site into neqo_glue has the connection's `userContextId` and add the FFI arg.
   `userContextId`), so a connection binds to a single container — no
   cross-container connection reuse to reconcile.
 
+## C4 implementation notes (execute-ready, mapped 2026-07-26)
+
+Add `fingerprint_profile: u32` threaded from C++ (resolved per-container)
+into neqo, replacing neqo's internal `static_prefs` read. Param goes
+**right after `idle_timeout`** everywhere for consistency. cbindgen
+regenerates `neqo_glue_ffi_generated.h` automatically.
+
+Edits (all in `patches/http3-fingerprint-spoofing.patch` unless noted):
+
+1. `neqo_glue/src/lib.rs` — `NeqoHttp3Conn::new` (sig ~341): add
+   `fingerprint_profile: u32` after `idle_timeout: u32` (i.e. before
+   `pmtud_enabled: bool, socket: Option<i64>`). Body (~453): replace
+   `H3FingerprintProfile::from_pref(static_prefs::pref!("network.http.http3.fingerprint_profile"))`
+   with `H3FingerprintProfile::from_pref(fingerprint_profile)`.
+2. `lib.rs` — `neqo_http3conn_new` FFI (~745): add `fingerprint_profile: u32`
+   after `idle_timeout: u32`; pass it to `new(...)` after `idle_timeout`
+   → `new(..., idle_timeout, fingerprint_profile, pmtud_enabled, Some(socket))`.
+3. `lib.rs` — `neqo_http3conn_new_use_nspr_for_io` FFI (~792): same add;
+   call becomes `new(..., idle_timeout, fingerprint_profile, false, None)`.
+4. NEW hunk — `netwerk/socket/neqo_glue/NeqoHttp3Conn.h`: add
+   `uint32_t aFingerprintProfile` after `aIdleTimeout` to both `Init` and
+   `InitUseNSPRForIO`, and pass it to the FFI call after `aIdleTimeout`.
+5. NEW hunk — `netwerk/protocol/http/Http3Session.cpp` (~165, before the
+   `NeqoHttp3Conn::Init*` calls): resolve
+   ```
+   uint32_t h3Profile = StaticPrefs::network_http_http3_fingerprint_profile();
+   nsAutoCString cfxKey;
+   cfxKey.AppendPrintf("cloakfox.container.%u.h3_profile",
+                       mConnInfo->GetOriginAttributes().mUserContextId);
+   int32_t perCtx = Preferences::GetInt(cfxKey.get(), -1);
+   if (perCtx >= 0) h3Profile = static_cast<uint32_t>(perCtx);
+   ```
+   then pass `h3Profile` after `idleTimeout` to both `Init`/`InitUseNSPRForIO`
+   calls. Add `#include "mozilla/Preferences.h"` if not already present.
+
+Hunk headers: use the scratchpad recompute script (count body ' '/'+'/'-'),
+ignore the trailing EOF empty line. Verify: `make dir` clean, then targeted
+compile — `mach build netwerk/socket/neqo_glue` (Rust + cbindgen) and
+`mach build netwerk/protocol/http` (Http3Session). Global fallback keeps a
+partial landing safe.
+
 ## Risks
 
 - **Network-stack change with a ~30-min build-verify loop.** Mitigation:
