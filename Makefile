@@ -8,7 +8,7 @@ _ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(_ARGS):;@:)
 
 .PHONY: help fetch setup setup-minimal clean distclean distclean-all build package \
-        patch unpatch dir run mozbootstrap bootstrap extension set-target \
+        patch unpatch dir run relink mozbootstrap bootstrap extension set-target \
         package-linux package-macos package-windows
 
 help:
@@ -81,6 +81,22 @@ build:
 		make dir; \
 	fi
 	cd $(cf_source_dir) && ./mach build
+
+# Fast local iteration after editing C++/Rust: recompile + relink, then
+# redeploy the linked library into the PACKAGED app. `mach build binaries`
+# relinks obj/dist/bin/XUL but does NOT re-package dist/<App>.app, so tests
+# that launch the .app keep running the stale library. This copies the fresh
+# one in. macOS-focused (XUL); on other platforms just run `mach build`.
+relink:
+	cd $(cf_source_dir) && ./mach build binaries
+	@xul=$$(ls $(cf_source_dir)/obj-*/dist/bin/XUL 2>/dev/null | head -1); \
+	 app=$$(ls -d $(cf_source_dir)/obj-*/dist/*.app 2>/dev/null | head -1); \
+	 if [ -n "$$xul" ] && [ -n "$$app" ]; then \
+	   cp -f "$$xul" "$$app/Contents/MacOS/XUL" && \
+	   echo "relink: deployed fresh XUL into $$app/Contents/MacOS/"; \
+	 else \
+	   echo "relink: no macOS XUL/.app pair found (fresh lib is under obj-*/dist/bin)"; \
+	 fi
 
 run:
 	cd $(cf_source_dir) && ./mach run
