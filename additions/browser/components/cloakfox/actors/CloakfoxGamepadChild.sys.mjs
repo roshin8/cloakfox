@@ -28,15 +28,24 @@ export class CloakfoxGamepadChild extends JSWindowActorChild {
     if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
 
     const pageWin = win.wrappedJSObject;
-    if (typeof pageWin.navigator?.getGamepads !== "function") return;
+    const navProto = pageWin.Navigator?.prototype;
+    if (typeof navProto?.getGamepads !== "function") return;
 
     // Return a 4-slot array of nulls, matching the standard "no
     // gamepad connected" shape. Real getGamepads() returns a fresh
     // snapshot each call, so clone a NEW page-compartment array per
     // invocation rather than sharing one mutable reference (a page
     // could otherwise mutate the shared array and observe it later).
-    pageWin.navigator.getGamepads = Cu.exportFunction(function () {
+    const wrapped = Cu.exportFunction(function () {
       return Cu.cloneInto([null, null, null, null], pageWin);
     }, pageWin);
+    // Define on the PROTOTYPE with native flags (methods are enumerable
+    // on Navigator.prototype), not the instance. Instance assignment
+    // would add an own enumerable property, leaking it via
+    // Object.keys(navigator) — stock Firefox returns []. On the prototype
+    // the method stays inherited and the tamper is invisible.
+    Object.defineProperty(navProto, "getGamepads", {
+      value: wrapped, writable: true, enumerable: true, configurable: true,
+    });
   }
 }

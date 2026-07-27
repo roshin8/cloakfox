@@ -35,14 +35,20 @@ export class CloakfoxWebGPUChild extends JSWindowActorChild {
     if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
 
     const pageWin = win.wrappedJSObject;
-    if (!("gpu" in pageWin.navigator)) return;
+    const navProto = pageWin.Navigator?.prototype;
+    if (!navProto || !("gpu" in navProto)) return;
 
     // Replace the navigator.gpu getter with one that returns undefined.
     // Pages that feature-detect via `'gpu' in navigator` still see true,
     // but `navigator.gpu` evaluates to undefined → adapter requests fail
     // with the same shape as a non-WebGPU browser.
+    //
+    // Define on the PROTOTYPE (where the native gpu getter lives), not the
+    // instance — an own accessor on navigator would leak via
+    // Object.keys(navigator) (stock Firefox returns []). Native prototype
+    // flags are {enumerable:true, configurable:true}.
     try {
-      Object.defineProperty(pageWin.navigator, "gpu", {
+      Object.defineProperty(navProto, "gpu", {
         get: Cu.exportFunction(function () { return undefined; }, pageWin),
         configurable: true,
         enumerable: true,

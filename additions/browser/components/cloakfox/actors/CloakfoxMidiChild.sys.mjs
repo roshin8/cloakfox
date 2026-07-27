@@ -25,12 +25,19 @@ export class CloakfoxMidiChild extends JSWindowActorChild {
     if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
 
     const pageWin = win.wrappedJSObject;
-    if (typeof pageWin.navigator?.requestMIDIAccess !== "function") return;
+    const navProto = pageWin.Navigator?.prototype;
+    if (typeof navProto?.requestMIDIAccess !== "function") return;
 
-    pageWin.navigator.requestMIDIAccess = Cu.exportFunction(function () {
+    const wrapped = Cu.exportFunction(function () {
       return pageWin.Promise.reject(
         new pageWin.DOMException("Permission denied", "NotAllowedError")
       );
     }, pageWin);
+    // Replace on the PROTOTYPE with native flags, not the instance —
+    // instance assignment leaks an own enumerable prop via
+    // Object.keys(navigator) (stock Firefox returns []).
+    Object.defineProperty(navProto, "requestMIDIAccess", {
+      value: wrapped, writable: true, enumerable: true, configurable: true,
+    });
   }
 }

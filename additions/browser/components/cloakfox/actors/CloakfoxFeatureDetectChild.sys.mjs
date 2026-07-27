@@ -48,10 +48,14 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
     }
 
     // navigator.javaEnabled() — spec-deprecated, returns false today.
-    if (typeof pageWin.navigator?.javaEnabled === "function") {
-      pageWin.navigator.javaEnabled = Cu.exportFunction(function () {
-        return false;
-      }, pageWin);
+    // Define on the prototype (like the FAKES above), not the instance —
+    // instance assignment leaks an own enumerable prop via
+    // Object.keys(navigator) (stock Firefox returns []).
+    if (typeof navProto.javaEnabled === "function") {
+      Object.defineProperty(navProto, "javaEnabled", {
+        value: Cu.exportFunction(function () { return false; }, pageWin),
+        writable: true, enumerable: true, configurable: true,
+      });
     }
   }
 }

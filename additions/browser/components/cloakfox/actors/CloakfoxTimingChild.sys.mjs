@@ -119,7 +119,7 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
         return (x % 1000) / 1000;  // 0..0.999
       };
       let lastReturned = -Infinity;
-      pageWin.performance.now = Cu.exportFunction(function () {
+      const wrapped = Cu.exportFunction(function () {
         const orig = origPerfNow.call(this);
         let val = orig + bucketJitter(orig);
         // Clamp to keep the sequence monotonically non-decreasing even
@@ -127,7 +127,14 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
         if (val < lastReturned) val = lastReturned;
         lastReturned = val;
         return val;
-      }, pageWin.performance, { defineAs: "now" });
+      }, pageWin);
+      // Define on Performance.PROTOTYPE (where native now() lives), not the
+      // instance — an own `now` on the performance object would leak via
+      // Object.keys(performance)/hasOwnProperty (native is inherited). Native
+      // prototype flags are {writable:true, enumerable:true, configurable:true}.
+      Object.defineProperty(pageWin.Performance.prototype, "now", {
+        value: wrapped, writable: true, enumerable: true, configurable: true,
+      });
     }
   }
 }

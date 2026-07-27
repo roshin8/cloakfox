@@ -96,15 +96,13 @@ export class CloakfoxMathChild extends JSWindowActorChild {
       "PI", "E", "LN2", "LN10", "LOG2E", "LOG10E", "SQRT2", "SQRT1_2",
     ]);
 
-    // KNOWN LIMITATION (see POC README, "Descriptor leak"):
-    // Cu.cloneInto + defineProperty across the Xray boundary doesn't
-    // preserve descriptor flags the way page-native defineProperty
-    // does. The spoofed values are correct but the descriptors read
-    // as {writable: true, configurable: true, enumerable: true} from
-    // page code — native Math.PI reads as {writable: false,
-    // configurable: false, enumerable: false}. A fingerprint script
-    // can probe this. Closing the gap is follow-up work — likely via
-    // pageWin.eval / Cu.Sandbox with a page-native defineProperty.
+    // Descriptor fidelity: Object.defineProperty across the Xray boundary
+    // DOES preserve flags (verified empirically — copied constants read
+    // {writable:false, configurable:false, enumerable:false}, matching
+    // native Math.PI). So both the constant copy below and the trig-method
+    // definitions further down use defineProperty with native flags, and a
+    // descriptor probe / Object.keys(Math) reads identical to native.
+    //
     // Math constants (PI, E, etc.) are IEEE 754 spec-defined values —
     // every real browser produces them bit-exact. Perturbing them is a
     // self-flagging signal: Math.PI === 3.141592653589793 returning
@@ -193,7 +191,13 @@ export class CloakfoxMathChild extends JSWindowActorChild {
         const r = orig.call(origMath, ...args);
         return Number.isFinite(r) && !Number.isInteger(r) ? r + noise(r) : r;
       }, pageWin);
-      spoofedMath[fn] = wrapped;
+      // Native Math methods are non-enumerable. A plain `spoofedMath[fn] =`
+      // assignment makes them enumerable, so Object.keys(Math) leaks all 23
+      // names (native returns []) — a trivial tamper tell. Define with the
+      // native method descriptor flags instead (matches the constant copy).
+      Object.defineProperty(spoofedMath, fn, {
+        value: wrapped, writable: true, enumerable: false, configurable: true,
+      });
     }
 
     // Restore the [object Math] brand. cloneInto({}) + copying own
