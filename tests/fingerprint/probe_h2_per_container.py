@@ -1,12 +1,11 @@
 """
 Per-container HTTP/2 fingerprint E2E.
 
-STATUS (2026-07-27): currently FAILS — both containers emit the global
-default (firefox) H2 hash instead of distinct per-container fingerprints.
-This is the intended check for the C3 per-container read; the gap it
-surfaces is documented in PENDING.md (socket-process userContextId not
-reaching Http2Session::SendHello). Keep as the regression/validation
-target for that fix.
+STATUS (2026-07-27): PASSES. Container 1 (firefox) and container 2 (chrome)
+emit distinct akamai H2 hashes, proving the C3 per-container read engages.
+(The fix: Http2Session::SendHello resolves userContextId from
+mSocketTransport->GetOriginAttributes(), since ConnectionInfo() is null
+that early — see PENDING.md.)
 
 test_h2_profile.py sets the GLOBAL `network.http.http2.fingerprint_profile`
 and relaunches per profile. This proves the deeper property: within a
