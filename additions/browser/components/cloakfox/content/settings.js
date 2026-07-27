@@ -15,9 +15,19 @@
 
 /* global Services, ChromeUtils */
 
-const { fillPersonaKeys } = ChromeUtils.importESModule(
+const { fillPersonaKeys, writeHttpProfilePrefs } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxPersonas.sys.mjs"
 );
+
+// Write a container's cloak_cfg and keep its H2/H3 wire profile coherent
+// with the persona in one step. Used by every cloak_cfg (re)write below.
+function persistCloakCfg(ucid, seed) {
+  const cfg = buildCloakCfg(seed, ucid);
+  Services.prefs.setStringPref(cloakCfgPref(ucid), cfg);
+  let ua = "";
+  try { ua = JSON.parse(cfg)["navigator.userAgent"] || ""; } catch (_e) {}
+  writeHttpProfilePrefs(ucid, ua);
+}
 const { KEY_TYPES, readOverrides, setOverride, clearOverride, clearAllOverrides } =
   ChromeUtils.importESModule("resource:///modules/CloakfoxOverrides.sys.mjs");
 
@@ -460,7 +470,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function rebuildCloakCfg(ucid) {
     const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
     if (seed) {
-      Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
+      persistCloakCfg(ucid, seed);
     }
   }
 
@@ -524,7 +534,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const ucid = parseInt(selectEl.value, 10) || 0;
       const seed = randomSeedB64();
       Services.prefs.setStringPref(masterSeedPref(ucid), seed);
-      Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
+      persistCloakCfg(ucid, seed);
       refreshContainer();
       const hero = document.querySelector(".hero");
       if (hero) {
@@ -564,7 +574,7 @@ document.addEventListener("DOMContentLoaded", () => {
       clearAllOverrides(ucid);
       const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
       if (seed) {
-        Services.prefs.setStringPref(cloakCfgPref(ucid), buildCloakCfg(seed, ucid));
+        persistCloakCfg(ucid, seed);
       }
       refreshContainer();
     });

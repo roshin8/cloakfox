@@ -107,6 +107,16 @@ export function deriveHttpProfile(ua) {
   return { h2: "firefox", h3: 0 };
 }
 
+// Persist the per-container H2/H3 fingerprint profile derived from the
+// persona UA, so the network stack (Http2Session / neqo) can key the wire
+// fingerprint by userContextId. Call wherever a container's cloak_cfg is
+// (re)written — the derivation and the pref names live only here.
+export function writeHttpProfilePrefs(ucid, ua) {
+  const { h2, h3 } = deriveHttpProfile(ua);
+  Services.prefs.setCharPref(`cloakfox.container.${ucid}.h2_profile`, h2);
+  Services.prefs.setIntPref(`cloakfox.container.${ucid}.h3_profile`, h3);
+}
+
 // 32-byte b64 master seed → mulberry32 PRNG. Mixes all 4 leading bytes
 // + last 4 bytes so even seeds with low entropy in the first word
 // produce diverse samples.

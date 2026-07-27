@@ -159,6 +159,15 @@ this.cloakfox = class extends ExtensionAPI {
           const cfg = buildCloakCfg(seed, u);
           Services.prefs.setStringPref(masterSeedPref(u), seed);
           Services.prefs.setStringPref(cloakCfgPref(u), cfg);
+          // Keep the H2/H3 wire profile coherent with the new persona.
+          try {
+            const { writeHttpProfilePrefs } = ChromeUtils.importESModule(
+              "resource:///modules/CloakfoxPersonas.sys.mjs"
+            );
+            let ua = "";
+            try { ua = JSON.parse(cfg)["navigator.userAgent"] || ""; } catch (_e) {}
+            writeHttpProfilePrefs(u, ua);
+          } catch (_e) { /* non-fatal: falls back to global H2/H3 pref */ }
           return { ucid: u, tag: shortSeedTag(seed) };
         }),
 
