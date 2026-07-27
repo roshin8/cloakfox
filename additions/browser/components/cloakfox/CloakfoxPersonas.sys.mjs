@@ -86,6 +86,27 @@ function normalizeUA(ua) {
     .replace(/Firefox\/\d+\.\d+/, `Firefox/${FIREFOX_VERSION}`);
 }
 
+// Derive the HTTP/2 + HTTP/3 fingerprint profile that keeps the wire
+// transport coherent with the persona's browser family. h3 int mapping
+// matches settings/cloakfox.cfg and the test harness: firefox=0, chrome=1,
+// safari=2. Order matters — Chrome UAs also contain "Safari/", and Firefox
+// UAs contain "Gecko", so test firefox → chrome → safari and default to
+// firefox (the coherent choice for this fork's Firefox-based engine).
+export function deriveHttpProfile(ua) {
+  const s = (ua || "").toLowerCase();
+  if (s.includes("firefox/") || s.includes("gecko/")) {
+    return { h2: "firefox", h3: 0 };
+  }
+  if (s.includes("chrome/") || s.includes("chromium/") ||
+      s.includes("edg/") || s.includes("opr/")) {
+    return { h2: "chrome", h3: 1 };
+  }
+  if (s.includes("safari/") && s.includes("version/")) {
+    return { h2: "safari", h3: 2 };
+  }
+  return { h2: "firefox", h3: 0 };
+}
+
 // 32-byte b64 master seed → mulberry32 PRNG. Mixes all 4 leading bytes
 // + last 4 bytes so even seeds with low entropy in the first word
 // produce diverse samples.
