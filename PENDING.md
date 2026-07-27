@@ -32,7 +32,11 @@ so it can be read thread-safely off the main thread. Switched
 end-to-end: with `enabled=false`, `tls.peet.ws` reports the stock Firefox H2
 akamai hash `6ea73faa…` (vs `a345a694…` chrome when enabled). `cloakfox.enabled`
 is now a true global kill-switch. Built (export + dom/base + netwerk, XUL
-relink) and runtime-verified; all four patches reverse-apply cleanly.
+relink) and runtime-verified. **Full from-scratch patch-stack validation
+PASSED (2026-07-27):** a fresh `firefox-146.0.1` extract + `copy-additions` +
+`make dir` applied all 63 ordered patches + the librewolf patches with **0
+reject files** and set `_READY` — the entire stack (incl. the 4 new/modified
+patches) applies cleanly from pristine.
 
 ## 2026-07-27 — font list was never spoofed (persona mapper dropped it)
 
