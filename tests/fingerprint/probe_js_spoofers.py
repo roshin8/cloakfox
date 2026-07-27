@@ -49,6 +49,9 @@ s.textContent = `
   async function probe() {
     const r = {};
     const safe = (name, fn) => { try { r[name] = fn(); } catch (e) { r[name] = 'ERR: ' + e.message; } };
+    // Bound any awaited API so a hang in headless can't block the result element.
+    const race = (p, ms) => Promise.race([Promise.resolve(p).catch(() => 'ERR'), new Promise(res => setTimeout(() => res('TIMEOUT'), ms || 1500))]);
+    try {
 
     // Navigator basics
     safe('userAgent', () => navigator.userAgent);
@@ -125,16 +128,16 @@ s.textContent = `
     // Permissions
     safe('navigator.permissions', () => typeof navigator.permissions);
     // Storage estimate
-    try { const e = await navigator.storage.estimate(); r['storage.estimate.quota'] = e.quota; r['storage.estimate.usage'] = e.usage; } catch (e) { r['storage.estimate'] = 'ERR'; }
+    try { const e = await race(navigator.storage.estimate()); if (e && e.quota !== undefined) { r['storage.estimate.quota'] = e.quota; r['storage.estimate.usage'] = e.usage; } else { r['storage.estimate'] = e; } } catch (e) { r['storage.estimate'] = 'ERR'; }
 
     // Battery
-    try { if (navigator.getBattery) { const b = await navigator.getBattery(); r['battery.level'] = b.level; r['battery.charging'] = b.charging; } else { r['battery'] = 'not-implemented'; } } catch (e) { r['battery'] = 'ERR'; }
+    try { if (navigator.getBattery) { const b = await race(navigator.getBattery()); if (b && b.level !== undefined) { r['battery.level'] = b.level; r['battery.charging'] = b.charging; } else { r['battery'] = b; } } else { r['battery'] = 'not-implemented'; } } catch (e) { r['battery'] = 'ERR'; }
 
     // Vibration
     safe('navigator.vibrate', () => typeof navigator.vibrate === 'function' ? navigator.vibrate([100]) : null);
 
     // MediaDevices
-    try { const list = await navigator.mediaDevices.enumerateDevices(); r['mediaDevices.count'] = list.length; r['mediaDevices.kinds'] = JSON.stringify([...new Set(list.map(d => d.kind))]); } catch (e) { r['mediaDevices'] = 'ERR'; }
+    try { const list = await race(navigator.mediaDevices.enumerateDevices()); if (Array.isArray(list)) { r['mediaDevices.count'] = list.length; r['mediaDevices.kinds'] = JSON.stringify([...new Set(list.map(d => d.kind))]); } else { r['mediaDevices'] = list; } } catch (e) { r['mediaDevices'] = 'ERR'; }
 
     // Speech voices
     safe('speechSynthesis.voices.length', () => speechSynthesis.getVoices().length);
@@ -158,10 +161,12 @@ s.textContent = `
     safe('setHttp3Profile', () => typeof setHttp3Profile);
     safe('setNavigatorUserAgent', () => typeof setNavigatorUserAgent);
 
-    const out = document.createElement('pre');
-    out.id = '_probe';
-    out.textContent = JSON.stringify(r);
-    document.body.appendChild(out);
+    } finally {
+      const out = document.createElement('pre');
+      out.id = '_probe';
+      out.textContent = JSON.stringify(r);
+      document.body.appendChild(out);
+    }
   }
   probe();
 `;
@@ -173,16 +178,20 @@ document.body.appendChild(s);
 # machine (real values on macOS ARM, Cloakfox default UA). A match means
 # "spoofer didn't run or returned the default." Flexible — a dict can
 # also list expected-spoofed markers.
+# NOTE: platform/hardwareConcurrency/WebGL/colorDepth markers assume a
+# macOS-ARM host running with a NON-matching persona. They false-positive
+# when the sampled persona coincidentally matches the host (e.g. a Linux
+# persona on a Linux box, or a 16-core persona here). Treat those verdicts
+# as advisory; the raw dump is the source of truth. Math.PI/E are
+# DELIBERATELY left bit-exact (perturbing them is self-flagging — see
+# CloakfoxMathChild); only the trig FUNCTIONS are noised, so Math.sin is
+# the real "did the Math actor fire" signal, not the constants.
 UNSPOOFED_MARKERS = {
     "userAgent": lambda v: "Cloakfox/" in v,                    # native UA leaked
-    "platform": lambda v: v == "MacIntel" or v == "Linux x86_64",  # real platform
-    "hardwareConcurrency": lambda v: v in (8, 10, 12, 16),       # real M-series cores
-    "Math.PI": lambda v: v == 3.141592653589793,                 # IEEE default
-    "Math.E": lambda v: v == 2.718281828459045,
+    "platform": lambda v: v == "MacIntel",                       # real host platform
     "Math.sin(0.5)": lambda v: abs(v - 0.479425538604203) < 1e-17,
     "WebGL.vendor": lambda v: "Apple" in str(v) or "Mesa" in str(v),
     "WebGL.renderer": lambda v: "Apple" in str(v) or "Mesa" in str(v),
-    "screen.colorDepth": lambda v: v == 24,
     "Date.getTimezoneOffset": None,  # depends on real tz; skip heuristic
     "setCanvasSeed": lambda v: v == "function",  # if still present, inject never ran
 }
@@ -213,10 +222,19 @@ def run(bin_path: str) -> int:
         driver.get("https://example.com/?probe=1")  # second nav, warm
         time.sleep(1.5)
         driver.execute_script(PROBE_SCRIPT)
-        time.sleep(1.5)  # async probes (storage, battery, mediaDevices)
-        try:
-            raw = driver.find_element("id", "_probe").text
-        except Exception:
+        # Poll for the result element — the async probes (storage, battery,
+        # mediaDevices) are each bounded to ~1.5s, so it appears within ~5s.
+        raw = None
+        deadline = time.time() + 12
+        while time.time() < deadline:
+            try:
+                raw = driver.find_element("id", "_probe").text
+                if raw:
+                    break
+            except Exception:
+                pass
+            time.sleep(0.3)
+        if not raw:
             print("Probe element missing — inline script didn't run.")
             return 2
         data = json.loads(raw)

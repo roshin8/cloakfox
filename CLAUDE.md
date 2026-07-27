@@ -40,13 +40,27 @@ make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 - `branding/` — App icons and about dialog assets
 - `tests/` — Unit (Vitest) and E2E (Playwright)
 
-## Extension Architecture
+## Spoofer Architecture (cpp-first)
 
-- `additions/browser/extensions/cloakfox-shield/src/background/` — Container manager, settings store, profile manager, config injector, header spoofer
-- `additions/browser/extensions/cloakfox-shield/src/inject/` — Cloakfox bridge (calls window.setXxx()), fingerprint monitor
-- `additions/browser/extensions/cloakfox-shield/src/content/` — MAIN ↔ ISOLATED world message bridge
-- `additions/browser/extensions/cloakfox-shield/src/popup/` — React popup UI (6 tabs)
-- `additions/browser/extensions/cloakfox-shield/src/lib/` — PRNG (xorshift128+), seed derivation, domain matcher, profiles
+Spoofing happens in two layers on this branch — NO MAIN-world inject/spoofer
+extension code (that pre-pivot design was removed):
+
+- **C++ patches** (`patches/`) — canvas, audio, webgl, navigator UA/platform/
+  oscpu, screen, fonts, timezone, etc. Read per-container overlays from
+  `cloak_cfg_<ucid>` prefs via `MaskConfig`.
+- **JSWindowActors** (`additions/browser/components/cloakfox/actors/`) — 10
+  chrome-principal `*Child`/`*Parent` pairs for the "must-stay-JS" vectors C++
+  can't reach: Math, Keyboard, Timing, Gamepad, Midi, FeatureDetect,
+  TabHistory, Timezone, WebGPU, WebRTC. Each `*Child` patches page objects via
+  `Cu.exportFunction` on `DOMDocElementInserted`, gated on `cloakfox.enabled`.
+  Patch spoofs on the PROTOTYPE with native descriptor flags, never the
+  instance — an own property leaks the tamper via `Object.keys()`.
+- **cloakfox-shield extension** (`additions/browser/extensions/cloakfox-shield/`)
+  — popup UI + `experiment-apis/cloakfox.js` (parent-process pref/persona
+  bridge). No content/inject scripts.
+- **Persona/seed** (`additions/browser/components/cloakfox/`) —
+  `CloakfoxPersonas`, `CloakfoxBFNetwork` (BrowserForge Bayesian net),
+  `CloakfoxSeedSync` (parent → `Services.cpmm.sharedData` for the actors).
 
 ## Critical Constraints
 
@@ -68,8 +82,14 @@ make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 
 ## Testing
 
+- Fingerprint/runtime probes: **selenium + geckodriver** against a built
+  binary, `tests/fingerprint/probe_*.py` (NOT Playwright — no Juggler on this
+  branch). Set `CLOAKFOX_BIN=<app>/Contents/MacOS/cloakfox`. See
+  `tests/fingerprint/README.md`.
+- Dev build is NON-packaged: actor `*.sys.mjs` are loose files under
+  `obj-*/dist/bin/browser/actors/` and `…/Cloakfox.app/Contents/Resources/browser/actors/`
+  — copy edited sources there to test JS-only changes with no rebuild.
 - Unit tests: Vitest, `additions/browser/extensions/cloakfox-shield/tests/unit/`
-- E2E tests: Playwright, `tests/e2e/`
 - Test spoofed values are deterministic given same seed
 - Test different containers produce different fingerprints
 - Test different domains produce different fingerprints within same container

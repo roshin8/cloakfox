@@ -4,6 +4,60 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-07-27 — actor descriptor-leak fixes + architecture reconciliation
+
+**Architecture reality check (this file was badly stale below).** The
+`cpp-first-exploration` branch's JS-spoofer surface is **10 chrome-principal
+JSWindowActor pairs** in `additions/browser/components/cloakfox/actors/`
+(Math, Keyboard, Timing, Gamepad, Midi, FeatureDetect, TabHistory, Timezone,
+WebGPU, WebRTC) — the "must-stay-JS" vectors with no C++ coverage. It is NOT
+the "~55 `inject/spoofers/*.ts` files" the older P1 sections below describe;
+that MAIN-world extension architecture was removed in the pivot. Consequences:
+- **"P1 — JS spoofer audit (~55 files)" and "P1 — Phase 3 JS→ISOLATED
+  migration" below are SUPERSEDED.** The actors already run chrome-principal
+  via `Cu.exportFunction` (the stealth goal of that migration) and there are
+  only 10 of them.
+- **"Cold-start Sec-CH-UA race" and the `header-spoofer.ts` items are MOOT.**
+  No `webRequest`/header-spoofer code exists on this branch, and Firefox-only
+  builds don't send `Sec-CH-UA` at all.
+- **"WebIDL setters don't persist prefs → need Experiment API" is DONE.**
+  `additions/browser/extensions/cloakfox-shield/experiment-apis/cloakfox.js`
+  is the parent-process bridge (`setEnabled`/`regeneratePersona` write prefs +
+  H2/H3 profiles from parent scope).
+- **The self-destruct skip-coordination double-run is MOOT.** canvas/webgl/
+  audio/screen are C++-only now — no JS fallback spoofer to double-run.
+
+**Fixed: 6 own-enumerable descriptor leaks in the actors.** The actors
+installed spoofs via plain instance assignment (`navigator.getGamepads = …`,
+`spoofedMath[fn] = …`, `performance.now` via `defineAs`), creating **own
+enumerable** properties where native keeps them inherited/non-enumerable. Net
+tell: `Object.keys(navigator)` returned `["getGamepads","gpu","javaEnabled",
+"requestMIDIAccess"]` and `Object.keys(Math)` returned all 23 method names —
+stock Firefox returns `[]` for both. Fix: define on the PROTOTYPE with the
+measured native flags (all `enumerable:true` on the WebIDL prototype; Math
+methods `enumerable:false`). Files: `CloakfoxMathChild`, `CloakfoxGamepadChild`,
+`CloakfoxMidiChild`, `CloakfoxFeatureDetectChild` (javaEnabled), `CloakfoxWebGPUChild`,
+`CloakfoxTimingChild` (performance.now). Verified against the built binary:
+`Object.keys(navigator)=[]`, `Object.keys(Math)=0`, all props `inherited`,
+functionality intact (getGamepads→4 nulls, gpu→undefined, Math.sin still noised,
+now still monotonic). NOT leaks (confirmed vs native baseline, left alone):
+`window.setTimeout/setInterval` (native own+enumerable on the global) and
+`History.prototype.length` (matches native accessor flags).
+
+**Known low-severity gap (deferred):** `CloakfoxKeyboardChild` defines an own
+`timeStamp` on fast-typed keyboard events (native inherits it from
+`Event.prototype`). Exploiting it needs `hasOwnProperty('timeStamp')` inside a
+handler on sub-min-delay keys — exotic; a stealthy fix needs a global
+`Event.prototype` getter patch. Not worth it yet.
+
+**Tooling:** `tests/fingerprint/probe_js_spoofers.py` hung (async awaits
+blocked its result element); fixed with timeout-bounded awaits + a `finally`
+append + a Python poll, and dropped the false-positive Math.PI/E heuristics
+(bit-exact constants are correct by design). **Dev-build note:** the local
+build is NON-packaged — actor modules are loose files at
+`obj-*/dist/bin/browser/actors/` and `…/Cloakfox.app/Contents/Resources/browser/actors/`.
+Copy edited `*.sys.mjs` there to test JS-only changes with **no rebuild**.
+
 ## 2026-07-27 — auto-coordinated per-container H2/H3 profiles (C1–C4 landed; E2E reveals a runtime gap)
 
 Implemented the feature designed in
@@ -390,7 +444,13 @@ possibly `patches/webgl-spoofing.patch`.
 
 
 
-### WebIDL setters don't actually persist prefs — mitigated 2026-04-21
+### WebIDL setters don't actually persist prefs — RESOLVED 2026-07-27
+
+> **RESOLVED:** The Experiment API now exists
+> (`extensions/cloakfox-shield/experiment-apis/cloakfox.js`) and writes prefs +
+> H2/H3 profiles from parent-process scope (`setEnabled`, `regeneratePersona`).
+> The historical analysis below stands but the fix has landed.
+
 
 **Status:** broken setter calls removed from `content/index.ts`;
 `cloakfox.cfg` `defaultPref` remains the working path. The underlying
@@ -431,6 +491,10 @@ the broken setHttp2Profile/setHttp3Profile calls), `settings/cloakfox.cfg`
 
 ### Cold-start Sec-CH-UA race
 
+> **MOOT (2026-07-27):** No `webRequest`/header-spoofer exists on this branch
+> and Firefox-only builds don't send `Sec-CH-UA` at all. Nothing to race.
+> Kept for history.
+
 **Symptom:** First navigation in a session doesn't emit `Sec-CH-UA`,
 `Sec-CH-UA-Mobile`, `Sec-CH-UA-Platform` headers. Second navigation
 onward, they fire correctly. Verified live.
@@ -467,6 +531,11 @@ Once CI `24637464609` (or its successor) goes green on both Linux + macOS:
   immediately challenge.
 
 ## P1 — Phase 3 JS→ISOLATED migration
+
+> **SUPERSEDED (2026-07-27):** Done differently. The spoofers are now 10
+> chrome-principal JSWindowActor pairs using `Cu.exportFunction` — already out
+> of page MAIN world — not the `inject/spoofers/*.ts` files this section lists.
+> Kept for history; do not action.
 
 **Why:** After the stealth pass, Cloakfox's *presence* is undetectable
 from page MAIN. What's still detectable is the JS spoofer machinery —
@@ -539,6 +608,12 @@ since those currently have no choice but to run in MAIN:
 Keep changes surgical — one spoofer per commit so bisecting stays useful.
 
 ## P1 — JS spoofer audit (~55 files, only ~5 live-verified)
+
+> **SUPERSEDED (2026-07-27):** The ~55 `inject/spoofers/*.ts` files no longer
+> exist on this branch — the JS surface is 10 actor pairs (see the top entry).
+> The audit that matters now is descriptor/stealth fidelity of those 10 actors
+> (`probe_js_spoofers.py` + the descriptor probes described up top); the first
+> pass found + fixed 6 own-enumerable leaks. Kept for history.
 
 Live testing of Math.PI surfaced four stacked bugs (double-XOR seed,
 noise-below-ULP, Proxy invariant violation, copy-before-override silent
