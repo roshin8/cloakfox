@@ -28,20 +28,44 @@ containers emit the global-firefox hash (`6ea73faa…`), not distinct
 (content-process userContextId is correct). So the gap is socket-process
 specific.
 
-**Leading hypothesis:** `Http2Session::ConnectionInfo()` at `SendHello`
-returns a session/coalescing conn-info whose `mUserContextId` is 0 (the H2
-session key is normalized for connection coalescing and may not carry the
-per-request container id), so C3 reads `cloakfox.container.0.h2_profile`
-(unset) → global fallback for every container. Alternatively the two
-containers' connections coalesce. Either way both collapse to the default.
+**Confirmed bug #1 (fixed):** C3 read the ucid from `ConnectionInfo()` in
+`SendHello`, but `ConnectionInfo()` delegates to `mConnection`, which is NOT
+attached yet at `SendHello` — the session is built by
+`CreateSession(socketTransport,…)` which calls `SendHello()` immediately.
+So `ConnectionInfo()` returned null, the per-container branch was skipped
+every time, and every connection fell back to the global pref. Fixed by
+resolving from `mSocketTransport->GetOriginAttributes()` (valid at
+`SendHello`) instead. Compiles + patch applies; committed.
 
-**Next debug step (needs a build + logging cycle):** add a temporary
-`printf_stderr` of the resolved ucid + profile in `SendHello`, rebuild, and
-run `probe_h2_per_container.py` to see whether ucid is 0. If so, resolve the
-container id from the per-request/transaction origin attributes rather than
-the session conn-info (e.g. thread it from the transaction that triggers the
-connection), which likely also applies to C4/H3. Blocked on the environment
-SIGTERM-ing background builds (use foreground 10-min incremental chunks).
+**Still fails after that fix — a DEEPER issue remains.** Even with the
+socket-transport source, the E2E still collapses to global-firefox, AND the
+`ucid=0` default-container discriminator (`cloakfox.container.0.h2_profile=
+chrome`, global firefox) still returns firefox — so the per-container branch
+is STILL not producing a value. Diagnosis is blocked by process sandboxing:
+the H2 session runs in the **sandboxed socket process**, where `fopen("/tmp
+/…")` is silently blocked (a file-logging probe produced an empty log) and
+`printf_stderr` from the child wasn't captured via geckodriver. So the
+runtime values of `mSocketTransport`, `GetOriginAttributes` rv, the resolved
+`ucid`, and the per-container pref read are all still UNOBSERVED.
+
+**Candidate remaining causes (need runtime logging to disambiguate):**
+1. **Socket-process can't read the custom pref.** `network.http.http2.
+   fingerprint_profile` works there (mirrored), but `cloakfox.container.
+   <ucid>.h2_profile` may not be readable in the socket process — the same
+   cross-process-pref limitation already documented for H2/H3 below. If so,
+   the profile must be delivered via the cross-process `RoverfoxStorageManager`
+   / `sharedData` overlay (like `cloak_cfg`), not a raw `Preferences` read.
+2. The socket transport's origin attributes are `mUserContextId=0` in this
+   path (container not propagated to the socket).
+3. H2 connection coalescing across containers.
+
+**Next debug step:** add a real `MOZ_LOG` module (sandbox-safe + cross-process,
+capturable via `MOZ_LOG=cfx:5 MOZ_LOG_FILE=…`) logging the four unknowns from
+`SendHello`; rebuild (`mach build binaries`, ~15s once the tree is built);
+run `probe_h2_per_container.py`. The result picks the fix: if the pref is
+unreadable in the socket process, switch delivery to the cross-process
+overlay (and apply the same to C4/H3). Note: `probe_h2_per_container.py` is
+the committed regression target; the H3 analog is untested.
 
 ## 2026-07-26 — first real-site anti-bot battery + fixes
 
