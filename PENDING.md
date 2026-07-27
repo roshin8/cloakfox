@@ -37,13 +37,19 @@ profiles) — the first real-site validation of this branch.
   test artifact, not a real-window bug.
 - Persona platform/oscpu coherence holds non-headless too.
 - CreepJS "**33% headless**" persists even non-headless (constant hash
-  `a427e0b8`). Most likely the Marionette automation the battery runs under
-  (a test-only condition; real users aren't driven by Marionette), but it
-  can't be attributed precisely until the harness extracts CreepJS's
-  per-signal detail breakdown (its shadow-DOM score panel — the trust-score
-  extraction gap noted elsewhere). **Next step to make it actionable:**
-  extract the CreepJS "lies"/headless detail rows and see whether any signal
-  is cloakfox-specific vs. pure automation.
+  `a427e0b8`). **Attributed 2026-07-26:** the harness now extracts CreepJS's
+  per-signal headless breakdown, which reads
+  `webDriverIsOn: true / hasHeadlessUA: false / hasHeadlessWorkerUA: false`.
+  So the entire headless rating is `webDriverIsOn` — CreepJS detecting the
+  WebDriver/Marionette connection the battery drives the browser with, NOT a
+  browser fingerprint tell. `navigator.webdriver` is already spoofed false
+  (sannysoft agrees) and both UA-based headless checks are false. A real
+  (non-automated) user isn't driven by Marionette, so they wouldn't trigger
+  it. Hiding Marionette from detection is an automation-stealth feature,
+  out of scope for a daily-driver privacy browser — not tracked as a bug.
+  Also fixed a latent race here: the CreepJS wait broke on
+  "FP ID: Computing…" and could snapshot before compute finished; it now
+  waits for the headless breakdown / a real FP-ID hash.
 - `arh.antoinevastel.com/bots/areyouheadless` was serving `502 Bad Gateway`
   during the run — external site down, nothing to fix here.
 - HTTP transport profile (chrome/safari) is orthogonal to the sampled

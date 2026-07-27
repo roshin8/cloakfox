@@ -152,14 +152,25 @@ def _extract_creepjs(driver) -> str:
     "FP ID:" line (always present once compute completes), then text-
     grep the body for the lines we actually care about: FP ID, headless
     scores, the chromium/Resistance breakdown, and worker UA.
+
+    Also pull the per-signal headless breakdown (webDriverIsOn /
+    hasHeadlessUA / hasHeadlessWorkerUA), which is what actually drives
+    the headless %. That's how we attribute the score — e.g. a nonzero
+    "headless" rating caused only by webDriverIsOn:true is the WebDriver
+    automation this harness runs under, not a browser fingerprint tell.
     """
     try:
-        deadline = time.time() + 25
+        # Wait for compute to FINISH, not just start. "FP ID:" appears
+        # immediately as "FP ID: Computing…"; the headless breakdown
+        # (webDriverIsOn) is the last thing rendered, and a real FP ID is
+        # a hex hash rather than "Computing". Break on either of those.
+        deadline = time.time() + 45
         body_text = ""
         while time.time() < deadline:
             try:
                 body_text = driver.find_element("css selector", "body").text
-                if "FP ID:" in body_text:
+                fp_done = "FP ID:" in body_text and "Computing" not in body_text.split("FP ID:", 1)[1][:20]
+                if "webDriverIsOn" in body_text or fp_done:
                     break
             except Exception:
                 pass
@@ -170,11 +181,30 @@ def _extract_creepjs(driver) -> str:
             "FP ID:", "Fuzzy:", "trust ", "Trust ", "headless", "Headless",
             "chromium:", "stealth", "Stealth", "Resistance",
             "userAgent", "platform hints", "Webdriver", "webdriver",
+            "webDriverIsOn", "hasHeadlessUA", "hasHeadlessWorkerUA",
         )
         lines = [l for l in body_text.split("\n") if any(k in l for k in keep_keywords)]
+        # Targeted grab of the headless-detail node in case innerText
+        # concatenated the sub-signals onto a line the grep missed.
+        try:
+            # Match on the element's OWN text nodes (not recursive
+            # textContent), else the first hit is a top-level ancestor
+            # containing the whole page. The target node's direct text is
+            # exactly "webDriverIsOn: … hasHeadlessUA: … hasHeadlessWorkerUA: …".
+            detail = driver.execute_script(
+                "const own=e=>Array.from(e.childNodes).filter(n=>n.nodeType===3)"
+                ".map(n=>n.textContent).join('');"
+                "const el=[...document.querySelectorAll('div,span,p')]"
+                ".find(e=>/webDriverIsOn/.test(own(e)));"
+                "return el?own(el).replace(/\\s+/g,' ').trim().slice(0,240):'';"
+            )
+            if detail and not any("webDriverIsOn" in l for l in lines):
+                lines.append("headless-detail: " + detail)
+        except Exception:
+            pass
         if not lines:
             return body_text[:1500]
-        return "\n".join(lines[:25])
+        return "\n".join(lines[:28])
     except Exception as e:
         return f"<err: {e}>"
 
