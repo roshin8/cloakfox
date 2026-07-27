@@ -52,13 +52,27 @@ thread** (not a socket process); prefs are available there. The socket
 transport carries the container's origin attributes
 (`tls.peet.ws:443^userContextId=1/2`).
 
-**Remaining (untested, likely fine):** C4/H3 resolves in
-`Http3Session::Init` via `mConnInfo->GetOriginAttributes()`, and `mConnInfo`
-IS set there (line ~107) — so it doesn't have C3's null-at-SendHello timing
-bug and should already work. No H3 E2E yet; add an H3 analog of
-`probe_h2_per_container.py` to confirm.
-**Final CI step:** a from-scratch `make build` (not incremental) to confirm
-the committed patch packages a working `.app` end-to-end.
+**C4/H3 VERIFIED (2026-07-27).** `Http3Session::Init` resolves per-container
+correctly — MOZ_LOG confirms `ucid=1 -> h3Profile=0`, `ucid=2 -> h3Profile=1`
+(from `cloakfox.container.<ucid>.h3_profile`), `ucid=0 -> global default`.
+`mConnInfo` is valid in `Init` (unlike C3's null `ConnectionInfo()` at
+`SendHello`), so H3 never had the timing bug. The resolved profile reaches
+neqo via the compile-verified FFI; H3 SETTINGS emission is covered by neqo's
+Rust unit tests. Note: no external service reports an H3 fingerprint
+(tls.peet.ws only reports http2/tls/tcpip, and wouldn't upgrade to H3), so
+there's no committed H3 E2E — the resolve was confirmed via MOZ_LOG instead.
+
+**From-scratch validation DONE (2026-07-27).** Clean
+`make setup-minimal && make dir && make build` from the committed patches:
+`make dir` applied all patches (0 rej), `make build` packaged a working
+`.app`. Against that fresh `.app`: `probe_h2_per_container.py` PASSES
+(container 1 firefox `6ea73faa`, container 2 chrome `a345a694`),
+`probe_container_isolation.py` PASSES (canvas/audio/UA per-container). The
+whole C1–C4 feature is verified end-to-end from a clean build.
+
+**Dev-workflow note:** `mach build binaries` relinks `obj/dist/bin/XUL` but
+does NOT re-package `dist/<App>.app`; use `make relink` (added) after C++/Rust
+edits so the packaged `.app` gets the fresh library.
 
 ## 2026-07-26 — first real-site anti-bot battery + fixes
 

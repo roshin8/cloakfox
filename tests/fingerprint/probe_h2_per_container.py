@@ -80,9 +80,19 @@ def _akamai_hash_in_container(driver, ucid: int) -> str:
         raise RuntimeError(f"container {ucid}: new tab never appeared")
 
     driver.switch_to.window(handle)
-    # Content-initiated navigation inside the container tab.
+    # Wait for the blank container doc to be ready, then do a content-
+    # initiated navigation inside it (so the channel inherits the
+    # container's origin attributes).
+    ready = time.time() + 10
+    while time.time() < ready:
+        try:
+            if driver.execute_script("return document.readyState") == "complete":
+                break
+        except Exception:
+            pass
+        time.sleep(0.2)
     driver.execute_script("window.location.href = arguments[0];", PROBE_URL)
-    deadline = time.time() + 30
+    deadline = time.time() + 60
     payload = None
     while time.time() < deadline:
         try:
