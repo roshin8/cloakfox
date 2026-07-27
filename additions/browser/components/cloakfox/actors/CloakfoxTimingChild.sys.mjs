@@ -43,6 +43,23 @@ function b64ToBytes(b64) {
   return out;
 }
 
+// Cu.exportFunction yields a page-side function with name:"" and length:0.
+// Native methods report their own name + arity; set both on the page object
+// (Xray-waived) with native function-property flags so a name/length probe
+// can't spot the wrapper.
+function setNativeIdentity(exportedFn, name, length) {
+  const waived = Cu.waiveXrays(exportedFn);
+  try {
+    Object.defineProperty(waived, "name", {
+      value: name, writable: false, enumerable: false, configurable: true,
+    });
+    Object.defineProperty(waived, "length", {
+      value: length, writable: false, enumerable: false, configurable: true,
+    });
+  } catch (_e) { /* best effort — identity match is defense in depth */ }
+  return exportedFn;
+}
+
 export class CloakfoxTimingChild extends JSWindowActorChild {
   handleEvent(event) {
     if (event.type !== "DOMDocElementInserted") return;
@@ -70,27 +87,27 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
     // off-by-one and capped jitter at MAX_JITTER_MS - 1, which with
     // MAX_JITTER_MS = 2 meant only {0, 1}.
     const origSetTimeout = pageWin.setTimeout;
-    pageWin.setTimeout = Cu.exportFunction(function (handler, timeout, ...args) {
+    pageWin.setTimeout = setNativeIdentity(Cu.exportFunction(function (handler, timeout, ...args) {
       const jitter = Math.floor(prng() * (MAX_JITTER_MS + 1));
       return origSetTimeout.call(this, handler, (timeout || 0) + jitter, ...args);
-    }, pageWin, { defineAs: "setTimeout" });
+    }, pageWin, { defineAs: "setTimeout" }), origSetTimeout.name, origSetTimeout.length);
 
     // Wrap setInterval — same treatment.
     const origSetInterval = pageWin.setInterval;
-    pageWin.setInterval = Cu.exportFunction(function (handler, timeout, ...args) {
+    pageWin.setInterval = setNativeIdentity(Cu.exportFunction(function (handler, timeout, ...args) {
       const jitter = Math.floor(prng() * (MAX_JITTER_MS + 1));
       return origSetInterval.call(this, handler, (timeout || 0) + jitter, ...args);
-    }, pageWin, { defineAs: "setInterval" });
+    }, pageWin, { defineAs: "setInterval" }), origSetInterval.name, origSetInterval.length);
 
     // Wrap requestAnimationFrame — add sub-ms noise to the callback's
     // timestamp argument without delaying the actual frame.
     const origRAF = pageWin.requestAnimationFrame;
     if (typeof origRAF === "function") {
-      pageWin.requestAnimationFrame = Cu.exportFunction(function (callback) {
+      pageWin.requestAnimationFrame = setNativeIdentity(Cu.exportFunction(function (callback) {
         return origRAF.call(this, Cu.exportFunction(function (ts) {
           return callback.call(this, ts + prng() * RAF_NOISE_MS);
         }, pageWin));
-      }, pageWin, { defineAs: "requestAnimationFrame" });
+      }, pageWin, { defineAs: "requestAnimationFrame" }), origRAF.name, origRAF.length);
     }
 
     // Wrap performance.now — add deterministic per-ms-bucket fractional
@@ -128,6 +145,7 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
         lastReturned = val;
         return val;
       }, pageWin);
+      setNativeIdentity(wrapped, origPerfNow.name, origPerfNow.length);
       // Define on Performance.PROTOTYPE (where native now() lives), not the
       // instance — an own `now` on the performance object would leak via
       // Object.keys(performance)/hasOwnProperty (native is inherited). Native

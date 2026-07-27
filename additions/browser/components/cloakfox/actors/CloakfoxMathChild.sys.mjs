@@ -44,6 +44,24 @@ function b64ToBytes(b64) {
   return out;
 }
 
+// Cu.exportFunction yields a page-side function with name:"" and length:0.
+// Native methods report their own name + arity, so a probe reading
+// fn.name / fn.length can spot the wrapper. Set both on the page object
+// (Xray-waived so the page sees them) with native function-property flags
+// {writable:false, enumerable:false, configurable:true}.
+function setNativeIdentity(exportedFn, name, length) {
+  const waived = Cu.waiveXrays(exportedFn);
+  try {
+    Object.defineProperty(waived, "name", {
+      value: name, writable: false, enumerable: false, configurable: true,
+    });
+    Object.defineProperty(waived, "length", {
+      value: length, writable: false, enumerable: false, configurable: true,
+    });
+  } catch (_e) { /* best effort — identity match is defense in depth */ }
+  return exportedFn;
+}
+
 export class CloakfoxMathChild extends JSWindowActorChild {
   handleEvent(event) {
     // DOMDocElementInserted fires when <html> is inserted — before any
@@ -191,6 +209,12 @@ export class CloakfoxMathChild extends JSWindowActorChild {
         const r = orig.call(origMath, ...args);
         return Number.isFinite(r) && !Number.isInteger(r) ? r + noise(r) : r;
       }, pageWin);
+      // exportFunction yields name:"" and length:0; native Math methods
+      // report their own name + arity (Math.sin.name==="sin",
+      // Math.pow.length===2). Set both on the page-side function (Xray-waived
+      // so the page sees them) with native function-descriptor flags, so a
+      // name/length probe can't distinguish the wrapper.
+      setNativeIdentity(wrapped, orig.name, orig.length);
       // Native Math methods are non-enumerable. A plain `spoofedMath[fn] =`
       // assignment makes them enumerable, so Object.keys(Math) leaks all 23
       // names (native returns []) — a trivial tamper tell. Define with the

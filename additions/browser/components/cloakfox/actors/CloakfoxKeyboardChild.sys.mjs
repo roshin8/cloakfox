@@ -26,6 +26,23 @@ const MIN_DELAY_MS = 30;
 const MAX_JITTER_MS = 15;
 const KEY_EVENTS = new Set(["keydown", "keyup", "keypress"]);
 
+// Cu.exportFunction yields a page-side function with name:"" and length:0.
+// Native methods report their own name + arity; set both on the page object
+// (Xray-waived) with native function-property flags so a name/length probe
+// can't spot the wrapper.
+function setNativeIdentity(exportedFn, name, length) {
+  const waived = Cu.waiveXrays(exportedFn);
+  try {
+    Object.defineProperty(waived, "name", {
+      value: name, writable: false, enumerable: false, configurable: true,
+    });
+    Object.defineProperty(waived, "length", {
+      value: length, writable: false, enumerable: false, configurable: true,
+    });
+  } catch (_e) { /* best effort — identity match is defense in depth */ }
+  return exportedFn;
+}
+
 function makePRNG(seedBytes) {
   let s0 = 0n, s1 = 0n;
   for (let i = 0; i < 16; i++) s0 = (s0 << 8n) | BigInt(seedBytes[i] || 0);
@@ -152,10 +169,13 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
       return origRemove.call(this, type, listener, options);
     }, pageWin);
 
-    // Known limitation (same as CloakfoxMath): descriptor flags on
-    // pageWin.EventTarget.prototype don't fully lock across the Xray
-    // boundary. Setting wrapped as the property value still works;
-    // descriptor-probe detection is documented as future work.
+    // addEventListener/removeEventListener are existing own writable props
+    // of EventTarget.prototype, so assigning the value preserves their
+    // (non-enumerable) descriptor flags — no Object.keys leak. But the
+    // exported wrappers report name:"" length:0, so copy the native
+    // identity (name + arity) onto them first.
+    setNativeIdentity(wrapped, origAdd.name, origAdd.length);
+    setNativeIdentity(wrappedRemove, origRemove.name, origRemove.length);
     pageWin.EventTarget.prototype.addEventListener = wrapped;
     pageWin.EventTarget.prototype.removeEventListener = wrappedRemove;
   }

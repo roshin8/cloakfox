@@ -22,6 +22,23 @@ const FAKES = [
   ["cookieEnabled", true],       // pinned enabled
 ];
 
+// Cu.exportFunction yields a page-side function with name:"" and length:0.
+// Native methods report their own name + arity; set both on the page object
+// (Xray-waived) with native function-property flags so a name/length probe
+// can't spot the wrapper.
+function setNativeIdentity(exportedFn, name, length) {
+  const waived = Cu.waiveXrays(exportedFn);
+  try {
+    Object.defineProperty(waived, "name", {
+      value: name, writable: false, enumerable: false, configurable: true,
+    });
+    Object.defineProperty(waived, "length", {
+      value: length, writable: false, enumerable: false, configurable: true,
+    });
+  } catch (_e) { /* best effort — identity match is defense in depth */ }
+  return exportedFn;
+}
+
 export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
   handleEvent(event) {
     if (event.type !== "DOMDocElementInserted") return;
@@ -52,9 +69,11 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
     // instance assignment leaks an own enumerable prop via
     // Object.keys(navigator) (stock Firefox returns []).
     if (typeof navProto.javaEnabled === "function") {
+      const orig = navProto.javaEnabled;
+      const wrapped = Cu.exportFunction(function () { return false; }, pageWin);
+      setNativeIdentity(wrapped, orig.name, orig.length);
       Object.defineProperty(navProto, "javaEnabled", {
-        value: Cu.exportFunction(function () { return false; }, pageWin),
-        writable: true, enumerable: true, configurable: true,
+        value: wrapped, writable: true, enumerable: true, configurable: true,
       });
     }
   }
