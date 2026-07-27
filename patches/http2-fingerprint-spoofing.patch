@@ -1,6 +1,6 @@
 --- a/netwerk/protocol/http/Http2Session.cpp	2025-12-17 10:38:49
 +++ b/netwerk/protocol/http/Http2Session.cpp	2026-04-18 23:11:28
-@@ -1068,15 +1068,33 @@
+@@ -1068,15 +1068,43 @@
    // 4th entry is bytes 27 to 32
    // 5th entry is bytes 33 to 38
  
@@ -14,8 +14,18 @@
 +  //                          10485760 WINDOW_UPDATE
 +  // See https://github.com/akamai/h2_fingerprint for signal background.
 +  nsAutoCString h2Profile;
-+  Preferences::GetCString("network.http.http2.fingerprint_profile",
-+                          h2Profile);
++  if (nsHttpConnectionInfo* cfxCI = ConnectionInfo()) {
++    nsAutoCString cfxKey;
++    cfxKey.AppendPrintf("cloakfox.container.%u.h2_profile",
++                        cfxCI->GetOriginAttributes().mUserContextId);
++    Preferences::GetCString(cfxKey.get(), h2Profile);
++  }
++  if (h2Profile.IsEmpty()) {
++    Preferences::GetCString("network.http.http2.fingerprint_profile",
++                            h2Profile);
++  }
++  // Keep the HPACK compressor's pseudo-header order coherent with SETTINGS.
++  Compressor()->SetH2Profile(h2Profile);
 +  bool chromeH2 = h2Profile.EqualsLiteral("chrome");
 +  bool safariH2 = h2Profile.EqualsLiteral("safari");
 +
@@ -130,14 +140,16 @@
  #include "mozilla/StaticPtr.h"
  #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
  #include "nsCharSeparatedTokenizer.h"
-@@ -1051,11 +1052,28 @@
+@@ -1051,11 +1052,30 @@
    }
  
    // colon headers first
 +  // Cloakfox: HPACK pseudo-header order is an Akamai h2 fingerprint input.
 +  // Firefox: m,p,a,s. Chrome: m,a,s,p. Safari: m,s,p,a. Toggled via pref.
-+  nsAutoCString h2Profile;
-+  Preferences::GetCString("network.http.http2.fingerprint_profile", h2Profile);
++  nsAutoCString h2Profile(mH2Profile);
++  if (h2Profile.IsEmpty()) {
++    Preferences::GetCString("network.http.http2.fingerprint_profile", h2Profile);
++  }
 +  bool chromeH2 = h2Profile.EqualsLiteral("chrome");
 +  bool safariH2 = h2Profile.EqualsLiteral("safari");
 +
@@ -162,3 +174,18 @@
      if (isWebsocket) {
        ProcessHeader(nvPair(":protocol"_ns, protocol), false, false);
      }
+--- a/netwerk/protocol/http/Http2Compression.h	2025-12-17 10:38:50
++++ b/netwerk/protocol/http/Http2Compression.h	2026-04-18 23:11:42
+@@ -169,6 +169,11 @@
+   }  // -1 on not found
+ 
+   void SetMaxBufferSize(uint32_t maxBufferSize);
++  // Cloakfox: HTTP/2 fingerprint profile for this connection's HPACK
++  // pseudo-header ordering, set per-container by Http2Session::SendHello.
++  // Empty => EncodeHeaderBlock falls back to the global pref.
++  void SetH2Profile(const nsACString& aProfile) { mH2Profile = aProfile; }
++  nsCString mH2Profile;
+ 
+  private:
+   enum outputCode {
+
