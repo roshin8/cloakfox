@@ -4,6 +4,35 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-07-26 — first real-site anti-bot battery + fixes
+
+Ran `antibot_battery.py` against the built app (firefox/chrome/safari HTTP
+profiles) — the first real-site validation of this branch.
+
+**Fixed:**
+- **Persona navigator incoherence.** `CloakfoxPersonas.sys.mjs` took
+  `navigator.platform`/`oscpu`/`appVersion` straight from BrowserForge's
+  independently-sampled fields, which paired e.g. `platform "Linux armv81"`
+  (ARM) with an x86_64 UA/oscpu — a self-contradiction any detector flags.
+  Now derived coherently from the UA's OS (canonical frozen Firefox values)
+  and `appVersion` = UA minus `Mozilla/`. Re-run confirms coherent
+  platform/oscpu/appVersion on all three profiles.
+- **`antibot_battery.py` extractors.** `areyouheadless` used a bare `#res`
+  lookup that returned `<no element>`; now waits + falls back through
+  selectors and body text, and surfaces upstream HTTP errors.
+
+**Observations (not bugs / out of scope):**
+- `bot.sannysoft.com`: clean — `webdriver: false`, all PHANTOM/HEADCHR/CHR
+  automation checks pass on every profile.
+- CreepJS: `chromium: false`, but ~33% headless signals. This is inherent
+  to running `--headless`; needs a non-headless run to get a true read (the
+  dim-coherence item below has the same headless caveat).
+- `arh.antoinevastel.com/bots/areyouheadless` was serving `502 Bad Gateway`
+  during the run — external site down, nothing to fix here.
+- HTTP transport profile (chrome/safari) is orthogonal to the sampled
+  navigator persona, so a "chrome" profile still presents a Firefox UA.
+  By design; coordinating the two is a possible future feature, not a bug.
+
 ## 2026-07-18 — full-branch code review fix pass
 
 A high-effort review of the whole `cpp-first-exploration` branch landed 15

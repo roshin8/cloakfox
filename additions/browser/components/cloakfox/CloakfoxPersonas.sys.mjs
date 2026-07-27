@@ -60,6 +60,18 @@ const CHROME_DECOR = {
   linux:   { menuBar: 0,  taskbar: 32, firefoxChrome: 80 },
 };
 
+// Canonical navigator.platform / navigator.oscpu per OS. These are the
+// frozen values modern Firefox reports, and they're low-entropy (~3
+// possibilities), so we derive them from the UA's OS rather than trusting
+// BrowserForge's independently-sampled fields — which can otherwise pair
+// e.g. platform "Linux armv81" (ARM) with an x86_64 UA/oscpu, an obvious
+// self-contradiction any detector flags.
+const NAV_IDENTITY = {
+  windows: { platform: "Win32",        oscpu: "Windows NT 10.0; Win64; x64" },
+  macos:   { platform: "MacIntel",     oscpu: "Intel Mac OS X 10.15" },
+  linux:   { platform: "Linux x86_64", oscpu: "Linux x86_64" },
+};
+
 function detectOSFromUA(ua) {
   if (!ua) return "linux";
   if (ua.includes("Macintosh") || ua.includes("Mac OS")) return "macos";
@@ -99,9 +111,15 @@ function bfToCloakKeys(fp, prng) {
   // Navigator
   keys["navigator.userAgent"] = ua;
   keys["headers.User-Agent"]  = ua;
-  if (fp.platform)   keys["navigator.platform"]   = fp.platform;
-  if (fp.oscpu)      keys["navigator.oscpu"]      = fp.oscpu;
-  if (fp.appVersion) keys["navigator.appVersion"] = fp.appVersion;
+  // Derive platform/oscpu/appVersion coherently from the UA's OS instead
+  // of trusting BrowserForge's independently-sampled fields (which can
+  // mismatch — e.g. an ARM platform under an x86_64 UA). Firefox's
+  // navigator.appVersion is exactly the UA with the leading "Mozilla/"
+  // removed, so derive it from the (normalized) UA.
+  const navId = NAV_IDENTITY[os] || NAV_IDENTITY.linux;
+  keys["navigator.platform"]   = navId.platform;
+  keys["navigator.oscpu"]      = navId.oscpu;
+  keys["navigator.appVersion"] = ua.replace(/^Mozilla\//, "");
   if (fp.hardwareConcurrency != null) {
     keys["navigator.hardwareConcurrency"] = parseInt(fp.hardwareConcurrency, 10);
   }

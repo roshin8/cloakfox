@@ -49,7 +49,7 @@ SITES: list[tuple[str, str, Callable]] = [
     (
         "areyouheadless",
         "https://arh.antoinevastel.com/bots/areyouheadless",
-        lambda d: _extract_text_of(d, "#res"),
+        lambda d: _extract_areyouheadless(d),
     ),
     (
         "browserleaks-js",
@@ -85,6 +85,38 @@ def _extract_text_of(driver, selector: str) -> str:
         return elts[0].text.strip()[:400]
     except Exception as e:
         return f"<err: {e}>"
+
+
+def _extract_areyouheadless(driver) -> str:
+    """The verdict text ('You are (not) Chrome headless') is rendered
+    async into #res. Wait for it, then fall back through a couple of
+    selectors and finally the page's own verdict sentence in the body —
+    the bare #res lookup returned '<no element>' when the site's markup
+    or timing shifted."""
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        for sel in ("#res", "p#res", ".result", "#result"):
+            try:
+                elts = driver.find_elements("css selector", sel)
+                txt = elts[0].text.strip() if elts else ""
+                if txt:
+                    return txt[:400]
+            except Exception:
+                pass
+        try:
+            body = driver.find_element("css selector", "body").text
+            # Surface upstream HTTP errors so the report isn't ambiguous —
+            # this site (arh.antoinevastel.com) periodically 502s.
+            for err in ("Bad Gateway", "502", "503", "504", "Service Unavailable"):
+                if err in body:
+                    return f"<site error: {body.strip().splitlines()[0][:120]}>"
+            for line in body.splitlines():
+                if "headless" in line.lower():
+                    return line.strip()[:400]
+        except Exception:
+            pass
+        time.sleep(0.5)
+    return "<no verdict>"
 
 
 def _extract_sannysoft(driver) -> str:
