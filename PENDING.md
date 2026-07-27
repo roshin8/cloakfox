@@ -24,9 +24,26 @@ profiles) — the first real-site validation of this branch.
 **Observations (not bugs / out of scope):**
 - `bot.sannysoft.com`: clean — `webdriver: false`, all PHANTOM/HEADCHR/CHR
   automation checks pass on every profile.
-- CreepJS: `chromium: false`, but ~33% headless signals. This is inherent
-  to running `--headless`; needs a non-headless run to get a true read (the
-  dim-coherence item below has the same headless caveat).
+- CreepJS: `chromium: false`, but ~33% headless signals. Needs a
+  non-headless run to get a true read — see the follow-up below.
+
+**Non-headless follow-up (2026-07-26, `--no-headless`):**
+- CreepJS "like headless" **6% → 0%** (firefox/chrome) — that signal was a
+  headless artifact, now cleared.
+- Window/screen **dimension coherence resolved** in a real window (viewport
+  fits within screen), confirming the earlier `inner > outer` incoherence
+  was headless-only (`browser-init`'s `resizeTo` needs a real chrome
+  window). The P2 dim-coherence item below is therefore a headless-only
+  test artifact, not a real-window bug.
+- Persona platform/oscpu coherence holds non-headless too.
+- CreepJS "**33% headless**" persists even non-headless (constant hash
+  `a427e0b8`). Most likely the Marionette automation the battery runs under
+  (a test-only condition; real users aren't driven by Marionette), but it
+  can't be attributed precisely until the harness extracts CreepJS's
+  per-signal detail breakdown (its shadow-DOM score panel — the trust-score
+  extraction gap noted elsewhere). **Next step to make it actionable:**
+  extract the CreepJS "lies"/headless detail rows and see whether any signal
+  is cloakfox-specific vs. pure automation.
 - `arh.antoinevastel.com/bots/areyouheadless` was serving `502 Bad Gateway`
   during the run — external site down, nothing to fix here.
 - HTTP transport profile (chrome/safari) is orthogonal to the sampled
