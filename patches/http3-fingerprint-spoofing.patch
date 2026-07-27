@@ -209,8 +209,8 @@
      }
  }
  
---- a/netwerk/socket/neqo_glue/src/lib.rs	2026-04-18 23:52:27
-+++ b/netwerk/socket/neqo_glue/src/lib.rs	2026-04-18 23:54:56
+--- a/netwerk/socket/neqo_glue/src/lib.rs
++++ b/netwerk/socket/neqo_glue/src/lib.rs
 @@ -33,8 +33,9 @@
  };
  use neqo_crypto::{agent::CertificateCompressor, init, PRErrorCode};
@@ -223,14 +223,21 @@
  };
  use neqo_transport::{
      stream_id::StreamType, CongestionControlAlgorithm, Connection, ConnectionParameters,
-@@ -448,6 +449,11 @@
+@@ -351,6 +352,7 @@
+         qlog_dir: &nsACString,
+         provider_flags: u32,
+         idle_timeout: u32,
++        fingerprint_profile: u32,
+         pmtud_enabled: bool,
+         socket: Option<i64>,
+     ) -> Result<RefPtr<Self>, nsresult> {
+@@ -448,6 +450,10 @@
              params = params.idle_timeout(Duration::from_millis(10));
          }
  
-+        // Cloakfox: pick the H3 fingerprint profile from the pref.
-+        let fp_profile = H3FingerprintProfile::from_pref(static_prefs::pref!(
-+            "network.http.http3.fingerprint_profile"
-+        ));
++        // Cloakfox: H3 fingerprint profile resolved per-container in C++
++        // (Http3Session) and passed in; falls back to the global pref there.
++        let fp_profile = H3FingerprintProfile::from_pref(fingerprint_profile);
 +
          let http3_settings = Http3Parameters::default()
              .max_table_size_encoder(max_table_size)
@@ -245,3 +252,123 @@
  
          let Ok(mut conn) = Connection::new_client(
              origin_conv,
+@@ -749,6 +756,7 @@
+     qlog_dir: &nsACString,
+     provider_flags: u32,
+     idle_timeout: u32,
++    fingerprint_profile: u32,
+     socket: i64,
+     pmtud_enabled: bool,
+     result: &mut *const NeqoHttp3Conn,
+@@ -769,6 +777,7 @@
+         qlog_dir,
+         provider_flags,
+         idle_timeout,
++        fingerprint_profile,
+         pmtud_enabled,
+         Some(socket),
+     ) {
+@@ -796,6 +805,7 @@
+     qlog_dir: &nsACString,
+     provider_flags: u32,
+     idle_timeout: u32,
++    fingerprint_profile: u32,
+     result: &mut *const NeqoHttp3Conn,
+ ) -> nsresult {
+     *result = ptr::null_mut();
+@@ -814,6 +824,7 @@
+         qlog_dir,
+         provider_flags,
+         idle_timeout,
++        fingerprint_profile,
+         false,
+         None,
+     ) {
+--- a/netwerk/socket/neqo_glue/NeqoHttp3Conn.h
++++ b/netwerk/socket/neqo_glue/NeqoHttp3Conn.h
+@@ -19,12 +19,13 @@
+       uint32_t aMaxTableSize, uint16_t aMaxBlockedStreams, uint64_t aMaxData,
+       uint64_t aMaxStreamData, bool aVersionNegotiation, bool aWebTransport,
+       const nsACString& aQlogDir, uint32_t aProviderFlags,
+-      uint32_t aIdleTimeout, NeqoHttp3Conn** aConn) {
++      uint32_t aIdleTimeout, uint32_t aFingerprintProfile,
++      NeqoHttp3Conn** aConn) {
+     return neqo_http3conn_new_use_nspr_for_io(
+         &aOrigin, &aAlpn, &aLocalAddr, &aRemoteAddr, aMaxTableSize,
+         aMaxBlockedStreams, aMaxData, aMaxStreamData, aVersionNegotiation,
+         aWebTransport, &aQlogDir, aProviderFlags, aIdleTimeout,
+-        (const mozilla::net::NeqoHttp3Conn**)aConn);
++        aFingerprintProfile, (const mozilla::net::NeqoHttp3Conn**)aConn);
+   }
+ 
+   static nsresult Init(const nsACString& aOrigin, const nsACString& aAlpn,
+@@ -33,13 +34,15 @@
+                        uint64_t aMaxData, uint64_t aMaxStreamData,
+                        bool aVersionNegotiation, bool aWebTransport,
+                        const nsACString& aQlogDir, uint32_t aProviderFlags,
+-                       uint32_t aIdleTimeout, int64_t socket,
+-                       bool aPMTUDEnabled, NeqoHttp3Conn** aConn) {
++                       uint32_t aIdleTimeout, uint32_t aFingerprintProfile,
++                       int64_t socket, bool aPMTUDEnabled,
++                       NeqoHttp3Conn** aConn) {
+     return neqo_http3conn_new(
+         &aOrigin, &aAlpn, &aLocalAddr, &aRemoteAddr, aMaxTableSize,
+         aMaxBlockedStreams, aMaxData, aMaxStreamData, aVersionNegotiation,
+-        aWebTransport, &aQlogDir, aProviderFlags, aIdleTimeout, socket,
+-        aPMTUDEnabled, (const mozilla::net::NeqoHttp3Conn**)aConn);
++        aWebTransport, &aQlogDir, aProviderFlags, aIdleTimeout,
++        aFingerprintProfile, socket, aPMTUDEnabled,
++        (const mozilla::net::NeqoHttp3Conn**)aConn);
+   }
+ 
+   void Close(uint64_t aError) { neqo_http3conn_close(this, aError); }
+--- a/netwerk/protocol/http/Http3Session.cpp
++++ b/netwerk/protocol/http/Http3Session.cpp
+@@ -24,6 +24,7 @@
+ #include "mozilla/glean/NetwerkMetrics.h"
+ #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
+ #include "mozilla/net/DNS.h"
++#include "mozilla/Preferences.h"
+ #include "nsHttpHandler.h"
+ #include "nsIHttpActivityObserver.h"
+ #include "nsIOService.h"
+@@ -161,6 +162,20 @@
+       mConnInfo->GetIsTrrServiceChannel()
+           ? StaticPrefs::network_trr_idle_timeout_for_http3_conn()
+           : StaticPrefs::network_http_http3_idle_timeout();
++
++  // Cloakfox: resolve this container's H3 fingerprint profile (per-container
++  // pref, falling back to the global StaticPref) so neqo's SETTINGS shape
++  // matches the container's persona.
++  uint32_t h3Profile = StaticPrefs::network_http_http3_fingerprint_profile();
++  {
++    nsAutoCString cfxKey;
++    cfxKey.AppendPrintf("cloakfox.container.%u.h3_profile",
++                        mConnInfo->GetOriginAttributes().mUserContextId);
++    int32_t perCtx = mozilla::Preferences::GetInt(cfxKey.get(), -1);
++    if (perCtx >= 0) {
++      h3Profile = static_cast<uint32_t>(perCtx);
++    }
++  }
+ 
+   nsresult rv;
+   if (mUseNSPRForIO) {
+@@ -172,7 +187,8 @@
+         StaticPrefs::network_http_http3_max_stream_data(),
+         StaticPrefs::network_http_http3_version_negotiation_enabled(),
+         mConnInfo->GetWebTransport(), gHttpHandler->Http3QlogDir(),
+-        aProviderFlags, idleTimeout, getter_AddRefs(mHttp3Connection));
++        aProviderFlags, idleTimeout, h3Profile,
++        getter_AddRefs(mHttp3Connection));
+   } else {
+     rv = NeqoHttp3Conn::Init(
+         mSocketControl->GetHostName(), alpn, selfAddr, peerAddr,
+@@ -182,7 +198,7 @@
+         StaticPrefs::network_http_http3_max_stream_data(),
+         StaticPrefs::network_http_http3_version_negotiation_enabled(),
+         mConnInfo->GetWebTransport(), gHttpHandler->Http3QlogDir(),
+-        aProviderFlags, idleTimeout, socket->GetFileDescriptor(),
++        aProviderFlags, idleTimeout, h3Profile, socket->GetFileDescriptor(),
+         isOuterConnection, getter_AddRefs(mHttp3Connection));
+   }
+   if (NS_FAILED(rv)) {
