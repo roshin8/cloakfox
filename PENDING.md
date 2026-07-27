@@ -4,6 +4,45 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-07-27 — auto-coordinated per-container H2/H3 profiles (C1–C4 landed; E2E reveals a runtime gap)
+
+Implemented the feature designed in
+`docs/superpowers/specs/2026-07-26-h2h3-per-container-profile-design.md`,
+committed as C1–C4 (`516f30a958`, `84e4f31f8c`, `8092f412a2`, `9bc5365d14`):
+
+- **C1** `deriveHttpProfile(ua)` + **C2** write `cloakfox.container.<ucid>.h{2,3}_profile`
+  on every `cloak_cfg` write (JS, verified).
+- **C3** `Http2Session::SendHello` reads the per-container `h2_profile` (ucid
+  from `ConnectionInfo()->GetOriginAttributes()`) + pushes it to the HPACK
+  compressor. Compiles.
+- **C4** threads `fingerprint_profile:u32` through the neqo FFI, resolved
+  per-container in `Http3Session` (fallback global StaticPref). Full build
+  succeeds (Rust included) → all four compile-verified.
+
+**KNOWN GAP — per-container H2 differentiation does NOT work at runtime.**
+`tests/fingerprint/probe_h2_per_container.py` (new) sets container 1→firefox,
+container 2→chrome and reads `tls.peet.ws` akamai H2 hashes. Result: BOTH
+containers emit the global-firefox hash (`6ea73faa…`), not distinct
+(chrome = `a345a694…`). The global pref mechanism works (firefox≠chrome), and
+`probe_container_isolation.py` shows canvas/audio/UA DO differ per container
+(content-process userContextId is correct). So the gap is socket-process
+specific.
+
+**Leading hypothesis:** `Http2Session::ConnectionInfo()` at `SendHello`
+returns a session/coalescing conn-info whose `mUserContextId` is 0 (the H2
+session key is normalized for connection coalescing and may not carry the
+per-request container id), so C3 reads `cloakfox.container.0.h2_profile`
+(unset) → global fallback for every container. Alternatively the two
+containers' connections coalesce. Either way both collapse to the default.
+
+**Next debug step (needs a build + logging cycle):** add a temporary
+`printf_stderr` of the resolved ucid + profile in `SendHello`, rebuild, and
+run `probe_h2_per_container.py` to see whether ucid is 0. If so, resolve the
+container id from the per-request/transaction origin attributes rather than
+the session conn-info (e.g. thread it from the transaction that triggers the
+connection), which likely also applies to C4/H3. Blocked on the environment
+SIGTERM-ing background builds (use foreground 10-min incremental chunks).
+
 ## 2026-07-26 — first real-site anti-bot battery + fixes
 
 Ran `antibot_battery.py` against the built app (firefox/chrome/safari HTTP
