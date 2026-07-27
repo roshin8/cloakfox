@@ -4,6 +4,31 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-07-27 — cloakfox.enabled=false didn't disable C++ spoofing
+
+**Bug.** `cloakfox.cfg` documents `cloakfox.enabled=false` as "disable all
+spoofing globally (e.g. for debugging)", but it only gated the ~10 JS actors.
+`initCloakfoxSeedSync` generates `cloak_cfg` unconditionally and the C++ getters
+never checked the flag, so navigator/canvas/audio/webgl/screen/fonts kept
+spoofing. Repro (verified): with `enabled=false` on a real Mac, navigator
+reported `platform=Linux x86_64` / a persona UA instead of the real MacIntel.
+
+**Fix (landed, built + verified).** Gate `CloakConfigOverlay_Get` — the single
+choke point every per-container MaskConfig getter flows through — on
+`cloakfox.enabled`; return an empty overlay when false so the browser presents
+its real identity even with a persisted `cloak_cfg`. Guarded on
+`NS_IsMainThread()` (Preferences::GetBool is main-thread only; DOM spoofing all
+reads here on the main thread). Verified: `enabled=false` → real MacIntel/oscpu/
+UA/core-count; `enabled=true` → still spoofs.
+
+**Follow-ups (not done — need an off-main-thread-safe enabled check):**
+- **H2/H3 fingerprint prefs** (`Http2Session::SendHello`, `Http3Session`) read
+  `cloakfox.container.<ucid>.h{2,3}_profile` on the SOCKET thread, bypassing
+  this overlay — so H2/H3 spoofing stays on when disabled.
+- **Worker-thread reads** aren't gated (the `NS_IsMainThread()` guard skips
+  them), so worker fingerprinting isn't disabled.
+  Both want a `StaticPrefs` mirror of `cloakfox.enabled` for thread-safe reads.
+
 ## 2026-07-27 — font list was never spoofed (persona mapper dropped it)
 
 **Root cause.** `bfToCloakKeys` in `CloakfoxPersonas.sys.mjs` mapped navigator/
