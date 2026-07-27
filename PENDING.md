@@ -21,13 +21,18 @@ its real identity even with a persisted `cloak_cfg`. Guarded on
 reads here on the main thread). Verified: `enabled=false` → real MacIntel/oscpu/
 UA/core-count; `enabled=true` → still spoofs.
 
-**Follow-ups (not done — need an off-main-thread-safe enabled check):**
-- **H2/H3 fingerprint prefs** (`Http2Session::SendHello`, `Http3Session`) read
-  `cloakfox.container.<ucid>.h{2,3}_profile` on the SOCKET thread, bypassing
-  this overlay — so H2/H3 spoofing stays on when disabled.
-- **Worker-thread reads** aren't gated (the `NS_IsMainThread()` guard skips
-  them), so worker fingerprinting isn't disabled.
-  Both want a `StaticPrefs` mirror of `cloakfox.enabled` for thread-safe reads.
+**Follow-ups — DONE 2026-07-27 (StaticPrefs mirror).** Added `cloakfox.enabled`
+as a `RelaxedAtomicBool` StaticPref (`cloakfox-enabled-staticpref.patch`:
+StaticPrefList.yaml entry + the `cloakfox` group in `modules/libpref/moz.build`)
+so it can be read thread-safely off the main thread. Switched
+`CloakConfigOverlay_Get` to `StaticPrefs::cloakfox_enabled()` (drops the
+`NS_IsMainThread()` guard → now also gates **worker** reads), and gated
+`Http2Session::SendHello` + `Http3Session::Init` on it (socket-thread safe) so
+**H2/H3** fall back to the stock Firefox fingerprint when disabled. Verified
+end-to-end: with `enabled=false`, `tls.peet.ws` reports the stock Firefox H2
+akamai hash `6ea73faa…` (vs `a345a694…` chrome when enabled). `cloakfox.enabled`
+is now a true global kill-switch. Built (export + dom/base + netwerk, XUL
+relink) and runtime-verified; all four patches reverse-apply cleanly.
 
 ## 2026-07-27 — font list was never spoofed (persona mapper dropped it)
 

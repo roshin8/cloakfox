@@ -1,6 +1,14 @@
 --- a/netwerk/protocol/http/Http2Session.cpp
 +++ b/netwerk/protocol/http/Http2Session.cpp
-@@ -1068,15 +1068,45 @@
+@@ -30,6 +30,7 @@
+ #include "mozilla/Preferences.h"
+ #include "mozilla/Sprintf.h"
+ #include "mozilla/StaticPrefs_network.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
+ #include "nsHttp.h"
+ #include "nsHttpConnection.h"
+@@ -1068,15 +1068,50 @@
    // 4th entry is bytes 27 to 32
    // 5th entry is bytes 33 to 38
  
@@ -13,18 +21,23 @@
 +  //   "safari"             — Safari's sparse SETTINGS (IDs 2,3,4 only) +
 +  //                          10485760 WINDOW_UPDATE
 +  // See https://github.com/akamai/h2_fingerprint for signal background.
++  // Master switch: skip H2 fingerprint spoofing entirely when disabled, so
++  // an empty profile falls through to the original Firefox SETTINGS below.
++  // StaticPrefs atomic mirror is safe to read here on the socket thread.
 +  nsAutoCString h2Profile;
-+  mozilla::OriginAttributes cfxOA;
-+  if (mSocketTransport &&
-+      NS_SUCCEEDED(mSocketTransport->GetOriginAttributes(&cfxOA))) {
-+    nsAutoCString cfxKey;
-+    cfxKey.AppendPrintf("cloakfox.container.%u.h2_profile",
-+                        cfxOA.mUserContextId);
-+    Preferences::GetCString(cfxKey.get(), h2Profile);
-+  }
-+  if (h2Profile.IsEmpty()) {
-+    Preferences::GetCString("network.http.http2.fingerprint_profile",
-+                            h2Profile);
++  if (StaticPrefs::cloakfox_enabled()) {
++    mozilla::OriginAttributes cfxOA;
++    if (mSocketTransport &&
++        NS_SUCCEEDED(mSocketTransport->GetOriginAttributes(&cfxOA))) {
++      nsAutoCString cfxKey;
++      cfxKey.AppendPrintf("cloakfox.container.%u.h2_profile",
++                          cfxOA.mUserContextId);
++      Preferences::GetCString(cfxKey.get(), h2Profile);
++    }
++    if (h2Profile.IsEmpty()) {
++      Preferences::GetCString("network.http.http2.fingerprint_profile",
++                              h2Profile);
++    }
 +  }
 +  // Keep the HPACK compressor's pseudo-header order coherent with SETTINGS.
 +  Compressor()->SetH2Profile(h2Profile);

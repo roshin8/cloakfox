@@ -324,7 +324,11 @@
    void Close(uint64_t aError) { neqo_http3conn_close(this, aError); }
 --- a/netwerk/protocol/http/Http3Session.cpp
 +++ b/netwerk/protocol/http/Http3Session.cpp
-@@ -24,6 +24,7 @@
+@@ -21,9 +21,11 @@
+ #include "mozilla/RandomNum.h"
+ #include "mozilla/RefPtr.h"
+ #include "mozilla/ScopeExit.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
  #include "mozilla/glean/NetwerkMetrics.h"
  #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
  #include "mozilla/net/DNS.h"
@@ -332,16 +336,18 @@
  #include "nsHttpHandler.h"
  #include "nsIHttpActivityObserver.h"
  #include "nsIOService.h"
-@@ -161,6 +162,20 @@
+@@ -161,6 +163,22 @@
        mConnInfo->GetIsTrrServiceChannel()
            ? StaticPrefs::network_trr_idle_timeout_for_http3_conn()
            : StaticPrefs::network_http_http3_idle_timeout();
 +
 +  // Cloakfox: resolve this container's H3 fingerprint profile (per-container
 +  // pref, falling back to the global StaticPref) so neqo's SETTINGS shape
-+  // matches the container's persona.
-+  uint32_t h3Profile = StaticPrefs::network_http_http3_fingerprint_profile();
-+  {
++  // matches the container's persona. Master switch: when cloakfox.enabled is
++  // false, leave profile 0 (original Firefox H3) so nothing is spoofed.
++  uint32_t h3Profile = 0;
++  if (StaticPrefs::cloakfox_enabled()) {
++    h3Profile = StaticPrefs::network_http_http3_fingerprint_profile();
 +    nsAutoCString cfxKey;
 +    cfxKey.AppendPrintf("cloakfox.container.%u.h3_profile",
 +                        mConnInfo->GetOriginAttributes().mUserContextId);

@@ -1,6 +1,6 @@
 --- a/b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:16:00
 +++ b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:15:37
-@@ -0,0 +1,75 @@
+@@ -0,0 +1,73 @@
 +/* Cloakfox: Per-context MaskConfig overlay via RoverfoxStorageManager. */
 +#include "RoverfoxStorageManager.h"
 +#include "json.hpp"
@@ -9,7 +9,7 @@
 +#include "nsGlobalWindowInner.h"
 +#include "xpcpublic.h"
 +#include "mozilla/dom/BrowsingContext.h"
-+#include "mozilla/Preferences.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
 +#include "nsThreadUtils.h"
 +#include <string>
 +
@@ -19,11 +19,9 @@
 +  // its per-container persona through this overlay, so returning an empty
 +  // overlay here makes the browser present its real, unspoofed identity —
 +  // even when a persona cloak_cfg is still persisted from an enabled session.
-+  // Guarded on the main thread because Preferences::GetBool is main-thread
-+  // only; DOM spoofing (navigator/canvas/webgl/audio/screen/fonts) all reads
-+  // here on the main thread.
-+  if (NS_IsMainThread() &&
-+      !mozilla::Preferences::GetBool("cloakfox.enabled", true)) {
++  // Read via the StaticPrefs atomic mirror so this is correct on every thread
++  // (main + worker), not just the main thread.
++  if (!mozilla::StaticPrefs::cloakfox_enabled()) {
 +    return "";
 +  }
 +  nsAutoString key;

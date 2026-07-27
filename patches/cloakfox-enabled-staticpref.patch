@@ -1,0 +1,34 @@
+diff --git a/modules/libpref/moz.build b/modules/libpref/moz.build
+--- a/modules/libpref/moz.build
++++ b/modules/libpref/moz.build
+@@ -35,6 +35,7 @@
+     "browser",
+     "channelclassifier",
+     "clipboard",
++    "cloakfox",
+     "content",
+     "converter",
+     "cookiebanners",
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2200,6 +2200,19 @@
+ #endif
+ 
+ #---------------------------------------------------------------------------
++# Prefs starting with "cloakfox."
++#---------------------------------------------------------------------------
++
++# Cloakfox master switch. false = present the real, unspoofed identity
++# everywhere (documented in cloakfox.cfg). RelaxedAtomicBool so the C++
++# spoofers can read it off the main thread — worker and socket (H2/H3)
++# threads — not just the main thread.
++- name: cloakfox.enabled
++  type: RelaxedAtomicBool
++  value: true
++  mirror: always
++
++#---------------------------------------------------------------------------
+ # Prefs starting with "consoleservice."
+ #---------------------------------------------------------------------------
+ 
