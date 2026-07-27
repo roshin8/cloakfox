@@ -1,6 +1,6 @@
 --- a/b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:16:00
 +++ b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:15:37
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,75 @@
 +/* Cloakfox: Per-context MaskConfig overlay via RoverfoxStorageManager. */
 +#include "RoverfoxStorageManager.h"
 +#include "json.hpp"
@@ -9,10 +9,23 @@
 +#include "nsGlobalWindowInner.h"
 +#include "xpcpublic.h"
 +#include "mozilla/dom/BrowsingContext.h"
++#include "mozilla/Preferences.h"
 +#include "nsThreadUtils.h"
 +#include <string>
 +
 +std::string CloakConfigOverlay_Get(uint32_t userContextId) {
++  // Master switch. cloakfox.enabled=false disables ALL spoofing globally
++  // (documented intent in cloakfox.cfg). Every C++ MaskConfig getter reads
++  // its per-container persona through this overlay, so returning an empty
++  // overlay here makes the browser present its real, unspoofed identity —
++  // even when a persona cloak_cfg is still persisted from an enabled session.
++  // Guarded on the main thread because Preferences::GetBool is main-thread
++  // only; DOM spoofing (navigator/canvas/webgl/audio/screen/fonts) all reads
++  // here on the main thread.
++  if (NS_IsMainThread() &&
++      !mozilla::Preferences::GetBool("cloakfox.enabled", true)) {
++    return "";
++  }
 +  nsAutoString key;
 +  key.AppendPrintf("cloak_cfg_%u", userContextId);
 +  nsAutoString value;
