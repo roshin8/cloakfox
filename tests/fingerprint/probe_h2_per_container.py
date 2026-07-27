@@ -43,10 +43,16 @@ PROBE_URL = "https://tls.peet.ws/api/all"
 # Two non-default containers with deliberately different H2 profiles.
 CONTAINERS = {1: "firefox", 2: "chrome"}
 
+# Open a BLANK tab bound to the container, then navigate its content from
+# within (window.location) so the top-level document load is content-
+# initiated and its channel inherits the container's origin attributes
+# (userContextId=N). Loading the URL directly via addTab with a system
+# triggeringPrincipal makes the channel use default (ucid=0) origin
+# attributes, which is NOT what a real container navigation does.
 OPEN_CONTAINER_TAB = """
-const [url, userContextId] = arguments;
+const [userContextId] = arguments;
 const win = Services.wm.getMostRecentWindow('navigator:browser');
-const tab = win.gBrowser.addTab(url, {
+const tab = win.gBrowser.addTab('about:blank', {
   userContextId,
   triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
 });
@@ -59,7 +65,7 @@ def _akamai_hash_in_container(driver, ucid: int) -> str:
     before = set(driver.window_handles)
     driver.set_context("chrome")
     try:
-        driver.execute_script(OPEN_CONTAINER_TAB, PROBE_URL, ucid)
+        driver.execute_script(OPEN_CONTAINER_TAB, ucid)
     finally:
         driver.set_context("content")
 
@@ -75,6 +81,8 @@ def _akamai_hash_in_container(driver, ucid: int) -> str:
         raise RuntimeError(f"container {ucid}: new tab never appeared")
 
     driver.switch_to.window(handle)
+    # Content-initiated navigation inside the container tab.
+    driver.execute_script("window.location.href = arguments[0];", PROBE_URL)
     deadline = time.time() + 30
     payload = None
     while time.time() < deadline:
