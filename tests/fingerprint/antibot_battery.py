@@ -61,10 +61,12 @@ SITES: list[tuple[str, str, Callable]] = [
 ]
 
 
-def _build_driver(bin_path: str, h2_profile: str, h3_int: int, log_dir: Path) -> webdriver.Firefox:
+def _build_driver(bin_path: str, h2_profile: str, h3_int: int, log_dir: Path,
+                  headless: bool = True) -> webdriver.Firefox:
     opts = Options()
     opts.binary_location = bin_path
-    opts.add_argument("--headless")
+    if headless:
+        opts.add_argument("--headless")
     opts.add_argument("-remote-allow-system-access")
     opts.set_preference("network.http.http2.fingerprint_profile", h2_profile)
     opts.set_preference("network.http.http3.fingerprint_profile", h3_int)
@@ -201,7 +203,7 @@ def _visit_site(
         return {"ok": False, "error": str(e)[:300], "elapsed_s": round(time.time() - start, 1)}
 
 
-def run(bin_path: str, profiles: list[str], out_dir: Path) -> None:
+def run(bin_path: str, profiles: list[str], out_dir: Path, headless: bool = True) -> None:
     stamp = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     report_dir = out_dir / stamp
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -209,7 +211,7 @@ def run(bin_path: str, profiles: list[str], out_dir: Path) -> None:
     results: dict[str, dict[str, dict]] = {}
     for profile in profiles:
         h3_int = {"firefox": 0, "chrome": 1, "safari": 2}[profile]
-        driver = _build_driver(bin_path, profile, h3_int, report_dir / profile)
+        driver = _build_driver(bin_path, profile, h3_int, report_dir / profile, headless)
         try:
             # Warm up so the extension sets up active profile
             driver.get("about:blank")
@@ -259,13 +261,22 @@ def main() -> None:
     p.add_argument("--bin", default=os.environ.get("CLOAKFOX_BIN"))
     p.add_argument("--profiles", default="firefox,chrome,safari")
     p.add_argument("--out", default=str(Path(__file__).parent / "reports"))
+    p.add_argument(
+        "--no-headless",
+        dest="headless",
+        action="store_false",
+        help="Launch with a visible window. Use to separate real fingerprint "
+        "tells from headless-only artifacts (CreepJS headless %, window "
+        "inner/outer geometry).",
+    )
+    p.set_defaults(headless=True)
     args = p.parse_args()
     if not args.bin or not os.path.exists(args.bin):
         p.error(
             "CLOAKFOX_BIN not set or binary missing. "
             "Set via env var or pass --bin /path/to/cloakfox"
         )
-    run(args.bin, args.profiles.split(","), Path(args.out))
+    run(args.bin, args.profiles.split(","), Path(args.out), args.headless)
 
 
 if __name__ == "__main__":
