@@ -178,3 +178,56 @@ Selenium + geckodriver against the built binary (per `tests/fingerprint/`):
 
 - Curating an original font pack (reuse Camoufox's).
 - Bundling additional scripts/CJK beyond what the Camoufox pack covers.
+
+## Phase 0 result (2026-08-02) — macOS spike: CONDITIONAL, integration blocked
+
+Ran the macOS feasibility spike on the real build (probe:
+`tests/fingerprint/probe_font_spike.py`, isolating the CoreText layer with
+`cloakfox.enabled=false`). Findings:
+
+**Proven working:**
+- `CTFontManagerRegisterFontsForURL(url, kCTFontManagerScopeProcess, …)`
+  succeeds in the **parent** process (`ok=1`, no error).
+- CoreText reads the correct family name from the bundled file
+  (`CTFontManagerCreateFontDescriptorsFromURL` → `kCTFontFamilyNameAttribute`
+  == `"Charis SIL Compact"`).
+- **Injection point corrected:** on macOS the modern default is the *shared*
+  font list, so `gfxPlatformFontList::InitFontList()` calls
+  `CoreTextFontList::InitSharedFontListForPlatform()` — **not**
+  `InitFontListForPlatform()`. The original plan/spec assumed the latter; the
+  parent build path is `InitSharedFontListForPlatform` (`CoreTextFontList.cpp`
+  ~line 1280).
+
+**Blocker (why this is CONDITIONAL, not a clean GO):**
+- Process-registered fonts do **not** appear in
+  `CTFontManagerCopyAvailableFontFamilyNames()`, so the shared-list enumeration
+  loop never picks them up.
+- Adding the registered family's name explicitly to `SharedFontList()->
+  SetFamilyNames(...)` makes the name present but does **not** cause the shared
+  list's lazy face-loader `GetFacesInitDataForFamily()` to be invoked for it
+  (verified by instrumentation: the loader was never called for the injected
+  family). The font therefore never renders — a page requesting it falls back
+  to sans-serif, and the probe reports it absent.
+
+**Verdict:** macOS full-replacement is feasible at the *registration* layer but
+blocked at the *shared-font-list rendering-integration* layer. Surfacing a
+process-registered font through Gecko's shared font list to actual rendering is
+dedicated gfx engineering — not resolvable within a spike. This confirms the
+spec's stated top risk ("macOS suppression/integration feasibility").
+
+**Recommended next options (pick before Phase 1):**
+1. **Dedicated macOS shared-font-list integration investigation** — determine
+   why the injected family never triggers face loading; likely provide
+   `fontlist::Face::InitData` with the bundled file's path + face index directly
+   (so the shared list mmaps the face itself instead of relying on a CoreText
+   match query), and/or evaluate running with the *non-shared* font list on Mac
+   (`gfx.e10s.font-list.shared=false`) where `AddFamily` + native face loading
+   may integrate registered fonts more directly. Budget real time.
+2. **Reconsider scope** — if macOS integration proves too costly, the pragmatic
+   coherence fix (no bundling) is **host-OS-coherent personas**: on a Mac only
+   generate Mac personas, so generics never collapse and fonts stay coherent.
+   This abandons cross-OS independence but is a small, safe change.
+
+Spike code was reverted (gated + non-functional + debug logging); only the
+probe and this result are kept. Phases 1–4 do not proceed until option 1 or 2
+is chosen.
