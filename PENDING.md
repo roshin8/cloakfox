@@ -4,6 +4,51 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-08-01 — font subsystem: #3 was dead, #4 wired (per-container fonts)
+
+Investigated the per-container font vectors under systematic debugging. Two
+distinct issues found and fixed; both verified against the built binary.
+
+**#3 font-metric noise was DEAD (key mismatch).** `CloakfoxSeedSync.buildCloakCfg`
+emitted the spacing seed as `"font:spacing_seed"` (singular) but C++
+`FontSpacingSeedManager` reads `"fonts:spacing_seed"` (plural) — no C++ reader
+for the singular key, so `GetSeed()` always returned 0 and `gfxHarfBuzzShaper`
+added zero letter-spacing. Canvas/audio worked because their keys match. Fixed
+by aligning the JS key (`fb8b083470`, JS-only, no rebuild). Verified: enabled
+now shifts Arial width ~6–12px/persona (was ≤0.2px), deterministic per profile.
+Note: an earlier `probe_font_metric_noise.py` (sans-serif) was a **false
+positive** — with the whitelist active, CSS generics resolve nondeterministically
+across launches, so it passed even while the seed was dead. Rewritten to measure
+Arial and assert enabled≠disabled by >1px; proven to fail on the buggy key.
+
+**#4 per-container font sets — wired (`d5796a4530`).** `FontListManager` filters
+enumeration per userContextId at resolution time (AutoFontListContext wraps
+gfxTextRun) but was dormant: it read the in-memory `sFontLists` map, only ever
+populated by the dead `window.setFontList()` extension path. So every container
+inherited the default (ucid 0) persona's fonts. Root cause confirmed via an
+instrumented gfx build: the process-global `font.system.whitelist` is
+parent-authoritative (content-process per-container `SetCString` is overridden),
+so it can only carry ucid-0's set. Fix: point `HasFontList`/`IsFontAllowed` at
+the live per-container source `CloakConfigOverlay_Get(ctx)["fonts"]` (lazily
+cached), and drop the `ctx != 0` guard so the default container narrows too.
+Scope = **narrowing-only**: each container shows its persona's subset of
+host-present fonts; the cross-container linkage is gone. New regression:
+`probe_container_fonts.py` (deterministic — injected overlays, ctx 1 hides what
+ctx 0 shows despite one shared process whitelist).
+
+**Residual / deliberately out of scope:**
+- **Full cross-OS font independence** needs bundled font files — a host can only
+  expose fonts it actually has (a Mac can't show `Segoe UI`), so a Windows
+  persona on a Mac still can't present Windows-only fonts. `bundle/fonts/` does
+  not exist here. Large project (+ font licensing); the "union whitelist" half of
+  full independence was intentionally NOT built for this reason.
+- **`"font:seed"` dead key.** `buildCloakCfg` emits `font:seed` (singular) with
+  no C++ reader (`fonts:seed` or otherwise) — likely reserved/dormant. Harmless;
+  worth confirming intent.
+- **From-scratch patch validation.** `font-list-spoofing.patch` hunks were
+  header/body validated and dry-run applied cleanly from pristine, but a full
+  `make setup-minimal && make dir` (0-rejects) run is recommended before release.
+
 ## 2026-07-27 — cloakfox.enabled=false didn't disable C++ spoofing
 
 **Bug.** `cloakfox.cfg` documents `cloakfox.enabled=false` as "disable all
