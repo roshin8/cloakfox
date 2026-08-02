@@ -3,14 +3,16 @@ new file mode 100644
 index 0000000000..abcdef0001
 --- /dev/null
 +++ b/dom/base/FontListManager.cpp
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,115 @@
 +/* Cloakfox: Per-context font list manager */
 +#include "FontListManager.h"
 +
++#include <algorithm>
 +#include "mozilla/Mutex.h"
 +#include "mozilla/dom/BrowsingContext.h"
 +#include "nsGlobalWindowInner.h"
 +#include "xpcpublic.h"
++#include "MaskConfig.hpp"
 +
 +namespace mozilla {
 +namespace dom {
@@ -49,17 +51,43 @@ index 0000000000..abcdef0001
 +  sFontLists.InsertOrUpdate(aId, std::move(fontSet));
 +}
 +
++// Cloakfox: lazily load the per-container font allowlist from the cloak_cfg
++// overlay ("fonts" key the persona writes for each userContextId), caching it
++// in sFontLists. This is the live cpp-first source; the legacy
++// window.setFontList() path (dormant here) still wins if it populated
++// sFontLists first. Caller must hold sFontListMutex.
++static bool EnsureFontListLoaded(uint32_t aId) {
++  if (sFontLists.Contains(aId)) return true;
++  std::string js = ::CloakConfigOverlay_Get(aId);
++  if (js.empty()) return false;
++  nlohmann::json ov = nlohmann::json::parse(js, nullptr, /*allow_exceptions*/ false);
++  if (ov.is_discarded() || !ov.contains("fonts") || !ov["fonts"].is_array()) {
++    return false;
++  }
++  nsTHashSet<nsCString> fontSet;
++  for (const auto& f : ov["fonts"]) {
++    if (!f.is_string()) continue;
++    std::string s = f.get<std::string>();
++    std::transform(s.begin(), s.end(), s.begin(),
++                   [](unsigned char c) { return std::tolower(c); });
++    fontSet.Insert(nsCString(s.data(), s.size()));
++  }
++  if (fontSet.IsEmpty()) return false;
++  sFontLists.InsertOrUpdate(aId, std::move(fontSet));
++  return true;
++}
++
 +bool FontListManager::HasFontList(uint32_t aId) {
 +  MutexAutoLock lock(sFontListMutex);
-+  return sFontLists.Contains(aId);
++  return EnsureFontListLoaded(aId);
 +}
 +
 +bool FontListManager::IsFontAllowed(uint32_t aId,
 +                                     const nsACString& aFontName) {
 +  MutexAutoLock lock(sFontListMutex);
++  if (!EnsureFontListLoaded(aId)) return true;  // no per-container list → allow
 +  auto entry = sFontLists.Lookup(aId);
-+  if (!entry) return true;
-+  return entry.Data().Contains(aFontName);
++  return entry ? entry.Data().Contains(aFontName) : true;
 +}
 +
 +void FontListManager::SetCurrentContext(uint32_t aId) {
@@ -237,14 +265,18 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
  #include "mozilla/gfx/2D.h"
  #include "mozilla/ipc/FileDescriptorUtils.h"
  #include "mozilla/TextUtils.h"
-@@ -1632,6 +1633,16 @@
+@@ -1632,6 +1633,20 @@
    nsAutoCString key;
    GenerateFontListKey(aFamily, key);
 
-+  // Per-context font list filtering
++  // Per-context font list filtering. Applies to every container including the
++  // default (ctx 0): each narrows to its own persona's cloak_cfg "fonts" list,
++  // so containers no longer share the default persona's font set. HasFontList
++  // returns false when a container has no list (e.g. cloakfox disabled), in
++  // which case enumeration falls through to the process-global whitelist.
 +  {
 +    uint32_t ctx = mozilla::dom::FontListManager::GetCurrentContext();
-+    if (ctx != 0 && mozilla::dom::FontListManager::HasFontList(ctx)) {
++    if (mozilla::dom::FontListManager::HasFontList(ctx)) {
 +      if (!mozilla::dom::FontListManager::IsFontAllowed(ctx, key)) {
 +        return false;
 +      }
