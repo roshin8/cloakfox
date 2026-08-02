@@ -124,6 +124,14 @@ def main():
     # Build the package
     src_dir = find_src_dir('.', args.version, args.release)
     moz_target = get_moz_target(target=args.os, arch=args.arch)
+
+    # macOS packaging needs the branding's Assets.car (app icon). Generate the
+    # real icon with actool when full Xcode is present, otherwise fall back to
+    # a placeholder so ./mach package never hard-fails over a cosmetic asset.
+    if args.os == 'macos':
+        script = os.path.join(os.path.dirname(__file__), 'generate-assets-car.sh')
+        run(f'bash {join([script])}')
+
     with temp_cd(src_dir):
         # Create package files
         run('./mach package')

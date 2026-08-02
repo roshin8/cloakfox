@@ -1,43 +1,76 @@
 #!/bin/bash
-# Generates Assets.car for macOS builds from the cloakfox branding icons
-# This script must be run on macOS (requires actool from Xcode)
-
-set -e
+# Produces additions/browser/branding/cloakfox/Assets.car (the macOS app-icon
+# asset catalog) and syncs it into any extracted build tree.
+#
+# When full Xcode is present, the real Cloakfox icon is compiled from the
+# branding PNGs with actool. Otherwise this falls back to the placeholder
+# Assets.car shipped by Firefox's "official" branding — the icon is wrong but
+# the build/package never hard-fails over a cosmetic asset. Re-run once you
+# have full Xcode (`sudo xcode-select -s /Applications/Xcode.app`) to swap in
+# the real icon.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BRANDING_DIR="$SCRIPT_DIR/../additions/browser/branding/cloakfox"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+BRANDING_DIR="$REPO_DIR/additions/browser/branding/cloakfox"
 XCASSETS_DIR="$BRANDING_DIR/Assets.xcassets"
 APPICONSET_DIR="$XCASSETS_DIR/AppIcon.appiconset"
 OUTPUT_FILE="$BRANDING_DIR/Assets.car"
 
-# Check if running on macOS
-if [[ "$(uname)" != "Darwin" ]]; then
-    echo "Warning: Assets.car can only be generated on macOS."
-    echo "Using existing Assets.car if available, or copying from official branding."
-
-    # If Assets.car doesn't exist, try to copy from official branding
-    if [[ ! -f "$OUTPUT_FILE" ]]; then
-        OFFICIAL_ASSETS="$SCRIPT_DIR/../cloakfox-*/browser/branding/official/Assets.car"
-        if ls $OFFICIAL_ASSETS 1>/dev/null 2>&1; then
-            cp $(ls $OFFICIAL_ASSETS | head -1) "$OUTPUT_FILE"
-            echo "Copied Assets.car from official branding."
-        else
-            echo "Error: No Assets.car available and cannot generate on non-macOS."
-            exit 1
+# Copy a prebuilt Assets.car from Firefox's official branding as a placeholder.
+# The extracted source dir is normally firefox-src, but older layouts named it
+# cloakfox-<version>; try both. Returns non-zero only if nothing is found.
+place_placeholder() {
+    local cand
+    for cand in \
+        "$REPO_DIR/firefox-src/browser/branding/official/Assets.car" \
+        $REPO_DIR/cloakfox-*/browser/branding/official/Assets.car; do
+        if [[ -f "$cand" ]]; then
+            cp "$cand" "$OUTPUT_FILE"
+            echo "Assets.car: using placeholder icon from $cand"
+            return 0
         fi
+    done
+    echo "Assets.car: no placeholder found (looked under firefox-src/ and" \
+         "cloakfox-*/ official branding). Run 'make fetch setup-minimal' first."
+    return 1
+}
+
+# Mirror the produced Assets.car into any already-extracted build tree so the
+# next ./mach package picks it up without a re-copy of additions/.
+sync_into_src() {
+    local srcbrand
+    for srcbrand in \
+        "$REPO_DIR/firefox-src/browser/branding/cloakfox" \
+        $REPO_DIR/cloakfox-*/browser/branding/cloakfox; do
+        if [[ -d "$srcbrand" ]]; then
+            cp "$OUTPUT_FILE" "$srcbrand/Assets.car"
+            echo "Assets.car: synced into $srcbrand"
+        fi
+    done
+}
+
+# Resolve actool (ships only with full Xcode, not the Command Line Tools).
+# A shim may exist on PATH even without Xcode, so pre-flight that it actually
+# runs — otherwise we'd churn the source PNGs before failing on the compile.
+ACTOOL="$(xcrun --find actool 2>/dev/null || true)"
+[[ -z "$ACTOOL" ]] && command -v actool &>/dev/null && ACTOOL="actool"
+if [[ -n "$ACTOOL" ]] && ! "$ACTOOL" --version &>/dev/null; then
+    ACTOOL=""
+fi
+
+if [[ "$(uname)" != "Darwin" || -z "$ACTOOL" ]]; then
+    if [[ "$(uname)" != "Darwin" ]]; then
+        echo "Assets.car: not macOS — actool unavailable, using placeholder."
+    else
+        echo "Assets.car: full Xcode not found (only Command Line Tools);" \
+             "using placeholder. Install Xcode to compile the real icon."
     fi
+    place_placeholder || exit 1
+    sync_into_src
     exit 0
 fi
 
-# Check for actool
-if ! command -v actool &>/dev/null && ! xcrun --find actool &>/dev/null; then
-    echo "Error: actool not found. Please install Xcode Command Line Tools."
-    exit 1
-fi
-
-ACTOOL=$(xcrun --find actool 2>/dev/null || echo "actool")
-
-echo "Generating Assets.car from cloakfox branding icons..."
+echo "Generating Assets.car from cloakfox branding icons with $ACTOOL ..."
 
 # Create xcassets structure
 mkdir -p "$APPICONSET_DIR"
@@ -124,8 +157,7 @@ cat > "$APPICONSET_DIR/Contents.json" << 'EOF'
 }
 EOF
 
-# Copy/resize icons to the required sizes
-# We'll use sips (macOS built-in) to resize if needed
+# Copy/resize icons to the required sizes using sips (macOS built-in).
 copy_or_resize() {
     local src="$1"
     local dst="$2"
@@ -153,27 +185,23 @@ copy_or_resize "$BRANDING_DIR/default256.png" "$APPICONSET_DIR/icon_256x256@2x.p
 copy_or_resize "$BRANDING_DIR/default256.png" "$APPICONSET_DIR/icon_512x512.png" 512
 copy_or_resize "$BRANDING_DIR/default256.png" "$APPICONSET_DIR/icon_512x512@2x.png" 1024
 
-# Generate Assets.car using actool
-TEMP_DIR=$(mktemp -d)
-"$ACTOOL" \
+# Generate Assets.car using actool. If actool fails for any reason, fall back
+# to the placeholder rather than aborting the whole build.
+TEMP_DIR="$(mktemp -d)"
+if "$ACTOOL" \
     --compile "$TEMP_DIR" \
     --platform macosx \
     --minimum-deployment-target 10.15 \
     --app-icon AppIcon \
     --output-partial-info-plist "$TEMP_DIR/Info.plist" \
-    "$XCASSETS_DIR"
-
-# Move the generated Assets.car
-if [[ -f "$TEMP_DIR/Assets.car" ]]; then
+    "$XCASSETS_DIR" && [[ -f "$TEMP_DIR/Assets.car" ]]; then
     mv "$TEMP_DIR/Assets.car" "$OUTPUT_FILE"
-    echo "Successfully generated: $OUTPUT_FILE"
+    echo "Successfully generated real icon: $OUTPUT_FILE"
 else
-    echo "Error: Failed to generate Assets.car"
-    rm -rf "$TEMP_DIR"
-    exit 1
+    echo "Assets.car: actool failed; falling back to placeholder icon."
+    place_placeholder || { rm -rf "$TEMP_DIR"; exit 1; }
 fi
-
-# Cleanup
 rm -rf "$TEMP_DIR"
 
+sync_into_src
 echo "Done!"
