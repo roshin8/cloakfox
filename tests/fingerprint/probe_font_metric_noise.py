@@ -1,23 +1,26 @@
 """
 Per-container font-metric-noise regression probe.
 
-The anti-font-fingerprinting patch (FontSpacingSeedManager) perturbs text
-metrics deterministically from a per-userContextId seed the persona pipeline
-publishes as `font:spacing_seed` (CloakfoxSeedSync -> nsGlobalWindowInner ->
-FontSpacingSeedManager::SetSeed -> gfxTextRun/gfxHarfBuzzShaper). This breaks
-text-measurement fingerprinting (offsetWidth / getBoundingClientRect on shared
-fonts) that would otherwise expose the real host's exact glyph metrics.
+The anti-font-fingerprinting patch (FontSpacingSeedManager + gfxHarfBuzzShaper)
+adds up to 0.1px of letter-spacing PER GLYPH, driven by a per-container seed the
+persona publishes in the cloak_cfg blob under "fonts:spacing_seed". This breaks
+text-measurement fingerprinting (offsetWidth / getBoundingClientRect) that would
+otherwise read the host's exact glyph advances.
 
-Host-independent relative check — no hardcoded metrics, holds on any machine:
+CRITICAL: measure a CONCRETE whitelisted font (Arial), not a CSS generic. With
+the font whitelist active, generic families (sans-serif/serif/monospace) resolve
+NONDETERMINISTICALLY across launches, so a generic-family probe reports "enabled
+profiles differ" even when the spacing seed is completely dead — a false pass.
+Arial resolves deterministically, so any width change is genuine spacing.
 
-  enabled twice  (fresh profiles -> random personas -> different seeds)
-    => measured metrics must DIFFER (the noise is live and seed-driven)
-  disabled twice (fresh profiles)
-    => measured metrics must be IDENTICAL (stock Firefox, no perturbation)
+Over a ~360-glyph string a live seed shifts Arial's width by up to ~36px; a dead
+seed leaves it within measurement jitter (<0.5px) of the disabled baseline. The
+decisive assertion is therefore "enabled differs from disabled", not merely
+"enabled profiles differ from each other":
 
-A live spoofer emits a random per-profile seed, so identical metrics across two
-enabled profiles would mean the noise never ran; differing metrics across two
-disabled profiles would mean something other than our seed is perturbing them.
+  disabled: clean stock width W0 (deterministic across profiles)
+  enabled : W0 + per-glyph spacing; must differ from W0 by >1px, differ between
+            two fresh personas, and be stable across launches of one profile
 
 Exit codes: 0 pass · 1 noise inactive/regressed · 2 couldn't run.
 
@@ -38,72 +41,81 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
-# A long, glyph-varied line in a generic family so metrics come from the host's
-# real fonts (which the spacing seed then perturbs). Repeated to accumulate
-# per-character noise into a measurable width delta.
+# Arial is on the whitelist and resolves to a single concrete face, so it is
+# not subject to generic-family resolution nondeterminism. The long repeated
+# string accumulates per-glyph spacing into a large, unambiguous width delta.
 MEASURE = r"""
 const s = document.createElement('span');
 s.style.cssText =
-  'position:absolute;left:-9999px;font:16px sans-serif;white-space:nowrap';
-s.textContent = 'The quick brown fox jumps 0123456789 WWWWiiiigjpqy '.repeat(6);
+  'position:absolute;left:-9999px;white-space:nowrap;font:16px Arial';
+s.textContent = 'WWWWWWWWWW iiiiiiiiii gjpqygjpqy 0123456789'.repeat(3);
 document.body.appendChild(s);
-const r = s.getBoundingClientRect();
-return r.width.toFixed(6) + '|' + r.height.toFixed(6);
+return parseFloat(s.getBoundingClientRect().width.toFixed(5));
 """
 
+# A dead seed leaves enabled within jitter of disabled (~0.2px observed); a live
+# seed shifts by whole pixels. 1px cleanly separates the two.
+MIN_SHIFT_PX = 1.0
 
-def measure(bin_path: str, enabled: bool) -> str:
-    with tempfile.TemporaryDirectory() as tmp:
-        prof = os.path.join(tmp, "p")
-        Path(prof).mkdir()
-        Path(prof, "user.js").write_text(
-            f'user_pref("cloakfox.enabled", {str(enabled).lower()});\n'
-        )
-        opts = Options()
-        opts.binary_location = bin_path
-        opts.add_argument("--headless")
-        opts.add_argument("-remote-allow-system-access")
-        opts.add_argument("-profile")
-        opts.add_argument(prof)
-        d = webdriver.Firefox(options=opts,
-                              service=Service(log_path=str(Path(prof) / "gd.log")))
-        try:
-            d.set_page_load_timeout(30)
-            d.get("https://example.com/")
-            time.sleep(1.2)
-            return d.execute_script(MEASURE)
-        finally:
-            d.quit()
+
+def measure(bin_path: str, enabled: bool, prof: str) -> float:
+    Path(prof).mkdir(parents=True, exist_ok=True)
+    Path(prof, "user.js").write_text(
+        f'user_pref("cloakfox.enabled", {str(enabled).lower()});\n'
+    )
+    opts = Options()
+    opts.binary_location = bin_path
+    opts.add_argument("--headless")
+    opts.add_argument("-remote-allow-system-access")
+    opts.add_argument("-profile")
+    opts.add_argument(prof)
+    d = webdriver.Firefox(options=opts,
+                          service=Service(log_path=str(Path(prof) / "gd.log")))
+    try:
+        d.set_page_load_timeout(30)
+        d.get("https://example.com/")
+        time.sleep(1.2)
+        return float(d.execute_script(MEASURE))
+    finally:
+        d.quit()
 
 
 def main(bin_path: str) -> int:
-    en1, en2 = measure(bin_path, True), measure(bin_path, True)
-    di1, di2 = measure(bin_path, False), measure(bin_path, False)
-    print(f"  enabled  #1: {en1}")
-    print(f"  enabled  #2: {en2}")
-    print(f"  disabled #1: {di1}")
-    print(f"  disabled #2: {di2}")
+    with tempfile.TemporaryDirectory() as tmp:
+        w0 = measure(bin_path, False, os.path.join(tmp, "d1"))
+        w0b = measure(bin_path, False, os.path.join(tmp, "d2"))
+        ea = measure(bin_path, True, os.path.join(tmp, "ea"))
+        eb = measure(bin_path, True, os.path.join(tmp, "eb"))
+        ea2 = measure(bin_path, True, os.path.join(tmp, "ea"))  # same profile again
+
+    print(f"  disabled  #1/#2: {w0} / {w0b}")
+    print(f"  enabled   A/A':  {ea} / {ea2}")
+    print(f"  enabled   B:     {eb}")
+    print(f"  |A-disabled|={abs(ea - w0):.3f}px  |B-disabled|={abs(eb - w0):.3f}px")
     print()
 
-    if not en1 or not en2 or not di1 or not di2:
-        print("could not measure metrics (probe didn't run)")
-        return 2
-
     fails = []
-    if en1 == en2:
-        fails.append("enabled metrics identical across two fresh profiles — "
-                     "the per-container spacing seed is not being applied")
-    if di1 != di2:
-        fails.append("disabled metrics differ across two fresh profiles — "
-                     "something other than our seed is perturbing text (unexpected)")
+    if w0 != w0b:
+        fails.append(f"disabled Arial width differs across profiles ({w0} vs "
+                     f"{w0b}) — stock metrics should be deterministic")
+    if abs(ea - w0) < MIN_SHIFT_PX and abs(eb - w0) < MIN_SHIFT_PX:
+        fails.append(f"enabled Arial width within {MIN_SHIFT_PX}px of disabled "
+                     f"for both personas — the fonts:spacing_seed noise is dead "
+                     f"(check the cloak_cfg key matches C++)")
+    if ea == eb:
+        fails.append("two fresh personas produced identical enabled width — "
+                     "the seed is not per-container")
+    if ea != ea2:
+        fails.append(f"same profile gave different widths across launches "
+                     f"({ea} vs {ea2}) — spacing is not deterministic")
 
     if fails:
         print("FAIL — font-metric noise regressed:")
         for f in fails:
             print(f"  - {f}")
         return 1
-    print("PASS — enabled builds perturb text metrics per seed; disabled builds "
-          "measure clean stock metrics")
+    print("PASS — enabled shifts Arial width per-persona (deterministically); "
+          "disabled measures clean stock metrics")
     return 0
 
 
