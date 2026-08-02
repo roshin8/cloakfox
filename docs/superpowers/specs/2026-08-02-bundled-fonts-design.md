@@ -231,3 +231,40 @@ spec's stated top risk ("macOS suppression/integration feasibility").
 Spike code was reverted (gated + non-functional + debug logging); only the
 probe and this result are kept. Phases 1–4 do not proceed until option 1 or 2
 is chosen.
+
+### Phase 0 deeper dive (2026-08-02, funded "option 1") — architectural blocker
+
+Pushed further into the shared-font-list face-loading path. New findings:
+
+- The lazy face-loader `GetFacesInitDataForFamily` (parent) is triggered by
+  `InitializeFamily`, which content requests over IPC (`SendInitializeFamily`)
+  when it resolves a family. For the injected family this trigger **never
+  fires** — the macOS shared list has no path to initialize faces for a
+  non-system family.
+- Firefox **does** model app-bundled fonts in the shared list —
+  `fontlist::Family::InitData` takes an `aBundled` flag — but it is annotated
+  **`[win]`**: bundled-font support exists for **Windows (DirectWrite)** only.
+  **macOS has no bundled-font path in the shared font list.**
+
+**Architectural conclusion:** making macOS render app-bundled fonts is not a
+small patch on top of `CTFontManagerRegisterFontsForURL`. It requires one of:
+
+- **(1a) Extend shared-list bundled-font support to macOS** — teach
+  `CoreTextFontList` to build `Face::InitData` for registered/bundled families
+  (PostScript-name descriptor + cmap) and trigger their initialization. This is
+  real Gecko gfx work touching the shared-font-list lifecycle — a multi-day
+  effort with its own risks (IPC face propagation, cmap loading, hidden-family
+  visibility), and it is the macOS analog of what Firefox already does for
+  Windows.
+- **(1b) Run macOS with the non-shared font list** (`gfx.e10s.font-list.shared
+  = false`) and register + add bundled families per content process. Sidesteps
+  the shared-list model but carries a perf/telemetry cost and still needs
+  per-process registration inside the content sandbox.
+- **(2) Host-OS-coherent personas** (no bundling) — the pragmatic fix for the
+  actual visible bug (serif/mono collapse), small and safe, abandons cross-OS
+  font independence.
+
+Per systematic-debugging discipline (3+ attempts, each surfacing a new layer =
+architectural), this is a decision point, not a grind-it-out bug. Recommend
+choosing 1a (if cross-OS independence is a hard requirement and multi-day gfx
+work is acceptable) or 2 (if shipping coherence now matters more).
