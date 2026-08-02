@@ -37,3 +37,7 @@ mk_add_options MOZ_AUTOMATION_INSTALLER=0
 
 # sccache path set by CI via --with-ccache=$SCCACHE_PATH appended in workflow
 # Don't add --with-ccache=sccache here — it triggers bootstrap to download its own sccache
+
+# Cloakfox: bundle metric-compatible fonts (native MOZ_BUNDLED_FONTS,
+# forced on for macOS where it is off by default) for cross-OS coherence.
+ac_add_options --enable-bundled-fonts

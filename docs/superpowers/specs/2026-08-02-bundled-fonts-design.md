@@ -268,3 +268,49 @@ Per systematic-debugging discipline (3+ attempts, each surfacing a new layer =
 architectural), this is a decision point, not a grind-it-out bug. Recommend
 choosing 1a (if cross-OS independence is a hard requirement and multi-day gfx
 work is acceptable) or 2 (if shipping coherence now matters more).
+
+### Phase 0 RESOLVED (2026-08-02) — GO, via native `--enable-bundled-fonts`
+
+The hand-rolled registration was reinventing an existing Firefox feature. Gecko
+has **native app-bundled-font support** behind the `MOZ_BUNDLED_FONTS` build
+define — `CoreTextFontList::ActivateBundledFonts()` activates every font in
+`<GRE>/fonts` (= `App.app/Contents/Resources/fonts/`) via
+`CTFontManagerRegisterFontURLs` and wires them into the shared font list
+**correctly** (the exact face-integration the manual approach couldn't do). It
+is cross-platform: macOS (`CoreTextFontList`) and Windows (`gfxDWriteFontList`).
+
+It is simply not compiled in: `--enable-bundled-fonts` (`toolkit/moz.configure`)
+defaults **on for Windows/Linux, off for macOS**, but the code is gated on
+`MOZ_BUNDLED_FONTS`, not `XP_WIN` — so forcing the flag enables it on Mac.
+
+**Verified on the real build:** added `ac_add_options --enable-bundled-fonts`
+to `assets/base.mozconfig`, reconfigured + rebuilt (`MOZ_BUNDLED_FONTS=1` in
+`mozilla-config.h`), staged a renamed test font in `Resources/fonts/`, and the
+probe (`probe_font_spike.py`) reports the bundled family **present: True** — it
+enumerates *and renders* (font-detection uses real rendering metrics). With no
+fonts dir the flag is a **no-op** (host fonts enumerate normally, no breakage),
+so it is safe to ship the flag ahead of the pack.
+
+**This eliminates the macOS risk that blocked the design.** The revised plan:
+
+- **Font integration = the build flag + `Resources/fonts/`.** No gfx-internals
+  code. (Options 1a/1b/2 above are moot — the native path is neither.)
+- **Host suppression / per-container narrowing = the existing whitelist +
+  `FontListManager`** (already built, #4). The bundled pack *adds* the persona's
+  OS fonts; the whitelist/narrowing hides host fonts and restricts each
+  container to its persona subset. Full replacement falls out of composing the
+  two.
+
+**Revised phasing:**
+- **Phase 1:** import the Camoufox font pack into `bundle/fonts/{os}/`; wire
+  `package.py --fonts` to stage them under `Resources/fonts/`; verify a
+  cross-OS persona (e.g. Windows-on-Mac) exposes its fonts and generics resolve
+  (no collapse).
+- **Phase 2:** persona-OS pack selection (load only the persona's OS pack, or
+  mark non-persona-OS bundled families hidden) + first-launch handling.
+- **Phase 3:** cross-machine consistency fixtures; Windows/Linux verification
+  (bundled fonts already default-on there).
+
+Committed: the `--enable-bundled-fonts` flag in `assets/base.mozconfig` (safe
+no-op until the pack lands) + `probe_font_spike.py`. All hand-rolled spike code
+was reverted; `firefox-src` C++ is pristine.
