@@ -85,6 +85,32 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
     const prng = makePRNG(b64ToBytes(seedB64));
     const pageWin = win.wrappedJSObject;
 
+    // Per-event nudged timestamps, held chrome-side and surfaced through the
+    // INHERITED Event.prototype.timeStamp getter below. Writing the nudged
+    // value as an own property on the event instance would leak: native
+    // timeStamp is an inherited accessor, so event.hasOwnProperty("timeStamp")
+    // is false and getOwnPropertyDescriptor(event, "timeStamp") is undefined —
+    // an own data prop flips both, a tell on the very events we touch. Keyed by
+    // the Xray-waived event so set/get see the same identity.
+    const nudged = new WeakMap();
+    const evProto = pageWin.Event.prototype;
+    const origTsGetter =
+      Object.getOwnPropertyDescriptor(evProto, "timeStamp")?.get;
+    if (origTsGetter) {
+      const tsGetter = Cu.exportFunction(function () {
+        const w = Cu.waiveXrays(this);
+        return nudged.has(w) ? nudged.get(w) : origTsGetter.call(this);
+      }, pageWin);
+      // Native accessor reports name "get timeStamp" length 0; match it.
+      setNativeIdentity(tsGetter, "get timeStamp", 0);
+      try {
+        // Native Event.prototype.timeStamp is {enumerable:true, configurable:true}.
+        Object.defineProperty(evProto, "timeStamp", {
+          get: tsGetter, enumerable: true, configurable: true,
+        });
+      } catch (_e) { /* non-configurable on some builds — best effort */ }
+    }
+
     // Shared mutable state between all wrapped listeners.
     // Kept in chrome scope so page code can't observe / tamper.
     let lastEventTime = 0;
@@ -95,14 +121,10 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
       const now = pageWin.performance?.now?.() ?? Date.now();
       const elapsed = now - lastEventTime;
       if (elapsed < MIN_DELAY_MS && lastEventTime > 0) {
-        // Nudge timeStamp so the page sees a minimum-delay cadence.
-        try {
-          Object.defineProperty(event, "timeStamp", {
-            value: lastEventTime + MIN_DELAY_MS + prng() * MAX_JITTER_MS,
-            writable: false,
-            configurable: false,
-          });
-        } catch (_e) { /* event already has non-configurable timeStamp — best effort */ }
+        // Record the nudged cadence value; served via the prototype getter so
+        // no own property lands on the event instance.
+        nudged.set(Cu.waiveXrays(event),
+                   lastEventTime + MIN_DELAY_MS + prng() * MAX_JITTER_MS);
       }
       lastEventTime = now;
     };

@@ -90,6 +90,23 @@ s.textContent = `
     })(),
     // The old TabHistory defineAs:"get length" stamped a stray window prop.
     stray_get_length: Object.getOwnPropertyNames(window).includes('get length'),
+    // Keyboard actor nudges key-event .timeStamp for cadence. It must serve
+    // the value via the INHERITED Event.prototype getter — writing an own
+    // property on the event instance leaks (native timeStamp is inherited, so
+    // event.hasOwnProperty('timeStamp') is false). Dispatch fast synthetic
+    // keydowns; the 2nd/3rd should be nudged, and none may gain an own prop.
+    kbd: (() => {
+      const inp = document.createElement('input'); document.body.appendChild(inp);
+      const owns = [], ts = [];
+      inp.addEventListener('keydown', (e) => {
+        owns.push(Object.prototype.hasOwnProperty.call(e, 'timeStamp'));
+        ts.push(e.timeStamp);
+      });
+      const t0 = performance.now();
+      for (let i = 0; i < 3; i++)
+        inp.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+      return { owns, fired: owns.length, sawNudge: Math.max(...ts) - t0 > 25 };
+    })(),
     // sanity: the Math actor actually fired (trig noised), so these checks
     // are meaningful rather than passing because nothing ran.
     sin_noised: Math.sin(0.5) !== 0.479425538604203,
@@ -164,6 +181,17 @@ def run(bin_path: str) -> int:
         fails.append('window has a stray "get length" own property '
                      "(TabHistory defineAs leak)")
 
+    # Keyboard timeStamp must never become an own property on the event.
+    kbd = r["kbd"]
+    if kbd["fired"] != 3:
+        fails.append(f"keydown listener fired {kbd['fired']}/3 (wrapper broken)")
+    if any(kbd["owns"]):
+        fails.append("keydown event gained an OWN timeStamp property "
+                     f"(native: inherited) — owns={kbd['owns']}")
+    if kbd["fired"] == 3 and not kbd["sawNudge"]:
+        print("  note: keyboard cadence not nudged (no keyboard_seed for this "
+              "context) — own-prop check holds but nudge path not exercised")
+
     print("=== actor-stealth checks ===")
     print(f"  Object.keys(navigator): {r['nav_keys'] or '[]'}")
     print(f"  Object.keys(Math).length: {r['math_keys']}")
@@ -171,6 +199,8 @@ def run(bin_path: str) -> int:
     installed = {k: v for k, v in r["getters"].items() if v is not None}
     print(f"  getter names: {installed or '(none installed)'}")
     print(f"  stray 'get length' window prop: {r['stray_get_length']}")
+    print(f"  keydown timeStamp own-prop: {r['kbd']['owns']} "
+          f"(nudged={r['kbd']['sawNudge']})")
     print()
     if fails:
         print("FAIL — stealth tell(s) regressed:")
