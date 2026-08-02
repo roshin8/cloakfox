@@ -70,6 +70,26 @@ s.textContent = `
       'setTimeout': id(setTimeout),
       'addEventListener': id(EventTarget.prototype.addEventListener),
     },
+    // Getter-based spoofs (navigator.gpu, feature-detect fakes,
+    // History.length). A native WebIDL getter reports name "get <prop>";
+    // an exportFunction getter leaks name:"". Collect the accessor name
+    // wherever a getter is installed.
+    getters: (() => {
+      const g = (proto, prop) => {
+        const d = Object.getOwnPropertyDescriptor(proto, prop);
+        return d && d.get ? d.get.name : null;
+      };
+      return {
+        'History.length': g(History.prototype, 'length'),
+        'navigator.gpu': g(Navigator.prototype, 'gpu'),
+        'navigator.webdriver': g(Navigator.prototype, 'webdriver'),
+        'navigator.pdfViewerEnabled': g(Navigator.prototype, 'pdfViewerEnabled'),
+        'navigator.cookieEnabled': g(Navigator.prototype, 'cookieEnabled'),
+        'navigator.onLine': g(Navigator.prototype, 'onLine'),
+      };
+    })(),
+    // The old TabHistory defineAs:"get length" stamped a stray window prop.
+    stray_get_length: Object.getOwnPropertyNames(window).includes('get length'),
     // sanity: the Math actor actually fired (trig noised), so these checks
     // are meaningful rather than passing because nothing ran.
     sin_noised: Math.sin(0.5) !== 0.479425538604203,
@@ -132,10 +152,25 @@ def run(bin_path: str) -> int:
         if not v["nat"]:
             fails.append(f"{key} does not stringify as [native code]")
 
+    # Getter accessor names: wherever a getter is installed it must report the
+    # native "get <prop>" name, never "" (the exportFunction default).
+    for key, gname in r["getters"].items():
+        if gname is None:
+            continue  # property/getter not present on this build — skip
+        expected = f"get {key.split('.')[-1]}"
+        if gname != expected:
+            fails.append(f"{key} getter name = {gname!r} (native {expected!r})")
+    if r["stray_get_length"]:
+        fails.append('window has a stray "get length" own property '
+                     "(TabHistory defineAs leak)")
+
     print("=== actor-stealth checks ===")
     print(f"  Object.keys(navigator): {r['nav_keys'] or '[]'}")
     print(f"  Object.keys(Math).length: {r['math_keys']}")
     print(f"  sample fns: sin={r['fns']['Math.sin']} pow={r['fns']['Math.pow']}")
+    installed = {k: v for k, v in r["getters"].items() if v is not None}
+    print(f"  getter names: {installed or '(none installed)'}")
+    print(f"  stray 'get length' window prop: {r['stray_get_length']}")
     print()
     if fails:
         print("FAIL — stealth tell(s) regressed:")

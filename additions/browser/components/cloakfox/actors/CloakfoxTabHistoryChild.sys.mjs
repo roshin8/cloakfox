@@ -39,6 +39,22 @@ function b64ToBytes(b64) {
   return out;
 }
 
+// Native History.prototype.length getter reports name "get length" length 0;
+// an exportFunction getter reports name:"" and leaks the wrapper. Copy the
+// native identity onto the page-side getter (Xray-waived).
+function setGetterIdentity(getterFn, prop) {
+  const waived = Cu.waiveXrays(getterFn);
+  try {
+    Object.defineProperty(waived, "name", {
+      value: `get ${prop}`, writable: false, enumerable: false, configurable: true,
+    });
+    Object.defineProperty(waived, "length", {
+      value: 0, writable: false, enumerable: false, configurable: true,
+    });
+  } catch (_e) { /* best effort — identity match is defense in depth */ }
+  return getterFn;
+}
+
 export class CloakfoxTabHistoryChild extends JSWindowActorChild {
   handleEvent(event) {
     if (event.type !== "DOMDocElementInserted") return;
@@ -64,13 +80,16 @@ export class CloakfoxTabHistoryChild extends JSWindowActorChild {
     const fakeLength = PLAUSIBLE_LENGTHS[idx];
 
     const pageWin = win.wrappedJSObject;
-    // Replace the History.prototype.length getter with an
-    // exportFunction'd replacement. Descriptor-leak caveat applies
-    // (same as Math and Keyboard actors).
+    // Replace the History.prototype.length getter with an exportFunction'd
+    // replacement. Set the native accessor identity (name "get length",
+    // length 0) rather than the old { defineAs: "get length" } — defineAs
+    // would also stamp a stray `window["get length"]` property, a tell of
+    // its own.
     try {
       const getter = Cu.exportFunction(function () {
         return fakeLength;
-      }, pageWin, { defineAs: "get length" });
+      }, pageWin);
+      setGetterIdentity(getter, "length");
       Object.defineProperty(pageWin.History.prototype, "length", {
         get: getter,
         configurable: true,

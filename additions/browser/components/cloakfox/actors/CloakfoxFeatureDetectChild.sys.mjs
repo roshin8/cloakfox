@@ -56,8 +56,12 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
 
     for (const [prop, value] of FAKES) {
       try {
+        // Native WebIDL getter reports name "get <prop>" length 0; match it so
+        // a getOwnPropertyDescriptor(...).get.name probe can't spot the wrapper.
+        const getter = Cu.exportFunction(function () { return value; }, pageWin);
+        setNativeIdentity(getter, `get ${prop}`, 0);
         Object.defineProperty(navProto, prop, {
-          get: Cu.exportFunction(function () { return value; }, pageWin),
+          get: getter,
           configurable: true,
           enumerable: true,
         });

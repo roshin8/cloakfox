@@ -23,6 +23,22 @@
  * Phase 2 port of inject/spoofers/graphics/webgpu.ts (simplified).
  */
 
+// A native WebIDL getter reports name "get <prop>" and length 0; an
+// exportFunction getter reports name:"" length:0 and leaks the wrapper. Copy
+// the native identity onto the page-side getter (Xray-waived).
+function setGetterIdentity(getterFn, prop) {
+  const waived = Cu.waiveXrays(getterFn);
+  try {
+    Object.defineProperty(waived, "name", {
+      value: `get ${prop}`, writable: false, enumerable: false, configurable: true,
+    });
+    Object.defineProperty(waived, "length", {
+      value: 0, writable: false, enumerable: false, configurable: true,
+    });
+  } catch (_e) { /* best effort — identity match is defense in depth */ }
+  return getterFn;
+}
+
 export class CloakfoxWebGPUChild extends JSWindowActorChild {
   handleEvent(event) {
     if (event.type !== "DOMDocElementInserted") return;
@@ -48,8 +64,10 @@ export class CloakfoxWebGPUChild extends JSWindowActorChild {
     // Object.keys(navigator) (stock Firefox returns []). Native prototype
     // flags are {enumerable:true, configurable:true}.
     try {
+      const getter = Cu.exportFunction(function () { return undefined; }, pageWin);
+      setGetterIdentity(getter, "gpu");
       Object.defineProperty(navProto, "gpu", {
-        get: Cu.exportFunction(function () { return undefined; }, pageWin),
+        get: getter,
         configurable: true,
         enumerable: true,
       });
