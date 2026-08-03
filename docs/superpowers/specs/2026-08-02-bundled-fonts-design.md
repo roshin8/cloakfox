@@ -314,3 +314,54 @@ so it is safe to ship the flag ahead of the pack.
 Committed: the `--enable-bundled-fonts` flag in `assets/base.mozconfig` (safe
 no-op until the pack lands) + `probe_font_spike.py`. All hand-rolled spike code
 was reverted; `firefox-src` C++ is pristine.
+
+### Phase 1 progress (2026-08-02) — legal pack decision + pipeline proven
+
+**Font-pack source decision (important correction).** Camoufox's macOS/Windows
+packs (`bundle/fonts/{macos,windows}`) are the **real proprietary OS fonts**
+extracted from macOS Sonoma / Windows 11 (README: "solely for academic and
+research purposes … no … distribution … intended"), ~574 MB + ~321 MB. An
+earlier note here mis-described them as open substitutes — only Camoufox's
+**Linux** pack is open (Arimo/Cousine/Noto from the Tor bundle). Bundling the
+real fonts into a distributed browser is a copyright/redistribution risk, so the
+chosen approach is **openly-licensed metric-compatible substitutes renamed to
+the target family names** (the standard font-substitution technique; the font
+files are open, only the presented name matches the proprietary family).
+
+**Pipeline proven end-to-end.** On macOS there is no fontconfig aliasing, so the
+substitution is baked into the font's name table (`scripts/rename-font.py`).
+Verified: an OFL font renamed to "Segoe UI", staged into `Resources/fonts/`,
+**renders as `Segoe UI` on the Mac** (a Windows-only family, normally absent) —
+i.e. a cross-OS persona can present its fonts via a legal open substitute.
+
+**Substitution mapping (starting point; verify each license + metric fidelity
+before shipping):**
+
+| Target family        | Open substitute | License   |
+|----------------------|-----------------|-----------|
+| Arial / Helvetica    | Arimo           | Apache-2.0|
+| Times New Roman      | Tinos           | Apache-2.0|
+| Courier New          | Cousine         | Apache-2.0|
+| Calibri              | Carlito         | SIL OFL   |
+| Cambria              | Caladea         | SIL OFL   |
+| Georgia              | Gelasio         | SIL OFL   |
+| Segoe UI             | Selawik         | MIT       |
+| Verdana              | DejaVu Sans*    | Bitstream |
+| non-Latin scripts    | Noto family     | SIL OFL   |
+
+\* no exact open metric match for Verdana/Consolas; use the closest open face
+and accept minor metric drift (covered per-container by the spacing seed).
+
+**Remaining Phase-1 work (bounded, mostly mechanical):**
+1. Source the open substitutes above (Google Fonts / Selawik / Noto), verify
+   licenses, and rename each to its target family via `scripts/rename-font.py`
+   into `bundle/fonts/{macos,windows,linux}/` covering the `CANONICAL_FONTS`
+   families per OS.
+2. Pass `--fonts <os>` to the macOS package target (packaging already flattens
+   `bundle/fonts/<os>/*` into `Resources/fonts/` — no new code).
+3. Verify a cross-OS persona exposes its family set and `serif`/`monospace`
+   resolve (the collapse fix), then compose with the whitelist/`FontListManager`
+   for host suppression + per-container narrowing.
+
+Committed: `scripts/rename-font.py` + this note. The proof font was a placeholder
+(Charis SIL is not metric-compatible with Segoe UI) and was NOT committed.
