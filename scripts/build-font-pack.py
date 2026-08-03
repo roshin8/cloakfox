@@ -37,6 +37,14 @@ SOURCES = {
     "Anton": f"{RAW}/ofl/anton/Anton-Regular.ttf",
 }
 SELAWIK_ZIP = "https://github.com/microsoft/Selawik/releases/download/1.01/Selawik_Release.zip"
+DEJAVU_ZIP = "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.zip"
+# DejaVu faces are already correctly named (open, Bitstream-derived license); no
+# rename needed — Linux personas legitimately claim them.
+DEJAVU_FACES = {
+    "DejaVuSans": "DejaVuSans.ttf",
+    "DejaVuSerif": "DejaVuSerif.ttf",
+    "DejaVuSansMono": "DejaVuSansMono.ttf",
+}
 
 # target family (what personas claim) -> open substitute source
 MAPPING = {
@@ -44,8 +52,12 @@ MAPPING = {
     "Helvetica": "Arimo",
     "Helvetica Neue": "Arimo",
     "Trebuchet MS": "Arimo",
-    "Verdana": "Arimo",       # no exact open match; Arimo approximates
-    "Tahoma": "Arimo",        # ditto
+    "Verdana": "DejaVuSans",  # DejaVu Sans is a closer humanist-sans match
+    "Tahoma": "DejaVuSans",
+    # Linux generic families (personas claim these; used by GENERIC_FONTS.linux).
+    "DejaVu Sans": "DejaVuSans",
+    "DejaVu Serif": "DejaVuSerif",
+    "DejaVu Sans Mono": "DejaVuSansMono",
     "Times New Roman": "Tinos",
     "Times": "Tinos",
     "Georgia": "Gelasio",
@@ -92,6 +104,17 @@ def main() -> int:
                       if os.path.basename(n).lower() == "selawk.ttf")
         sel.write_bytes(z.read(member))
     srcfiles["Selawik"] = sel
+
+    # DejaVu faces (Linux generics) from the release zip.
+    if not all((cache / f"{k}.ttf").exists() for k in DEJAVU_FACES):
+        print("fetch DejaVu ...", flush=True)
+        dz = zipfile.ZipFile(io.BytesIO(fetch(DEJAVU_ZIP)))
+        for key, fname in DEJAVU_FACES.items():
+            member = next(n for n in dz.namelist()
+                          if os.path.basename(n) == fname)
+            (cache / f"{key}.ttf").write_bytes(dz.read(member))
+    for key in DEJAVU_FACES:
+        srcfiles[key] = cache / f"{key}.ttf"
 
     made = 0
     for target, source in MAPPING.items():

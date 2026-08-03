@@ -15,7 +15,7 @@ macOS has no fontconfig aliasing. Rebuild with `python scripts/build-font-pack.p
 
 | Target family(s) presented                | Open source font | License    |
 |-------------------------------------------|------------------|------------|
-| Arial, Helvetica, Helvetica Neue, Trebuchet MS, Verdana, Tahoma | Arimo | Apache-2.0 |
+| Arial, Helvetica, Helvetica Neue, Trebuchet MS | Arimo       | Apache-2.0 |
 | Times New Roman, Times                    | Tinos            | Apache-2.0 |
 | Courier New, Courier, Consolas, Menlo, Monaco | Cousine      | Apache-2.0 |
 | Georgia                                   | Gelasio          | SIL OFL 1.1|
@@ -24,12 +24,17 @@ macOS has no fontconfig aliasing. Rebuild with `python scripts/build-font-pack.p
 | Segoe UI                                  | Selawik          | MIT        |
 | Comic Sans MS                             | Comic Neue       | SIL OFL 1.1|
 | Impact                                    | Anton            | SIL OFL 1.1|
+| Verdana, Tahoma                           | DejaVu Sans      | Bitstream* |
+| DejaVu Sans / Serif / Sans Mono (Linux)   | DejaVu (as-is)   | Bitstream* |
 
 Arimo, Tinos, and Cousine are from Google's croscore project; Carlito, Caladea,
-Gelasio, Comic Neue, and Anton are from Google Fonts; Selawik is from Microsoft.
-Full license texts ship with each upstream project; the target family names
-(Arial, Segoe UI, etc.) are trademarks of their respective owners and are used
-here only as substitution aliases, not as claims of authenticity.
+Gelasio, Comic Neue, and Anton are from Google Fonts; Selawik is from Microsoft;
+DejaVu is from the DejaVu Fonts project. \* DejaVu uses the free Bitstream Vera /
+Arev permissive license. The DejaVu faces keep their own names (Linux personas
+legitimately claim them); other faces are renamed to the target family. Full
+license texts ship with each upstream project; the target family names (Arial,
+Segoe UI, etc.) are trademarks of their respective owners and are used here only
+as substitution aliases, not as claims of authenticity.
 
 ## Coverage notes
 
