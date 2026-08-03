@@ -161,15 +161,21 @@ def main():
         exit(1)
     package_file = package_files[0]
 
-    # Add includes to the package
-    new_name = f'cloakfox-{args.version}-{args.release}-{args.os[:3]}.{args.arch}.zip'
-    add_includes_to_package(
-        package_file=package_file,
-        includes=args.includes,
-        fonts=args.fonts,
-        new_file=new_name,
-        target=args.os,
-    )
+    # Re-package only when there is something extra to inject. Bundled fonts now
+    # ship via the package manifest (MOZ_BUNDLED_FONTS + font-bundle-packaging
+    # .patch), so with no --includes/--fonts the mach package output is the final
+    # artifact. (The re-package path shells to 7z, which can't read a macOS DMG.)
+    if args.includes or args.fonts:
+        new_name = f'cloakfox-{args.version}-{args.release}-{args.os[:3]}.{args.arch}.zip'
+        add_includes_to_package(
+            package_file=package_file,
+            includes=args.includes,
+            fonts=args.fonts,
+            new_file=new_name,
+            target=args.os,
+        )
+    else:
+        print(f"Final package: {package_file}")
 
     print(f"Packaging complete for {args.os}")
 
