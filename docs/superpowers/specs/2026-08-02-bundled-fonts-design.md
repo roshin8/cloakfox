@@ -395,3 +395,35 @@ collapse fix automatic per container; the fonts and suppression are done.
 **Follow-ups:** `windows/` + `linux/` pack dirs (or ship the single comprehensive
 pack, which already spans both OS family sets), Noto script coverage, and the
 per-persona `font.name-list.*` wiring above.
+
+### macOS DMG packaging status (2026-08-03)
+
+`make package-macos arm64` was exercised end-to-end. Outcomes:
+
+- **Base DMG builds.** The long-standing `Assets.car` blocker is resolved: the
+  graceful `generate-assets-car.sh` places the placeholder into the branding
+  source, and a full `./mach build` stages it so `./mach package` succeeds and
+  produces `cloakfox-<ver>.en-US.mac.dmg` (~88 MB).
+- **Fonts do NOT yet auto-package into the macOS DMG.** Two macOS-specific
+  packager layers block it, discovered in order:
+  1. `browser/installer/package-manifest.in` gates `@RESPATH@/fonts/*` on
+     `defined(XP_WIN) || defined(MOZ_WIDGET_GTK)` — macOS is excluded. Widening
+     the gate (e.g. `|| defined(MOZ_BUNDLED_FONTS)`) is necessary but not
+     sufficient.
+  2. That `fonts/*` entry lives in the `[@AB_CD@]` (locale) section, which on
+     macOS resolves its source from a different staging root than
+     `dist/bin/fonts` — so even with the gate widened and the fonts installed to
+     `dist/bin/fonts` via a `FINAL_TARGET_FILES.fonts` rule, `./mach package`
+     reports `Missing file(s): …/Resources/fonts/*`.
+  - `package.py --fonts` (post-hoc injection) is also unusable on macOS: it
+    shells out to `7z` to extract the DMG (not installed; `7z` can't reliably
+    read a Mac DMG anyway).
+
+  **Bounded follow-up:** move/duplicate the `@RESPATH@/fonts/*` manifest entry
+  into a non-locale, macOS-included component (or add a Mac-specific bundled-
+  fonts manifest section) sourcing from `dist/bin/fonts`, plus a
+  `FINAL_TARGET_FILES.fonts` install rule fed by the committed pack via
+  copy-additions. The runtime side is already proven — fonts placed in
+  `Contents/Resources/fonts` render and fix the collapse; this is purely the
+  build-time staging into the DMG. Experimental manifest/moz.build edits were
+  reverted to keep the base DMG building.
