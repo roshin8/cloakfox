@@ -365,3 +365,33 @@ and accept minor metric drift (covered per-container by the spacing seed).
 
 Committed: `scripts/rename-font.py` + this note. The proof font was a placeholder
 (Charis SIL is not metric-compatible with Segoe UI) and was NOT committed.
+
+### Phase 1 COMPLETE (2026-08-02) — pack assembled + end-to-end validated
+
+`scripts/build-font-pack.py` fetches the open substitutes and renames each to
+its target family into `bundle/fonts/macos/` (19 families, 6.4 MB, redistributable;
+attribution in `bundle/fonts/README.md`). `make package-macos` now passes
+`--fonts macos` (packaging already flattens the pack into `Resources/fonts/`).
+
+**End-to-end validation on the built binary** (Windows persona on the Mac,
+`cloakfox.enabled=true`, cloak_cfg "fonts" = Windows families):
+- Windows-only families render: `Segoe UI`, `Calibri`, `Consolas` present.
+- Real Mac host fonts suppressed: `Geneva`/`Menlo`/`Monaco`/`Helvetica Neue`
+  all absent (whitelist + `FontListManager` narrowing, #4, compose correctly).
+- **Generic collapse fixed** once the persona also sets the CSS-generic name
+  lists to its OS defaults: with `font.name-list.serif.x-western=Times New Roman`,
+  `…sans-serif…=Arial`, `…monospace…=Consolas`, the generics resolve distinctly
+  (`sans 561 / serif 548 / mono 691`), no collapse. Without them, `monospace`
+  falls back to sans-serif because the Mac default mono list (Menlo/Monaco/
+  Courier) is hidden by the Windows-persona whitelist.
+
+**The one remaining integration piece (small, persona-config, not pack):** the
+persona pipeline (`CloakfoxPersonas`/`CloakfoxSeedSync`) must set the three
+`font.name-list.{serif,sans-serif,monospace}.x-western` prefs per persona OS
+(Windows → Arial/Times New Roman/Consolas; macOS → Helvetica/Times/Menlo;
+Linux → the DejaVu/Liberation equivalents). This is the last step to make the
+collapse fix automatic per container; the fonts and suppression are done.
+
+**Follow-ups:** `windows/` + `linux/` pack dirs (or ship the single comprehensive
+pack, which already spans both OS family sets), Noto script coverage, and the
+per-persona `font.name-list.*` wiring above.
