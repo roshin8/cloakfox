@@ -1,0 +1,12 @@
+diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
+--- a/browser/installer/package-manifest.in
++++ b/browser/installer/package-manifest.in
+@@ -43,6 +43,9 @@
+ @RESPATH@/firefox.icns
+ @RESPATH@/document.icns
+ @RESPATH@/Assets.car
++#ifdef MOZ_BUNDLED_FONTS
++@RESPATH@/fonts/*
++#endif
+ @RESPATH@/@LPROJ_ROOT@.lproj/*
+ #endif

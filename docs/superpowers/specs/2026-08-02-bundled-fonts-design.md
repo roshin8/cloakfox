@@ -419,11 +419,37 @@ per-persona `font.name-list.*` wiring above.
     shells out to `7z` to extract the DMG (not installed; `7z` can't reliably
     read a Mac DMG anyway).
 
-  **Bounded follow-up:** move/duplicate the `@RESPATH@/fonts/*` manifest entry
-  into a non-locale, macOS-included component (or add a Mac-specific bundled-
-  fonts manifest section) sourcing from `dist/bin/fonts`, plus a
-  `FINAL_TARGET_FILES.fonts` install rule fed by the committed pack via
-  copy-additions. The runtime side is already proven — fonts placed in
-  `Contents/Resources/fonts` render and fix the collapse; this is purely the
-  build-time staging into the DMG. Experimental manifest/moz.build edits were
-  reverted to keep the base DMG building.
+### macOS DMG packaging — RESOLVED (2026-08-03)
+
+The fonts now ship in the macOS DMG. Verified: `Cloakfox.app/Contents/Resources/
+fonts/` inside the built DMG contains all 22 families (`SegoeUI`, `Consolas`,
+`DejaVu*`, `Arial`, …). The fix has three parts:
+
+1. **Manifest entry in the right section** (`patches/font-bundle-packaging.patch`).
+   The stock `@RESPATH@/fonts/*` lives in the `[@AB_CD@]` *locale* component,
+   gated to Win/GTK, and on macOS that component resolves its source from a
+   different staging root — so it never stages `dist/bin/fonts`. Adding
+   `@RESPATH@/fonts/*` (guarded `#ifdef MOZ_BUNDLED_FONTS`) to the `#ifdef
+   XP_MACOSX` bundle section — where `firefox.icns`/`Assets.car` stage
+   correctly — makes it work.
+2. **Install rule** — `copy-additions.sh` stages `bundle/fonts/macos/*.ttf` into
+   `browser/fonts/` and appends a `FINAL_TARGET_FILES.fonts += [...]` list to
+   `browser/fonts/moz.build`, installing the pack to `dist/bin/fonts`.
+3. **Build gotcha** — a *targeted* `./mach build browser/fonts` does NOT
+   regenerate the backend after a moz.build change (it silently uses stale
+   rules and installs nothing). A full `./mach build` (or `mach build-backend`
+   with a real config change) is required; then `./mach package` stages and
+   DMGs the fonts. `make package-macos arm64` runs this end-to-end.
+
+Note the Assets.car prerequisite: `generate-assets-car.sh` writes the placeholder
+into the branding source and a full `./mach build` stages it, so `./mach package`
+finds `Resources/Assets.car`.
+
+Camoufox takes a different route entirely (bundled **fontconfig** configs +
+forcing the fontconfig backend on all OSes, incl. `bundle/fontconfig/macos/
+fonts.conf`); we use Firefox's native `MOZ_BUNDLED_FONTS` path instead, which is
+lighter and already proven to render on macOS.
+
+`package.py --fonts` (7z post-hoc DMG injection) remains unused on macOS and can
+be dropped from the Makefile's `package-macos` line (harmless but redundant now
+that fonts ship via the manifest).

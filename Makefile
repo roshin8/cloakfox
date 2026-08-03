@@ -105,7 +105,7 @@ package-linux:
 	python3 scripts/package.py linux --version $(version) --release $(release) --arch $(_ARGS)
 
 package-macos:
-	python3 scripts/package.py macos --version $(version) --release $(release) --fonts macos --arch $(_ARGS)
+	python3 scripts/package.py macos --version $(version) --release $(release) --arch $(_ARGS)
 
 package-windows:
 	python3 scripts/package.py windows --version $(version) --release $(release) --arch $(_ARGS)

@@ -42,6 +42,26 @@ run "cp -v '$REPO/patches/librewolf/pack_vs.py' build/vs/" || true
 # Copy ALL new files/folders from additions to source
 run "cp -r '$REPO/additions/'* ."
 
+# Cloakfox: stage the bundled open-substitute font pack into browser/fonts and
+# append a FINAL_TARGET_FILES.fonts install rule, so the pack is installed to
+# dist/bin/fonts and packaged into Contents/Resources/fonts (activated at
+# runtime by MOZ_BUNDLED_FONTS / ActivateBundledFonts). The Mac manifest entry
+# is added by patches/font-bundle-packaging.patch.
+if ls "$REPO/bundle/fonts/macos/"*.ttf >/dev/null 2>&1; then
+    run "cp '$REPO/bundle/fonts/macos/'*.ttf browser/fonts/"
+    {
+        echo ""
+        echo "# Cloakfox: bundled open-substitute font pack (all platforms)."
+        echo 'DIST_SUBDIR = ""'
+        echo "FINAL_TARGET_FILES.fonts += ["
+        for f in "$REPO/bundle/fonts/macos/"*.ttf; do
+            echo "    \"$(basename "$f")\","
+        done
+        echo "]"
+    } >> browser/fonts/moz.build
+    echo "Staged $(ls "$REPO/bundle/fonts/macos/"*.ttf | wc -l | tr -d ' ') bundled fonts into browser/fonts/"
+fi
+
 # Override the firefox version
 for file in "browser/config/version.txt" "browser/config/version_display.txt"; do
     echo "${version}-${release}" > "$file"
