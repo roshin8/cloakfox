@@ -135,6 +135,18 @@ const CANONICAL_FONTS = {
   },
 };
 
+// Per-OS CSS generic-font mapping. Each value must be in that OS's
+// CANONICAL_FONTS (so it survives the persona whitelist) AND in the bundled
+// font pack (bundle/fonts/) so it renders on a mismatched host. Applied to
+// font.name-list.<generic>.x-western by CloakfoxSeedSync.
+const GENERIC_FONTS = {
+  windows: { serif: "Times New Roman", sans: "Arial", mono: "Consolas" },
+  macos: { serif: "Times", sans: "Helvetica", mono: "Menlo" },
+  // Linux uses DejaVu (in CANONICAL_FONTS.linux); resolves once the linux
+  // bundle pack ships those faces.
+  linux: { serif: "DejaVu Serif", sans: "DejaVu Sans", mono: "DejaVu Sans Mono" },
+};
+
 function detectOSFromUA(ua) {
   if (!ua) return "linux";
   if (ua.includes("Macintosh") || ua.includes("Mac OS")) return "macos";
@@ -273,6 +285,16 @@ function bfToCloakKeys(fp, prng) {
     if (prng() < 0.6) fonts.push(f);
   }
   keys["fonts"] = fonts.sort();
+
+  // CSS generic-font mapping per OS. serif/sans-serif/monospace must resolve to
+  // fonts that are BOTH in the persona's whitelist (above) AND present in the
+  // bundled pack, else the generic falls back to sans-serif when the real
+  // host's default generic fonts are whitelisted out (the collapse tell).
+  // CloakfoxSeedSync applies these to font.name-list.<generic>.x-western.
+  const gen = GENERIC_FONTS[os] || GENERIC_FONTS.linux;
+  keys["font:generic:serif"] = gen.serif;
+  keys["font:generic:sans-serif"] = gen.sans;
+  keys["font:generic:monospace"] = gen.mono;
 
   // Audio context — not in BF; pick plausible values per-container.
   keys["AudioContext:sampleRate"] = [44100, 48000][Math.floor(prng() * 2)];

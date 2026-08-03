@@ -138,9 +138,40 @@ function ensureContainerSeeds(ucid) {
   } catch (_e) { /* ignore */ }
 }
 
+// Map the CSS generics (serif/sans-serif/monospace) to the default persona's
+// OS fonts, so they don't collapse to sans-serif when the real host's default
+// generic fonts are hidden by the persona whitelist. These are process-global
+// prefs (per-langgroup), driven by the ucid-0 persona. Cleared when disabled so
+// the real host generics return.
+function applyGenericFontPrefs() {
+  const map = {
+    "font.name-list.serif.x-western": "font:generic:serif",
+    "font.name-list.sans-serif.x-western": "font:generic:sans-serif",
+    "font.name-list.monospace.x-western": "font:generic:monospace",
+  };
+  try {
+    if (!Services.prefs.getBoolPref("cloakfox.enabled", true)) {
+      for (const pref of Object.keys(map)) {
+        try { Services.prefs.clearUserPref(pref); } catch (_e) { /* ignore */ }
+      }
+      return;
+    }
+    const cfg = Services.prefs.getStringPref("cloakfox.s.cloak_cfg_0", "");
+    if (!cfg) return;
+    const persona = JSON.parse(cfg);
+    for (const [pref, key] of Object.entries(map)) {
+      const val = persona[key];
+      if (typeof val === "string" && val) {
+        Services.prefs.setStringPref(pref, val);
+      }
+    }
+  } catch (_e) { /* ignore */ }
+}
+
 function ensureSeedsForAllContainers() {
   // Default container ucid=0 always.
   ensureContainerSeeds(0);
+  applyGenericFontPrefs();
   // Plus every user-defined container.
   try {
     const ids = Services.contextualIdentityService.getPublicIdentities();
