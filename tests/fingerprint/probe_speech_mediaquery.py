@@ -21,7 +21,9 @@ Checks (host-independent):
      color-gamut "min" semantics (a p3 persona matches srgb AND p3; nobody
      matches rec2020). macOS personas get p3, others srgb.
   3. An uncontrolled query ((min-width: 1px)) still delegates to native.
-  4. Stealth: the wrappers must be native-identical — MediaQueryList.prototype
+  4. Compound queries obey the media-query grammar (and / , / not) instead of
+     short-circuiting on the first pinned feature.
+  5. Stealth: the wrappers must be native-identical — MediaQueryList.prototype
      .matches getter named "get matches" + [native code], no own properties on
      a MediaQueryList instance or on speechSynthesis, getVoices name/arity
      correct, and the fake voices are real SpeechSynthesisVoice instances with
@@ -73,6 +75,11 @@ out.srgb = mq('(color-gamut: srgb)');
 out.p3 = mq('(color-gamut: p3)');
 out.rec2020 = mq('(color-gamut: rec2020)');
 out.uncontrolled = mq('(min-width: 1px)');   // must delegate to native
+// compound queries must obey media-query grammar, not short-circuit on the
+// first controlled feature (an impossible result advertises the spoof layer)
+out.cmp_and_false = mq('(pointer: fine) and (min-width: 99999px)');
+out.cmp_not = mq('not all and (pointer: fine)');
+out.cmp_or_true = mq('(pointer: fine), (min-width: 99999px)');
 
 // stealth
 const d = Object.getOwnPropertyDescriptor(MediaQueryList.prototype, 'matches');
@@ -165,6 +172,15 @@ def main(bin_path: str) -> int:
     if not r["uncontrolled"]:
         fails.append("(min-width: 1px) did not match — uncontrolled queries "
                      "must delegate to the native getter")
+    if r["cmp_and_false"]:
+        fails.append("'(pointer: fine) and (min-width: 99999px)' matched — "
+                     "compound AND short-circuited on the pinned feature "
+                     "(impossible result, exposes the spoof)")
+    if r["cmp_not"]:
+        fails.append("'not all and (pointer: fine)' matched — negation ignored")
+    if not r["cmp_or_true"]:
+        fails.append("'(pointer: fine), (min-width: 99999px)' did not match — "
+                     "comma/or handling broken")
 
     # 3. stealth
     if r["mq_getter_name"] != "get matches":

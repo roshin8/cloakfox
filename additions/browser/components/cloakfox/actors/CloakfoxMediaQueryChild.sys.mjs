@@ -35,21 +35,45 @@ function pinsForOS(os) {
 // color-gamut is a "min" feature: a p3 display matches srgb AND p3.
 const GAMUT_RANK = { srgb: 0, p3: 1, rec2020: 2 };
 
-// Given a media string and the pins, return the spoofed matches (bool) for a
-// controlled feature, or undefined to defer to the native getter.
-function controlledMatch(media, pins) {
-  const m = /\(\s*([a-z-]+)\s*:\s*([a-z0-9-]+)\s*\)/i.exec(media);
-  if (!m) return undefined;
-  const feature = m[1].toLowerCase();
-  const value = m[2].toLowerCase();
+// Evaluate ONE `(feature: value)` term against the pins, or undefined if the
+// feature isn't one we control.
+function controlledTerm(feature, value, pins) {
+  feature = feature.toLowerCase();
+  value = value.toLowerCase();
   if (!(feature in pins)) return undefined;
   const pinned = pins[feature];
   if (feature === "color-gamut") {
-    // matches if the display's gamut is at least the queried one.
+    // "min" semantics: a p3 display matches both srgb and p3.
     return GAMUT_RANK[value] !== undefined &&
            GAMUT_RANK[pinned] >= GAMUT_RANK[value];
   }
   return value === pinned;
+}
+
+const FEATURE_RE = /\(\s*([a-z-]+)\s*:\s*([a-z0-9.-]+)\s*\)/gi;
+// Always-true / always-false stand-ins, viewport-independent.
+const ALWAYS_TRUE = "(min-width: 0px)";
+const ALWAYS_FALSE = "(min-width: 99999999px)";
+
+// Rewrite a media string, replacing controlled feature terms with constant
+// stand-ins and leaving everything else intact. Returns null when the query
+// contains no controlled feature (caller should just use the native getter).
+//
+// Rewriting rather than short-circuiting is what makes compound queries
+// correct: `and`, `,` (or) and `not` are then evaluated NATIVELY over the
+// substituted string, so `(pointer: fine) and (min-width: 99999px)` is false
+// and `not all and (pointer: fine)` is false — matching a real browser. The
+// earlier first-match-wins approach returned true for both, an impossible
+// result that advertised the spoofing layer.
+function rewriteMedia(media, pins) {
+  let touched = false;
+  const out = media.replace(FEATURE_RE, (whole, feature, value) => {
+    const res = controlledTerm(feature, value, pins);
+    if (res === undefined) return whole;
+    touched = true;
+    return res ? ALWAYS_TRUE : ALWAYS_FALSE;
+  });
+  return touched ? out : null;
 }
 
 function osFromPlatform(platform) {
@@ -94,9 +118,12 @@ export class CloakfoxMediaQueryChild extends JSWindowActorChild {
 
     const newGetter = Cu.exportFunction(function () {
       try {
-        const media = this.media;
-        const spoof = controlledMatch(media, pins);
-        if (spoof !== undefined) return spoof;
+        const rewritten = rewriteMedia(this.media, pins);
+        if (rewritten !== null) {
+          // Evaluate the substituted query with the NATIVE getter so the
+          // media-query grammar (and / , / not / only) is handled by Gecko.
+          return origGetter.call(pageWin.matchMedia(rewritten));
+        }
       } catch (_e) { /* fall through to native */ }
       return origGetter.call(this);
     }, pageWin);
