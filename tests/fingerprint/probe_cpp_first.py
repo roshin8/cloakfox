@@ -6,8 +6,8 @@ creates a fresh profile with cpp-first prefs seeded, launches via
 selenium, and asserts:
 
   1. https://example.com renders
-  2. Math.PI is perturbed (the CloakfoxMath JSWindowActor fired)
-  3. Math.E is perturbed
+  2. Math.PI stays bit-exact (constants are deliberately NOT noised)
+  3. Math.E stays bit-exact
   4. Math.sin(0.5) has 1e-12-ish noise (trig wrapping works)
   5. about:cloakfox loads without error (settings page registered)
   6. The settings page contains the expected elements
@@ -235,12 +235,18 @@ def probe_math(driver: webdriver.Firefox) -> list[tuple[str, bool, str]]:
     # "Any perturbation" is the POC bar — PRNG-magnitude tuning is
     # separate work (see README). As long as delta is non-zero, the
     # full chrome→pageWin.Math assignment pipeline is working.
-    out.append(("Math.PI is perturbed",
-                raw["pi"] != IEEE_PI,
+    # POLICY: Math constants stay BIT-EXACT by default. They are IEEE-754
+    # spec-defined, so perturbing them is self-flagging — Math.PI !==
+    # 3.141592653589793 unambiguously proves anti-fingerprinting is active.
+    # Only the trig FUNCTIONS are noised (their last bits genuinely vary
+    # across CPUs/libm). Opt in with cloakfox.opt.math_constants_noise.
+    # See CloakfoxMathChild.sys.mjs:124-138.
+    out.append(("Math.PI stays bit-exact (perturbing it is self-flagging)",
+                raw["pi"] == IEEE_PI,
                 f"PI={raw['pi']}, |delta|={pi_diff:.2e}"))
     e_diff = abs(raw["e"] - IEEE_E)
-    out.append(("Math.E is perturbed",
-                raw["e"] != IEEE_E,
+    out.append(("Math.E stays bit-exact",
+                raw["e"] == IEEE_E,
                 f"E={raw['e']}, |delta|={e_diff:.2e}"))
     sin_diff = abs(raw["sin_half"] - IEEE_SIN_HALF)
     out.append(("Math.sin(0.5) has trig noise",
@@ -250,8 +256,8 @@ def probe_math(driver: webdriver.Firefox) -> list[tuple[str, bool, str]]:
                 raw["cos_zero"] == 1,
                 f"cos(0)={raw['cos_zero']}"))
     ln2_diff = abs(raw["ln2"] - 0.6931471805599453)
-    out.append(("Math.LN2 is perturbed",
-                ln2_diff > 0,
+    out.append(("Math.LN2 stays bit-exact",
+                ln2_diff == 0,
                 f"LN2={raw['ln2']}, |delta|={ln2_diff:.2e}"))
     return out
 
@@ -267,8 +273,8 @@ def probe_about_page(driver: webdriver.Firefox) -> list[tuple[str, bool, str]]:
         out.append(("about:cloakfox loads without net error",
                     "Unable to connect" not in title and "Address Not Valid" not in title,
                     f"title={title!r}"))
-        out.append(("Settings page title set to 'Cloakfox Settings'",
-                    title == "Cloakfox Settings",
+        out.append(("Settings page title set to 'Cloakfox'",
+                    title == "Cloakfox",
                     f"title={title!r}"))
         # Check the primary toggle element exists.
         has_toggle = driver.execute_script(
@@ -287,6 +293,10 @@ def probe_about_page(driver: webdriver.Firefox) -> list[tuple[str, bool, str]]:
 
 
 def main() -> int:
+    # Prefer an already-built app when CLOAKFOX_BIN is set (local runs /
+    # tests/fingerprint/run_all.py); fall back to mounting a packaged DMG the
+    # way CI does.
+    env_bin = os.environ.get("CLOAKFOX_BIN")
     dmg = os.environ.get("CLOAKFOX_DMG", DEFAULT_DMG)
     work_dir = tempfile.mkdtemp(prefix="cfx-cpp-first-")
     app_dir = os.path.join(work_dir, "app")
@@ -295,11 +305,15 @@ def main() -> int:
     mount_point = None
     driver = None
     try:
-        mount_point, src_app = mount_dmg(dmg)
-        binary = prepare_app(src_app, app_dir)
-        # Unmount immediately; we have a local copy.
-        unmount_dmg(mount_point)
-        mount_point = None
+        if env_bin and os.path.exists(env_bin):
+            binary = env_bin
+            print(f"[setup] using CLOAKFOX_BIN: {binary}")
+        else:
+            mount_point, src_app = mount_dmg(dmg)
+            binary = prepare_app(src_app, app_dir)
+            # Unmount immediately; we have a local copy.
+            unmount_dmg(mount_point)
+            mount_point = None
 
         seed = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
         write_profile(profile_dir, seed)
