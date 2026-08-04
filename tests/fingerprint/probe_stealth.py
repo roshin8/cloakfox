@@ -145,10 +145,18 @@ ASSERTIONS = [
     ("sessionStorage.__cloakfox_configured", lambda v: v is None,        "__cloakfox_configured sessionStorage key is set"),
     ("sessionStorage.keys",                lambda v: v == "[]",         "cfx-shaped keys in sessionStorage"),
     # Spoofing still fires
-    ("webgl.vendor",                       lambda v: isinstance(v, str) and "Apple" not in v and "Mesa" not in v and v != "no-ext",
-                                                                         "WebGL vendor is raw default — ISOLATED->C++ spoofing broke"),
-    ("webgl.renderer",                     lambda v: isinstance(v, str) and "Apple" not in v and "Mesa" not in v and v != "no-ext",
-                                                                         "WebGL renderer is raw default — ISOLATED->C++ spoofing broke"),
+    # NOTE: these used to blacklist "Apple"/"Mesa" as proof the spoof fired.
+    # That is unsound: a macOS persona legitimately reports an Apple GPU, so on
+    # an Apple host the check fails at random whenever such a persona is drawn
+    # (verified: personas alternate Intel / Apple / NVIDIA, all correctly
+    # spoofed). Assert only that a well-formed vendor/renderer is exposed. The
+    # real "is it actually spoofed" checks are host-independent and live
+    # elsewhere: probe_webgl_tables asserts RENDERER == UNMASKED_RENDERER (the
+    # coherence bug), and probe_per_container asserts it varies per container.
+    ("webgl.vendor",                       lambda v: isinstance(v, str) and len(v) > 2 and v != "no-ext",
+                                                                         "WebGL vendor missing — debug_renderer_info or C++ spoofing broke"),
+    ("webgl.renderer",                     lambda v: isinstance(v, str) and len(v) > 2 and v != "no-ext",
+                                                                         "WebGL renderer missing — debug_renderer_info or C++ spoofing broke"),
 ]
 
 
