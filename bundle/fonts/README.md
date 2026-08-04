@@ -41,6 +41,9 @@ as substitution aliases, not as claims of authenticity.
 - Verdana, Tahoma, Consolas, Menlo, Monaco have no exact open metric match; the
   closest open face is used and residual metric drift is absorbed per-container
   by the anti-font-fingerprinting spacing seed.
-- Non-Latin script coverage (Noto family) is not yet included; add as needed.
+- Non-Latin script coverage: a curated **Noto** subset (SIL OFL, kept under
+  real names) — Arabic, Hebrew, Thai, Devanagari, Bengali, Georgian, Armenian,
+  and CJK via Noto Sans SC (Simplified Chinese). Extend in
+  `scripts/build-font-pack.py` (`NOTO`) for more scripts / JP+KR+TC if needed.
 - Currently only `bundle/fonts/macos/` is populated; `windows/` and `linux/`
   packs (same substitutes) are a mechanical follow-up.

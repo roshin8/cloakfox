@@ -37,6 +37,20 @@ SOURCES = {
     "Anton": f"{RAW}/ofl/anton/Anton-Regular.ttf",
 }
 SELAWIK_ZIP = "https://github.com/microsoft/Selawik/releases/download/1.01/Selawik_Release.zip"
+# Curated Noto subset for non-Latin script coverage (SIL OFL). Kept under their
+# real names (universal fallback fonts personas legitimately have). Copied
+# as-is, no rename. Variable-font URLs are URL-encoded ([wght] -> %5Bwght%5D).
+NOTO = {
+    "NotoSans": "ofl/notosans/NotoSans%5Bwdth,wght%5D.ttf",
+    "NotoSansArabic": "ofl/notosansarabic/NotoSansArabic%5Bwdth,wght%5D.ttf",
+    "NotoSansHebrew": "ofl/notosanshebrew/NotoSansHebrew%5Bwdth,wght%5D.ttf",
+    "NotoSansThai": "ofl/notosansthai/NotoSansThai%5Bwdth,wght%5D.ttf",
+    "NotoSansDevanagari": "ofl/notosansdevanagariui/NotoSansDevanagariUI-Regular.ttf",
+    "NotoSansBengali": "ofl/notosansbengali/NotoSansBengali%5Bwdth,wght%5D.ttf",
+    "NotoSansGeorgian": "ofl/notosansgeorgian/NotoSansGeorgian%5Bwdth,wght%5D.ttf",
+    "NotoSansArmenian": "ofl/notosansarmenian/NotoSansArmenian%5Bwdth,wght%5D.ttf",
+    "NotoSansSC": "ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",  # CJK (large)
+}
 DEJAVU_ZIP = "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.zip"
 # DejaVu faces are already correctly named (open, Bitstream-derived license); no
 # rename needed — Linux personas legitimately claim them.
@@ -124,7 +138,19 @@ def main() -> int:
             continue
         rename_mod.rename(str(src), str(out / f"{target.replace(' ', '')}.ttf"), target)
         made += 1
-    print(f"\nbuilt {made} families into {out}")
+
+    # Noto script coverage — fetched and copied under their real names (no
+    # rename); they serve as the universal fallback for non-Latin scripts.
+    noto = 0
+    for name, path in NOTO.items():
+        dst = cache / f"{name}.ttf"
+        if not dst.exists():
+            print(f"fetch {name} ...", flush=True)
+            dst.write_bytes(fetch(f"{RAW}/{path}"))
+        (out / f"{name}.ttf").write_bytes(dst.read_bytes())
+        noto += 1
+
+    print(f"\nbuilt {made} Latin families + {noto} Noto script fonts into {out}")
     return 0
 
 
