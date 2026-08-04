@@ -46,6 +46,9 @@ def main() -> int:
     ap.add_argument("--list", action="store_true", help="list probes and exit")
     ap.add_argument("--timeout", type=int, default=900,
                     help="per-probe timeout in seconds (default 900)")
+    ap.add_argument("--retries", type=int, default=1,
+                    help="retries for a failing probe (default 1); browser "
+                         "launches can fail spuriously under load")
     args = ap.parse_args()
 
     probes = discover()
@@ -70,14 +73,27 @@ def main() -> int:
     for p in probes:
         started = time.time()
         print(f"--- {p.name} ...", flush=True)
-        try:
-            cp = subprocess.run([sys.executable, str(p)], capture_output=True,
-                                text=True, timeout=args.timeout,
-                                env={**os.environ})
-            code, out = cp.returncode, (cp.stdout or "") + (cp.stderr or "")
-        except subprocess.TimeoutExpired:
-            code, out = 3, f"TIMEOUT after {args.timeout}s"
+        # Each probe launches its own browser(s); under contention a launch can
+        # fail spuriously (observed: probes that fail in a full run pass
+        # individually). Retry a failure once before believing it, so the suite
+        # verdict reflects the code rather than the machine.
+        attempts = 0
+        while True:
+            attempts += 1
+            try:
+                cp = subprocess.run([sys.executable, str(p)], capture_output=True,
+                                    text=True, timeout=args.timeout,
+                                    env={**os.environ})
+                code, out = cp.returncode, (cp.stdout or "") + (cp.stderr or "")
+            except subprocess.TimeoutExpired:
+                code, out = 3, f"TIMEOUT after {args.timeout}s"
+            if code in (0, 2) or attempts > args.retries:
+                break
+            print(f"    retry {attempts}/{args.retries} after exit {code} ...", flush=True)
+            time.sleep(3)
         took = time.time() - started
+        if attempts > 1 and code == 0:
+            print(f"    (passed on attempt {attempts} — flaky launch, not a code failure)")
         # Surface the probe's own verdict line if it printed one.
         verdict = next((ln for ln in reversed(out.splitlines())
                         if ln.startswith(("PASS", "FAIL", "INCONCLUSIVE"))), "")

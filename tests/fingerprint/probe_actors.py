@@ -363,9 +363,16 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
 
     # Persona-driven hardware identity. hwc must come from the persona
     # pool, not the host. maxTouchPoints must be 0 (desktop persona).
+    # hardwareConcurrency comes from BrowserForge's real-world distribution,
+    # which is much wider than the old fixed persona pool this list used to
+    # encode (observed 24 — a real i9 core count — failing the old set). Assert
+    # PLAUSIBILITY instead of membership of a hardcoded list: a positive, even
+    # core count in the range real desktops report. Per-container variance is
+    # covered separately by probe_per_container.
     hwc = result.get("hwc")
-    if hwc not in (4, 8, 10, 12, 14, 16):
-        fails.append(f"hardwareConcurrency: {hwc!r} not in any persona's value set")
+    if not (isinstance(hwc, int) and 2 <= hwc <= 64 and hwc % 2 == 0):
+        fails.append(f"hardwareConcurrency: {hwc!r} is not a plausible desktop "
+                     "core count (expected an even value in 2..64)")
     if result.get("max_touch") != 0:
         fails.append(f"maxTouchPoints: {result.get('max_touch')!r}, want 0")
 
