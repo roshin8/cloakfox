@@ -15,10 +15,43 @@ when Cloakfox is disabled.
 
 --- a/toolkit/modules/ActorManagerParent.sys.mjs
 +++ b/toolkit/modules/ActorManagerParent.sys.mjs
-@@ -90,6 +90,179 @@
+@@ -90,6 +90,212 @@
   * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
   */
  let JSWINDOWACTORS = {
++  // Cloakfox: pin fingerprinting-relevant CSS media features so
++  // window.matchMedia reports persona-coherent, host-independent values
++  // (prefers-color-scheme, pointer/hover, forced-colors, color-gamut,
++  // dynamic-range...) instead of leaking the real device/OS. Overrides
++  // the inherited MediaQueryList.prototype.matches getter; uncontrolled
++  // features (min-width, orientation...) delegate to native.
++  CloakfoxMediaQuery: {
++    parent: {
++      esModuleURI: "resource:///actors/CloakfoxMediaQueryParent.sys.mjs",
++    },
++    child: {
++      esModuleURI: "resource:///actors/CloakfoxMediaQueryChild.sys.mjs",
++      events: { DOMDocElementInserted: { capture: true } },
++    },
++    allFrames: true,
++    matches: ["http://*/*", "https://*/*", "file:///*"],
++  },
++  // Cloakfox: persona-OS-coherent speechSynthesis.getVoices(). The real
++  // host TTS voice list is a blatant OS tell (macOS/Windows/Linux ship
++  // entirely different voices). Fake voices are real SpeechSynthesisVoice
++  // instances backed by a chrome-side WeakMap, served via the inherited
++  // prototype getters so no own-property tell appears.
++  CloakfoxSpeech: {
++    parent: {
++      esModuleURI: "resource:///actors/CloakfoxSpeechParent.sys.mjs",
++    },
++    child: {
++      esModuleURI: "resource:///actors/CloakfoxSpeechChild.sys.mjs",
++      events: { DOMDocElementInserted: { capture: true } },
++    },
++    allFrames: true,
++    matches: ["http://*/*", "https://*/*", "file:///*"],
++  },
 +  // Cloakfox: per-container keyboard-cadence spoofing. Wraps
 +  // EventTarget.prototype.addEventListener for key events and nudges
 +  // event.timeStamp toward a minimum cadence of 30ms (+ up to 15ms
