@@ -21,9 +21,11 @@ Checks (host-independent):
      color-gamut "min" semantics (a p3 persona matches srgb AND p3; nobody
      matches rec2020). macOS personas get p3, others srgb.
   3. An uncontrolled query ((min-width: 1px)) still delegates to native.
-  4. Compound queries obey the media-query grammar (and / , / not) instead of
+  4. The CSS stylesheet path (@media, resolved in C++) agrees with JS
+     matchMedia — both driven by the same persona keys.
+  5. Compound queries obey the media-query grammar (and / , / not) instead of
      short-circuiting on the first pinned feature.
-  5. Stealth: the wrappers must be native-identical — MediaQueryList.prototype
+  6. Stealth: the wrappers must be native-identical — MediaQueryList.prototype
      .matches getter named "get matches" + [native code], no own properties on
      a MediaQueryList instance or on speechSynthesis, getVoices name/arity
      correct, and the fake voices are real SpeechSynthesisVoice instances with
@@ -80,6 +82,19 @@ out.uncontrolled = mq('(min-width: 1px)');   // must delegate to native
 out.cmp_and_false = mq('(pointer: fine) and (min-width: 99999px)');
 out.cmp_not = mq('not all and (pointer: fine)');
 out.cmp_or_true = mq('(pointer: fine), (min-width: 99999px)');
+
+// CSS @media (stylesheet path, resolved in C++) must agree with JS matchMedia.
+// A dark-mode rule applying while matchMedia reports light is impossible in a
+// real browser and exposes the spoofing layer.
+const st = document.createElement('style');
+st.textContent = '#cfxmq{--d:0;--g:0}' +
+  '@media (prefers-color-scheme: dark){#cfxmq{--d:1}}' +
+  '@media (color-gamut: p3){#cfxmq{--g:1}}';
+document.head.appendChild(st);
+const el = document.createElement('div'); el.id = 'cfxmq'; document.body.appendChild(el);
+const cs = getComputedStyle(el);
+out.css_dark = cs.getPropertyValue('--d').trim() === '1';
+out.css_p3 = cs.getPropertyValue('--g').trim() === '1';
 
 // stealth
 const d = Object.getOwnPropertyDescriptor(MediaQueryList.prototype, 'matches');
@@ -181,6 +196,15 @@ def main(bin_path: str) -> int:
     if not r["cmp_or_true"]:
         fails.append("'(pointer: fine), (min-width: 99999px)' did not match — "
                      "comma/or handling broken")
+    # CSS stylesheet path must agree with JS matchMedia (one source of truth:
+    # the persona emits document:prefersColorScheme / mediaFeature:colorGamut,
+    # read by both the C++ media-feature code and this actor).
+    if r["css_dark"] != r["dark"]:
+        fails.append(f"CSS @media dark={r['css_dark']} but matchMedia dark="
+                     f"{r['dark']} — stylesheet/JS contradiction exposes the spoof")
+    if r["css_p3"] != r["p3"]:
+        fails.append(f"CSS @media color-gamut p3={r['css_p3']} but matchMedia "
+                     f"p3={r['p3']} — stylesheet/JS contradiction")
 
     # 3. stealth
     if r["mq_getter_name"] != "get matches":

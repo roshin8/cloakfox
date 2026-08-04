@@ -296,6 +296,20 @@ function bfToCloakKeys(fp, prng) {
   keys["font:generic:sans-serif"] = gen.sans;
   keys["font:generic:monospace"] = gen.mono;
 
+  // CSS media features that the STYLESHEET path resolves in C++
+  // (Document::PreferredColorScheme, Gecko_MediaFeatures_ColorGamut /
+  // _PrefersContrast). These must be emitted, otherwise CSS `@media` sees the
+  // real host while CloakfoxMediaQueryChild pins the JS matchMedia side — a
+  // contradiction no real browser produces (verified: host dark-mode rule
+  // applied while matchMedia reported light). CloakfoxMediaQueryChild reads
+  // these same keys so both paths share one source of truth.
+  //   colorScheme: 0 = light, 1 = dark
+  //   colorGamut:  0 = srgb, 1 = p3, 2 = rec2020
+  //   contrast:    0 = no-preference, 1 = less, 2 = more, 3 = custom
+  keys["document:prefersColorScheme"] = 0;
+  keys["mediaFeature:colorGamut"] = os === "macos" ? 1 : 0;
+  keys["mediaFeature:prefersContrast"] = 0;
+
   // Audio context — not in BF; pick plausible values per-container.
   keys["AudioContext:sampleRate"] = [44100, 48000][Math.floor(prng() * 2)];
   keys["AudioContext:maxChannelCount"] = [2, 2, 2, 6][Math.floor(prng() * 4)];

@@ -14,6 +14,25 @@
  * evaluated in stylesheets (that needs a C++ path).
  */
 
+// Read the container's persona so the JS pins agree with the values the C++
+// stylesheet path uses (document:prefersColorScheme, mediaFeature:colorGamut,
+// mediaFeature:prefersContrast). Without this the two paths can disagree — a
+// CSS `@media (prefers-color-scheme: dark)` rule applying while matchMedia
+// reports light is impossible in a real browser and exposes the spoof.
+function personaMediaKeys(win) {
+  try {
+    const ucid =
+      win.docShell?.browsingContext?.originAttributes?.userContextId ?? 0;
+    const raw = Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${ucid}`, "");
+    return raw ? JSON.parse(raw) : {};
+  } catch (_e) {
+    return {};
+  }
+}
+
+const GAMUT_BY_INDEX = ["srgb", "p3", "rec2020"];
+const CONTRAST_BY_INDEX = ["no-preference", "less", "more", "custom"];
+
 // Desktop-plausible pins. color-gamut is OS-derived (macOS panels are wide-gamut).
 function pinsForOS(os) {
   return {
@@ -115,6 +134,23 @@ export class CloakfoxMediaQueryChild extends JSWindowActorChild {
     if (!origGetter) return;
 
     const pins = pinsForOS(osFromPlatform(win.navigator.platform || ""));
+
+    // Persona-emitted values win, so JS matchMedia and the C++ stylesheet path
+    // report the same thing. Fall back to the OS-derived defaults above when a
+    // key is absent (older personas / no cloak_cfg yet).
+    const persona = personaMediaKeys(win);
+    const cs = persona["document:prefersColorScheme"];
+    if (cs === 0 || cs === 1) {
+      pins["prefers-color-scheme"] = cs ? "dark" : "light";
+    }
+    const gamut = persona["mediaFeature:colorGamut"];
+    if (GAMUT_BY_INDEX[gamut] !== undefined) {
+      pins["color-gamut"] = GAMUT_BY_INDEX[gamut];
+    }
+    const contrast = persona["mediaFeature:prefersContrast"];
+    if (CONTRAST_BY_INDEX[contrast] !== undefined) {
+      pins["prefers-contrast"] = CONTRAST_BY_INDEX[contrast];
+    }
 
     const newGetter = Cu.exportFunction(function () {
       try {
