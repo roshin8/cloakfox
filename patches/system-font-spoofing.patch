@@ -1,0 +1,133 @@
+Cloakfox: spoof CSS system-font resolution to match the persona's OS.
+
+Two sibling hooks that stop the REAL host OS leaking through CSS font
+resolution even when navigator.platform is spoofed:
+
+1. gfxPlatformFontList::GetSystemUIFontFamilies() — the CSS `system-ui`
+   generic. Without this it resolves to the host's UI font (SF/Helvetica on
+   macOS, Segoe UI on Windows, Cantarell/DejaVu on Linux). getComputedStyle()
+   preserves the "system-ui" keyword, so the leak is via rendered METRICS:
+   measuring text in system-ui and comparing against known faces identifies
+   the host.
+
+2. gfxMacPlatformFontList::LookupSystemFont() — the CSS2 system-font keywords
+   (font: caption | icon | menu | message-box | small-caption | status-bar).
+   The Mac build hardcodes "-apple-system" here, which CreepJS's GeckoFonts
+   map attributes to macOS — a direct getComputedStyle().fontFamily leak.
+   CreepJS probes all six keywords.
+
+Both resolve through CloakfoxPersonaUIFont(), which reads navigator.platform
+from the per-container MaskConfig overlay (per-call, so it follows the
+container's persona rather than being frozen process-wide) and maps
+win->Segoe UI, mac->Helvetica, linux->DejaVu Sans. All three ship in the
+bundled font pack (bundle/fonts/), so they resolve on any host. With no
+persona active the native defaults are kept.
+
+The Objective-C++ file can't include MaskConfig.hpp — nlohmann/json needs
+exceptions, which are disabled for ObjC++ in gfx/thebes — so the lookup lives
+in gfxPlatformFontList.cpp and is exported as CloakfoxSystemFontName().
+
+Adapted from Camoufox's system-ui-font-spoofing.patch and
+font-system-fonts-css2.patch; extended to cover Linux personas and to read
+per-container instead of caching in a process-global static.
+
+--- a/gfx/thebes/gfxPlatformFontList.cpp
++++ b/gfx/thebes/gfxPlatformFontList.cpp
+@@ -2141,12 +2141,64 @@
+     NS_LOG_RELEASE(aCharMap, 0, "gfxCharacterMap");
+ 
+     mSharedCmaps.RemoveEntry(found);
++  }
++}
++
++// Cloakfox: the UI font name coherent with the persona's claimed OS, or
++// nullptr when no persona is active (callers keep their native default).
++// Returns a static string. All targets ship in the bundled font pack, so they
++// resolve on any host. Read per-call (not a process-global static) so it
++// follows the per-container persona — same access pattern as
++// FontSpacingSeedManager::GetSeed.
++//
++// Also called from gfxMacPlatformFontList.mm (CSS2 system-font keywords). That
++// file can't include MaskConfig.hpp because nlohmann/json needs exceptions,
++// which are disabled for Objective-C++ in this directory — hence this helper.
++static const char* CloakfoxPersonaUIFont() {
++  auto platform = MaskConfig::GetString("navigator.platform");
++  if (!platform) {
++    return nullptr;
++  }
++  const std::string& p = *platform;
++  auto isPrefix = [&p](const char* p2) {
++    size_t n = std::strlen(p2);
++    return p.size() >= n &&
++           std::equal(p2, p2 + n, p.begin(), [](char a, char b) {
++             return std::tolower(static_cast<unsigned char>(a)) ==
++                    std::tolower(static_cast<unsigned char>(b));
++           });
++  };
++  if (isPrefix("win")) {
++    return "Segoe UI";
+   }
++  if (isPrefix("mac")) {
++    return "Helvetica";
++  }
++  if (isPrefix("linux") || isPrefix("x11")) {
++    return "DejaVu Sans";
++  }
++  return nullptr;
+ }
+ 
++// Cloakfox: exported for gfxMacPlatformFontList.mm. Falls back to the Mac
++// default so the call site stays a single unconditional assignment.
++const char* CloakfoxSystemFontName() {
++  const char* name = CloakfoxPersonaUIFont();
++  return name ? name : "-apple-system";
++}
++
+ static void GetSystemUIFontFamilies(
+     FontVisibilityProvider* aFontVisibilityProvider,
+     [[maybe_unused]] nsAtom* aLangGroup, nsTArray<nsCString>& aFamilies) {
++  // Cloakfox: resolve the CSS `system-ui` generic to a persona-coherent font.
++  // Otherwise getComputedStyle() on `font-family: system-ui` reports the REAL
++  // host's UI font (SF/Helvetica on macOS, Segoe UI on Windows, Cantarell/
++  // DejaVu on Linux), contradicting navigator.platform.
++  if (const char* personaFont = CloakfoxPersonaUIFont()) {
++    aFamilies.AppendElement()->AssignASCII(personaFont);
++    return;
++  }
++
+   // TODO: On macOS, use CTCreateUIFontForLanguage or such thing (though the
+   // code below ends up using [NSFont systemFontOfSize: 0.0].
+   nsFont systemFont;
+
+--- a/gfx/thebes/gfxMacPlatformFontList.mm
++++ b/gfx/thebes/gfxMacPlatformFontList.mm
+@@ -18,6 +18,9 @@
+ #include "SharedFontList-impl.h"
+ 
+ #include "harfbuzz/hb.h"
++
++// Cloakfox: implemented in gfxPlatformFontList.cpp (see comment at use site).
++extern const char* CloakfoxSystemFontName();
+ 
+ #include "AppleUtils.h"
+ #include "MainThreadUtils.h"
+@@ -395,7 +398,18 @@
+   }
+   NS_ASSERTION(font, "system font not set");
+ 
+-  aSystemFontName.AssignASCII("-apple-system");
++  // Cloakfox: spoof the CSS2 system-font keyword resolution (font: caption |
++  // icon | menu | message-box | small-caption | status-bar) to match the
++  // persona's claimed OS. The Mac build otherwise always reports
++  // "-apple-system" here, which CreepJS's GeckoFonts map attributes to macOS —
++  // leaking the real host through getComputedStyle().fontFamily even when
++  // navigator.platform says Win32. Sibling of the system-ui hook in
++  // gfxPlatformFontList::GetSystemUIFontFamilies.
++  //
++  // The lookup lives in gfxPlatformFontList.cpp: MaskConfig.hpp pulls in
++  // nlohmann/json, which needs exceptions — disabled for Objective-C++ in this
++  // directory — so we call across to plain C++ instead of including it here.
++  aSystemFontName.AssignASCII(CloakfoxSystemFontName());
+ 
+   NSFontSymbolicTraits traits = font.fontDescriptor.symbolicTraits;
+   aFontStyle.style = (traits & NSFontItalicTrait) ? FontSlantStyle::ITALIC
