@@ -359,10 +359,14 @@ function bfToCloakKeys(fp, prng) {
   if (fp.hardwareConcurrency != null) {
     keys["navigator.hardwareConcurrency"] = parseInt(fp.hardwareConcurrency, 10);
   }
-  if (fp.maxTouchPoints != null) {
-    const mtp = parseInt(fp.maxTouchPoints, 10);
-    keys["navigator:maxTouchPoints"] = Number.isFinite(mtp) ? mtp : 0;
-  }
+  // maxTouchPoints is pinned to 0 for these desktop personas. BrowserForge
+  // occasionally samples a touch-capable device (observed: 5), but the touch
+  // API SURFACE is controlled by dom.w3c_touch_events.enabled, which is off —
+  // so a non-zero value ships with no TouchEvent/Touch constructor and no
+  // ontouchstart. FingerprintJS's touchSupport reads exactly that triple, and
+  // "5 touch points but the browser has no touch API" is impossible. Pinning 0
+  // matches both the actual surface and the desktop majority.
+  keys["navigator:maxTouchPoints"] = 0;
 
   // Screen — BF emits an object with width/height/dpr/etc. Some inner*
   // fields are 0 in BF training data; derive coherent values from
@@ -383,13 +387,25 @@ function bfToCloakKeys(fp, prng) {
     keys["screen.pageXOffset"] = sc.pageXOffset ?? 0;
     keys["screen.pageYOffset"] = sc.pageYOffset ?? 0;
     keys["window.devicePixelRatio"] = dpr;
-    keys["window.outerWidth"]  = sc.outerWidth  || w;
-    keys["window.outerHeight"] = sc.outerHeight || (h - decor.taskbar);
-    const innerH = (sc.innerHeight && sc.innerHeight > 0)
-      ? sc.innerHeight
-      : Math.max(200, h - decor.menuBar - decor.taskbar - decor.firefoxChrome);
-    keys["window.innerWidth"]  = sc.innerWidth  || w;
-    keys["window.innerHeight"] = innerH;
+    // Window geometry must be DERIVED, not taken from BrowserForge's
+    // independently-sampled inner*/outer* fields — those can contradict each
+    // other (observed: inner 2056x1218 inside outer 1690x956, a viewport wider
+    // than its own window, which is impossible and trivially detectable). Same
+    // reasoning as NAV_IDENTITY above, which derives platform/oscpu rather than
+    // trusting BF's separate samples.
+    //
+    // Invariants enforced here:
+    //   inner <= outer <= avail <= screen
+    //   innerWidth  == outerWidth        (modern Firefox has no side borders)
+    //   innerHeight == outerHeight - browser chrome
+    const availW = keys["screen.availWidth"] || w;
+    const availH = keys["screen.availHeight"] || h;
+    const outerW = Math.min(sc.outerWidth || availW, availW);
+    const outerH = Math.min(sc.outerHeight || (h - decor.taskbar), availH);
+    keys["window.outerWidth"]  = outerW;
+    keys["window.outerHeight"] = outerH;
+    keys["window.innerWidth"]  = outerW;
+    keys["window.innerHeight"] = Math.max(200, outerH - decor.firefoxChrome);
     keys["window.screenX"]     = sc.screenX ?? 0;
     keys["window.screenY"]     = sc.screenY ?? 0;
     keys["window.scrollMinX"]  = 0;

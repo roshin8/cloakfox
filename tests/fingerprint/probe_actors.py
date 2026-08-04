@@ -14,7 +14,8 @@ Verifies:
   - CloakfoxMidi:          requestMIDIAccess undefined (Firefox default)
                            OR rejects with NotAllowedError if enabled
   - CloakfoxWebGPU:        navigator.gpu === undefined, 'gpu' in navigator
-  - CloakfoxFeatureDetect: webdriver=false, doNotTrack="1", GPC=true,
+  - CloakfoxFeatureDetect: webdriver=false, doNotTrack="unspecified"
+    (Firefox default; not faked), GPC=true (native pref, not actor-pinned),
                            pdfViewerEnabled=true, onLine=true,
                            cookieEnabled=true, javaEnabled()=false
   - CloakfoxTiming:        spread of 100x setTimeout(50ms) is > 1ms
@@ -313,7 +314,14 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
     # FeatureDetect
     fd = {
         "webdriver": (result.get("fd_webdriver"), False),
-        "doNotTrack": (result.get("fd_doNotTrack"), "1"),
+        # doNotTrack is deliberately NOT faked: pinning it in JS while no DNT
+        # header is sent is a server-verifiable contradiction, and "1" is a
+        # minority value. Firefox's default "unspecified" is both the majority
+        # and header-consistent. GPC is now enabled NATIVELY via prefs (so the
+        # window, WorkerNavigator and Sec-GPC header all agree) rather than
+        # pinned by this actor — still expected true, just from a different
+        # source. See settings/cloakfox.cfg.
+        "doNotTrack": (result.get("fd_doNotTrack"), "unspecified"),
         "globalPrivacyControl": (result.get("fd_gpc"), True),
         "pdfViewerEnabled": (result.get("fd_pdfViewer"), True),
         "onLine": (result.get("fd_onLine"), True),
