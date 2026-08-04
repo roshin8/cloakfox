@@ -120,12 +120,20 @@ user_pref("toolkit.startup.max_resumed_crashes", -1);
 
 
 def main():
-    dmg = os.environ.get("CLOAKFOX_DMG", DEFAULT_DMG)
-    work_dir = tempfile.mkdtemp(prefix="cfx-prio-work-")
-    print(f"[setup] DMG: {dmg}")
-    print(f"[setup] work dir: {work_dir}")
+    # Prefer an already-built app when CLOAKFOX_BIN is set (local runs /
+    # tests/fingerprint/run_all.py); fall back to mounting a packaged DMG
+    # the way CI does.
+    env_bin = os.environ.get("CLOAKFOX_BIN")
+    if env_bin and os.path.exists(env_bin):
+        binary = env_bin
+        print(f"[setup] using CLOAKFOX_BIN: {binary}")
+    else:
+        dmg = os.environ.get("CLOAKFOX_DMG", DEFAULT_DMG)
+        work_dir = tempfile.mkdtemp(prefix="cfx-prio-work-")
+        print(f"[setup] DMG: {dmg}")
+        print(f"[setup] work dir: {work_dir}")
 
-    binary = mount_and_extract(dmg, os.path.join(work_dir, "app"))
+        binary = mount_and_extract(dmg, os.path.join(work_dir, "app"))
 
     print("\n[test] Run 1: cloakfox.s.cloak_cfg_0 = {'canvas:seed':11111}")
     hash_a = launch_and_hash_canvas(binary, 11111)

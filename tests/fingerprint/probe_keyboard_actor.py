@@ -62,13 +62,21 @@ def mount_and_extract(dmg_path, dest_dir):
 
 
 def main():
-    dmg = os.environ.get("CLOAKFOX_DMG", DEFAULT_DMG)
-    work_dir = tempfile.mkdtemp(prefix="cfx-kbd-")
-    print(f"[setup] DMG: {dmg}")
-    print(f"[setup] work dir: {work_dir}")
+    # Prefer an already-built app when CLOAKFOX_BIN is set (local runs /
+    # tests/fingerprint/run_all.py); fall back to mounting a packaged DMG
+    # the way CI does.
+    env_bin = os.environ.get("CLOAKFOX_BIN")
+    if env_bin and os.path.exists(env_bin):
+        binary = env_bin
+        print(f"[setup] using CLOAKFOX_BIN: {binary}")
+    else:
+        dmg = os.environ.get("CLOAKFOX_DMG", DEFAULT_DMG)
+        work_dir = tempfile.mkdtemp(prefix="cfx-kbd-")
+        print(f"[setup] DMG: {dmg}")
+        print(f"[setup] work dir: {work_dir}")
 
-    os.makedirs(os.path.join(work_dir, "app"), exist_ok=True)
-    binary = mount_and_extract(dmg, os.path.join(work_dir, "app"))
+        os.makedirs(os.path.join(work_dir, "app"), exist_ok=True)
+        binary = mount_and_extract(dmg, os.path.join(work_dir, "app"))
 
     profile_dir = tempfile.mkdtemp(prefix="cfx-kbd-prof-")
     seed = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
