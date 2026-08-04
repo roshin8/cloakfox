@@ -9,7 +9,7 @@
  #include <unordered_map>
  
  #include "AudioDeviceInfo.h"
-@@ -5364,6 +5366,25 @@
+@@ -5364,6 +5366,35 @@
  }
  
  void HTMLMediaElement::CanPlayType(const nsAString& aType, nsAString& aResult) {
@@ -26,7 +26,17 @@
 +        StringBeginsWith(t, "audio/mpeg"_ns) ||
 +        StringBeginsWith(t, "audio/wav"_ns) ||
 +        StringBeginsWith(t, "audio/flac"_ns)) {
-+      aResult.AssignLiteral("probably");
++      // Per spec (and real Gecko) "probably" is only returned when the
++      // type carries a codecs= parameter AND every listed codec is
++      // supported; a bare container type yields "maybe". Returning
++      // "probably" for canPlayType("video/mp4") is a value no stock
++      // Firefox ever produces, so the spoof itself became a two-call
++      // browser detector.
++      if (t.Find("codecs") != kNotFound) {
++        aResult.AssignLiteral("probably");
++      } else {
++        aResult.AssignLiteral("maybe");
++      }
 +      return;
 +    }
 +    aResult.Truncate();

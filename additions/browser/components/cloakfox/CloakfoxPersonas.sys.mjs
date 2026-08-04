@@ -471,10 +471,13 @@ function bfToCloakKeys(fp, prng) {
   keys["mediaFeature:invertedColors"]             = false;
   keys["mediaFeature:prefersReducedMotion"]       = false;
   keys["mediaFeature:prefersReducedTransparency"] = false;
-  // matchMedia resolution = 96 dpi × dpr (rounded). Real Firefox emits
-  // ~96 on standard displays, ~192 on 2x.
+  // Gecko_MediaFeatures_GetResolution returns DPPX (device pixels per CSS
+  // pixel), not DPI — see its comment in nsMediaFeatures.cpp. Emitting 96*dpr
+  // made the engine claim a 96x pixel ratio, so `(resolution: 1dppx)` did not
+  // match on a dpr=1 persona: impossible in a real browser and a one-token
+  // tamper signature. Emit the dpr itself.
   const dpr = keys["window.devicePixelRatio"] || 1;
-  keys["mediaFeature:resolution"]   = Math.round(96 * dpr);
+  keys["mediaFeature:resolution"]   = dpr;
   keys["voices:blockIfNotDefined"]              = true;
   keys["voices:fakeCompletion"]                 = true;
   keys["voices:fakeCompletion:charsPerSecond"]  = 12;

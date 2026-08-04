@@ -232,12 +232,17 @@ def main(bin_path: str) -> int:
     cod = run(bin_path, OPTIN_PROBE,
               {"navigator.platform": "Win32", "codecs:spoof": True},
               async_probe=True)
-    # Normalisation: every listed MIME must report supported under the flag.
-    cp_all = all(v == "probably" for v in cod["canPlay"].values())
+    # Normalisation, but SPEC-CORRECT: "probably" only when the type carries a
+    # codecs= parameter, "maybe" for a bare container type. Returning
+    # "probably" for canPlayType("video/mp4") is a value stock Firefox never
+    # produces, so asserting that would enshrine a browser-detection tell.
+    def expected(t):
+        return "probably" if "codecs" in t else "maybe"
+    cp_bad = {t: v for t, v in cod["canPlay"].items() if v != expected(t)}
     cp_changed = [t for t in cod["canPlay"] if cod["canPlay"][t] != base["canPlay"][t]]
-    results.append(("codecs-spoofing (canPlayType normalised)", cp_all,
-                    f"all-probably={cp_all}; changed-vs-base={cp_changed or 'none '
-                    '(host already reported probably for all)'}"))
+    results.append(("codecs-spoofing (canPlayType normalised, spec-correct)",
+                    not cp_bad,
+                    f"mismatches={cp_bad or 'none'}; changed-vs-base={cp_changed or 'none'}"))
     # MediaSource's list is narrower than canPlayType's: the patch covers
     # video/mp4, video/webm, audio/mp4, audio/webm, audio/mpeg only.
     MS_COVERED = ("video/mp4", "video/webm", "audio/mp4", "audio/webm", "audio/mpeg")

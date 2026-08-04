@@ -15,8 +15,13 @@
 
 const FAKES = [
   ["webdriver", false],          // bot detection — must look like a real human session
-  ["doNotTrack", "1"],           // DNT enabled
-  ["globalPrivacyControl", true],// GPC enabled
+  // doNotTrack / globalPrivacyControl are deliberately NOT faked here. Pinning
+  // them in JS created contradictions a server or a worker can see: the page
+  // was told DNT=1 / GPC=true while no DNT or Sec-GPC header was sent (their
+  // prefs default off) and workers — which actors cannot reach — still reported
+  // the real values. GPC is now enabled natively via prefs in cloakfox.cfg so
+  // window, worker and header agree; DNT stays at Firefox's default
+  // "unspecified", which is both the majority value and header-consistent.
   ["pdfViewerEnabled", true],    // common
   ["onLine", true],              // pinned online
   ["cookieEnabled", true],       // pinned enabled
