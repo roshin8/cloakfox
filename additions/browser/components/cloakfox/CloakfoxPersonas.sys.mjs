@@ -135,6 +135,136 @@ const CANONICAL_FONTS = {
   },
 };
 
+// ── WebGL static tables ────────────────────────────────────────────────────
+// The C++ hooks (MaskConfig::GLParam / MParamGL / MShaderData and
+// ClientWebGLContext) read these, but nothing used to emit them — so every
+// driver limit, the extension list, and the RENDERER string came from the REAL
+// GPU while webGl:renderer claimed another card. Verified contradiction before
+// this: UNMASKED_RENDERER_WEBGL said "Radeon HD 3200 Graphics" while
+// getParameter(RENDERER) said "Apple M1".
+//
+// Values are keyed by GPU CLASS rather than exact model: the goal is that every
+// machine running a given persona reports an identical, plausible WebGL
+// identity (same crowd-blending logic as the bundled font pack), not that we
+// reproduce one specific card bit-for-bit. Limits below are the common modern
+// desktop values shared by the large majority of GPUs in each class.
+//
+// Parameter keys are the GLenum pname as a DECIMAL STRING (see
+// MaskConfig::GLParam -> std::to_string(pname)).
+const GL = {
+  VENDOR: 7936, RENDERER: 7937,
+  MAX_TEXTURE_SIZE: 3379, MAX_VIEWPORT_DIMS: 3386,
+  MAX_CUBE_MAP_TEXTURE_SIZE: 34076, MAX_RENDERBUFFER_SIZE: 34024,
+  MAX_VERTEX_ATTRIBS: 34921, MAX_VERTEX_UNIFORM_VECTORS: 36347,
+  MAX_VARYING_VECTORS: 36348, MAX_FRAGMENT_UNIFORM_VECTORS: 36349,
+  MAX_TEXTURE_IMAGE_UNITS: 34930, MAX_VERTEX_TEXTURE_IMAGE_UNITS: 35660,
+  MAX_COMBINED_TEXTURE_IMAGE_UNITS: 35661,
+  ALIASED_LINE_WIDTH_RANGE: 33902, ALIASED_POINT_SIZE_RANGE: 33901,
+  MAX_SAMPLES: 36183,
+};
+
+// class -> limit overrides on top of GL_BASE
+const GL_BASE = {
+  [GL.MAX_TEXTURE_SIZE]: 16384,
+  [GL.MAX_CUBE_MAP_TEXTURE_SIZE]: 16384,
+  [GL.MAX_RENDERBUFFER_SIZE]: 16384,
+  [GL.MAX_VIEWPORT_DIMS]: [32767, 32767],
+  [GL.MAX_VERTEX_ATTRIBS]: 16,
+  [GL.MAX_VERTEX_UNIFORM_VECTORS]: 4096,
+  [GL.MAX_VARYING_VECTORS]: 30,
+  [GL.MAX_FRAGMENT_UNIFORM_VECTORS]: 1024,
+  [GL.MAX_TEXTURE_IMAGE_UNITS]: 16,
+  [GL.MAX_VERTEX_TEXTURE_IMAGE_UNITS]: 16,
+  [GL.MAX_COMBINED_TEXTURE_IMAGE_UNITS]: 32,
+  [GL.ALIASED_LINE_WIDTH_RANGE]: [1, 1],
+  [GL.ALIASED_POINT_SIZE_RANGE]: [1, 1024],
+  [GL.MAX_SAMPLES]: 4,
+};
+
+const GL_CLASS = {
+  nvidia: { [GL.MAX_VIEWPORT_DIMS]: [32768, 32768], [GL.MAX_SAMPLES]: 8 },
+  amd:    { [GL.MAX_VIEWPORT_DIMS]: [16384, 16384], [GL.MAX_SAMPLES]: 8 },
+  intel:  { [GL.MAX_VIEWPORT_DIMS]: [16384, 16384],
+            [GL.MAX_COMBINED_TEXTURE_IMAGE_UNITS]: 32 },
+  apple:  { [GL.MAX_VIEWPORT_DIMS]: [16384, 16384],
+            [GL.MAX_COMBINED_TEXTURE_IMAGE_UNITS]: 80,
+            [GL.MAX_VARYING_VECTORS]: 32 },
+  generic: {},
+};
+
+function gpuClass(renderer) {
+  const r = String(renderer).toLowerCase();
+  if (/nvidia|geforce|quadro|rtx|gtx/.test(r)) return "nvidia";
+  if (/amd|radeon|firepro/.test(r)) return "amd";
+  if (/intel|hd graphics|uhd|iris/.test(r)) return "intel";
+  if (/apple|m1|m2|m3/.test(r)) return "apple";
+  return "generic";
+}
+
+// Extensions exposed by a modern desktop Firefox. Acts as an ALLOWLIST: the
+// C++ IsSupported hook returns true only for names in this list, so the real
+// driver's extension set (and its ordering, itself a signal) never shows.
+const GL1_EXTENSIONS = [
+  "ANGLE_instanced_arrays", "EXT_blend_minmax", "EXT_color_buffer_half_float",
+  "EXT_float_blend", "EXT_frag_depth", "EXT_shader_texture_lod",
+  "EXT_sRGB", "EXT_texture_compression_bptc", "EXT_texture_compression_rgtc",
+  "EXT_texture_filter_anisotropic", "OES_element_index_uint",
+  "OES_fbo_render_mipmap", "OES_standard_derivatives", "OES_texture_float",
+  "OES_texture_float_linear", "OES_texture_half_float",
+  "OES_texture_half_float_linear", "OES_vertex_array_object",
+  "WEBGL_color_buffer_float", "WEBGL_compressed_texture_s3tc",
+  "WEBGL_compressed_texture_s3tc_srgb", "WEBGL_debug_renderer_info",
+  "WEBGL_debug_shaders", "WEBGL_depth_texture", "WEBGL_draw_buffers",
+  "WEBGL_lose_context",
+];
+const GL2_EXTENSIONS = [
+  "EXT_color_buffer_float", "EXT_color_buffer_half_float", "EXT_float_blend",
+  "EXT_texture_compression_bptc", "EXT_texture_compression_rgtc",
+  "EXT_texture_filter_anisotropic", "OES_draw_buffers_indexed",
+  "OES_texture_float_linear", "WEBGL_compressed_texture_s3tc",
+  "WEBGL_compressed_texture_s3tc_srgb", "WEBGL_debug_renderer_info",
+  "WEBGL_debug_shaders", "WEBGL_lose_context", "WEBGL_multi_draw",
+];
+
+// IEEE-754 single precision — identical on essentially all desktop GPUs, so
+// pinning removes a per-driver signal without looking unusual. Keyed
+// "shaderType,precisionType" (see MaskConfig::MShaderData).
+function shaderPrecision() {
+  const VERTEX = 35633, FRAGMENT = 35632;
+  const LOW_F = 36336, MED_F = 36337, HIGH_F = 36338;
+  const LOW_I = 36339, MED_I = 36340, HIGH_I = 36341;
+  const f = { rangeMin: 127, rangeMax: 127, precision: 23 };
+  const i = { rangeMin: 31, rangeMax: 30, precision: 0 };
+  const out = {};
+  for (const st of [VERTEX, FRAGMENT]) {
+    for (const pt of [LOW_F, MED_F, HIGH_F]) out[`${st},${pt}`] = { ...f };
+    for (const pt of [LOW_I, MED_I, HIGH_I]) out[`${st},${pt}`] = { ...i };
+  }
+  return out;
+}
+
+// Emit the tables for both WebGL1 and WebGL2. blockIfNotDefined is deliberately
+// NOT set: unlisted pnames fall through to the real value rather than becoming
+// null, which would break real WebGL content and is itself a loud tell.
+export function fillWebGLKeys(keys, renderer) {
+  const params = { ...GL_BASE, ...GL_CLASS[gpuClass(renderer)] };
+  // RENDERER must agree with webGl:renderer (UNMASKED_RENDERER_WEBGL) — the
+  // mismatch between them was the original bug. VENDOR stays "Mozilla", which
+  // is what stock Firefox reports.
+  const table = {};
+  for (const [pname, value] of Object.entries(params)) table[pname] = value;
+  table[GL.VENDOR] = "Mozilla";
+  if (renderer) table[GL.RENDERER] = renderer;
+
+  keys["webGl:parameters"] = table;
+  keys["webGl2:parameters"] = table;
+  keys["webGl:supportedExtensions"] = GL1_EXTENSIONS;
+  keys["webGl2:supportedExtensions"] = GL2_EXTENSIONS;
+  const prec = shaderPrecision();
+  keys["webGl:shaderPrecisionFormats"] = prec;
+  keys["webGl2:shaderPrecisionFormats"] = prec;
+}
+
 // Per-OS CSS generic-font mapping. Each value must be in that OS's
 // CANONICAL_FONTS (so it survives the persona whitelist) AND in the bundled
 // font pack (bundle/fonts/) so it renders on a mismatched host. Applied to
@@ -271,6 +401,7 @@ function bfToCloakKeys(fp, prng) {
   if (fp.videoCard && typeof fp.videoCard === "object") {
     if (fp.videoCard.vendor)   keys["webGl:vendor"]   = fp.videoCard.vendor;
     if (fp.videoCard.renderer) keys["webGl:renderer"] = fp.videoCard.renderer;
+    fillWebGLKeys(keys, fp.videoCard.renderer || "");
   }
 
   // Fonts — coherent per-OS system-font allowlist. The C++ font-hijacker
