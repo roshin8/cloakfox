@@ -1,0 +1,115 @@
+Cloakfox: per-container noise for WebGL pixel readback ("webglHash").
+
+The 2D canvas has been noised per container for a long time (canvas-spoofing
+.patch), but the WebGL readback paths were completely unprotected. Draw a
+scene, then either canvas.toDataURL()/toBlob() on the WebGL context or
+gl.readPixels(), and the result was byte-identical across containers AND
+across machines — the classic webglHash used by FingerprintJS and CreepJS.
+
+Verified before this patch: two containers with different canvas:seed produced
+identical readPixels (15e80087) and identical WebGL toDataURL (62625e96)
+hashes, while the 2D canvas beside them correctly differed.
+
+Two hooks, both reusing CanvasFingerprintManager::ApplyCanvasNoise with the
+same canvas:seed the 2D context uses, so all of a container's surfaces stay
+mutually consistent:
+
+  * GetImageBuffer  — the toDataURL / toBlob extraction path. Deliberately NOT
+    Gecko's own ImageExtraction::Randomize branch above it: that re-randomises
+    per call, which would break Cloakfox's same-container-same-fingerprint
+    invariant.
+
+  * DoReadPixels    — gl.readPixels, patched on both the in-process and the
+    IPC path so the two cannot diverge. Restricted to 8-bit RGBA: float and
+    integer formats are used for GPU compute readback, where perturbing values
+    corrupts results rather than defending a fingerprint.
+
+Noise is subtle per pixel (observed a +1 delta on a sampled pixel) but changes
+the aggregate hash completely, and is deterministic per container. Verified
+rendering is unaffected: shaders still compile, link and draw with
+gl.getError() == 0.
+
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -5,6 +5,7 @@
+ 
+ #include "ClientWebGLContext.h"
+ #include "MaskConfig.hpp"
++#include "CanvasFingerprintManager.h"
+ #include "WebGLParamsManager.h"
+ #include "mozilla/dom/BrowsingContext.h"
+ #include "mozilla/dom/Document.h"
+@@ -1436,7 +1437,29 @@
+         out_format);
+   }
+ 
+-  return gfxUtils::GetImageBuffer(dataSurface, premultAlpha, out_format);
++  auto buffer = gfxUtils::GetImageBuffer(dataSurface, premultAlpha, out_format);
++
++  // Cloakfox: noise WebGL pixel readback the same way the 2D context is noised
++  // (CanvasRenderingContext2D.cpp). Without this the classic "webglHash" —
++  // draw a scene, then canvas.toDataURL()/toBlob() on the WebGL context — was
++  // completely unnoised and identical across containers, while the 2D canvas
++  // beside it was per-container. Uses the same canvas:seed so both surfaces
++  // stay consistent for a container, and is deterministic (unlike Gecko's
++  // Randomize path above, which re-randomises per call and would break the
++  // same-container-same-fingerprint invariant).
++  if (buffer) {
++    const uint32_t seed = MaskConfig::GetUint32("canvas:seed").value_or(0);
++    const auto size = *out_imageSize;
++    if (seed && size.width > 0 && size.height > 0) {
++      CheckedInt<uint32_t> len =
++          CheckedInt<uint32_t>(size.width) * size.height * 4;
++      if (len.isValid()) {
++        CanvasFingerprintManager::ApplyCanvasNoise(buffer.get(), len.value(),
++                                                   seed);
++      }
++    }
++  }
++  return buffer;
+ }
+ 
+ NS_IMETHODIMP
+@@ -5579,6 +5602,26 @@
+   });
+ }
+ 
++// Cloakfox: per-container noise for gl.readPixels(), the other half of the
++// classic "webglHash" (the toDataURL/toBlob half is handled in
++// GetImageBuffer). Applied ONLY to 8-bit RGBA readback: float/integer formats
++// are used for GPU compute readback where perturbing values would corrupt
++// results rather than defend a fingerprint. Same canvas:seed as the 2D context
++// and GetImageBuffer, so a container's surfaces stay mutually consistent.
++static void CloakfoxNoiseReadPixels(const webgl::ReadPixelsDesc& desc,
++                                    const Span<uint8_t>& dest) {
++  if (desc.pi.type != LOCAL_GL_UNSIGNED_BYTE ||
++      desc.pi.format != LOCAL_GL_RGBA) {
++    return;
++  }
++  const uint32_t seed = MaskConfig::GetUint32("canvas:seed").value_or(0);
++  if (!seed || dest.size() < 4) {
++    return;
++  }
++  mozilla::dom::CanvasFingerprintManager::ApplyCanvasNoise(
++      dest.data(), static_cast<uint32_t>(dest.size() & ~size_t(3)), seed);
++}
++
+ bool ClientWebGLContext::DoReadPixels(const webgl::ReadPixelsDesc& desc,
+                                       const Span<uint8_t> dest) const {
+   RefPtr<webgl::NotLostData> notLost(mNotLost);
+@@ -5588,6 +5631,7 @@
+   const auto& inProcess = notLost->inProcess;
+   if (inProcess) {
+     inProcess->ReadPixelsInto(desc, dest);
++    CloakfoxNoiseReadPixels(desc, dest);
+     return true;
+   }
+   const auto& child = notLost->outOfProcess;
+@@ -5631,6 +5675,7 @@
+     Memcpy(&destRow, srcRow);
+   }
+ 
++  CloakfoxNoiseReadPixels(desc, dest);
+   return true;
+ }
+ 
