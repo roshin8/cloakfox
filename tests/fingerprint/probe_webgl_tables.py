@@ -184,11 +184,19 @@ def main(bin_path: str) -> int:
     # 4. not broken
     if not a.get("linked"):
         fails.append("shader program failed to link — spoofing broke WebGL")
-    elif a.get("pixel") != [51, 178, 77, 255]:
-        fails.append(f"draw produced {a.get('pixel')}, expected [51,178,77,255] "
-                     "— spoofing broke rendering")
-    elif a.get("glerror"):
-        fails.append(f"gl.getError() = {a.get('glerror')} after draw")
+    else:
+        # The shader outputs (0.2,0.7,0.3,1) -> ~[51,178,77,255]. readPixels is
+        # now noised per container (webgl-readback-noise.patch), so assert the
+        # colour is RECOGNISABLY correct rather than bit-exact — this check
+        # exists to prove rendering still works, not to pin pixel values.
+        px = a.get("pixel") or []
+        want = [51, 178, 77, 255]
+        if len(px) != 4 or any(abs(g - w) > 24 for g, w in zip(px[:3], want[:3])) \
+                or px[3] < 245:
+            fails.append(f"draw produced {px}, expected ~{want} (±24 for "
+                         "readback noise) — spoofing broke rendering")
+        if a.get("glerror"):
+            fails.append(f"gl.getError() = {a.get('glerror')} after draw")
 
     if fails:
         print("FAIL — WebGL table spoofing regressed:")
