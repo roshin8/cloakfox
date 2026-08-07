@@ -130,9 +130,29 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
     // cloakfox.opt.timer_high_precision_jitter = false.
     if (Services.prefs.getBoolPref("cloakfox.opt.timer_high_precision_jitter", true)) {
       const origPerfNow = pageWin.performance.now;
-      // Knuth multiplicative hash — fast deterministic 32-bit mix.
+      // Knuth multiplicative hash, SALTED WITH THE PER-CONTAINER SEED.
+      //
+      // This used to mix in a hardcoded 0xdeadbeef, making the fractional part
+      // a pure function of the integer millisecond — identical on every
+      // Cloakfox install and in every container. That is not an entropy bit,
+      // it is an exact browser identifier: a site recomputes the same hash and
+      // checks `t - floor(t) === bucketJitter(floor(t))`. Measured 40/40
+      // matches across independent profiles before this change.
+      //
+      // The salt is derived once from timing_seed (FNV-1a over the seed
+      // bytes), so the jitter remains DETERMINISTIC per (container, ms
+      // bucket) — which is what keeps performance.now monotonic — while being
+      // unpredictable without the container's seed.
+      const seedBytes = b64ToBytes(seedB64);
+      let timingSalt = 0x9e3779b9;
+      for (let i = 0; i < seedBytes.length; i++) {
+        timingSalt = Math.imul(timingSalt ^ seedBytes[i], 16777619) >>> 0;
+      }
       const bucketJitter = (ms) => {
-        const x = (Math.imul(ms | 0, 2654435761) ^ 0xdeadbeef) >>> 0;
+        let x = Math.imul(ms | 0, 2654435761) >>> 0;
+        x = (x ^ timingSalt) >>> 0;
+        x = Math.imul(x ^ (x >>> 15), 2246822507) >>> 0;
+        x = (x ^ (x >>> 13)) >>> 0;
         return (x % 1000) / 1000;  // 0..0.999
       };
       let lastReturned = -Infinity;
