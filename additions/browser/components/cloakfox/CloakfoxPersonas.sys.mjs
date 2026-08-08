@@ -297,6 +297,24 @@ function normalizeUA(ua) {
 // safari=2. Order matters — Chrome UAs also contain "Safari/", and Firefox
 // UAs contain "Gecko", so test firefox → chrome → safari and default to
 // firefox (the coherent choice for this fork's Firefox-based engine).
+// Whether a non-Firefox HTTP/3 profile may be selected.
+//
+// http3-fingerprint-spoofing.patch reshapes the H3 SETTINGS frame inside
+// neqo-http3, but the QUIC TRANSPORT parameters (neqo-transport: the
+// initial_max_* values, active_connection_id_limit and their ordering, which
+// feed JA4-QUIC) are untouched, and the TLS ClientHello (JA3/JA4) comes from
+// NSS. So claiming Chrome or Safari at the H3 layer ships Chrome SETTINGS with
+// Firefox transport params and a Firefox ClientHello — a layered chimera that
+// is MORE identifiable than not spoofing, the same failure mode as an unseeded
+// timer jitter or a JS-only DNT header.
+//
+// This does not bite in the default configuration: Cloakfox personas vary OS
+// and hardware but always carry a Firefox UA (the engine really is Gecko), so
+// this function always takes the firefox branch. The guard exists so a manual
+// UA override cannot silently produce the chimera. Flip it only alongside real
+// neqo-transport + TLS spoofing.
+const CROSS_ENGINE_H3 = false;
+
 export function deriveHttpProfile(ua) {
   const s = (ua || "").toLowerCase();
   if (s.includes("firefox/") || s.includes("gecko/")) {
@@ -304,10 +322,10 @@ export function deriveHttpProfile(ua) {
   }
   if (s.includes("chrome/") || s.includes("chromium/") ||
       s.includes("edg/") || s.includes("opr/")) {
-    return { h2: "chrome", h3: 1 };
+    return { h2: "chrome", h3: CROSS_ENGINE_H3 ? 1 : 0 };
   }
   if (s.includes("safari/") && s.includes("version/")) {
-    return { h2: "safari", h3: 2 };
+    return { h2: "safari", h3: CROSS_ENGINE_H3 ? 2 : 0 };
   }
   return { h2: "firefox", h3: 0 };
 }
