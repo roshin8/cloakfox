@@ -52,7 +52,7 @@ new file mode 100644
 index 0000000000..a7f5735e53
 --- /dev/null
 +++ b/dom/base/TimezoneManager.h
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,50 @@
 +#ifndef mozilla_dom_TimezoneManager_h
 +#define mozilla_dom_TimezoneManager_h
 +
@@ -67,10 +67,22 @@ index 0000000000..a7f5735e53
 +
 +class TimezoneManager {
 + public:
-+  static void SetTimezone(uint32_t userContextId, const nsAString& timezone) {
++  // Store WITHOUT disabling the context's own setter. Used for the ucid-0
++  // fallback write below: calling the disabling form there permanently
++  // disabled the DEFAULT container's setter as a side effect of another
++  // container setting its timezone, after which the default container was
++  // stuck reporting that container's zone and could never correct itself —
++  // a cross-container correlation signal that also contradicted the default
++  // persona's geolocation.
++  static void StoreTimezone(uint32_t userContextId,
++                            const nsAString& timezone) {
 +    nsAutoString key;
 +    key.AppendPrintf("timezone_%u", userContextId);
 +    RoverfoxStorageManager::PutString(key, timezone);
++  }
++
++  static void SetTimezone(uint32_t userContextId, const nsAString& timezone) {
++    StoreTimezone(userContextId, timezone);
 +    DisableFunction(userContextId);
 +  }
 +
@@ -124,7 +136,7 @@ index ea66d28e53..2abb83c3a6 100644
  #include "nsDocShell.h"
  #include "mozilla/OriginAttributes.h"
  #include "nsIDOMXULControlElement.h"
-@@ -7525,6 +7527,48 @@ void nsGlobalWindowInner::SetFontSpacingSeed(uint32_t seed, ErrorResult& aRv) {
+@@ -7525,6 +7527,53 @@ void nsGlobalWindowInner::SetFontSpacingSeed(uint32_t seed, ErrorResult& aRv) {
    }
  }
  
@@ -145,10 +157,15 @@ index ea66d28e53..2abb83c3a6 100644
 +
 +  TimezoneManager::SetTimezone(userContextId, timezone);
 +
-+  // Also store under userContextId=0 as fallback for shared/service workers
-+  // which may have a different userContextId than the parent page.
++  // Fallback for shared/service workers, which may report a different
++  // userContextId than the parent page. Store-only (see StoreTimezone) and
++  // only when ctx 0 has no timezone of its own, so a named container can
++  // neither disable the default container's setter nor overwrite its zone.
 +  if (userContextId != 0) {
-+    TimezoneManager::SetTimezone(0, timezone);
++    nsAutoString existing;
++    if (!TimezoneManager::GetTimezone(0, existing) || existing.IsEmpty()) {
++      TimezoneManager::StoreTimezone(0, timezone);
++    }
 +  }
 +
 +  // Set global process-wide timezone as ultimate fallback.

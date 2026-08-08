@@ -103,7 +103,7 @@ index 330a707789..241f87780b 100644
    FORWARD_TO_OUTER_OR_THROW(GetOuterHeightOuter, (aCallerType, aError), aError,
                              0);
  }
-@@ -3486,11 +3495,13 @@ double nsGlobalWindowInner::ScreenEdgeSlopY() const {
+@@ -3486,21 +3495,48 @@ double nsGlobalWindowInner::ScreenEdgeSlopY() const {
  
  int32_t nsGlobalWindowInner::GetScreenX(CallerType aCallerType,
                                          ErrorResult& aError) {
@@ -115,6 +115,41 @@ index 330a707789..241f87780b 100644
                                          ErrorResult& aError) {
 +  if (auto value = MaskConfig::GetInt32("window.screenY")) return value.value();
    FORWARD_TO_OUTER_OR_THROW(GetScreenYOuter, (aCallerType, aError), aError, 0);
+ }
++
++// Cloakfox: mozInnerScreenX/Y is Firefox-specific and read directly by CreepJS.
++// Unspoofed it leaks the real window placement, the real chrome height and the
++// multi-monitor layout, and it contradicts the spoofed screenX/screenY beside
++// it. DERIVE both from the values we already report rather than adding
++// independent keys, so the pair cannot drift apart:
++//   x: the content area has no horizontal chrome in modern Firefox, so it
++//      shares screenX.
++//   y: the content area starts below the browser chrome, whose height is
++//      exactly the outerHeight - innerHeight we already expose.
++static float CloakfoxMozInnerScreenY() {
++  auto sy = MaskConfig::GetInt32("window.screenY");
++  if (!sy) return 0.0f;
++  auto oh = MaskConfig::GetInt32("window.outerHeight");
++  auto ih = MaskConfig::GetInt32("window.innerHeight");
++  int32_t chrome = 0;
++  if (oh && ih && oh.value() >= ih.value()) chrome = oh.value() - ih.value();
++  return static_cast<float>(sy.value() + chrome);
++}
+ 
+ float nsGlobalWindowInner::GetMozInnerScreenX(CallerType aCallerType,
+                                               ErrorResult& aError) {
++  if (auto value = MaskConfig::GetInt32("window.screenX")) {
++    return static_cast<float>(value.value());
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetMozInnerScreenXOuter, (aCallerType), aError, 0);
+ }
+ 
+ float nsGlobalWindowInner::GetMozInnerScreenY(CallerType aCallerType,
+                                               ErrorResult& aError) {
++  if (MaskConfig::GetInt32("window.screenY")) {
++    return CloakfoxMozInnerScreenY();
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetMozInnerScreenYOuter, (aCallerType), aError, 0);
  }
  
 @@ -3524,6 +3535,8 @@ static nsPresContext* GetPresContextForRatio(Document* aDoc) {

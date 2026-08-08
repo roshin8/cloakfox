@@ -2,7 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { fillPersonaKeys } from "resource:///modules/CloakfoxPersonas.sys.mjs";
+import {
+  fillPersonaKeys,
+  genericFontListUnion,
+} from "resource:///modules/CloakfoxPersonas.sys.mjs";
 import { applyOverrides } from "resource:///modules/CloakfoxOverrides.sys.mjs";
 
 /* Cloakfox: parent-side seed sync for content-process JSWindowActors.
@@ -75,10 +78,11 @@ function u32(seedB64, i) {
 // Layer 2: persona keys — drive the navigator UA / platform / oscpu /
 // language, screen dimensions, WebGL renderer, AudioContext latency,
 // codec / media-capability spoof flags, and "disable leaky surface"
-// flags. Pulled from CloakfoxPersonas.fillPersonaKeys, picked
-// deterministically from math_seed and locked to the host OS family
-// (macOS host → macOS personas, etc.) so cross-OS UA mismatches
-// don't fingerprint us.
+// flags. Pulled from CloakfoxPersonas.fillPersonaKeys, sampled
+// deterministically from math_seed. The OS is sampled FROM THE SEED
+// (not locked to the host), so a container's persona may be any OS;
+// every key in the bundle is kept internally coherent with that
+// sampled OS so there's no cross-OS mismatch within a persona.
 //
 // Both layers share the same math_seed so a given container's JS-side
 // Math perturbations, C++ canvas/audio/font noise, and persona pick
@@ -106,6 +110,27 @@ function buildCloakCfg(seedB64, ucid = null) {
   return JSON.stringify(ucid !== null ? applyOverrides(ucid, base) : base);
 }
 
+// Decide whether a container's cloak_cfg must be (re)generated. Pure so it can
+// be unit-tested. Rebuild when: absent, corrupt, or produced by a build that
+// predates the font keys (missing "fonts" or "fonts:spacing_seed"). buildCloakCfg
+// is deterministic in the master seed, so a rebuild reproduces the same persona
+// plus the new keys — a safe idempotent upgrade.
+export function needsCfgRebuild(curCfg) {
+  if (!curCfg) return true;
+  let parsed;
+  try {
+    parsed = JSON.parse(curCfg);
+  } catch (_e) {
+    return true; // corrupt JSON → rebuild from seed
+  }
+  // JSON.parse succeeds for "null", "123", "true", '"x"' etc. Guard the `in`
+  // checks: `"fonts" in null` throws, which would escape this function and
+  // leave the container permanently un-rebuilt. Any non-object is bad data →
+  // rebuild.
+  if (typeof parsed !== "object" || parsed === null) return true;
+  return !("fonts" in parsed) || !("fonts:spacing_seed" in parsed);
+}
+
 function ensureContainerSeeds(ucid) {
   // First, the per-actor seeds (math/keyboard/timing) used by JSWindow
   // Actors. Each is independent so a missing one doesn't gate the others.
@@ -127,7 +152,10 @@ function ensureContainerSeeds(ucid) {
   const cfgPref = `cloakfox.s.cloak_cfg_${ucid}`;
   try {
     const curCfg = Services.prefs.getStringPref(cfgPref, "");
-    if (!curCfg) {
+    // See needsCfgRebuild: regenerate when absent, corrupt, or missing the font
+    // keys (a profile upgraded from a pre-fonts build), so per-container fonts
+    // actually activate for existing containers.
+    if (needsCfgRebuild(curCfg)) {
       const masterSeed = Services.prefs.getStringPref(
         `cloakfox.container.${ucid}.math_seed`, ""
       );
@@ -138,29 +166,39 @@ function ensureContainerSeeds(ucid) {
   } catch (_e) { /* ignore */ }
 }
 
-// Map the CSS generics (serif/sans-serif/monospace) to the default persona's
-// OS fonts, so they don't collapse to sans-serif when the real host's default
-// generic fonts are hidden by the persona whitelist. These are process-global
-// prefs (per-langgroup), driven by the ucid-0 persona. Cleared when disabled so
-// the real host generics return.
+// Map the CSS generics (serif/sans-serif/monospace) so they don't collapse to
+// last-resort when the real host's default generic fonts are hidden by a persona
+// whitelist. These are PROCESS-GLOBAL prefs (per-langgroup): one value for every
+// container. We set the UNION of all OSes' generics (genericFontListUnion) as a
+// comma-separated fallback list; Gecko resolves each container to the first
+// entry its own per-container FontListManager filter admits. The union is
+// ordered so every container gets its OWN persona generic (see the ordering note
+// on genericFontListUnion).
+//
+// This is the JS half of review finding #7's fix; the C++ half is in
+// font-hijacker.patch, which keeps every union family in the process-global
+// whitelist so gfxPlatformFontList::ApplyWhitelist() doesn't delete cross-OS
+// families before the per-container filter can select among them. Verified safe:
+// Firefox ships no Local Font Access API, and every content font-presence path
+// (text rendering, matchMedia, document.fonts, local()) is per-container
+// filtered or fails closed, so the union never leaks a family to a container
+// outside its persona. Cleared when disabled so the real host generics return.
 function applyGenericFontPrefs() {
-  const map = {
-    "font.name-list.serif.x-western": "font:generic:serif",
-    "font.name-list.sans-serif.x-western": "font:generic:sans-serif",
-    "font.name-list.monospace.x-western": "font:generic:monospace",
+  const prefs = {
+    "font.name-list.serif.x-western": "serif",
+    "font.name-list.sans-serif.x-western": "sans",
+    "font.name-list.monospace.x-western": "mono",
   };
   try {
     if (!Services.prefs.getBoolPref("cloakfox.enabled", true)) {
-      for (const pref of Object.keys(map)) {
+      for (const pref of Object.keys(prefs)) {
         try { Services.prefs.clearUserPref(pref); } catch (_e) { /* ignore */ }
       }
       return;
     }
-    const cfg = Services.prefs.getStringPref("cloakfox.s.cloak_cfg_0", "");
-    if (!cfg) return;
-    const persona = JSON.parse(cfg);
-    for (const [pref, key] of Object.entries(map)) {
-      const val = persona[key];
+    const union = genericFontListUnion();
+    for (const [pref, slot] of Object.entries(prefs)) {
+      const val = union[slot];
       if (typeof val === "string" && val) {
         Services.prefs.setStringPref(pref, val);
       }
@@ -217,6 +255,32 @@ const observer = {
   },
 };
 
+// Containers created AFTER startup used to get no persona at all.
+// ensureSeedsForAllContainers() enumerates getPublicIdentities() once during
+// init, so a container the user made later had no cloak_cfg until the next
+// restart. For that whole session it fell through every MaskConfig lookup to
+// the native value and reported the REAL host — measured: navigator.platform
+// "MacIntel" and oscpu "Intel Mac OS X 10.15" while the userAgent said
+// Windows. That is both a host-OS leak and a self-contradiction, in exactly
+// the containers a user creates for isolation.
+//
+// ContextualIdentityService fires these when identities change, so seed the
+// new container immediately and re-publish so content processes see it.
+const CONTAINER_TOPICS = [
+  "contextual-identity-created",
+  "contextual-identity-updated",
+];
+
+const containerObserver = {
+  observe(_subject, topic, _data) {
+    if (!CONTAINER_TOPICS.includes(topic)) return;
+    try {
+      ensureSeedsForAllContainers();
+      publish();
+    } catch (_e) { /* never break container creation */ }
+  },
+};
+
 // Bridge cloakfox.opt.timer_quantization_off → privacy.reduceTimerPrecision.
 // Both prefs control the same Firefox engine setting, but the cloakfox.opt.*
 // namespace is what about:cloakfox UI exposes and what cloakfox.cfg
@@ -245,5 +309,11 @@ export function initCloakfoxSeedSync() {
   // Live updates.
   for (const branchName of PREF_BRANCHES) {
     Services.prefs.addObserver(branchName, observer);
+  }
+  // Seed containers created after startup (see containerObserver above).
+  for (const topic of CONTAINER_TOPICS) {
+    try {
+      Services.obs.addObserver(containerObserver, topic);
+    } catch (_e) { /* topic unavailable — startup seeding still applies */ }
   }
 }
