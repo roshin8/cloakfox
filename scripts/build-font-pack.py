@@ -45,7 +45,12 @@ NOTO = {
     "NotoSansArabic": "ofl/notosansarabic/NotoSansArabic%5Bwdth,wght%5D.ttf",
     "NotoSansHebrew": "ofl/notosanshebrew/NotoSansHebrew%5Bwdth,wght%5D.ttf",
     "NotoSansThai": "ofl/notosansthai/NotoSansThai%5Bwdth,wght%5D.ttf",
-    "NotoSansDevanagari": "ofl/notosansdevanagariui/NotoSansDevanagariUI-Regular.ttf",
+    # Use the non-UI Devanagari family: its internal name is "Noto Sans
+    # Devanagari" (what personas/CSS reference). The deprecated *UI* variant
+    # carries the internal family "Noto Sans Devanagari UI", which no CSS
+    # `font-family:"Noto Sans Devanagari"` matches AND is itself a rare,
+    # distinctive enumerable family — the opposite of a universal fallback.
+    "NotoSansDevanagari": "ofl/notosansdevanagari/NotoSansDevanagari%5Bwdth,wght%5D.ttf",
     "NotoSansBengali": "ofl/notosansbengali/NotoSansBengali%5Bwdth,wght%5D.ttf",
     "NotoSansGeorgian": "ofl/notosansgeorgian/NotoSansGeorgian%5Bwdth,wght%5D.ttf",
     "NotoSansArmenian": "ofl/notosansarmenian/NotoSansArmenian%5Bwdth,wght%5D.ttf",
@@ -141,6 +146,11 @@ def main() -> int:
 
     # Noto script coverage — fetched and copied under their real names (no
     # rename); they serve as the universal fallback for non-Latin scripts.
+    # Verify each one's INTERNAL family after copy: a deprecated "…UI" variant
+    # (or any name mismatch) means CSS referencing the plain family would miss
+    # it AND the odd family becomes a distinctive fingerprint — exactly the bug
+    # the plain-vs-UI Devanagari swap fixed. Fail loudly instead of shipping it.
+    from fontTools.ttLib import TTFont  # local import; also pulled via rename-font
     noto = 0
     for name, path in NOTO.items():
         dst = cache / f"{name}.ttf"
@@ -148,6 +158,16 @@ def main() -> int:
             print(f"fetch {name} ...", flush=True)
             dst.write_bytes(fetch(f"{RAW}/{path}"))
         (out / f"{name}.ttf").write_bytes(dst.read_bytes())
+        family = TTFont(dst)["name"].getDebugName(1) or ""
+        # A "…UI" variant carries a distinct internal family ("Noto Sans
+        # Devanagari UI"). Match the space-separated " UI" suffix only, so a
+        # legitimate family that merely ends in the letters "UI" isn't rejected.
+        if family.strip().endswith(" UI"):
+            print(f"ERROR {name}: internal family {family!r} is a 'UI' variant — "
+                  f"CSS won't match the plain family and it is itself a rare "
+                  f"fingerprint. Point the URL at the non-UI family.",
+                  file=sys.stderr)
+            return 1
         noto += 1
 
     print(f"\nbuilt {made} Latin families + {noto} Noto script fonts into {out}")

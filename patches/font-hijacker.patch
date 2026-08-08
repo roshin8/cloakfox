@@ -10,10 +10,10 @@ index bc0e123f85..52ec46f76b 100644
  
  #include "GeckoProfiler.h"
  #include "nsCRT.h"
-@@ -303,6 +304,27 @@ gfxPlatformFontList::gfxPlatformFontList(bool aNeedFullnamePostscriptNames)
- 
+@@ -303,6 +304,53 @@ gfxPlatformFontList::gfxPlatformFontList(bool aNeedFullnamePostscriptNames)
+
    mFontPrefs = MakeUnique<FontPrefs>();
- 
+
 +  // Hijack the kFontSystemWhitelistPref pref
 +  if (std::vector<std::string> fontValues = MaskConfig::GetStringList("fonts");
 +      !fontValues.empty()) {
@@ -22,6 +22,20 @@ index bc0e123f85..52ec46f76b 100644
 +                        [](const std::string& acc, const std::string& s) {
 +                          return acc.empty() ? s : acc + "," + s;
 +                        });
++    // Cloakfox: also whitelist the bundled CSS-generic families for EVERY OS,
++    // so ApplyWhitelist() keeps them in mFontFamilies even though this global
++    // whitelist is built from ucid-0's persona (one OS). Cross-OS containers
++    // resolve their own generic through the font.name-list union
++    // (CloakfoxSeedSync.applyGenericFontPrefs); without the family present here
++    // ApplyWhitelist would have deleted it and every non-ucid-0 container's
++    // serif/sans/mono would collapse to last-resort. This does NOT leak the
++    // extra families: per-container FontListManager filtering in
++    // FindAndAddFamilies hides any family not in a container's own persona
++    // list, and every content font-presence path (text rendering, matchMedia,
++    // document.fonts, local()) is filtered or fails closed. All 9 are shipped
++    // by the bundled font pack, so a face always exists to render.
++    fontValuesJoined += ",Times,Times New Roman,DejaVu Serif,Helvetica,Arial,"
++                        "DejaVu Sans,Menlo,Consolas,DejaVu Sans Mono";
 +    Preferences::SetCString(kFontSystemWhitelistPref, fontValuesJoined.data());
 +  } else if (Preferences::GetBool("cloakfox.enabled", true)) {
 +    // Cloakfox: no per-container font list yet — e.g. the FIRST launch of a
@@ -33,7 +47,19 @@ index bc0e123f85..52ec46f76b 100644
 +    Preferences::SetCString(
 +        kFontSystemWhitelistPref,
 +        "Arial,Arial Black,Comic Sans MS,Courier New,Georgia,Impact,"
-+        "Times New Roman,Trebuchet MS,Verdana,Tahoma,Courier,Helvetica");
++        "Times New Roman,Trebuchet MS,Verdana,Tahoma,Courier,Helvetica,"
++        // Bundled CSS-generic families (see the persona branch above) so the
++        // first-launch generics resolve before the persona list takes over.
++        "Times,DejaVu Serif,DejaVu Sans,Menlo,Consolas,DejaVu Sans Mono");
++  } else {
++    // Cloakfox DISABLED with no per-container list: clear any whitelist a
++    // previous ENABLED session persisted to prefs.js as a User pref. Both
++    // branches above call Preferences::SetCString, which flushes to prefs.js;
++    // if we don't clear it here, GetPrefsFontList below re-activates
++    // mFontFamilyWhitelistActive from the stale value, so toggling
++    // cloakfox.enabled=false wouldn't restore the real font list after a
++    // restart — the kill-switch would silently keep filtering fonts.
++    Preferences::ClearUser(kFontSystemWhitelistPref);
 +  }
    gfxFontUtils::GetPrefsFontList(kFontSystemWhitelistPref, mEnabledFontsList);
    mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty();

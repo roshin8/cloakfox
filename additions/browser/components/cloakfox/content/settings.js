@@ -60,7 +60,9 @@ function buildCloakCfg(seedB64, ucid = null) {
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
-    "font:spacing_seed": u32(seedB64, 3),
+    // C++ FontSpacingSeedManager reads "fonts:spacing_seed" (plural); the
+    // singular key silently no-ops the per-container font-spacing noise.
+    "fonts:spacing_seed": u32(seedB64, 3),
     "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   });
@@ -314,7 +316,7 @@ function populateFonts(cfg, ucid) {
   const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
   const rows = [
     ["font:seed (ordering)", cfg ? cfg["font:seed"] : null],
-    ["font:spacing_seed",    cfg ? cfg["font:spacing_seed"] : null],
+    ["fonts:spacing_seed",   cfg ? cfg["fonts:spacing_seed"] : null],
     ["master seed (drives both)", fmtSeed(seedB64)],
   ];
   const grid = document.getElementById("grp-fonts");
@@ -338,7 +340,7 @@ function populateSeeds(cfg, ucid) {
     ["canvas:seed (u32)",       cfg ? cfg["canvas:seed"] : null],
     ["audio:seed (u32)",        cfg ? cfg["audio:seed"] : null],
     ["font:seed (u32)",         cfg ? cfg["font:seed"] : null],
-    ["font:spacing_seed (u32)", cfg ? cfg["font:spacing_seed"] : null],
+    ["fonts:spacing_seed (u32)", cfg ? cfg["fonts:spacing_seed"] : null],
     ["math:trig_seed (u32)",    cfg ? cfg["math:trig_seed"] : null],
     ["keyboard timing seed",    fmtSeed(kbd)],
     ["setTimeout jitter seed",  fmtSeed(tim)],

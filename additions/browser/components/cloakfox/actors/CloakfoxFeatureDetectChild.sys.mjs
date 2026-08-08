@@ -61,6 +61,13 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
 
     for (const [prop, value] of FAKES) {
       try {
+        // Only ever REPLACE a property the native prototype already exposes.
+        // Defining one that stock Firefox 146 lacks (e.g. doNotTrack, removed
+        // ~FF135, or a pref-gated globalPrivacyControl) synthesizes a phantom
+        // own accessor that shows up in getOwnPropertyNames(Navigator.prototype)
+        // and `prop in navigator` — a tamper tell, the exact leak class we
+        // otherwise avoid. If it isn't natively present, leave it absent.
+        if (!(prop in navProto)) continue;
         // Native WebIDL getter reports name "get <prop>" length 0; match it so
         // a getOwnPropertyDescriptor(...).get.name probe can't spot the wrapper.
         const getter = Cu.exportFunction(function () { return value; }, pageWin);

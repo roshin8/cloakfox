@@ -3,12 +3,13 @@ new file mode 100644
 index 0000000000..abcdef0001
 --- /dev/null
 +++ b/dom/base/FontListManager.cpp
-@@ -0,0 +1,115 @@
+@@ -0,0 +1,142 @@
 +/* Cloakfox: Per-context font list manager */
 +#include "FontListManager.h"
 +
 +#include <algorithm>
 +#include "mozilla/Mutex.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
 +#include "mozilla/dom/BrowsingContext.h"
 +#include "nsGlobalWindowInner.h"
 +#include "xpcpublic.h"
@@ -19,6 +20,11 @@ index 0000000000..abcdef0001
 +
 +static Mutex sFontListMutex("FontListManager");
 +static nsTHashMap<nsUint32HashKey, nsTHashSet<nsCString>> sFontLists;
++// Negative cache: userContextIds known to have NO per-container list (overlay
++// absent, unparseable, or without a "fonts" array). Without it, every font
++// lookup for such a container re-runs CloakConfigOverlay_Get + a full JSON
++// parse under two mutexes — thousands of parses per page on stylo threads.
++static nsTHashSet<uint32_t> sNoFontList;
 +static thread_local uint32_t sCurrentContextId = 0;
 +
 +nsString FontListManager::DisabledKeyForUserContext(uint32_t aId) {
@@ -48,6 +54,7 @@ index 0000000000..abcdef0001
 +    fontSet.Insert(utf8);
 +  }
 +  MutexAutoLock lock(sFontListMutex);
++  sNoFontList.Remove(aId);
 +  sFontLists.InsertOrUpdate(aId, std::move(fontSet));
 +}
 +
@@ -58,10 +65,22 @@ index 0000000000..abcdef0001
 +// sFontLists first. Caller must hold sFontListMutex.
 +static bool EnsureFontListLoaded(uint32_t aId) {
 +  if (sFontLists.Contains(aId)) return true;
++  if (sNoFontList.Contains(aId)) return false;  // negative cache: no re-parse
 +  std::string js = ::CloakConfigOverlay_Get(aId);
-+  if (js.empty()) return false;
++  if (js.empty()) {
++    // Do NOT negative-cache an ABSENT overlay. It may simply not be written
++    // yet: gfxPlatformFontList is constructed very early, before cloak_cfg_0
++    // lands on a fresh profile, and caching "no list" here would strand that
++    // container (incl. ctx 0) for the whole session even after its overlay
++    // appears. Re-checking an absent overlay is cheap (no JSON parse). Only
++    // overlays that EXIST but lack a usable fonts array are cached below —
++    // those change only via a persona regen, which (like the positive cache)
++    // is picked up on the next restart.
++    return false;
++  }
 +  nlohmann::json ov = nlohmann::json::parse(js, nullptr, /*allow_exceptions*/ false);
 +  if (ov.is_discarded() || !ov.contains("fonts") || !ov["fonts"].is_array()) {
++    sNoFontList.Insert(aId);
 +    return false;
 +  }
 +  nsTHashSet<nsCString> fontSet;
@@ -72,18 +91,26 @@ index 0000000000..abcdef0001
 +                   [](unsigned char c) { return std::tolower(c); });
 +    fontSet.Insert(nsCString(s.data(), s.size()));
 +  }
-+  if (fontSet.IsEmpty()) return false;
++  if (fontSet.IsEmpty()) {
++    sNoFontList.Insert(aId);
++    return false;
++  }
 +  sFontLists.InsertOrUpdate(aId, std::move(fontSet));
 +  return true;
 +}
 +
 +bool FontListManager::HasFontList(uint32_t aId) {
++  // Master switch: when cloakfox is disabled at runtime, report no list so font
++  // enumeration/rendering falls through to the real host set immediately — the
++  // cached allowlist must not keep filtering after the kill-switch is off.
++  if (!StaticPrefs::cloakfox_enabled()) return false;
 +  MutexAutoLock lock(sFontListMutex);
 +  return EnsureFontListLoaded(aId);
 +}
 +
 +bool FontListManager::IsFontAllowed(uint32_t aId,
 +                                     const nsACString& aFontName) {
++  if (!StaticPrefs::cloakfox_enabled()) return true;  // disabled → allow all
 +  MutexAutoLock lock(sFontListMutex);
 +  if (!EnsureFontListLoaded(aId)) return true;  // no per-container list → allow
 +  auto entry = sFontLists.Lookup(aId);

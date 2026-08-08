@@ -231,17 +231,34 @@
          pmtud_enabled: bool,
          socket: Option<i64>,
      ) -> Result<RefPtr<Self>, nsresult> {
-@@ -448,6 +450,10 @@
+@@ -448,8 +450,26 @@
              params = params.idle_timeout(Duration::from_millis(10));
          }
- 
+
 +        // Cloakfox: H3 fingerprint profile resolved per-container in C++
 +        // (Http3Session) and passed in; falls back to the global pref there.
 +        let fp_profile = H3FingerprintProfile::from_pref(fingerprint_profile);
 +
++        // Cloakfox: the Chrome/Safari H3 SETTINGS arms advertise
++        // SETTINGS_QPACK_BLOCKED_STREAMS=100 (settings.rs). That value tells the
++        // peer how many streams our DECODER tolerates being blocked on the
++        // encoder stream, so the decoder must be built for at least that many —
++        // otherwise an encoder-heavy origin exceeds our real limit (Firefox's
++        // default is 10) and the connection dies with QPACK_DECOMPRESSION_FAILED.
++        // Raise the decoder capacity to match what we advertise.
++        let effective_blocked_streams = match fp_profile {
++            H3FingerprintProfile::Chrome | H3FingerprintProfile::Safari => {
++                core::cmp::max(max_blocked_streams, 100)
++            }
++            H3FingerprintProfile::Firefox => max_blocked_streams,
++        };
++
          let http3_settings = Http3Parameters::default()
              .max_table_size_encoder(max_table_size)
              .max_table_size_decoder(max_table_size)
+-            .max_blocked_streams(max_blocked_streams)
++            .max_blocked_streams(effective_blocked_streams)
+             .max_concurrent_push_streams(0)
 @@ -456,7 +462,8 @@
              .connection_parameters(params)
              .webtransport(webtransport)

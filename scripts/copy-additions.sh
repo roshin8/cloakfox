@@ -49,17 +49,25 @@ run "cp -r '$REPO/additions/'* ."
 # is added by patches/font-bundle-packaging.patch.
 if ls "$REPO/bundle/fonts/macos/"*.ttf >/dev/null 2>&1; then
     run "cp '$REPO/bundle/fonts/macos/'*.ttf browser/fonts/"
-    {
-        echo ""
-        echo "# Cloakfox: bundled open-substitute font pack (all platforms)."
-        echo 'DIST_SUBDIR = ""'
-        echo "FINAL_TARGET_FILES.fonts += ["
-        for f in "$REPO/bundle/fonts/macos/"*.ttf; do
-            echo "    \"$(basename "$f")\","
-        done
-        echo "]"
-    } >> browser/fonts/moz.build
-    echo "Staged $(ls "$REPO/bundle/fonts/macos/"*.ttf | wc -l | tr -d ' ') bundled fonts into browser/fonts/"
+    # Idempotency guard: the standard flow runs this script twice (make setup
+    # bakes it into the `unpatched` tag, then make dir re-runs it), so appending
+    # unconditionally would duplicate the FINAL_TARGET_FILES.fonts entries and
+    # fail mozbuild with "Item already in manifest". Only append once.
+    if grep -q "Cloakfox: bundled open-substitute font pack" browser/fonts/moz.build; then
+        echo "Bundled font install rule already present in browser/fonts/moz.build; skipping append."
+    else
+        {
+            echo ""
+            echo "# Cloakfox: bundled open-substitute font pack (all platforms)."
+            echo 'DIST_SUBDIR = ""'
+            echo "FINAL_TARGET_FILES.fonts += ["
+            for f in "$REPO/bundle/fonts/macos/"*.ttf; do
+                echo "    \"$(basename "$f")\","
+            done
+            echo "]"
+        } >> browser/fonts/moz.build
+        echo "Staged $(ls "$REPO/bundle/fonts/macos/"*.ttf | wc -l | tr -d ' ') bundled fonts into browser/fonts/"
+    fi
 fi
 
 # Override the firefox version

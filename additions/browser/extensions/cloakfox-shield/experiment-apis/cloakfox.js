@@ -99,7 +99,9 @@ function buildCloakCfg(seedB64, ucid) {
     "canvas:seed": u32(seedB64, 0),
     "audio:seed":  u32(seedB64, 1),
     "font:seed":   u32(seedB64, 2),
-    "font:spacing_seed": u32(seedB64, 3),
+    // C++ FontSpacingSeedManager reads "fonts:spacing_seed" (plural); the
+    // singular key silently no-ops the per-container font-spacing noise.
+    "fonts:spacing_seed": u32(seedB64, 3),
     "math:trig_seed":    u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   };

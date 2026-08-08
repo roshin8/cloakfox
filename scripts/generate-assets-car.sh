@@ -20,6 +20,15 @@ OUTPUT_FILE="$BRANDING_DIR/Assets.car"
 # The extracted source dir is normally firefox-src, but older layouts named it
 # cloakfox-<version>; try both. Returns non-zero only if nothing is found.
 place_placeholder() {
+    # Never clobber an Assets.car that already exists. On a machine without full
+    # Xcode this fallback runs, but the committed branding Assets.car is the
+    # previously CI-generated REAL icon — overwriting it with Firefox's
+    # placeholder would ship the wrong icon AND dirty/destroy the tracked asset
+    # on every `make package-macos`. Only fill in when nothing is there.
+    if [[ -s "$OUTPUT_FILE" ]]; then
+        echo "Assets.car: keeping existing $OUTPUT_FILE (not overwriting with placeholder)."
+        return 0
+    fi
     local cand
     for cand in \
         "$REPO_DIR/firefox-src/browser/branding/official/Assets.car" \

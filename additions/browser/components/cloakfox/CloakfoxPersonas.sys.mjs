@@ -277,6 +277,38 @@ const GENERIC_FONTS = {
   linux: { serif: "DejaVu Serif", sans: "DejaVu Sans", mono: "DejaVu Sans Mono" },
 };
 
+// The CSS-generic prefs (font.name-list.<generic>.x-western) are PROCESS-GLOBAL
+// — one value for every container — but each container narrows to its own
+// persona's font allowlist. font.name-list.* prefs are COMMA-SEPARATED fallback
+// LISTS, so we publish the UNION of all three OSes' generics and let Gecko pick
+// the first that resolves under the active container's per-container filter
+// (FontListManager). For this to work cross-OS, font-hijacker.patch also keeps
+// all these families in the process-global whitelist so ApplyWhitelist doesn't
+// delete them; the per-container filter still hides the ones outside a
+// container's persona.
+//
+// ORDER MATTERS — macOS → Windows → Linux — so each OS resolves its OWN generic,
+// not merely a valid one:
+//   serif: Times(mac-only) → Times New Roman(win, also mac) → DejaVu Serif(linux)
+//   sans:  Helvetica(mac-only) → Arial(win, also mac) → DejaVu Sans(linux)
+//   mono:  Menlo(mac-only) → Consolas(win-only) → DejaVu Sans Mono(linux)
+// A macOS container hits its exclusive font first (Times/Helvetica/Menlo); a
+// Windows container skips those (not in its allowlist) and lands on
+// TNR/Arial/Consolas; Linux lands on DejaVu — each matching GENERIC_FONTS[os].
+export function genericFontListUnion() {
+  const order = ["macos", "windows", "linux"];
+  const join = (slot) => {
+    const seen = new Set();
+    const out = [];
+    for (const os of order) {
+      const fam = GENERIC_FONTS[os][slot];
+      if (fam && !seen.has(fam)) { seen.add(fam); out.push(fam); }
+    }
+    return out.join(", ");
+  };
+  return { serif: join("serif"), sans: join("sans"), mono: join("mono") };
+}
+
 function detectOSFromUA(ua) {
   if (!ua) return "linux";
   if (ua.includes("Macintosh") || ua.includes("Mac OS")) return "macos";

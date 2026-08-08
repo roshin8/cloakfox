@@ -35,9 +35,8 @@ import os
 import sys
 import time
 
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.firefox.service import Service
+# selenium is imported lazily inside run() so the pure scoring logic
+# (evaluate_payload) can be imported and unit-tested without a browser stack.
 
 
 # Probe runs in page context via <script> injection, collects into a
@@ -161,6 +160,10 @@ s.textContent = `
     safe('setHttp3Profile', () => typeof setHttp3Profile);
     safe('setNavigatorUserAgent', () => typeof setNavigatorUserAgent);
 
+    // Completion sentinel: only set if the whole try-block ran. If the probe
+    // throws anywhere above, __ok is absent and the Python side treats the
+    // result as a FAILED run (not an empty-but-passing one).
+    r.__ok = true;
     } finally {
       const out = document.createElement('pre');
       out.id = '_probe';
@@ -208,6 +211,10 @@ def _verdict(key, value):
 
 
 def run(bin_path: str) -> int:
+    from selenium import webdriver
+    from selenium.webdriver.firefox.options import Options
+    from selenium.webdriver.firefox.service import Service
+
     opts = Options()
     opts.binary_location = bin_path
     opts.add_argument("--headless")
@@ -237,29 +244,60 @@ def run(bin_path: str) -> int:
         if not raw:
             print("Probe element missing — inline script didn't run.")
             return 2
-        data = json.loads(raw)
-
-        # Print table
-        print(f"{'Signal':<40} {'Value':<40} Verdict")
-        print("-" * 90)
-        unspoofed = 0
-        total_heuristics = 0
-        for k in sorted(data.keys()):
-            v = data[k]
-            v_str = str(v)[:40]
-            verdict = _verdict(k, v)
-            print(f"{k:<40} {v_str:<40} {verdict}")
-            if verdict in ("UNSPOOFED", "spoofed"):
-                total_heuristics += 1
-                if verdict == "UNSPOOFED":
-                    unspoofed += 1
-
-        print()
-        print(f"Heuristics: {total_heuristics - unspoofed}/{total_heuristics} spoofed")
-        print(f"Raw JSON: {json.dumps(data, indent=2, default=str)[:1500]}")
-        return 0 if unspoofed == 0 else 1
+        return evaluate_payload(raw)
     finally:
         driver.quit()
+
+
+def evaluate_payload(raw: str) -> int:
+    """Score a probe payload. Pure (no browser) so it can be unit-tested.
+
+    Returns an exit code: 0 = all heuristics spoofed, 1 = at least one signal
+    unspoofed, 2 = the run is unjudgeable (probe didn't complete, or produced no
+    heuristics). The `2` cases are the false-pass guard: before this, a probe
+    that threw mid-run appended `{}` and was scored 0/0 -> exit 0.
+    """
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        print("Probe payload was not valid JSON — treating as failure.")
+        return 2
+    if not isinstance(data, dict):
+        print("Probe payload was not an object — treating as failure.")
+        return 2
+
+    # The inline probe appends its result element in a `finally`, so an element
+    # is present even when the try-block threw partway. Without the completion
+    # sentinel that partial/empty payload would be scored as 0/0 heuristics and
+    # exit 0 (false pass on a broken build). Require it.
+    if not data.pop("__ok", False):
+        print("Probe did not complete (no completion sentinel) — the inline "
+              "script threw before finishing. Treating as failure.")
+        print(f"Partial payload: {json.dumps(data, default=str)[:1000]}")
+        return 2
+
+    # Print table
+    print(f"{'Signal':<40} {'Value':<40} Verdict")
+    print("-" * 90)
+    unspoofed = 0
+    total_heuristics = 0
+    for k in sorted(data.keys()):
+        v = data[k]
+        v_str = str(v)[:40]
+        verdict = _verdict(k, v)
+        print(f"{k:<40} {v_str:<40} {verdict}")
+        if verdict in ("UNSPOOFED", "spoofed"):
+            total_heuristics += 1
+            if verdict == "UNSPOOFED":
+                unspoofed += 1
+
+    print()
+    print(f"Heuristics: {total_heuristics - unspoofed}/{total_heuristics} spoofed")
+    print(f"Raw JSON: {json.dumps(data, indent=2, default=str)[:1500]}")
+    if total_heuristics == 0:
+        print("No heuristics evaluated — cannot judge; treating as failure.")
+        return 2
+    return 0 if unspoofed == 0 else 1
 
 
 if __name__ == "__main__":

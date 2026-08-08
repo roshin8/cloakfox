@@ -35,7 +35,7 @@ export const KEY_TYPES = {
   "canvas:seed":        "int",
   "audio:seed":         "int",
   "font:seed":          "int",
-  "font:spacing_seed":  "int",
+  "fonts:spacing_seed": "int",
   "math:trig_seed":     "int",
 
   // ── navigator / UA ──

@@ -147,22 +147,29 @@
  
 --- a/netwerk/protocol/http/Http2Compression.cpp	2025-12-17 10:38:50
 +++ b/netwerk/protocol/http/Http2Compression.cpp	2026-04-18 23:11:42
-@@ -16,6 +16,7 @@
+@@ -16,6 +16,8 @@
  #include "Http2Compression.h"
  #include "Http2HuffmanIncoming.h"
  #include "Http2HuffmanOutgoing.h"
 +#include "mozilla/Preferences.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
  #include "mozilla/StaticPtr.h"
  #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
  #include "nsCharSeparatedTokenizer.h"
-@@ -1051,11 +1052,30 @@
+@@ -1051,11 +1052,36 @@
    }
- 
+
    // colon headers first
 +  // Cloakfox: HPACK pseudo-header order is an Akamai h2 fingerprint input.
 +  // Firefox: m,p,a,s. Chrome: m,a,s,p. Safari: m,s,p,a. Toggled via pref.
 +  nsAutoCString h2Profile(mH2Profile);
-+  if (h2Profile.IsEmpty()) {
++  // Master switch: only consult the global fingerprint pref when cloakfox is
++  // enabled. SendHello sets mH2Profile empty when disabled, so without this
++  // gate a lingering network.http.http2.fingerprint_profile pref would still
++  // reorder the pseudo-headers here — a half-spoofed H2 fingerprint (Firefox
++  // SETTINGS + Chrome header order) that matches no real browser, while the
++  // kill-switch claims to be off.
++  if (h2Profile.IsEmpty() && StaticPrefs::cloakfox_enabled()) {
 +    Preferences::GetCString("network.http.http2.fingerprint_profile", h2Profile);
 +  }
 +  bool chromeH2 = h2Profile.EqualsLiteral("chrome");

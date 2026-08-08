@@ -7,20 +7,26 @@ persona publishes in the cloak_cfg blob under "fonts:spacing_seed". This breaks
 text-measurement fingerprinting (offsetWidth / getBoundingClientRect) that would
 otherwise read the host's exact glyph advances.
 
-CRITICAL: measure a CONCRETE whitelisted font (Arial), not a CSS generic. With
-the font whitelist active, generic families (sans-serif/serif/monospace) resolve
-NONDETERMINISTICALLY across launches, so a generic-family probe reports "enabled
-profiles differ" even when the spacing seed is completely dead — a false pass.
-Arial resolves deterministically, so any width change is genuine spacing.
+CRITICAL — why this probe PRE-SEEDS cloak_cfg instead of letting the persona
+generator run: the persona OS is sampled from the seed (see
+CloakfoxPersonas.sampleFingerprint), NOT locked to the host. On a ~1/3 of
+profiles the persona is Linux, whose allowlist does NOT contain Arial, so a
+probe measuring Arial would actually be measuring a SUBSTITUTED font (Arial
+falls back to a generic). That width change is substitution, not spacing — a
+false PASS that hides a completely dead spacing seed.
 
-Over a ~360-glyph string a live seed shifts Arial's width by up to ~36px; a dead
-seed leaves it within measurement jitter (<0.5px) of the disabled baseline. The
-decisive assertion is therefore "enabled differs from disabled", not merely
-"enabled profiles differ from each other":
+To isolate spacing we pin a fixed cloak_cfg_0 whose "fonts" allowlist explicitly
+contains Arial (which the bundled font pack also ships, so it renders identically
+whether Cloakfox is enabled or disabled). Arial therefore NEVER substitutes, and
+the only thing that can move its width is the per-glyph spacing seed. We give two
+"personas" the SAME allowlist but DIFFERENT "fonts:spacing_seed" values, so:
 
-  disabled: clean stock width W0 (deterministic across profiles)
+  disabled: clean stock Arial width W0 (deterministic — bundled face)
   enabled : W0 + per-glyph spacing; must differ from W0 by >1px, differ between
-            two fresh personas, and be stable across launches of one profile
+            the two seeds, and be stable across launches of one profile
+
+A dead seed leaves enabled within jitter of disabled for BOTH seeds -> FAIL,
+which is exactly the regression the old Arial-on-Linux false pass masked.
 
 Exit codes: 0 pass · 1 noise inactive/regressed · 2 couldn't run.
 
@@ -31,6 +37,7 @@ Run:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -41,9 +48,22 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
-# Arial is on the whitelist and resolves to a single concrete face, so it is
-# not subject to generic-family resolution nondeterminism. The long repeated
-# string accumulates per-glyph spacing into a large, unambiguous width delta.
+# Allowlist pinned into cloak_cfg_0. Arial is here AND in the bundled font pack,
+# so it resolves to a single concrete face under Cloakfox and stock alike — no
+# generic-resolution nondeterminism, no substitution. The rest are web-safe
+# families so generic CSS still resolves.
+PINNED_FONTS = [
+    "Arial", "Arial Black", "Comic Sans MS", "Courier New", "Georgia",
+    "Impact", "Times New Roman", "Trebuchet MS", "Verdana", "Tahoma",
+    "Courier", "Helvetica",
+]
+
+# Two personas: identical allowlist, different spacing seeds. Distinct, non-zero.
+SPACING_SEED_A = 0x1111_1111
+SPACING_SEED_B = 0x7EED_2222
+
+# Arial is guaranteed whitelisted (above) and bundled, so it never substitutes;
+# any width change over this long string is pure per-glyph spacing.
 MEASURE = r"""
 const s = document.createElement('span');
 s.style.cssText =
@@ -58,11 +78,31 @@ return parseFloat(s.getBoundingClientRect().width.toFixed(5));
 MIN_SHIFT_PX = 1.0
 
 
-def measure(bin_path: str, enabled: bool, prof: str) -> float:
+def cloak_cfg(spacing_seed: int) -> str:
+    """A minimal, fixed cloak_cfg_0 that whitelists Arial and pins the spacing
+    seed, so the measurement isolates per-glyph spacing (see module docstring)."""
+    return json.dumps({
+        "fonts": sorted(PINNED_FONTS),
+        "fonts:spacing_seed": spacing_seed,
+        # font ordering seed — irrelevant to width, present for coherence.
+        "font:seed": 12345,
+    })
+
+
+def write_profile(prof: str, enabled: bool, spacing_seed: int) -> None:
     Path(prof).mkdir(parents=True, exist_ok=True)
+    # Pre-seed cloak_cfg_0 via user.js. SeedSync only generates a cfg when the
+    # pref is empty, so our fixed value stands; enabling/disabling toggles the
+    # C++ spacing path while the allowlist (hence the measured face) is constant.
+    cfg = cloak_cfg(spacing_seed).replace("\\", "\\\\").replace('"', '\\"')
     Path(prof, "user.js").write_text(
         f'user_pref("cloakfox.enabled", {str(enabled).lower()});\n'
+        f'user_pref("cloakfox.s.cloak_cfg_0", "{cfg}");\n'
     )
+
+
+def measure(bin_path: str, enabled: bool, spacing_seed: int, prof: str) -> float:
+    write_profile(prof, enabled, spacing_seed)
     opts = Options()
     opts.binary_location = bin_path
     opts.add_argument("--headless")
@@ -82,29 +122,32 @@ def measure(bin_path: str, enabled: bool, prof: str) -> float:
 
 def main(bin_path: str) -> int:
     with tempfile.TemporaryDirectory() as tmp:
-        w0 = measure(bin_path, False, os.path.join(tmp, "d1"))
-        w0b = measure(bin_path, False, os.path.join(tmp, "d2"))
-        ea = measure(bin_path, True, os.path.join(tmp, "ea"))
-        eb = measure(bin_path, True, os.path.join(tmp, "eb"))
-        ea2 = measure(bin_path, True, os.path.join(tmp, "ea"))  # same profile again
+        # Disabled baselines use the SAME allowlist (so Arial renders the bundled
+        # face) but the spacing path is off — clean stock width, seed-independent.
+        w0 = measure(bin_path, False, SPACING_SEED_A, os.path.join(tmp, "d1"))
+        w0b = measure(bin_path, False, SPACING_SEED_B, os.path.join(tmp, "d2"))
+        ea = measure(bin_path, True, SPACING_SEED_A, os.path.join(tmp, "ea"))
+        eb = measure(bin_path, True, SPACING_SEED_B, os.path.join(tmp, "eb"))
+        ea2 = measure(bin_path, True, SPACING_SEED_A, os.path.join(tmp, "ea"))
 
     print(f"  disabled  #1/#2: {w0} / {w0b}")
     print(f"  enabled   A/A':  {ea} / {ea2}")
     print(f"  enabled   B:     {eb}")
-    print(f"  |A-disabled|={abs(ea - w0):.3f}px  |B-disabled|={abs(eb - w0):.3f}px")
+    print(f"  |A-disabled|={abs(ea - w0):.3f}px  |B-disabled|={abs(eb - w0b):.3f}px")
     print()
 
     fails = []
     if w0 != w0b:
         fails.append(f"disabled Arial width differs across profiles ({w0} vs "
-                     f"{w0b}) — stock metrics should be deterministic")
-    if abs(ea - w0) < MIN_SHIFT_PX and abs(eb - w0) < MIN_SHIFT_PX:
+                     f"{w0b}) — with Arial whitelisted+bundled this must be "
+                     f"deterministic; a difference means substitution leaked in")
+    if abs(ea - w0) < MIN_SHIFT_PX and abs(eb - w0b) < MIN_SHIFT_PX:
         fails.append(f"enabled Arial width within {MIN_SHIFT_PX}px of disabled "
-                     f"for both personas — the fonts:spacing_seed noise is dead "
-                     f"(check the cloak_cfg key matches C++)")
+                     f"for both seeds — the fonts:spacing_seed noise is dead "
+                     f"(check the cloak_cfg key matches C++: fonts:spacing_seed)")
     if ea == eb:
-        fails.append("two fresh personas produced identical enabled width — "
-                     "the seed is not per-container")
+        fails.append("two different spacing seeds produced identical enabled "
+                     "width — the seed is not actually driving the spacing")
     if ea != ea2:
         fails.append(f"same profile gave different widths across launches "
                      f"({ea} vs {ea2}) — spacing is not deterministic")
@@ -114,8 +157,8 @@ def main(bin_path: str) -> int:
         for f in fails:
             print(f"  - {f}")
         return 1
-    print("PASS — enabled shifts Arial width per-persona (deterministically); "
-          "disabled measures clean stock metrics")
+    print("PASS — enabled shifts Arial width per-seed (deterministically); "
+          "disabled measures clean stock metrics on the same whitelisted face")
     return 0
 
 
