@@ -245,11 +245,35 @@ index 318d2edba8..12feb91573 100644
    nsCOMPtr<nsPIDOMWindowInner> window;
 
    if (mWindow) {
-@@ -308,6 +336,11 @@ void Navigator::GetAppCodeName(nsAString& aAppCodeName, ErrorResult& aRv) {
+@@ -308,6 +336,35 @@ void Navigator::GetAppCodeName(nsAString& aAppCodeName, ErrorResult& aRv) {
  
  void Navigator::GetAppVersion(nsAString& aAppVersion, CallerType aCallerType,
                                ErrorResult& aRv) const {
-+  // Cloakfox: global config fallback for appVersion
++  // Cloakfox: appVersion is userAgent minus the leading "Mozilla/" in every
++  // real browser. Derive it from THIS navigator's own GetUserAgent() so the
++  // invariant holds no matter which path supplied the UA (per-container
++  // NavigatorManager, the docshell's custom UA, a MaskConfig override, or the
++  // native default) — duplicating that lookup chain is exactly how it drifted.
++  //
++  // This used to read MaskConfig::GetString("navigator.appVersion") first.
++  // That getter is context-BLIND: it resolves the container via
++  // CloakConfigOverlay_CurrentUserContextId() instead of this window's own
++  // BrowsingContext the way GetUserAgent does. When that missed, appVersion
++  // fell through to Firefox's RFP value — measured as "5.0 (Macintosh)" in
++  // EVERY non-default container while the UA claimed "X11; Ubuntu; Linux
++  // x86_64". That violates appVersion === userAgent.slice(8), which is one
++  // line of JS to check, and leaks the REAL host OS.
++  {
++    nsAutoString ua;
++    IgnoredErrorResult uaRv;
++    GetUserAgent(ua, aCallerType, uaRv);
++    if (!uaRv.Failed() && StringBeginsWith(ua, u"Mozilla/"_ns)) {
++      aAppVersion.Assign(Substring(ua, 8));
++      return;
++    }
++  }
++
++  // Explicit per-container appVersion, if a persona set one.
 +  if (auto value = MaskConfig::GetString("navigator.appVersion")) {
 +    aAppVersion.Assign(NS_ConvertUTF8toUTF16(value.value()));
 +    return;
