@@ -47,3 +47,37 @@ as substitution aliases, not as claims of authenticity.
   `scripts/build-font-pack.py` (`NOTO`) for more scripts / JP+KR+TC if needed.
 - Currently only `bundle/fonts/macos/` is populated; `windows/` and `linux/`
   packs (same substitutes) are a mechanical follow-up.
+
+## Cross-OS metric identity — investigated, not a gap (2026-08-07)
+
+An open question was whether the pack needs PER-OS variants so a Windows
+persona's "Arial" measures differently from a macOS persona's, the way real
+machines do. Investigated and measured; the answer is no, for two reasons.
+
+**1. The substitutes are already metrically exact.** Advance widths (/1000em)
+read straight out of the shipped files match the proprietary originals:
+
+| family          | shipped | canonical original |
+|-----------------|---------|--------------------|
+| Arial           | A 667 · M 833 · i 222 · w 722 · 0 556 | identical |
+| Times New Roman | A 722 · M 889 · i 278 · w 722 · 0 500 | identical |
+| Courier New     | 600 (monospace)                        | identical |
+
+**2. Advance widths do not vary by OS.** Arial on Windows and Arial on macOS
+are the same Monotype design with the same metrics — that is precisely why
+metric-compatible substitution works at all. There is no per-OS advance-width
+signature to reproduce, so shipping different substitutes per OS would make us
+*less* accurate, not more.
+
+What genuinely differs between OSes for the same font is RASTERISATION —
+hinting, subpixel AA, DirectWrite vs CoreText. That shows up in canvas-rendered
+text rather than in `getBoundingClientRect()` advances, and it is already
+covered by the per-container canvas noise plus the font-spacing seed.
+
+Measured for completeness: across 10 generated personas, Arial widths spanned
+186.15–187.80px with full overlap between Windows, macOS and Linux personas —
+i.e. the observable spread is per-container seed noise, which is the intended
+design (identical for a given persona on every machine, different between
+containers). A change to fold the persona OS into the spacing seed was
+prototyped and REVERTED: it only re-randomised within the same range and
+created no OS-correlated signal, so it added complexity for no benefit.
