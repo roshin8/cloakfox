@@ -164,7 +164,30 @@ function ensureContainerSeeds(ucid) {
         `cloakfox.container.${ucid}.math_seed`, ""
       );
       if (masterSeed) {
-        Services.prefs.setStringPref(cfgPref, buildCloakCfg(masterSeed, ucid));
+        // MERGE rather than replace. A cfg that is present and well-formed but
+        // simply missing the font keys is an OLD cfg, not a bad one — every
+        // other key in it was set deliberately, whether by a previous build, an
+        // administrator, or a test fixture. Overwriting it wholesale silently
+        // discarded all of them.
+        //
+        // That is not theoretical: it broke six fingerprint probes. Two failed
+        // outright and were blamed on the WebSocket and IndexedDB C++ patches,
+        // which turned out to be correct all along; three more kept PASSING
+        // while testing nothing, because they assert that two runs differ and
+        // two randomly-regenerated personas do differ. Any user-provided
+        // cloak_cfg was subject to exactly the same silent replacement.
+        //
+        // Generated keys fill the gaps; existing keys win.
+        const generated = JSON.parse(buildCloakCfg(masterSeed, ucid));
+        let existing = null;
+        try {
+          const parsed = JSON.parse(curCfg);
+          if (parsed && typeof parsed === "object") {
+            existing = parsed;
+          }
+        } catch (_e) { /* corrupt → generated alone, as before */ }
+        Services.prefs.setStringPref(
+          cfgPref, JSON.stringify(existing ? { ...generated, ...existing } : generated));
       }
     }
   } catch (_e) { /* ignore */ }
