@@ -153,6 +153,31 @@ def run(bin_path: str, probe: str, cfg: dict | None, enabled: bool = True,
         Path(prof).mkdir()
         js = f'user_pref("cloakfox.enabled", {str(enabled).lower()});\n'
         if cfg is not None:
+            # CloakfoxSeedSync.needsCfgRebuild() REGENERATES any cloak_cfg that
+            # is missing the font keys — an upgrade path for profiles written
+            # before per-container fonts existed. A probe cfg without them is
+            # therefore overwritten with a random persona during startup, and
+            # every opt-in flag in it is silently discarded.
+            #
+            # That is not a hypothetical: measured with a control field, an
+            # injected {"navigator.platform": "Win32", ...} came back as
+            # MacIntel, and both webSocket:disabled and
+            # indexedDB:databases:hidden read as unset — which looked exactly
+            # like two dead C++ patches. Adding these keys made the same build
+            # report Win32, throw SecurityError from the WebSocket constructor,
+            # and hide databases(). Both patches were correct all along; the
+            # injection never survived.
+            #
+            # Any probe that seeds cloak_cfg must include these.
+            # A concrete allowlist, not []: an empty one admits no families at
+            # all, which would change the text/SVG metric vectors measured by
+            # this same probe. Caller-supplied keys win over these defaults.
+            cfg = {
+                "fonts:spacing_seed": 0x5EED,
+                "fonts": ["Arial", "Courier New", "Georgia", "Times New Roman",
+                          "Verdana", "Helvetica"],
+                **cfg,
+            }
             js += f'user_pref("cloakfox.s.cloak_cfg_0", {json.dumps(json.dumps(cfg))});\n'
         Path(prof, "user.js").write_text(js)
         opts = Options()

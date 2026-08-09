@@ -97,14 +97,21 @@ s.textContent = `
 
   // ---- Spoofing sanity: WebGL vendor/renderer should be spoofed
   // (ISOLATED-side setWebGLVendor/Renderer calls succeeded). ----
+  // 'no-context' and 'no-ext' are distinct and must not be conflated:
+  // no WebGL at all is an ENVIRONMENT limitation (headless CI with no GPU),
+  // while a live context whose debug_renderer_info vanished is a real
+  // spoofing regression. Reporting both as 'no-ext' made a CI-only failure
+  // indistinguishable from a broken patch.
   safe('webgl.vendor', () => {
     const c = document.createElement('canvas').getContext('webgl');
-    const e = c && c.getExtension('WEBGL_debug_renderer_info');
+    if (!c) return 'no-context';
+    const e = c.getExtension('WEBGL_debug_renderer_info');
     return e ? c.getParameter(e.UNMASKED_VENDOR_WEBGL) : 'no-ext';
   });
   safe('webgl.renderer', () => {
     const c = document.createElement('canvas').getContext('webgl');
-    const e = c && c.getExtension('WEBGL_debug_renderer_info');
+    if (!c) return 'no-context';
+    const e = c.getExtension('WEBGL_debug_renderer_info');
     return e ? c.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'no-ext';
   });
 
@@ -191,8 +198,21 @@ def run(bin_path: str) -> int:
         print(f"{'Assertion':<48} {'Observed':<40} Verdict")
         print("-" * 100)
         failed = []
+        skipped = []
         for key, predicate, msg in ASSERTIONS:
             v = data.get(key, "<missing>")
+            # A vector the environment cannot provide is UNMEASURED, not
+            # passing and not failing. Headless CI runners have no GPU, so
+            # canvas.getContext('webgl') returns null there and every WebGL
+            # assertion would report a spoofing regression that does not
+            # exist. Skipping keeps the suite honest in both directions: it
+            # never turns a real regression green, and it never reports a
+            # missing GPU as a broken patch. 'no-ext' is still a FAIL — that
+            # means WebGL works but the extension went missing.
+            if v == "no-context":
+                skipped.append((key, "no WebGL context in this environment"))
+                print(f"{key:<48} {'no-context':<40} SKIP")
+                continue
             try:
                 ok = predicate(v)
             except Exception as e:
@@ -205,12 +225,19 @@ def run(bin_path: str) -> int:
                 failed.append((key, v, msg))
 
         print()
+        if skipped:
+            print(f"SKIPPED {len(skipped)} assertion(s) the environment cannot measure:")
+            for key, why in skipped:
+                print(f"  - {key}: {why}")
+            print()
         if failed:
             print(f"FAILED {len(failed)} of {len(ASSERTIONS)} stealth assertions:")
             for key, v, msg in failed:
                 print(f"  - {key}: {msg} (got {v!r})")
             return 1
-        print(f"OK — all {len(ASSERTIONS)} stealth assertions pass.")
+        ran = len(ASSERTIONS) - len(skipped)
+        print(f"OK — all {ran} measurable stealth assertions pass"
+              f"{f' ({len(skipped)} skipped)' if skipped else ''}.")
         return 0
     finally:
         driver.quit()
