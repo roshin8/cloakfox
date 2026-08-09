@@ -7,6 +7,10 @@ import {
   genericFontListUnion,
 } from "resource:///modules/CloakfoxPersonas.sys.mjs";
 import { applyOverrides } from "resource:///modules/CloakfoxOverrides.sys.mjs";
+// ContextualIdentityService must be imported explicitly: there is no
+// Services.contextualIdentityService getter. Reading it yields undefined, so
+// calling through it throws a TypeError — see ensureSeedsForAllContainers.
+import { ContextualIdentityService } from "resource://gre/modules/ContextualIdentityService.sys.mjs";
 
 /* Cloakfox: parent-side seed sync for content-process JSWindowActors.
  *
@@ -211,12 +215,38 @@ function ensureSeedsForAllContainers() {
   ensureContainerSeeds(0);
   applyGenericFontPrefs();
   // Plus every user-defined container.
+  //
+  // This used to call Services.contextualIdentityService, which does NOT
+  // exist — there is no such Services getter, so it evaluated to undefined
+  // and the property access threw a TypeError on every single call. The
+  // catch below swallowed it as "CIS may not be ready yet", so the failure
+  // was permanent AND silent: only the default container ever got seeds.
+  //
+  // Measured before the fix, on a container the user created in the UI:
+  //     cloak_cfg prefs present : cloakfox.s.cloak_cfg_0   (only)
+  //     container seed prefs    : ucid 0 only
+  //     real container ucid=6   : userAgent, platform AND oscpu all reported
+  //                               the REAL host, with no spoofing at all
+  //
+  // i.e. per-container isolation — the reason containers exist here — was
+  // inert for every container but the default one.
+  //
+  // Keep the try/catch (container seeding must never break startup) but scope
+  // it per container, so one bad container can't stop the rest from seeding.
+  let ids = [];
   try {
-    const ids = Services.contextualIdentityService.getPublicIdentities();
-    for (const id of ids) {
+    ids = ContextualIdentityService.getPublicIdentities();
+  } catch (e) {
+    console.error("Cloakfox: could not enumerate containers to seed", e);
+  }
+  for (const id of ids) {
+    try {
       ensureContainerSeeds(id.userContextId);
+    } catch (e) {
+      console.error(
+        `Cloakfox: failed to seed container ${id.userContextId}`, e);
     }
-  } catch (_e) { /* CIS may not be ready yet */ }
+  }
 }
 
 function snapshot() {

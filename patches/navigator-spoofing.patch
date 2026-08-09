@@ -208,10 +208,11 @@ index 318d2edba8..12feb91573 100644
  
  #include "Geolocation.h"
  #include "base/basictypes.h"
-@@ -114,6 +118,18 @@
+@@ -113,6 +117,18 @@
+ #include "mozilla/dom/WindowGlobalChild.h"
  #include "mozilla/intl/LocaleService.h"
  #include "mozilla/webgpu/Instance.h"
- 
++
 +
 +// Cloakfox: Lazy initialization for global timezone config.
 +// Cannot use static init because SpiderMonkey may not be ready yet.
@@ -223,11 +224,11 @@ index 318d2edba8..12feb91573 100644
 +    nsJSUtils::SetTimeZoneOverride(tz.value().c_str());
 +  }
 +}
-+
+ 
  namespace mozilla::dom {
  
- static const nsLiteralCString kVibrationPermissionType = "vibration"_ns;
-@@ -262,5 +278,17 @@ void Navigator::Invalidate() {
+@@ -261,6 +277,32 @@ void Navigator::GetUserAgent(nsAString& aUserAgent, Ca
+ 
  void Navigator::GetUserAgent(nsAString& aUserAgent, CallerType aCallerType,
                               ErrorResult& aRv) const {
 +  // Cloakfox: per-context user agent
@@ -242,10 +243,24 @@ index 318d2edba8..12feb91573 100644
 +      return;
 +    }
 +  }
++  // Cloakfox: per-container config fallback, same as GetPlatform/GetOscpu.
++  // Without this the window UA skipped the container's own cloak_cfg entirely
++  // and fell through to the process-global handler value, so every container
++  // reported ONE user agent while platform and oscpu came from their own
++  // per-container config. Measured on a real container whose cfg said Windows:
++  //     userAgent = Mozilla/5.0 (X11; Linux x86_64; …)   <- global
++  //     platform  = Win32                                <- cloak_cfg_<ucid>
++  //     oscpu     = Windows NT 10.0; Win64; x64          <- cloak_cfg_<ucid>
++  // The worker path (WorkerNavigator::GetUserAgent) already had this lookup;
++  // only the window path was missing it, which is why the two disagreed.
++  if (auto value = MaskConfig::GetString("navigator.userAgent")) {
++    aUserAgent.Assign(NS_ConvertUTF8toUTF16(value.value()));
++    return;
++  }
    nsCOMPtr<nsPIDOMWindowInner> window;
-
+ 
    if (mWindow) {
-@@ -308,6 +336,35 @@ void Navigator::GetAppCodeName(nsAString& aAppCodeName, ErrorResult& aRv) {
+@@ -308,6 +350,35 @@ void Navigator::GetAppVersion(nsAString& aAppVersion, 
  
  void Navigator::GetAppVersion(nsAString& aAppVersion, CallerType aCallerType,
                                ErrorResult& aRv) const {
@@ -281,13 +296,13 @@ index 318d2edba8..12feb91573 100644
    nsCOMPtr<Document> doc = mWindow->GetExtantDoc();
  
    nsresult rv = GetAppVersion(
-@@ -423,6 +456,24 @@
-
+@@ -423,7 +494,25 @@ void Navigator::GetPlatform(nsAString& aPlatform, Call
+ 
  void Navigator::GetPlatform(nsAString& aPlatform, CallerType aCallerType,
                              ErrorResult& aRv) const {
 +  EnsureGlobalTimezoneInitialized();
 +  // Cloakfox: per-context navigator platform
-+  if (mWindow) {
+   if (mWindow) {
 +    uint32_t userContextId = 0;
 +    if (BrowsingContext* bc = mWindow->GetBrowsingContext()) {
 +      userContextId = bc->OriginAttributesRef().mUserContextId;
@@ -303,10 +318,11 @@ index 318d2edba8..12feb91573 100644
 +    aPlatform.Assign(NS_ConvertUTF8toUTF16(value.value()));
 +    return;
 +  }
-   if (mWindow) {
++  if (mWindow) {
      BrowsingContext* bc = mWindow->GetBrowsingContext();
      nsString customPlatform;
-@@ -448,6 +482,23 @@ void Navigator::GetPlatform(nsAString& aPlatform, CallerType aCallerType,
+     if (bc) {
+@@ -448,6 +537,23 @@ void Navigator::GetOscpu(nsAString& aOSCPU, CallerType
  
  void Navigator::GetOscpu(nsAString& aOSCPU, CallerType aCallerType,
                           ErrorResult& aRv) const {
@@ -330,7 +346,7 @@ index 318d2edba8..12feb91573 100644
    if (aCallerType != CallerType::System) {
      // If fingerprinting resistance is on, we will spoof this value. See
      // nsRFPService.h for details about spoofed values.
-@@ -683,6 +729,22 @@ bool Navigator::GlobalPrivacyControl() {
+@@ -683,6 +789,22 @@ uint64_t Navigator::HardwareConcurrency() {
  }
  
  uint64_t Navigator::HardwareConcurrency() {
