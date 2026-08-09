@@ -329,6 +329,101 @@ jobs:
           echo "Probes are the only guard against SILENT spoofing regressions."
           exit 1
 
+  # Same probe suite, run against the LINUX build.
+  #
+  # Every fingerprint result in this project has been validated on macOS only —
+  # one Apple Silicon dev box plus a macOS runner. That is a weak base for a
+  # browser whose whole job is host-independence: several bugs found so far were
+  # host-dependent, and personas sample an OS from the seed rather than locking
+  # to the host, so a macOS host silently exercises the "persona matches host"
+  # path a third of the time and the mismatch path the rest. On Linux the same
+  # personas land differently, the font stack is different, and any assertion
+  # that quietly assumed a Mac shows up here.
+  #
+  # continue-on-error on the suite step (not the job) so a Linux-only failure is
+  # reported with full output rather than aborting mid-run.
+  fingerprint-tests-linux:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install selenium + geckodriver
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install selenium
+          # Pinned URL rather than a package manager: apt has no geckodriver and
+          # snap is unavailable on the runner. The probes pass the system-access
+          # flag as a geckodriver service arg, which works on 0.36 and 0.37 alike,
+          # so this version can move without breaking them.
+          curl -sL -o /tmp/gd.tar.gz \
+            https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-linux64.tar.gz
+          sudo tar -xzf /tmp/gd.tar.gz -C /usr/local/bin
+          geckodriver --version
+
+      - name: Install runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-0 libdbus-glib-1-2 libasound2t64 || \
+            sudo apt-get install -y libgtk-3-0 libdbus-glib-1-2 libasound2
+
+      - name: Download Linux build
+        uses: actions/download-artifact@v4
+        with:
+          name: cloakfox-linux-x86_64
+          path: artifact
+
+      - name: Extract build
+        run: |
+          set -euo pipefail
+          TARBALL=$(find artifact -name "*.tar.bz2" | head -1)
+          echo "tarball: $TARBALL"
+          mkdir -p /tmp/cfx-linux
+          tar -xjf "$TARBALL" -C /tmp/cfx-linux
+          BIN=$(find /tmp/cfx-linux -maxdepth 3 -type f -name "cloakfox" | head -1)
+          echo "binary: $BIN"
+          test -n "$BIN"
+          echo "CLOAKFOX_BIN=$BIN" >> "$GITHUB_ENV"
+
+      - name: Run fingerprint probe suite
+        id: probes
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python tests/fingerprint/run_all.py 2>&1 | tee /tmp/probe-output-linux.txt
+
+      - name: Summarise results
+        if: always()
+        run: |
+          {
+            echo "## Fingerprint probe suite (Linux)"
+            echo ""
+            echo '```'
+            sed -n '/^====/,$p' /tmp/probe-output-linux.txt 2>/dev/null | head -60 || \
+              echo "no probe output captured"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload probe output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fingerprint-probe-output-linux
+          path: /tmp/probe-output-linux.txt
+
+      - name: Fail if probes regressed
+        if: steps.probes.outcome == 'failure'
+        run: |
+          echo "One or more fingerprint probes failed on LINUX."
+          echo "A Linux-only failure usually means an assertion assumed a macOS host."
+          exit 1
+
   release:
     needs: [build-macos, build-linux]
     if: startsWith(github.ref, 'refs/tags/')
