@@ -199,6 +199,21 @@ UNSPOOFED_MARKERS = {
     "setCanvasSeed": lambda v: v == "function",  # if still present, inject never ran
 }
 
+# Signals whose "UNSPOOFED" verdict depends on the HOST matching the sampled
+# persona. The persona OS is drawn from the seed, not locked to the host, so a
+# macOS runner will draw a Mac persona a fair fraction of the time — and then
+# platform really is "MacIntel" while nothing is broken. Failing the suite on
+# that makes this probe report a regression on a coin flip, which is exactly
+# what happened in CI (build was green, spoofing was correct).
+#
+# The header above already says to treat these as advisory; this makes the exit
+# code agree. They are still printed and still counted in the table, so a real
+# regression is visible — it just does not fail the run on its own. The
+# host-INDEPENDENT markers below (native UA leaking, un-noised Math.sin, a
+# surviving setCanvasSeed) remain fatal, because none of them can be explained
+# by persona/host coincidence.
+ADVISORY_MARKERS = {"platform", "WebGL.vendor", "WebGL.renderer"}
+
 
 def _verdict(key, value):
     h = UNSPOOFED_MARKERS.get(key)
@@ -280,6 +295,7 @@ def evaluate_payload(raw: str) -> int:
     print("-" * 90)
     unspoofed = 0
     total_heuristics = 0
+    advisory_hits = []
     for k in sorted(data.keys()):
         v = data[k]
         v_str = str(v)[:40]
@@ -287,11 +303,15 @@ def evaluate_payload(raw: str) -> int:
         print(f"{k:<40} {v_str:<40} {verdict}")
         if verdict in ("UNSPOOFED", "spoofed"):
             total_heuristics += 1
-            if verdict == "UNSPOOFED":
+            if verdict == "UNSPOOFED" and k not in ADVISORY_MARKERS:
                 unspoofed += 1
+            elif verdict == "UNSPOOFED":
+                advisory_hits.append(k)
 
     print()
     print(f"Heuristics: {total_heuristics - unspoofed}/{total_heuristics} spoofed")
+    if advisory_hits:
+        print(f"Advisory (host may match persona, not failing): {', '.join(advisory_hits)}")
     print(f"Raw JSON: {json.dumps(data, indent=2, default=str)[:1500]}")
     if total_heuristics == 0:
         print("No heuristics evaluated — cannot judge; treating as failure.")

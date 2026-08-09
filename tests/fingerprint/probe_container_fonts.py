@@ -48,10 +48,21 @@ from selenium.webdriver.firefox.service import Service
 
 PANEL = ["Arial", "Georgia", "Verdana", "Menlo", "Monaco", "Tahoma",
          "Impact", "Geneva"]
+# "fonts:spacing_seed" is REQUIRED for these overlays to survive startup.
+# CloakfoxSeedSync.needsCfgRebuild() regenerates any cloak_cfg missing it, so
+# an overlay without it is replaced by a RANDOM persona before the probe
+# reads anything — measured as: ctx 0 did not expose its overlay's Mac fonts
+# (Menlo/Monaco missing) — overlay not applied: [].
+#
+# Worse than a plain failure, it made this probe non-deterministic: when the
+# regenerated persona happened to be a Mac one, Menlo/Monaco were present and
+# the probe PASSED without ever testing the injected overlay.
 CFG0 = json.dumps({"fonts": ["Arial", "Georgia", "Verdana", "Impact", "Tahoma",
                              "Menlo", "Monaco", "Courier New", "Times New Roman",
-                             "Geneva"]})
-CFG1 = json.dumps({"fonts": ["Arial", "Georgia", "Verdana"]})
+                             "Geneva"],
+                   "fonts:spacing_seed": 0xC0FFEE})
+CFG1 = json.dumps({"fonts": ["Arial", "Georgia", "Verdana"],
+                   "fonts:spacing_seed": 0xBADF00D})
 
 FONT_PROBE = """
 const P = arguments[0];
