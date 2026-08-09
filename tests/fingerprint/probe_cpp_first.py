@@ -137,7 +137,7 @@ def start_driver(binary: str, profile_dir: str) -> webdriver.Firefox:
     opts.add_argument(profile_dir)
     opts.add_argument("-no-remote")
     opts.add_argument("--headless")
-    svc = Service(service_args=["--allow-system-access"], log_path="/tmp/probe-cpp-first.log")
+    svc = Service(service_args=["--allow-system-access"], log_output="/tmp/probe-cpp-first.log")
     return webdriver.Firefox(options=opts, service=svc)
 
 

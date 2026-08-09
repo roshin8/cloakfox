@@ -157,7 +157,7 @@ def _build_driver(bin_path: str, profile_dir: str):
     opts.add_argument("--headless")
     opts.add_argument("-profile")
     opts.add_argument(profile_dir)
-    svc = Service(log_path=str(Path(profile_dir) / "geckodriver.log"))
+    svc = Service(log_output=str(Path(profile_dir) / "geckodriver.log"))
     return webdriver.Firefox(options=opts, service=svc)
 
 

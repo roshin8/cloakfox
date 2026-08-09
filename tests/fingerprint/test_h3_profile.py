@@ -43,7 +43,7 @@ def _build_driver(log_dir: str, h3_int: int = None):
     if h3_int is not None:
         opts.set_preference("network.http.http3.fingerprint_profile", h3_int)
     os.makedirs(log_dir, exist_ok=True)
-    svc = Service(service_args=["--allow-system-access"], log_path=f"{log_dir}/geckodriver.log")
+    svc = Service(service_args=["--allow-system-access"], log_output=f"{log_dir}/geckodriver.log")
     return webdriver.Firefox(options=opts, service=svc)
 
 

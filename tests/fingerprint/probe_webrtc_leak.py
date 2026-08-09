@@ -99,7 +99,7 @@ def _run(bin_path: str, enabled: bool) -> dict:
         opts.add_argument("-profile")
         opts.add_argument(prof)
         d = webdriver.Firefox(options=opts,
-                              service=Service(log_path=str(Path(prof) / "gd.log")))
+                              service=Service(log_output=str(Path(prof) / "gd.log")))
         try:
             d.get(f"file://{html}")
             deadline = time.time() + 15

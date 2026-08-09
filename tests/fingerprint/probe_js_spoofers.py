@@ -233,7 +233,7 @@ def run(bin_path: str) -> int:
     opts = Options()
     opts.binary_location = bin_path
     opts.add_argument("--headless")
-    svc = Service(service_args=["--allow-system-access"], log_path="/tmp/probe-js.log")
+    svc = Service(service_args=["--allow-system-access"], log_output="/tmp/probe-js.log")
     driver = webdriver.Firefox(options=opts, service=svc)
     try:
         driver.set_page_load_timeout(30)

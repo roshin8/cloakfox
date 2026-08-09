@@ -124,7 +124,7 @@ def run(bin_path: str) -> int:
     opts.binary_location = bin_path
     opts.add_argument("--headless")
     d = webdriver.Firefox(options=opts,
-                          service=Service(service_args=["--allow-system-access"], log_path="/tmp/probe-actor.log"))
+                          service=Service(service_args=["--allow-system-access"], log_output="/tmp/probe-actor.log"))
     try:
         d.set_page_load_timeout(30)
         d.get("https://example.com/")

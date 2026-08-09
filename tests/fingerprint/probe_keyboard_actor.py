@@ -94,7 +94,7 @@ user_pref("toolkit.startup.max_resumed_crashes", -1);
     opts.add_argument(profile_dir)
     opts.add_argument("-no-remote")
     opts.add_argument("--headless")
-    svc = Service(service_args=["--allow-system-access"], log_path="/tmp/probe-keyboard.log")
+    svc = Service(service_args=["--allow-system-access"], log_output="/tmp/probe-keyboard.log")
     driver = webdriver.Firefox(options=opts, service=svc)
 
     try:

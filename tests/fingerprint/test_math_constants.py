@@ -72,7 +72,7 @@ def _build_driver(log_dir: str):
     opts.binary_location = CLOAKFOX_BIN
     opts.add_argument("--headless")
     os.makedirs(log_dir, exist_ok=True)
-    svc = Service(log_path=f"{log_dir}/geckodriver.log")
+    svc = Service(log_output=f"{log_dir}/geckodriver.log")
     return webdriver.Firefox(options=opts, service=svc)
 
 

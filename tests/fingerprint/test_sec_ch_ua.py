@@ -37,7 +37,7 @@ def _build_driver(log_dir: str):
     opts.add_argument("--headless")
     opts.set_preference("devtools.jsonview.enabled", False)
     os.makedirs(log_dir, exist_ok=True)
-    svc = Service(log_path=f"{log_dir}/geckodriver.log")
+    svc = Service(log_output=f"{log_dir}/geckodriver.log")
     return webdriver.Firefox(options=opts, service=svc)
 
 

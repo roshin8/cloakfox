@@ -93,7 +93,7 @@ def detect(bin_path: str, enabled: bool) -> list:
         opts.add_argument("-profile")
         opts.add_argument(prof)
         d = webdriver.Firefox(options=opts,
-                              service=Service(service_args=["--allow-system-access"], log_path=str(Path(prof) / "gd.log")))
+                              service=Service(service_args=["--allow-system-access"], log_output=str(Path(prof) / "gd.log")))
         try:
             d.set_page_load_timeout(30)
             d.get("https://example.com/")

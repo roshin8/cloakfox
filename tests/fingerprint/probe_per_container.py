@@ -165,7 +165,7 @@ def _run(bin_path: str, profile_dir: str, probe_url: str) -> dict:
     opts.add_argument("--headless")
     opts.add_argument("-profile")
     opts.add_argument(profile_dir)
-    svc = Service(log_path=str(Path(profile_dir) / "geckodriver.log"))
+    svc = Service(log_output=str(Path(profile_dir) / "geckodriver.log"))
     d = webdriver.Firefox(options=opts, service=svc)
     try:
         d.get(probe_url)

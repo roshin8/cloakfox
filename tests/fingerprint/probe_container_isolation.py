@@ -207,7 +207,7 @@ def main() -> None:
         # open a tab bound to a specific userContextId).
         opts.add_argument("-profile")
         opts.add_argument(prof)
-        svc = Service(service_args=["--allow-system-access"], log_path=str(Path(prof) / "geckodriver.log"))
+        svc = Service(service_args=["--allow-system-access"], log_output=str(Path(prof) / "geckodriver.log"))
         driver = webdriver.Firefox(options=opts, service=svc)
         try:
             res_a = _read_probe_in_container(driver, probe_url, UCID_A)

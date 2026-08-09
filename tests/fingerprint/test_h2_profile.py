@@ -73,7 +73,7 @@ def _probe(bin_path: str, profile: str, log_dir: Path) -> dict:
     opts.set_preference("browser.startup.page", 0)
     opts.set_preference("devtools.jsonview.enabled", False)  # want raw JSON, not viewer
 
-    svc = Service(log_path=str(log_dir / f"gd-{profile}.log"))
+    svc = Service(log_output=str(log_dir / f"gd-{profile}.log"))
     driver = webdriver.Firefox(options=opts, service=svc)
     try:
         driver.set_page_load_timeout(30)
