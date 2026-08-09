@@ -1,6 +1,26 @@
 /*
 Helper to extract values from the CLOAK_CONFIG environment variable(s).
 Written by daijro.
+
+CLOAKFOX: THIS IS THE PRE-PATCH BASE. Do not reason about how config is
+resolved at runtime from this file alone — it is copied into firefox-src by
+scripts/copy-additions.sh and then rewritten by the patch stack
+(cloak-config-webidl.patch adds the per-container overlay;
+worker-container-identity.patch threads userContextId through the remaining
+getters). Read firefox-src/cloakcfg/MaskConfig.hpp for the real behaviour.
+
+Two traps this file sets for a reader:
+
+  * The `userContextId` parameter below is ACCEPTED AND IGNORED here. Only
+    the patched copy honours it, via GetContextOverlay(userContextId). A
+    caller who passes a container id and reads this file will believe it
+    took effect; it silently resolves the env/ctx-0 config instead. That is
+    exactly how the worker navigator getters read container 0's persona for
+    every container without anyone noticing.
+
+  * The getters here read ONLY the CLOAK_CONFIG env var (the Camoufox
+    automation path). Per-container cloak_cfg_<ucid> prefs — how Cloakfox
+    actually stores personas — do not exist in this file at all.
 */
 
 #pragma once
