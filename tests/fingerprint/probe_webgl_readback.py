@@ -99,7 +99,9 @@ def run(bin_path: str, seed: int) -> dict:
     with tempfile.TemporaryDirectory() as t:
         prof = os.path.join(t, "p")
         Path(prof).mkdir()
-        cfg = json.dumps({"canvas:seed": seed, "navigator.platform": "Win32"})
+        cfg = json.dumps({"canvas:seed": seed, "navigator.platform": "Win32",
+                          "fonts": ["Arial", "Verdana", "Georgia"],
+                          "fonts:spacing_seed": 0x5EED})
         Path(prof, "user.js").write_text(
             'user_pref("cloakfox.enabled", true);\n'
             f'user_pref("cloakfox.s.cloak_cfg_0", {json.dumps(cfg)});\n')

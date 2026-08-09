@@ -72,7 +72,7 @@ def launch_and_hash_canvas(binary, canvas_seed_value):
     with open(os.path.join(profile_dir, "user.js"), "w") as f:
         f.write(f'''
 user_pref("cloakfox.enabled", true);
-user_pref("cloakfox.s.cloak_cfg_0", "{{\\"canvas:seed\\":{canvas_seed_value}}}");
+user_pref("cloakfox.s.cloak_cfg_0", "{{\\"canvas:seed\\":{canvas_seed_value},\\"fonts\\":[\\"Arial\\",\\"Verdana\\"],\\"fonts:spacing_seed\\":24242}}");
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
 ''')

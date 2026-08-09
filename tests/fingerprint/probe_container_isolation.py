@@ -169,8 +169,16 @@ def _read_probe_in_container(driver, probe_url: str, ucid: int) -> dict:
 
 def _profile(profile_dir: str) -> None:
     Path(profile_dir).mkdir(parents=True, exist_ok=True)
-    cfg_a = json.dumps(CFG_A)
-    cfg_b = json.dumps(CFG_B)
+    # "fonts"/"fonts:spacing_seed" are required for these overlays to SURVIVE
+    # startup: CloakfoxSeedSync.needsCfgRebuild() regenerates any cloak_cfg
+    # missing them. Without these, BOTH containers get random personas — which
+    # still differ from each other, so the isolation assertion passes while
+    # testing nothing it injected. Distinct spacing seeds keep the two
+    # containers distinguishable for the right reason.
+    cfg_a = json.dumps({"fonts": ["Arial", "Verdana", "Georgia"],
+                        "fonts:spacing_seed": 0xA11CE, **CFG_A})
+    cfg_b = json.dumps({"fonts": ["Arial", "Verdana", "Georgia"],
+                        "fonts:spacing_seed": 0xB0B, **CFG_B})
     Path(profile_dir, "user.js").write_text(
         'user_pref("cloakfox.enabled", true);\n'
         'user_pref("privacy.userContext.enabled", true);\n'
