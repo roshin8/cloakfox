@@ -1,38 +1,12 @@
+diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
 --- a/browser/installer/package-manifest.in
 +++ b/browser/installer/package-manifest.in
-@@ -44,6 +44,23 @@
+@@ -43,6 +43,9 @@
+ @RESPATH@/firefox.icns
  @RESPATH@/document.icns
  @RESPATH@/Assets.car
- @RESPATH@/@LPROJ_ROOT@.lproj/*
-+#endif
-+
-+; Cloakfox: bundled open-substitute font pack.
-+;
-+; Deliberately OUTSIDE the XP_MACOSX block. copy-additions.sh stages the pack
-+; into browser/fonts on every platform and FINAL_TARGET_FILES installs it to
-+; dist/bin/fonts, but this manifest entry used to sit inside #ifdef XP_MACOSX,
-+; so mach package silently dropped it everywhere else. Linux builds therefore
-+; shipped with NO bundled fonts while macOS shipped with them — the font
-+; fingerprint surface differed by platform, and a persona claiming another
-+; OS's fonts fell back to the host's on Linux.
-+;
-+; MOZ_BUNDLED_FONTS already defaults ON for Linux and Windows
-+; (toolkit/moz.configure: bundled_fonts_default), so this guard is enough;
-+; platforms without it are unaffected.
 +#ifdef MOZ_BUNDLED_FONTS
 +@RESPATH@/fonts/*
++#endif
+ @RESPATH@/@LPROJ_ROOT@.lproj/*
  #endif
- 
- [@AB_CD@]
-@@ -250,6 +267,11 @@
- #endif
- #endif
- 
-+; Cloakfox specific files
-+@RESPATH@/defaults/pref/local-settings.js
-+@RESPATH@/distribution/policies.json
-+@RESPATH@/cloakfox.cfg
-+
- ; [Default Preferences]
- ; All the pref files must be part of base to prevent migration bugs
- @RESPATH@/browser/@PREF_DIR@/firefox.js

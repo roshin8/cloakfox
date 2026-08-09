@@ -56,17 +56,45 @@ return JSON.stringify(P.filter(present));
 """
 
 
-def fonts_dir_for(bin_path: str) -> Path:
-    # <app>/Contents/MacOS/cloakfox -> <app>/Contents/Resources/fonts
-    return Path(bin_path).resolve().parent.parent / "Resources" / "fonts"
+def fonts_dir_for(bin_path: str) -> Path | None:
+    """Locate the packaged font pack, whatever the platform layout is.
+
+    The pack lands in a different place per platform, and this used to assume
+    the macOS one only:
+
+        macOS   <app>/Contents/MacOS/cloakfox -> <app>/Contents/Resources/fonts
+        Linux   <dir>/cloakfox                -> <dir>/fonts
+
+    On Linux that produced "no Resources/fonts dir in the app (pack not
+    staged)", which reads as a packaging regression. It was not: upstream
+    already ships @RESPATH@/fonts/* for XP_WIN and MOZ_WIDGET_GTK
+    (package-manifest.in), and Cloakfox's own stanza covers XP_MACOSX, so the
+    pack IS packaged on Linux — the probe was just looking in a macOS-shaped
+    path that cannot exist there.
+
+    Returns None when no candidate exists, so the caller can say which paths
+    it tried instead of naming one.
+    """
+    binp = Path(bin_path).resolve()
+    candidates = [
+        binp.parent.parent / "Resources" / "fonts",  # macOS bundle
+        binp.parent / "fonts",                       # Linux / Windows
+    ]
+    for c in candidates:
+        if c.is_dir():
+            return c
+    return None
 
 
 def main(bin_path: str) -> int:
     fdir = fonts_dir_for(bin_path)
-    print(f"  fonts dir: {fdir}")
-    if not fdir.is_dir():
-        print("FAIL — no Resources/fonts dir in the app (pack not staged)")
+    if fdir is None:
+        binp = Path(bin_path).resolve()
+        print("FAIL — no bundled fonts dir found (pack not packaged). Tried:")
+        print(f"    {binp.parent.parent / 'Resources' / 'fonts'}  (macOS bundle)")
+        print(f"    {binp.parent / 'fonts'}  (Linux/Windows)")
         return 1
+    print(f"  fonts dir: {fdir}")
     present_files = {p.name for p in fdir.glob("*.ttf")}
     missing = [f for f in EXPECT_FILES if f not in present_files]
     print(f"  pack files on disk: {len(present_files)} "
