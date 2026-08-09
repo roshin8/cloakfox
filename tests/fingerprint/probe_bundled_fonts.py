@@ -84,11 +84,10 @@ def main(bin_path: str) -> int:
         opts = Options()
         opts.binary_location = bin_path
         opts.add_argument("--headless")
-        opts.add_argument("-remote-allow-system-access")
         opts.add_argument("-profile")
         opts.add_argument(prof)
         d = webdriver.Firefox(options=opts,
-                              service=Service(log_output=str(Path(prof) / "g.log")))
+                              service=Service(service_args=["--allow-system-access"], log_output=str(Path(prof) / "g.log")))
         try:
             d.set_page_load_timeout(30)
             d.get("https://example.com/")

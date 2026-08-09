@@ -106,11 +106,10 @@ def measure(bin_path: str, enabled: bool, spacing_seed: int, prof: str) -> float
     opts = Options()
     opts.binary_location = bin_path
     opts.add_argument("--headless")
-    opts.add_argument("-remote-allow-system-access")
     opts.add_argument("-profile")
     opts.add_argument(prof)
     d = webdriver.Firefox(options=opts,
-                          service=Service(log_path=str(Path(prof) / "gd.log")))
+                          service=Service(service_args=["--allow-system-access"], log_path=str(Path(prof) / "gd.log")))
     try:
         d.set_page_load_timeout(30)
         d.get("https://example.com/")

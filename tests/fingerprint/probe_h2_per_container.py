@@ -137,10 +137,9 @@ def main() -> None:
         opts = Options()
         opts.binary_location = bin_path
         opts.add_argument("--headless")
-        opts.add_argument("-remote-allow-system-access")
         opts.add_argument("-profile")
         opts.add_argument(prof)
-        svc = Service(log_path=str(Path(prof) / "geckodriver.log"))
+        svc = Service(service_args=["--allow-system-access"], log_path=str(Path(prof) / "geckodriver.log"))
         driver = webdriver.Firefox(options=opts, service=svc)
         driver.set_page_load_timeout(30)
         try:

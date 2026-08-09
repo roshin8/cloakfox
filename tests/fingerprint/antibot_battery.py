@@ -67,13 +67,12 @@ def _build_driver(bin_path: str, h2_profile: str, h3_int: int, log_dir: Path,
     opts.binary_location = bin_path
     if headless:
         opts.add_argument("--headless")
-    opts.add_argument("-remote-allow-system-access")
     opts.set_preference("network.http.http2.fingerprint_profile", h2_profile)
     opts.set_preference("network.http.http3.fingerprint_profile", h3_int)
     # Let the extension install its content scripts before first probe.
     opts.set_preference("devtools.jsonview.enabled", False)
     log_dir.mkdir(parents=True, exist_ok=True)
-    svc = Service(log_path=str(log_dir / "geckodriver.log"))
+    svc = Service(service_args=["--allow-system-access"], log_path=str(log_dir / "geckodriver.log"))
     d = webdriver.Firefox(options=opts, service=svc)
     d.set_page_load_timeout(60)
     return d

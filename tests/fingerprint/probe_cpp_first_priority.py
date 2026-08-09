@@ -82,8 +82,7 @@ user_pref("toolkit.startup.max_resumed_crashes", -1);
     opts.add_argument(profile_dir)
     opts.add_argument("-no-remote")
     opts.add_argument("--headless")
-    opts.add_argument("-remote-allow-system-access")
-    svc = Service(log_path="/tmp/probe-priority.log")
+    svc = Service(service_args=["--allow-system-access"], log_path="/tmp/probe-priority.log")
     driver = webdriver.Firefox(options=opts, service=svc)
     try:
         driver.get("https://example.com/")
