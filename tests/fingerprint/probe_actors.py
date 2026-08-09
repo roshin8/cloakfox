@@ -308,7 +308,20 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
         fails.append(f"Gamepad actor: getGamepads() returned {result.get('gamepad_array')} items, all_null={result.get('gamepad_all_null')}")
 
     # WebGPU
-    if not result.get("webgpu_in") or result.get("webgpu_value") != "undefined":
+    #
+    # CloakfoxWebGPUChild early-returns unless "gpu" is already on
+    # Navigator.prototype, and it never REMOVES the property — it replaces the
+    # getter so `'gpu' in navigator` stays true while the value reads
+    # undefined. So webgpu_in == False cannot mean the actor regressed; it
+    # means this build/platform has no WebGPU at all, which is the case on a
+    # headless Linux CI runner with no GPU. Failing there reported a broken
+    # actor on a platform that never had the API.
+    #
+    # A live property whose value is wrong IS still a failure.
+    if not result.get("webgpu_in"):
+        print("  [skip] WebGPU: navigator.gpu absent on this platform "
+              "(no WebGPU build/GPU) — actor has nothing to patch")
+    elif result.get("webgpu_value") != "undefined":
         fails.append(f"WebGPU actor: 'gpu' in nav={result.get('webgpu_in')}, typeof gpu={result.get('webgpu_value')}")
 
     # FeatureDetect
