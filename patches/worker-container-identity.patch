@@ -130,3 +130,108 @@ diff -urp before/dom/workers/WorkerPrivate.cpp after/dom/workers/WorkerPrivate.c
  
    // Create remote debugger endpoint here for child binding in
    // WorkerThreadPrimaryRunnable
+diff -urp before/cloakcfg/MaskConfig.hpp after/cloakcfg/MaskConfig.hpp
+--- a/cloakcfg/MaskConfig.hpp	2026-08-09 11:49:21
++++ b/cloakcfg/MaskConfig.hpp	2026-08-09 11:49:21
+@@ -116,9 +116,9 @@ inline std::optional<std::string> GetString(const std:
+   return data[key].get<std::string>();
+ }
+ 
+-inline std::vector<std::string> GetStringList(const std::string& key) {
++inline std::vector<std::string> GetStringList(const std::string& key, uint32_t userContextId = 0) {
+   std::vector<std::string> result;
+-  auto ctx = GetContextOverlay();
++  auto ctx = GetContextOverlay(userContextId);
+   const auto& src = (HasKey(key, ctx) && ctx[key].is_array()) ? ctx : GetJson();
+   if (!HasKey(key, src)) return {};
+   for (const auto& item : src[key]) {
+@@ -166,8 +166,8 @@ inline std::optional<int32_t> GetInt32(const std::stri
+   return std::nullopt;
+ }
+ 
+-inline std::optional<double> GetDouble(const std::string& key) {
+-  auto ctx = GetContextOverlay();
++inline std::optional<double> GetDouble(const std::string& key, uint32_t userContextId = 0) {
++  auto ctx = GetContextOverlay(userContextId);
+   if (HasKey(key, ctx) && ctx[key].is_number()) return ctx[key].get<double>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+@@ -178,8 +178,12 @@ inline std::optional<double> GetDouble(const std::stri
+   return std::nullopt;
+ }
+ 
+-inline std::optional<bool> GetBool(const std::string& key) {
+-  auto ctx = GetContextOverlay();
++// Cloakfox: takes an explicit userContextId for the same reason GetString
++// does — CloakConfigOverlay_CurrentUserContextId() returns 0 off the main
++// thread, so a worker calling this without one resolves container 0's
++// persona instead of its own.
++inline std::optional<bool> GetBool(const std::string& key, uint32_t userContextId = 0) {
++  auto ctx = GetContextOverlay(userContextId);
+   if (HasKey(key, ctx) && ctx[key].is_boolean()) return ctx[key].get<bool>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+diff -urp before/dom/workers/WorkerNavigator.cpp after/dom/workers/WorkerNavigator.cpp
+--- a/dom/workers/WorkerNavigator.cpp	2026-08-09 11:49:21
++++ b/dom/workers/WorkerNavigator.cpp	2026-08-09 11:49:21
+@@ -105,8 +105,21 @@ JSObject* WorkerNavigator::WrapObject(JSContext* aCx,
+   return WorkerNavigator_Binding::Wrap(aCx, this, aGivenProto);
+ }
+ 
++// Cloakfox: this worker's own container. CloakConfigOverlay_CurrentUserContextId()
++// returns 0 off the main thread, so the context-blind MaskConfig getters would
++// resolve container 0's persona for EVERY worker — a worker/window
++// contradiction plus cross-container correlation. The worker's own origin
++// attributes are valid on any thread, so pass them explicitly.
++static uint32_t CloakfoxWorkerUcid() {
++  if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
++    return wp->GetOriginAttributes().mUserContextId;
++  }
++  return 0;
++}
++
+ bool WorkerNavigator::GlobalPrivacyControl() const {
+-  if (auto value = MaskConfig::GetBool("navigator.globalPrivacyControl");
++  if (auto value = MaskConfig::GetBool("navigator.globalPrivacyControl",
++                                       CloakfoxWorkerUcid());
+       value.has_value())
+     return value.value();
+   bool gpcStatus = StaticPrefs::privacy_globalprivacycontrol_enabled();
+@@ -126,18 +139,6 @@ void WorkerNavigator::SetLanguages(const nsTArray<nsSt
+ void WorkerNavigator::SetLanguages(const nsTArray<nsString>& aLanguages) {
+   WorkerNavigator_Binding::ClearCachedLanguagesValue(this);
+   mProperties.mLanguages = aLanguages.Clone();
+-}
+-
+-// Cloakfox: this worker's own container. CloakConfigOverlay_CurrentUserContextId()
+-// returns 0 off the main thread, so the context-blind MaskConfig getters would
+-// resolve container 0's persona for EVERY worker — a worker/window
+-// contradiction plus cross-container correlation. The worker's own origin
+-// attributes are valid on any thread, so pass them explicitly.
+-static uint32_t CloakfoxWorkerUcid() {
+-  if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+-    return wp->GetOriginAttributes().mUserContextId;
+-  }
+-  return 0;
+ }
+ 
+ void WorkerNavigator::GetAppVersion(nsString& aAppVersion,
+diff -urp before/dom/workers/WorkerPrivate.cpp after/dom/workers/WorkerPrivate.cpp
+--- a/dom/workers/WorkerPrivate.cpp	2026-08-09 11:49:21
++++ b/dom/workers/WorkerPrivate.cpp	2026-08-09 11:49:21
+@@ -6421,7 +6421,14 @@ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalSco
+   // Does not perturb constants (Math.PI, Math.E) — same default as the
+   // window actor; constant noise is opt-in via
+   // cloakfox.opt.math_constants_noise and is self-flagging.
+-  if (auto seedOpt = MaskConfig::GetUint32("math:trig_seed");
++  // Cloakfox: this worker's OWN container. Without the explicit id this
++  // resolved container 0 off the main thread, whose cloak_cfg is not the
++  // one warmed for this worker — so the lookup missed entirely and the
++  // worker-scope Math spoofer silently did not install in any non-default
++  // container (measured: ctx 2 worker returned an exact, unnoised
++  // Math.sin(0.5) while ctx 0's was noised).
++  if (auto seedOpt = MaskConfig::GetUint32(
++          "math:trig_seed", GetOriginAttributes().mUserContextId);
+       seedOpt.has_value() && seedOpt.value() != 0) {
+     nsCString src;
+     src.AppendPrintf(
