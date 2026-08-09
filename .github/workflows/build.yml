@@ -251,7 +251,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cloakfox-linux-x86_64
-          path: firefox-src/obj-*/dist/*.tar.bz2
+          # mach package produces .tar.xz on Firefox 146; the old *.tar.bz2 glob
+          # matched nothing, so this artifact was NEVER uploaded — the step
+          # logged "No files were found" and still reported success. Nothing
+          # consumed it until the Linux probe job, which is what exposed it.
+          path: firefox-src/obj-*/dist/*.tar.xz
+          # Never silently upload nothing again.
+          if-no-files-found: error
 
   # Runs the selenium fingerprint probe suite against the packaged macOS build.
   # Without this nothing exercises tests/fingerprint/ automatically, and the
@@ -382,10 +388,14 @@ jobs:
       - name: Extract build
         run: |
           set -euo pipefail
-          TARBALL=$(find artifact -name "*.tar.bz2" | head -1)
+          TARBALL=$(find artifact \( -name "*.tar.xz" -o -name "*.tar.bz2" \) | head -1)
           echo "tarball: $TARBALL"
+          test -n "$TARBALL"
           mkdir -p /tmp/cfx-linux
-          tar -xjf "$TARBALL" -C /tmp/cfx-linux
+          case "$TARBALL" in
+            *.tar.xz)  tar -xJf "$TARBALL" -C /tmp/cfx-linux ;;
+            *.tar.bz2) tar -xjf "$TARBALL" -C /tmp/cfx-linux ;;
+          esac
           BIN=$(find /tmp/cfx-linux -maxdepth 3 -type f -name "cloakfox" | head -1)
           echo "binary: $BIN"
           test -n "$BIN"
