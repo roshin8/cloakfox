@@ -1,41 +1,45 @@
 # Cloakfox Tests
 
-Ensures that Playwright functionality is not broken.
+Two live suites. Both run in CI (`.github/workflows/build.yml`).
 
----
+## `fingerprint/` — the real suite
 
-This directory is based on the original Playwright-Python [tests](https://github.com/microsoft/playwright-python/tree/main/tests).
-
-It has been modified to skip tests that use the following features:
-
-- Injecting JavaScript into the page or writing to DOM. Cloakfox's `page.evaluate` only supports reading values, not executing within the page context.
-- Overriding the User-Agent.
-- Any tests specific to Chromium or Webkit.
-
----
-
-# Usage
-
-### Setting up the environment
-
-Cd to this directory and run the following command to setup the venv and install the dependencies:
+Selenium + geckodriver probes against a **built binary**, plus unit tests.
 
 ```bash
-bash setup-venv.sh
+export CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox   # macOS
+export CLOAKFOX_BIN=/path/to/cloakfox                               # Linux
+python tests/fingerprint/run_all.py
 ```
 
-### Running the tests
+- `probe_*.py` — one vector per file; `run_all.py` runs them all. These are the
+  only guard against **silent** spoofing regressions, so a probe that cannot
+  measure something must SKIP, never pass. See `probe_stealth` (WebGL
+  no-context) and `probe_actors` (absent WebGPU) for the pattern.
+- `test_*.mjs` — `node --test`, no browser needed.
+- `test_*.py` — pytest. Some need `CLOAKFOX_BIN` and skip without it.
 
-Run via the shell script:
+Anything seeding `cloakfox.s.cloak_cfg_*` must include `fonts` and
+`fonts:spacing_seed`, or `CloakfoxSeedSync.needsCfgRebuild()` replaces the
+injected config with a random persona before the probe reads anything. That
+silently broke six probes — two failed outright, three kept passing while
+testing nothing (two random personas differ, which satisfies a
+"values changed" assertion).
 
-```bash
-bash run-tests.sh --headful --executable-path /path/to/cloakfox-bin
-```
+## `build/` — build-script tests
 
-Or through the Makefile:
+Shell + pytest checks for `scripts/` behaviour (font renaming, Assets.car
+clobbering, copy-additions idempotency). No browser required.
 
-```bash
-make tests headful=true
-```
+## Not Playwright
 
----
+Playwright's Firefox driver speaks the Juggler protocol and needs a
+Juggler-patched binary. Cloakfox does not ship one, so Playwright launches
+time out on a handshake that never comes.
+
+The inherited Playwright suites (`async/`, `async_imp/`, `assets/`,
+`golden-firefox/`, `conftest.py`, `server.py`, and friends) were removed —
+they came from the Camoufox import, never ran on this branch, and
+`conftest.py` imported playwright at collection time, which killed pytest for
+the live tests too. Recover from git history if Playwright support ever
+returns.

@@ -318,9 +318,9 @@ jobs:
           set -euo pipefail
           # These pytest files need a built binary and ran in NO job before —
           # run_all.py only globs probe_*.py. See the unit-tests job for why
-          # --noconftest is needed.
+          # is needed.
           python -m pip install -q pytest
-          python -m pytest -q --noconftest \
+          python -m pytest -q \
             tests/fingerprint/test_math_constants.py \
             tests/fingerprint/test_sec_ch_ua.py
 
@@ -427,7 +427,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install -q pytest
-          python -m pytest -q --noconftest \
+          python -m pytest -q \
             tests/fingerprint/test_math_constants.py \
             tests/fingerprint/test_sec_ch_ua.py
 
