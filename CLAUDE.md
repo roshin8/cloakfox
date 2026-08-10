@@ -14,7 +14,7 @@ A hard fork of Camoufox (Firefox 146.0.1 fork with C++ engine patches) transform
 
 Three layers:
 1. **C++ Engine** — Camoufox + LibreWolf patches (~36 total) applied to Firefox 146.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
-2. **Cloakfox Shield Extension** — Stripped ContainerShield. Background manages containers/profiles/seeds. Inject script calls `window.setXxx()` with domain-specific seeds. JS spoofers handle vectors C++ doesn't cover.
+2. **Cloakfox Shield Extension** — Stripped ContainerShield. Popup UI plus a parent-process pref/persona bridge (`experiment-apis/cloakfox.js`). NO content or inject scripts — see "Spoofer Architecture (cpp-first)" below.
 3. **Config** — `policies.json` + `cloakfox.cfg` restore daily-driver features (search, bookmarks, passwords) while keeping privacy hardened.
 
 ## Build
@@ -35,10 +35,12 @@ make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 - `settings/` — policies.json, cloakfox.cfg, local-settings.js
 - `additions/cloakcfg/` — MaskConfig.hpp, MouseTrajectories.hpp, json.hpp (copied into firefox-src)
 - `additions/browser/extensions/cloakfox-shield/` — Cloakfox Shield extension (TypeScript, React, Tailwind)
-- `additions/juggler/` — Playwright automation bridge
 - `scripts/` — Build automation scripts (patch.py, fetch-firefox.sh, copy-additions.sh, package.py)
 - `branding/` — App icons and about dialog assets
-- `tests/` — Unit (Vitest) and E2E (Playwright)
+- `tests/` — `tests/fingerprint/` is the live suite (selenium probes + node/pytest unit
+  tests). `tests/async*/` and `tests/golden-firefox/` are inherited Playwright E2E
+  suites that do NOT run on this branch (no Juggler); `tests/conftest.py` is their
+  Playwright fixture file and breaks pytest collection, hence `--noconftest`.
 
 ## Spoofer Architecture (cpp-first)
 
@@ -67,10 +69,8 @@ extension code (that pre-pivot design was removed):
 - C++ patches MUST be applied before `./mach build` — they modify Gecko source directly
 - `privacy.resistFingerprinting` MUST be false — RFP conflicts with C++ patches (makes everyone identical; we want per-container uniqueness)
 - `privacy.userContext.enabled` MUST be true — containers are the foundation
-- Inject script MUST run at `document_start` in MAIN world before any page script
-- `window.__CLOAKFOX__` config MUST be deleted after reading to prevent page access
 - Same container + same domain MUST produce identical fingerprints across reloads
-- Don't add console.log in inject scripts (detectable by fingerprinting sites)
+- Don't add console.log to any code that runs in page scope (detectable by fingerprinting sites)
 
 ## Code Style
 
@@ -89,7 +89,9 @@ extension code (that pre-pivot design was removed):
 - Dev build is NON-packaged: actor `*.sys.mjs` are loose files under
   `obj-*/dist/bin/browser/actors/` and `…/Cloakfox.app/Contents/Resources/browser/actors/`
   — copy edited sources there to test JS-only changes with no rebuild.
-- Unit tests: Vitest, `additions/browser/extensions/cloakfox-shield/tests/unit/`
+- Unit tests: `tests/fingerprint/test_*.mjs` (node --test) and `test_*.py`.
+  Run in CI by the `unit-tests` job. NOTE: no Vitest suite exists despite
+  earlier docs claiming one — do not assume `.test.ts` files are present.
 - Test spoofed values are deterministic given same seed
 - Test different containers produce different fingerprints
 - Test different domains produce different fingerprints within same container
