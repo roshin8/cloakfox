@@ -490,16 +490,19 @@ jobs:
             node --test "$f"
           done
 
-      # No Python step. The only candidate, test_probe_js_spoofers_scoring.py,
-      # defines ZERO test functions — pytest reports "no tests collected" and
-      # exits clean, so running it would have been a green step that checked
-      # nothing. test_math_constants and test_sec_ch_ua look pure but drive a
-      # real browser and merely SKIP without CLOAKFOX_BIN; they run in the
-      # fingerprint-tests jobs, where a binary exists.
+      # test_probe_js_spoofers_scoring.py is a main()-style script, not a
+      # pytest module — it has real checks but no test_* functions, so pytest
+      # collects nothing from it and exits clean. Run it the way its own
+      # docstring documents (exit 0 = pass) instead of listing it under pytest,
+      # where it would have been a green step that checked nothing.
       #
-      # (If test_probe_js_spoofers_scoring ever gains real tests, add it back
-      # with --noconftest: tests/conftest.py is a leftover Playwright conftest
-      # that imports playwright at load time and kills collection.)
+      # test_math_constants and test_sec_ch_ua look pure but drive a real
+      # browser and merely SKIP without CLOAKFOX_BIN; they run in the
+      # fingerprint-tests jobs, where a binary exists.
+      - name: Probe scoring self-test
+        run: |
+          set -euo pipefail
+          python tests/fingerprint/test_probe_js_spoofers_scoring.py
 
   release:
     # Gates on the probe suites, not just the builds. A build only proves the
