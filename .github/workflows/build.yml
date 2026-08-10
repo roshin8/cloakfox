@@ -434,8 +434,60 @@ jobs:
           echo "A Linux-only failure usually means an assertion assumed a macOS host."
           exit 1
 
+  # Pure unit tests — no browser, no build. Runs in about a minute.
+  #
+  # These existed and were run by hand; nothing in CI executed them, so they
+  # guarded nothing. They cover logic that is expensive to reach through a
+  # built browser (matchMedia query evaluation, SeedSync font handling, Math
+  # constant policy, Sec-CH-UA, probe scoring) and they catch regressions long
+  # before a 2-hour build would.
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Node unit tests
+        run: |
+          set -euo pipefail
+          for f in tests/fingerprint/test_*.mjs; do
+            echo "--- $f"
+            node --test "$f"
+          done
+
+      - name: Python unit tests
+        run: |
+          set -euo pipefail
+          # Only the tests that need no built binary; the browser-dependent
+          # ones run in the fingerprint-tests jobs.
+          python -m pytest -q \
+            tests/fingerprint/test_math_constants.py \
+            tests/fingerprint/test_sec_ch_ua.py \
+            tests/fingerprint/test_probe_js_spoofers_scoring.py
+
   release:
-    needs: [build-macos, build-linux]
+    # Gates on the probe suites, not just the builds. A build only proves the
+    # thing compiles and packages; the probes are what verify the browser
+    # actually spoofs. Shipping a tag with red probes means shipping silently
+    # broken fingerprint protection, which is the whole product.
+    #
+    # This is not hypothetical caution: build-linux was green for months while
+    # uploading no artifact at all (a *.tar.bz2 glob against a .tar.xz file),
+    # so "the build job passed" has already proven to be a weak release signal
+    # here.
+    needs: [build-macos, build-linux, fingerprint-tests, fingerprint-tests-linux]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
