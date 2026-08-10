@@ -310,6 +310,20 @@ jobs:
           set -o pipefail
           python tests/fingerprint/run_all.py 2>&1 | tee /tmp/probe-output.txt
 
+      - name: Browser-dependent unit tests
+        continue-on-error: true
+        env:
+          CLOAKFOX_BIN: /tmp/cfx-app/Cloakfox.app/Contents/MacOS/cloakfox
+        run: |
+          set -euo pipefail
+          # These pytest files need a built binary and ran in NO job before —
+          # run_all.py only globs probe_*.py. See the unit-tests job for why
+          # --noconftest is needed.
+          python -m pip install -q pytest
+          python -m pytest -q --noconftest \
+            tests/fingerprint/test_math_constants.py \
+            tests/fingerprint/test_sec_ch_ua.py
+
       - name: Summarise results
         if: always()
         run: |
@@ -408,6 +422,15 @@ jobs:
           set -o pipefail
           python tests/fingerprint/run_all.py 2>&1 | tee /tmp/probe-output-linux.txt
 
+      - name: Browser-dependent unit tests
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest
+          python -m pytest -q --noconftest \
+            tests/fingerprint/test_math_constants.py \
+            tests/fingerprint/test_sec_ch_ua.py
+
       - name: Summarise results
         if: always()
         run: |
@@ -467,15 +490,16 @@ jobs:
             node --test "$f"
           done
 
-      - name: Python unit tests
-        run: |
-          set -euo pipefail
-          # Only the tests that need no built binary; the browser-dependent
-          # ones run in the fingerprint-tests jobs.
-          python -m pytest -q \
-            tests/fingerprint/test_math_constants.py \
-            tests/fingerprint/test_sec_ch_ua.py \
-            tests/fingerprint/test_probe_js_spoofers_scoring.py
+      # No Python step. The only candidate, test_probe_js_spoofers_scoring.py,
+      # defines ZERO test functions — pytest reports "no tests collected" and
+      # exits clean, so running it would have been a green step that checked
+      # nothing. test_math_constants and test_sec_ch_ua look pure but drive a
+      # real browser and merely SKIP without CLOAKFOX_BIN; they run in the
+      # fingerprint-tests jobs, where a binary exists.
+      #
+      # (If test_probe_js_spoofers_scoring ever gains real tests, add it back
+      # with --noconftest: tests/conftest.py is a leftover Playwright conftest
+      # that imports playwright at load time and kills collection.)
 
   release:
     # Gates on the probe suites, not just the builds. A build only proves the

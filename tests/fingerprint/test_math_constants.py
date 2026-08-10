@@ -90,8 +90,21 @@ def _read_math(driver, url: str = "http://httpbin.org/html") -> dict:
     not CLOAKFOX_BIN or not os.path.exists(CLOAKFOX_BIN),
     reason="CLOAKFOX_BIN env var not set or binary missing",
 )
-def test_math_pi_is_perturbed(tmp_path):
-    """Math.PI diverges from the IEEE default."""
+def test_math_pi_is_bit_exact_by_default(tmp_path):
+    """Math.PI must equal the IEEE default unless constant noise is opted in.
+
+    This test previously asserted the OPPOSITE — that Math.PI diverges — and
+    failed, because the policy deliberately changed and the test was never
+    updated. It also never ran in CI, so nothing caught the drift.
+
+    CloakfoxMathChild noises the trig FUNCTIONS and leaves the constants
+    bit-exact by default (cloakfox.opt.math_constants_noise, default false).
+    That is intentional: every real engine returns exactly 3.141592653589793,
+    so a perturbed Math.PI is not camouflage — it is a unique, trivially
+    queried flag that says "this browser is lying". Same failure mode as
+    unseeded timer jitter. Math.sin is the real "did the actor fire" signal
+    and is covered by test_math_sin_is_perturbed.
+    """
     driver = _build_driver(str(tmp_path))
     try:
         state = _read_math(driver)
@@ -99,13 +112,13 @@ def test_math_pi_is_perturbed(tmp_path):
             "window.Math !== Math in page scope — spoofer replaced window.Math "
             "but bare Math identifier still resolves to the engine original"
         )
-        assert state["pi"] != math.pi, (
-            f"Math.PI == IEEE default ({math.pi!r}) — spoofer did not run OR "
-            "the per-container noise collapsed to 0. Check math.functions setting."
-        )
-        assert abs(state["pi"] - math.pi) < 1e-12, (
-            f"Math.PI noise ({abs(state['pi'] - math.pi):.2e}) exceeds 1e-12 — "
-            "risks breaking numerical code"
+        assert state["pi"] == math.pi, (
+            f"Math.PI == {state['pi']!r}, expected the IEEE default "
+            f"({math.pi!r}). Perturbing constants is self-flagging: no real "
+            "engine returns anything else, so this is a fingerprint, not a "
+            "defence. If constant noise was deliberately enabled, this test "
+            "must set cloakfox.opt.math_constants_noise and assert the "
+            "bounded-divergence behaviour instead."
         )
     finally:
         driver.quit()
@@ -132,27 +145,28 @@ def test_math_pi_deterministic_in_session(tmp_path):
     not CLOAKFOX_BIN or not os.path.exists(CLOAKFOX_BIN),
     reason="CLOAKFOX_BIN env var not set or binary missing",
 )
-def test_math_pi_differs_across_domains(tmp_path):
-    """Different domains in the same session produce different Math.PI.
+def test_math_pi_is_stable_across_domains(tmp_path):
+    """Math.PI is the IEEE constant on every domain.
 
-    Note: we use different domains rather than different containers because
-    the inject script's fallback config path seeds the PRNG from domain only;
-    the real per-container seeding runs when the background assigns a container
-    profile to the tab, which requires the Multi-Account Containers API to
-    route the tab through. Cross-container testing would need either privileged
-    Marionette calls to create a container and associate a tab with it, or a
-    test-mode pref that forces container-scoped seeding even in the fallback.
+    Was test_math_pi_differs_across_domains, asserting per-domain divergence.
+    Same stale policy as above: constants are bit-exact by default, so they
+    are identical everywhere — and must be, since a constant that varies by
+    domain is a per-site identifier rather than a defence. Per-domain variation
+    belongs to the trig functions, not the constants.
     """
-    driver = _build_driver(str(tmp_path))
-    try:
-        pi_a = _read_math(driver, "http://httpbin.org/html")["pi"]
-        pi_b = _read_math(driver, "http://example.com/")["pi"]
-    finally:
-        driver.quit()
-
-    assert pi_a != pi_b, (
-        f"Math.PI identical across domains (both {pi_a!r}) — "
-        "domain-scoped seeding is not working"
+    seen = set()
+    for host in ("https://example.com/", "https://example.org/"):
+        driver = _build_driver(str(tmp_path / host.replace("://", "_").replace("/", "_")))
+        try:
+            driver.get(host)
+            time.sleep(1.0)
+            seen.add(driver.execute_script("return Math.PI;"))
+        finally:
+            driver.quit()
+    assert seen == {math.pi}, (
+        f"Math.PI varied across domains ({seen}) or diverged from the IEEE "
+        f"default ({math.pi!r}). A constant that changes per site is a "
+        "per-site identifier."
     )
 
 
