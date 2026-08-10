@@ -98,8 +98,13 @@ def _run(bin_path: str, enabled: bool) -> dict:
         opts.add_argument("--headless")
         opts.add_argument("-profile")
         opts.add_argument(prof)
-        d = webdriver.Firefox(options=opts,
-                              service=Service(log_output=str(Path(prof) / "gd.log")))
+        d = webdriver.Firefox(
+            options=opts,
+            # chrome context (for the sharedData read below) needs system
+            # access; passed as a geckodriver service arg because 0.37+
+            # rejects it as a browser capability.
+            service=Service(service_args=["--allow-system-access"],
+                            log_output=str(Path(prof) / "gd.log")))
         try:
             d.get(f"file://{html}")
             deadline = time.time() + 15
@@ -108,6 +113,22 @@ def _run(bin_path: str, enabled: bool) -> dict:
                 if attr:
                     data = json.loads(attr)
                     if data.get("done"):
+                        # CloakfoxWebRTCSync publishes the HTTP-detected public
+                        # IP here; the CloakfoxWebRTC actor feeds it to
+                        # setWebRTCIPv4. Read it so the caller can check the
+                        # two agree.
+                        try:
+                            d.set_context("chrome")
+                            data["synced_ipv4"] = d.execute_script(
+                                'return Services.ppmm.sharedData.get('
+                                '"cloakfox-public-ipv4") || "";')
+                        except Exception as e:
+                            data["synced_ipv4"] = f"ERR {e}"
+                        finally:
+                            try:
+                                d.set_context("content")
+                            except Exception:
+                                pass
                         return data
                 time.sleep(0.3)
             return {"err": "timeout", "ipv4": [], "mdns": []}
@@ -144,6 +165,38 @@ def main() -> None:
     if private_seen:
         print(f"  NOTE: private-range IP in candidates (not this host's real IP): "
               f"{sorted(private_seen)}")
+    # WebRTC must report the SAME public IP the HTTP path already exposed.
+    #
+    # This is the CloakfoxWebRTC actor's actual job, and nothing tested it: the
+    # feature was fully implemented (sync + actor + registration + C++
+    # consumers) while cloakfox.cfg still described it as "planned", so a
+    # regression would have been silent.
+    #
+    # The point is NOT hiding the public IP — a site sees it on the TCP
+    # connection regardless, and advertising a different one would be a
+    # self-contradiction. The point is that WebRTC must not surface an
+    # interface address the HTTP path never revealed (a VPN/proxy bypass).
+    synced = res.get("synced_ipv4") or ""
+    if not synced or synced.startswith("ERR"):
+        print(f"  [skip] no synced public IPv4 (got {synced!r}) — IP-echo did "
+              "not land (offline runner, or cloakfox.enabled false)")
+    elif not ipv4:
+        print("  [skip] no IPv4 ICE candidates gathered — STUN unreachable "
+              "from this network")
+    else:
+        public = {ip for ip in ipv4 if not is_private(ip) and ip != "0.0.0.0"}
+        if not public:
+            print("  [skip] no public IPv4 candidate gathered (STUN blocked)")
+        elif public != {synced}:
+            print(f"  MISMATCH: WebRTC advertised {sorted(public)} but the HTTP "
+                  f"path shows {synced}. WebRTC is surfacing an address the "
+                  "HTTP path did not — exactly the VPN/proxy bypass the "
+                  "CloakfoxWebRTC actor exists to close.")
+            sys.exit(1)
+        else:
+            print(f"  WebRTC public IP == HTTP-visible IP ({synced}) — actor "
+                  "applied setWebRTCIPv4")
+
     print("\nPASS: the machine's real local IP did NOT leak via WebRTC ICE "
           "candidates.")
 
