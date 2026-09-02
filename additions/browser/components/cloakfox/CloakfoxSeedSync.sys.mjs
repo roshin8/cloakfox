@@ -168,13 +168,21 @@ export function needsCfgRebuild(curCfg) {
 }
 
 function ensureContainerSeeds(ucid) {
+  try {
+    if (!Services.prefs.getBoolPref("cloakfox.enabled", true)) return;
+  } catch (_e) { /* ignore */ }
+
   // First, the per-actor seeds (math/keyboard/timing) used by JSWindow
   // Actors. Each is independent so a missing one doesn't gate the others.
   for (const name of SEED_PREF_NAMES) {
     const pref = `cloakfox.container.${ucid}.${name}`;
     try {
       const cur = Services.prefs.getStringPref(pref, "");
-      if (!cur) {
+      let valid = false;
+      try {
+        valid = atob(cur).length === 32;
+      } catch (_e) { /* invalid seed → replace below */ }
+      if (!valid) {
         Services.prefs.setStringPref(pref, randomSeedB64());
       }
     } catch (_e) { /* ignore */ }

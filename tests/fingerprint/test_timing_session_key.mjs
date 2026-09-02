@@ -46,6 +46,56 @@ const mod = await import(
 );
 const { deriveTimingSessionKey, mergeSessionTimingKey } = mod;
 
+function extractConstDeclaration(src, name) {
+  const start = src.indexOf(`const ${name} =`);
+  if (start < 0) throw new Error(`declaration not found: ${name}`);
+  const end = src.indexOf(";", start);
+  return src.slice(start, end + 1);
+}
+
+const seedNamesBlock = extractConstDeclaration(seedSyncSrc, "SEED_PREF_NAMES");
+const randomBlock = extractBlock(seedSyncSrc, /function randomSeedB64\(/);
+const sessionSaltBlock = extractConstDeclaration(seedSyncSrc, "SESSION_TIMING_SALT");
+const lifecycleDeriveBlock = extractBlock(
+  seedSyncSrc, /export function deriveTimingSessionKey\(/
+).replace(/^export\s+/, "");
+const lifecycleMergeBlock = extractBlock(
+  seedSyncSrc, /export function mergeSessionTimingKey\(/
+).replace(/^export\s+/, "");
+const rebuildBlock = extractBlock(
+  seedSyncSrc, /export function needsCfgRebuild\(/
+).replace(/^export\s+/, "");
+const ensureBlock = extractBlock(seedSyncSrc, /function ensureContainerSeeds\(/);
+const lifecycleMod = await import(
+  "data:text/javascript," + encodeURIComponent(`
+    const values = new Map();
+    let writes = 0;
+    const Services = {
+      prefs: {
+        getStringPref(name, fallback) { return values.get(name) ?? fallback; },
+        setStringPref(name, value) { values.set(name, value); writes++; },
+        getBoolPref(name, fallback) { return values.get(name) ?? fallback; },
+      },
+    };
+    ${seedNamesBlock}
+    ${randomBlock}
+    ${sessionSaltBlock}
+    ${lifecycleDeriveBlock}
+    ${lifecycleMergeBlock}
+    ${rebuildBlock}
+    ${ensureBlock}
+    export function setPrefs(entries) {
+      values.clear();
+      writes = 0;
+      for (const [name, value] of entries) values.set(name, value);
+    }
+    export function getPref(name) { return values.get(name); }
+    export function getWrites() { return writes; }
+    export function runEnsure(ucid) { ensureContainerSeeds(ucid); }
+  `)
+);
+const { setPrefs, getPref, getWrites, runEnsure } = lifecycleMod;
+
 const SEED_A = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
 const SEED_B = "Hy4dHBsaGRgXFhUUExIREA8ODQwLCgkIBwYFBAMCAQA=";
 const SALT_A = "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=";
@@ -71,4 +121,78 @@ test("session merge overwrites stale timing words and preserves persona keys", (
   assert.equal(merged["canvas:seed"], 7);
   assert.equal(merged["timing:session_key_hi"], 0x12345678);
   assert.equal(merged["timing:session_key_lo"], 0x90abcdef);
+});
+
+function validCfg(extra = {}) {
+  return JSON.stringify({
+    "canvas:seed": 7,
+    "fonts": ["Arial"],
+    "fonts:spacing_seed": 8,
+    ...extra,
+  });
+}
+
+function validSeed(byte) {
+  return Buffer.from(new Uint8Array(32).fill(byte)).toString("base64");
+}
+
+test("disabled lifecycle leaves container timing prefs and config untouched", () => {
+  const cfg = validCfg({"timing:session_key_hi": 1, "timing:session_key_lo": 2});
+  setPrefs([
+    ["cloakfox.enabled", false],
+    ["cloakfox.container.4.math_seed", validSeed(1)],
+    ["cloakfox.container.4.keyboard_seed", validSeed(2)],
+    ["cloakfox.container.4.timing_seed", validSeed(3)],
+    ["cloakfox.s.cloak_cfg_4", cfg],
+  ]);
+  runEnsure(4);
+  assert.equal(getWrites(), 0);
+  assert.equal(getPref("cloakfox.s.cloak_cfg_4"), cfg);
+});
+
+test("invalid timing seed is repaired before replacing stale session key", () => {
+  setPrefs([
+    ["cloakfox.enabled", true],
+    ["cloakfox.container.5.math_seed", validSeed(1)],
+    ["cloakfox.container.5.keyboard_seed", validSeed(2)],
+    ["cloakfox.container.5.timing_seed", "not valid base64"],
+    ["cloakfox.s.cloak_cfg_5", validCfg({
+      "timing:session_key_hi": 1, "timing:session_key_lo": 2,
+    })],
+  ]);
+  runEnsure(5);
+  assert.equal(atob(getPref("cloakfox.container.5.timing_seed")).length, 32);
+  const cfg = JSON.parse(getPref("cloakfox.s.cloak_cfg_5"));
+  assert.notEqual(cfg["timing:session_key_hi"], 1);
+  assert.notEqual(cfg["timing:session_key_lo"], 2);
+});
+
+test("missing timing seed is installed before a session key is written", () => {
+  setPrefs([
+    ["cloakfox.enabled", true],
+    ["cloakfox.container.7.math_seed", validSeed(1)],
+    ["cloakfox.container.7.keyboard_seed", validSeed(2)],
+    ["cloakfox.s.cloak_cfg_7", validCfg()],
+  ]);
+  runEnsure(7);
+  assert.equal(atob(getPref("cloakfox.container.7.timing_seed")).length, 32);
+  const cfg = JSON.parse(getPref("cloakfox.s.cloak_cfg_7"));
+  assert.equal(typeof cfg["timing:session_key_hi"], "number");
+  assert.equal(typeof cfg["timing:session_key_lo"], "number");
+});
+
+test("one launch keeps a stable session key and avoids a duplicate config write", () => {
+  setPrefs([
+    ["cloakfox.enabled", true],
+    ["cloakfox.container.6.math_seed", validSeed(1)],
+    ["cloakfox.container.6.keyboard_seed", validSeed(2)],
+    ["cloakfox.container.6.timing_seed", validSeed(3)],
+    ["cloakfox.s.cloak_cfg_6", validCfg()],
+  ]);
+  runEnsure(6);
+  const firstCfg = getPref("cloakfox.s.cloak_cfg_6");
+  const writesAfterFirstPass = getWrites();
+  runEnsure(6);
+  assert.equal(getPref("cloakfox.s.cloak_cfg_6"), firstCfg);
+  assert.equal(getWrites(), writesAfterFirstPass);
 });
