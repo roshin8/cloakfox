@@ -62,6 +62,38 @@ function randomSeedB64() {
   return btoa(s);
 }
 
+const SESSION_TIMING_SALT = randomSeedB64();
+
+export function deriveTimingSessionKey(seedB64, saltB64) {
+  const seed = atob(seedB64);
+  const salt = atob(saltB64);
+  if (seed.length !== 32 || salt.length !== 32) {
+    throw new TypeError("timing seed and session salt must be 32 bytes");
+  }
+  let hi = 0x9e3779b9;
+  let lo = 0x85ebca6b;
+  for (let i = 0; i < 32; i++) {
+    hi = Math.imul(hi ^ seed.charCodeAt(i), 16777619) >>> 0;
+    lo = Math.imul(lo ^ salt.charCodeAt(i), 2246822507) >>> 0;
+    hi = (hi ^ (lo >>> 13)) >>> 0;
+    lo = (lo ^ (hi >>> 15)) >>> 0;
+  }
+  return { hi: hi || 1, lo: lo || 1 };
+}
+
+export function mergeSessionTimingKey(cfgJson, key) {
+  let cfg = {};
+  try {
+    const parsed = JSON.parse(cfgJson || "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) cfg = parsed;
+  } catch (_e) {}
+  return JSON.stringify({
+    ...cfg,
+    "timing:session_key_hi": key.hi >>> 0,
+    "timing:session_key_lo": key.lo >>> 0,
+  });
+}
+
 // Derive a uint32 from the seed at offset i*4. Mirrors content/settings.js
 // — keeping the derivation identical means the about:cloakfox UI's
 // "regenerate" button and our auto-generation produce the same shape of
@@ -155,7 +187,7 @@ function ensureContainerSeeds(ucid) {
   // perturbations and the C++ canvas/audio/font noise.
   const cfgPref = `cloakfox.s.cloak_cfg_${ucid}`;
   try {
-    const curCfg = Services.prefs.getStringPref(cfgPref, "");
+    let curCfg = Services.prefs.getStringPref(cfgPref, "");
     // See needsCfgRebuild: regenerate when absent, corrupt, or missing the font
     // keys (a profile upgraded from a pre-fonts build), so per-container fonts
     // actually activate for existing containers.
@@ -186,8 +218,19 @@ function ensureContainerSeeds(ucid) {
             existing = parsed;
           }
         } catch (_e) { /* corrupt → generated alone, as before */ }
-        Services.prefs.setStringPref(
-          cfgPref, JSON.stringify(existing ? { ...generated, ...existing } : generated));
+        curCfg = JSON.stringify(existing ? { ...generated, ...existing } : generated);
+        Services.prefs.setStringPref(cfgPref, curCfg);
+      }
+    }
+    const timingSeed = Services.prefs.getStringPref(
+      `cloakfox.container.${ucid}.timing_seed`, ""
+    );
+    if (timingSeed) {
+      const withSessionKey = mergeSessionTimingKey(
+        curCfg, deriveTimingSessionKey(timingSeed, SESSION_TIMING_SALT)
+      );
+      if (withSessionKey !== curCfg) {
+        Services.prefs.setStringPref(cfgPref, withSessionKey);
       }
     }
   } catch (_e) { /* ignore */ }
