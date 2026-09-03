@@ -1,0 +1,139 @@
+diff --git a/dom/performance/Performance.h b/dom/performance/Performance.h
+--- a/dom/performance/Performance.h
++++ b/dom/performance/Performance.h
+@@ -7,6 +7,7 @@
+ #ifndef mozilla_dom_Performance_h
+ #define mozilla_dom_Performance_h
+ 
++#include "CloakfoxTiming.h"
+ #include "mozilla/Attributes.h"
+ #include "mozilla/DOMEventTargetHelper.h"
+ #include "nsCOMPtr.h"
+@@ -80,6 +81,15 @@ class Performance : public DOMEventTargetHelper {
+ 
+   DOMHighResTimeStamp Now();
+ 
++  DOMHighResTimeStamp PresentTimestamp(DOMHighResTimeStamp aRaw,
++                                        uint64_t aStreamId = 0) const;
++
++  CloakfoxTiming::Interval PresentInterval(DOMHighResTimeStamp aStart,
++                                            DOMHighResTimeStamp aEnd,
++                                            uint64_t aStreamId = 0) const;
++
++  bool HasCloakfoxTimingKey() const;
++
+   DOMHighResTimeStamp NowUnclamped() const;
+ 
+   DOMHighResTimeStamp TimeOrigin();
+@@ -225,6 +234,8 @@ class Performance : public DOMEventTargetHelper {
+   const bool mCrossOriginIsolated;
+   const bool mShouldResistFingerprinting;
+ 
++  const CloakfoxTiming::Key mCloakfoxTimingKey;
++
+  private:
+   MOZ_ALWAYS_INLINE bool CanAddResourceTimingEntry();
+   void ResourceTimingBufferFullEvent();
+diff --git a/dom/performance/Performance.cpp b/dom/performance/Performance.cpp
+--- a/dom/performance/Performance.cpp
++++ b/dom/performance/Performance.cpp
+@@ -25,6 +25,7 @@
+ #include "mozilla/IntegerPrintfMacros.h"
+ #include "mozilla/Perfetto.h"
+ #include "mozilla/Preferences.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/TimeStamp.h"
+ #include "mozilla/dom/MessagePortBinding.h"
+ #include "mozilla/dom/PerformanceBinding.h"
+@@ -114,6 +115,15 @@ already_AddRefed<Performance> Performance::Get(JSContext* aCx,
+   return performance.forget();
+ }
+ 
++static CloakfoxTiming::Key LoadCloakfoxTimingKey(nsIGlobalObject* aGlobal) {
++  nsIPrincipal* principal = aGlobal->PrincipalOrNull();
++  if (!principal || principal->IsSystemPrincipal()) {
++    return {};
++  }
++  return CloakfoxTiming::LoadKey(
++      principal->OriginAttributesRef().mUserContextId);
++}
++
+ Performance::Performance(nsIGlobalObject* aGlobal)
+     : DOMEventTargetHelper(aGlobal),
+       mResourceTimingBufferSize(kDefaultResourceTimingBufferSize),
+@@ -122,7 +133,8 @@ Performance::Performance(nsIGlobalObject* aGlobal)
+       mRTPCallerType(aGlobal->GetRTPCallerType()),
+       mCrossOriginIsolated(aGlobal->CrossOriginIsolated()),
+       mShouldResistFingerprinting(aGlobal->ShouldResistFingerprinting(
+-          RFPTarget::ReduceTimerPrecision)) {}
++          RFPTarget::ReduceTimerPrecision)),
++      mCloakfoxTimingKey(LoadCloakfoxTimingKey(aGlobal)) {}
+ 
+ Performance::~Performance() = default;
+ 
+@@ -147,8 +159,37 @@ DOMHighResTimeStamp Performance::Now() {
+     return rawTime;
+   }
+ 
+-  return nsRFPService::ReduceTimePrecisionAsMSecs(
+-      rawTime, GetRandomTimelineSeed(), mRTPCallerType);
++  const DOMHighResTimeStamp reduced =
++      nsRFPService::ReduceTimePrecisionAsMSecs(
++          rawTime, GetRandomTimelineSeed(), mRTPCallerType);
++  return PresentTimestamp(reduced);
++}
++
++DOMHighResTimeStamp Performance::PresentTimestamp(
++    DOMHighResTimeStamp aRaw, uint64_t aStreamId) const {
++  if (mRTPCallerType == RTPCallerType::SystemPrincipal ||
++      !HasCloakfoxTimingKey() || !StaticPrefs::cloakfox_enabled() ||
++      !StaticPrefs::cloakfox_opt_timer_high_precision_jitter()) {
++    return aRaw;
++  }
++  return CloakfoxTiming::TransformTimestamp(aRaw, mCloakfoxTimingKey,
++                                             aStreamId);
++}
++
++CloakfoxTiming::Interval Performance::PresentInterval(
++    DOMHighResTimeStamp aStart, DOMHighResTimeStamp aEnd,
++    uint64_t aStreamId) const {
++  if (mRTPCallerType == RTPCallerType::SystemPrincipal ||
++      !HasCloakfoxTimingKey() || !StaticPrefs::cloakfox_enabled() ||
++      !StaticPrefs::cloakfox_opt_timer_high_precision_jitter()) {
++    return {aStart, aEnd};
++  }
++  return CloakfoxTiming::TransformInterval(aStart, aEnd,
++                                            mCloakfoxTimingKey, aStreamId);
++}
++
++bool Performance::HasCloakfoxTimingKey() const {
++  return mCloakfoxTimingKey.IsValid();
+ }
+ 
+ DOMHighResTimeStamp Performance::NowUnclamped() const {
+diff --git a/moz.build b/moz.build
+--- a/moz.build
++++ b/moz.build
+@@ -235,4 +235,4 @@ SPHINX_TREES["jsloader"] = "docs/jsloader"
+ 
+ include("build/templates.mozbuild")
+ 
+-DIRS += ["lw"]
++DIRS += ["cloakcfg", "lw"]
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2214,6 +2214,13 @@
+   value: true
+   mirror: always
+ 
++# Present reduced performance timestamps with keyed sub-millisecond detail.
++# Atomic because worker Performance objects read it off the main thread.
++- name: cloakfox.opt.timer_high_precision_jitter
++  type: RelaxedAtomicBool
++  value: true
++  mirror: always
++
+ #---------------------------------------------------------------------------
+ # Prefs starting with "consoleservice."
+ #---------------------------------------------------------------------------

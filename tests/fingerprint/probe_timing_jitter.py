@@ -1,27 +1,8 @@
-"""performance.now() jitter regression probe.
+"""Native performance.now() presentation regression probe.
 
-CloakfoxTimingChild adds sub-millisecond jitter to performance.now() so the
-reading looks high-resolution despite Firefox's 1ms quantisation. The jitter
-must be deterministic per (container, millisecond bucket) — that is what keeps
-performance.now monotonic — but it must NOT be globally predictable.
-
-It previously mixed a hardcoded constant (0xdeadbeef) with the integer
-millisecond and nothing else, so the fractional part was a pure function of the
-integer part: identical on every Cloakfox install and in every container. That
-is not an entropy bit but an exact browser identifier — a site recomputes the
-same hash and checks `t - floor(t) === bucketJitter(floor(t))`. Measured 40/40
-matches across independent profiles before the fix. The hash is now salted with
-the per-container timing_seed.
-
-Checks (host-independent):
-  1. NOT PREDICTABLE — recomputing the old unsalted hash must NOT reproduce the
-     observed fractions. A high match rate means the salt was lost and the
-     browser is trivially identifiable again.
-  2. MONOTONIC — performance.now() must never go backwards (spec requirement,
-     and a violation would itself be detectable). Checked over thousands of
-     samples spanning bucket boundaries.
-  3. SUB-MS RESOLUTION — the reading must actually carry a fractional part,
-     otherwise the jitter is not being applied at all.
+The visible clock must be keyed for windows and workers without replacing the
+native Performance.prototype.now method. The keyed interpolation must remain
+monotonic and stable across reloads in one browser session.
 
 Exit codes: 0 pass · 1 regressed · 2 couldn't run.
 
@@ -32,7 +13,7 @@ Run:
 
 from __future__ import annotations
 
-import json
+import math
 import os
 import sys
 import tempfile
@@ -44,98 +25,185 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
 PROBE = r"""
-// The exact hash the implementation used before it was salted. If this still
-// reproduces the observed fractions, the per-container salt has been lost.
-function unsaltedPredict(ms) {
-  const x = (Math.imul(ms | 0, 2654435761) ^ 0xdeadbeef) >>> 0;
-  return (x % 1000) / 1000;
-}
+const done = arguments[arguments.length - 1];
 
-let hits = 0, checked = 0, fractional = 0;
-for (let i = 0; i < 40; i++) {
-  const t = performance.now();
-  const frac = t - Math.floor(t);
-  if (frac > 0) fractional++;
-  if (Math.abs(frac - unsaltedPredict(Math.floor(t))) < 1e-9) hits++;
-  checked++;
-  for (let k = 0; k < 50000; k++) { /* burn time to cross ms buckets */ }
-}
-
-// Monotonicity over a dense sample run.
-let prev = -Infinity, violations = 0, n = 0;
-for (let i = 0; i < 4000; i++) {
-  const t = performance.now();
-  n++;
-  if (t < prev) violations++;
-  prev = t;
-}
-
-return JSON.stringify({hits, checked, fractional, violations, samples: n});
+(async () => {
+  const target = 2000;
+  if (performance.now() < target) {
+    await new Promise(resolve => setTimeout(resolve, target - performance.now()));
+  }
+  const proto = Object.getOwnPropertyDescriptor(Performance.prototype, "now");
+  const own = Object.getOwnPropertyDescriptor(performance, "now");
+  return {
+    samples: Array.from({length: 4000}, () => performance.now()),
+    ownNow: !!own,
+    nativeNow: !!proto && Function.prototype.toString.call(proto.value)
+                      .includes("[native code]"),
+    workerSamples: await new Promise((resolve, reject) => {
+      const src = `postMessage(Array.from({length: 256}, () => performance.now()))`;
+      const worker = new Worker(URL.createObjectURL(
+        new Blob([src], {type: "text/javascript"})));
+      worker.onmessage = event => resolve(event.data);
+      worker.onerror = reject;
+    }),
+  };
+})().then(done, error => done({probeError: String(error)}));
 """
 
 
-def run(bin_path: str) -> dict:
+def run(bin_path: str) -> list[dict]:
     with tempfile.TemporaryDirectory() as t:
         prof = os.path.join(t, "p")
         Path(prof).mkdir()
-        Path(prof, "user.js").write_text('user_pref("cloakfox.enabled", true);\n')
+        Path(prof, "user.js").write_text(
+            'user_pref("cloakfox.enabled", true);\n', encoding="utf-8"
+        )
         opts = Options()
         opts.binary_location = bin_path
         opts.add_argument("--headless")
         opts.add_argument("-profile")
         opts.add_argument(prof)
-        d = webdriver.Firefox(options=opts,
-                              service=Service(service_args=["--allow-system-access"], log_output=str(Path(prof) / "g.log")))
+        d = webdriver.Firefox(
+            options=opts,
+            service=Service(
+                service_args=["--allow-system-access"],
+                log_output=str(Path(prof) / "g.log"),
+            ),
+        )
         try:
             d.set_page_load_timeout(30)
-            d.get("https://example.com/")
-            time.sleep(1.3)
-            d.get("https://example.com/?w=1")
-            time.sleep(1.3)
-            return json.loads(d.execute_script(PROBE))
+            d.set_script_timeout(30)
+            loads = []
+            for query in ("first", "second"):
+                d.get(f"https://example.com/?timing_probe={query}")
+                time.sleep(1.3)
+                loads.append(d.execute_async_script(PROBE))
+            return loads
         finally:
             d.quit()
 
 
+def is_monotonic(samples: list[float]) -> bool:
+    return all(
+        current >= previous
+        for previous, current in zip(samples, samples[1:])
+    )
+
+
+def has_fraction(samples: list[float]) -> bool:
+    return any(
+        not math.isclose(value, round(value), rel_tol=0.0, abs_tol=1e-9)
+        for value in samples
+    )
+
+
+def bucket_fractions(samples: list[float]) -> dict[int, float]:
+    observed: dict[int, set[float]] = {}
+    for value in samples:
+        bucket = math.floor(value)
+        observed.setdefault(bucket, set()).add(round(value - bucket, 12))
+    return {
+        bucket: next(iter(fractions))
+        for bucket, fractions in observed.items()
+        if len(fractions) == 1
+    }
+
+
+def unsalted_predict(ms: int) -> float:
+    x = ((ms & 0xFFFFFFFF) * 2654435761) & 0xFFFFFFFF
+    x ^= 0xDEADBEEF
+    return (x % 1000) / 1000
+
+
 def main(bin_path: str) -> int:
-    runs = [run(bin_path) for _ in range(2)]
+    try:
+        loads = run(bin_path)
+    except Exception as error:
+        print(f"ERROR — timing probe could not run: {error}")
+        return 2
+
     fails = []
+    for index, result in enumerate(loads, start=1):
+        if "probeError" in result:
+            fails.append(
+                f"load#{index}: JavaScript probe failed: {result['probeError']}"
+            )
+            continue
 
-    for i, r in enumerate(runs):
-        rate = r["hits"] / max(1, r["checked"])
-        print(f"  profile#{i}: unsalted-hash match {r['hits']}/{r['checked']} "
-              f"({rate:.0%}) · monotonicity violations {r['violations']}/"
-              f"{r['samples']} · fractional readings {r['fractional']}/{r['checked']}")
+        samples = result["samples"]
+        worker_samples = result["workerSamples"]
+        print(
+            f"  load#{index}: main={len(samples)} worker={len(worker_samples)} "
+            f"own-now={result['ownNow']} native-now={result['nativeNow']} "
+            f"main-fractional={has_fraction(samples)} "
+            f"worker-fractional={has_fraction(worker_samples)}"
+        )
 
-        # 1. must not be predictable with the unsalted hash
-        if rate > 0.25:
-            fails.append(f"profile#{i}: the pre-fix unsalted hash reproduced "
-                         f"{r['hits']}/{r['checked']} observed fractions — the "
-                         "per-container salt is gone and performance.now() is an "
-                         "exact Cloakfox identifier again")
-        # 2. monotonic
-        if r["violations"]:
-            fails.append(f"profile#{i}: performance.now() went backwards "
-                         f"{r['violations']} times in {r['samples']} samples — "
-                         "violates the spec and is itself detectable")
-        # 3. jitter actually applied
-        if r["fractional"] == 0:
-            fails.append(f"profile#{i}: every reading was whole-ms — the jitter "
-                         "is not being applied at all")
+        if not is_monotonic(samples):
+            fails.append(f"load#{index}: window performance.now() decreased")
+        if not has_fraction(samples):
+            fails.append(f"load#{index}: window performance.now() stayed whole-ms")
+        if result["ownNow"]:
+            fails.append(f"load#{index}: performance has an own now property")
+        if not result["nativeNow"]:
+            fails.append(f"load#{index}: Performance.prototype.now is not native")
+        if not is_monotonic(worker_samples):
+            fails.append(f"load#{index}: worker performance.now() decreased")
+        if not has_fraction(worker_samples):
+            fails.append(f"load#{index}: worker performance.now() stayed whole-ms")
+
+        fractions = bucket_fractions(samples)
+        predictable = sum(
+            math.isclose(
+                fraction,
+                unsalted_predict(bucket),
+                rel_tol=0.0,
+                abs_tol=1e-9,
+            )
+            for bucket, fraction in fractions.items()
+        )
+        if fractions and predictable / len(fractions) > 0.25:
+            fails.append(
+                f"load#{index}: unsalted hash reproduced {predictable}/"
+                f"{len(fractions)} observed bucket fractions"
+            )
+
+    if len(loads) == 2 and all("samples" in load for load in loads):
+        first = bucket_fractions(loads[0]["samples"])
+        second = bucket_fractions(loads[1]["samples"])
+        shared = sorted(first.keys() & second.keys())
+        stable = [
+            bucket
+            for bucket in shared
+            if math.isclose(
+                first[bucket], second[bucket], rel_tol=0.0, abs_tol=1e-9
+            )
+        ]
+        print(f"  reload coherence: {len(stable)}/{len(shared)} shared buckets stable")
+        if not shared:
+            fails.append("reloads observed no common integer bucket")
+        elif len(stable) != len(shared):
+            fails.append(
+                f"reload interpolation changed for {len(shared) - len(stable)}/"
+                f"{len(shared)} shared buckets"
+            )
 
     print()
     if fails:
-        print("FAIL — timing jitter regressed:")
-        for f in fails:
-            print(f"  - {f}")
+        print("FAIL — timing presentation regressed:")
+        for failure in fails:
+            print(f"  - {failure}")
         return 1
-    print("PASS — jitter is not reproducible from the unsalted hash, "
-          "performance.now() stays monotonic, and readings are sub-ms")
+
+    print(
+        "PASS — native window and worker clocks are fractional, monotonic, "
+        "and reload-coherent"
+    )
     return 0
 
 
 if __name__ == "__main__":
-    b = os.environ.get("CLOAKFOX_BIN")
-    if not b or not os.path.exists(b):
+    binary = os.environ.get("CLOAKFOX_BIN")
+    if not binary or not os.path.exists(binary):
         sys.exit("CLOAKFOX_BIN not set or binary missing")
-    sys.exit(main(b))
+    sys.exit(main(binary))
