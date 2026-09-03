@@ -50,6 +50,13 @@ NATIVE_TYPES = {
     "paint",
     "resource",
 }
+NAVIGATION_MATURING_KEYS = {
+    "domContentLoadedEventStart",
+    "domContentLoadedEventEnd",
+    "domComplete",
+    "loadEventStart",
+    "loadEventEnd",
+}
 NETWORK_PHASES = [
     "startTime",
     "redirectStart",
@@ -121,6 +128,7 @@ PAGE = r"""<!doctype html>
   ];
   const observed = [];
   const callbacks = [];
+  const direct = [];
   const observerErrors = {};
   const advertised = [...PerformanceObserver.supportedEntryTypes];
 
@@ -144,6 +152,7 @@ PAGE = r"""<!doctype html>
       const observer = new PerformanceObserver(list => {
         for (const entry of list.getEntries()) {
           callbacks.push(snapshot(entry));
+          direct.push(snapshot(entry));
           observed.push(entry);
         }
       });
@@ -186,7 +195,7 @@ PAGE = r"""<!doctype html>
       await new Promise(requestAnimationFrame);
       await new Promise(resolve => setTimeout(resolve, 250));
 
-      const direct = observed.map(snapshot);
+      const settled = observed.map(snapshot);
       const getEntries = performance.getEntries().map(snapshot);
       const getEntriesByType = Object.fromEntries(advertised.map(type => [
         type, performance.getEntriesByType(type).map(snapshot),
@@ -197,7 +206,7 @@ PAGE = r"""<!doctype html>
           .map(snapshot),
       }));
       document.documentElement.dataset.cfxTimeline = JSON.stringify({
-        advertised, observerErrors, callbacks, direct, getEntries,
+        advertised, observerErrors, callbacks, direct, settled, getEntries,
         getEntriesByType, getEntriesByName,
         userTiming: {
           beforeDefaultMark,
@@ -383,11 +392,19 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
 
     callbacks = result["callbacks"]
     direct = result["direct"]
+    settled = result["settled"]
     get_entries = result["getEntries"]
     if len(callbacks) != len(direct):
         failures.append("observer callback and direct reread counts differ")
+    if len(callbacks) != len(settled):
+        failures.append("observer callback and settled reread counts differ")
 
     for index, (callback, reread) in enumerate(zip(callbacks, direct)):
+        label = f"{callback['type']}:{callback['name']} (index {index})"
+        if not same_snapshot(callback, reread):
+            failures.append(f"{label} changed on immediate direct reread")
+
+    for index, (callback, reread) in enumerate(zip(callbacks, settled)):
         label = f"{callback['type']}:{callback['name']} (index {index})"
         if (callback["type"], callback["name"]) != (
             reread["type"],
@@ -396,22 +413,36 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
             failures.append(f"observer callback entry identity changed: {label}")
             continue
 
-        for key in ("startTime", "duration"):
-            before, after = callback[key], reread[key]
-            if before != after and before not in (0, None):
-                failures.append(
-                    f"{label} nonzero callback {key} changed on direct reread"
+        if callback["startTime"] != reread["startTime"]:
+            failures.append(f"{label} startTime changed after callback")
+        if callback["type"] == "navigation":
+            for phase, snapshot in (("callback", callback), ("settled", reread)):
+                expected = (
+                    snapshot["extra"]["loadEventEnd"] - snapshot["startTime"]
                 )
+                if snapshot["duration"] != expected:
+                    failures.append(
+                        f"{label} {phase} duration is not its loadEventEnd "
+                        "difference"
+                    )
+        elif callback["duration"] != reread["duration"]:
+            failures.append(f"{label} duration changed after callback")
         for key, before in callback["extra"].items():
             after = reread["extra"].get(key)
-            may_mature = key in TIMESTAMP_KEYS and before in (0, None)
+            may_mature = (
+                callback["type"] == "navigation"
+                and key in NAVIGATION_MATURING_KEYS
+                and before == 0
+                and after is not None
+                and after > 0
+            )
             if before != after and not may_mature:
                 failures.append(
-                    f"{label} callback {key} changed on direct reread"
+                    f"{label} callback {key} changed in settled reread"
                 )
 
     observed_by_key: dict[tuple[str, str, float, float], list[dict]] = {}
-    for entry in direct:
+    for entry in settled:
         observed_by_key.setdefault(entry_key(entry), []).append(entry)
     for entry in get_entries:
         matches = observed_by_key.get(entry_key(entry), [])
@@ -443,7 +474,11 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
                 f"{source['type']}:{source['name']}"
             )
 
-    snapshot_sources = (("observer callback", callbacks), ("direct", direct))
+    snapshot_sources = (
+        ("observer callback", callbacks),
+        ("immediate direct", direct),
+        ("settled", settled),
+    )
     for source, snapshots in snapshot_sources:
         for entry in snapshots:
             label = f"{entry['type']}:{entry['name']} {source}"
@@ -473,7 +508,7 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
                     )
 
     entries_by_type: dict[str, list[dict]] = {}
-    for entry in direct:
+    for entry in settled:
         entries_by_type.setdefault(entry["type"], []).append(entry)
 
         if not math.isfinite(entry["duration"]) or entry["duration"] < 0:
@@ -611,7 +646,7 @@ def main(bin_path: str) -> int:
     failures, skips = validate(result)
     advertised = result.get("advertised", [])
     counts: dict[str, int] = {}
-    for entry in result.get("direct", []):
+    for entry in result.get("settled", []):
         counts[entry["type"]] = counts.get(entry["type"], 0) + 1
     print(f"  advertised: {', '.join(advertised)}")
     print(
