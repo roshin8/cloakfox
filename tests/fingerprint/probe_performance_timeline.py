@@ -67,6 +67,8 @@ NETWORK_PHASES = [
 ]
 TIMESTAMP_KEYS = [
     "startTime",
+    "paintTime",
+    "presentationTime",
     "processingStart",
     "processingEnd",
     "renderTime",
@@ -107,7 +109,8 @@ PAGE = r"""<!doctype html>
 <script>
 (() => {
   const extraKeys = [
-    "processingStart", "processingEnd", "renderTime", "loadTime",
+    "paintTime", "presentationTime", "processingStart", "processingEnd",
+    "renderTime", "loadTime",
     "workerStart", "redirectStart", "redirectEnd", "fetchStart",
     "domainLookupStart", "domainLookupEnd", "connectStart", "connectEnd",
     "secureConnectionStart", "requestStart", "responseStart", "responseEnd",
@@ -117,16 +120,22 @@ PAGE = r"""<!doctype html>
     "decodedBodySize", "responseStatus"
   ];
   const observed = [];
+  const callbacks = [];
   const observerErrors = {};
   const advertised = [...PerformanceObserver.supportedEntryTypes];
 
   function snapshot(entry) {
     const extra = {};
     for (const key of extraKeys) if (key in entry) extra[key] = entry[key];
+    const rereadExtra = {};
+    for (const key of extraKeys) {
+      if (key in entry) rereadExtra[key] = entry[key];
+    }
     return {
       name: entry.name, type: entry.entryType,
       startTime: entry.startTime, duration: entry.duration,
-      rereadStart: entry.startTime, json: entry.toJSON(), extra,
+      rereadStart: entry.startTime, rereadDuration: entry.duration,
+      json: entry.toJSON(), extra, rereadExtra,
     };
   }
 
@@ -134,6 +143,7 @@ PAGE = r"""<!doctype html>
     try {
       const observer = new PerformanceObserver(list => {
         for (const entry of list.getEntries()) {
+          callbacks.push(snapshot(entry));
           observed.push(entry);
         }
       });
@@ -146,9 +156,9 @@ PAGE = r"""<!doctype html>
   }
 
   window.addEventListener("DOMContentLoaded", () => {
-    const beforeDefaultMark = performance.now();
+    const beforeDefaultMark = performance.mark("before-default-mark").startTime;
     const defaultMark = performance.mark("default-mark");
-    const afterDefaultMark = performance.now();
+    const afterDefaultMark = performance.mark("after-default-mark").startTime;
     const explicitMark = performance.mark("explicit", {startTime: 123.25});
     const explicitMeasure = performance.measure(
       "explicit-measure", {start: 10.25, end: 20.75});
@@ -176,10 +186,6 @@ PAGE = r"""<!doctype html>
       await new Promise(requestAnimationFrame);
       await new Promise(resolve => setTimeout(resolve, 250));
 
-      // Navigation timing fields can mature after the buffered callback.
-      // Snapshot the observer-delivered objects only after load is complete,
-      // then reread them immediately to verify stable public presentation.
-      const callbacks = observed.map(snapshot);
       const direct = observed.map(snapshot);
       const getEntries = performance.getEntries().map(snapshot);
       const getEntriesByType = Object.fromEntries(advertised.map(type => [
@@ -382,11 +388,27 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
         failures.append("observer callback and direct reread counts differ")
 
     for index, (callback, reread) in enumerate(zip(callbacks, direct)):
-        if not same_snapshot(callback, reread):
-            failures.append(
-                f"{callback['type']}:{callback['name']} changed between "
-                f"observer callback and direct reread (index {index})"
-            )
+        label = f"{callback['type']}:{callback['name']} (index {index})"
+        if (callback["type"], callback["name"]) != (
+            reread["type"],
+            reread["name"],
+        ):
+            failures.append(f"observer callback entry identity changed: {label}")
+            continue
+
+        for key in ("startTime", "duration"):
+            before, after = callback[key], reread[key]
+            if before != after and before not in (0, None):
+                failures.append(
+                    f"{label} nonzero callback {key} changed on direct reread"
+                )
+        for key, before in callback["extra"].items():
+            after = reread["extra"].get(key)
+            may_mature = key in TIMESTAMP_KEYS and before in (0, None)
+            if before != after and not may_mature:
+                failures.append(
+                    f"{label} callback {key} changed on direct reread"
+                )
 
     observed_by_key: dict[tuple[str, str, float, float], list[dict]] = {}
     for entry in direct:
@@ -421,31 +443,38 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
                 f"{source['type']}:{source['name']}"
             )
 
+    snapshot_sources = (("observer callback", callbacks), ("direct", direct))
+    for source, snapshots in snapshot_sources:
+        for entry in snapshots:
+            label = f"{entry['type']}:{entry['name']} {source}"
+            if entry["rereadStart"] != entry["startTime"]:
+                failures.append(f"{label} startTime reread changed")
+            if entry["rereadDuration"] != entry["duration"]:
+                failures.append(f"{label} duration reread changed")
+            if entry["rereadExtra"] != entry["extra"]:
+                failures.append(f"{label} subtype timing reread changed")
+
+            serialized = entry["json"]
+            expected_base = {
+                "name": entry["name"],
+                "entryType": entry["type"],
+                "startTime": entry["startTime"],
+                "duration": entry["duration"],
+            }
+            for key, expected in expected_base.items():
+                if key not in serialized or serialized[key] != expected:
+                    failures.append(
+                        f"{label} toJSON {key} differs from direct getter"
+                    )
+            for key, expected in entry["extra"].items():
+                if key not in serialized or serialized[key] != expected:
+                    failures.append(
+                        f"{label} toJSON {key} differs from direct getter"
+                    )
+
     entries_by_type: dict[str, list[dict]] = {}
     for entry in direct:
         entries_by_type.setdefault(entry["type"], []).append(entry)
-
-        if entry["rereadStart"] != entry["startTime"]:
-            failures.append(f"{entry['type']}:{entry['name']} startTime reread changed")
-        serialized = entry["json"]
-        expected_base = {
-            "name": entry["name"],
-            "entryType": entry["type"],
-            "startTime": entry["startTime"],
-            "duration": entry["duration"],
-        }
-        for key, expected in expected_base.items():
-            if serialized.get(key) != expected:
-                failures.append(
-                    f"{entry['type']}:{entry['name']} toJSON {key} differs "
-                    "from direct getter"
-                )
-        for key, expected in entry["extra"].items():
-            if serialized.get(key) != expected:
-                failures.append(
-                    f"{entry['type']}:{entry['name']} toJSON {key} differs "
-                    "from direct getter"
-                )
 
         if not math.isfinite(entry["duration"]) or entry["duration"] < 0:
             failures.append(f"{entry['type']}:{entry['name']} has invalid duration")
@@ -460,18 +489,34 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
         if not entries_by_type.get(entry_type):
             failures.append(f"advertised type {entry_type} produced no entry")
 
-    for entry_type in sorted(advertised & NATIVE_TYPES):
-        values = []
+    for entry_type in ("paint", "largest-contentful-paint"):
         for entry in entries_by_type.get(entry_type, []):
-            values.append(entry["startTime"])
-            values.extend(entry["extra"].values())
-            if entry["duration"]:
-                values.append(entry["duration"])
-        nonzero = [value for value in values if value]
-        if nonzero and not any(is_fractional(value) for value in nonzero):
-            failures.append(
-                f"{entry_type} exposes only whole-millisecond native timestamps"
+            for key in ("paintTime", "presentationTime"):
+                if key not in entry["extra"]:
+                    failures.append(
+                        f"{entry_type}:{entry['name']} omitted {key} getter"
+                    )
+
+    for source, snapshots in snapshot_sources:
+        for entry in snapshots:
+            entry_type = entry["type"]
+            if entry_type not in advertised & NATIVE_TYPES:
+                continue
+            timing_values = {
+                "startTime": entry["startTime"],
+                "duration": entry["duration"],
+            }
+            timing_values.update(
+                (key, entry["extra"][key])
+                for key in TIMESTAMP_KEYS
+                if key != "startTime" and key in entry["extra"]
             )
+            for key, value in timing_values.items():
+                if value is not None and value != 0 and not is_fractional(value):
+                    failures.append(
+                        f"{entry_type}:{entry['name']} {source} {key} "
+                        f"remained whole-millisecond ({value})"
+                    )
 
     for entry_type in ("resource", "navigation"):
         for entry in entries_by_type.get(entry_type, []):
@@ -546,6 +591,12 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
     default_mark = timing["defaultMark"]["startTime"]
     if not is_fractional(default_mark):
         failures.append("default mark does not use the native presented clock")
+    if not (
+        timing["beforeDefaultMark"]
+        <= default_mark
+        <= timing["afterDefaultMark"]
+    ):
+        failures.append("default mark falls outside its presented clock interval")
 
     return failures, skips
 
