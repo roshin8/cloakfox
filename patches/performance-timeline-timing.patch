@@ -137,3 +137,798 @@ diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/Sta
  #---------------------------------------------------------------------------
  # Prefs starting with "consoleservice."
  #---------------------------------------------------------------------------
+diff --git a/dom/performance/PerformanceEntry.h b/dom/performance/PerformanceEntry.h
+--- a/dom/performance/PerformanceEntry.h
++++ b/dom/performance/PerformanceEntry.h
+@@ -53,6 +53,10 @@ class PerformanceEntry : public nsISupports, public nsWrapperCache {
+ 
+   virtual DOMHighResTimeStamp StartTime() const { return 0; }
+ 
++  // Content-facing StartTime() implementations can apply presentation. Entry
++  // ordering must continue to use Firefox's underlying reduced timestamp.
++  virtual DOMHighResTimeStamp RawStartTime() const { return StartTime(); }
++
+   // This is used by the Gecko Profiler only for adding precise markers.
+   // It's not exposed to JS.
+   virtual DOMHighResTimeStamp UnclampedStartTime() const {
+@@ -88,13 +92,13 @@ class MOZ_STACK_CLASS PerformanceEntryComparator final {
+   bool Equals(const PerformanceEntry* aElem1,
+               const PerformanceEntry* aElem2) const {
+     MOZ_ASSERT(aElem1 && aElem2, "Trying to compare null performance entries");
+-    return aElem1->StartTime() == aElem2->StartTime();
++    return aElem1->RawStartTime() == aElem2->RawStartTime();
+   }
+ 
+   bool LessThan(const PerformanceEntry* aElem1,
+                 const PerformanceEntry* aElem2) const {
+     MOZ_ASSERT(aElem1 && aElem2, "Trying to compare null performance entries");
+-    return aElem1->StartTime() < aElem2->StartTime();
++    return aElem1->RawStartTime() < aElem2->RawStartTime();
+   }
+ };
+ 
+diff --git a/dom/performance/PerformanceEventTiming.h b/dom/performance/PerformanceEventTiming.h
+--- a/dom/performance/PerformanceEventTiming.h
++++ b/dom/performance/PerformanceEventTiming.h
+@@ -41,18 +41,22 @@ class PerformanceEventTiming final
+ 
+   DOMHighResTimeStamp ProcessingStart() const {
+     if (mCachedProcessingStart.isNothing()) {
+-      mCachedProcessingStart.emplace(nsRFPService::ReduceTimePrecisionAsMSecs(
+-          mProcessingStart, mPerformance->GetRandomTimelineSeed(),
+-          mPerformance->GetRTPCallerType()));
++      const DOMHighResTimeStamp reduced =
++          nsRFPService::ReduceTimePrecisionAsMSecs(
++              mProcessingStart, mPerformance->GetRandomTimelineSeed(),
++              mPerformance->GetRTPCallerType());
++      mCachedProcessingStart.emplace(mPerformance->PresentTimestamp(reduced));
+     }
+     return mCachedProcessingStart.value();
+   }
+ 
+   DOMHighResTimeStamp ProcessingEnd() const {
+     if (mCachedProcessingEnd.isNothing()) {
+-      mCachedProcessingEnd.emplace(nsRFPService::ReduceTimePrecisionAsMSecs(
+-          mProcessingEnd, mPerformance->GetRandomTimelineSeed(),
+-          mPerformance->GetRTPCallerType()));
++      const DOMHighResTimeStamp reduced =
++          nsRFPService::ReduceTimePrecisionAsMSecs(
++              mProcessingEnd, mPerformance->GetRandomTimelineSeed(),
++              mPerformance->GetRTPCallerType());
++      mCachedProcessingEnd.emplace(mPerformance->PresentTimestamp(reduced));
+     }
+     return mCachedProcessingEnd.value();
+   }
+@@ -76,6 +80,7 @@ class PerformanceEventTiming final
+     // Round the duration to the nearest 8ms.
+     // https://w3c.github.io/event-timing/#set-event-timing-entry-duration
+     mDuration = std::round(aDuration / 8) * 8;
++    mCachedInterval.reset();
+   }
+ 
+   // nsRFPService::ReduceTimePrecisionAsMSecs might causes
+@@ -83,27 +88,13 @@ class PerformanceEventTiming final
+   // to avoid calling in unnecessarily.
+   DOMHighResTimeStamp RawDuration() const { return mDuration; }
+ 
+-  DOMHighResTimeStamp Duration() const override {
+-    if (mCachedDuration.isNothing()) {
+-      mCachedDuration.emplace(nsRFPService::ReduceTimePrecisionAsMSecs(
+-          mDuration, mPerformance->GetRandomTimelineSeed(),
+-          mPerformance->GetRTPCallerType()));
+-    }
+-    return mCachedDuration.value();
+-  }
++  DOMHighResTimeStamp Duration() const override;
+ 
+   // Similar as RawDuration; Used to avoid calling
+   // nsRFPService::ReduceTimePrecisionAsMSecs unnecessarily.
+-  DOMHighResTimeStamp RawStartTime() const { return mStartTime; }
++  DOMHighResTimeStamp RawStartTime() const override { return mStartTime; }
+ 
+-  DOMHighResTimeStamp StartTime() const override {
+-    if (mCachedStartTime.isNothing()) {
+-      mCachedStartTime.emplace(nsRFPService::ReduceTimePrecisionAsMSecs(
+-          mStartTime, mPerformance->GetRandomTimelineSeed(),
+-          mPerformance->GetRTPCallerType()));
+-    }
+-    return mCachedStartTime.value();
+-  }
++  DOMHighResTimeStamp StartTime() const override;
+ 
+   bool ShouldAddEntryToBuffer(double aDuration) const;
+   bool ShouldAddEntryToObserverBuffer(PerformanceObserverInit&) const override;
+@@ -121,6 +112,8 @@ class PerformanceEventTiming final
+ 
+   PerformanceEventTiming(const PerformanceEventTiming& aEventTimingEntry);
+ 
++  const CloakfoxTiming::Interval& PresentedInterval() const;
++
+   ~PerformanceEventTiming() = default;
+ 
+   RefPtr<Performance> mPerformance;
+@@ -134,10 +127,9 @@ class PerformanceEventTiming final
+   nsWeakPtr mTarget;
+ 
+   DOMHighResTimeStamp mStartTime;
+-  mutable Maybe<DOMHighResTimeStamp> mCachedStartTime;
+ 
+   DOMHighResTimeStamp mDuration;
+-  mutable Maybe<DOMHighResTimeStamp> mCachedDuration;
++  mutable Maybe<CloakfoxTiming::Interval> mCachedInterval;
+ 
+   bool mCancelable;
+ 
+diff --git a/dom/performance/PerformanceEventTiming.cpp b/dom/performance/PerformanceEventTiming.cpp
+--- a/dom/performance/PerformanceEventTiming.cpp
++++ b/dom/performance/PerformanceEventTiming.cpp
+@@ -69,6 +69,31 @@ JSObject* PerformanceEventTiming::WrapObject(
+   return PerformanceEventTiming_Binding::Wrap(cx, this, aGivenProto);
+ }
+ 
++const CloakfoxTiming::Interval& PerformanceEventTiming::PresentedInterval()
++    const {
++  if (mCachedInterval.isNothing()) {
++    const DOMHighResTimeStamp reducedStart =
++        nsRFPService::ReduceTimePrecisionAsMSecs(
++            mStartTime, mPerformance->GetRandomTimelineSeed(),
++            mPerformance->GetRTPCallerType());
++    const DOMHighResTimeStamp reducedDuration =
++        nsRFPService::ReduceTimePrecisionAsMSecs(
++            mDuration, mPerformance->GetRandomTimelineSeed(),
++            mPerformance->GetRTPCallerType());
++    mCachedInterval.emplace(mPerformance->PresentInterval(
++        reducedStart, reducedStart + std::max(0.0, reducedDuration)));
++  }
++  return mCachedInterval.ref();
++}
++
++DOMHighResTimeStamp PerformanceEventTiming::StartTime() const {
++  return PresentedInterval().mStart;
++}
++
++DOMHighResTimeStamp PerformanceEventTiming::Duration() const {
++  return PresentedInterval().Duration();
++}
++
+ already_AddRefed<PerformanceEventTiming>
+ PerformanceEventTiming::TryGenerateEventTiming(const EventTarget* aTarget,
+                                                const WidgetEvent* aEvent) {
+diff --git a/dom/performance/PerformancePaintTiming.h b/dom/performance/PerformancePaintTiming.h
+--- a/dom/performance/PerformancePaintTiming.h
++++ b/dom/performance/PerformancePaintTiming.h
+@@ -33,6 +33,7 @@ class PerformancePaintTiming final : public PerformanceEntry {
+                        JS::Handle<JSObject*> aGivenProto) override;
+ 
+   DOMHighResTimeStamp StartTime() const override;
++  DOMHighResTimeStamp RawStartTime() const override;
+   DOMHighResTimeStamp PaintTime() const { return StartTime(); }
+   Nullable<DOMHighResTimeStamp> GetPresentationTime() const { return nullptr; }
+ 
+@@ -44,6 +45,7 @@ class PerformancePaintTiming final : public PerformanceEntry {
+   RefPtr<Performance> mPerformance;
+ 
+   const TimeStamp mRawStartTime;
++  mutable Maybe<DOMHighResTimeStamp> mCachedRawStartTime;
+   mutable Maybe<DOMHighResTimeStamp> mCachedStartTime;
+ };
+ 
+diff --git a/dom/performance/PerformancePaintTiming.cpp b/dom/performance/PerformancePaintTiming.cpp
+--- a/dom/performance/PerformancePaintTiming.cpp
++++ b/dom/performance/PerformancePaintTiming.cpp
+@@ -38,14 +38,21 @@ JSObject* PerformancePaintTiming::WrapObject(
+   return PerformancePaintTiming_Binding::Wrap(aCx, this, aGivenProto);
+ }
+ 
+-DOMHighResTimeStamp PerformancePaintTiming::StartTime() const {
+-  if (mCachedStartTime.isNothing()) {
++DOMHighResTimeStamp PerformancePaintTiming::RawStartTime() const {
++  if (mCachedRawStartTime.isNothing()) {
+     DOMHighResTimeStamp rawValue =
+         mPerformance->GetDOMTiming()->TimeStampToDOMHighRes(mRawStartTime);
+-    mCachedStartTime.emplace(nsRFPService::ReduceTimePrecisionAsMSecs(
++    mCachedRawStartTime.emplace(nsRFPService::ReduceTimePrecisionAsMSecs(
+         rawValue, mPerformance->GetRandomTimelineSeed(),
+         mPerformance->GetRTPCallerType()));
+   }
++  return mCachedRawStartTime.value();
++}
++
++DOMHighResTimeStamp PerformancePaintTiming::StartTime() const {
++  if (mCachedStartTime.isNothing()) {
++    mCachedStartTime.emplace(mPerformance->PresentTimestamp(RawStartTime()));
++  }
+   return mCachedStartTime.value();
+ }
+ 
+diff --git a/dom/performance/LargestContentfulPaint.h b/dom/performance/LargestContentfulPaint.h
+--- a/dom/performance/LargestContentfulPaint.h
++++ b/dom/performance/LargestContentfulPaint.h
+@@ -89,6 +89,7 @@ class LargestContentfulPaint final : public PerformanceEntry {
+   DOMHighResTimeStamp RenderTime() const;
+   DOMHighResTimeStamp LoadTime() const;
+   DOMHighResTimeStamp StartTime() const override;
++  DOMHighResTimeStamp RawStartTime() const override;
+   DOMHighResTimeStamp PaintTime() const { return RenderTime(); }
+   Nullable<DOMHighResTimeStamp> GetPresentationTime() const { return nullptr; }
+ 
+@@ -118,6 +119,9 @@ class LargestContentfulPaint final : public PerformanceEntry {
+  private:
+   ~LargestContentfulPaint() = default;
+ 
++  DOMHighResTimeStamp RawRenderTime() const;
++  DOMHighResTimeStamp RawLoadTime() const;
++
+   void ReportLCPToNavigationTimings();
+ 
+   RefPtr<PerformanceMainThread> mPerformance;
+@@ -129,6 +133,8 @@ class LargestContentfulPaint final : public PerformanceEntry {
+   // This is set to false when for security reasons web content it not allowed
+   // to see the RenderTime.
+   const bool mShouldExposeRenderTime;
++  mutable Maybe<DOMHighResTimeStamp> mCachedRenderTime;
++  mutable Maybe<DOMHighResTimeStamp> mCachedLoadTime;
+   unsigned long mSize;
+   nsCOMPtr<nsIURI> mURI;
+ 
+diff --git a/dom/performance/LargestContentfulPaint.cpp b/dom/performance/LargestContentfulPaint.cpp
+--- a/dom/performance/LargestContentfulPaint.cpp
++++ b/dom/performance/LargestContentfulPaint.cpp
+@@ -296,14 +296,25 @@ void LCPHelpers::FinalizeLCPEntryForImage(
+   entry->QueueEntry();
+ }
+ 
+-DOMHighResTimeStamp LargestContentfulPaint::RenderTime() const {
++DOMHighResTimeStamp LargestContentfulPaint::RawRenderTime() const {
+   if (!mShouldExposeRenderTime) {
+     return 0;
+   }
+   return GetReducedTimePrecisionDOMHighRes(mPerformance, mRenderTime);
+ }
+ 
+-DOMHighResTimeStamp LargestContentfulPaint::LoadTime() const {
++DOMHighResTimeStamp LargestContentfulPaint::RenderTime() const {
++  const DOMHighResTimeStamp rawValue = RawRenderTime();
++  if (rawValue == 0) {
++    return 0;
++  }
++  if (mCachedRenderTime.isNothing()) {
++    mCachedRenderTime.emplace(mPerformance->PresentTimestamp(rawValue));
++  }
++  return mCachedRenderTime.value();
++}
++
++DOMHighResTimeStamp LargestContentfulPaint::RawLoadTime() const {
+   if (mLoadTime.isNothing()) {
+     return 0;
+   }
+@@ -311,10 +322,25 @@ DOMHighResTimeStamp LargestContentfulPaint::LoadTime() const {
+   return GetReducedTimePrecisionDOMHighRes(mPerformance, mLoadTime.ref());
+ }
+ 
++DOMHighResTimeStamp LargestContentfulPaint::LoadTime() const {
++  const DOMHighResTimeStamp rawValue = RawLoadTime();
++  if (rawValue == 0) {
++    return 0;
++  }
++  if (mCachedLoadTime.isNothing()) {
++    mCachedLoadTime.emplace(mPerformance->PresentTimestamp(rawValue));
++  }
++  return mCachedLoadTime.value();
++}
++
+ DOMHighResTimeStamp LargestContentfulPaint::StartTime() const {
+   return mShouldExposeRenderTime ? RenderTime() : LoadTime();
+ }
+ 
++DOMHighResTimeStamp LargestContentfulPaint::RawStartTime() const {
++  return mShouldExposeRenderTime ? RawRenderTime() : RawLoadTime();
++}
++
+ /* static */
+ Element* LargestContentfulPaint::GetContainingBlockForTextFrame(
+     const nsTextFrame* aTextFrame) {
+diff --git a/dom/performance/PerformanceTiming.h b/dom/performance/PerformanceTiming.h
+--- a/dom/performance/PerformanceTiming.h
++++ b/dom/performance/PerformanceTiming.h
+@@ -88,7 +88,7 @@ class PerformanceTimingData final : public CacheablePerformanceTimingData {
+     MOZ_ASSERT(aPerformance);
+ 
+     if (aStamp.IsNull()) {
+-      return FetchStartHighRes(aPerformance);
++      return RawFetchStartHighRes(aPerformance);
+     }
+ 
+     DOMHighResTimeStamp rawTimestamp =
+@@ -138,20 +138,34 @@ class PerformanceTimingData final : public CacheablePerformanceTimingData {
+   // The last channel's AsyncOpen time.  This may occur before the FetchStart
+   // in some cases.
+   DOMHighResTimeStamp AsyncOpenHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawAsyncOpenHighRes(Performance* aPerformance);
+ 
+   // High resolution (used by resource timing)
+   DOMHighResTimeStamp WorkerStartHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawWorkerStartHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp FetchStartHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawFetchStartHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp RedirectStartHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawRedirectStartHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp RedirectEndHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawRedirectEndHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp DomainLookupStartHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawDomainLookupStartHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp DomainLookupEndHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawDomainLookupEndHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp ConnectStartHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawConnectStartHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp SecureConnectionStartHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawSecureConnectionStartHighRes(
++      Performance* aPerformance);
+   DOMHighResTimeStamp ConnectEndHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawConnectEndHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp RequestStartHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawRequestStartHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp ResponseStartHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawResponseStartHighRes(Performance* aPerformance);
+   DOMHighResTimeStamp ResponseEndHighRes(Performance* aPerformance);
++  DOMHighResTimeStamp RawResponseEndHighRes(Performance* aPerformance);
+ 
+   DOMHighResTimeStamp ZeroTime() const { return mZeroTime; }
+ 
+@@ -170,6 +184,10 @@ class PerformanceTimingData final : public CacheablePerformanceTimingData {
+   }
+ 
+  private:
++  DOMHighResTimeStamp PresentHighRes(Performance* aPerformance,
++                                     DOMHighResTimeStamp aRawValue,
++                                     Maybe<DOMHighResTimeStamp>& aCache) const;
++
+   TimeStamp mAsyncOpen;
+   TimeStamp mRedirectStart;
+   TimeStamp mRedirectEnd;
+@@ -196,6 +214,20 @@ class PerformanceTimingData final : public CacheablePerformanceTimingData {
+   DOMHighResTimeStamp mZeroTime = 0;
+ 
+   DOMHighResTimeStamp mFetchStart = 0;
++
++  mutable Maybe<DOMHighResTimeStamp> mPresentedAsyncOpen;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedWorkerStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedFetchStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedRedirectStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedRedirectEnd;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedDomainLookupStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedDomainLookupEnd;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedConnectStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedSecureConnectionStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedConnectEnd;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedRequestStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedResponseStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedResponseEnd;
+ 
+   uint64_t mTransferSize = 0;
+ 
+diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/PerformanceTiming.cpp
+--- a/dom/performance/PerformanceTiming.cpp
++++ b/dom/performance/PerformanceTiming.cpp
+@@ -108,7 +108,7 @@ PerformanceTiming::PerformanceTiming(Performance* aPerformance,
+       IsTopLevelContentDocument()) {
+     glean::performance_time::response_start.AccumulateRawDuration(
+         TimeDuration::FromMilliseconds(
+-            mTimingData->ResponseStartHighRes(aPerformance) -
++            mTimingData->RawResponseStartHighRes(aPerformance) -
+             mTimingData->ZeroTime()));
+   }
+ }
+@@ -395,7 +395,7 @@ void PerformanceTimingData::SetTransferSizeFromHttpChannel(
+ 
+ PerformanceTiming::~PerformanceTiming() = default;
+ 
+-DOMHighResTimeStamp PerformanceTimingData::FetchStartHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawFetchStartHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -502,7 +502,7 @@ bool PerformanceTimingData::ShouldReportCrossOriginRedirect(
+                                        : mAllRedirectsPassTAO;
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::AsyncOpenHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawAsyncOpenHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -517,7 +517,7 @@ DOMHighResTimeStamp PerformanceTimingData::AsyncOpenHighRes(
+       aPerformance->GetRTPCallerType());
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::WorkerStartHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawWorkerStartHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -542,7 +542,7 @@ DOMHighResTimeStamp PerformanceTimingData::WorkerStartHighRes(
+  *
+  * @return a valid timing if the Performance Timing is enabled
+  */
+-DOMHighResTimeStamp PerformanceTimingData::RedirectStartHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawRedirectStartHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -576,7 +576,7 @@ DOMTimeMilliSec PerformanceTiming::RedirectStart() {
+  *
+  * @return a valid timing if the Performance Timing is enabled
+  */
+-DOMHighResTimeStamp PerformanceTimingData::RedirectEndHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawRedirectEndHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -599,7 +599,7 @@ DOMTimeMilliSec PerformanceTiming::RedirectEnd() {
+   return 0;
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::DomainLookupStartHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawDomainLookupStartHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -608,7 +608,7 @@ DOMHighResTimeStamp PerformanceTimingData::DomainLookupStartHighRes(
+   }
+   // Bug 1637985 - DomainLookup information may be useful for fingerprinting.
+   if (aPerformance->ShouldResistFingerprinting()) {
+-    return FetchStartHighRes(aPerformance);
++    return RawFetchStartHighRes(aPerformance);
+   }
+   return TimeStampToReducedDOMHighResOrFetchStart(aPerformance,
+                                                   mDomainLookupStart);
+@@ -619,7 +619,7 @@ DOMTimeMilliSec PerformanceTiming::DomainLookupStart() {
+       mTimingData->DomainLookupStartHighRes(mPerformance));
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::DomainLookupEndHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawDomainLookupEndHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -628,11 +628,11 @@ DOMHighResTimeStamp PerformanceTimingData::DomainLookupEndHighRes(
+   }
+   // Bug 1637985 - DomainLookup information may be useful for fingerprinting.
+   if (aPerformance->ShouldResistFingerprinting()) {
+-    return FetchStartHighRes(aPerformance);
++    return RawFetchStartHighRes(aPerformance);
+   }
+   // Bug 1155008 - nsHttpTransaction is racy. Return DomainLookupStart when null
+   if (mDomainLookupEnd.IsNull()) {
+-    return DomainLookupStartHighRes(aPerformance);
++    return RawDomainLookupStartHighRes(aPerformance);
+   }
+   DOMHighResTimeStamp rawValue =
+       TimeStampToDOMHighRes(aPerformance, mDomainLookupEnd);
+@@ -646,7 +646,7 @@ DOMTimeMilliSec PerformanceTiming::DomainLookupEnd() {
+       mTimingData->DomainLookupEndHighRes(mPerformance));
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::ConnectStartHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawConnectStartHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -654,7 +654,7 @@ DOMHighResTimeStamp PerformanceTimingData::ConnectStartHighRes(
+     return mZeroTime;
+   }
+   if (mConnectStart.IsNull()) {
+-    return DomainLookupEndHighRes(aPerformance);
++    return RawDomainLookupEndHighRes(aPerformance);
+   }
+   DOMHighResTimeStamp rawValue =
+       TimeStampToDOMHighRes(aPerformance, mConnectStart);
+@@ -667,7 +667,7 @@ DOMTimeMilliSec PerformanceTiming::ConnectStart() {
+   return static_cast<int64_t>(mTimingData->ConnectStartHighRes(mPerformance));
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::SecureConnectionStartHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawSecureConnectionStartHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -679,7 +679,7 @@ DOMHighResTimeStamp PerformanceTimingData::SecureConnectionStartHighRes(
+                // navigation start time.
+   }
+   if (mSecureConnectionStart.IsNull()) {
+-    return ConnectStartHighRes(aPerformance);
++    return RawConnectStartHighRes(aPerformance);
+   }
+   DOMHighResTimeStamp rawValue =
+       TimeStampToDOMHighRes(aPerformance, mSecureConnectionStart);
+@@ -693,7 +693,7 @@ DOMTimeMilliSec PerformanceTiming::SecureConnectionStart() {
+       mTimingData->SecureConnectionStartHighRes(mPerformance));
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::ConnectEndHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawConnectEndHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -702,7 +702,7 @@ DOMHighResTimeStamp PerformanceTimingData::ConnectEndHighRes(
+   }
+   // Bug 1155008 - nsHttpTransaction is racy. Return ConnectStart when null
+   if (mConnectEnd.IsNull()) {
+-    return ConnectStartHighRes(aPerformance);
++    return RawConnectStartHighRes(aPerformance);
+   }
+   DOMHighResTimeStamp rawValue =
+       TimeStampToDOMHighRes(aPerformance, mConnectEnd);
+@@ -715,7 +715,7 @@ DOMTimeMilliSec PerformanceTiming::ConnectEnd() {
+   return static_cast<int64_t>(mTimingData->ConnectEndHighRes(mPerformance));
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::RequestStartHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawRequestStartHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -734,7 +734,7 @@ DOMTimeMilliSec PerformanceTiming::RequestStart() {
+   return static_cast<int64_t>(mTimingData->RequestStartHighRes(mPerformance));
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::ResponseStartHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawResponseStartHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -757,7 +757,7 @@ DOMTimeMilliSec PerformanceTiming::ResponseStart() {
+   return static_cast<int64_t>(mTimingData->ResponseStartHighRes(mPerformance));
+ }
+ 
+-DOMHighResTimeStamp PerformanceTimingData::ResponseEndHighRes(
++DOMHighResTimeStamp PerformanceTimingData::RawResponseEndHighRes(
+     Performance* aPerformance) {
+   MOZ_ASSERT(aPerformance);
+ 
+@@ -773,7 +773,7 @@ DOMHighResTimeStamp PerformanceTimingData::ResponseEndHighRes(
+   }
+   // Bug 1155008 - nsHttpTransaction is racy. Return ResponseStart when null
+   if (mResponseEnd.IsNull()) {
+-    return ResponseStartHighRes(aPerformance);
++    return RawResponseStartHighRes(aPerformance);
+   }
+   DOMHighResTimeStamp rawValue =
+       TimeStampToDOMHighRes(aPerformance, mResponseEnd);
+@@ -782,6 +782,41 @@ DOMHighResTimeStamp PerformanceTimingData::ResponseEndHighRes(
+       aPerformance->GetRTPCallerType());
+ }
+ 
++DOMHighResTimeStamp PerformanceTimingData::PresentHighRes(
++    Performance* aPerformance, DOMHighResTimeStamp aRawValue,
++    Maybe<DOMHighResTimeStamp>& aCache) const {
++  if (aRawValue == 0) {
++    return 0;
++  }
++  if (aCache.isNothing()) {
++    aCache.emplace(aPerformance->PresentTimestamp(aRawValue));
++  }
++  return aCache.value();
++}
++
++#define PRESENT_HIGH_RES(name)                                            \
++  DOMHighResTimeStamp PerformanceTimingData::name##HighRes(               \
++      Performance* aPerformance) {                                        \
++    return PresentHighRes(aPerformance, Raw##name##HighRes(aPerformance), \
++                          mPresented##name);                              \
++  }
++
++PRESENT_HIGH_RES(AsyncOpen)
++PRESENT_HIGH_RES(WorkerStart)
++PRESENT_HIGH_RES(FetchStart)
++PRESENT_HIGH_RES(RedirectStart)
++PRESENT_HIGH_RES(RedirectEnd)
++PRESENT_HIGH_RES(DomainLookupStart)
++PRESENT_HIGH_RES(DomainLookupEnd)
++PRESENT_HIGH_RES(ConnectStart)
++PRESENT_HIGH_RES(SecureConnectionStart)
++PRESENT_HIGH_RES(ConnectEnd)
++PRESENT_HIGH_RES(RequestStart)
++PRESENT_HIGH_RES(ResponseStart)
++PRESENT_HIGH_RES(ResponseEnd)
++
++#undef PRESENT_HIGH_RES
++
+ DOMTimeMilliSec PerformanceTiming::ResponseEnd() {
+   return static_cast<int64_t>(mTimingData->ResponseEndHighRes(mPerformance));
+ }
+diff --git a/dom/performance/PerformanceResourceTiming.h b/dom/performance/PerformanceResourceTiming.h
+--- a/dom/performance/PerformanceResourceTiming.h
++++ b/dom/performance/PerformanceResourceTiming.h
+@@ -59,6 +59,7 @@ class PerformanceResourceTiming : public PerformanceEntry {
+                                JS::Handle<JSObject*> aGivenProto) override;
+ 
+   virtual DOMHighResTimeStamp StartTime() const override;
++  DOMHighResTimeStamp RawStartTime() const override;
+ 
+   virtual DOMHighResTimeStamp Duration() const override {
+     return ResponseEnd() - StartTime();
+@@ -212,6 +213,7 @@ class PerformanceResourceTiming : public PerformanceEntry {
+   nsCOMPtr<nsIURI> mOriginalURI;
+ 
+  private:
++  mutable Maybe<DOMHighResTimeStamp> mCachedRawStartTime;
+   mutable Maybe<DOMHighResTimeStamp> mCachedStartTime;
+ };
+ 
+diff --git a/dom/performance/PerformanceResourceTiming.cpp b/dom/performance/PerformanceResourceTiming.cpp
+--- a/dom/performance/PerformanceResourceTiming.cpp
++++ b/dom/performance/PerformanceResourceTiming.cpp
+@@ -52,6 +52,13 @@ DOMHighResTimeStamp PerformanceResourceTiming::FetchStart() const {
+ }
+ 
+ DOMHighResTimeStamp PerformanceResourceTiming::StartTime() const {
++  if (mCachedStartTime.isNothing()) {
++    mCachedStartTime.emplace(mPerformance->PresentTimestamp(RawStartTime()));
++  }
++  return mCachedStartTime.value();
++}
++
++DOMHighResTimeStamp PerformanceResourceTiming::RawStartTime() const {
+   // Force the start time to be the earliest of:
+   //  - RedirectStart
+   //  - WorkerStart
+@@ -59,19 +66,22 @@ DOMHighResTimeStamp PerformanceResourceTiming::StartTime() const {
+   // Ignore zero values.  The RedirectStart and WorkerStart values
+   // can come from earlier redirected channels prior to the AsyncOpen
+   // time being recorded.
+-  if (mCachedStartTime.isNothing()) {
++  if (mCachedRawStartTime.isNothing()) {
+     DOMHighResTimeStamp redirect =
+-        mTimingData->RedirectStartHighRes(mPerformance);
++        mTimingData->RawRedirectStartHighRes(mPerformance);
+     redirect = redirect ? redirect : DBL_MAX;
+ 
+-    DOMHighResTimeStamp worker = mTimingData->WorkerStartHighRes(mPerformance);
++    DOMHighResTimeStamp worker =
++        mTimingData->RawWorkerStartHighRes(mPerformance);
+     worker = worker ? worker : DBL_MAX;
+ 
+-    DOMHighResTimeStamp asyncOpen = mTimingData->AsyncOpenHighRes(mPerformance);
++    DOMHighResTimeStamp asyncOpen =
++        mTimingData->RawAsyncOpenHighRes(mPerformance);
+ 
+-    mCachedStartTime.emplace(std::min(asyncOpen, std::min(redirect, worker)));
++    mCachedRawStartTime.emplace(
++        std::min(asyncOpen, std::min(redirect, worker)));
+   }
+-  return mCachedStartTime.value();
++  return mCachedRawStartTime.value();
+ }
+ 
+ JSObject* PerformanceResourceTiming::WrapObject(
+diff --git a/dom/performance/PerformanceNavigationTiming.h b/dom/performance/PerformanceNavigationTiming.h
+--- a/dom/performance/PerformanceNavigationTiming.h
++++ b/dom/performance/PerformanceNavigationTiming.h
+@@ -55,6 +55,7 @@ class PerformanceNavigationTiming final : public PerformanceResourceTiming {
+   }
+ 
+   DOMHighResTimeStamp StartTime() const override { return 0; }
++  DOMHighResTimeStamp RawStartTime() const override { return 0; }
+ 
+   JSObject* WrapObject(JSContext* aCx,
+                        JS::Handle<JSObject*> aGivenProto) override;
+@@ -87,6 +88,18 @@ class PerformanceNavigationTiming final : public PerformanceResourceTiming {
+   static bool Enabled(JSContext* aCx, JSObject* aGlobal);
+ 
+  private:
++  DOMHighResTimeStamp PresentNavigationTimestamp(
++      DOMHighResTimeStamp aRawValue, Maybe<DOMHighResTimeStamp>& aCache) const;
++
++  mutable Maybe<DOMHighResTimeStamp> mPresentedUnloadEventStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedUnloadEventEnd;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedDomInteractive;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedDomContentLoadedEventStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedDomContentLoadedEventEnd;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedDomComplete;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedLoadEventStart;
++  mutable Maybe<DOMHighResTimeStamp> mPresentedLoadEventEnd;
++
+   ~PerformanceNavigationTiming() = default;
+ };
+ 
+diff --git a/dom/performance/PerformanceNavigationTiming.cpp b/dom/performance/PerformanceNavigationTiming.cpp
+--- a/dom/performance/PerformanceNavigationTiming.cpp
++++ b/dom/performance/PerformanceNavigationTiming.cpp
+@@ -24,11 +24,24 @@ JSObject* PerformanceNavigationTiming::WrapObject(
+   return PerformanceNavigationTiming_Binding::Wrap(aCx, this, aGivenProto);
+ }
+ 
+-#define REDUCE_TIME_PRECISION                          \
+-  return nsRFPService::ReduceTimePrecisionAsMSecs(     \
+-      rawValue, mPerformance->GetRandomTimelineSeed(), \
+-      mPerformance->GetRTPCallerType())
++#define REDUCE_TIME_PRECISION(cache)                       \
++  const DOMHighResTimeStamp reduced =                      \
++      nsRFPService::ReduceTimePrecisionAsMSecs(            \
++          rawValue, mPerformance->GetRandomTimelineSeed(), \
++          mPerformance->GetRTPCallerType());               \
++  return PresentNavigationTimestamp(reduced, cache)
+ 
++DOMHighResTimeStamp PerformanceNavigationTiming::PresentNavigationTimestamp(
++    DOMHighResTimeStamp aRawValue, Maybe<DOMHighResTimeStamp>& aCache) const {
++  if (aRawValue == 0) {
++    return 0;
++  }
++  if (aCache.isNothing()) {
++    aCache.emplace(mPerformance->PresentTimestamp(aRawValue));
++  }
++  return aCache.value();
++}
++
+ DOMHighResTimeStamp PerformanceNavigationTiming::UnloadEventStart() const {
+   DOMHighResTimeStamp rawValue = 0;
+   /*
+@@ -55,7 +68,7 @@ DOMHighResTimeStamp PerformanceNavigationTiming::UnloadEventStart() const {
+     rawValue = mPerformance->GetDOMTiming()->GetUnloadEventStartHighRes();
+   }
+ 
+-  REDUCE_TIME_PRECISION;
++  REDUCE_TIME_PRECISION(mPresentedUnloadEventStart);
+ }
+ 
+ DOMHighResTimeStamp PerformanceNavigationTiming::UnloadEventEnd() const {
+@@ -66,14 +79,14 @@ DOMHighResTimeStamp PerformanceNavigationTiming::UnloadEventEnd() const {
+     rawValue = mPerformance->GetDOMTiming()->GetUnloadEventEndHighRes();
+   }
+ 
+-  REDUCE_TIME_PRECISION;
++  REDUCE_TIME_PRECISION(mPresentedUnloadEventEnd);
+ }
+ 
+ DOMHighResTimeStamp PerformanceNavigationTiming::DomInteractive() const {
+   DOMHighResTimeStamp rawValue =
+       mPerformance->GetDOMTiming()->GetDomInteractiveHighRes();
+ 
+-  REDUCE_TIME_PRECISION;
++  REDUCE_TIME_PRECISION(mPresentedDomInteractive);
+ }
+ 
+ DOMHighResTimeStamp PerformanceNavigationTiming::DomContentLoadedEventStart()
+@@ -81,7 +94,7 @@ DOMHighResTimeStamp PerformanceNavigationTiming::DomContentLoadedEventStart()
+   DOMHighResTimeStamp rawValue =
+       mPerformance->GetDOMTiming()->GetDomContentLoadedEventStartHighRes();
+ 
+-  REDUCE_TIME_PRECISION;
++  REDUCE_TIME_PRECISION(mPresentedDomContentLoadedEventStart);
+ }
+ 
+ DOMHighResTimeStamp PerformanceNavigationTiming::DomContentLoadedEventEnd()
+@@ -89,28 +102,28 @@ DOMHighResTimeStamp PerformanceNavigationTiming::DomContentLoadedEventEnd()
+   DOMHighResTimeStamp rawValue =
+       mPerformance->GetDOMTiming()->GetDomContentLoadedEventEndHighRes();
+ 
+-  REDUCE_TIME_PRECISION;
++  REDUCE_TIME_PRECISION(mPresentedDomContentLoadedEventEnd);
+ }
+ 
+ DOMHighResTimeStamp PerformanceNavigationTiming::DomComplete() const {
+   DOMHighResTimeStamp rawValue =
+       mPerformance->GetDOMTiming()->GetDomCompleteHighRes();
+ 
+-  REDUCE_TIME_PRECISION;
++  REDUCE_TIME_PRECISION(mPresentedDomComplete);
+ }
+ 
+ DOMHighResTimeStamp PerformanceNavigationTiming::LoadEventStart() const {
+   DOMHighResTimeStamp rawValue =
+       mPerformance->GetDOMTiming()->GetLoadEventStartHighRes();
+ 
+-  REDUCE_TIME_PRECISION;
++  REDUCE_TIME_PRECISION(mPresentedLoadEventStart);
+ }
+ 
+ DOMHighResTimeStamp PerformanceNavigationTiming::LoadEventEnd() const {
+   DOMHighResTimeStamp rawValue =
+       mPerformance->GetDOMTiming()->GetLoadEventEndHighRes();
+ 
+-  REDUCE_TIME_PRECISION;
++  REDUCE_TIME_PRECISION(mPresentedLoadEventEnd);
+ }
+ 
+ NavigationTimingType PerformanceNavigationTiming::Type() const {
