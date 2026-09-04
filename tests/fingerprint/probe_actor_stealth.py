@@ -38,7 +38,9 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
-# Native name + arity for each wrapped function the actors replace.
+# Native name + arity checks identify descriptor tells. They do not prove a
+# native-looking timer function is wrapped; test_timing_ownership.mjs owns that
+# structural regression gate.
 EXPECT_FNS = {
     "Math.sin": ("sin", 1),
     "Math.pow": ("pow", 2),
@@ -47,6 +49,8 @@ EXPECT_FNS = {
     "navigator.requestMIDIAccess": ("requestMIDIAccess", 0),
     "navigator.javaEnabled": ("javaEnabled", 0),
     "setTimeout": ("setTimeout", 1),
+    "setInterval": ("setInterval", 1),
+    "requestAnimationFrame": ("requestAnimationFrame", 1),
     "addEventListener": ("addEventListener", 2),
 }
 
@@ -74,6 +78,8 @@ s.textContent = `
       'navigator.requestMIDIAccess': id(navigator.requestMIDIAccess),
       'navigator.javaEnabled': id(navigator.javaEnabled),
       'setTimeout': id(setTimeout),
+      'setInterval': id(setInterval),
+      'requestAnimationFrame': id(requestAnimationFrame),
       'addEventListener': id(EventTarget.prototype.addEventListener),
     },
     // Getter-based spoofs (navigator.gpu, feature-detect fakes,
@@ -210,6 +216,9 @@ def run(bin_path: str) -> int:
     print(f"  Object.keys(navigator): {r['nav_keys'] or '[]'}")
     print(f"  Object.keys(Math).length: {r['math_keys']}")
     print(f"  sample fns: sin={r['fns']['Math.sin']} pow={r['fns']['Math.pow']}")
+    print("  timer/rAF shapes: " + str({
+        key: r["fns"][key] for key in ("setTimeout", "setInterval", "requestAnimationFrame")
+    }))
     installed = {k: v for k, v in r["getters"].items() if v is not None}
     print(f"  getter names: {installed or '(none installed)'}")
     print(f"  stray 'get length' window prop: {r['stray_get_length']}")
