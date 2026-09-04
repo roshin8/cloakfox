@@ -4,6 +4,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
+import vm from "node:vm";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -20,26 +21,22 @@ const performancePatch = readFileSync(
 );
 
 const WRAPPERS = [
-  { api: "setTimeout", original: "origSetTimeout", installDepth: 1 },
-  { api: "setInterval", original: "origSetInterval", installDepth: 1 },
-  { api: "requestAnimationFrame", original: "origRAF", installDepth: 2 },
+  { api: "setTimeout", original: "origSetTimeout" },
+  { api: "setInterval", original: "origSetInterval" },
+  { api: "requestAnimationFrame", original: "origRAF" },
 ];
+const SEED_B64 = Buffer.from(Uint8Array.from({ length: 32 }, (_, i) => i + 1)).toString("base64");
 
-function extractBalancedBlock(source, start) {
-  const open = source.indexOf("{", start);
-  if (open < 0) throw new Error("block opening brace not found");
-  let depth = 0;
-  for (let i = open; i < source.length; i++) {
-    if (source[i] === "{") depth++;
-    else if (source[i] === "}") {
-      depth--;
-      if (depth === 0) return source.slice(start, i + 1);
-    }
+function braceDelta(line) {
+  let delta = 0;
+  for (const char of line) {
+    if (char === "{") delta++;
+    else if (char === "}") delta--;
   }
-  throw new Error("unbalanced block");
+  return delta;
 }
 
-function extractAddedNowMethod(patch) {
+function reconstructPatchedNow(patch) {
   const signature = "DOMHighResTimeStamp Performance::Now()";
   const signatureStart = patch.indexOf(signature);
   if (signatureStart < 0) throw new Error(`patch hunk not found: ${signature}`);
@@ -51,25 +48,35 @@ function extractAddedNowMethod(patch) {
     throw new Error(`patch hunk header does not declare: ${signature}`);
   }
 
-  const firstAdded = lines.findIndex(line =>
-    line === "+  const DOMHighResTimeStamp reduced ="
-  );
-  if (firstAdded < 0) throw new Error("added reduced-clock declaration not found");
-
-  let depth = 1; // Opening brace declared by the Now() hunk header.
-  const tail = [];
-  for (let i = firstAdded; i < lines.length; i++) {
-    if (!lines[i].startsWith("+")) continue;
-    const code = lines[i].slice(1);
-    tail.push(code);
-    for (const char of code) {
-      if (char === "{") depth++;
-      else if (char === "}") depth--;
-    }
-    if (depth === 0) return tail.join("\n");
-    if (depth < 0) throw new Error("added Now() tail closed too many braces");
+  // The hunk begins inside Firefox's pre-existing system-principal branch.
+  // Reconstruct that elided opening scope, then apply every context/addition
+  // line and skip only removed lines. This preserves each return's provenance.
+  const method = [
+    { code: `${signature} {`, source: "synthetic" },
+    { code: "  if (/* pre-existing system-principal scope elided by hunk */) {", source: "synthetic" },
+  ];
+  let depth = 2;
+  for (const line of lines) {
+    if (line.startsWith("-")) continue;
+    if (!line.startsWith("+") && !line.startsWith(" ") && line !== "") continue;
+    const source = line.startsWith("+") ? "added" : "context";
+    const code = line === "" ? "" : line.slice(1);
+    method.push({ code, source });
+    depth += braceDelta(code);
+    if (depth === 0) return method;
+    if (depth < 0) throw new Error("patched Performance::Now closed too many braces");
   }
-  throw new Error("added Now() tail did not close its declared method body");
+  throw new Error("patched Performance::Now did not close");
+}
+
+function enumerateReturns(method) {
+  let depth = 0;
+  return method.flatMap((line, index) => {
+    const depthAtStart = depth;
+    depth += braceDelta(line.code);
+    const match = /^\s*return\s+(.+);\s*$/.exec(line.code);
+    return match ? [{ expression: match[1], source: line.source, depth: depthAtStart, index }] : [];
+  });
 }
 
 function jsTokens(source) {
@@ -119,34 +126,6 @@ function assertActorHasNoClockOwnership(actor) {
     `timing actor has forbidden clock ownership token(s): ${forbidden.map(t => t.value).join(", ")}`);
 }
 
-function extractInstallBody(actor) {
-  const installStart = actor.indexOf("\n  #install() {");
-  if (installStart < 0) throw new Error("timing actor #install not found");
-  return extractBalancedBlock(actor, installStart + 3);
-}
-
-function braceDepthAt(source, index) {
-  let depth = 0;
-  for (let i = 0; i < index; i++) {
-    if (source[i] === "{") depth++;
-    else if (source[i] === "}") depth--;
-  }
-  return depth;
-}
-
-function apiAssignments(source, api) {
-  return [...source.matchAll(new RegExp(`\\bpageWin\\.${api}\\s*=`, "g"))]
-    .map(match => match.index);
-}
-
-function extractActorWrapper(install, original) {
-  const originalStart = install.indexOf(`const ${original} =`);
-  if (originalStart < 0) throw new Error(`${original} declaration not found`);
-  const wrapperStart = install.indexOf("Cu.exportFunction(function", originalStart);
-  if (wrapperStart < 0) throw new Error(`${original} wrapper not found`);
-  return extractBalancedBlock(install, wrapperStart);
-}
-
 function findWrapperStatementEnd(source, start) {
   const callStart = source.indexOf("(", source.indexOf("setNativeIdentity", start));
   if (callStart < 0) throw new Error("wrapper installation call not found");
@@ -157,48 +136,6 @@ function findWrapperStatementEnd(source, start) {
     if (parens === 0 && source[i + 1] === ";") return i + 2;
   }
   throw new Error("wrapper installation statement did not terminate");
-}
-
-function assertGeckoOwnsPerformanceNow(patch, actor) {
-  const addedNow = extractAddedNowMethod(patch);
-  assert.match(addedNow, /^  const DOMHighResTimeStamp reduced =\n      nsRFPService::ReduceTimePrecisionAsMSecs\(\n          rawTime, GetRandomTimelineSeed\(\), mRTPCallerType\);/);
-  assert.equal((addedNow.match(/\breturn\b/g) || []).length, 1,
-    "added Performance::Now body must contain exactly one terminal return");
-  assert.match(addedNow, /\n  return PresentTimestamp\(reduced\);\n}$/,
-    "added Performance::Now body must terminally return PresentTimestamp(reduced)");
-  assert.doesNotMatch(addedNow, /return\s+(?:reduced|rawTime)\s*;/,
-    "added Performance::Now body must not return an unpresented clock");
-  assertActorHasNoClockOwnership(actor);
-}
-
-function assertActorRetainsTimerPaths(actor) {
-  const install = extractInstallBody(actor);
-  assert.match(actor, /function\s+makePRNG\s*\(\s*seedBytes\s*\)/,
-    "timing actor must retain the shared PRNG definition");
-  assert.match(install, /const\s+prng\s*=\s*makePRNG\s*\(\s*b64ToBytes\s*\(\s*seedB64\s*\)\s*\)/,
-    "timer paths must share the per-container PRNG");
-
-  for (const spec of WRAPPERS) {
-    const assignments = apiAssignments(install, spec.api);
-    assert.equal(assignments.length, 1,
-      `${spec.api} must have one effective installation, without restoration`);
-    assert.equal(braceDepthAt(install, assignments[0]), spec.installDepth,
-      `${spec.api} installation must be on its effective #install path`);
-    assert.match(install.slice(assignments[0]),
-      new RegExp(`^pageWin\\.${spec.api}\\s*=\\s*setNativeIdentity\\s*\\(\\s*Cu\\.exportFunction`),
-      `${spec.api} must install its exported wrapper`);
-    const wrapper = extractActorWrapper(install, spec.original);
-    assert.match(wrapper, new RegExp(`\\b${spec.original}\\.call\\s*\\(`),
-      `${spec.api} wrapper must delegate to ${spec.original}`);
-    assert.match(wrapper, /\bprng\s*\(\s*\)/,
-      `${spec.api} wrapper must consume the shared PRNG`);
-  }
-
-  const raf = WRAPPERS[2];
-  const rafInstall = apiAssignments(install, raf.api)[0];
-  const rafGuard = install.lastIndexOf(`if (typeof ${raf.original} === "function") {`, rafInstall);
-  assert.ok(rafGuard >= 0 && braceDepthAt(install, rafGuard) === 1,
-    "rAF installation must be guarded only by native rAF availability");
 }
 
 function mutateClock(actor, mode) {
@@ -218,27 +155,125 @@ function mutateTimerPath(actor, spec, mode) {
   const marker = `pageWin.${spec.api} = setNativeIdentity`;
   const start = actor.indexOf(marker);
   if (start < 0) throw new Error(`${spec.api} installation marker not found`);
-  if (mode === "remove") {
-    return actor.replace(marker, `pageWin.disabled${spec.api} = setNativeIdentity`);
-  }
+  const end = findWrapperStatementEnd(actor, start);
+  const statement = actor.slice(start, end);
+  if (mode === "comment") return `${actor.slice(0, start)}/*${statement}*/${actor.slice(end)}`;
   if (mode === "prng") {
-    const statementEnd = findWrapperStatementEnd(actor, start);
-    const before = actor.slice(0, start);
-    const statement = actor.slice(start, statementEnd);
-    const after = actor.slice(statementEnd);
     if (!statement.includes("prng()")) throw new Error(`${spec.api} PRNG call not found`);
-    return `${before}${statement.replace("prng()", "0")}${after}`;
+    return `${actor.slice(0, start)}${statement.replace("prng()", "0")}${actor.slice(end)}`;
   }
   if (mode === "restore") {
-    const end = findWrapperStatementEnd(actor, start);
-    return `${actor.slice(0, end)}\n    pageWin.${spec.api} = ${spec.original};${actor.slice(end)}`;
-  }
-  if (mode === "dead") {
-    const end = findWrapperStatementEnd(actor, start);
-    const statement = actor.slice(start, end);
-    return `${actor.slice(0, start)}if (false) {\n    ${statement}\n    }${actor.slice(end)}`;
+    return `${actor.slice(0, end)}\n    pageWin["${spec.api}"] = ${spec.original};${actor.slice(end)}`;
   }
   throw new Error(`unknown ${spec.api} mutation: ${mode}`);
+}
+
+function mutateEarlyReturn(actor) {
+  const anchor = "const pageWin = win.wrappedJSObject;";
+  return actor.replace(anchor, `${anchor}\n    return;`);
+}
+
+function mutateRafOutsideGuard(actor) {
+  const marker = "if (typeof origRAF === \"function\") {";
+  const guardStart = actor.indexOf(marker);
+  if (guardStart < 0) throw new Error("rAF availability guard not found");
+  const guardEnd = actor.indexOf("\n    }", guardStart);
+  if (guardEnd < 0) throw new Error("rAF availability guard end not found");
+  return `${actor.slice(0, guardEnd + 6)}\n    pageWin.requestAnimationFrame = () => 0;${actor.slice(guardEnd + 6)}`;
+}
+
+function prepareActorSource(actor) {
+  const prepared = actor.replace("export class CloakfoxTimingChild", "class CloakfoxTimingChild");
+  if (prepared === actor) throw new Error("actor export adaptation did not apply");
+  return `${prepared}\nglobalThis.CloakfoxTimingChild = CloakfoxTimingChild;`;
+}
+
+function makeOriginals(rafAvailable) {
+  const calls = { timeout: [], interval: [], raf: [] };
+  const timeout = function setTimeout(handler, delay, ...args) {
+    calls.timeout.push({ handler, delay, args });
+    return `timeout-${calls.timeout.length}`;
+  };
+  const interval = function setInterval(handler, delay, ...args) {
+    calls.interval.push({ handler, delay, args });
+    return `interval-${calls.interval.length}`;
+  };
+  const raf = rafAvailable ? function requestAnimationFrame(callback) {
+    calls.raf.push({ callback });
+    callback(100);
+    return "raf-1";
+  } : undefined;
+  return { calls, timeout, interval, raf };
+}
+
+function installActor(actorSource, { enabled = true, hasSeed = true, rafAvailable = true } = {}) {
+  const originals = makeOriginals(rafAvailable);
+  const pageWin = {
+    setTimeout: originals.timeout,
+    setInterval: originals.interval,
+    requestAnimationFrame: originals.raf,
+  };
+  const seedKey = "cloakfox.container.7.timing_seed";
+  const context = vm.createContext({
+    JSWindowActorChild: class {},
+    Services: {
+      prefs: { getBoolPref: () => enabled },
+      cpmm: { sharedData: { get: () => hasSeed ? { [seedKey]: SEED_B64 } : {} } },
+    },
+    Cu: {
+      exportFunction: fn => fn,
+      waiveXrays: fn => fn,
+    },
+    atob: b64 => Buffer.from(b64, "base64").toString("binary"),
+  });
+  vm.runInContext(prepareActorSource(actorSource), context, { filename: "CloakfoxTimingChild.sys.mjs" });
+  const child = new context.CloakfoxTimingChild();
+  child.contentWindow = {
+    docShell: { browsingContext: { originAttributes: { userContextId: 7 } } },
+    wrappedJSObject: pageWin,
+  };
+  child.handleEvent({ type: "DOMDocElementInserted" });
+  return { pageWin, originals };
+}
+
+function assertTimersEffective(actorSource, { rafAvailable = true } = {}) {
+  const { pageWin, originals } = installActor(actorSource, { rafAvailable });
+  assert.notEqual(pageWin.setTimeout, originals.timeout, "setTimeout must remain installed");
+  assert.notEqual(pageWin.setInterval, originals.interval, "setInterval must remain installed");
+  for (let i = 0; i < 12; i++) {
+    pageWin.setTimeout(() => {}, 10);
+    pageWin.setInterval(() => {}, 10);
+  }
+  assert.ok(originals.calls.timeout.some(call => call.delay > 10 && call.delay <= 12),
+    "setTimeout wrapper must consume PRNG jitter");
+  assert.ok(originals.calls.interval.some(call => call.delay > 10 && call.delay <= 12),
+    "setInterval wrapper must consume PRNG jitter");
+
+  if (!rafAvailable) {
+    assert.equal(pageWin.requestAnimationFrame, undefined,
+      "rAF must remain unavailable outside its native availability guard");
+    return;
+  }
+  assert.notEqual(pageWin.requestAnimationFrame, originals.raf, "rAF must remain installed");
+  let timestamp;
+  pageWin.requestAnimationFrame(value => { timestamp = value; });
+  assert.ok(timestamp > 100 && timestamp < 100.1,
+    "rAF wrapper must consume PRNG noise in its callback timestamp");
+}
+
+function assertGeckoOwnsPerformanceNow(patch, actor) {
+  const method = reconstructPatchedNow(patch);
+  const returns = enumerateReturns(method);
+  assert.equal(returns.length, 2, "Performance::Now must retain only its early and terminal returns");
+  assert.deepEqual(returns[0], {
+    expression: "rawTime", source: "context", depth: 2, index: 2,
+  }, "only the pre-existing system-principal early return may expose rawTime");
+  assert.deepEqual(returns[1], {
+    expression: "PresentTimestamp(reduced)", source: "added", depth: 1, index: method.length - 2,
+  }, "Performance::Now must terminally present the reduced clock");
+  assert.match(method.map(line => line.code).join("\n"),
+    /const DOMHighResTimeStamp reduced =\n      nsRFPService::ReduceTimePrecisionAsMSecs\(\n          rawTime, GetRandomTimelineSeed\(\), mRTPCallerType\);/);
+  assertActorHasNoClockOwnership(actor);
 }
 
 function fixtureActor() {
@@ -248,15 +283,33 @@ function fixtureActor() {
   if (kind === "clock") return mutateClock(timingActor, detail);
   const spec = WRAPPERS.find(wrapper => wrapper.api === api);
   if (kind === "wrapper" && spec) return mutateTimerPath(timingActor, spec, detail);
+  if (mode === "early-return") return mutateEarlyReturn(timingActor);
+  if (mode === "raf-outside") return mutateRafOutsideGuard(timingActor);
   throw new Error(`unknown CLOAKFOX_TIMING_MUTATION: ${mode}`);
 }
 
-test("Gecko owns the reduced performance.now presentation path", () => {
+test("Gecko owns the complete reduced performance.now presentation path", () => {
   assertGeckoOwnsPerformanceNow(performancePatch, fixtureActor());
 });
 
-test("timing actor retains all seeded timer and rAF paths", () => {
-  assertActorRetainsTimerPaths(fixtureActor());
+test("shipped timing actor installs effective timer and rAF wrappers", () => {
+  assertTimersEffective(fixtureActor());
+});
+
+test("timing actor respects enabled, seed, and rAF availability gates", () => {
+  for (const options of [{ enabled: false }, { hasSeed: false }]) {
+    const { pageWin, originals } = installActor(timingActor, options);
+    assert.equal(pageWin.setTimeout, originals.timeout);
+    assert.equal(pageWin.setInterval, originals.interval);
+    assert.equal(pageWin.requestAnimationFrame, originals.raf);
+  }
+  assertTimersEffective(timingActor, { rafAvailable: false });
+});
+
+test("vm adaptation requires the shipped actor export boundary", () => {
+  assert.throws(() => prepareActorSource(
+    timingActor.replace("export class CloakfoxTimingChild", "class CloakfoxTimingChild")
+  ), /export adaptation did not apply/);
 });
 
 test("clock lexical gate ignores comments and unrelated literals", () => {
@@ -272,13 +325,20 @@ for (const mode of ["direct", "alias", "computed"]) {
   });
 }
 
+test("Gecko gate rejects an added outer raw return before reduction", () => {
+  const mutant = performancePatch.replace(
+    "+  const DOMHighResTimeStamp reduced =",
+    "+  return rawTime;\n+\n+  const DOMHighResTimeStamp reduced ="
+  );
+  assert.throws(() => assertGeckoOwnsPerformanceNow(mutant, timingActor), /only its early and terminal returns/);
+});
+
 test("Gecko gate rejects dead presentation followed by a raw reduced return", () => {
   const mutant = performancePatch.replace(
     "+  return PresentTimestamp(reduced);\n+}",
     "+  if (false) {\n+    return PresentTimestamp(reduced);\n+  }\n+  return reduced;\n+}"
   );
-  assert.throws(() => assertGeckoOwnsPerformanceNow(mutant, timingActor),
-    /exactly one terminal return|terminally return/);
+  assert.throws(() => assertGeckoOwnsPerformanceNow(mutant, timingActor), /only its early and terminal returns/);
 });
 
 test("Gecko gate rejects an outer raw reduced return", () => {
@@ -286,15 +346,23 @@ test("Gecko gate rejects an outer raw reduced return", () => {
     "+  return PresentTimestamp(reduced);",
     "+  return reduced;"
   );
-  assert.throws(() => assertGeckoOwnsPerformanceNow(mutant, timingActor),
-    /terminally return|unpresented clock/);
+  assert.throws(() => assertGeckoOwnsPerformanceNow(mutant, timingActor), /terminally present/);
 });
 
 for (const spec of WRAPPERS) {
-  for (const mode of ["remove", "prng", "restore", "dead"]) {
-    test(`${spec.api} gate rejects ${mode} mutation`, () => {
-      assert.throws(() => assertActorRetainsTimerPaths(mutateTimerPath(timingActor, spec, mode)),
-        new RegExp(spec.api));
+  for (const mode of ["comment", "prng", "restore"]) {
+    test(`${spec.api} harness rejects ${mode} mutation`, () => {
+      assert.throws(() => assertTimersEffective(mutateTimerPath(timingActor, spec, mode)),
+        spec.api === "requestAnimationFrame" ? /rAF|requestAnimationFrame/ : new RegExp(spec.api));
     });
   }
 }
+
+test("timer harness rejects an unconditional return before installation", () => {
+  assert.throws(() => assertTimersEffective(mutateEarlyReturn(timingActor)), /setTimeout must remain installed/);
+});
+
+test("timer harness rejects rAF assignment outside its availability guard", () => {
+  assert.throws(() => assertTimersEffective(mutateRafOutsideGuard(timingActor), { rafAvailable: false }),
+    /rAF must remain unavailable/);
+});
