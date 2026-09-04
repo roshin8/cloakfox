@@ -39,12 +39,84 @@ function patchFileSections(patch, path) {
   return sections;
 }
 
+function parseHunk(hunk) {
+  const header = hunk.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@[^\n]*/);
+  assert.ok(header, `invalid unified hunk header: ${hunk.split("\n", 1)[0]}`);
+  const oldStart = Number(header[1]);
+  const oldCount = header[2] === undefined ? 1 : Number(header[2]);
+  const newStart = Number(header[3]);
+  const newCount = header[4] === undefined ? 1 : Number(header[4]);
+  const oldLines = [];
+  const newLines = [];
+
+  for (const line of hunk.slice(header[0].length + 1).split("\n")) {
+    if (oldLines.length === oldCount && newLines.length === newCount) break;
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      newLines.push(line.slice(1));
+    } else if (line.startsWith("-") && !line.startsWith("---")) {
+      oldLines.push(line.slice(1));
+    } else if (line.startsWith(" ")) {
+      oldLines.push(line.slice(1));
+      newLines.push(line.slice(1));
+    } else if (line === "") {
+      // This patch stack contains GNU-patch-compatible bare blank context.
+      oldLines.push("");
+      newLines.push("");
+    } else if (!line.startsWith("\\ No newline at end of file")) {
+      break;
+    }
+  }
+
+  assert.equal(oldLines.length, oldCount,
+    `old-side count mismatch in hunk at -${oldStart}`);
+  assert.equal(newLines.length, newCount,
+    `new-side count mismatch in hunk at +${newStart}`);
+  return { oldStart, oldCount, newStart, oldLines, newLines };
+}
+
+function hunksInSection(section) {
+  return section.split(/\n(?=@@ )/)
+    .filter(part => part.startsWith("@@ "))
+    .map(parseHunk);
+}
+
 function newSideOfHunk(hunk) {
-  return hunk.split("\n").slice(1).flatMap(line => {
-    if (line.startsWith("+") && !line.startsWith("+++")) return [line.slice(1)];
-    if (line.startsWith(" ")) return [line.slice(1)];
-    return [];
-  }).join("\n");
+  return parseHunk(hunk).newLines.join("\n");
+}
+
+function findSequence(lines, sequence, expected) {
+  const matches = [];
+  for (let start = 0; start <= lines.length - sequence.length; start++) {
+    if (sequence.every((line, offset) => lines[start + offset] === line)) {
+      matches.push(start);
+    }
+  }
+  assert.ok(matches.length > 0,
+    `patch old side not found near source line ${expected + 1}`);
+  return matches.reduce((best, candidate) =>
+    Math.abs(candidate - expected) < Math.abs(best - expected) ? candidate : best);
+}
+
+function effectivePatchedFile(path) {
+  let lines = null;
+  for (const patchName of order) {
+    const patch = readFileSync(join(patchDir, patchName), "utf8");
+    for (const section of patchFileSections(patch, path)) {
+      for (const hunk of hunksInSection(section)) {
+        if (lines === null) {
+          if (hunk.oldStart !== 0 || hunk.oldCount !== 0) continue;
+          lines = [];
+        }
+        const expected = hunk.oldStart === 0 ? 0 : hunk.oldStart - 1;
+        const start = hunk.oldLines.length === 0
+          ? Math.min(expected, lines.length)
+          : findSequence(lines, hunk.oldLines, expected);
+        lines.splice(start, hunk.oldLines.length, ...hunk.newLines);
+      }
+    }
+  }
+  assert.ok(lines, `no source-of-truth patch creates ${path}`);
+  return lines.join("\n");
 }
 
 function extractBalanced(source, signature) {
@@ -61,16 +133,7 @@ function extractBalanced(source, signature) {
 }
 
 function effectivePatchedFunction(path, signature) {
-  let result = null;
-  for (const patchName of order) {
-    const patch = readFileSync(join(patchDir, patchName), "utf8");
-    for (const section of patchFileSections(patch, path)) {
-      for (const hunk of section.split(/\n(?=@@ )/).filter(part => part.startsWith("@@ "))) {
-        const candidate = extractBalanced(newSideOfHunk(hunk), signature);
-        if (candidate) result = candidate;
-      }
-    }
-  }
+  const result = extractBalanced(effectivePatchedFile(path), signature);
   assert.ok(result, `no complete effective patch definition found for ${signature}`);
   return result;
 }
@@ -109,12 +172,140 @@ function allIndices(source, pattern) {
   return [...source.matchAll(pattern)].map(match => match.index);
 }
 
+function maskCpp(source) {
+  const masked = source.split("");
+  let state = "code";
+  let escaped = false;
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    const next = source[i + 1];
+    if (state === "line-comment") {
+      if (char === "\n") state = "code";
+      else masked[i] = " ";
+    } else if (state === "block-comment") {
+      masked[i] = char === "\n" ? "\n" : " ";
+      if (char === "*" && next === "/") {
+        masked[i + 1] = " ";
+        i++;
+        state = "code";
+      }
+    } else if (state === "string" || state === "character") {
+      masked[i] = char === "\n" ? "\n" : " ";
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if ((state === "string" && char === "\"") ||
+                 (state === "character" && char === "'")) {
+        state = "code";
+      }
+    } else if (char === "/" && next === "/") {
+      masked[i] = masked[i + 1] = " ";
+      i++;
+      state = "line-comment";
+    } else if (char === "/" && next === "*") {
+      masked[i] = masked[i + 1] = " ";
+      i++;
+      state = "block-comment";
+    } else if (char === "\"") {
+      masked[i] = " ";
+      state = "string";
+    } else if (char === "'") {
+      masked[i] = " ";
+      state = "character";
+    }
+  }
+  return masked.join("");
+}
+
+function delimiterPairs(masked, open, close) {
+  const stack = [];
+  const pairs = new Map();
+  for (let i = 0; i < masked.length; i++) {
+    if (masked[i] === open) stack.push(i);
+    if (masked[i] === close) {
+      const start = stack.pop();
+      assert.notEqual(start, undefined, `unmatched ${close} at ${i}`);
+      pairs.set(start, i);
+    }
+  }
+  assert.equal(stack.length, 0, `unmatched ${open} at ${stack.at(-1)}`);
+  return pairs;
+}
+
+function braceScopes(source) {
+  const masked = maskCpp(source);
+  return [...delimiterPairs(masked, "{", "}")]
+    .map(([start, close]) => ({ start, end: close + 1 }));
+}
+
+function innermostScopeAt(scopes, index) {
+  return scopes
+    .filter(scope => scope.start < index && index < scope.end)
+    .sort((a, b) => b.start - a.start)[0];
+}
+
+function mutexLifetimes(source) {
+  const masked = maskCpp(source);
+  const scopes = braceScopes(source);
+  return allIndices(masked,
+    /MutexAutoLock\s+\w+\s*\(GetLocalCacheMutex\(\)\)\s*;/g)
+    .map(start => {
+      const scope = innermostScopeAt(scopes, start);
+      assert.ok(scope, "cache mutex declaration must have a lexical scope");
+      return { start, end: scope.end };
+    });
+}
+
+function assertWithinCacheMutex(source, index, message) {
+  assert.ok(mutexLifetimes(source).some(lock => lock.start < index && index < lock.end),
+    message);
+}
+
+function assertOutsideCacheMutex(source, index, message) {
+  assert.ok(mutexLifetimes(source).every(lock => index < lock.start || index >= lock.end),
+    message);
+}
+
+function ifBlocks(source) {
+  const masked = maskCpp(source);
+  const parens = delimiterPairs(masked, "(", ")");
+  const braces = delimiterPairs(masked, "{", "}");
+  const blocks = [];
+  for (const match of masked.matchAll(/\bif\s*(?=\()/g)) {
+    const openParen = masked.indexOf("(", match.index);
+    const closeParen = parens.get(openParen);
+    assert.notEqual(closeParen, undefined, "if condition must close");
+    let openBrace = closeParen + 1;
+    while (/\s/.test(masked[openBrace])) openBrace++;
+    if (masked[openBrace] !== "{") continue;
+    const closeBrace = braces.get(openBrace);
+    assert.notEqual(closeBrace, undefined, "if block must close");
+    blocks.push({
+      start: match.index,
+      bodyStart: openBrace,
+      end: closeBrace + 1,
+      condition: masked.slice(openParen + 1, closeParen),
+    });
+  }
+  return blocks;
+}
+
+function assertMainThreadDominates(source, index, message) {
+  const dominated = ifBlocks(source).some(block =>
+    block.bodyStart < index && index < block.end &&
+    /(^|[^!])\bNS_IsMainThread\s*\(\s*\)/.test(block.condition));
+  assert.ok(dominated, message);
+}
+
 function validateCppFirstLookup(source) {
   const offThread = blockAt(source, "if (!NS_IsMainThread())");
-  assert.match(offThread.source, /MutexAutoLock\s+\w+\s*\(GetLocalCacheMutex\(\)\)/,
-    "off-thread cache lookup must hold the cache mutex");
   assert.match(offThread.source, /GetLocalCache\(\)\.Lookup\(prefName\)/,
     "off-thread branch must read the cpp-first pref-name cache entry");
+  const offThreadLookup = offThread.start +
+    offThread.source.indexOf("GetLocalCache().Lookup(prefName)");
+  assertWithinCacheMutex(source, offThreadLookup,
+    "off-thread cache lookup must occur within a live cache mutex scope");
   assert.match(offThread.source, /outValue\s*=\s*\w+\.Data\(\)/,
     "off-thread cache hit must supply the caller's value");
   assert.match(offThread.source, /return false\s*;/,
@@ -128,6 +319,10 @@ function validateCppFirstLookup(source) {
   assert.ok(restrictedCalls.length >= 4, "expected Preferences and IPC fallback calls");
   assert.ok(restrictedCalls.every(index => index > offThread.end),
     "off-thread return must precede every Preferences and IPC call");
+  for (const index of restrictedCalls) {
+    assertOutsideCacheMutex(source, index,
+      "Preferences and IPC access must remain outside every cache mutex scope");
+  }
 
   const assertion = source.indexOf("MOZ_ASSERT(NS_IsMainThread())", offThread.end);
   assert.ok(assertion >= offThread.end && assertion < restrictedCalls[0],
@@ -138,15 +333,34 @@ function validateCppFirstLookup(source) {
   assert.ok(preferences > assertion, "main thread must refresh from Preferences");
   assert.ok(ipc > preferences, "child-process IPC fallback must follow Preferences");
 
-  const refresh = source.slice(ipc);
-  const refreshLock = refresh.search(/MutexAutoLock\s+\w+\s*\(GetLocalCacheMutex\(\)\)/);
-  const remove = refresh.indexOf("GetLocalCache().Remove(prefName)");
-  const update = refresh.indexOf("GetLocalCache().InsertOrUpdate(prefName");
-  assert.ok(refreshLock >= 0, "main-thread refresh must lock the shared cache");
-  assert.ok(remove > refreshLock,
-    "main-thread miss must remove a stale cpp-first cache entry under the lock");
-  assert.ok(update > refreshLock,
-    "main-thread success must update the cpp-first cache entry under the lock");
+  const remove = source.indexOf("GetLocalCache().Remove(prefName)", ipc);
+  const update = source.indexOf("GetLocalCache().InsertOrUpdate(prefName", ipc);
+  assert.ok(remove > ipc, "main-thread miss must remove stale cpp-first cache state");
+  assert.ok(update > ipc, "main-thread success must update cpp-first cache state");
+  assertWithinCacheMutex(source, remove,
+    "main-thread cache removal must occur within a live cache mutex scope");
+  assertWithinCacheMutex(source, update,
+    "main-thread cache population must occur within a live cache mutex scope");
+}
+
+function validateGetStringFallback(source) {
+  const cacheLookup = source.indexOf("GetLocalCache().Lookup(prefName)");
+  assert.ok(cacheLookup >= 0, "GetString must consult the roverfox cache");
+  assertWithinCacheMutex(source, cacheLookup,
+    "GetString roverfox cache lookup must occur within a live cache mutex scope");
+
+  const preferences = allIndices(source, /Preferences::GetCString/g);
+  const ipc = allIndices(source, /SendRoverfoxStorageGet/g);
+  assert.equal(preferences.length, 1, "GetString must have one Preferences fallback");
+  assert.equal(ipc.length, 1, "GetString must have one IPC fallback");
+  assertMainThreadDominates(source, preferences[0],
+    "GetString Preferences fallback must be dominated by NS_IsMainThread");
+  assertMainThreadDominates(source, ipc[0],
+    "GetString IPC fallback must be dominated by NS_IsMainThread");
+  assertOutsideCacheMutex(source, preferences[0],
+    "GetString Preferences fallback must remain outside every cache mutex scope");
+  assertOutsideCacheMutex(source, ipc[0],
+    "GetString IPC fallback must remain outside every cache mutex scope");
 }
 
 function validateWorkerWarmup(source) {
@@ -160,6 +374,10 @@ function validateWorkerWarmup(source) {
 const lookup = effectivePatchedFunction(
   "dom/base/RoverfoxStorageManager.cpp",
   "RoverfoxStorageManager::TryGetCppFirstPref"
+);
+const getString = effectivePatchedFunction(
+  "dom/base/RoverfoxStorageManager.cpp",
+  "RoverfoxStorageManager::GetString"
 );
 const constructorWarmup = effectivePatchedHunk(
   "dom/workers/WorkerPrivate.cpp",
@@ -196,4 +414,88 @@ test("gate rejects removal of stale-cache invalidation", () => {
   );
   assert.notEqual(mutant, lookup, "cache-invalidation mutation did not apply");
   assert.throws(() => validateCppFirstLookup(mutant), /miss must remove/);
+});
+
+test("effective GetString includes both worker-thread guards", () => {
+  validateGetStringFallback(getString);
+});
+
+test("gate rejects removal of the GetString Preferences main-thread guard", () => {
+  const mutant = getString.replace(
+    "if (utf8Value.IsEmpty() && NS_IsMainThread())",
+    "if (utf8Value.IsEmpty())"
+  );
+  assert.notEqual(mutant, getString, "Preferences-guard mutation did not apply");
+  assert.throws(() => validateGetStringFallback(mutant),
+    /Preferences fallback must be dominated/);
+});
+
+test("gate rejects removal of the GetString IPC main-thread guard", () => {
+  const mutant = getString.replace(
+    "if (utf8Value.IsEmpty() && !XRE_IsParentProcess() && NS_IsMainThread())",
+    "if (utf8Value.IsEmpty() && !XRE_IsParentProcess())"
+  );
+  assert.notEqual(mutant, getString, "IPC-guard mutation did not apply");
+  assert.throws(() => validateGetStringFallback(mutant),
+    /IPC fallback must be dominated/);
+});
+
+test("gate rejects a closed off-thread cache-lock scope", () => {
+  const mutant = lookup.replace(
+    "MutexAutoLock lock(GetLocalCacheMutex());\n    if (auto entry",
+    "{ MutexAutoLock lock(GetLocalCacheMutex()); }\n    if (auto entry"
+  );
+  assert.notEqual(mutant, lookup, "off-thread lock-scope mutation did not apply");
+  assert.throws(() => validateCppFirstLookup(mutant), /off-thread cache lookup/);
+});
+
+test("gate rejects closing the main-thread cache lock before Remove", () => {
+  const original = `  {
+    MutexAutoLock lock(GetLocalCacheMutex());
+    if (v.IsEmpty()) {
+      GetLocalCache().Remove(prefName);
+    } else {
+      GetLocalCache().InsertOrUpdate(prefName, nsCString(v));
+    }
+  }`;
+  const replacement = `  if (v.IsEmpty()) {
+    GetLocalCache().Remove(prefName);
+  } else {
+    MutexAutoLock lock(GetLocalCacheMutex());
+    GetLocalCache().InsertOrUpdate(prefName, nsCString(v));
+  }`;
+  const mutant = lookup.replace(original, replacement);
+  assert.notEqual(mutant, lookup, "Remove lock-scope mutation did not apply");
+  assert.throws(() => validateCppFirstLookup(mutant),
+    /main-thread cache removal/);
+});
+
+test("gate rejects closing the main-thread cache lock before Insert", () => {
+  const original = `  {
+    MutexAutoLock lock(GetLocalCacheMutex());
+    if (v.IsEmpty()) {
+      GetLocalCache().Remove(prefName);
+    } else {
+      GetLocalCache().InsertOrUpdate(prefName, nsCString(v));
+    }
+  }`;
+  const replacement = `  if (v.IsEmpty()) {
+    MutexAutoLock lock(GetLocalCacheMutex());
+    GetLocalCache().Remove(prefName);
+  } else {
+    GetLocalCache().InsertOrUpdate(prefName, nsCString(v));
+  }`;
+  const mutant = lookup.replace(original, replacement);
+  assert.notEqual(mutant, lookup, "Insert lock-scope mutation did not apply");
+  assert.throws(() => validateCppFirstLookup(mutant),
+    /main-thread cache population/);
+});
+
+test("gate rejects a cache mutex spanning Preferences and IPC", () => {
+  const mutant = lookup.replace(
+    "nsAutoCString v;",
+    "MutexAutoLock outerLock(GetLocalCacheMutex());\n  nsAutoCString v;"
+  );
+  assert.notEqual(mutant, lookup, "outer-lock mutation did not apply");
+  assert.throws(() => validateCppFirstLookup(mutant), /Preferences.*mutex|IPC.*mutex/);
 });
