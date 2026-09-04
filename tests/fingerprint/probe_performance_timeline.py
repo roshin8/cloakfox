@@ -147,7 +147,7 @@ PAGE = r"""<!doctype html>
     };
   }
 
-  for (const type of advertised) {
+  function observe(type) {
     try {
       const observer = new PerformanceObserver(list => {
         for (const entry of list.getEntries()) {
@@ -162,6 +162,18 @@ PAGE = r"""<!doctype html>
     } catch (error) {
       observerErrors[type] = String(error);
     }
+  }
+
+  for (const type of advertised) {
+    if (type !== "navigation") observe(type);
+  }
+  if (advertised.includes("navigation")) {
+    window.addEventListener("load", () => {
+      // loadEventEnd is finalized only after load dispatch returns. Register
+      // this buffered observer in the next task so its callback snapshot is
+      // the stable, complete navigation entry.
+      setTimeout(() => observe("navigation"), 0);
+    }, {once: true});
   }
 
   window.addEventListener("DOMContentLoaded", () => {
@@ -415,6 +427,8 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
 
         if callback["startTime"] != reread["startTime"]:
             failures.append(f"{label} startTime changed after callback")
+        if callback["duration"] != reread["duration"]:
+            failures.append(f"{label} duration changed after callback")
         if callback["type"] == "navigation":
             for phase, snapshot in (("callback", callback), ("settled", reread)):
                 expected = (
@@ -425,8 +439,6 @@ def validate(result: dict) -> tuple[list[str], list[str]]:
                         f"{label} {phase} duration is not its loadEventEnd "
                         "difference"
                     )
-        elif callback["duration"] != reread["duration"]:
-            failures.append(f"{label} duration changed after callback")
         for key, before in callback["extra"].items():
             after = reread["extra"].get(key)
             may_mature = (
