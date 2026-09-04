@@ -560,6 +560,8 @@ document.addEventListener("DOMContentLoaded", () => {
   clearBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     Services.prefs.clearUserPref(masterSeedPref(ucid));
+    Services.prefs.clearUserPref(keyboardSeedPref(ucid));
+    Services.prefs.clearUserPref(timingSeedPref(ucid));
     Services.prefs.clearUserPref(cloakCfgPref(ucid));
     Services.prefs.clearUserPref(tzPref(ucid));
     Services.prefs.clearUserPref(personaIndexPref(ucid));

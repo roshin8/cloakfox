@@ -28,6 +28,12 @@ function extractBlock(src, startRe) {
   throw new Error("unbalanced braces");
 }
 
+function extractBody(src, startRe) {
+  const block = extractBlock(src, startRe);
+  const open = block.indexOf("{");
+  return block.slice(open + 1, -1);
+}
+
 const seedSyncSrc = readFileSync(
   join(root, "additions/browser/components/cloakfox/CloakfoxSeedSync.sys.mjs"),
   "utf8"
@@ -65,6 +71,9 @@ const settingsBuildBlock = extractBlock(settingsSrc, /function buildCloakCfg\(/)
   .replace("buildCloakCfg", "buildSettingsCloakCfg");
 const settingsPersistBlock = extractBlock(settingsSrc, /function persistCloakCfg\(/)
   .replaceAll("buildCloakCfg", "buildSettingsCloakCfg");
+const settingsClearBody = extractBody(
+  settingsSrc, /clearBtn\.addEventListener\("click", \(\) => /
+);
 const popupB64Block = extractBlock(popupSrc, /function b64ToBytes\(/);
 const popupCharsBlock = extractConstDeclaration(popupSrc, "B64_CHARS");
 const popupU32Block = extractBlock(popupSrc, /function u32\(/)
@@ -136,6 +145,7 @@ const observerMod = await import(
         getStringPref(name, fallback) { return values.get(name) ?? fallback; },
         setStringPref(name, value) { values.set(name, value); writes++; notify(name); },
         clearUserPref(name) { values.delete(name); writes++; notify(name); },
+        prefHasUserValue(name) { return values.has(name); },
         getBoolPref(name, fallback) { return values.get(name) ?? fallback; },
         setBoolPref(name, value) { values.set(name, value); writes++; notify(name); },
       },
@@ -144,12 +154,20 @@ const observerMod = await import(
       getPublicIdentities() { return [{ userContextId: 9 }]; },
     };
     function applyGenericFontPrefs() {}
+    function buildCloakCfg(_seed, _ucid) {
+      return JSON.stringify({ "fonts": ["Arial"], "fonts:spacing_seed": 1 });
+    }
     function publish() { publishes.push(Object.fromEntries(values)); }
     const fillPersonaKeys = (seed, ucid) => ({
       "fonts": ["Arial"], "navigator.userAgent": "settings-" + ucid,
     });
     const writeHttpProfilePrefs = () => {};
+    const masterSeedPref = (ucid) => "cloakfox.container." + ucid + ".math_seed";
+    const keyboardSeedPref = (ucid) => "cloakfox.container." + ucid + ".keyboard_seed";
+    const timingSeedPref = (ucid) => "cloakfox.container." + ucid + ".timing_seed";
     const cloakCfgPref = (ucid) => "cloakfox.s.cloak_cfg_" + ucid;
+    const tzPref = (ucid) => "cloakfox.container." + ucid + ".timezone";
+    const personaIndexPref = (ucid) => "cloakfox.container." + ucid + ".persona_index";
     const ChromeUtils = {
       importESModule(path) {
         if (path.includes("CloakfoxPersonas")) return { fillPersonaKeys };
@@ -193,12 +211,15 @@ const observerMod = await import(
       Services.prefs.setStringPref("cloakfox.container." + ucid + ".math_seed", seed);
       Services.prefs.setStringPref(cloakCfgPref(ucid), cfg);
     }
-    export function clearSettings(ucid, overridePrefs) {
-      Services.prefs.clearUserPref("cloakfox.container." + ucid + ".math_seed");
-      Services.prefs.clearUserPref(cloakCfgPref(ucid));
-      Services.prefs.clearUserPref("cloakfox.container." + ucid + ".timezone");
-      Services.prefs.clearUserPref("cloakfox.container." + ucid + ".persona_index");
-      for (const pref of overridePrefs) Services.prefs.clearUserPref(pref);
+    let clearOverridePrefs = [];
+    function clearAllOverrides(_ucid) {
+      for (const pref of clearOverridePrefs) Services.prefs.clearUserPref(pref);
+    }
+    function refreshContainer() {}
+    export function clearSettings(requestedUcid, overridePrefs) {
+      clearOverridePrefs = overridePrefs;
+      const selectEl = { value: String(requestedUcid) };
+      ${settingsClearBody}
     }
     export function setEnabled(value) { Services.prefs.setBoolPref("cloakfox.enabled", value); }
     export function setString(name, value) { Services.prefs.setStringPref(name, value); }
@@ -406,12 +427,30 @@ test("settings Clear leaves config absent and removes its override state", () =>
   clearObserverEvents();
   clearSettings(14, [override]);
 
-  assert.equal(getObserverPref("cloakfox.container.14.math_seed"), undefined);
+  for (const name of ["math_seed", "keyboard_seed", "timing_seed"]) {
+    assert.equal(getObserverPref(`cloakfox.container.14.${name}`), undefined);
+  }
   assert.equal(getObserverPref("cloakfox.s.cloak_cfg_14"), undefined);
   assert.equal(getObserverPref(override), undefined);
-  assert.ok(getObserverPublishes().some(
-    (snapshot) => !("cloakfox.s.cloak_cfg_14" in snapshot)
-  ));
+  const published = getObserverPublishes();
+  assert.ok(published.length > 0);
+  assert.ok(!("cloakfox.s.cloak_cfg_14" in published.at(-1)));
+});
+
+test("present empty cloak_cfg value is repaired before publication", () => {
+  setObserverPrefs(activeObserverPrefs(17, validCfg()));
+  runObserverEnsure(17);
+  clearObserverEvents();
+  setObserverString("cloakfox.s.cloak_cfg_17", "");
+
+  const cfg = JSON.parse(getObserverPref("cloakfox.s.cloak_cfg_17"));
+  assert.equal(typeof cfg["timing:session_key_hi"], "number");
+  assert.equal(typeof cfg["timing:session_key_lo"], "number");
+  assert.ok(getObserverPublishes().every((snapshot) => {
+    const published = JSON.parse(snapshot["cloakfox.s.cloak_cfg_17"]);
+    return typeof published["timing:session_key_hi"] === "number" &&
+      typeof published["timing:session_key_lo"] === "number";
+  }));
 });
 
 test("unrelated pref changes do not reseed a container", () => {

@@ -374,12 +374,15 @@ const observer = {
       } else {
         const cfgMatch = /^cloakfox\.s\.cloak_cfg_(\d+)$/.exec(data);
         const timingSeedMatch = /^cloakfox\.container\.(\d+)\.timing_seed$/.exec(data);
-        // A missing cloak_cfg is the Settings Clear workflow, not corrupt
-        // config. Leave it absent so the container returns to host values;
-        // only actual whole-blob writes are session-key reconciliation events.
+        // A missing user pref is the Settings Clear workflow, not corrupt
+        // config. An explicitly written empty/corrupt string still has a user
+        // value and must be rebuilt before publication.
         const cfgWasWritten = cfgMatch &&
-          Services.prefs.getStringPref(data, "");
-        const match = cfgWasWritten ? cfgMatch : timingSeedMatch;
+          Services.prefs.prefHasUserValue(data);
+        const timingSeedWasWritten = timingSeedMatch &&
+          Services.prefs.prefHasUserValue(data);
+        const match = cfgWasWritten ? cfgMatch :
+          timingSeedWasWritten ? timingSeedMatch : null;
         if (match) {
           reconcilingSessionTiming = true;
           ensureContainerSeeds(Number(match[1]));
