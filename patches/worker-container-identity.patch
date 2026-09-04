@@ -16,6 +16,70 @@ diff -urp before/dom/base/RoverfoxStorageManager.cpp after/dom/base/RoverfoxStor
 diff -urp before/dom/base/RoverfoxStorageManager.cpp after/dom/base/RoverfoxStorageManager.cpp
 --- a/dom/base/RoverfoxStorageManager.cpp	2026-08-09 00:28:26
 +++ b/dom/base/RoverfoxStorageManager.cpp	2026-08-09 00:28:26
+@@ -1,4 +1,5 @@
+ #include "RoverfoxStorageManager.h"
++#include "mozilla/Assertions.h"
+ #include "mozilla/Preferences.h"
+ #include "nsXULAppAPI.h"
+ #include "mozilla/dom/ContentChild.h"
+@@ -36,25 +37,47 @@ RoverfoxStorageManager::MakeCppFirstPrefName(const nsA
+ }
+
+ /* static */ bool
+ RoverfoxStorageManager::TryGetCppFirstPref(const nsAString& key,
+                                             nsACString& outValue) {
+   nsCString prefName = MakeCppFirstPrefName(key);
++
++  // Preferences and ContentChild IPC are main-thread-only. Worker consumers
++  // use the value populated by their main-thread warm-up instead.
++  if (!NS_IsMainThread()) {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    if (auto entry = GetLocalCache().Lookup(prefName)) {
++      outValue = entry.Data();
++      return true;
++    }
++    return false;
++  }
++
++  MOZ_ASSERT(NS_IsMainThread());
+   nsAutoCString v;
+-  if (NS_SUCCEEDED(Preferences::GetCString(prefName.get(), v)) && !v.IsEmpty()) {
+-    outValue = v;
+-    return true;
+-  }
+-  if (!XRE_IsParentProcess() && NS_IsMainThread()) {
++  Preferences::GetCString(prefName.get(), v);
++  if (v.IsEmpty() && !XRE_IsParentProcess()) {
+     ContentChild* cc = ContentChild::GetSingleton();
+     if (cc) {
+       cc->SendRoverfoxStorageGet(prefName, &v);
+-      if (!v.IsEmpty()) {
+-        outValue = v;
+-        return true;
+-      }
+     }
+   }
+-  return false;
++
++  // Publish the authoritative main-thread result only after Preferences and
++  // the child-process fallback finish. A miss clears any stale prior value.
++  {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    if (v.IsEmpty()) {
++      GetLocalCache().Remove(prefName);
++    } else {
++      GetLocalCache().InsertOrUpdate(prefName, nsCString(v));
++    }
++  }
++
++  if (v.IsEmpty()) {
++    return false;
++  }
++  outValue = v;
++  return true;
+ }
+
+ /* static */ void
 @@ -209,8 +209,18 @@ RoverfoxStorageManager::GetString(const nsAString& key
        utf8Value = entry.Data();
      }
