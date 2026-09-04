@@ -374,7 +374,12 @@ const observer = {
       } else {
         const cfgMatch = /^cloakfox\.s\.cloak_cfg_(\d+)$/.exec(data);
         const timingSeedMatch = /^cloakfox\.container\.(\d+)\.timing_seed$/.exec(data);
-        const match = cfgMatch || timingSeedMatch;
+        // A missing cloak_cfg is the Settings Clear workflow, not corrupt
+        // config. Leave it absent so the container returns to host values;
+        // only actual whole-blob writes are session-key reconciliation events.
+        const cfgWasWritten = cfgMatch &&
+          Services.prefs.getStringPref(data, "");
+        const match = cfgWasWritten ? cfgMatch : timingSeedMatch;
         if (match) {
           reconcilingSessionTiming = true;
           ensureContainerSeeds(Number(match[1]));
