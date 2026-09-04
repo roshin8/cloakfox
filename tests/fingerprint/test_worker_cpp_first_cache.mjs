@@ -248,13 +248,19 @@ function innermostScopeAt(scopes, index) {
 function mutexLifetimes(source) {
   const masked = maskCpp(source);
   const scopes = braceScopes(source);
-  return allIndices(masked,
-    /MutexAutoLock\s+\w+\s*\(GetLocalCacheMutex\(\)\)\s*;/g)
-    .map(start => {
-      const scope = innermostScopeAt(scopes, start);
-      assert.ok(scope, "cache mutex declaration must have a lexical scope");
-      return { start, end: scope.end };
-    });
+  const cacheUses = allIndices(masked, /GetLocalCacheMutex\s*\(\s*\)/g);
+  const recognizedUses = [];
+  const lifetimes = [];
+  const declaration = /\bMutexAutoLock\s+\w+\s*(?:\(\s*GetLocalCacheMutex\s*\(\s*\)\s*\)|\{\s*GetLocalCacheMutex\s*\(\s*\)\s*\})\s*;/g;
+  for (const match of masked.matchAll(declaration)) {
+    recognizedUses.push(match.index + match[0].indexOf("GetLocalCacheMutex"));
+    const scope = innermostScopeAt(scopes, match.index);
+    assert.ok(scope, "cache mutex declaration must have a lexical scope");
+    lifetimes.push({ start: match.index, end: scope.end });
+  }
+  assert.deepEqual(recognizedUses, cacheUses,
+    "unsupported cache mutex use must fail closed");
+  return lifetimes;
 }
 
 function assertWithinCacheMutex(source, index, message) {
@@ -291,10 +297,11 @@ function ifBlocks(source) {
   return blocks;
 }
 
-function assertMainThreadDominates(source, index, message) {
+function assertMainThreadDominates(source, index, expectedCondition, message) {
+  const normalizedExpected = expectedCondition.replace(/\s+/g, "");
   const dominated = ifBlocks(source).some(block =>
     block.bodyStart < index && index < block.end &&
-    /(^|[^!])\bNS_IsMainThread\s*\(\s*\)/.test(block.condition));
+    block.condition.replace(/\s+/g, "") === normalizedExpected);
   assert.ok(dominated, message);
 }
 
@@ -354,8 +361,10 @@ function validateGetStringFallback(source) {
   assert.equal(preferences.length, 1, "GetString must have one Preferences fallback");
   assert.equal(ipc.length, 1, "GetString must have one IPC fallback");
   assertMainThreadDominates(source, preferences[0],
+    "utf8Value.IsEmpty() && NS_IsMainThread()",
     "GetString Preferences fallback must be dominated by NS_IsMainThread");
   assertMainThreadDominates(source, ipc[0],
+    "utf8Value.IsEmpty() && !XRE_IsParentProcess() && NS_IsMainThread()",
     "GetString IPC fallback must be dominated by NS_IsMainThread");
   assertOutsideCacheMutex(source, preferences[0],
     "GetString Preferences fallback must remain outside every cache mutex scope");
@@ -440,6 +449,46 @@ test("gate rejects removal of the GetString IPC main-thread guard", () => {
     /IPC fallback must be dominated/);
 });
 
+test("gate rejects OR weakening of the GetString Preferences guard", () => {
+  const mutant = getString.replace(
+    "if (utf8Value.IsEmpty() && NS_IsMainThread())",
+    "if (utf8Value.IsEmpty() || NS_IsMainThread())"
+  );
+  assert.notEqual(mutant, getString, "OR-guard mutation did not apply");
+  assert.throws(() => validateGetStringFallback(mutant),
+    /Preferences fallback must be dominated/);
+});
+
+test("gate rejects a parenthesized negated main-thread guard", () => {
+  const mutant = getString.replace(
+    "if (utf8Value.IsEmpty() && NS_IsMainThread())",
+    "if (utf8Value.IsEmpty() && !(NS_IsMainThread()))"
+  );
+  assert.notEqual(mutant, getString, "negated-guard mutation did not apply");
+  assert.throws(() => validateGetStringFallback(mutant),
+    /Preferences fallback must be dominated/);
+});
+
+test("gate rejects an always-true disjunct in the Preferences guard", () => {
+  const mutant = getString.replace(
+    "if (utf8Value.IsEmpty() && NS_IsMainThread())",
+    "if ((utf8Value.IsEmpty() && NS_IsMainThread()) || true)"
+  );
+  assert.notEqual(mutant, getString, "always-true mutation did not apply");
+  assert.throws(() => validateGetStringFallback(mutant),
+    /Preferences fallback must be dominated/);
+});
+
+test("gate rejects unsupported ternary main-thread guard logic", () => {
+  const mutant = getString.replace(
+    "if (utf8Value.IsEmpty() && NS_IsMainThread())",
+    "if (NS_IsMainThread() ? utf8Value.IsEmpty() : true)"
+  );
+  assert.notEqual(mutant, getString, "ternary-guard mutation did not apply");
+  assert.throws(() => validateGetStringFallback(mutant),
+    /Preferences fallback must be dominated/);
+});
+
 test("gate rejects a closed off-thread cache-lock scope", () => {
   const mutant = lookup.replace(
     "MutexAutoLock lock(GetLocalCacheMutex());\n    if (auto entry",
@@ -498,4 +547,22 @@ test("gate rejects a cache mutex spanning Preferences and IPC", () => {
   );
   assert.notEqual(mutant, lookup, "outer-lock mutation did not apply");
   assert.throws(() => validateCppFirstLookup(mutant), /Preferences.*mutex|IPC.*mutex/);
+});
+
+test("gate recognizes a brace-init cache mutex spanning Preferences and IPC", () => {
+  const mutant = lookup.replace(
+    "nsAutoCString v;",
+    "MutexAutoLock outerLock{GetLocalCacheMutex()};\n  nsAutoCString v;"
+  );
+  assert.notEqual(mutant, lookup, "brace-init outer-lock mutation did not apply");
+  assert.throws(() => validateCppFirstLookup(mutant), /Preferences.*mutex|IPC.*mutex/);
+});
+
+test("gate rejects unsupported alias initialization of the cache mutex", () => {
+  const mutant = lookup.replace(
+    "nsAutoCString v;",
+    "auto& cacheMutex = GetLocalCacheMutex();\n  MutexAutoLock outerLock(cacheMutex);\n  nsAutoCString v;"
+  );
+  assert.notEqual(mutant, lookup, "alias-lock mutation did not apply");
+  assert.throws(() => validateCppFirstLookup(mutant), /unsupported cache mutex use/);
 });
