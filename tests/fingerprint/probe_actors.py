@@ -110,8 +110,8 @@ r.math_pi_default = r.math_pi_is_default;
 // Trig functions still noised regardless of the constants pref.
 r.math_sin_half_jitter = Math.sin(0.5) - 0.479425538604203;
 
-// Timer precision: with default jitter ON, performance.now must
-// return non-integer-ms values (the bucket jitter adds 0..0.999ms).
+// Native C++ timing presentation: Performance::Now() returns keyed
+// sub-millisecond detail through PresentTimestamp(), without an actor wrapper.
 const perfA = performance.now();
 const perfB = performance.now();
 r.perf_now_t0 = perfA;
@@ -289,15 +289,15 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
     if sin_jitter == 0:
         fails.append("Math trig: sin(0.5) is exactly the spec value — actor not noising functions")
 
-    # Timer precision — with default jitter ON, performance.now should
-    # return fractional ms values (not exact integer ms multiples).
+    # Native C++ timing presentation — with default jitter ON,
+    # performance.now should return fractional ms values (not exact integers).
     if not result.get("perf_now_fractional"):
         fails.append(
-            f"Timer jitter: performance.now() = {result.get('perf_now_t0')!r} "
-            f"is exact integer ms — high-precision jitter wrap not active"
+            f"Native timing presentation: performance.now() = {result.get('perf_now_t0')!r} "
+            f"is exact integer ms — keyed high-precision presentation inactive"
         )
     if not result.get("perf_now_monotonic"):
-        fails.append("Timer jitter: performance.now violated monotonicity")
+        fails.append("Native timing presentation: performance.now violated monotonicity")
 
     # TabHistory
     if not result.get("history_plausible"):
@@ -345,11 +345,12 @@ def assert_actors(result: dict) -> tuple[int, list[str]]:
         if got != want:
             fails.append(f"FeatureDetect actor: navigator.{name} = {got!r}, want {want!r}")
 
-    # Timing — informational only. The actor adds 0..MAX_JITTER_MS ms of
-    # jitter to each setTimeout's delay, but the visible spread depends
-    # on PRNG luck plus Firefox's 1ms reduceTimerPrecision quantization,
-    # so it's not a reliable assertion target. We can't introspect the
-    # wrap directly either (Cu.exportFunction makes it look native).
+    # Timing actor — informational only. It adds 0..MAX_JITTER_MS ms of
+    # jitter to each setTimeout's delay; native C++ owns performance.now
+    # presentation. The visible spread depends on PRNG luck plus Firefox's
+    # 1ms reduceTimerPrecision quantization, so it is not a reliable assertion
+    # target. We cannot introspect the wrapper directly either
+    # (Cu.exportFunction makes it look native).
     # If a regression breaks the wrap, downstream failures (CPU-timing
     # fingerprints showing perfect determinism) catch it. The probe
     # records timing_spread for human inspection but doesn't fail on it.

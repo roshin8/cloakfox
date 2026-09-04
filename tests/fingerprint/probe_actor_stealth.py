@@ -46,7 +46,6 @@ EXPECT_FNS = {
     "navigator.getGamepads": ("getGamepads", 0),
     "navigator.requestMIDIAccess": ("requestMIDIAccess", 0),
     "navigator.javaEnabled": ("javaEnabled", 0),
-    "performance.now": ("now", 0),
     "setTimeout": ("setTimeout", 1),
     "addEventListener": ("addEventListener", 2),
 }
@@ -59,14 +58,21 @@ s.textContent = `
   const r = {
     nav_keys: Object.keys(navigator),          // native: []
     math_keys: Object.keys(Math).length,       // native: 0
-    perf_now_own: !!Object.getOwnPropertyDescriptor(performance, 'now'), // native: false
+    performance_now: (() => {
+      const nowDescriptor = Object.getOwnPropertyDescriptor(Performance.prototype, "now");
+      return {
+        instanceOwn: Object.hasOwn(performance, "now"),
+        protoName: nowDescriptor.value.name,
+        protoLength: nowDescriptor.value.length,
+        nativeText: Function.prototype.toString.call(nowDescriptor.value),
+      };
+    })(),
     fns: {
       'Math.sin': id(Math.sin), 'Math.pow': id(Math.pow),
       'Math.atan2': id(Math.atan2),
       'navigator.getGamepads': id(navigator.getGamepads),
       'navigator.requestMIDIAccess': id(navigator.requestMIDIAccess),
       'navigator.javaEnabled': id(navigator.javaEnabled),
-      'performance.now': id(performance.now),
       'setTimeout': id(setTimeout),
       'addEventListener': id(EventTarget.prototype.addEventListener),
     },
@@ -157,8 +163,17 @@ def run(bin_path: str) -> int:
         fails.append(f"Object.keys(navigator) leaked {r['nav_keys']} (native [])")
     if r["math_keys"] != 0:
         fails.append(f"Object.keys(Math) leaked {r['math_keys']} names (native 0)")
-    if r["perf_now_own"]:
+    performance_now = r["performance_now"]
+    if performance_now["instanceOwn"]:
         fails.append("performance.now is an OWN property (native: inherited)")
+    if performance_now["protoName"] != "now":
+        fails.append("Performance.prototype.now.name = "
+                     f"{performance_now['protoName']!r} (native 'now')")
+    if performance_now["protoLength"] != 0:
+        fails.append("Performance.prototype.now.length = "
+                     f"{performance_now['protoLength']} (native 0)")
+    if "[native code]" not in performance_now["nativeText"]:
+        fails.append("Performance.prototype.now does not stringify as [native code]")
     for key, (name, length) in EXPECT_FNS.items():
         v = r["fns"][key]
         if v["name"] != name:

@@ -2,17 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* Cloakfox: event-loop timing jitter per userContextId.
+/* Cloakfox: event-loop callback and rAF timing jitter per userContextId.
  *
  * Amazon and advanced fingerprinters measure the delay between
- * scheduling a setTimeout / setInterval / requestAnimationFrame
- * callback and the callback firing — that delay reflects CPU
+ * scheduling a setTimeout / setInterval callback or requesting an animation
+ * frame and receiving its callback — that delay reflects CPU
  * performance and system load and is a stable fingerprint across
  * sessions.
  *
- * Adds small jitter (up to 2ms) to the scheduled delay, plus sub-ms
- * noise to rAF timestamps, to break determinism without breaking
- * functionality.
+ * Adds small jitter (up to 2ms) to scheduled delays, plus sub-ms noise to rAF
+ * callback timestamps, to break determinism without breaking functionality.
+ * Native C++ Performance::Now() owns performance-clock presentation.
  *
  * Phase 2 port of inject/spoofers/timing/event-loop.ts. Must stay JS
  * (inventory.md): the C++ timer code lives in nsITimer/nsIEventTarget
@@ -110,69 +110,5 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
       }, pageWin, { defineAs: "requestAnimationFrame" }), origRAF.name, origRAF.length);
     }
 
-    // Wrap performance.now — add deterministic per-ms-bucket fractional
-    // jitter so the JS-visible reading looks high-resolution despite
-    // Firefox's underlying 1ms quantization (privacy.reduceTimerPrecision).
-    //
-    // Why deterministic per bucket: performance.now is required by spec
-    // to be monotonic-non-decreasing. Using a hash of the bucket id
-    // makes repeated calls in the same 1ms bucket return the same
-    // jittered value. That alone only preserves monotonicity when the
-    // raw reading is whole-ms (privacy.reduceTimerPrecision ON). When
-    // that pref is OFF the raw reading is sub-ms, so a high-jitter
-    // bucket followed by a low-jitter bucket could go backwards across
-    // a bucket boundary. To guarantee non-decreasing output regardless
-    // of the pref, we additionally clamp each return to be ≥ the last
-    // value we returned (tracked in the closure below).
-    //
-    // Default ON. Power users wanting visibly Tor-style coarse precision
-    // (the "I'm a privacy browser" signal as deterrent) can flip
-    // cloakfox.opt.timer_high_precision_jitter = false.
-    if (Services.prefs.getBoolPref("cloakfox.opt.timer_high_precision_jitter", true)) {
-      const origPerfNow = pageWin.performance.now;
-      // Knuth multiplicative hash, SALTED WITH THE PER-CONTAINER SEED.
-      //
-      // This used to mix in a hardcoded 0xdeadbeef, making the fractional part
-      // a pure function of the integer millisecond — identical on every
-      // Cloakfox install and in every container. That is not an entropy bit,
-      // it is an exact browser identifier: a site recomputes the same hash and
-      // checks `t - floor(t) === bucketJitter(floor(t))`. Measured 40/40
-      // matches across independent profiles before this change.
-      //
-      // The salt is derived once from timing_seed (FNV-1a over the seed
-      // bytes), so the jitter remains DETERMINISTIC per (container, ms
-      // bucket) — which is what keeps performance.now monotonic — while being
-      // unpredictable without the container's seed.
-      const seedBytes = b64ToBytes(seedB64);
-      let timingSalt = 0x9e3779b9;
-      for (let i = 0; i < seedBytes.length; i++) {
-        timingSalt = Math.imul(timingSalt ^ seedBytes[i], 16777619) >>> 0;
-      }
-      const bucketJitter = (ms) => {
-        let x = Math.imul(ms | 0, 2654435761) >>> 0;
-        x = (x ^ timingSalt) >>> 0;
-        x = Math.imul(x ^ (x >>> 15), 2246822507) >>> 0;
-        x = (x ^ (x >>> 13)) >>> 0;
-        return (x % 1000) / 1000;  // 0..0.999
-      };
-      let lastReturned = -Infinity;
-      const wrapped = Cu.exportFunction(function () {
-        const orig = origPerfNow.call(this);
-        let val = orig + bucketJitter(orig);
-        // Clamp to keep the sequence monotonically non-decreasing even
-        // when the raw reading is sub-ms (reduceTimerPrecision OFF).
-        if (val < lastReturned) val = lastReturned;
-        lastReturned = val;
-        return val;
-      }, pageWin);
-      setNativeIdentity(wrapped, origPerfNow.name, origPerfNow.length);
-      // Define on Performance.PROTOTYPE (where native now() lives), not the
-      // instance — an own `now` on the performance object would leak via
-      // Object.keys(performance)/hasOwnProperty (native is inherited). Native
-      // prototype flags are {writable:true, enumerable:true, configurable:true}.
-      Object.defineProperty(pageWin.Performance.prototype, "now", {
-        value: wrapped, writable: true, enumerable: true, configurable: true,
-      });
-    }
   }
 }
