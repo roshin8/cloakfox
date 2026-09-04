@@ -213,6 +213,39 @@ CLOAKFOX_BIN=... python tests/fingerprint/antibot_battery.py
 Output at `tests/fingerprint/reports/<timestamp>/REPORT.md` with inline
 screenshots.
 
+## 7. Native performance timeline coverage
+
+`probe_timing_jitter.py` and `probe_performance_timeline.py` separate the
+two timing owners deliberately:
+
+- **Gecko owns `performance.now()` and every performance-entry presentation.**
+  Native `Performance::PresentTimestamp()` and `Performance::PresentInterval()`
+  present the reduced clock and entry timestamps; no page-world actor wraps
+  `performance.now()`.
+- **`CloakfoxTimingChild` owns only callback jitter.** It retains the
+  `setTimeout`, `setInterval`, and `requestAnimationFrame` wrappers: timeout
+  and interval scheduling receive up to 2 ms of jitter, and rAF callback
+  timestamps receive sub-millisecond noise.
+
+The timeline probe exercises all eight entry types Firefox advertises here:
+`event`, `first-input`, `largest-contentful-paint`, `mark`, `measure`,
+`navigation`, `paint`, and `resource`. It compares observer callbacks,
+direct getters, `getEntries*()`, and `toJSON()` for stable presentation of
+`startTime` and `duration`, plus these additional timing fields where the
+entry exposes them:
+
+- event timing: `processingStart`, `processingEnd`;
+- paint and LCP: `paintTime`, `presentationTime`, `renderTime`, `loadTime`;
+- resource and navigation: `workerStart`, redirect/DNS/connect/request/
+  response phases, and navigation's unload, DOM, and load-event phases.
+
+An automatically timestamped mark uses Gecko's presented clock. Explicit User
+Timing values are compatibility inputs, not noise targets: a supplied mark
+`startTime`, or a measure's explicit start/end and resulting duration, must be
+returned exactly. The timing key is stable for one browser session and is
+container-specific; a new browser session or a different container receives a
+different key. This coverage does not claim SharedArrayBuffer timing coverage.
+
 ## Gotchas we hit (and documented in tests)
 
 Writing these tests surfaced several real bugs in the shipped build,

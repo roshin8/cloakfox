@@ -43,8 +43,8 @@ must-stay. Updated below.
 | permissions/notification.ts | Notification.permission, .requestPermission | Getter/async method override | notification-spoofing.patch | Redundant |
 | math/math.ts | Math.PI, .E, .LN2, etc. (constants) | Proxy (Math object replacement) | (none) | Must-stay |
 | math/math.ts | Math.sin, .cos, .sqrt, etc. (functions) | Method override with noise | (none) | Must-stay |
-| timing/performance.ts | performance.now, .timeOrigin, performance.timing | Method override + jitter | timing-jitter-spoofing.patch | Redundant |
-| timing/event-loop.ts | setTimeout precision reduction | Task queue hook | (none) | Must-stay |
+| timing/performance.ts (removed) | `performance.now()` and performance-entry presentation | Legacy method override + jitter | `performance-timeline-timing.patch` (`Performance::PresentTimestamp` / `PresentInterval`) | Redundant — native Gecko owns it |
+| `actors/CloakfoxTimingChild.sys.mjs` | `setTimeout`, `setInterval`, rAF callback jitter | Callback wrappers | (none) | Must-stay JS |
 | storage/storage-estimate.ts | navigator.storage.estimate, .persisted | Promise-returning method | storage-estimate-spoofing.patch | Redundant |
 | storage/indexeddb.ts | IndexedDB.open, factory patch | Factory override | indexeddb-spoofing.patch | Redundant |
 | storage/private-mode.ts | localStorage/sessionStorage availability | Storage object proxy | (none) | Must-stay |
@@ -87,9 +87,13 @@ must-stay. Updated below.
    - Reason: Per-function noise logic is ~10 lines of JS wrapping; per-call sites in C++ would require hooking every Math.sin/cos/sqrt etc in DOM/layout code. Massive surface.
    - Call sites: Hundreds in graphics code; most accessed from JS.
 
-3. **setTimeout / task queue jitter** (timing/event-loop.ts)
-   - Reason: Requires intercepting task scheduling logic. C++ timer code is low-level; instrumenting every timer would need core changes to nsITimer/nsIEventTarget.
-   - Call sites: Very high (every setTimeout in web content).
+3. **Timeout, interval, and rAF callback jitter** (`CloakfoxTimingChild`)
+   - Reason: The actor retains only callback scheduling jitter. Gecko owns
+     `performance.now()` and all performance-entry presentation; placing this
+     callback layer in C++ would require per-content hooks across
+     nsITimer/nsIEventTarget.
+   - Call sites: Very high (every timeout, interval, and animation frame in
+     web content).
 
 4. **localStorage/sessionStorage in private mode** (storage/private-mode.ts)
    - Reason: Storage object proxying for private mode checks. Needs per-realm state. C++ side stores this in xpconnect, but JS side needs to intercept Storage object access before compartment boundary.
@@ -170,6 +174,25 @@ Safe to remove from JS spoofers once C++ patches are verified stable:
 17. **permissions/permissions.ts** — covered by permissions-spoofing.patch
 18. **permissions/notification.ts** — covered by notification-spoofing.patch
 
+## Current performance timeline boundary
+
+Native Gecko presents `performance.now()` and all performance-entry values via
+`Performance::PresentTimestamp()` / `PresentInterval()`. The covered entry
+types are `event`, `first-input`, `largest-contentful-paint`, `mark`,
+`measure`, `navigation`, `paint`, and `resource`. Alongside `startTime` and
+`duration`, the native presentation includes event processing times; paint/LCP
+paint, presentation, render, and load times; resource/navigation worker,
+redirect, DNS, connect, request, and response phases; and navigation unload,
+DOM, and load-event phases. The same values are surfaced through observers,
+getters, `getEntries*()`, and `toJSON()`.
+
+`CloakfoxTimingChild` remains responsible only for `setTimeout`, `setInterval`,
+and rAF callback jitter. The native timing key is stable for one browser
+session and scoped to a container; a new session or another container gets a
+different key. Explicit User Timing values are intentionally preserved: caller
+supplied mark start times and measure start/end/duration are not transformed.
+SharedArrayBuffer coverage is outside this implementation.
+
 ## Signals feasible to move to C++ (with effort estimates)
 
 1. **hardware/media-devices.ts** (navigator.mediaDevices.enumerateDevices)
@@ -248,4 +271,3 @@ Safe to remove from JS spoofers once C++ patches are verified stable:
 - Performance (should improve slightly; fewer JS calls).
 - Coverage (same fingerprint resistance).
 - Correctness (no console errors, sites don't break).
-

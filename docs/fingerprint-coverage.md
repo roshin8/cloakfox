@@ -256,9 +256,31 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 
 | Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
-| `setTimeout` / `setInterval` jitter | 🔴 | ⚙️ | 🔒 | ☐ | ☐ | ☑ |
-| `performance.now()` precision | 🔴 | 📄 | 🌍 | ☑ | ☐ | ☑ |
+| `setTimeout` / `setInterval` / rAF callback jitter | 🔴 | 🔌 `CloakfoxTimingChild` | 🔒 | ☐ | ☐ | ☑ |
+| `performance.now()` and Performance Timeline presentation | 🔴 | ⚙️ Gecko `Performance` | 🔒 | ☑ | ☐ | ☑ |
 | `performance.timeOrigin` | 🟡 | ⚙️ (Firefox RFP) | 🌍 | ☑ | ☐ | ☐ |
+
+### Native performance timeline ownership
+
+Gecko owns `performance.now()` and all performance-entry presentation through
+native timestamp/interval presentation; `CloakfoxTimingChild` does **not**
+wrap that clock. The actor retains only the `setTimeout`, `setInterval`, and
+`requestAnimationFrame` callback-jitter wrappers.
+
+The native path presents `startTime` and `duration` for all eight covered entry
+types — `event`, `first-input`, `largest-contentful-paint`, `mark`, `measure`,
+`navigation`, `paint`, and `resource` — and their additional timing fields:
+event `processingStart`/`processingEnd`; paint and LCP `paintTime`,
+`presentationTime`, `renderTime`, and `loadTime`; resource/navigation
+`workerStart`, redirect, DNS, connection, request, and response phases; and
+navigation unload, DOM, and load-event phases. Observers, direct getters,
+`getEntries*()`, and `toJSON()` present the same cached values.
+
+Timing keys are stable only within one browser session and are specific to a
+container, so a different container or new browser session receives a different
+key. Explicit User Timing values remain exact: supplied mark start times and
+measure start/end/duration values are not re-transformed. This timeline work
+does not claim SharedArrayBuffer timing coverage.
 
 ---
 
