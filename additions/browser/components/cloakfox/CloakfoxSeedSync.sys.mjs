@@ -351,11 +351,41 @@ function publish() {
   } catch (_e) { /* sharedData may not be available pre-init */ }
 }
 
+// Settings and the popup replace cloak_cfg as a whole, intentionally omitting
+// this startup-private session material. Reconcile those writes here, where
+// every parent-process pref writer is observed, instead of exposing timing
+// keys to either user-facing serializer. timing_seed writes use the same path
+// so a supported seed change is re-keyed immediately with this launch's salt.
+let reconcilingSessionTiming = false;
+
 const observer = {
   observe(_subject, topic, data) {
     if (topic !== "nsPref:changed") return;
-    // Re-snapshot. Cheaper than diffing — pref count is small.
-    publish();
+    // setStringPref synchronously re-enters pref observers. The outer call
+    // publishes once after its reconciliation, so nested notifications must
+    // neither recurse nor publish an intermediate, keyless cloak_cfg.
+    if (reconcilingSessionTiming) return;
+    try {
+      if (data === "cloakfox.enabled") {
+        if (Services.prefs.getBoolPref("cloakfox.enabled", true)) {
+          reconcilingSessionTiming = true;
+          ensureSeedsForAllContainers();
+        }
+      } else {
+        const cfgMatch = /^cloakfox\.s\.cloak_cfg_(\d+)$/.exec(data);
+        const timingSeedMatch = /^cloakfox\.container\.(\d+)\.timing_seed$/.exec(data);
+        const match = cfgMatch || timingSeedMatch;
+        if (match) {
+          reconcilingSessionTiming = true;
+          ensureContainerSeeds(Number(match[1]));
+        }
+      }
+    } catch (_e) { /* pref changes must never break their caller */ }
+    finally {
+      reconcilingSessionTiming = false;
+      // Re-snapshot. Cheaper than diffing — pref count is small.
+      publish();
+    }
   },
 };
 

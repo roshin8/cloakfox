@@ -96,6 +96,60 @@ const lifecycleMod = await import(
 );
 const { setPrefs, getPref, getWrites, runEnsure } = lifecycleMod;
 
+const ensureAllBlock = extractBlock(seedSyncSrc, /function ensureSeedsForAllContainers\(/);
+const reconciliationStateBlock = seedSyncSrc.match(
+  /let reconcilingSessionTiming = false;/
+)?.[0];
+if (!reconciliationStateBlock) throw new Error("reconciliation state not found");
+const observerBlock = extractBlock(seedSyncSrc, /const observer = /);
+const observerMod = await import(
+  "data:text/javascript," + encodeURIComponent(`
+    const values = new Map();
+    let writes = 0;
+    let publishes = 0;
+    const Services = {
+      prefs: {
+        getStringPref(name, fallback) { return values.get(name) ?? fallback; },
+        setStringPref(name, value) { values.set(name, value); writes++; },
+        getBoolPref(name, fallback) { return values.get(name) ?? fallback; },
+      },
+    };
+    const ContextualIdentityService = {
+      getPublicIdentities() { return [{ userContextId: 9 }]; },
+    };
+    function applyGenericFontPrefs() {}
+    function publish() { publishes++; }
+    ${seedNamesBlock}
+    ${randomBlock}
+    ${sessionSaltBlock}
+    ${lifecycleDeriveBlock}
+    ${lifecycleMergeBlock}
+    ${rebuildBlock}
+    ${ensureBlock}
+    ${ensureAllBlock}
+    ${reconciliationStateBlock}
+    ${observerBlock}
+    export function setPrefs(entries) {
+      values.clear();
+      writes = 0;
+      publishes = 0;
+      for (const [name, value] of entries) values.set(name, value);
+    }
+    export function getPref(name) { return values.get(name); }
+    export function getWrites() { return writes; }
+    export function getPublishes() { return publishes; }
+    export function runEnsure(ucid) { ensureContainerSeeds(ucid); }
+    export function notify(pref) { observer.observe(null, "nsPref:changed", pref); }
+  `)
+);
+const {
+  setPrefs: setObserverPrefs,
+  getPref: getObserverPref,
+  getWrites: getObserverWrites,
+  runEnsure: runObserverEnsure,
+  notify,
+} = observerMod;
+
 const SEED_A = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
 const SEED_B = "Hy4dHBsaGRgXFhUUExIREA8ODQwLCgkIBwYFBAMCAQA=";
 const SALT_A = "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=";
@@ -195,4 +249,85 @@ test("one launch keeps a stable session key and avoids a duplicate config write"
   runEnsure(6);
   assert.equal(getPref("cloakfox.s.cloak_cfg_6"), firstCfg);
   assert.equal(getWrites(), writesAfterFirstPass);
+});
+
+function writerCfg(persona, override) {
+  return JSON.stringify({
+    "canvas:seed": persona,
+    "fonts": ["Arial"],
+    "fonts:spacing_seed": persona + 1,
+    "navigator.userAgent": `writer-${persona}`,
+    "navigator.hardwareConcurrency": override,
+  });
+}
+
+function activeObserverPrefs(ucid, cfg) {
+  return [
+    ["cloakfox.enabled", true],
+    [`cloakfox.container.${ucid}.math_seed`, validSeed(1)],
+    [`cloakfox.container.${ucid}.keyboard_seed`, validSeed(2)],
+    [`cloakfox.container.${ucid}.timing_seed`, validSeed(3)],
+    [`cloakfox.s.cloak_cfg_${ucid}`, cfg],
+  ];
+}
+
+test("settings cloak_cfg rewrite retains the current launch session key", () => {
+  setObserverPrefs(activeObserverPrefs(12, validCfg()));
+  runObserverEnsure(12);
+  const originalKey = JSON.parse(getObserverPref("cloakfox.s.cloak_cfg_12"));
+
+  // settings.js persistCloakCfg() writes a complete replacement blob.
+  const settingsOutput = writerCfg(101, 16);
+  setObserverPrefs([
+    ...activeObserverPrefs(12, settingsOutput),
+  ]);
+  notify("cloakfox.s.cloak_cfg_12");
+
+  const repaired = JSON.parse(getObserverPref("cloakfox.s.cloak_cfg_12"));
+  assert.equal(repaired["canvas:seed"], 101);
+  assert.equal(repaired["navigator.hardwareConcurrency"], 16);
+  assert.equal(repaired["timing:session_key_hi"], originalKey["timing:session_key_hi"]);
+  assert.equal(repaired["timing:session_key_lo"], originalKey["timing:session_key_lo"]);
+});
+
+test("popup cloak_cfg rewrite retains the current launch session key", () => {
+  setObserverPrefs(activeObserverPrefs(13, validCfg()));
+  runObserverEnsure(13);
+  const originalKey = JSON.parse(getObserverPref("cloakfox.s.cloak_cfg_13"));
+
+  // cloakfox.js regeneratePersona() writes a complete replacement blob.
+  const popupOutput = writerCfg(202, 24);
+  setObserverPrefs([
+    ...activeObserverPrefs(13, popupOutput),
+  ]);
+  notify("cloakfox.s.cloak_cfg_13");
+
+  const repaired = JSON.parse(getObserverPref("cloakfox.s.cloak_cfg_13"));
+  assert.equal(repaired["canvas:seed"], 202);
+  assert.equal(repaired["navigator.hardwareConcurrency"], 24);
+  assert.equal(repaired["timing:session_key_hi"], originalKey["timing:session_key_hi"]);
+  assert.equal(repaired["timing:session_key_lo"], originalKey["timing:session_key_lo"]);
+});
+
+test("live enable seeds default and public containers and installs session keys", () => {
+  setObserverPrefs([
+    ["cloakfox.enabled", false],
+    ["cloakfox.s.cloak_cfg_0", validCfg({"canvas:seed": 70})],
+    ["cloakfox.s.cloak_cfg_9", validCfg({"canvas:seed": 79})],
+  ]);
+  notify("cloakfox.enabled");
+  assert.equal(getObserverWrites(), 0);
+
+  setObserverPrefs([
+    ["cloakfox.enabled", true],
+    ["cloakfox.s.cloak_cfg_0", validCfg({"canvas:seed": 70})],
+    ["cloakfox.s.cloak_cfg_9", validCfg({"canvas:seed": 79})],
+  ]);
+  notify("cloakfox.enabled");
+  for (const ucid of [0, 9]) {
+    assert.equal(atob(getObserverPref(`cloakfox.container.${ucid}.timing_seed`)).length, 32);
+    const cfg = JSON.parse(getObserverPref(`cloakfox.s.cloak_cfg_${ucid}`));
+    assert.equal(typeof cfg["timing:session_key_hi"], "number");
+    assert.equal(typeof cfg["timing:session_key_lo"], "number");
+  }
 });
