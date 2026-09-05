@@ -1,0 +1,11 @@
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2221,0 +2222,7 @@
++# Bound SharedArrayBuffer worker scheduling precision without changing API data.
++# Atomic because worker scheduling state is read off the main thread.
++- name: cloakfox.sab_worker_timing_masking
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
