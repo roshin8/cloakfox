@@ -16,6 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..");
 const patch = readFileSync(
   join(root, "patches", "sab-worker-timing-masking.patch"), "utf8");
+const cfg = readFileSync(join(root, "settings", "cloakfox.cfg"), "utf8");
 
 function patchFileSections(path) {
   const marker = `+++ b/${path}`;
@@ -163,4 +164,25 @@ test("keyed timing state advances yield and cadence at every boundary", () => {
     "each boundary must draw a yield, realize it, then draw the next cadence");
   assert.equal((boundary.match(/NextYieldUs\(\)/g) || []).length, 1);
   assert.equal((boundary.match(/NextInterruptDelayMs\(\)/g) || []).length, 1);
+});
+
+test("experimental SAB masking defaults stay disabled and do not claim coverage", () => {
+  const staticPref = patch.match(
+    /- name: cloakfox\.sab_worker_timing_masking\n(?:.*\n){0,4}?\+  value: (true|false)/);
+  assert.ok(staticPref, "missing SAB StaticPref default in patch");
+
+  const cfgPref = cfg.match(
+    /defaultPref\("cloakfox\.sab_worker_timing_masking", (true|false)\);/);
+  assert.ok(cfgPref, "missing SAB defaultPref in cloakfox.cfg");
+  assert.equal(staticPref[1], "false");
+  assert.equal(cfgPref[1], staticPref[1], "cfg and StaticPref defaults drifted");
+
+  const cfgBlock = cfg.slice(
+    Math.max(0, cfg.lastIndexOf("// ====", cfgPref.index)),
+    cfg.indexOf("// ====", cfgPref.index));
+  const prose = cfgBlock.replace(/\/\/ ?/g, "").replace(/\s+/g, " ");
+  assert.match(prose, /preserves? SharedArrayBuffer, Atomics, and shared Wasm values/i);
+  assert.match(prose, /bounded worker scheduling perturbation/i);
+  assert.match(prose, /remains off.*acceptance metric was not met/i);
+  assert.doesNotMatch(prose, /covered|coverage complete/i);
 });
