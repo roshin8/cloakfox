@@ -31,6 +31,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 
 FIXTURES = Path(__file__).with_name("fixtures")
+PAGE_PATH = "/fixtures/probe.html"
 WASM_SHA256 = "a708ba83e838f694edd1a942c52180a1c79bed837b13d7a72200d3c2460c8bd6"
 CORRECTNESS_ITERATIONS = 4_096
 RATE_WARMUPS = 4
@@ -54,6 +55,13 @@ CONTENT_TYPES = {
 }
 
 
+def service_worker_scope_covers_client(script_path: str, client_path: str) -> bool:
+    """Whether a script's default directory scope controls the client path."""
+    if not script_path.startswith("/") or not client_path.startswith("/"):
+        raise ValueError("service worker script and client paths must be absolute")
+    return client_path.startswith(script_path.rsplit("/", 1)[0] + "/")
+
+
 PAGE = r"""<!doctype html>
 <meta charset="utf-8">
 <title>SharedArrayBuffer timing probe</title>
@@ -70,24 +78,50 @@ const RATE_WINDOW_MS = __RATE_WINDOW_MS__;
 const BENCHMARK_ITERATIONS = __BENCHMARK_ITERATIONS__;
 const WORKER_TIMEOUT_MS = 5000;
 
-function deferred(timeoutMs, description) {
-  let resolve;
-  let reject;
-  const promise = new Promise((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
+function waitForEvent(description, subscribe) {
+  return new Promise(resolve => {
+    let settled = false;
+    let cleanup = () => {};
+    const finish = outcome => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      cleanup();
+      resolve(outcome);
+    };
+    const timeout = setTimeout(
+      () => finish({kind: "timeout", description}), WORKER_TIMEOUT_MS);
+    cleanup = subscribe(
+      value => finish({kind: "message", value}),
+      error => finish({kind: "error", error: String(error)}),
+    );
   });
-  const timeout = setTimeout(
-    () => reject(new Error(`${description} timed out after ${timeoutMs}ms`)), timeoutMs);
-  return {promise, resolve: value => { clearTimeout(timeout); resolve(value); }};
 }
 
-function within(promise, timeoutMs, description) {
-  return Promise.race([
-    promise,
-    new Promise(resolve => setTimeout(
-      () => resolve({timedOut: true, description}), timeoutMs)),
-  ]);
+function waitForWorkerMessage(worker, description) {
+  return waitForEvent(description, (message, error) => {
+    const onMessage = event => message(event.data);
+    const onError = event => error(event.message || event.type);
+    worker.addEventListener("message", onMessage, {once: true});
+    worker.addEventListener("error", onError, {once: true});
+    return () => {
+      worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("error", onError);
+    };
+  });
+}
+
+function waitForPortMessage(port, description) {
+  return waitForEvent(description, (message, error) => {
+    const onMessage = event => message(event.data);
+    const onError = event => error(event.type);
+    port.addEventListener("message", onMessage, {once: true});
+    port.addEventListener("messageerror", onError, {once: true});
+    return () => {
+      port.removeEventListener("message", onMessage);
+      port.removeEventListener("messageerror", onError);
+    };
+  });
 }
 
 function makeBuffer() {
@@ -106,40 +140,45 @@ function requirePrimitives() {
   }
 }
 
-function workerMessage(worker, message, description) {
-  const result = deferred(WORKER_TIMEOUT_MS, description);
-  worker.onmessage = event => result.resolve(event.data);
-  worker.onerror = event => result.resolve({status: "error", error: event.message});
-  worker.postMessage(message);
-  return result.promise;
-}
-
 async function dedicatedCorrectness(iterations) {
   const buffer = makeBuffer();
   const view = new Int32Array(buffer);
   const incrementWorker = new Worker(WORKER_URL);
-  const increment = await workerMessage(
-    incrementWorker, {mode: "correctness", buffer, iterations}, "dedicated increment");
-  incrementWorker.terminate();
+  let increment;
+  try {
+    const outcome = waitForWorkerMessage(incrementWorker, "dedicated increment");
+    incrementWorker.postMessage({mode: "correctness", buffer, iterations});
+    const completed = await outcome;
+    if (completed.kind !== "message") throw new Error(
+      `dedicated increment ${completed.kind}: ${completed.description || completed.error}`);
+    increment = completed.value;
+  } finally {
+    incrementWorker.terminate();
+  }
   if (increment.status !== "ok" || increment.final !== iterations ||
       Atomics.load(view, 0) !== iterations) {
     throw new Error(`dedicated increment result ${JSON.stringify(increment)}`);
   }
 
   const waiter = new Worker(WORKER_URL);
-  const ready = deferred(WORKER_TIMEOUT_MS, "Atomics.wait readiness");
-  const waited = deferred(WORKER_TIMEOUT_MS, "Atomics.wait result");
-  waiter.onmessage = event => {
-    if (event.data.status === "ready") ready.resolve(event.data);
-    else waited.resolve(event.data);
-  };
-  waiter.onerror = event => waited.resolve({status: "error", error: event.message});
-  waiter.postMessage({mode: "wait", buffer});
-  await ready.promise;
-  Atomics.store(view, 1, 1);
-  Atomics.notify(view, 1, 1);
-  const waitResult = await waited.promise;
-  waiter.terminate();
+  let waitResult;
+  try {
+    const ready = waitForWorkerMessage(waiter, "Atomics.wait readiness");
+    waiter.postMessage({mode: "wait", buffer});
+    const readyResult = await ready;
+    if (readyResult.kind !== "message" || readyResult.value.status !== "ready") {
+      throw new Error(`Atomics.wait readiness: ${JSON.stringify(readyResult)}`);
+    }
+    const waited = waitForWorkerMessage(waiter, "Atomics.wait result");
+    Atomics.store(view, 1, 1);
+    Atomics.notify(view, 1, 1);
+    const completed = await waited;
+    if (completed.kind !== "message") throw new Error(
+      `Atomics.wait result ${completed.kind}: ${completed.description || completed.error}`);
+    waitResult = completed.value;
+  } finally {
+    waiter.terminate();
+  }
   if (waitResult.status !== "ok" || waitResult.waitResult !== "ok" ||
       waitResult.stored !== 1 || Atomics.load(view, 1) !== 1) {
     throw new Error(`Atomics.wait/notify result ${JSON.stringify(waitResult)}`);
@@ -155,36 +194,78 @@ async function sharedCorrectness(iterations) {
     const buffer = makeBuffer();
     const view = new Int32Array(buffer);
     const sharedWorker = new SharedWorker(SHARED_WORKER_URL);
-    const ready = deferred(WORKER_TIMEOUT_MS, "SharedWorker readiness");
-    let complete;
-    sharedWorker.port.onmessage = event => {
-      if (event.data.status === "ready") ready.resolve(event.data);
-      else if (complete) complete.resolve(event.data);
-    };
-    sharedWorker.port.start();
-    const availability = await within(
-      ready.promise, WORKER_TIMEOUT_MS, "SharedWorker connection");
-    if (availability.timedOut) {
-      return {status: "skipped", reason: "SharedWorker did not connect in this browser/platform"};
+    const port = sharedWorker.port;
+    port.start();
+    try {
+      const ready = await waitForPortMessage(port, "SharedWorker readiness");
+      if (ready.kind === "timeout") {
+        return {status: "skipped", reason: "SharedWorker did not connect in this browser/platform"};
+      }
+      if (ready.kind !== "message") {
+        return {status: "error", error: `SharedWorker readiness ${ready.error}`};
+      }
+      const capability = ready.value;
+      if (capability.crossOriginIsolated !== true ||
+          capability.sabType !== "function" || capability.atomicsType !== "object") {
+        return {
+          status: "skipped",
+          reason: "SharedWorker lacks cross-origin-isolated SharedArrayBuffer prerequisites",
+          capability,
+        };
+      }
+      const complete = waitForPortMessage(port, "SharedWorker increment");
+      port.postMessage({buffer, iterations});
+      const finished = await complete;
+      if (finished.kind !== "message") {
+        return {status: "error", error: `SharedWorker increment ${finished.kind}: ${finished.description || finished.error}`};
+      }
+      const response = finished.value;
+      if (response.status === "ok" &&
+          (response.final !== iterations || Atomics.load(view, 0) !== iterations)) {
+        throw new Error(`SharedWorker exact count failed: ${JSON.stringify(response)}`);
+      }
+      return response;
+    } finally {
+      port.close();
     }
-    if (availability.crossOriginIsolated !== true ||
-        availability.sabType !== "function" || availability.atomicsType !== "object") {
-      return {
-        status: "skipped",
-        reason: "SharedWorker lacks cross-origin-isolated SharedArrayBuffer prerequisites",
-        capability: availability,
-      };
-    }
-    complete = deferred(WORKER_TIMEOUT_MS, "SharedWorker increment");
-    sharedWorker.port.postMessage({buffer, iterations});
-    const response = await complete.promise;
-    if (response.status === "ok" &&
-        (response.final !== iterations || Atomics.load(view, 0) !== iterations)) {
-      throw new Error(`SharedWorker exact count failed: ${JSON.stringify(response)}`);
-    }
-    return response;
   } catch (error) {
     return {status: "error", error: String(error)};
+  }
+}
+
+async function waitForRegistrationActive(registration) {
+  if (registration.active) return {kind: "message", value: registration.active};
+  return waitForEvent("ServiceWorker activation", (message, _error) => {
+    const watched = new Set();
+    const watch = worker => {
+      if (!worker || watched.has(worker)) return;
+      watched.add(worker);
+      worker.addEventListener("statechange", check);
+    };
+    const check = () => {
+      watch(registration.installing);
+      watch(registration.waiting);
+      if (registration.active) message(registration.active);
+    };
+    const onUpdate = () => check();
+    registration.addEventListener("updatefound", onUpdate);
+    check();
+    return () => {
+      registration.removeEventListener("updatefound", onUpdate);
+      for (const worker of watched) worker.removeEventListener("statechange", check);
+    };
+  });
+}
+
+async function serviceWorkerMessage(worker, payload, description) {
+  const channel = new MessageChannel();
+  try {
+    const result = waitForPortMessage(channel.port1, description);
+    channel.port1.start();
+    worker.postMessage(payload, [channel.port2]);
+    return await result;
+  } finally {
+    channel.port1.close();
   }
 }
 
@@ -192,22 +273,40 @@ async function serviceCorrectness(iterations) {
   if (!("serviceWorker" in navigator)) {
     return {status: "skipped", reason: "ServiceWorker unavailable"};
   }
+  let registration;
   try {
-    const registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL);
-    const readyRegistration = await within(
-      navigator.serviceWorker.ready, WORKER_TIMEOUT_MS, "ServiceWorker activation");
-    if (readyRegistration.timedOut) {
-      return {status: "skipped", reason: "ServiceWorker did not activate within probe timeout"};
+    registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL);
+    const activated = await waitForRegistrationActive(registration);
+    if (activated.kind !== "message") {
+      return {status: "error", error: `ServiceWorker activation ${activated.kind}: ${activated.description || activated.error}`};
     }
-    const worker = registration.active || registration.waiting || registration.installing;
-    if (!worker) return {status: "skipped", reason: "ServiceWorker has no active worker"};
+    const worker = activated.value;
+    const capabilityResult = await serviceWorkerMessage(
+      worker, {mode: "capability"}, "ServiceWorker capability");
+    if (capabilityResult.kind !== "message") {
+      return {status: "error", error: `ServiceWorker capability ${capabilityResult.kind}: ${capabilityResult.description || capabilityResult.error}`};
+    }
+    const capability = capabilityResult.value;
+    if (capability.status !== "capability") {
+      return {status: "error", error: `ServiceWorker capability result ${JSON.stringify(capability)}`};
+    }
+    if (capability.capability.crossOriginIsolated !== true ||
+        capability.capability.sabType !== "function" ||
+        capability.capability.atomicsType !== "object") {
+      return {
+        status: "skipped",
+        reason: "ServiceWorker lacks cross-origin-isolated SharedArrayBuffer prerequisites",
+        capability: capability.capability,
+      };
+    }
     const buffer = makeBuffer();
     const view = new Int32Array(buffer);
-    const result = deferred(WORKER_TIMEOUT_MS, "ServiceWorker increment");
-    const listener = event => result.resolve(event.data);
-    navigator.serviceWorker.addEventListener("message", listener, {once: true});
-    worker.postMessage({buffer, iterations});
-    const response = await result.promise;
+    const completed = await serviceWorkerMessage(
+      worker, {mode: "correctness", buffer, iterations}, "ServiceWorker increment");
+    if (completed.kind !== "message") {
+      return {status: "error", error: `ServiceWorker increment ${completed.kind}: ${completed.description || completed.error}`};
+    }
+    const response = completed.value;
     if (response.status === "ok" &&
         (response.final !== iterations || Atomics.load(view, 0) !== iterations)) {
       throw new Error(`ServiceWorker exact count failed: ${JSON.stringify(response)}`);
@@ -215,6 +314,8 @@ async function serviceCorrectness(iterations) {
     return response;
   } catch (error) {
     return {status: "error", error: String(error)};
+  } finally {
+    if (registration) await registration.unregister();
   }
 }
 
@@ -234,19 +335,24 @@ async function rateSample() {
   const buffer = makeBuffer();
   const view = new Int32Array(buffer);
   const worker = new Worker(WORKER_URL);
-  const ready = deferred(WORKER_TIMEOUT_MS, "rate worker readiness");
-  const done = deferred(WORKER_TIMEOUT_MS, "rate worker completion");
-  worker.onmessage = event => {
-    if (event.data.status === "ready") ready.resolve(event.data);
-    else done.resolve(event.data);
-  };
-  worker.onerror = event => done.resolve({status: "error", error: event.message});
-  worker.postMessage({mode: "rate", buffer});
-  await ready.promise;
-  await new Promise(resolve => setTimeout(resolve, RATE_WINDOW_MS));
-  Atomics.store(view, 2, 1);
-  const result = await done.promise;
-  worker.terminate();
+  let result;
+  try {
+    const ready = waitForWorkerMessage(worker, "rate worker readiness");
+    worker.postMessage({mode: "rate", buffer});
+    const readyResult = await ready;
+    if (readyResult.kind !== "message" || readyResult.value.status !== "ready") {
+      throw new Error(`rate worker readiness: ${JSON.stringify(readyResult)}`);
+    }
+    const done = waitForWorkerMessage(worker, "rate worker completion");
+    await new Promise(resolve => setTimeout(resolve, RATE_WINDOW_MS));
+    Atomics.store(view, 2, 1);
+    const completed = await done;
+    if (completed.kind !== "message") throw new Error(
+      `rate worker completion ${completed.kind}: ${completed.description || completed.error}`);
+    result = completed.value;
+  } finally {
+    worker.terminate();
+  }
   if (result.status !== "ok" || result.final !== Atomics.load(view, 0)) {
     throw new Error(`rate result ${JSON.stringify(result)}`);
   }
@@ -257,10 +363,17 @@ async function benchmarkSample() {
   const buffer = makeBuffer();
   const view = new Int32Array(buffer);
   const worker = new Worker(WORKER_URL);
-  const result = await workerMessage(worker, {
-    mode: "benchmark", buffer, iterations: BENCHMARK_ITERATIONS,
-  }, "benchmark worker");
-  worker.terminate();
+  let result;
+  try {
+    const completed = waitForWorkerMessage(worker, "benchmark worker");
+    worker.postMessage({mode: "benchmark", buffer, iterations: BENCHMARK_ITERATIONS});
+    const outcome = await completed;
+    if (outcome.kind !== "message") throw new Error(
+      `benchmark worker ${outcome.kind}: ${outcome.description || outcome.error}`);
+    result = outcome.value;
+  } finally {
+    worker.terminate();
+  }
   if (result.status !== "ok" || result.final !== BENCHMARK_ITERATIONS ||
       Atomics.load(view, 0) !== BENCHMARK_ITERATIONS || result.milliseconds <= 0) {
     throw new Error(`benchmark result ${JSON.stringify(result)}`);
@@ -321,7 +434,7 @@ window.addEventListener("load", () => {
 class FixtureHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
-        if path == "/":
+        if path in {"/", PAGE_PATH}:
             body = PAGE.encode("utf-8")
             content_type = "text/html; charset=utf-8"
         elif path in CONTENT_TYPES:
@@ -361,7 +474,7 @@ def validate_fixture_digest() -> None:
 
 
 def validate_http_contract(port: int) -> None:
-    expected = {"/": "text/html", **CONTENT_TYPES}
+    expected = {"/": "text/html", PAGE_PATH: "text/html", **CONTENT_TYPES}
     for path, content_type in expected.items():
         with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=10) as response:
             if response.headers.get_content_type() != content_type:
@@ -409,7 +522,7 @@ def run_browser_once(binary: str, port: int, mode: str, masking_enabled: bool) -
         driver = make_driver(binary, profile, root / "geckodriver.log")
         try:
             driver.set_page_load_timeout(30)
-            driver.get(f"http://127.0.0.1:{port}/?mode={mode}")
+            driver.get(f"http://127.0.0.1:{port}{PAGE_PATH}?mode={mode}")
             raw = WebDriverWait(driver, 90).until(
                 lambda current: current.find_element(By.TAG_NAME, "html").get_attribute("data-cfx-sab")
             )
