@@ -43,7 +43,7 @@ must-stay. Updated below.
 | permissions/notification.ts | Notification.permission, .requestPermission | Getter/async method override | notification-spoofing.patch | Redundant |
 | math/math.ts | Math.PI, .E, .LN2, etc. (constants) | Proxy (Math object replacement) | (none) | Must-stay |
 | math/math.ts | Math.sin, .cos, .sqrt, etc. (functions) | Method override with noise | (none) | Must-stay |
-| timing/performance.ts (removed) | `performance.now()` and performance-entry presentation | Legacy method override + jitter | `performance-timeline-timing.patch` (`Performance::PresentTimestamp` / `PresentInterval`) | Redundant — native Gecko owns it |
+| timing/performance.ts (removed) | `performance.now()` and native-generated performance-entry timing values | Legacy method override + jitter | `performance-timeline-timing.patch` (`Performance::PresentTimestamp` / `PresentInterval`) | Redundant — native Gecko owns it |
 | `actors/CloakfoxTimingChild.sys.mjs` | `setTimeout`, `setInterval`, rAF callback jitter | Callback wrappers | (none) | Must-stay JS |
 | storage/storage-estimate.ts | navigator.storage.estimate, .persisted | Promise-returning method | storage-estimate-spoofing.patch | Redundant |
 | storage/indexeddb.ts | IndexedDB.open, factory patch | Factory override | indexeddb-spoofing.patch | Redundant |

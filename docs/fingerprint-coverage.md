@@ -283,7 +283,7 @@ already-constructed pages, workers, and `Performance` objects retain their
 coherent cached identity until reload. An explicit global `CLOAK_CONFIG`
 automation configuration remains authoritative over the empty per-container
 Reset tombstone.
-key. Explicit User Timing values remain exact: supplied mark start times and
+Explicit User Timing values remain exact: supplied mark start times and
 measure start/end/duration values are not re-transformed. This timeline work
 does not claim SharedArrayBuffer timing coverage.
 

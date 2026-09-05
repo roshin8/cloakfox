@@ -45,6 +45,9 @@ const popupSrc = readFileSync(
   join(root, "additions/browser/extensions/cloakfox-shield/experiment-apis/cloakfox.js"),
   "utf8"
 );
+const overridesSrc = readFileSync(
+  join(root, "additions/browser/components/cloakfox/CloakfoxOverrides.sys.mjs"), "utf8"
+);
 const deriveBlock = extractBlock(
   seedSyncSrc, /export function deriveTimingSessionKey\(/
 ).replace(/^export\s+/, "");
@@ -77,6 +80,9 @@ const settingsClearTransactionPref = extractConstDeclaration(
 const settingsClearBody = extractBody(
   settingsSrc, /clearBtn\.addEventListener\("click", \(\) => /
 );
+const overrideBranchBlock = extractConstDeclaration(overridesSrc, "overrideBranch");
+const clearAllOverridesBlock = extractBlock(overridesSrc, /export function clearAllOverrides\(/)
+  .replace(/^export\s+/, "");
 const popupB64Block = extractBlock(popupSrc, /function b64ToBytes\(/);
 const popupCharsBlock = extractConstDeclaration(popupSrc, "B64_CHARS");
 const popupU32Block = extractBlock(popupSrc, /function u32\(/)
@@ -140,7 +146,8 @@ const observerMod = await import(
   "data:text/javascript," + encodeURIComponent(`
     const values = new Map();
     const legacyCache = new Map();
-    const constructedWorkerCache = new Map();
+    const cppFirstCache = new Map();
+    const performanceKeys = new Map();
     let writes = 0;
     const publishes = [];
     let observerRef = null;
@@ -155,6 +162,13 @@ const observerMod = await import(
         prefHasUserValue(name) { return values.has(name); },
         getBoolPref(name, fallback) { return values.get(name) ?? fallback; },
         setBoolPref(name, value) { values.set(name, value); writes++; notify(name); },
+        getBranch(prefix) {
+          return { getChildList() {
+            if (clearOverrideThrows) throw new Error("test clear failure");
+            return [...values.keys()].filter(name => name.startsWith(prefix))
+              .map(name => name.slice(prefix.length));
+          }};
+        },
       },
     };
     const ContextualIdentityService = {
@@ -174,6 +188,7 @@ const observerMod = await import(
     const timingSeedPref = (ucid) => "cloakfox.container." + ucid + ".timing_seed";
     const cloakCfgPref = (ucid) => "cloakfox.s.cloak_cfg_" + ucid;
     ${settingsClearTransactionPref}
+    ${overrideBranchBlock}
     const tzPref = (ucid) => "cloakfox.container." + ucid + ".timezone";
     const personaIndexPref = (ucid) => "cloakfox.container." + ucid + ".persona_index";
     const ChromeUtils = {
@@ -215,16 +230,27 @@ const observerMod = await import(
     // cache intentionally survives a parent pref clear, so only a cpp-first
     // value can make Clear terminal for already-live content processes.
     export function setLegacyCache(ucid, value) { legacyCache.set(ucid, value); }
-    export function effectiveCfg(ucid) {
-      return values.get(cloakCfgPref(ucid)) ?? legacyCache.get(ucid) ??
-        values.get("roverfox.s.cloak_cfg_" + ucid);
+    export function setCppFirstCache(ucid, value) { cppFirstCache.set(ucid, value); }
+    export function sharedCppFirstCfg(ucid) { return cppFirstCache.get(ucid); }
+    export function effectiveLegacyCfg(ucid) {
+      return legacyCache.get(ucid) ?? values.get("roverfox.s.cloak_cfg_" + ucid);
     }
-    export function constructWorker(ucid) { constructedWorkerCache.set(ucid, effectiveCfg(ucid)); }
-    export function existingWorkerCfg(ucid) { return constructedWorkerCache.get(ucid); }
+    export function capturePerformanceKey(name, ucid) {
+      const cfg = JSON.parse(cppFirstCache.get(ucid) || "{}");
+      const key = Number.isInteger(cfg["timing:session_key_hi"]) &&
+        Number.isInteger(cfg["timing:session_key_lo"])
+        ? { hi: cfg["timing:session_key_hi"], lo: cfg["timing:session_key_lo"] }
+        : null;
+      performanceKeys.set(name, key);
+      return key;
+    }
+    export function capturedPerformanceKey(name) { return performanceKeys.get(name); }
     export function warmNewWorker(ucid) {
-      const cfg = effectiveCfg(ucid);
-      constructedWorkerCache.set(ucid + ":new", cfg);
-      return cfg;
+      // WorkerPrivate's main-thread GetString warm-up refreshes the one
+      // process-shared cpp-first cache before new worker registration.
+      const cfg = values.get(cloakCfgPref(ucid));
+      if (cfg !== undefined) cppFirstCache.set(ucid, cfg);
+      return cppFirstCache.get(ucid) ?? effectiveLegacyCfg(ucid);
     }
     export function getWrites() { return writes; }
     export function getPublishes() { return publishes; }
@@ -236,15 +262,10 @@ const observerMod = await import(
       Services.prefs.setStringPref("cloakfox.container." + ucid + ".math_seed", seed);
       Services.prefs.setStringPref(cloakCfgPref(ucid), cfg);
     }
-    let clearOverridePrefs = [];
     let clearOverrideThrows = false;
-    function clearAllOverrides(_ucid) {
-      for (const pref of clearOverridePrefs) Services.prefs.clearUserPref(pref);
-      if (clearOverrideThrows) throw new Error("test clear failure");
-    }
+    ${clearAllOverridesBlock}
     function refreshContainer() {}
-    export function clearSettings(requestedUcid, overridePrefs, shouldThrow = false) {
-      clearOverridePrefs = overridePrefs;
+    export function clearSettings(requestedUcid, shouldThrow = false) {
       clearOverrideThrows = shouldThrow;
       const selectEl = { value: String(requestedUcid) };
       ${settingsClearBody}
@@ -266,9 +287,11 @@ const {
   setEnabled,
   setString: setObserverString,
   setLegacyCache,
-  effectiveCfg,
-  constructWorker,
-  existingWorkerCfg,
+  setCppFirstCache,
+  sharedCppFirstCfg,
+  effectiveLegacyCfg,
+  capturePerformanceKey,
+  capturedPerformanceKey,
   warmNewWorker,
 } = observerMod;
 
@@ -450,8 +473,8 @@ test("live enable seeds default and public containers and installs session keys"
   }));
 });
 
-test("Settings Clear tombstones cpp-first config and defeats migrated legacy cache", () => {
-  const override = "cloakfox.override.14.navigator.hardwareConcurrency";
+test("Settings Clear atomically refreshes shared cpp cache for new workers", () => {
+  const override = "cloakfox.container.14.override.navigator.hardwareConcurrency";
   const legacyCfg = validCfg({"navigator.userAgent": "legacy-spoof"});
   setObserverPrefs([
     ...activeObserverPrefs(14, validCfg()),
@@ -461,27 +484,31 @@ test("Settings Clear tombstones cpp-first config and defeats migrated legacy cac
   ]);
   runObserverEnsure(14);
   setLegacyCache(14, legacyCfg);
-  constructWorker(14);
-  const oldWorkerCfg = existingWorkerCfg(14);
+  const oldCfg = getObserverPref("cloakfox.s.cloak_cfg_14");
+  setCppFirstCache(14, oldCfg);
+  const oldPerformanceKey = capturePerformanceKey("existing", 14);
   clearObserverEvents();
-  clearSettings(14, [override]);
+  clearSettings(14);
 
   for (const name of ["math_seed", "keyboard_seed", "timing_seed"]) {
     assert.equal(getObserverPref(`cloakfox.container.14.${name}`), undefined);
   }
   assert.equal(getObserverPref("cloakfox.s.cloak_cfg_14"), "{}");
   assert.equal(getObserverPref("roverfox.s.cloak_cfg_14"), undefined);
-  assert.equal(effectiveCfg(14), "{}");
+  assert.equal(effectiveLegacyCfg(14), legacyCfg);
   assert.equal(getObserverPref(override), undefined);
   const published = getObserverPublishes();
   assert.equal(published.length, 1);
   assert.equal(published[0]["cloakfox.s.cloak_cfg_14"], "{}");
   assert.ok(!("cloakfox.internal.clear_14" in published[0]));
 
-  // Existing contexts intentionally retain the key/config captured at their
-  // construction; a new worker warms cpp-first `{}` before legacy fallback.
-  assert.equal(existingWorkerCfg(14), oldWorkerCfg);
+  // Existing Performance objects retain their captured key. WorkerPrivate's
+  // next main-thread warm-up refreshes the one cpp-first process cache.
+  assert.deepEqual(capturedPerformanceKey("existing"), oldPerformanceKey);
+  assert.equal(sharedCppFirstCfg(14), oldCfg);
   assert.equal(warmNewWorker(14), "{}");
+  assert.equal(sharedCppFirstCfg(14), "{}");
+  assert.equal(capturePerformanceKey("new", 14), null);
 
   // The deliberate tombstone is not repaired during Clear, but the normal
   // startup ensure path may regenerate it for the next enabled launch.
@@ -491,11 +518,11 @@ test("Settings Clear tombstones cpp-first config and defeats migrated legacy cac
 });
 
 test("Settings Clear finally removes its transaction marker after an exception", () => {
-  const override = "cloakfox.override.19.navigator.hardwareConcurrency";
+  const override = "cloakfox.container.19.override.navigator.hardwareConcurrency";
   setObserverPrefs([...activeObserverPrefs(19, validCfg()), [override, "16"]]);
   runObserverEnsure(19);
   clearObserverEvents();
-  assert.throws(() => clearSettings(19, [override], true), /test clear failure/);
+  assert.throws(() => clearSettings(19, true), /test clear failure/);
   assert.equal(getObserverPref("cloakfox.internal.clear_19"), undefined);
   assert.equal(getObserverPref("cloakfox.s.cloak_cfg_19"), "{}");
   assert.equal(getObserverPublishes().length, 1);
