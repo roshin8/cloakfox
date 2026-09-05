@@ -185,7 +185,8 @@ function cfgPrefAssignments(source) {
   }));
 }
 
-function assertSabDefaultContract(staticPrefSource, cfgSource) {
+function assertSabDefaultContract(
+  staticPrefSource, cfgSource, checkCoverageLanguage = true) {
   const staticPrefs = staticPrefDefinitions(staticPrefSource);
   assert.equal(staticPrefs.length, 1, "expected exactly one SAB StaticPref definition");
   assert.equal(staticPrefs[0].value, "false", "SAB StaticPref must default false");
@@ -202,8 +203,10 @@ function assertSabDefaultContract(staticPrefSource, cfgSource) {
   assert.match(prose, /preserves? SharedArrayBuffer, Atomics, and shared Wasm values/i);
   assert.match(prose, /bounded worker scheduling perturbation/i);
   assert.match(prose, /remains off.*acceptance metric was not met/i);
-  assert.doesNotMatch(prose,
-    /\b(?:covered|(?:coverage|protection|mitigation) (?:is )?complete|(?:complete|full) (?:coverage|protection|mitigation)|fully (?:protected|masked|mitigated)|completely (?:protected|masked|mitigated))\b/i);
+  if (checkCoverageLanguage) {
+    assert.doesNotMatch(prose,
+      /\b(?:covered|(?:coverage|protection|mitigation) (?:is )?complete|(?:complete|full) (?:coverage|protection|mitigation)|fully (?:protected|masked|mitigated)|completely (?:protected|masked|mitigated))\b/i);
+  }
 }
 
 test("experimental SAB masking has one false default and does not claim coverage", () => {
@@ -241,8 +244,12 @@ test("SAB documentation guard rejects false coverage language", () => {
   ]) {
     const mutated = cfg.replace(
       "// It remains off because the masking acceptance metric was not met.",
-      `// ${claim}`);
+      `// It remains off because the masking acceptance metric was not met.\n` +
+        `// ${claim}`);
     assert.throws(() => assertSabDefaultContract(staticPrefNewSide, mutated),
       `accepted false coverage claim: ${claim}`);
+    assert.doesNotThrow(
+      () => assertSabDefaultContract(staticPrefNewSide, mutated, false),
+      `non-coverage requirements failed for mutation: ${claim}`);
   }
 });
