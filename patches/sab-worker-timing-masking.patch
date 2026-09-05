@@ -21,7 +21,7 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
  #include "js/CallAndConstruct.h"  // JS_CallFunctionValue
  #include "js/CompilationAndEvaluation.h"
  #include "js/ContextOptions.h"
-@@ -43,6 +45,7 @@
+@@ -43,7 +45,9 @@
  #include "mozilla/Result.h"
  #include "mozilla/ScopeExit.h"
  #include "mozilla/StaticPrefs_browser.h"
@@ -29,15 +29,8 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
  #include "mozilla/StaticPrefs_dom.h"
  #include "mozilla/StaticPrefs_javascript.h"
  #include "mozilla/StorageAccess.h"
-@@ -123,6 +126,8 @@
- #include "nsThreadManager.h"
- #include "nsThreadUtils.h"
- #include "nsUTF8Utils.h"
-+#include "prinrval.h"
-+#include "prthread.h"
++#include "mozilla/TimeStamp.h"
 
- #ifdef XP_WIN
- #  undef PostMessage
 @@ -1979,6 +1984,16 @@
    WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
    MOZ_DIAGNOSTIC_ASSERT(workerPrivate);
@@ -105,7 +98,7 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 
    RefPtr<EventTarget> eventTarget;
 
-@@ -5859,6 +5889,88 @@
+@@ -5859,6 +5889,109 @@
    return false;
  }
 
@@ -142,10 +135,15 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 +    mCloakfoxTimingState = nullptr;
 +    return;
 +  }
-+  MOZ_ALWAYS_SUCCEEDS(
-+      mCloakfoxTimingTimer->SetTarget(mWorkerControlEventTarget));
++  if (NS_FAILED(mCloakfoxTimingTimer->SetTarget(mWorkerControlEventTarget))) {
++    mCloakfoxTimingTimer = nullptr;
++    mCloakfoxTimingState = nullptr;
++    return;
++  }
 +  mCloakfoxTimingMaskingActive = true;
-+  ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs());
++  if (!ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs())) {
++    StopCloakfoxTimingMasking();
++  }
 +}
 +
 +void WorkerPrivate::StopCloakfoxTimingMasking() {
@@ -162,16 +160,32 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 +  mCloakfoxTimingState = nullptr;
 +}
 +
-+void WorkerPrivate::ArmCloakfoxTimingTimer(uint32_t aDelayMs) {
++bool WorkerPrivate::ArmCloakfoxTimingTimer(uint32_t aDelayMs) {
 +  AssertIsOnWorkerThread();
 +  if (!mCloakfoxTimingMaskingActive || !mCloakfoxTimingTimer ||
 +      !mCloakfoxTimingState) {
++    return false;
++  }
++
++  return NS_SUCCEEDED(mCloakfoxTimingTimer->InitWithNamedFuncCallback(
++      CloakfoxTimingTimerCallback, nullptr, aDelayMs, nsITimer::TYPE_ONE_SHOT,
++      "CloakfoxWorkerTimingTimer"_ns));
++}
++
++void WorkerPrivate::RealizeCloakfoxTimingDelay(uint32_t aDelayUs) {
++  MOZ_ASSERT(aDelayUs <= CloakfoxWorkerTiming::kMaxYieldUs);
++  if (!aDelayUs) {
 +    return;
 +  }
 +
-+  MOZ_ALWAYS_SUCCEEDS(mCloakfoxTimingTimer->InitWithNamedFuncCallback(
-+      CloakfoxTimingTimerCallback, nullptr, aDelayMs, nsITimer::TYPE_ONE_SHOT,
-+      "CloakfoxWorkerTimingTimer"_ns));
++  // NSPR uses 1 kHz intervals on Darwin, where converting 1..250 us yields
++  // zero, reducing the intended pause to a scheduler yield. A monotonic
++  // deadline realizes the already-keyed bounded delay without using wall time
++  // as PRNG input or intentionally introducing an unbounded OS-sleep overshoot.
++  const TimeStamp deadline =
++      TimeStamp::Now() + TimeDuration::FromMicroseconds(aDelayUs);
++  while (TimeStamp::Now() < deadline) {
++  }
 +}
 +
 +void WorkerPrivate::RunCloakfoxTimingBoundary() {
@@ -182,13 +196,13 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 +  }
 +
 +  const uint32_t delayUs = mCloakfoxTimingState->NextYieldUs();
-+  if (delayUs) {
-+    PR_Sleep(PR_MicrosecondsToInterval(delayUs));
-+  }
++  RealizeCloakfoxTimingDelay(delayUs);
 +
 +  // Stop() can only run on this same worker thread, so the active check in Arm
 +  // is sufficient to prevent shutdown-time re-arming without taking mMutex.
-+  ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs());
++  if (!ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs())) {
++    StopCloakfoxTimingMasking();
++  }
 +}
 +
  void WorkerPrivate::ReportError(JSContext* aCx,
@@ -208,14 +222,15 @@ diff --git a/dom/workers/WorkerPrivate.h b/dom/workers/WorkerPrivate.h
 
  namespace JS {
  struct RuntimeStats;
-@@ -1332,6 +1336,13 @@
+@@ -1332,6 +1336,14 @@
   private:
    void ShutdownGCTimers();
 
 +  bool ShouldUseCloakfoxTimingMasking() const;
 +  void StartCloakfoxTimingMasking();
 +  void StopCloakfoxTimingMasking();
-+  void ArmCloakfoxTimingTimer(uint32_t aDelayMs);
++  bool ArmCloakfoxTimingTimer(uint32_t aDelayMs);
++  static void RealizeCloakfoxTimingDelay(uint32_t aDelayUs);
 +  void RunCloakfoxTimingBoundary();
 +  static void CloakfoxTimingTimerCallback(nsITimer* aTimer, void* aClosure);
 +

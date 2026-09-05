@@ -2,11 +2,9 @@
  *
  *   node --test tests/fingerprint/test_sab_worker_timing_lifecycle.mjs
  *
- * A full Gecko build proves type and linkage compatibility, but it cannot
- * prove that every shutdown route disables a queued timer before WorkerPrivate
- * dies. This gate checks the source-of-truth patch's ownership contract: one
- * worker-owned timer/state, worker-thread start, shutdown cancellation, and a
- * callback without a raw WorkerPrivate closure.
+ * This inspects individual source-patch functions and call-site hunks. Global
+ * token counts are deliberately insufficient: removing any start/stop site,
+ * callback lookup, or failed-arm cleanup must fail the corresponding check.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -18,10 +16,41 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..");
 const patch = readFileSync(
   join(root, "patches", "sab-worker-timing-masking.patch"), "utf8");
-const added = patch.split("\n")
-  .filter(line => line.startsWith("+") && !line.startsWith("+++"))
-  .map(line => line.slice(1))
-  .join("\n");
+
+function patchFileSections(path) {
+  const marker = `+++ b/${path}`;
+  const sections = [];
+  let cursor = 0;
+  while ((cursor = patch.indexOf(marker, cursor)) !== -1) {
+    const start = patch.lastIndexOf("\n--- ", cursor) + 1;
+    let end = patch.indexOf("\ndiff --git ", cursor + marker.length);
+    if (end === -1) end = patch.length;
+    sections.push(patch.slice(start, end));
+    cursor += marker.length;
+  }
+  return sections;
+}
+
+function newSideHunks(path) {
+  return patchFileSections(path).flatMap(section =>
+    section.split(/\n(?=@@ )/)
+      .filter(part => part.startsWith("@@ "))
+      .map(hunk => hunk.split("\n").slice(1)
+        .filter(line => !line.startsWith("-"))
+        .map(line => line.startsWith("+") || line.startsWith(" ")
+          ? line.slice(1)
+          : line)
+        .join("\n")));
+}
+
+const cppHunks = newSideHunks("dom/workers/WorkerPrivate.cpp");
+const added = cppHunks.join("\n");
+
+function hunkContaining(marker) {
+  const matches = cppHunks.filter(hunk => hunk.includes(marker));
+  assert.equal(matches.length, 1, `expected one WorkerPrivate.cpp hunk containing ${marker}`);
+  return matches[0];
+}
 
 function functionBody(signature) {
   const start = added.indexOf(signature);
@@ -36,7 +65,7 @@ function functionBody(signature) {
   assert.fail(`unterminated body for ${signature}`);
 }
 
-test("eligible workers cache one timing state before the run loop", () => {
+test("eligible workers cache one validated timing state before the run loop", () => {
   const eligibility = functionBody(
     "bool WorkerPrivate::ShouldUseCloakfoxTimingMasking() const");
   for (const condition of [
@@ -51,41 +80,68 @@ test("eligible workers cache one timing state before the run loop", () => {
   }
 
   const start = functionBody("void WorkerPrivate::StartCloakfoxTimingMasking()");
-  const compactStart = start.replace(/\s+/g, " ");
-  const load = compactStart.indexOf(
+  const compact = start.replace(/\s+/g, " ");
+  const load = compact.indexOf(
     "CloakfoxTiming::LoadKey(GetOriginAttributes().mUserContextId)");
-  const reject = compactStart.indexOf("!key.IsValid()");
-  const construct = compactStart.indexOf("MakeUnique<CloakfoxWorkerTiming::State>");
+  const reject = compact.indexOf("!key.IsValid()");
+  const construct = compact.indexOf("MakeUnique<CloakfoxWorkerTiming::State>");
   assert.ok(load >= 0 && reject > load && construct > reject,
-    "the explicit-container key must be loaded and validated before state construction");
+    "explicit-container key validation must precede state construction");
   assert.ok(start.includes("CloakfoxWorkerTiming::HashWorkerId"));
-  assert.ok(start.includes(
-    "ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs())"));
+  assert.match(start,
+    /if \(!ArmCloakfoxTimingTimer\([\s\S]*?NextInterruptDelayMs\(\)\)\) \{[\s\S]*?StopCloakfoxTimingMasking\(\);/);
 
-  assert.ok(added.includes("StartCloakfoxTimingMasking();"));
+  const doRunLoop = hunkContaining("InitializeGCTimers();");
+  assert.ok(doRunLoop.indexOf("StartCloakfoxTimingMasking();") >
+    doRunLoop.indexOf("InitializeGCTimers();"));
 });
 
-test("shutdown disables rearm and leaves no raw callback closure", () => {
+test("callback resolves the live worker and delegates only its boundary", () => {
+  const callback = functionBody(
+    "void WorkerPrivate::CloakfoxTimingTimerCallback");
+  assert.ok(callback.includes("GetCurrentThreadWorkerPrivate()"));
+  assert.ok(callback.includes("workerPrivate->RunCloakfoxTimingBoundary()"));
+  assert.ok(!callback.includes("aClosure"), "callback must not dereference a raw closure");
+});
+
+test("every shutdown path closes the rearm gate before destruction", () => {
   const stop = functionBody("void WorkerPrivate::StopCloakfoxTimingMasking()");
   const deactivate = stop.indexOf("mCloakfoxTimingMaskingActive = false;");
   const cancel = stop.indexOf("mCloakfoxTimingTimer->Cancel()");
   const clearState = stop.indexOf("mCloakfoxTimingState = nullptr;");
   assert.ok(deactivate >= 0 && cancel > deactivate && clearState > cancel,
-    "stop must close the rearm gate before canceling and clearing state");
+    "stop must deactivate before canceling and clearing state");
+
+  const neverRan = hunkContaining("void WorkerPrivate::RunLoopNeverRan()");
+  assert.ok(neverRan.includes("StopCloakfoxTimingMasking();"));
+
+  const notify = hunkContaining(
+    'NS_ASSERTION(aStatus > Running && aStatus < Dead, "Bad status!")');
+  assert.ok(notify.includes("StopCloakfoxTimingMasking();"));
+
+  const finalDead = hunkContaining("DisableMemoryReporter();");
+  assert.ok(finalDead.indexOf("StopCloakfoxTimingMasking();") >
+    finalDead.indexOf("DisableMemoryReporter();"));
+
+  const destructor = hunkContaining("WorkerPrivate::~WorkerPrivate()");
+  for (const invariant of [
+    "MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingTimer)",
+    "MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingState)",
+    "MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingMaskingActive)",
+  ]) assert.ok(destructor.includes(invariant), `missing destructor invariant ${invariant}`);
+});
+
+test("arm failures disable policy without callback-time key or pref work", () => {
+  const arm = functionBody("bool WorkerPrivate::ArmCloakfoxTimingTimer");
+  assert.ok(arm.includes("InitWithNamedFuncCallback("));
+  assert.ok(arm.includes("return NS_SUCCEEDED("));
+  assert.ok(!arm.includes("MOZ_ALWAYS_SUCCEEDS"));
 
   const boundary = functionBody("void WorkerPrivate::RunCloakfoxTimingBoundary()");
-  assert.ok(boundary.includes("if (!mCloakfoxTimingMaskingActive ||"));
-  assert.ok(boundary.includes("mCloakfoxTimingState->NextYieldUs()"));
-  assert.ok(boundary.includes(
-    "PR_Sleep(PR_MicrosecondsToInterval(delayUs))"));
-  assert.ok(boundary.includes("ArmCloakfoxTimingTimer("));
+  assert.match(boundary,
+    /if \(!ArmCloakfoxTimingTimer\([\s\S]*?NextInterruptDelayMs\(\)\)\) \{[\s\S]*?StopCloakfoxTimingMasking\(\);/);
   for (const forbidden of ["StaticPrefs::", "LoadKey(", "MakeUnique<", "new "]) {
     assert.ok(!boundary.includes(forbidden),
       `timer boundary must not perform callback-time ${forbidden}`);
   }
-
-  assert.match(added, /InitWithNamedFuncCallback\([\s\S]*?nullptr,[\s\S]*?TYPE_ONE_SHOT/);
-  assert.ok((added.match(/StopCloakfoxTimingMasking\(\);/g) || []).length >= 3,
-    "never-ran, shutdown notification, and final run-loop exit must all stop masking");
-  assert.ok(added.includes("MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingTimer)"));
 });
