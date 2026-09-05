@@ -44,6 +44,7 @@ must-stay. Updated below.
 | math/math.ts | Math.PI, .E, .LN2, etc. (constants) | Proxy (Math object replacement) | (none) | Must-stay |
 | math/math.ts | Math.sin, .cos, .sqrt, etc. (functions) | Method override with noise | (none) | Must-stay |
 | timing/performance.ts (removed) | `performance.now()` and native-generated performance-entry timing values | Legacy method override + jitter | `performance-timeline-timing.patch` (`Performance::PresentTimestamp` / `PresentInterval`) | Redundant — native Gecko owns it |
+| workers/shared-memory timing | `SharedArrayBuffer`, `Atomics`, shared Wasm throughput clocks | APIs and values preserved; bounded worker scheduling experiment | `sab-worker-timing-masking.patch` (default false) | Experimental — efficacy RED, not covered |
 | `actors/CloakfoxTimingChild.sys.mjs` | `setTimeout`, `setInterval`, rAF callback jitter | Callback wrappers | (none) | Must-stay JS |
 | storage/storage-estimate.ts | navigator.storage.estimate, .persisted | Promise-returning method | storage-estimate-spoofing.patch | Redundant |
 | storage/indexeddb.ts | IndexedDB.open, factory patch | Factory override | indexeddb-spoofing.patch | Redundant |
@@ -177,9 +178,10 @@ Safe to remove from JS spoofers once C++ patches are verified stable:
 ## Current performance timeline boundary
 
 Native Gecko presents `performance.now()` and all performance-entry values via
-`Performance::PresentTimestamp()` / `PresentInterval()`. The covered entry
-types are `event`, `first-input`, `largest-contentful-paint`, `mark`,
-`measure`, `navigation`, `paint`, and `resource`. Alongside `startTime` and
+`Performance::PresentTimestamp()` / `PresentInterval()`. This covers
+`PerformanceObserver` and all eight entry types advertised by Firefox 146:
+`event`, `first-input`, `largest-contentful-paint`, `mark`, `measure`,
+`navigation`, `paint`, and `resource`. Alongside `startTime` and
 `duration`, the native presentation includes event processing times; paint/LCP
 paint, presentation, render, and load times; resource/navigation worker,
 redirect, DNS, connect, request, and response phases; and navigation unload,
@@ -192,6 +194,24 @@ session and scoped to a container; a new session or another container gets a
 different key. Explicit User Timing values are intentionally preserved: caller
 supplied mark start times and measure start/end/duration are not transformed.
 SharedArrayBuffer coverage is outside this implementation.
+
+## Shared-memory worker timing boundary
+
+The SAB experiment preserves `SharedArrayBuffer`, `Atomics`, and shared
+WebAssembly APIs and values. When manually enabled it applies only to
+non-chrome, non-privileged `WorkerPrivate` workers with shared memory allowed
+and cross-origin isolation. Dedicated workers ran in validation; SharedWorker
+and ServiceWorker were capability-backed skips on this build. Worklets and
+audio render threads are excluded.
+
+This is bounded throughput-fingerprint perturbation, not universal SAB-clock
+elimination and not Spectre mitigation. The 20-pair performance gate passed at
+12.063449 ms disabled versus 11.976487 ms enabled (-0.7209%, cap +5%). The
+post-performance distribution was 112,664,483 median/1,218,913 MAD disabled
+and 109,611,994.5 median/683,119 MAD enabled: center passed, spread failed.
+Therefore the emergency/experimental pref
+`cloakfox.sab_worker_timing_masking` stays `false` and the signal is not
+claimed as covered.
 
 ## Signals feasible to move to C++ (with effort estimates)
 

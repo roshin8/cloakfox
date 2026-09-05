@@ -58,6 +58,11 @@ class DistributionOrderTests(unittest.TestCase):
 
 
 class CorrectnessMaskingTests(unittest.TestCase):
+    def test_no_argument_cli_routes_to_safe_literal_default_correctness(self) -> None:
+        arguments = probe.parse_arguments([])
+        self.assertEqual(arguments.mode, "correctness")
+        self.assertEqual(arguments.correctness_masking, "default")
+
     def test_default_selection_runs_one_literal_no_override_profile(self) -> None:
         self.assertEqual(probe.correctness_masking_states("default"), (None,))
         profile = probe.profile_user_js(None)

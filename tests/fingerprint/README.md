@@ -227,7 +227,8 @@ two timing owners deliberately:
   and interval scheduling receive up to 2 ms of jitter, and rAF callback
   timestamps receive sub-millisecond noise.
 
-The timeline probe exercises all eight entry types Firefox advertises here:
+The timeline probe exercises `PerformanceObserver` and all eight entry types
+Firefox 146 advertises here:
 `event`, `first-input`, `largest-contentful-paint`, `mark`, `measure`,
 `navigation`, `paint`, and `resource`. It compares observer callbacks,
 direct getters, `getEntries*()`, and `toJSON()` for stable presentation of
@@ -245,6 +246,30 @@ Timing values are compatibility inputs, not noise targets: a supplied mark
 returned exactly. The timing key is stable for one browser session and is
 container-specific; a new browser session or a different container receives a
 different key. This coverage does not claim SharedArrayBuffer timing coverage.
+
+## 8. Shared-memory worker timing experiment
+
+`probe_sharedarraybuffer_timing.py` preserves and directly checks the
+`SharedArrayBuffer`, `Atomics`, and shared WebAssembly APIs and their exact
+values. With no arguments it runs the safe literal-default correctness check;
+the experimental scheduler can be exercised explicitly with
+`--mode correctness --correctness-masking enabled`. Dedicated workers ran on
+this build. SharedWorker and ServiceWorker reported that their realms were not
+cross-origin isolated and were recorded as capability-backed skips.
+
+The implementation is eligible only for non-chrome, non-privileged
+`WorkerPrivate` workers where shared memory is allowed and the worker is
+cross-origin isolated. Worklets and audio render threads are excluded. It
+adds a deterministic, bounded scheduling perturbation to worker throughput;
+it is not universal SAB-clock elimination and is not Spectre mitigation.
+
+The performance gate passed: disabled median 12.063449 ms, enabled median
+11.976487 ms, or -0.7209% versus the +5% cap. The post-performance efficacy
+gate did not: disabled median/MAD was 112,664,483/1,218,913 and enabled was
+109,611,994.5/683,119. The center criterion passed, but the required spread
+increase failed. Consequently `cloakfox.sab_worker_timing_masking` is an
+emergency/experimental rollback pref that remains `false` by default, and
+SharedArrayBuffer timing is not marked covered.
 
 ## Gotchas we hit (and documented in tests)
 

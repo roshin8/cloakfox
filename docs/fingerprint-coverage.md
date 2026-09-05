@@ -258,6 +258,7 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
 | `setTimeout` / `setInterval` / rAF callback jitter | 🔴 | 🔌 `CloakfoxTimingChild` | 🔒 | ☐ | ☐ | ☑ |
 | `performance.now()` and native-generated performance-entry timing values | 🔴 | ⚙️ Gecko `Performance` | 🔒 | ☑ | ☐ | ☑ |
+| SharedArrayBuffer / Atomics / shared Wasm timing throughput | 🔴 | ⚙️ experimental worker scheduler | 🔒 | ☐ | ☐ | ☐ |
 | `performance.timeOrigin` | 🟡 | ⚙️ (Firefox RFP) | 🌍 | ☑ | ☐ | ☐ |
 
 ### Native performance timeline ownership
@@ -267,9 +268,10 @@ native timestamp/interval presentation; `CloakfoxTimingChild` does **not**
 wrap that clock. The actor retains only the `setTimeout`, `setInterval`, and
 `requestAnimationFrame` callback-jitter wrappers.
 
-The native path presents `startTime` and `duration` for all eight covered entry
-types — `event`, `first-input`, `largest-contentful-paint`, `mark`, `measure`,
-`navigation`, `paint`, and `resource` — and their additional timing fields:
+The native path covers `PerformanceObserver` and presents `startTime` and
+`duration` for all eight entry types advertised by Firefox 146 — `event`,
+`first-input`, `largest-contentful-paint`, `mark`, `measure`, `navigation`,
+`paint`, and `resource` — and their additional timing fields:
 event `processingStart`/`processingEnd`; paint and LCP `paintTime`,
 `presentationTime`, `renderTime`, and `loadTime`; resource/navigation
 `workerStart`, redirect, DNS, connection, request, and response phases; and
@@ -286,6 +288,28 @@ Reset tombstone.
 Explicit User Timing values remain exact: supplied mark start times and
 measure start/end/duration values are not re-transformed. This timeline work
 does not claim SharedArrayBuffer timing coverage.
+
+### Shared-memory timing boundary
+
+`SharedArrayBuffer`, `Atomics`, and shared WebAssembly APIs and values remain
+intact. Cloakfox contains an experimental bounded worker-scheduling
+perturbation, but `cloakfox.sab_worker_timing_masking` remains `false` by
+default because efficacy acceptance stayed RED. It therefore does **not**
+count as SharedArrayBuffer timing coverage.
+
+The implementation is eligible only when manually enabled for non-chrome,
+non-privileged `WorkerPrivate` workers that allow shared memory and are
+cross-origin isolated. Dedicated workers ran in validation; SharedWorker and
+ServiceWorker were capability-backed skips on this build. Worklets and audio
+render threads are excluded. This is bounded throughput-fingerprint
+perturbation, not universal SAB-clock elimination and not Spectre mitigation.
+
+The 20-pair performance result was disabled median 12.063449 ms versus enabled
+11.976487 ms (-0.7209% slowdown, under the +5% cap). After that run, the
+distribution result was disabled median 112,664,483/MAD 1,218,913 versus
+enabled median 109,611,994.5/MAD 683,119: the center criterion passed and the
+spread criterion failed. The pref is retained only as an experimental and
+emergency rollback surface; safe default behavior is native scheduling.
 
 ---
 

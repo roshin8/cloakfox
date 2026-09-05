@@ -721,9 +721,14 @@ def main(
     return 0
 
 
-if __name__ == "__main__":
+def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("correctness", "distribution", "performance"), required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("correctness", "distribution", "performance"),
+        default="correctness",
+        help="probe mode (default: safe correctness check)",
+    )
     parser.add_argument(
         "--distribution-order",
         choices=DISTRIBUTION_ORDERS,
@@ -732,10 +737,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--correctness-masking",
         choices=CORRECTNESS_MASKING_SELECTIONS,
-        default=DEFAULT_CORRECTNESS_MASKING,
+        default="default",
         help="correctness-only pref state; default omits the masking override",
     )
-    arguments = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+if __name__ == "__main__":
+    arguments = parse_arguments()
     binary = os.environ.get("CLOAKFOX_BIN")
     if not binary or not Path(binary).is_file():
         sys.exit("CLOAKFOX_BIN not set or binary missing")
