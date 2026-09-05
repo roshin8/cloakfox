@@ -130,10 +130,12 @@ const reconciliationStateBlock = seedSyncSrc.match(
   /let reconcilingSessionTiming = false;/
 )?.[0];
 if (!reconciliationStateBlock) throw new Error("reconciliation state not found");
+const clearTombstoneBlock = extractBlock(seedSyncSrc, /function isClearTombstone\(/);
 const observerBlock = extractBlock(seedSyncSrc, /const observer = /);
 const observerMod = await import(
   "data:text/javascript," + encodeURIComponent(`
     const values = new Map();
+    const legacyCache = new Map();
     let writes = 0;
     const publishes = [];
     let observerRef = null;
@@ -185,6 +187,7 @@ const observerMod = await import(
     ${ensureBlock}
     ${ensureAllBlock}
     ${reconciliationStateBlock}
+    ${clearTombstoneBlock}
     ${observerBlock}
     ${settingsU32Block}
     ${settingsBuildBlock}
@@ -201,6 +204,14 @@ const observerMod = await import(
       for (const [name, value] of entries) values.set(name, value);
     }
     export function getPref(name) { return values.get(name); }
+    // Model the C++ reader's cpp-first order. A previously populated legacy
+    // cache intentionally survives a parent pref clear, so only a cpp-first
+    // value can make Clear terminal for already-live content processes.
+    export function setLegacyCache(ucid, value) { legacyCache.set(ucid, value); }
+    export function effectiveCfg(ucid) {
+      return values.get(cloakCfgPref(ucid)) ?? legacyCache.get(ucid) ??
+        values.get("roverfox.s.cloak_cfg_" + ucid);
+    }
     export function getWrites() { return writes; }
     export function getPublishes() { return publishes; }
     export function clearEvents() { writes = 0; publishes.length = 0; }
@@ -237,6 +248,8 @@ const {
   clearSettings,
   setEnabled,
   setString: setObserverString,
+  setLegacyCache,
+  effectiveCfg,
 } = observerMod;
 
 const SEED_A = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
@@ -417,24 +430,40 @@ test("live enable seeds default and public containers and installs session keys"
   }));
 });
 
-test("settings Clear leaves config absent and removes its override state", () => {
+test("Settings Clear tombstones cpp-first config and defeats migrated legacy cache", () => {
   const override = "cloakfox.override.14.navigator.hardwareConcurrency";
+  const legacyCfg = validCfg({"navigator.userAgent": "legacy-spoof"});
   setObserverPrefs([
     ...activeObserverPrefs(14, validCfg()),
+    ["roverfox.s.cloak_cfg_14", legacyCfg],
     [override, "16"],
     ["cloakfox.container.14.timezone", "UTC"],
   ]);
+  runObserverEnsure(14);
+  setLegacyCache(14, legacyCfg);
   clearObserverEvents();
   clearSettings(14, [override]);
 
   for (const name of ["math_seed", "keyboard_seed", "timing_seed"]) {
     assert.equal(getObserverPref(`cloakfox.container.14.${name}`), undefined);
   }
-  assert.equal(getObserverPref("cloakfox.s.cloak_cfg_14"), undefined);
+  assert.equal(getObserverPref("cloakfox.s.cloak_cfg_14"), "{}");
+  assert.equal(getObserverPref("roverfox.s.cloak_cfg_14"), undefined);
+  assert.equal(effectiveCfg(14), "{}");
   assert.equal(getObserverPref(override), undefined);
   const published = getObserverPublishes();
   assert.ok(published.length > 0);
-  assert.ok(!("cloakfox.s.cloak_cfg_14" in published.at(-1)));
+  assert.equal(published.at(-1)["cloakfox.s.cloak_cfg_14"], "{}");
+  assert.ok(published.every((snapshot) => {
+    const cfg = snapshot["cloakfox.s.cloak_cfg_14"];
+    return cfg === "{}" || (cfg && typeof JSON.parse(cfg)["timing:session_key_hi"] === "number");
+  }));
+
+  // The deliberate tombstone is not repaired during Clear, but the normal
+  // startup ensure path may regenerate it for the next enabled launch.
+  runObserverEnsure(14);
+  assert.notEqual(getObserverPref("cloakfox.s.cloak_cfg_14"), "{}");
+  assert.equal(typeof JSON.parse(getObserverPref("cloakfox.s.cloak_cfg_14"))["timing:session_key_hi"], "number");
 });
 
 test("present empty cloak_cfg value is repaired before publication", () => {
@@ -451,6 +480,17 @@ test("present empty cloak_cfg value is repaired before publication", () => {
     return typeof published["timing:session_key_hi"] === "number" &&
       typeof published["timing:session_key_lo"] === "number";
   }));
+});
+
+test("present bare-object cloak_cfg with actor seeds is repaired before publication", () => {
+  setObserverPrefs(activeObserverPrefs(18, validCfg()));
+  runObserverEnsure(18);
+  clearObserverEvents();
+  setObserverString("cloakfox.s.cloak_cfg_18", "{}");
+
+  const cfg = JSON.parse(getObserverPref("cloakfox.s.cloak_cfg_18"));
+  assert.equal(typeof cfg["timing:session_key_hi"], "number");
+  assert.equal(typeof cfg["timing:session_key_lo"], "number");
 });
 
 test("unrelated pref changes do not reseed a container", () => {

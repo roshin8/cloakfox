@@ -554,15 +554,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Clear — strips seeds, cloak_cfg, timezone, persona override, AND
-  // every per-field override so the container falls back to host's
-  // real values.
+  // Clear — strip the actor seeds and every override, then leave a cpp-first
+  // empty config for this session. It wins the roverfox legacy-pref/cache
+  // fallback without disabling APIs; next startup can generate a new persona.
   clearBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
     Services.prefs.clearUserPref(masterSeedPref(ucid));
     Services.prefs.clearUserPref(keyboardSeedPref(ucid));
     Services.prefs.clearUserPref(timingSeedPref(ucid));
-    Services.prefs.clearUserPref(cloakCfgPref(ucid));
+    Services.prefs.setStringPref(cloakCfgPref(ucid), "{}");
+    Services.prefs.clearUserPref(`roverfox.s.cloak_cfg_${ucid}`);
     Services.prefs.clearUserPref(tzPref(ucid));
     Services.prefs.clearUserPref(personaIndexPref(ucid));
     clearAllOverrides(ucid);

@@ -358,6 +358,12 @@ function publish() {
 // so a supported seed change is re-keyed immediately with this launch's salt.
 let reconcilingSessionTiming = false;
 
+function isClearTombstone(ucid, cfgPref) {
+  return Services.prefs.getStringPref(cfgPref, "") === "{}" &&
+    SEED_PREF_NAMES.every(name =>
+      !Services.prefs.prefHasUserValue(`cloakfox.container.${ucid}.${name}`));
+}
+
 const observer = {
   observe(_subject, topic, data) {
     if (topic !== "nsPref:changed") return;
@@ -378,7 +384,8 @@ const observer = {
         // config. An explicitly written empty/corrupt string still has a user
         // value and must be rebuilt before publication.
         const cfgWasWritten = cfgMatch &&
-          Services.prefs.prefHasUserValue(data);
+          Services.prefs.prefHasUserValue(data) &&
+          !isClearTombstone(Number(cfgMatch[1]), data);
         const timingSeedWasWritten = timingSeedMatch &&
           Services.prefs.prefHasUserValue(data);
         const match = cfgWasWritten ? cfgMatch :
