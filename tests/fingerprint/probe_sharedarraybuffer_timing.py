@@ -47,6 +47,20 @@ DISTRIBUTION_MAD_MULTIPLIER = 1.25
 DISTRIBUTION_MEDIAN_MAD_MULTIPLIER = 1.0
 PERFORMANCE_MAX_SLOWDOWN = 0.05
 
+# Pin a valid default-container config before browser startup. Worker timing
+# masking deliberately falls back to native scheduling when either session-key
+# word is absent; relying on asynchronous first-run persona generation would
+# make the enabled distribution probe race the key publication it is testing.
+TIMING_CONFIG_JSON = json.dumps(
+    {
+        "fonts": [],
+        "fonts:spacing_seed": 1,
+        "timing:session_key_hi": 0x13579BDF,
+        "timing:session_key_lo": 0x2468ACE0,
+    },
+    separators=(",", ":"),
+)
+
 CONTENT_TYPES = {
     "/fixtures/sab-worker.js": "application/javascript",
     "/fixtures/sab-shared-worker.js": "application/javascript",
@@ -514,6 +528,7 @@ def run_browser_once(binary: str, port: int, mode: str, masking_enabled: bool) -
                     'user_pref("cloakfox.enabled", true);',
                     "user_pref(\"cloakfox.sab_worker_timing_masking\", "
                     f"{str(masking_enabled).lower()});",
+                    f'user_pref("cloakfox.s.cloak_cfg_0", {json.dumps(TIMING_CONFIG_JSON)});',
                 ]
             )
             + "\n",

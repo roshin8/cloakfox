@@ -2,13 +2,26 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
 
 
 sys.path.insert(0, str(Path(__file__).parent))
-from probe_sharedarraybuffer_timing import service_worker_scope_covers_client
+from probe_sharedarraybuffer_timing import (
+    TIMING_CONFIG_JSON,
+    service_worker_scope_covers_client,
+)
+
+
+class TimingConfigTests(unittest.TestCase):
+    def test_runtime_probe_starts_with_a_valid_nonzero_timing_key(self) -> None:
+        config = json.loads(TIMING_CONFIG_JSON)
+        self.assertNotEqual(config["timing:session_key_hi"], 0)
+        self.assertNotEqual(config["timing:session_key_lo"], 0)
+        self.assertIn("fonts", config)
+        self.assertIn("fonts:spacing_seed", config)
 
 
 class ServiceWorkerScopeTests(unittest.TestCase):

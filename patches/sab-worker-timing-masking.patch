@@ -9,3 +9,231 @@ diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/Sta
 +  value: false
 +  mirror: always
 +
+diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -20,6 +20,8 @@
+ #include "WorkerRef.h"
+ #include "WorkerRunnable.h"
+ #include "WorkerThread.h"
++#include "CloakfoxTiming.h"
++#include "CloakfoxWorkerTiming.h"
+ #include "js/CallAndConstruct.h"  // JS_CallFunctionValue
+ #include "js/CompilationAndEvaluation.h"
+ #include "js/ContextOptions.h"
+@@ -43,6 +45,7 @@
+ #include "mozilla/Result.h"
+ #include "mozilla/ScopeExit.h"
+ #include "mozilla/StaticPrefs_browser.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_dom.h"
+ #include "mozilla/StaticPrefs_javascript.h"
+ #include "mozilla/StorageAccess.h"
+@@ -123,6 +126,8 @@
+ #include "nsThreadManager.h"
+ #include "nsThreadUtils.h"
+ #include "nsUTF8Utils.h"
++#include "prinrval.h"
++#include "prthread.h"
+
+ #ifdef XP_WIN
+ #  undef PostMessage
+@@ -1979,6 +1984,16 @@
+   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+   MOZ_DIAGNOSTIC_ASSERT(workerPrivate);
+   workerPrivate->DebuggerInterruptRequest();
++}
++
++void WorkerPrivate::CloakfoxTimingTimerCallback(nsITimer* aTimer,
++                                                void* aClosure) {
++  // The control event target only runs this callback for its live worker. It
++  // also requests the JS interrupt needed to reach this boundary from busy
++  // JavaScript or Wasm. Avoid a raw closure that could outlive WorkerPrivate.
++  if (WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate()) {
++    workerPrivate->RunCloakfoxTimingBoundary();
++  }
+ }
+
+ nsresult WorkerPrivate::DispatchDebuggerRunnable(
+@@ -2995,6 +3010,9 @@
+ WorkerPrivate::~WorkerPrivate() {
+   MOZ_DIAGNOSTIC_ASSERT(mTopLevelWorkerFinishedRunnableCount == 0);
+   MOZ_DIAGNOSTIC_ASSERT(mWorkerFinishedRunnableCount == 0);
++  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingTimer);
++  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingState);
++  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingMaskingActive);
+
+   mWorkerDebuggerEventTarget->ForgetWorkerPrivate(this);
+
+@@ -3678,6 +3696,7 @@
+
+ void WorkerPrivate::RunLoopNeverRan() {
+   LOG(WorkerLog(), ("WorkerPrivate::RunLoopNeverRan [%p]", this));
++  StopCloakfoxTimingMasking();
+   // RunLoopNeverRan is only called in WorkerThreadPrimaryRunnable::Run() to
+   // handle cases
+   //   1. Fail to get BackgroundChild for the worker thread or
+@@ -3782,6 +3801,11 @@
+
+   InitializeGCTimers();
+
++  // This runs after the worker thread and JS context are installed, but before
++  // the first queued script runnable. Eligibility and key material remain
++  // fixed for this worker lifetime; timer callbacks only advance the schedule.
++  StartCloakfoxTimingMasking();
++
+   bool checkFinalGCCC =
+       StaticPrefs::dom_workers_GCCC_on_potentially_last_event();
+
+@@ -3932,6 +3956,8 @@
+         ShutdownGCTimers();
+
+         DisableMemoryReporter();
++
++        StopCloakfoxTimingMasking();
+
+         // Move the timer out with the mutex held but only drop the ref
+         // when the mutex is not held.
+@@ -5759,6 +5785,10 @@
+   AutoYieldJSThreadExecution yield;
+
+   NS_ASSERTION(aStatus > Running && aStatus < Dead, "Bad status!");
++
++  // Closing is the earliest shutdown transition. Closing the active gate
++  // before Cancel() prevents an already-queued callback from re-arming.
++  StopCloakfoxTimingMasking();
+
+   RefPtr<EventTarget> eventTarget;
+
+@@ -5859,6 +5889,88 @@
+   return false;
+ }
+
++bool WorkerPrivate::ShouldUseCloakfoxTimingMasking() const {
++  AssertIsOnWorkerThread();
++  return StaticPrefs::cloakfox_enabled() &&
++         StaticPrefs::cloakfox_sab_worker_timing_masking() &&
++         !IsChromeWorker() && !mIsPrivilegedAddonGlobal &&
++         IsSharedMemoryAllowed() && CrossOriginIsolated();
++}
++
++void WorkerPrivate::StartCloakfoxTimingMasking() {
++  AssertIsOnWorkerThread();
++  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingMaskingActive);
++  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingTimer);
++  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingState);
++
++  if (!ShouldUseCloakfoxTimingMasking()) {
++    return;
++  }
++
++  const CloakfoxTiming::Key key =
++      CloakfoxTiming::LoadKey(GetOriginAttributes().mUserContextId);
++  if (!key.IsValid()) {
++    return;
++  }
++
++  const nsString& id = Id();
++  const uint64_t streamId =
++      CloakfoxWorkerTiming::HashWorkerId(id.get(), id.Length());
++  mCloakfoxTimingState = MakeUnique<CloakfoxWorkerTiming::State>(key, streamId);
++  mCloakfoxTimingTimer = NS_NewTimer();
++  if (!mCloakfoxTimingTimer) {
++    mCloakfoxTimingState = nullptr;
++    return;
++  }
++  MOZ_ALWAYS_SUCCEEDS(
++      mCloakfoxTimingTimer->SetTarget(mWorkerControlEventTarget));
++  mCloakfoxTimingMaskingActive = true;
++  ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs());
++}
++
++void WorkerPrivate::StopCloakfoxTimingMasking() {
++  AssertIsOnWorkerThread();
++
++  // Callbacks and shutdown are serialized on the worker thread. Close the
++  // re-arm gate first so a callback already queued on the control target is a
++  // no-op even if timer cancellation cannot retract that queued runnable.
++  mCloakfoxTimingMaskingActive = false;
++  if (mCloakfoxTimingTimer) {
++    MOZ_ALWAYS_SUCCEEDS(mCloakfoxTimingTimer->Cancel());
++    mCloakfoxTimingTimer = nullptr;
++  }
++  mCloakfoxTimingState = nullptr;
++}
++
++void WorkerPrivate::ArmCloakfoxTimingTimer(uint32_t aDelayMs) {
++  AssertIsOnWorkerThread();
++  if (!mCloakfoxTimingMaskingActive || !mCloakfoxTimingTimer ||
++      !mCloakfoxTimingState) {
++    return;
++  }
++
++  MOZ_ALWAYS_SUCCEEDS(mCloakfoxTimingTimer->InitWithNamedFuncCallback(
++      CloakfoxTimingTimerCallback, nullptr, aDelayMs, nsITimer::TYPE_ONE_SHOT,
++      "CloakfoxWorkerTimingTimer"_ns));
++}
++
++void WorkerPrivate::RunCloakfoxTimingBoundary() {
++  AssertIsOnWorkerThread();
++  if (!mCloakfoxTimingMaskingActive || !mCloakfoxTimingTimer ||
++      !mCloakfoxTimingState) {
++    return;
++  }
++
++  const uint32_t delayUs = mCloakfoxTimingState->NextYieldUs();
++  if (delayUs) {
++    PR_Sleep(PR_MicrosecondsToInterval(delayUs));
++  }
++
++  // Stop() can only run on this same worker thread, so the active check in Arm
++  // is sufficient to prevent shutdown-time re-arming without taking mMutex.
++  ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs());
++}
++
+ void WorkerPrivate::ReportError(JSContext* aCx,
+                                 JS::ConstUTF8CharsZ aToStringResult,
+                                 JSErrorReport* aReport) {
+diff --git a/dom/workers/WorkerPrivate.h b/dom/workers/WorkerPrivate.h
+--- a/dom/workers/WorkerPrivate.h
++++ b/dom/workers/WorkerPrivate.h
+@@ -58,6 +58,10 @@
+
+ class nsIContentSecurityPolicy;
+ class nsIThreadInternal;
++
++namespace CloakfoxWorkerTiming {
++class State;
++}
+
+ namespace JS {
+ struct RuntimeStats;
+@@ -1332,6 +1336,13 @@
+  private:
+   void ShutdownGCTimers();
+
++  bool ShouldUseCloakfoxTimingMasking() const;
++  void StartCloakfoxTimingMasking();
++  void StopCloakfoxTimingMasking();
++  void ArmCloakfoxTimingTimer(uint32_t aDelayMs);
++  void RunCloakfoxTimingBoundary();
++  static void CloakfoxTimingTimerCallback(nsITimer* aTimer, void* aClosure);
++
+   friend class WorkerRef;
+
+   bool AddWorkerRef(WorkerRef* aWorkerRefer, WorkerStatus aFailStatus);
+@@ -1644,6 +1655,14 @@
+   bool mIsChromeWorker;
+   bool mParentFrozen;
+
++  // Worker-thread-only after construction. The callback carries no raw
++  // WorkerPrivate pointer: its control-event target resolves the currently
++  // running worker, and this gate is closed before timer cancellation so an
++  // already-queued callback cannot re-arm during shutdown.
++  nsCOMPtr<nsITimer> mCloakfoxTimingTimer;
++  UniquePtr<CloakfoxWorkerTiming::State> mCloakfoxTimingState;
++  bool mCloakfoxTimingMaskingActive = false;
++
+   // In order to ensure that the debugger can interrupt a busy worker,
+   // including when atomics are used, we reuse the worker's existing
+   // JS Interrupt facility used by control runnables.
