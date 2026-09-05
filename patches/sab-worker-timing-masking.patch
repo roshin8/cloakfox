@@ -48,15 +48,13 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
  }
 
  nsresult WorkerPrivate::DispatchDebuggerRunnable(
-@@ -2995,6 +3010,11 @@
+@@ -2995,6 +3010,9 @@
  WorkerPrivate::~WorkerPrivate() {
    MOZ_DIAGNOSTIC_ASSERT(mTopLevelWorkerFinishedRunnableCount == 0);
    MOZ_DIAGNOSTIC_ASSERT(mWorkerFinishedRunnableCount == 0);
 +  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingTimer);
 +  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingState);
 +  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingMaskingActive);
-+  MOZ_DIAGNOSTIC_ASSERT(mCloakfoxTimingInterruptDelayMs == 0);
-+  MOZ_DIAGNOSTIC_ASSERT(mCloakfoxTimingYieldDelayUs == 0);
 
    mWorkerDebuggerEventTarget->ForgetWorkerPrivate(this);
 
@@ -100,7 +98,7 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 
    RefPtr<EventTarget> eventTarget;
 
-@@ -5859,6 +5889,124 @@
+@@ -5859,6 +5889,109 @@
    return false;
  }
 
@@ -117,8 +115,6 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 +  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingMaskingActive);
 +  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingTimer);
 +  MOZ_DIAGNOSTIC_ASSERT(!mCloakfoxTimingState);
-+  MOZ_DIAGNOSTIC_ASSERT(mCloakfoxTimingInterruptDelayMs == 0);
-+  MOZ_DIAGNOSTIC_ASSERT(mCloakfoxTimingYieldDelayUs == 0);
 +
 +  if (!ShouldUseCloakfoxTimingMasking()) {
 +    return;
@@ -134,30 +130,18 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 +  const uint64_t streamId =
 +      CloakfoxWorkerTiming::HashWorkerId(id.get(), id.Length());
 +  mCloakfoxTimingState = MakeUnique<CloakfoxWorkerTiming::State>(key, streamId);
-+  mCloakfoxTimingInterruptDelayMs =
-+      mCloakfoxTimingState->NextInterruptDelayMs();
-+  mCloakfoxTimingYieldDelayUs = mCloakfoxTimingState->NextYieldUs();
-+  MOZ_ASSERT(mCloakfoxTimingInterruptDelayMs >=
-+             CloakfoxWorkerTiming::kMinInterruptMs);
-+  MOZ_ASSERT(mCloakfoxTimingInterruptDelayMs <=
-+             CloakfoxWorkerTiming::kMaxInterruptMs);
-+  MOZ_ASSERT(mCloakfoxTimingYieldDelayUs <= CloakfoxWorkerTiming::kMaxYieldUs);
 +  mCloakfoxTimingTimer = NS_NewTimer();
 +  if (!mCloakfoxTimingTimer) {
 +    mCloakfoxTimingState = nullptr;
-+    mCloakfoxTimingInterruptDelayMs = 0;
-+    mCloakfoxTimingYieldDelayUs = 0;
 +    return;
 +  }
 +  if (NS_FAILED(mCloakfoxTimingTimer->SetTarget(mWorkerControlEventTarget))) {
 +    mCloakfoxTimingTimer = nullptr;
 +    mCloakfoxTimingState = nullptr;
-+    mCloakfoxTimingInterruptDelayMs = 0;
-+    mCloakfoxTimingYieldDelayUs = 0;
 +    return;
 +  }
 +  mCloakfoxTimingMaskingActive = true;
-+  if (!ArmCloakfoxTimingTimer(mCloakfoxTimingInterruptDelayMs)) {
++  if (!ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs())) {
 +    StopCloakfoxTimingMasking();
 +  }
 +}
@@ -174,8 +158,6 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 +    mCloakfoxTimingTimer = nullptr;
 +  }
 +  mCloakfoxTimingState = nullptr;
-+  mCloakfoxTimingInterruptDelayMs = 0;
-+  mCloakfoxTimingYieldDelayUs = 0;
 +}
 +
 +bool WorkerPrivate::ArmCloakfoxTimingTimer(uint32_t aDelayMs) {
@@ -213,11 +195,12 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 +    return;
 +  }
 +
-+  RealizeCloakfoxTimingDelay(mCloakfoxTimingYieldDelayUs);
++  const uint32_t delayUs = mCloakfoxTimingState->NextYieldUs();
++  RealizeCloakfoxTimingDelay(delayUs);
 +
 +  // Stop() can only run on this same worker thread, so the active check in Arm
 +  // is sufficient to prevent shutdown-time re-arming without taking mMutex.
-+  if (!ArmCloakfoxTimingTimer(mCloakfoxTimingInterruptDelayMs)) {
++  if (!ArmCloakfoxTimingTimer(mCloakfoxTimingState->NextInterruptDelayMs())) {
 +    StopCloakfoxTimingMasking();
 +  }
 +}
@@ -254,7 +237,7 @@ diff --git a/dom/workers/WorkerPrivate.h b/dom/workers/WorkerPrivate.h
    friend class WorkerRef;
 
    bool AddWorkerRef(WorkerRef* aWorkerRefer, WorkerStatus aFailStatus);
-@@ -1644,6 +1655,16 @@
+@@ -1644,6 +1655,14 @@
    bool mIsChromeWorker;
    bool mParentFrozen;
 
@@ -264,8 +247,6 @@ diff --git a/dom/workers/WorkerPrivate.h b/dom/workers/WorkerPrivate.h
 +  // already-queued callback cannot re-arm during shutdown.
 +  nsCOMPtr<nsITimer> mCloakfoxTimingTimer;
 +  UniquePtr<CloakfoxWorkerTiming::State> mCloakfoxTimingState;
-+  uint32_t mCloakfoxTimingInterruptDelayMs = 0;
-+  uint32_t mCloakfoxTimingYieldDelayUs = 0;
 +  bool mCloakfoxTimingMaskingActive = false;
 +
    // In order to ensure that the debugger can interrupt a busy worker,

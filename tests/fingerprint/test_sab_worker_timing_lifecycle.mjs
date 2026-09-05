@@ -66,19 +66,6 @@ function functionBody(signature) {
   assert.fail(`unterminated body for ${signature}`);
 }
 
-function blockBodyAfter(source, marker) {
-  const start = source.indexOf(marker);
-  assert.notEqual(start, -1, `missing block marker ${marker}`);
-  const open = source.indexOf("{", start);
-  assert.notEqual(open, -1, `missing block for ${marker}`);
-  let depth = 0;
-  for (let i = open; i < source.length; i++) {
-    if (source[i] === "{") depth++;
-    if (source[i] === "}" && --depth === 0) return source.slice(open + 1, i);
-  }
-  assert.fail(`unterminated block for ${marker}`);
-}
-
 test("eligible workers cache one validated timing state before the run loop", () => {
   const eligibility = functionBody(
     "bool WorkerPrivate::ShouldUseCloakfoxTimingMasking() const");
@@ -103,7 +90,7 @@ test("eligible workers cache one validated timing state before the run loop", ()
     "explicit-container key validation must precede state construction");
   assert.ok(start.includes("CloakfoxWorkerTiming::HashWorkerId"));
   assert.match(start,
-    /if \(!ArmCloakfoxTimingTimer\(mCloakfoxTimingInterruptDelayMs\)\) \{[\s\S]*?StopCloakfoxTimingMasking\(\);/);
+    /if \(!ArmCloakfoxTimingTimer\([\s\S]*?NextInterruptDelayMs\(\)\)\) \{[\s\S]*?StopCloakfoxTimingMasking\(\);/);
 
   const doRunLoop = hunkContaining("InitializeGCTimers();");
   assert.ok(doRunLoop.indexOf("StartCloakfoxTimingMasking();") >
@@ -153,57 +140,27 @@ test("arm failures disable policy without callback-time key or pref work", () =>
 
   const boundary = functionBody("void WorkerPrivate::RunCloakfoxTimingBoundary()");
   assert.match(boundary,
-    /if \(!ArmCloakfoxTimingTimer\(mCloakfoxTimingInterruptDelayMs\)\) \{[\s\S]*?StopCloakfoxTimingMasking\(\);/);
+    /if \(!ArmCloakfoxTimingTimer\([\s\S]*?NextInterruptDelayMs\(\)\)\) \{[\s\S]*?StopCloakfoxTimingMasking\(\);/);
   for (const forbidden of ["StaticPrefs::", "LoadKey(", "MakeUnique<", "new "]) {
     assert.ok(!boundary.includes(forbidden),
       `timer boundary must not perform callback-time ${forbidden}`);
   }
 });
 
-test("one bounded timing profile is derived at setup and reused for worker lifetime", () => {
-  assert.ok(headerAdded.includes(
-    "uint32_t mCloakfoxTimingInterruptDelayMs = 0;"));
-  assert.ok(headerAdded.includes(
-    "uint32_t mCloakfoxTimingYieldDelayUs = 0;"));
-
+test("keyed timing state advances yield and cadence at every boundary", () => {
+  assert.ok(!headerAdded.includes("mCloakfoxTimingInterruptDelayMs"));
+  assert.ok(!headerAdded.includes("mCloakfoxTimingYieldDelayUs"));
   const start = functionBody("void WorkerPrivate::StartCloakfoxTimingMasking()");
-  const compact = start.replace(/\s+/g, " ");
-  const construct = compact.indexOf("MakeUnique<CloakfoxWorkerTiming::State>");
-  const cadence = compact.indexOf(
-    "mCloakfoxTimingInterruptDelayMs = mCloakfoxTimingState->NextInterruptDelayMs()");
-  const yieldDelay = compact.indexOf(
-    "mCloakfoxTimingYieldDelayUs = mCloakfoxTimingState->NextYieldUs()");
-  assert.ok(construct >= 0 && cadence > construct && yieldDelay > cadence,
-    "setup must derive the worker profile once after constructing keyed state");
   assert.equal((start.match(/NextInterruptDelayMs\(\)/g) || []).length, 1);
-  assert.equal((start.match(/NextYieldUs\(\)/g) || []).length, 1);
-  assert.ok(start.includes("CloakfoxWorkerTiming::kMinInterruptMs"));
-  assert.ok(start.includes("CloakfoxWorkerTiming::kMaxInterruptMs"));
-  assert.ok(start.includes("CloakfoxWorkerTiming::kMaxYieldUs"));
-  assert.ok(start.includes(
-    "ArmCloakfoxTimingTimer(mCloakfoxTimingInterruptDelayMs)"));
+  assert.equal((start.match(/NextYieldUs\(\)/g) || []).length, 0);
 
   const boundary = functionBody("void WorkerPrivate::RunCloakfoxTimingBoundary()");
-  assert.ok(boundary.includes(
-    "RealizeCloakfoxTimingDelay(mCloakfoxTimingYieldDelayUs)"));
-  assert.ok(boundary.includes(
-    "ArmCloakfoxTimingTimer(mCloakfoxTimingInterruptDelayMs)"));
-  assert.ok(!boundary.includes("NextInterruptDelayMs"));
-  assert.ok(!boundary.includes("NextYieldUs"));
-});
-
-test("stop and setup failures erase the worker timing profile", () => {
-  const resets = [
-    "mCloakfoxTimingInterruptDelayMs = 0;",
-    "mCloakfoxTimingYieldDelayUs = 0;",
-  ];
-  const start = functionBody("void WorkerPrivate::StartCloakfoxTimingMasking()");
-  const stop = functionBody("void WorkerPrivate::StopCloakfoxTimingMasking()");
-  const timerFailure = blockBodyAfter(start, "if (!mCloakfoxTimingTimer)");
-  const targetFailure = blockBodyAfter(start, "if (NS_FAILED(");
-  for (const reset of resets) {
-    assert.ok(timerFailure.includes(reset), `timer setup failure missing ${reset}`);
-    assert.ok(targetFailure.includes(reset), `target setup failure missing ${reset}`);
-    assert.ok(stop.includes(reset), `stop missing ${reset}`);
-  }
+  const yieldDraw = boundary.indexOf("mCloakfoxTimingState->NextYieldUs()");
+  const realize = boundary.indexOf("RealizeCloakfoxTimingDelay(delayUs)");
+  const cadenceDraw = boundary.indexOf(
+    "mCloakfoxTimingState->NextInterruptDelayMs()");
+  assert.ok(yieldDraw >= 0 && realize > yieldDraw && cadenceDraw > realize,
+    "each boundary must draw a yield, realize it, then draw the next cadence");
+  assert.equal((boundary.match(/NextYieldUs\(\)/g) || []).length, 1);
+  assert.equal((boundary.match(/NextInterruptDelayMs\(\)/g) || []).length, 1);
 });

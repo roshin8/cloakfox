@@ -45,8 +45,7 @@ test("bounded worker delay uses a non-collapsing monotonic deadline", () => {
 
   const boundary = functionBody(
     added, "void WorkerPrivate::RunCloakfoxTimingBoundary()");
-  assert.ok(boundary.includes(
-    "RealizeCloakfoxTimingDelay(mCloakfoxTimingYieldDelayUs)"));
+  assert.ok(boundary.includes("RealizeCloakfoxTimingDelay(delayUs)"));
 });
 
 test("the regression gate rejects the old zero-interval NSPR implementation", () => {
