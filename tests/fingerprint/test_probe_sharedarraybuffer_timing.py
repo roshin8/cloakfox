@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 sys.path.insert(0, str(Path(__file__).parent))
+import probe_sharedarraybuffer_timing as probe
 from probe_sharedarraybuffer_timing import (
     TIMING_CONFIG_JSON,
     service_worker_scope_covers_client,
@@ -38,6 +39,22 @@ class ServiceWorkerScopeTests(unittest.TestCase):
                 "/fixtures/sab-service-worker.js", "/fixtures/probe.html"
             )
         )
+
+
+class DistributionOrderTests(unittest.TestCase):
+    def test_both_distribution_orders_map_to_distinct_execution_sequences(self) -> None:
+        self.assertTrue(hasattr(probe, "distribution_masking_order"))
+        self.assertEqual(
+            probe.distribution_masking_order("disabled-first"), (False, True)
+        )
+        self.assertEqual(
+            probe.distribution_masking_order("enabled-first"), (True, False)
+        )
+
+    def test_unknown_distribution_order_is_rejected(self) -> None:
+        self.assertTrue(hasattr(probe, "distribution_masking_order"))
+        with self.assertRaises(ValueError):
+            probe.distribution_masking_order("unknown")
 
 
 if __name__ == "__main__":

@@ -46,6 +46,8 @@ PERFORMANCE_PAIRS = 20
 DISTRIBUTION_MAD_MULTIPLIER = 1.25
 DISTRIBUTION_MEDIAN_MAD_MULTIPLIER = 1.0
 PERFORMANCE_MAX_SLOWDOWN = 0.05
+DEFAULT_DISTRIBUTION_ORDER = "disabled-first"
+DISTRIBUTION_ORDERS = ("disabled-first", "enabled-first")
 
 # Pin a valid default-container config before browser startup. Worker timing
 # masking deliberately falls back to native scheduling when either session-key
@@ -583,6 +585,14 @@ def assert_optional_worker(name: str, result: dict[str, Any]) -> None:
     assert result.get("final") == CORRECTNESS_ITERATIONS, f"{name}: {result}"
 
 
+def distribution_masking_order(order: str) -> tuple[bool, bool]:
+    if order == "disabled-first":
+        return False, True
+    if order == "enabled-first":
+        return True, False
+    raise ValueError(f"unknown distribution order: {order}")
+
+
 def run_correctness(binary: str, port: int) -> None:
     for masking_enabled in (False, True):
         label = "enabled" if masking_enabled else "disabled"
@@ -601,9 +611,11 @@ def run_correctness(binary: str, port: int) -> None:
         print(f"{label} correctness: {json.dumps(result, sort_keys=True)}")
 
 
-def run_distribution(binary: str, port: int) -> None:
+def run_distribution(
+    binary: str, port: int, order: str = DEFAULT_DISTRIBUTION_ORDER
+) -> None:
     results: dict[bool, dict[str, float | list[float]]] = {}
-    for masking_enabled in (False, True):
+    for masking_enabled in distribution_masking_order(order):
         result = run_browser_once(binary, port, "distribution", masking_enabled)
         assert_page_primitives(result)
         samples = result["samples"]
@@ -648,7 +660,11 @@ def run_performance(binary: str, port: int) -> None:
     )
 
 
-def main(binary: str, mode: str) -> int:
+def main(
+    binary: str,
+    mode: str,
+    distribution_order: str = DEFAULT_DISTRIBUTION_ORDER,
+) -> int:
     try:
         validate_fixture_digest()
         global PAGE
@@ -661,7 +677,7 @@ def main(binary: str, mode: str) -> int:
             if mode == "correctness":
                 run_correctness(binary, server.server_port)
             elif mode == "distribution":
-                run_distribution(binary, server.server_port)
+                run_distribution(binary, server.server_port, distribution_order)
             else:
                 run_performance(binary, server.server_port)
         finally:
@@ -681,8 +697,13 @@ def main(binary: str, mode: str) -> int:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=("correctness", "distribution", "performance"), required=True)
+    parser.add_argument(
+        "--distribution-order",
+        choices=DISTRIBUTION_ORDERS,
+        default=DEFAULT_DISTRIBUTION_ORDER,
+    )
     arguments = parser.parse_args()
     binary = os.environ.get("CLOAKFOX_BIN")
     if not binary or not Path(binary).is_file():
         sys.exit("CLOAKFOX_BIN not set or binary missing")
-    sys.exit(main(binary, arguments.mode))
+    sys.exit(main(binary, arguments.mode, arguments.distribution_order))
