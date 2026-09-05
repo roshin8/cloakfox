@@ -57,5 +57,28 @@ class DistributionOrderTests(unittest.TestCase):
             probe.distribution_masking_order("unknown")
 
 
+class CorrectnessMaskingTests(unittest.TestCase):
+    def test_default_selection_runs_one_literal_no_override_profile(self) -> None:
+        self.assertEqual(probe.correctness_masking_states("default"), (None,))
+        profile = probe.profile_user_js(None)
+        self.assertNotIn("cloakfox.sab_worker_timing_masking", profile)
+        self.assertIn("cloakfox.enabled", profile)
+        self.assertIn("cloakfox.s.cloak_cfg_0", profile)
+        self.assertIn("timing:session_key_hi", profile)
+        self.assertIn("timing:session_key_lo", profile)
+
+    def test_existing_correctness_and_distribution_selections_are_unchanged(
+        self,
+    ) -> None:
+        self.assertEqual(probe.correctness_masking_states("both"), (False, True))
+        self.assertEqual(
+            probe.distribution_masking_order("disabled-first"), (False, True)
+        )
+
+    def test_unknown_correctness_selection_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            probe.correctness_masking_states("unknown")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -166,23 +166,83 @@ test("keyed timing state advances yield and cadence at every boundary", () => {
   assert.equal((boundary.match(/NextInterruptDelayMs\(\)/g) || []).length, 1);
 });
 
-test("experimental SAB masking defaults stay disabled and do not claim coverage", () => {
-  const staticPref = patch.match(
-    /- name: cloakfox\.sab_worker_timing_masking\n(?:.*\n){0,4}?\+  value: (true|false)/);
-  assert.ok(staticPref, "missing SAB StaticPref default in patch");
+const sabPrefName = "cloakfox.sab_worker_timing_masking";
 
-  const cfgPref = cfg.match(
-    /defaultPref\("cloakfox\.sab_worker_timing_masking", (true|false)\);/);
-  assert.ok(cfgPref, "missing SAB defaultPref in cloakfox.cfg");
-  assert.equal(staticPref[1], "false");
-  assert.equal(cfgPref[1], staticPref[1], "cfg and StaticPref defaults drifted");
+function staticPrefDefinitions(source) {
+  return source.split(/(?=^- name:\s*)/m).flatMap(block => {
+    const name = block.match(/^- name:\s*([^\n]+)\s*$/m)?.[1];
+    if (name !== sabPrefName) return [];
+    return [{value: block.match(/^\s+value:\s*(true|false)\s*$/m)?.[1]}];
+  });
+}
 
-  const cfgBlock = cfg.slice(
-    Math.max(0, cfg.lastIndexOf("// ====", cfgPref.index)),
-    cfg.indexOf("// ====", cfgPref.index));
+function cfgPrefAssignments(source) {
+  const assignment = new RegExp(
+    `^\\s*(defaultPref|pref|lockPref)\\(\\s*["']${sabPrefName.replaceAll(".", "\\.")}` +
+      `["']\\s*,\\s*(true|false)\\s*\\);`, "gm");
+  return [...source.matchAll(assignment)].map(match => ({
+    kind: match[1], value: match[2], index: match.index,
+  }));
+}
+
+function assertSabDefaultContract(staticPrefSource, cfgSource) {
+  const staticPrefs = staticPrefDefinitions(staticPrefSource);
+  assert.equal(staticPrefs.length, 1, "expected exactly one SAB StaticPref definition");
+  assert.equal(staticPrefs[0].value, "false", "SAB StaticPref must default false");
+
+  const assignments = cfgPrefAssignments(cfgSource);
+  assert.equal(assignments.length, 1, "expected exactly one SAB cfg assignment");
+  assert.equal(assignments[0].kind, "defaultPref", "SAB cfg must remain overridable");
+  assert.equal(assignments[0].value, "false", "SAB cfg must default false");
+
+  const start = Math.max(0, cfgSource.lastIndexOf("// ====", assignments[0].index));
+  const next = cfgSource.indexOf("// ====", assignments[0].index);
+  const cfgBlock = cfgSource.slice(start, next === -1 ? cfgSource.length : next);
   const prose = cfgBlock.replace(/\/\/ ?/g, "").replace(/\s+/g, " ");
   assert.match(prose, /preserves? SharedArrayBuffer, Atomics, and shared Wasm values/i);
   assert.match(prose, /bounded worker scheduling perturbation/i);
   assert.match(prose, /remains off.*acceptance metric was not met/i);
-  assert.doesNotMatch(prose, /covered|coverage complete/i);
+  assert.doesNotMatch(prose,
+    /\b(?:covered|(?:coverage|protection|mitigation) (?:is )?complete|(?:complete|full) (?:coverage|protection|mitigation)|fully (?:protected|masked|mitigated)|completely (?:protected|masked|mitigated))\b/i);
+}
+
+test("experimental SAB masking has one false default and does not claim coverage", () => {
+  const staticPrefNewSide = newSideHunks(
+    "modules/libpref/init/StaticPrefList.yaml").join("\n");
+  assertSabDefaultContract(staticPrefNewSide, cfg);
+});
+
+test("SAB default guard rejects duplicate and later overriding definitions", () => {
+  const staticPrefNewSide = newSideHunks(
+    "modules/libpref/init/StaticPrefList.yaml").join("\n");
+  assert.throws(() => assertSabDefaultContract(
+    `${staticPrefNewSide}\n- name: ${sabPrefName}\n  value: false\n`, cfg));
+  assert.throws(() => assertSabDefaultContract(
+    `${staticPrefNewSide}\n- name: ${sabPrefName}\n  value: true\n`, cfg));
+  assert.throws(() => assertSabDefaultContract(staticPrefNewSide,
+    `${cfg}\ndefaultPref("${sabPrefName}", false);\n`));
+  assert.throws(() => assertSabDefaultContract(staticPrefNewSide,
+    `${cfg}\npref("${sabPrefName}", true);\n`));
+});
+
+test("SAB documentation guard rejects false coverage language", () => {
+  const staticPrefNewSide = newSideHunks(
+    "modules/libpref/init/StaticPrefList.yaml").join("\n");
+  for (const claim of [
+    "This vector is covered.",
+    "Coverage is complete.",
+    "This gives complete coverage.",
+    "This gives full protection.",
+    "Users are fully protected.",
+    "This provides complete protection.",
+    "The signal is completely protected.",
+    "The leak is fully mitigated.",
+    "Mitigation is complete.",
+  ]) {
+    const mutated = cfg.replace(
+      "// It remains off because the masking acceptance metric was not met.",
+      `// ${claim}`);
+    assert.throws(() => assertSabDefaultContract(staticPrefNewSide, mutated),
+      `accepted false coverage claim: ${claim}`);
+  }
 });

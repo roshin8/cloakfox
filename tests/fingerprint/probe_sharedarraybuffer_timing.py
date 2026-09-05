@@ -48,6 +48,8 @@ DISTRIBUTION_MEDIAN_MAD_MULTIPLIER = 1.0
 PERFORMANCE_MAX_SLOWDOWN = 0.05
 DEFAULT_DISTRIBUTION_ORDER = "disabled-first"
 DISTRIBUTION_ORDERS = ("disabled-first", "enabled-first")
+DEFAULT_CORRECTNESS_MASKING = "both"
+CORRECTNESS_MASKING_SELECTIONS = ("both", "disabled", "enabled", "default")
 
 # Pin a valid default-container config before browser startup. Worker timing
 # masking deliberately falls back to native scheduling when either session-key
@@ -519,22 +521,28 @@ def make_driver(binary: str, profile: Path, log_path: Path) -> webdriver.Firefox
     )
 
 
-def run_browser_once(binary: str, port: int, mode: str, masking_enabled: bool) -> dict[str, Any]:
+def profile_user_js(masking_enabled: bool | None) -> str:
+    lines = ['user_pref("cloakfox.enabled", true);']
+    if masking_enabled is not None:
+        lines.append(
+            'user_pref("cloakfox.sab_worker_timing_masking", '
+            f"{str(masking_enabled).lower()});"
+        )
+    lines.append(
+        f'user_pref("cloakfox.s.cloak_cfg_0", {json.dumps(TIMING_CONFIG_JSON)});'
+    )
+    return "\n".join(lines) + "\n"
+
+
+def run_browser_once(
+    binary: str, port: int, mode: str, masking_enabled: bool | None
+) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix=f"cfx-sab-{mode}-") as temporary:
         root = Path(temporary)
         profile = root / "profile"
         profile.mkdir()
         profile.joinpath("user.js").write_text(
-            "\n".join(
-                [
-                    'user_pref("cloakfox.enabled", true);',
-                    "user_pref(\"cloakfox.sab_worker_timing_masking\", "
-                    f"{str(masking_enabled).lower()});",
-                    f'user_pref("cloakfox.s.cloak_cfg_0", {json.dumps(TIMING_CONFIG_JSON)});',
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
+            profile_user_js(masking_enabled), encoding="utf-8"
         )
         driver = make_driver(binary, profile, root / "geckodriver.log")
         try:
@@ -593,9 +601,27 @@ def distribution_masking_order(order: str) -> tuple[bool, bool]:
     raise ValueError(f"unknown distribution order: {order}")
 
 
-def run_correctness(binary: str, port: int) -> None:
-    for masking_enabled in (False, True):
-        label = "enabled" if masking_enabled else "disabled"
+def correctness_masking_states(selection: str) -> tuple[bool | None, ...]:
+    if selection == "both":
+        return False, True
+    if selection == "disabled":
+        return (False,)
+    if selection == "enabled":
+        return (True,)
+    if selection == "default":
+        return (None,)
+    raise ValueError(f"unknown correctness masking selection: {selection}")
+
+
+def run_correctness(
+    binary: str, port: int, masking_selection: str = DEFAULT_CORRECTNESS_MASKING
+) -> None:
+    for masking_enabled in correctness_masking_states(masking_selection):
+        label = (
+            "default/no-override"
+            if masking_enabled is None
+            else "enabled" if masking_enabled else "disabled"
+        )
         result = run_browser_once(binary, port, "correctness", masking_enabled)
         assert_page_primitives(result)
         dedicated = result["dedicated"]
@@ -664,6 +690,7 @@ def main(
     binary: str,
     mode: str,
     distribution_order: str = DEFAULT_DISTRIBUTION_ORDER,
+    correctness_masking: str = DEFAULT_CORRECTNESS_MASKING,
 ) -> int:
     try:
         validate_fixture_digest()
@@ -675,7 +702,7 @@ def main(
         try:
             validate_http_contract(server.server_port)
             if mode == "correctness":
-                run_correctness(binary, server.server_port)
+                run_correctness(binary, server.server_port, correctness_masking)
             elif mode == "distribution":
                 run_distribution(binary, server.server_port, distribution_order)
             else:
@@ -702,8 +729,21 @@ if __name__ == "__main__":
         choices=DISTRIBUTION_ORDERS,
         default=DEFAULT_DISTRIBUTION_ORDER,
     )
+    parser.add_argument(
+        "--correctness-masking",
+        choices=CORRECTNESS_MASKING_SELECTIONS,
+        default=DEFAULT_CORRECTNESS_MASKING,
+        help="correctness-only pref state; default omits the masking override",
+    )
     arguments = parser.parse_args()
     binary = os.environ.get("CLOAKFOX_BIN")
     if not binary or not Path(binary).is_file():
         sys.exit("CLOAKFOX_BIN not set or binary missing")
-    sys.exit(main(binary, arguments.mode, arguments.distribution_order))
+    sys.exit(
+        main(
+            binary,
+            arguments.mode,
+            arguments.distribution_order,
+            arguments.correctness_masking,
+        )
+    )
