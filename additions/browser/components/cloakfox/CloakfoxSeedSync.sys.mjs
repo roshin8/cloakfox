@@ -357,6 +357,7 @@ function publish() {
 // keys to either user-facing serializer. timing_seed writes use the same path
 // so a supported seed change is re-keyed immediately with this launch's salt.
 let reconcilingSessionTiming = false;
+const clearTransactions = new Set();
 
 function isClearTombstone(ucid, cfgPref) {
   return Services.prefs.getStringPref(cfgPref, "") === "{}" &&
@@ -371,6 +372,18 @@ const observer = {
     // publishes once after its reconciliation, so nested notifications must
     // neither recurse nor publish an intermediate, keyless cloak_cfg.
     if (reconcilingSessionTiming) return;
+    const transactionMatch = /^cloakfox\.internal\.clear_(\d+)$/.exec(data);
+    if (transactionMatch) {
+      const ucid = Number(transactionMatch[1]);
+      if (Services.prefs.prefHasUserValue(data)) {
+        clearTransactions.add(ucid);
+        return;
+      }
+      clearTransactions.delete(ucid);
+    }
+    // Settings Clear is synchronous. Coalesce every event in its scoped
+    // transaction so content processes see only the final tombstone state.
+    if (clearTransactions.size) return;
     try {
       if (data === "cloakfox.enabled") {
         if (Services.prefs.getBoolPref("cloakfox.enabled", true)) {

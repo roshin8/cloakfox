@@ -71,6 +71,9 @@ const settingsBuildBlock = extractBlock(settingsSrc, /function buildCloakCfg\(/)
   .replace("buildCloakCfg", "buildSettingsCloakCfg");
 const settingsPersistBlock = extractBlock(settingsSrc, /function persistCloakCfg\(/)
   .replaceAll("buildCloakCfg", "buildSettingsCloakCfg");
+const settingsClearTransactionPref = extractConstDeclaration(
+  settingsSrc, "clearTransactionPref"
+);
 const settingsClearBody = extractBody(
   settingsSrc, /clearBtn\.addEventListener\("click", \(\) => /
 );
@@ -130,12 +133,14 @@ const reconciliationStateBlock = seedSyncSrc.match(
   /let reconcilingSessionTiming = false;/
 )?.[0];
 if (!reconciliationStateBlock) throw new Error("reconciliation state not found");
+const clearTransactionStateBlock = extractConstDeclaration(seedSyncSrc, "clearTransactions");
 const clearTombstoneBlock = extractBlock(seedSyncSrc, /function isClearTombstone\(/);
 const observerBlock = extractBlock(seedSyncSrc, /const observer = /);
 const observerMod = await import(
   "data:text/javascript," + encodeURIComponent(`
     const values = new Map();
     const legacyCache = new Map();
+    const constructedWorkerCache = new Map();
     let writes = 0;
     const publishes = [];
     let observerRef = null;
@@ -168,6 +173,7 @@ const observerMod = await import(
     const keyboardSeedPref = (ucid) => "cloakfox.container." + ucid + ".keyboard_seed";
     const timingSeedPref = (ucid) => "cloakfox.container." + ucid + ".timing_seed";
     const cloakCfgPref = (ucid) => "cloakfox.s.cloak_cfg_" + ucid;
+    ${settingsClearTransactionPref}
     const tzPref = (ucid) => "cloakfox.container." + ucid + ".timezone";
     const personaIndexPref = (ucid) => "cloakfox.container." + ucid + ".persona_index";
     const ChromeUtils = {
@@ -187,6 +193,7 @@ const observerMod = await import(
     ${ensureBlock}
     ${ensureAllBlock}
     ${reconciliationStateBlock}
+    ${clearTransactionStateBlock}
     ${clearTombstoneBlock}
     ${observerBlock}
     ${settingsU32Block}
@@ -212,6 +219,13 @@ const observerMod = await import(
       return values.get(cloakCfgPref(ucid)) ?? legacyCache.get(ucid) ??
         values.get("roverfox.s.cloak_cfg_" + ucid);
     }
+    export function constructWorker(ucid) { constructedWorkerCache.set(ucid, effectiveCfg(ucid)); }
+    export function existingWorkerCfg(ucid) { return constructedWorkerCache.get(ucid); }
+    export function warmNewWorker(ucid) {
+      const cfg = effectiveCfg(ucid);
+      constructedWorkerCache.set(ucid + ":new", cfg);
+      return cfg;
+    }
     export function getWrites() { return writes; }
     export function getPublishes() { return publishes; }
     export function clearEvents() { writes = 0; publishes.length = 0; }
@@ -223,12 +237,15 @@ const observerMod = await import(
       Services.prefs.setStringPref(cloakCfgPref(ucid), cfg);
     }
     let clearOverridePrefs = [];
+    let clearOverrideThrows = false;
     function clearAllOverrides(_ucid) {
       for (const pref of clearOverridePrefs) Services.prefs.clearUserPref(pref);
+      if (clearOverrideThrows) throw new Error("test clear failure");
     }
     function refreshContainer() {}
-    export function clearSettings(requestedUcid, overridePrefs) {
+    export function clearSettings(requestedUcid, overridePrefs, shouldThrow = false) {
       clearOverridePrefs = overridePrefs;
+      clearOverrideThrows = shouldThrow;
       const selectEl = { value: String(requestedUcid) };
       ${settingsClearBody}
     }
@@ -250,6 +267,9 @@ const {
   setString: setObserverString,
   setLegacyCache,
   effectiveCfg,
+  constructWorker,
+  existingWorkerCfg,
+  warmNewWorker,
 } = observerMod;
 
 const SEED_A = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
@@ -441,6 +461,8 @@ test("Settings Clear tombstones cpp-first config and defeats migrated legacy cac
   ]);
   runObserverEnsure(14);
   setLegacyCache(14, legacyCfg);
+  constructWorker(14);
+  const oldWorkerCfg = existingWorkerCfg(14);
   clearObserverEvents();
   clearSettings(14, [override]);
 
@@ -452,18 +474,32 @@ test("Settings Clear tombstones cpp-first config and defeats migrated legacy cac
   assert.equal(effectiveCfg(14), "{}");
   assert.equal(getObserverPref(override), undefined);
   const published = getObserverPublishes();
-  assert.ok(published.length > 0);
-  assert.equal(published.at(-1)["cloakfox.s.cloak_cfg_14"], "{}");
-  assert.ok(published.every((snapshot) => {
-    const cfg = snapshot["cloakfox.s.cloak_cfg_14"];
-    return cfg === "{}" || (cfg && typeof JSON.parse(cfg)["timing:session_key_hi"] === "number");
-  }));
+  assert.equal(published.length, 1);
+  assert.equal(published[0]["cloakfox.s.cloak_cfg_14"], "{}");
+  assert.ok(!("cloakfox.internal.clear_14" in published[0]));
+
+  // Existing contexts intentionally retain the key/config captured at their
+  // construction; a new worker warms cpp-first `{}` before legacy fallback.
+  assert.equal(existingWorkerCfg(14), oldWorkerCfg);
+  assert.equal(warmNewWorker(14), "{}");
 
   // The deliberate tombstone is not repaired during Clear, but the normal
   // startup ensure path may regenerate it for the next enabled launch.
   runObserverEnsure(14);
   assert.notEqual(getObserverPref("cloakfox.s.cloak_cfg_14"), "{}");
   assert.equal(typeof JSON.parse(getObserverPref("cloakfox.s.cloak_cfg_14"))["timing:session_key_hi"], "number");
+});
+
+test("Settings Clear finally removes its transaction marker after an exception", () => {
+  const override = "cloakfox.override.19.navigator.hardwareConcurrency";
+  setObserverPrefs([...activeObserverPrefs(19, validCfg()), [override, "16"]]);
+  runObserverEnsure(19);
+  clearObserverEvents();
+  assert.throws(() => clearSettings(19, [override], true), /test clear failure/);
+  assert.equal(getObserverPref("cloakfox.internal.clear_19"), undefined);
+  assert.equal(getObserverPref("cloakfox.s.cloak_cfg_19"), "{}");
+  assert.equal(getObserverPublishes().length, 1);
+  assert.equal(getObserverPublishes()[0]["cloakfox.s.cloak_cfg_19"], "{}");
 });
 
 test("present empty cloak_cfg value is repaired before publication", () => {

@@ -257,7 +257,7 @@ Cloakfox spoofs fingerprints at **three layers that cooperate**:
 | Signal | 🎯 Risk | 🔧 Site | 🔁 Scope | FF | CF | CX |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
 | `setTimeout` / `setInterval` / rAF callback jitter | 🔴 | 🔌 `CloakfoxTimingChild` | 🔒 | ☐ | ☐ | ☑ |
-| `performance.now()` and Performance Timeline presentation | 🔴 | ⚙️ Gecko `Performance` | 🔒 | ☑ | ☐ | ☑ |
+| `performance.now()` and native-generated performance-entry timing values | 🔴 | ⚙️ Gecko `Performance` | 🔒 | ☑ | ☐ | ☑ |
 | `performance.timeOrigin` | 🟡 | ⚙️ (Firefox RFP) | 🌍 | ☑ | ☐ | ☐ |
 
 ### Native performance timeline ownership
@@ -278,6 +278,11 @@ navigation unload, DOM, and load-event phases. Observers, direct getters,
 
 Timing keys are stable only within one browser session and are specific to a
 container, so a different container or new browser session receives a different
+container key. Resetting a container applies to newly loaded pages and workers;
+already-constructed pages, workers, and `Performance` objects retain their
+coherent cached identity until reload. An explicit global `CLOAK_CONFIG`
+automation configuration remains authoritative over the empty per-container
+Reset tombstone.
 key. Explicit User Timing values remain exact: supplied mark start times and
 measure start/end/duration values are not re-transformed. This timeline work
 does not claim SharedArrayBuffer timing coverage.

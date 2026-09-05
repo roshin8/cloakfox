@@ -39,6 +39,7 @@ const tzPref           = (ucid) => `cloakfox.container.${ucid}.timezone`;
 const personaIndexPref = (ucid) => `cloakfox.container.${ucid}.persona_index`;
 const keyboardSeedPref = (ucid) => `cloakfox.container.${ucid}.keyboard_seed`;
 const timingSeedPref   = (ucid) => `cloakfox.container.${ucid}.timing_seed`;
+const clearTransactionPref = (ucid) => `cloakfox.internal.clear_${ucid}`;
 
 // ── seed / config helpers ───────────────────────────────────────────
 
@@ -559,14 +560,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // fallback without disabling APIs; next startup can generate a new persona.
   clearBtn.addEventListener("click", () => {
     const ucid = parseInt(selectEl.value, 10) || 0;
-    Services.prefs.clearUserPref(masterSeedPref(ucid));
-    Services.prefs.clearUserPref(keyboardSeedPref(ucid));
-    Services.prefs.clearUserPref(timingSeedPref(ucid));
-    Services.prefs.setStringPref(cloakCfgPref(ucid), "{}");
-    Services.prefs.clearUserPref(`roverfox.s.cloak_cfg_${ucid}`);
-    Services.prefs.clearUserPref(tzPref(ucid));
-    Services.prefs.clearUserPref(personaIndexPref(ucid));
-    clearAllOverrides(ucid);
+    Services.prefs.setBoolPref(clearTransactionPref(ucid), true);
+    try {
+      Services.prefs.clearUserPref(masterSeedPref(ucid));
+      Services.prefs.clearUserPref(keyboardSeedPref(ucid));
+      Services.prefs.clearUserPref(timingSeedPref(ucid));
+      Services.prefs.setStringPref(cloakCfgPref(ucid), "{}");
+      Services.prefs.clearUserPref(`roverfox.s.cloak_cfg_${ucid}`);
+      Services.prefs.clearUserPref(tzPref(ucid));
+      Services.prefs.clearUserPref(personaIndexPref(ucid));
+      clearAllOverrides(ucid);
+    } finally {
+      Services.prefs.clearUserPref(clearTransactionPref(ucid));
+    }
     refreshContainer();
   });
 
