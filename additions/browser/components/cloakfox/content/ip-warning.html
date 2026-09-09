@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shared IP warning — Cloakfox</title>
+<script type="module" src="ip-warning.js"></script>
+<style>
+:root{color-scheme:light;--bg:#edf0f5;--surface:#fff;--text:#202c3d;--muted:#566477;--line:#dce1e9;--inset:#f5f7fa;--accent:#3c64a0;--on-accent:#fff;--warning:#fff5d7;--warning-text:#725300}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#171c22;--surface:#232a32;--text:#eef2f6;--muted:#b1bdca;--line:#414c59;--inset:#2a323d;--accent:#75d1c0;--on-accent:#142923;--warning:#3d341e;--warning-text:#f1d58a}
+*{box-sizing:border-box}body{margin:0;padding:48px 24px;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,sans-serif}main{max-width:720px;margin:5vh auto;padding:32px;background:var(--surface);border-radius:14px;box-shadow:0 12px 36px #0000000d}h1{font-size:28px;line-height:1.2;letter-spacing:-.025em;margin:0 0 12px}p{margin:0 0 24px;color:var(--muted)}.comparison{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:24px 0}.columns{display:grid;grid-template-columns:1fr 1fr;background:var(--inset)}.column{padding:20px;min-width:0}.column+.column{border-left:1px solid var(--line)}h2{font-size:15px;margin:0 0 14px;overflow-wrap:anywhere}.label{font-size:13px;color:var(--muted)}.address{font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin:4px 0 12px}.match{padding:10px 16px;background:var(--warning);color:var(--warning-text);font-size:13px}.destination{display:flex;gap:16px;justify-content:space-between;padding:14px 0;border-block:1px solid var(--line);margin:24px 0}.destination strong{overflow-wrap:anywhere;text-align:right;min-width:0}.actions{display:flex;gap:10px;flex-wrap:wrap}button{font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--line);border-radius:6px;padding:10px 16px;background:var(--surface);color:var(--text)}button:hover{background:var(--inset)}#recheck{background:var(--accent);color:var(--on-accent);border-color:transparent}button:disabled{opacity:.55;cursor:wait}button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}details{margin-top:24px}summary{cursor:pointer;color:var(--muted)}details p{margin:14px 0}.exceptions{display:flex;gap:10px;flex-wrap:wrap}a{color:var(--accent);display:inline-block;margin-top:16px;text-underline-offset:3px}.notice{font-size:12px;margin:28px 0 0}#warning-status{margin:16px 0 0}#warning-status:empty{display:none}::selection{background:var(--accent);color:var(--on-accent)}[hidden]{display:none!important}#recheck[aria-busy="true"]::before{content:"";display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;margin-right:8px;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){#recheck[aria-busy="true"]::before{animation:none}}@media(max-width:520px){body{padding:20px 12px}main{padding:24px 18px;margin:0 auto}h1{font-size:24px}.columns{grid-template-columns:1fr}.column+.column{border-left:0;border-top:1px solid var(--line)}.destination{flex-direction:column;gap:4px}.destination strong{text-align:left}}
+</style>
+</head>
+<body><main>
+<h1 id="heading">Two containers. One public IP.</h1>
+<p id="warning-detail"></p>
+<div id="comparison" class="comparison" hidden><div class="columns"><section class="column" aria-label="Conflicting containers"><div id="conflicting-containers"></div></section><section class="column"><h2 id="current-container"></h2><div class="label">You’re browsing here</div><div class="address" id="current-ip"></div></section></div><div class="match">Matching IP · These sessions may be linked</div></div>
+<div id="destination" class="destination" hidden><span class="label">Website you’re opening</span><strong id="website"></strong></div>
+<p id="guidance">Switch your proxy or VPN, then recheck before continuing.</p>
+<div class="actions"><button id="recheck">Recheck IP</button><button id="once">Continue once</button></div>
+<p id="warning-status" role="status" aria-live="polite"></p>
+<details><summary>More options</summary><p>Exceptions suppress warnings. They do not change your IP address.</p><div class="exceptions"><button id="container">Always allow this container</button><button id="ip">Always allow this IP</button></div><a id="settings">Manage IP rules and history</a></details>
+<p class="notice">The website may already have received the initial connection. This warning cannot undo it. Continue once allows browsing for 30 seconds.</p>
+</main></body></html>
