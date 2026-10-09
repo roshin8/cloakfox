@@ -100,7 +100,7 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
       const tsGetter = Cu.exportFunction(function () {
         const w = Cu.waiveXrays(this);
         return nudged.has(w) ? nudged.get(w) : origTsGetter.call(this);
-      }, pageWin);
+      }, pageWin, { functionName: "timeStamp", allowConstruct: false });
       // Native accessor reports name "get timeStamp" length 0; match it.
       setNativeIdentity(tsGetter, "get timeStamp", 0);
       try {
@@ -172,7 +172,7 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
         return origAdd.call(this, type, newListener, options);
       }
       return origAdd.call(this, type, listener, options);
-    }, pageWin);
+    }, pageWin, { functionName: "addEventListener", allowConstruct: false });
 
     // Patch removeEventListener to unregister the wrapper we swapped in.
     // Without this the native remove can't match our wrapper, so key
@@ -189,7 +189,7 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
         }
       }
       return origRemove.call(this, type, listener, options);
-    }, pageWin);
+    }, pageWin, { functionName: "removeEventListener", allowConstruct: false });
 
     // addEventListener/removeEventListener are existing own writable props
     // of EventTarget.prototype, so assigning the value preserves their

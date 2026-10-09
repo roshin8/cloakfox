@@ -199,7 +199,7 @@ export class CloakfoxMediaQueryChild extends JSWindowActorChild {
         if (spoof !== undefined) return spoof;
       } catch (_e) { /* fall through to native */ }
       return origGetter.call(this);
-    }, pageWin);
+    }, pageWin, { functionName: "matches", allowConstruct: false });
     setGetterIdentity(newGetter);
 
     try {

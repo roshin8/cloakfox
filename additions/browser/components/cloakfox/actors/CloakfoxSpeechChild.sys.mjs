@@ -114,7 +114,7 @@ export class CloakfoxSpeechChild extends JSWindowActorChild {
         const data = store.get(Cu.waiveXrays(this));
         if (data && prop in data) return data[prop];
         return origGetter.call(this);
-      }, pageWin);
+      }, pageWin, { functionName: prop, allowConstruct: false });
       setGetterIdentity(getter, `get ${prop}`);
       try {
         Object.defineProperty(Voice.prototype, prop, {
@@ -136,7 +136,7 @@ export class CloakfoxSpeechChild extends JSWindowActorChild {
       const arr = new pageWin.Array();
       for (const v of fakeVoices) arr.push(v);
       return arr;
-    }, pageWin);
+    }, pageWin, { functionName: "getVoices", allowConstruct: false });
     setNativeIdentity(newGetVoices, origGetVoices.name, origGetVoices.length);
     try {
       Object.defineProperty(Synth.prototype, "getVoices", {

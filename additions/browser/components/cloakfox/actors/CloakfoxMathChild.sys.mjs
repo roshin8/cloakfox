@@ -81,8 +81,9 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     const win = this.contentWindow;
     if (!win) return;
 
-    // Master enable check — one pref guards the whole cpp-first math layer.
-    if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
+    // Install pass-through wrappers before page scripts even when the master
+    // is off. Calls consult the live switch/overlay; enabling later preserves
+    // this page and the function references its scripts already captured.
 
     // Per-container seeds live in cloakfox.container.<ucid>.* prefs
     // which DON'T auto-sync to content processes. Read from
@@ -91,9 +92,8 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     const seeds = Services.cpmm.sharedData.get("cloakfox-seeds") || {};
     const ucid = win.docShell?.browsingContext?.originAttributes?.userContextId ?? 0;
     const seedB64 = seeds[`cloakfox.container.${ucid}.math_seed`] || "";
-    if (!seedB64) return;  // No seed => no spoofing for this container.
 
-    const prng = makePRNG(b64ToBytes(seedB64));
+    const prng = makePRNG(seedB64 ? b64ToBytes(seedB64) : new Uint8Array(32));
     const piOffset = (prng() - 0.5) * NOISE_MAG_CONST;
     const eOffset  = (prng() - 0.5) * NOISE_MAG_CONST;
 
@@ -133,9 +133,8 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     // Default: only wrap the functions, leave constants bit-exact. Power
     // users who want Spectre-style timing-attack defense via constant
     // perturbation can flip cloakfox.opt.math_constants_noise = true.
-    const noiseConstants = Services.prefs.getBoolPref(
-      "cloakfox.opt.math_constants_noise", false
-    );
+    const noiseConstants = Services.prefs.getBoolPref("cloakfox.enabled", false) &&
+      Services.prefs.getBoolPref("cloakfox.opt.math_constants_noise", false);
 
     for (const key of Object.getOwnPropertyNames(origMath)) {
       // Skip constants only when we plan to override them with
@@ -186,17 +185,33 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     // signal since real Math is spec-pure. We keep the master prng()
     // alive only for one-time initialization (constants); the trig
     // wrap uses input-deterministic hashing exclusively.
-    const trigSeedBytes = b64ToBytes(seedB64).slice(28, 32);
-    const trigSeed = (trigSeedBytes[0] << 24 |
-                      trigSeedBytes[1] << 16 |
-                      trigSeedBytes[2] <<  8 |
-                      trigSeedBytes[3]) >>> 0;
+    // SharedData snapshots change in place as preferences are published. Read
+    // the authoritative worker overlay lazily; parse only when its text changes.
+    // Missing, invalid or zero seeds leave the native result unchanged.
+    let lastCfg;
+    let trigSeed = 0;
+    const currentTrigSeed = () => {
+      const liveSeeds = Services.cpmm.sharedData.get("cloakfox-seeds") || {};
+      const raw = liveSeeds[`cloakfox.s.cloak_cfg_${ucid}`] || "";
+      if (raw !== lastCfg) {
+        lastCfg = raw;
+        trigSeed = 0;
+        try {
+          const configuredSeed = JSON.parse(raw)["math:trig_seed"];
+          if (Number.isInteger(configuredSeed) && configuredSeed >= 0 &&
+              configuredSeed <= 0xffffffff) {
+            trigSeed = configuredSeed;
+          }
+        } catch (_e) { /* no usable overlay */ }
+      }
+      return trigSeed;
+    };
     const _ab  = new ArrayBuffer(8);
     const _f64 = new Float64Array(_ab);
     const _u32 = new Uint32Array(_ab);
-    const noise = (r) => {
+    const noise = (r, seed) => {
       _f64[0] = r;
-      let h = (_u32[0] ^ _u32[1] ^ trigSeed) >>> 0;
+      let h = (_u32[0] ^ _u32[1] ^ seed) >>> 0;
       h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
       h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
       h = (h ^ (h >>> 16)) >>> 0;
@@ -207,8 +222,11 @@ export class CloakfoxMathChild extends JSWindowActorChild {
       if (typeof orig !== "function") continue;
       const wrapped = Cu.exportFunction(function (...args) {
         const r = orig.call(origMath, ...args);
-        return Number.isFinite(r) && !Number.isInteger(r) ? r + noise(r) : r;
-      }, pageWin);
+        const seed = Services.prefs.getBoolPref("cloakfox.enabled", false)
+          ? currentTrigSeed() : 0;
+        return seed !== 0 && Number.isFinite(r) && !Number.isInteger(r)
+          ? r + noise(r, seed) : r;
+      }, pageWin, { functionName: fn, allowConstruct: false });
       // exportFunction yields name:"" and length:0; native Math methods
       // report their own name + arity (Math.sin.name==="sin",
       // Math.pow.length===2). Set both on the page-side function (Xray-waived

@@ -88,7 +88,7 @@ export class CloakfoxTabHistoryChild extends JSWindowActorChild {
     try {
       const getter = Cu.exportFunction(function () {
         return fakeLength;
-      }, pageWin);
+      }, pageWin, { functionName: "length", allowConstruct: false });
       setGetterIdentity(getter, "length");
       Object.defineProperty(pageWin.History.prototype, "length", {
         get: getter,

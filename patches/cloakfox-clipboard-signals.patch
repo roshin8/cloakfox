@@ -1,0 +1,193 @@
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2212,6 +2212,12 @@
+   value: true
+   mirror: always
+ 
++# Opt-in clipboard signal privacy; native editing and chrome retain defaults.
++- name: cloakfox.opt.clipboard_masking
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
+ # Opt-in page activity privacy; browser focus and lifecycle stay real.
+ - name: cloakfox.opt.focus_masking
+   type: RelaxedAtomicBool
+--- a/dom/base/Document.h
++++ b/dom/base/Document.h
+@@ -3493,6 +3493,8 @@
+   bool HiddenForBindings(CallerType) const;
+   dom::VisibilityState VisibilityStateForBindings(CallerType) const;
+   bool ShouldMaskWindowActivity() const;
++  // Live clipboard event/metadata privacy for attached web documents only.
++  bool ShouldMaskClipboardSignals() const;
+   // Safe on style worker threads: no window/BrowsingContext access.
+   bool ShouldMaskWindowActivityForStyle() const;
+   bool FullscreenForBindings(CallerType) const;
+--- a/dom/base/Document.cpp
++++ b/dom/base/Document.cpp
+@@ -4921,6 +4921,13 @@
+   return fm->IsSameOrAncestor(bc, fm->GetFocusedBrowsingContext());
+ }
+ 
++bool Document::ShouldMaskClipboardSignals() const {
++  return StaticPrefs::cloakfox_enabled() &&
++         StaticPrefs::cloakfox_opt_clipboard_masking() && IsContentDocument() &&
++         !NodePrincipal()->IsSystemPrincipal() && IsCurrentActiveDocument() &&
++         IsActive();
++}
++
+ bool Document::ShouldMaskWindowActivity() const {
+   // Exclude chrome, detached documents, replaced documents and the BFCache.
+   // Include parser-time scripts in newly opened background tabs. IsActive()
+--- a/dom/events/EventDispatcher.cpp
++++ b/dom/events/EventDispatcher.cpp
+@@ -857,6 +857,42 @@
+   }
+ };
+ 
++// Keep native clipboard defaults and chrome handlers, while preventing content
++// listeners from observing user clipboard events or the usual shortcut chords.
++static bool IsClipboardSignalEvent(const WidgetEvent* aEvent) {
++  switch (aEvent->mMessage) {
++    case eCopy:
++    case eCut:
++    case ePaste:
++      return true;
++    case eKeyDown:
++    case eKeyPress:
++    case eKeyUp: {
++      const WidgetKeyboardEvent* key = aEvent->AsKeyboardEvent();
++      if (key->IsAlt()) {
++        return false;
++      }
++      // Printable keypress events have keyCode=0; match their character too.
++      const uint32_t character = key->mCharCode;
++      const bool clipboardCharacter =
++          character == 'c' || character == 'C' || character == 'x' ||
++          character == 'X' || character == 'v' || character == 'V';
++      if (key->IsAccel() &&
++          (key->mKeyCode == NS_VK_C || key->mKeyCode == NS_VK_X ||
++           key->mKeyCode == NS_VK_V || clipboardCharacter)) {
++        return true;
++      }
++      // Conventional alternative clipboard shortcuts on Windows and Linux.
++      return (key->mKeyCode == NS_VK_INSERT &&
++              (key->IsControl() || key->IsShift())) ||
++             (key->mKeyCode == NS_VK_DELETE && key->IsShift() &&
++              !key->IsControl() && !key->IsMeta());
++    }
++    default:
++      return false;
++  }
++}
++
+ /* static */
+ nsresult EventDispatcher::Dispatch(EventTarget* aTarget,
+                                    nsPresContext* aPresContext,
+@@ -884,6 +920,20 @@
+                  NS_ERROR_DOM_INVALID_STATE_ERR);
+ 
+   nsCOMPtr<EventTarget> target(aTarget);
++
++  const bool previousSystemOnly =
++      aEvent->mFlags.mOnlySystemGroupDispatchInContent;
++  auto restoreClipboardDispatch = MakeScopeExit([&] {
++    aEvent->mFlags.mOnlySystemGroupDispatchInContent = previousSystemOnly;
++  });
++  if (aEvent->IsTrusted() && IsClipboardSignalEvent(aEvent)) {
++    nsIGlobalObject* global = target->GetOwnerGlobal();
++    nsPIDOMWindowInner* window = global ? global->GetAsInnerWindow() : nullptr;
++    Document* document = window ? window->GetExtantDoc() : nullptr;
++    if (document && document->ShouldMaskClipboardSignals()) {
++      aEvent->mFlags.mOnlySystemGroupDispatchInContent = true;
++    }
++  }
+ 
+   RefPtr<PerformanceEventTiming> eventTimingEntry;
+   // Similar to PerformancePaintTiming, we don't need to
+--- a/dom/events/InputEvent.h
++++ b/dom/events/InputEvent.h
+@@ -33,7 +33,8 @@
+     return InputEvent_Binding::Wrap(aCx, this, aGivenProto);
+   }
+ 
+-  void GetInputType(nsAString& aInputType);
++  void GetInputType(nsAString& aInputType,
++                   CallerType aCallerType = CallerType::System);
+   void GetData(nsAString& aData, CallerType aCallerType = CallerType::System);
+   already_AddRefed<DataTransfer> GetDataTransfer(
+       CallerType aCallerType = CallerType::System);
+@@ -41,6 +42,7 @@
+   bool IsComposing();
+ 
+  protected:
++  bool ShouldMaskClipboardSignals(CallerType aCallerType) const;
+   ~InputEvent() = default;
+ 
+   // mInputTypeValue stores inputType attribute value if the instance is
+--- a/dom/events/InputEvent.cpp
++++ b/dom/events/InputEvent.cpp
+@@ -8,6 +8,7 @@
+ 
+ #include "mozilla/StaticPrefs_dom.h"
+ #include "mozilla/TextEvents.h"
++#include "mozilla/dom/Document.h"
+ #include "prtime.h"
+ 
+ namespace mozilla::dom {
+@@ -45,6 +46,12 @@
+     CallerType aCallerType) {
+   InternalEditorInputEvent* editorInputEvent = mEvent->AsEditorInputEvent();
+   MOZ_ASSERT(editorInputEvent);
++  if (ShouldMaskClipboardSignals(aCallerType) &&
++      (editorInputEvent->mInputType == EditorInputType::eInsertFromPaste ||
++       editorInputEvent->mInputType ==
++           EditorInputType::eInsertFromPasteAsQuotation)) {
++    return nullptr;
++  }
+   // If clipboard event is disabled, user may not want to leak clipboard
+   // information via DOM events.  If so, we should return DataTransfer which
+   // has empty string instead.  The reason why we make it have empty string is,
+@@ -63,9 +70,30 @@
+   return do_AddRef(editorInputEvent->mDataTransfer);
+ }
+ 
+-void InputEvent::GetInputType(nsAString& aInputType) {
++bool InputEvent::ShouldMaskClipboardSignals(CallerType aCallerType) const {
++  if (aCallerType == CallerType::System || !mEvent->IsTrusted()) {
++    return false;
++  }
++  RefPtr<Document> document = GetDocument();
++  return document && document->ShouldMaskClipboardSignals();
++}
++
++void InputEvent::GetInputType(nsAString& aInputType, CallerType aCallerType) {
+   InternalEditorInputEvent* editorInputEvent = mEvent->AsEditorInputEvent();
+   MOZ_ASSERT(editorInputEvent);
++  if (ShouldMaskClipboardSignals(aCallerType)) {
++    switch (editorInputEvent->mInputType) {
++      case EditorInputType::eInsertFromPaste:
++      case EditorInputType::eInsertFromPasteAsQuotation:
++        aInputType.AssignLiteral("insertText");
++        return;
++      case EditorInputType::eDeleteByCut:
++        aInputType.AssignLiteral("deleteContentBackward");
++        return;
++      default:
++        break;
++    }
++  }
+   if (editorInputEvent->mInputType == EditorInputType::eUnknown) {
+     aInputType = mInputTypeValue;
+   } else {
+--- a/dom/webidl/InputEvent.webidl
++++ b/dom/webidl/InputEvent.webidl
+@@ -14,6 +14,7 @@
+ 
+   readonly attribute boolean       isComposing;
+ 
++  [NeedsCallerType]
+   readonly attribute DOMString inputType;
+ 
+   [NeedsCallerType]

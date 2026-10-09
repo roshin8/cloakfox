@@ -1,0 +1,204 @@
+--- a/dom/base/RoverfoxStorageManager.cpp
++++ b/dom/base/RoverfoxStorageManager.cpp
+@@ -3,6 +3,7 @@
+ #include "nsXULAppAPI.h"
+ #include "mozilla/dom/ContentChild.h"
+ #include "nsThreadUtils.h"
++#include "json.hpp"
+ 
+ namespace mozilla {
+ namespace dom {
+@@ -17,6 +18,52 @@
+ RoverfoxStorageManager::GetLocalCacheMutex() {
+   static mozilla::Mutex sMutex("RoverfoxStorageCache");
+   return sMutex;
++}
++
++/* static */ nsTHashMap<nsCStringHashKey, uint32_t>&
++RoverfoxStorageManager::GetMathSeedCache() {
++  static nsTHashMap<nsCStringHashKey, uint32_t> sCache;
++  return sCache;
++}
++
++/* static */ void
++RoverfoxStorageManager::UpdateCppFirstPrefCache(const nsCString& prefName,
++                                               const nsCString& value) {
++  MOZ_ASSERT(NS_IsMainThread());
++  MutexAutoLock lock(GetLocalCacheMutex());
++  if (auto entry = GetLocalCache().Lookup(prefName);
++      entry && entry.Data().Equals(value)) {
++    return;
++  }
++  if (value.IsEmpty()) {
++    GetLocalCache().Remove(prefName);
++  } else {
++    GetLocalCache().InsertOrUpdate(prefName, nsCString(value));
++  }
++  if (!StringBeginsWith(prefName, "cloakfox.s.cloak_cfg_"_ns)) {
++    return;
++  }
++  auto cfg = nlohmann::json::parse(value.get(), nullptr, false);
++  if (cfg.is_object()) {
++    auto seed = cfg.find("math:trig_seed");
++    if (seed != cfg.end() && seed->is_number_unsigned() &&
++        seed->get<uint64_t>() <= UINT32_MAX) {
++      GetMathSeedCache().InsertOrUpdate(prefName, seed->get<uint32_t>());
++      return;
++    }
++  }
++  GetMathSeedCache().Remove(prefName);
++}
++
++/* static */ std::optional<uint32_t>
++RoverfoxStorageManager::GetCachedMathSeed(uint32_t userContextId) {
++  nsAutoCString prefName;
++  prefName.AppendPrintf("cloakfox.s.cloak_cfg_%u", userContextId);
++  MutexAutoLock lock(GetLocalCacheMutex());
++  if (auto entry = GetMathSeedCache().Lookup(prefName)) {
++    return entry.Data();
++  }
++  return std::nullopt;
+ }
+ 
+ /* static */ nsCString
+@@ -59,16 +106,9 @@
+       cc->SendRoverfoxStorageGet(prefName, &value);
+     }
+   }
+-  // Refresh on every main-thread read, including removal. A new worker must
+-  // not reuse an earlier config after its container has been regenerated.
+-  {
+-    MutexAutoLock lock(GetLocalCacheMutex());
+-    if (value.IsEmpty()) {
+-      GetLocalCache().Remove(prefName);
+-    } else {
+-      GetLocalCache().InsertOrUpdate(prefName, nsCString(value));
+-    }
+-  }
++  // Refresh on every main-thread read, including removal. Live parent
++  // updates use the same path to keep the typed worker Math cache coherent.
++  UpdateCppFirstPrefCache(prefName, value);
+   outValue = value;
+   return !value.IsEmpty();
+ }
+--- a/dom/base/RoverfoxStorageManager.h
++++ b/dom/base/RoverfoxStorageManager.h
+@@ -5,6 +5,7 @@
+ #include "nsTHashMap.h"
+ #include "nsHashKeys.h"
+ #include "mozilla/Mutex.h"
++#include <optional>
+ 
+ namespace mozilla {
+ namespace dom {
+@@ -23,6 +24,12 @@
+   static bool GetString(const nsAString& key, nsAString& outValue);
+   static void Remove(const nsAString& key);
+ 
++  // Called on the main thread after authoritative parent pref updates. Math
++  // uses the parsed seed cache so worker calls need neither JSON nor IPC.
++  static void UpdateCppFirstPrefCache(const nsCString& prefName,
++                                     const nsCString& value);
++  static std::optional<uint32_t> GetCachedMathSeed(uint32_t userContextId);
++
+  private:
+   static nsCString MakePrefName(const nsAString& key);
+   // cpp-first: separate pref namespace for values written by
+@@ -33,6 +40,7 @@
+   static void SetPrefValue(const nsCString& prefName, const nsCString& value);
+   static nsTHashMap<nsCStringHashKey, nsCString>& GetLocalCache();
+   static mozilla::Mutex& GetLocalCacheMutex();
++  static nsTHashMap<nsCStringHashKey, uint32_t>& GetMathSeedCache();
+ };
+ 
+ }  // namespace dom
+--- a/dom/ipc/ContentParent.cpp
++++ b/dom/ipc/ContentParent.cpp
+@@ -3777,6 +3777,19 @@
+     Preferences::GetPreference(&pref, GeckoProcessType_Content,
+                                GetRemoteType());
+ 
++    // Cloakfox's container overlays are already readable through the scoped
++    // RoverfoxStorage IPC. Deliver their live changes/removal to every content
++    // process too, including remote service-worker processes. Retain normal
++    // sanitization for all other preferences.
++    if (StringBeginsWith(strData, "cloakfox.s.cloak_cfg_"_ns)) {
++      nsAutoCString config;
++      pref.isSanitized() = false;
++      pref.defaultValue() = Nothing();
++      pref.userValue() = NS_SUCCEEDED(Preferences::GetCString(strData.get(), config))
++                             ? Some(PrefValue(nsCString(config)))
++                             : Nothing();
++    }
++
+     // This check is a bit of a hack.  We want to avoid sending excessive
+     // preference updates to subprocesses for performance reasons, but we
+     // currently don't have a great mechanism for doing so. (See Bug 1819714)
+--- a/dom/ipc/ContentChild.cpp
++++ b/dom/ipc/ContentChild.cpp
+@@ -32,6 +32,7 @@
+ #include "mozilla/NullPrincipal.h"
+ #include "mozilla/PerfStats.h"
+ #include "mozilla/Preferences.h"
++#include "mozilla/dom/RoverfoxStorageManager.h"
+ #include "mozilla/ProcessHangMonitorIPC.h"
+ #include "mozilla/RemoteLazyInputStreamChild.h"
+ #include "mozilla/RemoteMediaManagerChild.h"
+@@ -2233,6 +2234,11 @@
+ 
+ mozilla::ipc::IPCResult ContentChild::RecvPreferenceUpdate(const Pref& aPref) {
+   Preferences::SetPreference(aPref);
++  if (StringBeginsWith(aPref.name(), "cloakfox.s.cloak_cfg_"_ns)) {
++    nsAutoCString config;
++    Preferences::GetCString(aPref.name().get(), config);
++    RoverfoxStorageManager::UpdateCppFirstPrefCache(aPref.name(), config);
++  }
+   return IPC_OK();
+ }
+ 
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -6362,8 +6362,15 @@
+   if (StaticPrefs::cloakfox_enabled() && std::isfinite(value) &&
+       std::trunc(value) != value) {
+     const uint64_t bits = BitwiseCast<uint64_t>(value);
+-    const uint32_t seed = static_cast<uint32_t>(
+-        js::GetFunctionNativeReserved(&args.callee(), 1).toNumber());
++    WorkerPrivate* worker = GetCurrentThreadWorkerPrivate();
++    const uint32_t seed = RoverfoxStorageManager::GetCachedMathSeed(
++        worker->GetOriginAttributes().mUserContextId).value_or(
++            static_cast<uint32_t>(
++                js::GetFunctionNativeReserved(&args.callee(), 1).toNumber()));
++    if (seed == 0) {
++      args.rval().set(result);
++      return true;
++    }
+     uint32_t hash = uint32_t(bits) ^ uint32_t(bits >> 32) ^ seed;
+     hash = (hash ^ (hash >> 16)) * uint32_t(2246822507);
+     hash = (hash ^ (hash >> 13)) * uint32_t(3266489909);
+@@ -6455,13 +6462,18 @@
+     }
+   }
+ 
+-  // Native functions preserve Math's non-constructor semantics, descriptors
+-  // and native stack behavior without evaluating a page-visible wrapper script.
+-  // Resolve this worker's container explicitly; off-main-thread defaults use 0.
+-  if (auto seed = MaskConfig::GetUint32(
+-          "math:trig_seed", GetOriginAttributes().mUserContextId);
+-      seed.has_value() && seed.value() != 0 &&
+-      !InstallCloakfoxWorkerMath(aCx, global, seed.value())) {
++  // Install pass-through wrappers even when masking is initially off. They
++  // read the live, parsed container seed when enabled, preserving the worker
++  // and any function references it captured before a setting changed. Keep
++  // privileged chrome workers untouched. The environment config remains the
++  // fallback when no per-container Math seed exists.
++  const auto& envConfig = MaskConfig::GetJson();
++  auto envSeed = envConfig.find("math:trig_seed");
++  const uint32_t fallbackSeed =
++      envSeed != envConfig.end() && envSeed->is_number_unsigned()
++          ? envSeed->get<uint32_t>() : 0;
++  if (!IsChromeWorker() &&
++      !InstallCloakfoxWorkerMath(aCx, global, fallbackSeed)) {
+     data->mScope = nullptr;
+     return nullptr;
+   }

@@ -1,0 +1,57 @@
+--- a/dom/base/RoverfoxStorageManager.cpp
++++ b/dom/base/RoverfoxStorageManager.cpp
+@@ -39,22 +39,38 @@
+ RoverfoxStorageManager::TryGetCppFirstPref(const nsAString& key,
+                                             nsACString& outValue) {
+   nsCString prefName = MakeCppFirstPrefName(key);
+-  nsAutoCString v;
+-  if (NS_SUCCEEDED(Preferences::GetCString(prefName.get(), v)) && !v.IsEmpty()) {
+-    outValue = v;
+-    return true;
+-  }
+-  if (!XRE_IsParentProcess() && NS_IsMainThread()) {
+-    ContentChild* cc = ContentChild::GetSingleton();
+-    if (cc) {
+-      cc->SendRoverfoxStorageGet(prefName, &v);
+-      if (!v.IsEmpty()) {
+-        outValue = v;
+-        return true;
+-      }
+-    }
+-  }
+-  return false;
++  // Remote service workers may run in a process without these dynamic prefs.
++  // WorkerPrivate warms the exact container key on the main thread. Cache the
++  // cpp-first result too: previously that priority path returned before caching
++  // and worker-thread reads could neither find it nor use the parent IPC.
++  if (!NS_IsMainThread()) {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    if (auto entry = GetLocalCache().Lookup(prefName)) {
++      outValue = entry.Data();
++      return !outValue.IsEmpty();
++    }
++    return false;
++  }
++
++  nsAutoCString value;
++  Preferences::GetCString(prefName.get(), value);
++  if (value.IsEmpty() && !XRE_IsParentProcess()) {
++    if (ContentChild* cc = ContentChild::GetSingleton()) {
++      cc->SendRoverfoxStorageGet(prefName, &value);
++    }
++  }
++  // Refresh on every main-thread read, including removal. A new worker must
++  // not reuse an earlier config after its container has been regenerated.
++  {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    if (value.IsEmpty()) {
++      GetLocalCache().Remove(prefName);
++    } else {
++      GetLocalCache().InsertOrUpdate(prefName, nsCString(value));
++    }
++  }
++  outValue = value;
++  return !value.IsEmpty();
+ }
+ 
+ /* static */ void

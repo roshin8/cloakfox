@@ -33,6 +33,53 @@ const { KEY_TYPES, readOverrides, setOverride, clearOverride, clearAllOverrides 
 
 const PREF_ENABLED = "cloakfox.enabled";
 
+async function initAppearanceControls() {
+  const { getAppearance, restartAppearance } = ChromeUtils.importESModule(
+    "resource:///modules/CloakfoxAppearance.sys.mjs"
+  );
+  const toggle = document.getElementById("cfx-firefox-appearance");
+  const button = document.getElementById("cfx-appearance-restart");
+  const status = document.getElementById("cfx-appearance-status");
+  const pref = toggle.dataset.pref;
+  const appearance = await getAppearance();
+  if (!appearance.supported) {
+    toggle.disabled = true;
+    status.textContent = "Application appearance switching is available on macOS.";
+    return;
+  }
+  const name = appearance.active ? "Firefox" : "Cloakfox";
+  document.title = name;
+  document.querySelector(".brand-name").textContent = name;
+  if (appearance.active) {
+    const icon = document.createElement("img");
+    icon.src = "resource:///appearance/icon32.png";
+    icon.alt = "";
+    icon.width = icon.height = 28;
+    document.querySelector(".brand-mark").replaceChildren(icon);
+  }
+  const render = () => {
+    const pending = Services.prefs.getBoolPref(pref, false) !== appearance.active;
+    status.textContent = `Active: ${name}${pending ? " · Restart to apply your choice." : ""}`;
+    button.hidden = !pending;
+  };
+  toggle.addEventListener("change", render);
+  button.addEventListener("click", async () => {
+    button.disabled = toggle.disabled = true;
+    status.textContent = toggle.checked ? "Preparing Firefox appearance…" : "Restoring Cloakfox appearance…";
+    try {
+      const result = await restartAppearance();
+      if (result.cancelled) {
+        status.textContent = `Active: ${name} · Restart canceled. Your choice is saved.`;
+      }
+    } catch (error) {
+      status.textContent = `Could not switch appearance: ${error.message}`;
+    } finally {
+      button.disabled = toggle.disabled = false;
+    }
+  });
+  render();
+}
+
 const masterSeedPref   = (ucid) => `cloakfox.container.${ucid}.math_seed`;
 const cloakCfgPref     = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
 const tzPref           = (ucid) => `cloakfox.container.${ucid}.timezone`;
@@ -590,4 +637,7 @@ document.addEventListener("DOMContentLoaded", () => {
       Services.prefs.setBoolPref(pref, el.checked);
     });
   }
+  initAppearanceControls().catch(error => {
+    document.getElementById("cfx-appearance-status").textContent = `Could not read application appearance: ${error.message}`;
+  });
 });

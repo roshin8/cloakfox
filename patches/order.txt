@@ -79,3 +79,29 @@ cpp-first-worker-spoofers.patch
 # Build/packaging fixes (independent)
 cloakfox-optional-assets-car.patch
 worker-container-identity.patch
+
+# Content-only letterboxing supersedes legacy Camoufox physical sizing.
+cloakfox-letterboxing.patch
+
+# Opt-in native focus, visibility, fullscreen and scheduling privacy.
+cloakfox-window-activity.patch
+
+# Restartable cosmetic macOS app names and icons.
+cloakfox-appearance.patch
+
+# Opt-in native clipboard event, shortcut and input metadata privacy.
+cloakfox-clipboard-signals.patch
+
+# Page-facing pointer departures and returns; preserve in-page transitions.
+cloakfox-pointer-activity.patch
+
+# Coherent hover state and native function identities without wrapper filenames.
+cloakfox-hover-activity.patch
+cloakfox-native-worker-math.patch
+cloakfox-exported-function-identity.patch
+
+# Cache authoritative container configuration before remote workers start.
+cloakfox-worker-config-cache.patch
+
+# Apply Math settings to existing realms without restarting them.
+cloakfox-live-worker-math.patch

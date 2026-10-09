@@ -1,0 +1,193 @@
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -6,7 +6,12 @@
+ 
+ #include "WorkerPrivate.h"
+ 
++#include <cmath>
+ #include <utility>
++
++#include "mozilla/Casting.h"
++#include "js/PropertyAndElement.h"
++#include "jsfriendapi.h"
+ 
+ #include "MessageEventRunnable.h"
+ #include "RuntimeService.h"
+@@ -43,6 +48,7 @@
+ #include "mozilla/Result.h"
+ #include "mozilla/ScopeExit.h"
+ #include "mozilla/StaticPrefs_browser.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_dom.h"
+ #include "mozilla/StaticPrefs_javascript.h"
+ #include "mozilla/StorageAccess.h"
+@@ -6340,6 +6346,68 @@
+   return true;
+ }
+ 
++// Call the original native Math function so argument conversion, exceptional
++// values and caller-owned errors keep SpiderMonkey's behavior. Reserved slots
++// are traced by the GC and are not properties visible to worker scripts.
++static bool CloakfoxWorkerMath(JSContext* aCx, unsigned aArgc, JS::Value* aVp) {
++  JS::CallArgs args = JS::CallArgsFromVp(aArgc, aVp);
++  JS::RootedValue original(
++      aCx, js::GetFunctionNativeReserved(&args.callee(), 0));
++  JS::RootedValue thisValue(aCx, args.thisv());
++  JS::RootedValue result(aCx);
++  if (!JS::Call(aCx, thisValue, original, JS::HandleValueArray(args), &result)) {
++    return false;
++  }
++  const double value = result.toNumber();
++  if (StaticPrefs::cloakfox_enabled() && std::isfinite(value) &&
++      std::trunc(value) != value) {
++    const uint64_t bits = BitwiseCast<uint64_t>(value);
++    const uint32_t seed = static_cast<uint32_t>(
++        js::GetFunctionNativeReserved(&args.callee(), 1).toNumber());
++    uint32_t hash = uint32_t(bits) ^ uint32_t(bits >> 32) ^ seed;
++    hash = (hash ^ (hash >> 16)) * uint32_t(2246822507);
++    hash = (hash ^ (hash >> 13)) * uint32_t(3266489909);
++    hash ^= hash >> 16;
++    result.setDouble(value + (double(hash) / 4294967296.0 - 0.5) * 1e-12);
++  }
++  args.rval().set(result);
++  return true;
++}
++
++static bool InstallCloakfoxWorkerMath(JSContext* aCx,
++                                      JS::HandleObject aGlobal,
++                                      uint32_t aSeed) {
++  JS::RootedValue mathValue(aCx);
++  if (!JS_GetProperty(aCx, aGlobal, "Math", &mathValue)) {
++    return false;
++  }
++  JS::RootedObject math(aCx, &mathValue.toObject());
++  static constexpr const char* methods[] = {
++      "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
++      "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
++      "exp", "expm1", "log", "log2", "log10", "log1p",
++      "sqrt", "cbrt", "hypot", "pow"};
++  for (const char* name : methods) {
++    JS::RootedValue original(aCx);
++    if (!JS_GetProperty(aCx, math, name, &original)) {
++      return false;
++    }
++    JSFunction* originalFunction = JS_GetObjectFunction(&original.toObject());
++    JSFunction* function = js::NewFunctionWithReserved(
++        aCx, CloakfoxWorkerMath, JS_GetFunctionArity(originalFunction), 0, name);
++    if (!function) {
++      return false;
++    }
++    JS::RootedObject object(aCx, JS_GetFunctionObject(function));
++    js::SetFunctionNativeReserved(object, 0, original);
++    js::SetFunctionNativeReserved(object, 1, JS::NumberValue(aSeed));
++    if (!JS_DefineProperty(aCx, math, name, object, 0)) {
++      return false;
++    }
++  }
++  return true;
++}
++
+ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalScope(JSContext* aCx) {
+   auto data = mWorkerThreadAccessible.Access();
+ 
+@@ -6387,92 +6455,15 @@
+     }
+   }
+ 
+-  // Cloakfox: Worker-scope Math spoofer. The window-side CloakfoxMath
+-  // JSWindowActor doesn't fire in worker realms (workers have their own
+-  // SpiderMonkey context); without this injection, sites that probe
+-  // Math.sin/cos/etc. inside a Worker / OffscreenCanvas worker would
+-  // see real libm output while the same probe in the main thread sees
+-  // noised output, exposing the spoof. Inject a small IIFE here, after
+-  // bindings are registered and before any user script runs. Seed comes
+-  // from MaskConfig "math:trig_seed" (emitted by SeedSync into
+-  // cloak_cfg); per-call deterministic noise of ~1e-12 ULP magnitude
+-  // matches CloakfoxMathChild's window-scope behavior so worker and
+-  // window fingerprints stay coherent within a container.
+-  //
+-  // Stealth design (vs the naive earlier draft):
+-  //   1. PURITY — noise hashes the result's IEEE 754 bits + seed via
+-  //      xorshift, so Math.sin(0.5) === Math.sin(0.5). Real Math is
+-  //      pure; a per-call PRNG (which the first cut used) gives
+-  //      different values on repeat calls — instantly self-flagging.
+-  //   2. NO SENTINEL — the earlier `Math.__cfx_done__` idempotence flag
+-  //      was readable from page-side code. GetOrCreateGlobalScope is
+-  //      single-shot per realm anyway, so no flag is needed.
+-  //   3. TOSTRING/NAME/LENGTH CAMOUFLAGE — Function.prototype.toString
+-  //      is replaced with a "lying" version that returns
+-  //      "function NAME() { [native code] }" for any function in our
+-  //      WeakSet (including the lying toString itself, so toString()
+-  //      .toString() also looks native). Each wrapped Math method has
+-  //      its name and length restored to native values via
+-  //      defineProperty. Non-wrapped functions still see the real
+-  //      toString output. Window-scope spoofer relies on
+-  //      Cu.exportFunction for the same effect; workers have no Cu so
+-  //      we recreate the camouflage in pure JS.
+-  //
+-  // Does not perturb constants (Math.PI, Math.E) — same default as the
+-  // window actor; constant noise is opt-in via
+-  // cloakfox.opt.math_constants_noise and is self-flagging.
+-  // Cloakfox: this worker's OWN container. Without the explicit id this
+-  // resolved container 0 off the main thread, whose cloak_cfg is not the
+-  // one warmed for this worker — so the lookup missed entirely and the
+-  // worker-scope Math spoofer silently did not install in any non-default
+-  // container (measured: ctx 2 worker returned an exact, unnoised
+-  // Math.sin(0.5) while ctx 0's was noised).
+-  if (auto seedOpt = MaskConfig::GetUint32(
++  // Native functions preserve Math's non-constructor semantics, descriptors
++  // and native stack behavior without evaluating a page-visible wrapper script.
++  // Resolve this worker's container explicitly; off-main-thread defaults use 0.
++  if (auto seed = MaskConfig::GetUint32(
+           "math:trig_seed", GetOriginAttributes().mUserContextId);
+-      seedOpt.has_value() && seedOpt.value() != 0) {
+-    nsCString src;
+-    src.AppendPrintf(
+-        "(()=>{const M=Math,imul=M.imul,oFPTS=Function.prototype.toString;"
+-        "const ab=new ArrayBuffer(8),f64=new Float64Array(ab),u32=new Uint32Array(ab);"
+-        "const SEED=%u;"
+-        "const noise=(r)=>{f64[0]=r;"
+-        "let h=(u32[0]^u32[1]^SEED)>>>0;"
+-        "h=imul(h^(h>>>16),2246822507)>>>0;"
+-        "h=imul(h^(h>>>13),3266489909)>>>0;"
+-        "h=(h^(h>>>16))>>>0;"
+-        "return (h/4294967296-0.5)*1e-12;};"
+-        "const lies=new WeakSet();"
+-        "const lyingTS=function toString(){"
+-        "if(lies.has(this))return 'function '+(this.name||'')+'() { [native code] }';"
+-        "return oFPTS.call(this);};"
+-        "Object.defineProperty(lyingTS,'name',{value:'toString'});"
+-        "Object.defineProperty(lyingTS,'length',{value:0});"
+-        "lies.add(lyingTS);"
+-        "Object.defineProperty(Function.prototype,'toString',"
+-        "{value:lyingTS,writable:true,configurable:true});"
+-        "const META={sin:1,cos:1,tan:1,asin:1,acos:1,atan:1,atan2:2,"
+-        "sinh:1,cosh:1,tanh:1,asinh:1,acosh:1,atanh:1,"
+-        "exp:1,expm1:1,log:1,log2:1,log10:1,log1p:1,"
+-        "sqrt:1,cbrt:1,hypot:2,pow:2};"
+-        "for(const k of Object.keys(META)){const f=M[k];"
+-        "if(typeof f!=='function')continue;"
+-        "const w=function(...a){const r=f.apply(M,a);"
+-        "return Number.isFinite(r)&&!Number.isInteger(r)?r+noise(r):r;};"
+-        "Object.defineProperty(w,'name',{value:k});"
+-        "Object.defineProperty(w,'length',{value:META[k]});"
+-        "lies.add(w);M[k]=w;}})();",
+-        seedOpt.value());
+-    JS::CompileOptions options(aCx);
+-    options.setFileAndLine("CloakfoxWorker.js", 1);
+-    JS::SourceText<mozilla::Utf8Unit> sourceText;
+-    if (sourceText.init(aCx, src.get(), src.Length(),
+-                        JS::SourceOwnership::Borrowed)) {
+-      JS::RootedValue rval(aCx);
+-      // Best-effort eval; clear any pending exception so user code starts
+-      // with a clean slate even if our injection fails.
+-      JS::Evaluate(aCx, options, sourceText, &rval);
+-      JS_ClearPendingException(aCx);
+-    }
++      seed.has_value() && seed.value() != 0 &&
++      !InstallCloakfoxWorkerMath(aCx, global, seed.value())) {
++    data->mScope = nullptr;
++    return nullptr;
+   }
+ 
+   JS_FireOnNewGlobalObject(aCx, global);

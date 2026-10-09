@@ -88,16 +88,25 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
     // MAX_JITTER_MS = 2 meant only {0, 1}.
     const origSetTimeout = pageWin.setTimeout;
     pageWin.setTimeout = setNativeIdentity(Cu.exportFunction(function (handler, timeout, ...args) {
+      // Let the page's native binding perform non-number conversion. Coercing
+      // a Symbol/BigInt here throws a chrome error which exportFunction must
+      // sanitize, changing TypeError into InvalidStateError for the page.
+      if (timeout !== undefined && typeof timeout !== "number") {
+        return origSetTimeout.call(this, handler, timeout, ...args);
+      }
       const jitter = Math.floor(prng() * (MAX_JITTER_MS + 1));
       return origSetTimeout.call(this, handler, (timeout || 0) + jitter, ...args);
-    }, pageWin, { defineAs: "setTimeout" }), origSetTimeout.name, origSetTimeout.length);
+    }, pageWin, { defineAs: "setTimeout", functionName: "setTimeout", allowConstruct: false }), origSetTimeout.name, origSetTimeout.length);
 
     // Wrap setInterval — same treatment.
     const origSetInterval = pageWin.setInterval;
     pageWin.setInterval = setNativeIdentity(Cu.exportFunction(function (handler, timeout, ...args) {
+      if (timeout !== undefined && typeof timeout !== "number") {
+        return origSetInterval.call(this, handler, timeout, ...args);
+      }
       const jitter = Math.floor(prng() * (MAX_JITTER_MS + 1));
       return origSetInterval.call(this, handler, (timeout || 0) + jitter, ...args);
-    }, pageWin, { defineAs: "setInterval" }), origSetInterval.name, origSetInterval.length);
+    }, pageWin, { defineAs: "setInterval", functionName: "setInterval", allowConstruct: false }), origSetInterval.name, origSetInterval.length);
 
     // Wrap requestAnimationFrame — add sub-ms noise to the callback's
     // timestamp argument without delaying the actual frame.
@@ -107,7 +116,7 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
         return origRAF.call(this, Cu.exportFunction(function (ts) {
           return callback.call(this, ts + prng() * RAF_NOISE_MS);
         }, pageWin));
-      }, pageWin, { defineAs: "requestAnimationFrame" }), origRAF.name, origRAF.length);
+      }, pageWin, { defineAs: "requestAnimationFrame", functionName: "requestAnimationFrame", allowConstruct: false }), origRAF.name, origRAF.length);
     }
 
     // Wrap performance.now — add deterministic per-ms-bucket fractional
@@ -164,7 +173,7 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
         if (val < lastReturned) val = lastReturned;
         lastReturned = val;
         return val;
-      }, pageWin);
+      }, pageWin, { functionName: "now", allowConstruct: false });
       setNativeIdentity(wrapped, origPerfNow.name, origPerfNow.length);
       // Define on Performance.PROTOTYPE (where native now() lives), not the
       // instance — an own `now` on the performance object would leak via

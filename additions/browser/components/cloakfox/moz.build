@@ -12,6 +12,7 @@ JAR_MANIFESTS += ["jar.mn"]
 # roverfox.s.* extension prefs into the new cpp-first cloakfox.s.*
 # namespace. Idempotent.
 EXTRA_JS_MODULES += [
+    "CloakfoxAppearance.sys.mjs",
     "CloakfoxBayesianNetwork.sys.mjs",
     "CloakfoxBFNetwork.sys.mjs",
     "CloakfoxOverrides.sys.mjs",
@@ -20,6 +21,23 @@ EXTRA_JS_MODULES += [
     "CloakfoxSeedSync.sys.mjs",
     "CloakfoxToolbarPin.sys.mjs",
     "CloakfoxWebRTCSync.sys.mjs",
+]
+
+FINAL_TARGET_FILES.appearance += [
+    "appearance/about-logo.png",
+    "appearance/about-logo.svg",
+    "appearance/about-logo@2x.png",
+    "appearance/about-wordmark.svg",
+    "appearance/about.png",
+    "appearance/aboutDialog.css",
+    "appearance/firefox-wordmark.svg",
+    "appearance/firefox.icns",
+    "appearance/icon128.png",
+    "appearance/icon16.png",
+    "appearance/icon32.png",
+    "appearance/icon48.png",
+    "appearance/icon64.png",
+    "appearance/LICENSE",
 ]
 
 # JSWindowActor modules ship to resource:///actors/ and are registered

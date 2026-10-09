@@ -1,0 +1,136 @@
+--- a/dom/events/EventStateManager.cpp
++++ b/dom/events/EventStateManager.cpp
+@@ -39,6 +39,7 @@
+ #include "mozilla/Services.h"
+ #include "mozilla/StaticPrefs_accessibility.h"
+ #include "mozilla/StaticPrefs_browser.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_dom.h"
+ #include "mozilla/StaticPrefs_layout.h"
+ #include "mozilla/StaticPrefs_mousewheel.h"
+@@ -1114,6 +1115,14 @@
+       break;
+     }
+     case eMouseEnterIntoWidget:
++      // Chrome marks a real transition from outside the web-content surface.
++      // Keep native pointer bookkeeping, but hide its first boundary events.
++      if (mouseEvent->IsTrusted() && mouseEvent->InputSourceSupportsHover() &&
++          mouseEvent->mFlags.mOnlySystemGroupDispatchInContent &&
++          mPresContext->Document()->ShouldMaskWindowActivity()) {
++        mCloakfoxMouseEntryFromOutside = true;
++        mCloakfoxPointerEntryFromOutside = true;
++      }
+       PointerEventHandler::UpdatePointerActiveState(mouseEvent, aTargetContent);
+       // In some cases on e10s eMouseEnterIntoWidget
+       // event was sent twice into child process of content.
+@@ -1124,6 +1133,15 @@
+       aEvent->StopCrossProcessForwarding();
+       break;
+     case eMouseExitFromWidget:
++      // A compositor hit-test can send the returning move directly to a
++      // nested OOP frame, bypassing its flagged widget-enter event. Remember
++      // the return policy at departure too, independently in each frame.
++      if (mouseEvent->IsTrusted() && mouseEvent->InputSourceSupportsHover() &&
++          mouseEvent->mFlags.mOnlySystemGroupDispatchInContent &&
++          mPresContext->Document()->ShouldMaskWindowActivity()) {
++        mCloakfoxMouseEntryFromOutside = true;
++        mCloakfoxPointerEntryFromOutside = true;
++      }
+       // If this is a remote frame, we receive eMouseExitFromWidget from the
+       // parent the mouse exits our content. Since the parent may update the
+       // cursor while the mouse is outside our frame, and since PuppetWidget
+@@ -5192,6 +5210,10 @@
+   // process, it won't be ignored.  See PresShell::HandleEvent().
+   newEvent->mFlags.mIsSynthesizedForTests =
+       aMouseEvent->mFlags.mIsSynthesizedForTests;
++  // Preserve the page-boundary policy while forwarding exits through the
++  // OOP-frame ancestor chain. DOM dispatch rechecks the live document policy.
++  newEvent->mFlags.mOnlySystemGroupDispatchInContent =
++      aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent;
+ 
+   newEvent->mRelatedTarget = aRelatedTarget;
+   newEvent->mRefPoint = aMouseEvent->mRefPoint;
+@@ -5307,6 +5329,29 @@
+   UniquePtr<WidgetMouseEvent> dispatchEvent =
+       CreateMouseOrPointerWidgetEvent(aMouseEvent, aMessage, relatedContent);
+ 
++  const bool entryFromOutside = aMouseEvent->AsPointerEvent()
++                                   ? mCloakfoxPointerEntryFromOutside
++                                   : mCloakfoxMouseEntryFromOutside;
++  const bool privateBoundary =
++      aMouseEvent->IsTrusted() && aMouseEvent->InputSourceSupportsHover() &&
++      targetContent->OwnerDoc()->ShouldMaskWindowActivity() &&
++      (aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent ||
++       (entryFromOutside && !relatedContent));
++  dispatchEvent->mFlags.mOnlySystemGroupDispatchInContent = privateBoundary;
++
++  // Only chrome-to-content crossings count as leaving/returning to the page.
++  // Crossings between frames inside a page keep their normal boundary events.
++  // Reuse the IPC-serialized system-group flag on the widget boundary event;
++  // it carries this policy through nested remote frames without exposing a
++  // new field to web content or suppressing browser chrome listeners.
++  const bool remotePrivateBoundary =
++      aMouseEvent->IsTrusted() && aMouseEvent->InputSourceSupportsHover() &&
++      StaticPrefs::cloakfox_enabled() &&
++      StaticPrefs::cloakfox_opt_focus_masking() &&
++      (privateBoundary ||
++       aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent ||
++       targetContent->OwnerDoc()->NodePrincipal()->IsSystemPrincipal());
++
+   AutoWeakFrame previousTarget = mCurrentTarget;
+   mCurrentTargetContent = targetContent;
+ 
+@@ -5326,6 +5371,8 @@
+             CreateMouseOrPointerWidgetEvent(aMouseEvent, eMouseExitFromWidget,
+                                             relatedContent);
+         remoteEvent->mExitFrom = Some(WidgetMouseEvent::ePuppet);
++        remoteEvent->mFlags.mOnlySystemGroupDispatchInContent =
++            remotePrivateBoundary;
+ 
+         // mCurrentTarget is set to the new target, so we must reset it to the
+         // old target and then dispatch a cross-process event. (mCurrentTarget
+@@ -5337,6 +5384,8 @@
+         UniquePtr<WidgetMouseEvent> remoteEvent =
+             CreateMouseOrPointerWidgetEvent(aMouseEvent, eMouseEnterIntoWidget,
+                                             relatedContent);
++        remoteEvent->mFlags.mOnlySystemGroupDispatchInContent =
++            remotePrivateBoundary;
+         HandleCrossProcessEvent(remoteEvent.get(), &status);
+       }
+     }
+@@ -5606,6 +5655,22 @@
+   wrapper->DidDispatchOverAndEnterEvent(
+       aContent->GetComposedDoc() == mDocument ? aContent : nullptr,
+       targetWidget);
++
++  // Consume a return at the shared hover-entry callback, not just at a move:
++  // remote-frame entry may reach this method without a local pointer move.
++  // When the mouse enters an OOP embedder, pointer input is routed straight
++  // to that frame, so this ancestor has no pointer-enter callback to consume
++  // its marker. The frame's own ESM keeps and consumes its independent marker.
++  if (aMouseEvent->InputSourceSupportsHover()) {
++    if (isPointer) {
++      mCloakfoxPointerEntryFromOutside = false;
++    } else {
++      mCloakfoxMouseEntryFromOutside = false;
++      if (IsRemoteTarget(aContent)) {
++        mCloakfoxPointerEntryFromOutside = false;
++      }
++    }
++  }
+ }
+ 
+ // Returns the center point of the window's client area. This is
+--- a/dom/events/EventStateManager.h
++++ b/dom/events/EventStateManager.h
+@@ -1421,6 +1421,10 @@
+ 
+   bool m_haveShutdown;
+ 
++  // Suppress only the first boundary events after a chrome-to-page return.
++  bool mCloakfoxMouseEntryFromOutside = false;
++  bool mCloakfoxPointerEntryFromOutside = false;
++
+   RefPtr<OverOutElementsWrapper> mMouseEnterLeaveHelper;
+   nsRefPtrHashtable<nsUint32HashKey, OverOutElementsWrapper>
+       mPointersEnterLeaveHelper;

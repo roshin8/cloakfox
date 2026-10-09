@@ -1,5 +1,278 @@
 # Fingerprint tests
 
+## Application appearance (macOS)
+
+In `about:cloakfox`, enable **Firefox appearance**, then click **Apply and
+restart**. Turn it off and restart to restore Cloakfox names and icons. The
+preference `cloakfox.appearance.firefox` defaults to false and is independent
+of the privacy master switch. A restart applies desktop/application names,
+icons and Firefox branding; the existing profile and session are retained.
+It also changes the bundled extension's toolbar tooltip and extensions-panel
+labels, popup title/heading and icons to Firefox. Turning appearance off restores
+the original extension UI. Apply the switch from the updated installation to
+rebuild any older private appearance copy.
+
+The feature creates a private, locally signed `Firefox.app` copy under the
+profile's local `cloakfox-appearance` directory. It requires disk space for an
+extra app bundle. The original installation is preserved. Every switch to
+Firefox rebuilds the copy from that installation; launching the original app
+honors the saved choice after session restoration. Do not remove or relocate
+the original app while using the copy. Linux and Windows controls are disabled.
+
+This is cosmetic branding: the extension keeps its internal ID, version,
+permissions, origin and privileged API. The private copy uses a different
+bundled resource root so Gecko reloads its labels and icons in an existing
+profile rather than keeping cached branding. The system add-on is hidden from
+`about:addons`; its visible labels live in the toolbar/extensions panel.
+It does not guarantee indistinguishability from Firefox to
+websites, screen sharing, or external monitoring applications. Official image
+assets retain their Mozilla license and trademark notice in
+`additions/browser/components/cloakfox/appearance/LICENSE`.
+
+```bash
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_appearance.py
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_appearance_restart.py
+```
+
+Both use disposable profiles with spaces in their paths. The first checks
+bundle metadata, icon payloads, legacy/Fluent branding, setting persistence,
+source preservation, fresh-copy creation and canceled restart handling. It
+checks loaded extension metadata, toolbar labels, rendered popup branding,
+icon assets and working popup bridge across both directions and with the
+privacy master switch off. Run
+it against a packaged app as well to cover `omni.ja` rebuilding. The second
+uses the actual restart button in both directions and reconnects geckodriver
+to check profile, tab and extension/browser branding preservation, then launches the original
+app again to verify the saved appearance. Set `CLOAKFOX_HEADFUL=1` on the second
+probe to check macOS's application name and bundle identity during the handoff.
+Use an app under `/Applications` or a materialized test copy under `/tmp` for
+that probe; launching a development bundle under Documents via macOS Launch
+Services may require a system folder-access prompt.
+
+## Page-visible identifier audit
+
+```bash
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_identifier_leaks.py
+```
+
+Uses local HTTP pages and disposable profiles. Compares a master-disabled
+native baseline with masking enabled in containers 0 and 2, collecting from
+the main page, same-/cross-origin frames, dedicated/shared/service workers.
+Checks product strings in navigator/global/DOM/storage surfaces, exception
+stacks and filenames, function names/arity/native source, property sets and
+flags, getters, and non-constructor semantics. Property sets are sorted because
+this audit does not assert lazy property-resolution order. It also checks that
+ordinary privileged exports retain their constructor default and that naming
+an exported function does not stamp a new global.
+
+Worker Math uses native C++ functions with GC-traced private slots rather than
+an evaluated wrapper script. This removes the `CloakfoxWorker.js` error filename
+and leaves `Function.prototype.toString` native. The existing deterministic
+noise, container seed, integer/non-finite results and negative zero are kept.
+Actor exports opt into a native internal name and non-constructor behavior;
+the privileged export defaults used elsewhere remain unchanged.
+
+The audit requires the Math layer to run in every realm, including remote
+service workers. It compares exact IEEE-754 bits for all 23 wrapped methods,
+checks distinct container seeds and an explicit seed override, toggles the
+master switch on both initially-disabled and already-masked live pages/workers,
+changes their configuration while they remain running, and recreates realms after
+configuration changes (including seed 0, which disables Math noise). Exact bits
+avoid WebDriver's numeric serialization rounding obscuring hash inputs.
+
+`cloakfox-worker-config-cache.patch` caches the authoritative cpp-first overlay
+on the main thread before workers start. `cloakfox-live-worker-math.patch`
+delivers later overlay changes/removal through the existing parent-to-content
+preference channel, including remote service-worker processes. The main thread
+parses and caches the Math seed under a mutex; worker calls read the typed seed
+without JSON parsing or IPC. The page actor reads the live shared-data overlay
+and parses it only when the configuration text changes.
+
+Math method wrappers are installed before page/worker scripts even with the
+master disabled; their results stay native while disabled or when the seed is
+zero/missing/invalid. Enabling and seed regeneration apply to existing realms,
+including captured Math references, without navigation or worker termination.
+The live checks preserve each realm's token, increasing message counter and
+function identity, cover same-/cross-origin frames and all worker types, and
+verify an update in container 2 leaves container 0 unchanged. Removal and
+malformed/invalid seed data clear a previously cached seed. Updates propagate
+asynchronously through normal browser process messaging.
+
+This probe does not establish that the browser is indistinguishable from stock
+Firefox across all APIs or fingerprints. Set `IDENTIFIER_PROBE_REPORT` to change
+its JSON path.
+
+## Window and tab activity masking
+
+```bash
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_focus_masking.py
+```
+
+The opt-in **Mask window and tab activity** setting in `about:cloakfox` is
+`cloakfox.opt.focus_masking` (default false). The master `cloakfox.enabled`
+switch also disables it. It applies to all containers and takes effect on open
+pages: web content sees `hasFocus()=true`, `hidden=false`, and
+`visibilityState="visible"`. Window/document focus events and element events
+caused by native deactivation/reactivation are private; ordinary field-to-field
+focus, typing, shadow-root retargeting and browser chrome retain native behavior.
+CSS focus state follows the last logically focused element while away.
+
+Native mouse/pointer departures from the web-content surface and corresponding
+return boundary events are private, including same- and cross-origin frames.
+Movement between elements or between an iframe and its parent keeps normal
+`out`/`leave`/`over`/`enter` events. CSS `:hover` and the corresponding styles
+retain the last hovered chain during a masked departure. Returning elsewhere
+reconciles the old frame; disabling the option or master switch clears retained
+hover immediately. Normal element movement, clicks, pointer capture, touch
+cancellation and script-dispatched events retain native behavior.
+This does not fabricate input or conceal elapsed time without editor activity.
+Firefox's Idle Detection API is not implemented: `IdleDetector` remains absent
+in pages and dedicated workers regardless of the activity option/master switch.
+
+```bash
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_pointer_activity.py
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_background_activity.py
+```
+
+Both probes run headful against disposable profiles and local servers.
+The pointer probe uses Gecko's privileged native mouse test API; unmasked
+controls must observe departures/returns before masked results count. It also
+checks CSS hover/visual styles, frame transitions, returns elsewhere, live
+switches, pointer capture and IdleDetector absence. Set
+`POINTER_PROBE_REPORT` to change its JSON output path. Set
+`POINTER_PROBE_INPUT=widget` for a headless Gecko widget/APZ input run; that
+mode verifies the trusted Gecko/IPC path without OS mouse delivery and does
+not replace the default desktop native-input check.
+The native path sends a second move at the same position to settle macOS/APZ
+ancestor routing into nested frames. It requires the intended element to be
+hovered before asserting departure masking; presses and releases are sent once.
+The background probe measures server receive times for HTTP and WebSocket
+heartbeats, rAF, page timers and dedicated-worker timers through tab switching,
+minimization and native window deactivation. Its default 35-second background
+run exceeds Gecko's normal throttling startup delay without changing scheduling
+preferences. Set `BACKGROUND_PROBE_SECONDS` to change that duration and
+`BACKGROUND_PROBE_REPORT` to change its JSON output path. It requires the Python
+`websockets` package in addition to Selenium. Connectivity and callback
+scheduling are tested; OS sleep, network outages and application-defined
+inactivity reports are outside this setting's control.
+
+Fullscreen reporting presents a logical fullscreen view: `document.fullscreen`,
+`mozFullScreen` and `window.fullScreen` are true even when the real window is
+windowed. A document without native DOM fullscreen reports its root element
+through `fullscreenElement` and `mozFullScreenElement`; the root matches CSS
+`:fullscreen`. Real fullscreen targets retain their normal getters, shadow-root
+retargeting and CSS state. Shadow roots without a real fullscreen target remain
+null. Fullscreen change notifications are private. Real entry/exit, permission
+and activation checks, rejection promises and fullscreen errors remain native.
+Browser chrome retains actual state. Sites comparing element identity or window
+geometry can still observe differences; screen capture is unaffected.
+
+`probe_fullscreen_gate.py` checks a local DOM fullscreen gate before entry and
+after real exit, including aliases, CSS, shadow DOM and live option/master
+switches. Native DOM fullscreen uses Gecko's widget-ignore test mode rather than
+macOS fullscreen animation. Set `FULLSCREEN_PROBE_REPORT` for a JSON evidence
+path (default `/tmp/cloakfox-fullscreen-gate-results.json`).
+
+Background page/worker timers follow foreground policy; animation callbacks
+use the same software refresh timer in both foreground and background. This
+can increase CPU/battery use. Navigation, detached documents, BFCache suspension,
+screen capture and monitoring by external applications are not concealed.
+This setting does not guarantee that activity cannot be inferred.
+
+The probe uses disposable profiles and local HTTP pages. Background pages report
+their observations to the local server without selecting/refocusing the tab.
+It checks same/cross-origin frames, ordinary element events and typing,
+fullscreen reporting, background scheduling and live option/master switches.
+Use `CLOAKFOX_HEADFUL=1` to exercise native window activation, minimization and
+DOM fullscreen on a desktop. The fullscreen test uses Gecko's
+`full-screen-api.ignore-widgets` test mode to avoid OS transition timing; native
+OS fullscreen entry is not covered. Window activation and minimization use real
+windows. Rebuild the native patch before running it; a settings file change
+alone cannot update an existing XUL binary.
+
+### Monaco / Firepad-X focus integration
+
+`probe_monaco_focus.py` exercises the published `@hackerrank/firepad@0.8.6`
+Monaco adapter with its declared peer version, `monaco-editor@0.18.1`. It loads
+local assets and instantiates the actual adapter; it does not connect to Firebase
+or an assessment platform. This does not establish which versions production
+assessment sites currently deploy.
+
+```bash
+monaco_probe_assets=$(mktemp -d -t cloakfox-monaco)
+npm install --prefix "$monaco_probe_assets" --ignore-scripts --no-audit --no-fund \
+  --legacy-peer-deps @hackerrank/firepad@0.8.6 monaco-editor@0.18.1 esbuild@0.25.12
+MONACO_PROBE_ASSETS="$monaco_probe_assets" CLOAKFOX_HEADFUL=1 \
+  CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_monaco_focus.py
+```
+
+The probe bundles the unmodified adapter against the page's Monaco instance.
+It checks editor-widget, editor-text, and adapter callbacks with masking off/on
+during tab departure/return, native window activation, and minimize/restore.
+It also checks ordinary field focus, explicit blur/focus, and typing/model
+updates. Reports come from the page to a local server, without refocusing the
+background editor. Baseline minimization callbacks are recorded as observations:
+macOS can minimize a window without generating editor blur/focus events.
+`MONACO_PROBE_REPORT` selects the JSON evidence path; the default is
+`/tmp/cloakfox-monaco-focus-results.json`.
+
+## Clipboard signal masking
+
+Enable **Mask clipboard signals** under Optional hardening in `about:cloakfox`.
+`cloakfox.opt.clipboard_masking` defaults to false, applies to all containers,
+and takes effect on open pages. The master `cloakfox.enabled` switch disables it.
+This is independent of **Disable clipboard API**, which controls
+`navigator.clipboard` access.
+
+Web listeners do not receive trusted copy/cut/paste events or conventional
+clipboard shortcut key events. Paste `beforeinput`/`input` report `insertText`
+and no DataTransfer; cut reports `deleteContentBackward`. Native clipboard
+editing, browser chrome, ordinary typing and script-created events retain
+their behavior. Pages still see inserted text, text changes, selections and
+input timing, so this does not make clipboard use or keystrokes undetectable.
+
+This strict mode can break editors or copy buttons that depend on clipboard
+event handlers, including editors that maintain their own document model.
+Disable it for those sites.
+
+```bash
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_clipboard_masking.py
+```
+
+The probe uses a disposable headless profile and process-local clipboard;
+it does not modify the desktop clipboard. It checks native paste/copy/cut,
+clipboard shortcuts, input metadata, contenteditable, same/cross-origin
+frames, containers, synthetic events, zero-keyCode trusted keypress,
+browser chrome, undo/redo, custom-editor compatibility and live settings.
+
+## Letterboxing / native window geometry
+
+```bash
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_letterboxing.py
+```
+
+Uses a disposable profile and local HTTP pages. Checks responsive browser chrome,
+shared viewport buckets, JavaScript/CSS/screen/visual-viewport agreement, same-
+and cross-origin frames, multiple containers, scroll offsets, reload/navigation,
+cursor default, and live master/letterboxing switches. `GECKODRIVER` may specify the driver binary;
+otherwise it must be on PATH. The probe asserts that Cloakfox actually launched.
+
+Letterboxing is enabled by default independently of global RFP (which stays off).
+While enabled, native geometry ignores saved persona viewport/screen dimensions:
+the actual content viewport drives layout and the protected screen dimensions.
+The tabs and toolbar retain Firefox's normal flexible sizing. Disabling
+`privacy.resistFingerprinting.letterboxing` restores legacy persona geometry,
+but never restores the physical browser-window size hijack.
+
 Two tools for validating the H2/H3 transport-fingerprint patches land as
 designed and match the browser they claim to mimic.
 
@@ -28,6 +301,12 @@ pip install pytest selenium
 brew install geckodriver          # macOS
 # or download geckodriver from https://github.com/mozilla/geckodriver/releases
 ```
+
+For native XUL-only edits on macOS, use `make relink` before launching an app
+bundle or packaging it. `mach build binaries` updates `dist/bin/XUL` but leaves
+the development `.app` copy stale, and `mach package` consumes that app copy.
+Use a full `make build` when changing other native executables or libraries.
+JS-only actor edits follow the loose-file workflow documented in `CLAUDE.md`.
 
 ### Run
 

@@ -70,7 +70,7 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
         if (!(prop in navProto)) continue;
         // Native WebIDL getter reports name "get <prop>" length 0; match it so
         // a getOwnPropertyDescriptor(...).get.name probe can't spot the wrapper.
-        const getter = Cu.exportFunction(function () { return value; }, pageWin);
+        const getter = Cu.exportFunction(function () { return value; }, pageWin, { functionName: prop, allowConstruct: false });
         setNativeIdentity(getter, `get ${prop}`, 0);
         Object.defineProperty(navProto, prop, {
           get: getter,
@@ -86,7 +86,7 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
     // Object.keys(navigator) (stock Firefox returns []).
     if (typeof navProto.javaEnabled === "function") {
       const orig = navProto.javaEnabled;
-      const wrapped = Cu.exportFunction(function () { return false; }, pageWin);
+      const wrapped = Cu.exportFunction(function () { return false; }, pageWin, { functionName: "javaEnabled", allowConstruct: false });
       setNativeIdentity(wrapped, orig.name, orig.length);
       Object.defineProperty(navProto, "javaEnabled", {
         value: wrapped, writable: true, enumerable: true, configurable: true,

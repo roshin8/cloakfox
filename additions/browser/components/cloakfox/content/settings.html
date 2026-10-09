@@ -23,6 +23,24 @@
   </header>
 
   <main>
+    <section class="card" id="sec-appearance">
+      <header class="card-header">
+        <span class="card-icon" data-color="violet">◐</span>
+        <div>
+          <h2>Application appearance</h2>
+          <p class="card-help">Choose the browser name and icon shown on your desktop.</p>
+        </div>
+      </header>
+      <label class="flag-row">
+        <input type="checkbox" data-pref="cloakfox.appearance.firefox" id="cfx-firefox-appearance">
+        <span><strong>Firefox appearance</strong><small>Uses Firefox names and icons after restarting. Keeps your current profile and privacy settings.</small></span>
+      </label>
+      <div class="hero-actions">
+        <span id="cfx-appearance-status" role="status" aria-live="polite">Checking application appearance…</span>
+        <button id="cfx-appearance-restart" class="btn btn-primary" hidden>Apply and restart</button>
+      </div>
+    </section>
+
     <section class="hero">
       <div class="hero-row">
         <div class="hero-col">
@@ -177,6 +195,10 @@
       </header>
       <div class="flag-grid">
         <label class="flag-row">
+          <input type="checkbox" data-pref="cloakfox.opt.focus_masking">
+          <span><strong>Mask window and tab activity</strong><small>Reports pages as focused, visible and fullscreen; hides focus, visibility and pointer departure/return events, retains hover while away, and keeps background timers active. May affect fullscreen controls and increase battery use.</small></span>
+        </label>
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.window_name_disabled">
           <span><strong>Disable window.name</strong><small>Reads return empty, writes ignored. Breaks fpscanner, popup-orchestrated auth flows.</small></span>
         </label>
@@ -187,6 +209,10 @@
         <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.clipboard_disabled">
           <span><strong>Disable clipboard API</strong><small>navigator.clipboard.read/write fails. Breaks paste-from-image and copy buttons.</small></span>
+        </label>
+        <label class="flag-row">
+          <input type="checkbox" data-pref="cloakfox.opt.clipboard_masking">
+          <span><strong>Mask clipboard signals</strong><small>Hides copy/cut/paste events, clipboard shortcuts and paste-specific input metadata. Custom editors may lose clipboard support. Text changes and ordinary typing remain visible.</small></span>
         </label>
         <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.eme_disabled">

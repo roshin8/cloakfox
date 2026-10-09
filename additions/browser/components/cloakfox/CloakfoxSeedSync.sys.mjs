@@ -107,7 +107,7 @@ function buildCloakCfg(seedB64, ucid = null) {
     // (the Math JSWindowActor only fires on windows; worker realms have
     // their own Math intrinsic). The C++ worker-spoofer injection in
     // WorkerPrivate::GetOrCreateGlobalScope reads this via MaskConfig
-    // and embeds it in a per-realm JS spoofer at worker init time.
+    // and installs native per-realm wrappers at worker init time.
     "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   };

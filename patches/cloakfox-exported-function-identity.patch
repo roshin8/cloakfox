@@ -1,0 +1,77 @@
+--- a/js/xpconnect/src/ExportHelpers.cpp
++++ b/js/xpconnect/src/ExportHelpers.cpp
+@@ -415,11 +415,11 @@
+     }
+   }
+ 
+-  // We have no way of knowing whether the underlying function wants to be a
+-  // constructor or not, so we just mark all forwarders as constructors, and
+-  // let the underlying function throw for construct calls if it wants.
++  // Preserve the existing constructor default for callers that export classes.
++  // Native API replacements can explicitly opt out of construction.
+   JSFunction* fun = js::NewFunctionByIdWithReserved(
+-      cx, FunctionForwarder, nargs, JSFUN_CONSTRUCTOR, id);
++      cx, FunctionForwarder, nargs,
++      options.allowConstruct ? JSFUN_CONSTRUCTOR : 0, id);
+   if (!fun) {
+     return false;
+   }
+@@ -487,7 +487,8 @@
+       return false;
+     }
+ 
+-    RootedId id(cx, options.defineAs);
++    RootedId id(cx, options.functionName.isVoid() ? options.defineAs
++                                                  : options.functionName);
+     if (id.isVoid()) {
+       // If there wasn't any function name specified, copy the name from the
+       // function being imported.  But be careful in case the callable we have
+@@ -522,6 +523,7 @@
+     // And now, let's create the forwarder function in the target compartment
+     // for the function the be exported.
+     FunctionForwarderOptions forwarderOptions;
++    forwarderOptions.allowConstruct = options.allowConstruct;
+     forwarderOptions.allowCrossOriginArguments =
+         options.allowCrossOriginArguments;
+     if (!NewFunctionForwarder(cx, id, funObj, forwarderOptions, rval)) {
+--- a/js/xpconnect/src/xpcprivate.h
++++ b/js/xpconnect/src/xpcprivate.h
+@@ -2335,15 +2335,21 @@
+                                  JSObject* options = nullptr)
+       : OptionsBase(cx, options),
+         defineAs(cx, JS::PropertyKey::Void()),
++        functionName(cx, JS::PropertyKey::Void()),
++        allowConstruct(true),
+         allowCrossOriginArguments(false) {}
+ 
+   virtual bool Parse() override {
+     return ParseId("defineAs", &defineAs) &&
++           ParseId("functionName", &functionName) &&
++           ParseBoolean("allowConstruct", &allowConstruct) &&
+            ParseBoolean("allowCrossOriginArguments",
+                         &allowCrossOriginArguments);
+   }
+ 
+   JS::RootedId defineAs;
++  JS::RootedId functionName;
++  bool allowConstruct;
+   bool allowCrossOriginArguments;
+ };
+ 
+@@ -2351,7 +2357,7 @@
+  public:
+   explicit FunctionForwarderOptions(JSContext* cx = xpc_GetSafeJSContext(),
+                                     JSObject* options = nullptr)
+-      : OptionsBase(cx, options), allowCrossOriginArguments(false) {}
++      : OptionsBase(cx, options), allowCrossOriginArguments(false), allowConstruct(true) {}
+ 
+   JSObject* ToJSObject(JSContext* cx) {
+     JS::RootedObject obj(cx, JS_NewObjectWithGivenProto(cx, nullptr, nullptr));
+@@ -2375,6 +2381,7 @@
+   }
+ 
+   bool allowCrossOriginArguments;
++  bool allowConstruct;
+ };
+ 
+ class MOZ_STACK_CLASS StackScopedCloneOptions : public OptionsBase {

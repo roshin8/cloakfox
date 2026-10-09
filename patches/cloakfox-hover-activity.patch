@@ -1,0 +1,290 @@
+--- a/dom/events/EventStateManager.cpp
++++ b/dom/events/EventStateManager.cpp
+@@ -15,6 +15,7 @@
+ #include "mozilla/AppShutdown.h"
+ #include "mozilla/AsyncEventDispatcher.h"
+ #include "mozilla/Attributes.h"
++#include "mozilla/AutoRestore.h"
+ #include "mozilla/ConnectedAncestorTracker.h"
+ #include "mozilla/EditorBase.h"
+ #include "mozilla/EventDispatcher.h"
+@@ -1133,10 +1134,17 @@
+       aEvent->StopCrossProcessForwarding();
+       break;
+     case eMouseExitFromWidget:
++      // Reconciliation can race with a newer return. It must only clear a
++      // still-retained chain, never a subsequently active pointer/hover state.
++      if (mouseEvent->mCloakfoxClearRetainedHover && !mCloakfoxHoverRetained) {
++        aEvent->mMessage = eVoidEvent;
++        aEvent->StopCrossProcessForwarding();
++        break;
++      }
+       // A compositor hit-test can send the returning move directly to a
+       // nested OOP frame, bypassing its flagged widget-enter event. Remember
+       // the return policy at departure too, independently in each frame.
+-      if (mouseEvent->IsTrusted() && mouseEvent->InputSourceSupportsHover() &&
++      if (!mouseEvent->mCloakfoxClearRetainedHover && mouseEvent->IsTrusted() && mouseEvent->InputSourceSupportsHover() &&
+           mouseEvent->mFlags.mOnlySystemGroupDispatchInContent &&
+           mPresContext->Document()->ShouldMaskWindowActivity()) {
+         mCloakfoxMouseEntryFromOutside = true;
+@@ -4733,7 +4741,21 @@
+   PointerEventHandler::NotifyDestroyPresContext(presContext);
+ }
+ 
++void EventStateManager::RefreshCloakfoxHoverState() {
++  if (!mPresContext->Document()->ShouldMaskWindowActivity()) {
++    if (mCloakfoxHoverRetained) {
++      ResetHoverState();
++      if (mMouseEnterLeaveHelper) {
++        mMouseEnterLeaveHelper->DidDispatchOutAndOrLeaveEvent();
++      }
++    }
++    mCloakfoxMouseEntryFromOutside = false;
++    mCloakfoxPointerEntryFromOutside = false;
++  }
++}
++
+ void EventStateManager::ResetHoverState() {
++  mCloakfoxHoverRetained = false;
+   if (mHoverContent) {
+     SetContentState(nullptr, ElementState::HOVER);
+   }
+@@ -5214,6 +5236,8 @@
+   // OOP-frame ancestor chain. DOM dispatch rechecks the live document policy.
+   newEvent->mFlags.mOnlySystemGroupDispatchInContent =
+       aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent;
++  newEvent->mCloakfoxClearRetainedHover =
++      aMouseEvent->mCloakfoxClearRetainedHover;
+ 
+   newEvent->mRelatedTarget = aRelatedTarget;
+   newEvent->mRefPoint = aMouseEvent->mRefPoint;
+@@ -5373,6 +5397,11 @@
+         remoteEvent->mExitFrom = Some(WidgetMouseEvent::ePuppet);
+         remoteEvent->mFlags.mOnlySystemGroupDispatchInContent =
+             remotePrivateBoundary;
++        remoteEvent->mCloakfoxClearRetainedHover =
++            remotePrivateBoundary &&
++            (aMouseEvent->mCloakfoxClearRetainedHover ||
++             (aRelatedContent && !aRelatedContent->OwnerDoc()
++                                     ->NodePrincipal()->IsSystemPrincipal()));
+ 
+         // mCurrentTarget is set to the new target, so we must reset it to the
+         // old target and then dispatch a cross-process event. (mCurrentTarget
+@@ -5387,6 +5416,21 @@
+         remoteEvent->mFlags.mOnlySystemGroupDispatchInContent =
+             remotePrivateBoundary;
+         HandleCrossProcessEvent(remoteEvent.get(), &status);
++      }
++    } else if (aMessage == eMouseOut && remotePrivateBoundary &&
++               (aMouseEvent->mCloakfoxClearRetainedHover ||
++                (aRelatedContent && !aRelatedContent->OwnerDoc()
++                                        ->NodePrincipal()->IsSystemPrincipal()))) {
++      // APZ no longer points at the departed OOP iframe. Its embedder's
++      // bridge provides an explicit route to clear its retained hover chain.
++      if (auto* bridge = BrowserBridgeChild::GetFrom(targetContent)) {
++        auto exit = CreateMouseOrPointerWidgetEvent(
++            aMouseEvent, eMouseExitFromWidget, relatedContent);
++        exit->mExitFrom = Some(WidgetMouseEvent::ePuppet);
++        exit->mReason = WidgetMouseEvent::eSynthesized;
++        exit->mFlags.mOnlySystemGroupDispatchInContent = true;
++        exit->mCloakfoxClearRetainedHover = true;
++        bridge->SendDispatchSynthesizedMouseEvent(*exit);
+       }
+     }
+   }
+@@ -5499,6 +5543,11 @@
+                   ("Notifying child EventStateManager (%p) of \"out\" "
+                    "event...",
+                    kidESM));
++          AutoRestore<bool> restoreClear(aMouseEvent->mCloakfoxClearRetainedHover);
++          if (aMovingInto &&
++              !aMovingInto->OwnerDoc()->NodePrincipal()->IsSystemPrincipal()) {
++            aMouseEvent->mCloakfoxClearRetainedHover = true;
++          }
+           kidESM->NotifyMouseOut(aMouseEvent, nullptr);
+         }
+       }
+@@ -5510,6 +5559,12 @@
+     return;
+   }
+ 
++  const bool retainHover =
++      !aMovingInto && !isPointer && aMouseEvent->IsTrusted() &&
++      aMouseEvent->InputSourceSupportsHover() &&
++      aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent &&
++      !aMouseEvent->mCloakfoxClearRetainedHover &&
++      mPresContext->Document()->ShouldMaskWindowActivity();
+   wrapper->WillDispatchOutAndOrLeaveEvent();
+ 
+   // Don't touch hover state if aMovingInto is non-null.  Caller will update
+@@ -5517,8 +5572,10 @@
+   // two nearby elements both deep in the DOM tree that would be defeated by
+   // switching the hover state to null here.
+   if (!aMovingInto && !isPointer) {
+-    // Unset :hover
+-    SetContentState(nullptr, ElementState::HOVER);
++    mCloakfoxHoverRetained = retainHover;
++    if (!retainHover) {
++      SetContentState(nullptr, ElementState::HOVER);
++    }
+   }
+ 
+   EnterLeaveDispatcher leaveDispatcher(
+@@ -5549,7 +5606,7 @@
+ 
+   MOZ_LOG(logModule, LogLevel::Info,
+           ("Dispatched \"out\" and/or \"leave\" events"));
+-  wrapper->DidDispatchOutAndOrLeaveEvent();
++  wrapper->DidDispatchOutAndOrLeaveEvent(retainHover);
+ }
+ 
+ void EventStateManager::RecomputeMouseEnterStateForRemoteFrame(
+@@ -5572,11 +5629,25 @@
+   LogModule* const logModule =
+       isPointer ? sPointerBoundaryLog : sMouseBoundaryLog;
+ 
++  const bool returningFromOutside =
++      !isPointer && mCloakfoxHoverRetained && aMouseEvent->IsTrusted() &&
++      mPresContext->Document()->ShouldMaskWindowActivity();
++  // Scope the flag to boundary dispatch. The original move/down/up must still
++  // reach page listeners. Keeping the mouse boundary target across departures
++  // lets a return elsewhere clear hover in nested remote frames too.
++  const bool wasPrivate = aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent;
++  auto restorePrivate = MakeScopeExit([aMouseEvent, wasPrivate] {
++    aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent = wasPrivate;
++  });
++  if (returningFromOutside) {
++    aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent = true;
++  }
+   RefPtr<OverOutElementsWrapper> wrapper = GetWrapperByEventID(aMouseEvent);
+ 
+   // If we have next "out" event target and it's the new "over" target, we don't
+   // need to dispatch "out" nor "enter" event.
+-  if (!wrapper || aContent == wrapper->GetOutEventTarget()) {
++  if (!wrapper ||
++      (aContent == wrapper->GetOutEventTarget() && !returningFromOutside)) {
+     return;
+   }
+ 
+@@ -5609,7 +5680,7 @@
+   }
+   // Firing the DOM event in the parent document could cause all kinds
+   // of havoc.  Reverify and take care.
+-  if (aContent == wrapper->GetOutEventTarget()) {
++  if (aContent == wrapper->GetOutEventTarget() && !returningFromOutside) {
+     return;
+   }
+ 
+@@ -5624,10 +5695,13 @@
+                                        isPointer ? ePointerEnter : eMouseEnter);
+ 
+   if (!isPointer) {
++    mCloakfoxHoverRetained = false;
+     SetContentState(aContent, ElementState::HOVER);
+   }
+ 
+-  NotifyMouseOut(aMouseEvent, aContent);
++  if (aContent != wrapper->GetOutEventTarget()) {
++    NotifyMouseOut(aMouseEvent, aContent);
++  }
+ 
+   wrapper->WillDispatchOverAndEnterEvent(aContent);
+ 
+--- a/dom/events/EventStateManager.h
++++ b/dom/events/EventStateManager.h
+@@ -86,8 +86,10 @@
+     // first "out" event is still ongoing.
+     mDispatchingOutOrDeepestLeaveEventTarget = mDeepestEnterEventTarget;
+   }
+-  void DidDispatchOutAndOrLeaveEvent() {
+-    StoreOverEventTargetAndDeepestEnterEventTarget(nullptr);
++  void DidDispatchOutAndOrLeaveEvent(bool aRetainHover = false) {
++    if (!aRetainHover) {
++      StoreOverEventTargetAndDeepestEnterEventTarget(nullptr);
++    }
+     mDispatchingOutOrDeepestLeaveEventTarget = nullptr;
+   }
+   [[nodiscard]] bool IsDispatchingOutEventOnLastOverEventTarget() const {
+@@ -270,6 +272,7 @@
+       nsPresContext* aPresContext);
+ 
+   void ResetHoverState();
++  void RefreshCloakfoxHoverState();
+ 
+   void SetPresContext(nsPresContext* aPresContext);
+   void ClearFrameRefs(nsIFrame* aFrame);
+@@ -1422,6 +1425,7 @@
+   bool m_haveShutdown;
+ 
+   // Suppress only the first boundary events after a chrome-to-page return.
++  bool mCloakfoxHoverRetained = false;
+   bool mCloakfoxMouseEntryFromOutside = false;
+   bool mCloakfoxPointerEntryFromOutside = false;
+ 
+--- a/dom/base/Document.cpp
++++ b/dom/base/Document.cpp
+@@ -4996,6 +4996,7 @@
+       nsLayoutUtils::PostRestyleEvent(root, RestyleHint::RestyleSubtree(),
+                                      nsChangeHint(0));
+     }
++    mPresShell->GetPresContext()->EventStateManager()->RefreshCloakfoxHoverState();
+     mPresShell->GetPresContext()->RefreshDriver()->RefreshCloakfoxActivityMask();
+     MaybeScheduleFrameRequestCallbacks();
+   }
+--- a/widget/MouseEvents.h
++++ b/widget/MouseEvents.h
+@@ -387,6 +387,9 @@
+   uint32_t mClickCount = 0;
+ 
+   // Whether the event should ignore scroll frame bounds during dispatch.
++  // A masked return to another element must clear the departed frame's hover
++  // chain, while its boundary notifications remain private. Internal only.
++  bool mCloakfoxClearRetainedHover = false;
+   bool mIgnoreRootScrollFrame = false;
+ 
+   // Whether the event should be dispatched on a target limited in capturing
+@@ -426,6 +429,7 @@
+     mExitFrom = aEvent.mExitFrom;
+     mClickCount = aEvent.mClickCount;
+     mIgnoreRootScrollFrame = aEvent.mIgnoreRootScrollFrame;
++    mCloakfoxClearRetainedHover = aEvent.mCloakfoxClearRetainedHover;
+     mIgnoreCapturingContent = aEvent.mIgnoreCapturingContent;
+     mClickEventPrevented = aEvent.mClickEventPrevented;
+     // NOTE: Intentionally not copying mSynthesizeMoveAfterDispatch, it should
+--- a/widget/nsGUIEventIPC.h
++++ b/widget/nsGUIEventIPC.h
+@@ -240,6 +240,7 @@
+     WriteParam(aWriter,
+                static_cast<const mozilla::WidgetPointerHelper&>(aParam));
+     WriteParam(aWriter, aParam.mIgnoreRootScrollFrame);
++    WriteParam(aWriter, aParam.mCloakfoxClearRetainedHover);
+     WriteParam(aWriter, aParam.mClickEventPrevented);
+     WriteParam(aWriter, static_cast<paramType::ReasonType>(aParam.mReason));
+     WriteParam(aWriter, static_cast<paramType::ContextMenuTriggerType>(
+@@ -266,6 +267,7 @@
+          ReadParam(aReader,
+                    static_cast<mozilla::WidgetPointerHelper*>(aResult)) &&
+          ReadParam(aReader, &aResult->mIgnoreRootScrollFrame) &&
++         ReadParam(aReader, &aResult->mCloakfoxClearRetainedHover) &&
+          ReadParam(aReader, &aResult->mClickEventPrevented) &&
+          ReadParam(aReader, &reason) && ReadParam(aReader, &contextMenuTrigger);
+     aResult->mReason = static_cast<paramType::Reason>(reason);
+--- a/dom/ipc/BrowserBridgeParent.cpp
++++ b/dom/ipc/BrowserBridgeParent.cpp
+@@ -214,7 +214,15 @@
+ 
+ IPCResult BrowserBridgeParent::RecvDispatchSynthesizedMouseEvent(
+     const WidgetMouseEvent& aEvent) {
+-  if (aEvent.mMessage != eMouseMove ||
++  // Reconcile a retained hover chain in this bridge's own descendant after
++  // a masked return elsewhere. This is a private exit, never fabricated input
++  // activity. Preserve the existing synthesized-move validation otherwise.
++  const bool clearRetainedHover =
++      aEvent.mMessage == eMouseExitFromWidget &&
++      aEvent.mCloakfoxClearRetainedHover &&
++      aEvent.mFlags.mOnlySystemGroupDispatchInContent &&
++      aEvent.mExitFrom == Some(WidgetMouseEvent::ePuppet);
++  if ((aEvent.mMessage != eMouseMove && !clearRetainedHover) ||
+       aEvent.mReason != WidgetMouseEvent::eSynthesized) {
+     return IPC_FAIL(this, "Unexpected event type");
+   }

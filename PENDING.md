@@ -4,6 +4,178 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-10-09 — full clean macOS build verified
+
+Extracted the full pristine Firefox archive into an isolated source tree,
+staged frozen additions/settings, and applied all **84 patches** successfully.
+The native ARM64 release build used a new object directory with compiler caches
+and Cargo incremental compilation disabled; no old build objects were reused.
+`mach build` and `mach package` both exited **0**, and `hdiutil verify` confirms
+the new DMG checksum is valid. The verified DMG is at the repository root.
+Existing source/build directories and uncommitted work were preserved.
+
+**Verification on the clean packaged app:** Math/identifier **259/259**,
+OS-native desktop pointer and headless Gecko widget/APZ **145/145 each**,
+fullscreen **13/13**, legacy workers **14 worker + 11 main signals**, headless
+focus/visibility/scheduling/live switches, clipboard, container canvas/audio/UA
+isolation, appearance, Math constants **4/4**, Node **23/23**, and scoring
+self-tests passed. The first desktop probe timed out during WebDriver startup;
+the isolated retry passed all assertions. The temporary-directory Python
+selection issue was corrected by selecting the existing Python 3.12 environment.
+
+Logs, manifests and the test report are retained under
+`tests/fingerprint/reports/clean-build-2026-10-09/`. This closes the full clean
+compilation follow-up; unrelated pending behavior and deferred work remain.
+
+## 2026-10-08 — Math settings now update existing pages and workers
+
+Removed the Math method requirement to reload pages or recreate workers after
+seed changes or enabling the master switch. Native pass-through wrappers are
+installed in web workers even when the master starts disabled; privileged
+chrome workers retain their native Math methods. Calls honor the live atomic
+master switch and their explicit container's typed seed cache. Parent preference
+updates now carry the scoped `cloakfox.s.cloak_cfg_*` overlays to content
+processes, including remote service workers; all other preference sanitization
+continues through its existing path. The main thread parses changed overlays,
+and workers perform no JSON parsing or IPC inside Math calls.
+
+The page Math actor likewise installs gated wrappers before page scripts and
+reads the live shared-data overlay, parsing only when its text changes. This
+preserves page/worker state and function references captured before enabling
+or regeneration. Missing/invalid/zero seeds pass through native results.
+Changes propagate asynchronously through the existing process messaging.
+
+**Verification:** the new tests first reproduced unchanged results on
+initially-disabled live realms and stale seeds after regeneration. The rebuilt
+packaged app passes **259/259** runtime checks: exact bits for all 23 methods;
+initially-disabled and already-masked live realms; captured Math references;
+retained realm tokens/counters/function identities; frame and worker types;
+container isolation; seed zero, removal and invalid data; native API identities,
+exception behavior and new-realm refresh. Legacy worker (**14 worker + 11 main
+signals**), container canvas/audio/UA isolation, headless focus/scheduling/live
+switches, **23/23** Node unit tests and the scoring self-test passed. The new
+84th patch applies after the pristine 83-patch stack; all five patched native
+files match the sources compiled. Native/resource builds and packaging passed.
+This live behavior covers Math methods; other persona vectors retain their own
+update behavior.
+
+## 2026-10-08 — service-worker Math configuration gap closed
+
+Remote service-worker configuration reached the main-thread IPC read but was
+not cached on the cpp-first priority path. Worker-thread reads consequently
+missed it. `cloakfox-worker-config-cache.patch` now stores that exact container
+key under the cache mutex, serves off-thread reads from the cache, and refreshes
+or removes entries during main-thread reads.
+
+The page Math actor also used seed bytes 28–31 while the worker overlay used
+16–19. It now honors the authoritative `math:trig_seed` overlay (including
+explicit overrides), with the same derived seed as the fallback. Its existing
+wrappers honor the master switch at call time, matching native worker wrappers.
+
+**Verification:** the strengthened local identifier probe reproduced the gap
+before the change, then passed **153/153** on the rebuilt packaged app. It checks
+exact bits across all 23 Math methods in pages, same-/cross-origin frames,
+dedicated/shared/service workers; distinct containers; overrides; live
+master disable/re-enable on already-masked realms; and new realms after seed
+changes, including zero. Legacy worker (**14 worker + 11 main signals**),
+container isolation (canvas/audio/UA), headless focus/visibility/scheduling/live
+switches, and **23/23** Node tests passed.
+
+All **83 patches** applied successfully in build order to a temporary tree made
+from the pristine Firefox archive's **180 target files**, with the normal
+additions/settings staging. This validates patch application; it is not a full
+clean compilation. The incremental native/resource build and packaging passed.
+The initialization-seed limitation recorded at this stage was removed by the
+live Math settings work above.
+
+## 2026-10-08 — Firefox appearance covers the extension UI
+
+Fixed the remaining extension branding in the private macOS Firefox appearance
+copy. It now changes the extension name/description, toolbar tooltip,
+extensions-panel labels, popup heading/title/mark and icon assets. The original
+installation retains the Cloakfox UI, restored when appearance is switched off.
+The built-in system add-on is hidden from `about:addons`; earlier claims that
+its entry there was visible were incorrect.
+
+The private copy changes only this built-in's resource root to
+`resource://builtin-addons/firefox-panel/`, allowing Gecko to reload cached
+metadata on the same profile without changing its ID, version, permissions,
+extension origin or privileged bridge. Both loose development resources and
+packaged `omni.ja` entries use that root. Author/homepage metadata is omitted
+from the cosmetic copy; no Mozilla authorship is asserted.
+
+**Verification:** the expanded appearance test first reproduced stale Cloakfox
+labels in Firefox mode. It now passes on development and packaged apps, including
+source preservation, unchanged bridge/permissions, stable extension origin,
+Firefox icon payloads, rendered popup/working bridge, master-switch independence
+and restoration. The actual **headful restart button** test passes in both
+directions with profile/tab preservation; relaunching the original app honors
+the saved appearance and shows the updated extension UI. **23/23** Node tests
+pass. Rebuilt resources and packaged a new DMG. This fixes these visible labels;
+it does not make the custom browser or popup indistinguishable from Firefox.
+
+## 2026-10-08 — retained CSS hover and page-visible identifier audit
+
+Implemented retained native `:hover` state under the existing opt-in
+`cloakfox.opt.focus_masking` setting. Trusted departures preserve the hovered
+chain and styles; returning to another element reconciles the old chain,
+including nested cross-origin frames. Normal movement, shadow-DOM menus,
+pointer capture and script-dispatched events continue to work. Turning the
+option or master switch off clears retained hover on open pages. The changes
+are tracked in `patches/cloakfox-hover-activity.patch`.
+
+Replaced evaluated worker Math wrappers with native C++ functions, removing
+the reproduced `CloakfoxWorker.js` exception filename and leaving
+`Function.prototype.toString` native. Actor exports now opt into native names
+and non-constructor behavior; unrelated privileged exports keep their existing
+defaults. Timer wrappers delegate non-number delays to the native implementation
+so caller-owned conversion errors keep their native type and stack. See
+`patches/cloakfox-native-worker-math.patch` and
+`patches/cloakfox-exported-function-identity.patch`.
+
+**Verification:** rebuilt and packaged. The OS-native desktop and headless
+trusted Gecko widget/APZ hover probes each passed **145/145**, including
+disabled/master-disabled controls, frame cleanup, shadow menus, live switches
+and capture. Input must reach the intended element before departure checks
+count. The native path uses two moves at the same position to settle macOS/APZ
+ancestor routing into nested frames; button presses/releases are sent once.
+The page MAIN-world identifier audit passed **92/92** across containers 0 and 2,
+frames and worker types.
+Focus, fullscreen (**13/13**), clipboard, legacy worker (**14 worker + 11 main
+signals**) regressions passed, as did **23/23** Node tests. All three new
+patches round-trip against the generated sources. The disk-image checksum is
+valid. These checks do not establish browser-wide indistinguishability from
+stock Firefox.
+
+**Follow-up:** the service-worker Math gap and missing pristine patch-application
+check were resolved by the later service-worker configuration work above.
+
+## 2026-09-07 — SAB timing privacy: PENDING, protection off
+
+User decision: defer SharedArrayBuffer timing mitigation. Keep SAB, Atomics,
+and shared WebAssembly available; do not enable worker jitter or serialization
+by default. The experimental `codex/timing-signal-coverage` branch already has
+`cloakfox.sab_worker_timing_masking=false`; Firefox's
+`dom.workers.serialized-sab-access` default is also false. PerformanceObserver
+timing coverage is separate and is not being disabled.
+
+- **Evidence so far:** native SAB measurements were similar across actual
+  containers, but reliable cross-container tracking has not been demonstrated.
+  The installed test build did not apply the requested distinct personas, and
+  the experiment used only one physical device.
+- **Cost:** serialization suppressed the tested clock but increased completion
+  time by 15.3% in an exploratory two-worker benchmark, above the agreed 5%
+  budget. This is not a 15.3% slowdown estimate for ordinary browsing.
+- **Revisit when:** a runnable current build passes distinct-persona checks;
+  then test cross-container/session matching with other devices as negative
+  controls, and measure false matches, compatibility, and performance before
+  deciding whether any mitigation is worthwhile. Do not mark the signal safe
+  or the privacy gap closed merely because work is deferred.
+
+Detailed measurements are currently in the timing worktree under
+`docs/superpowers/specs/2026-09-05-sab-privacy-measurements.md` and
+`docs/superpowers/specs/2026-09-05-sab-linkability-baseline.md`.
+
 ## 2026-08-01 — font subsystem: #3 was dead, #4 wired (per-container fonts)
 
 Investigated the per-container font vectors under systematic debugging. Two

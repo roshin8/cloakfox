@@ -55,7 +55,7 @@ index 1cfa4b8497..bdf8d7202e 100644
        }
      }
  
-+    if (ChromeUtils.camouGetBool("showcursor", true)) {
++    if (ChromeUtils.camouGetBool("showcursor", false)) {
 +      let cursorFollower = document.createElement("div");
 +      cursorFollower.id = "cursor-highlighter";
 +      cursorFollower.style.cssText = `

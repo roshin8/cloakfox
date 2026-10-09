@@ -1,0 +1,116 @@
+diff --git a/toolkit/xre/MacLaunchHelper.mm b/toolkit/xre/MacLaunchHelper.mm
+--- a/toolkit/xre/MacLaunchHelper.mm
++++ b/toolkit/xre/MacLaunchHelper.mm
+@@ -68,7 +68,19 @@
+         [NSWorkspaceOpenConfiguration configuration];
+     [config setArguments:aArguments];
+     [config setCreatesNewApplicationInstance:YES];
+-    [config setEnvironment:[[NSProcessInfo processInfo] environment]];
++    // NSProcessInfo can cache the startup environment. Restart state (profile,
++    // headless and automation flags) is added later, so read the current one.
++    NSMutableDictionary* environment = [NSMutableDictionary dictionary];
++    for (char** entry = *_NSGetEnviron(); *entry; ++entry) {
++      NSString* variable = [NSString stringWithUTF8String:*entry];
++      NSRange separator = [variable rangeOfString:@"="];
++      if (separator.location != NSNotFound) {
++        environment[[variable substringToIndex:separator.location]] =
++            [variable substringFromIndex:separator.location + 1];
++      }
++    }
++    [environment removeObjectForKey:@"CLOAKFOX_RESTART_BUNDLE"];
++    [config setEnvironment:environment];
+ 
+     [[NSWorkspace sharedWorkspace]
+         openApplicationAtURL:[NSURL fileURLWithPath:launchPath]
+diff --git a/browser/components/BrowserGlue.sys.mjs b/browser/components/BrowserGlue.sys.mjs
+--- a/browser/components/BrowserGlue.sys.mjs
++++ b/browser/components/BrowserGlue.sys.mjs
+@@ -381,6 +381,13 @@
+   // runs on startup, before the first command line handler is invoked
+   // (i.e. before the first window is opened)
+   _beforeUIStartup: function BG__beforeUIStartup() {
++    // Honor the saved macOS presentation without changing profile identity.
++    try {
++      const { initCloakfoxAppearance } = ChromeUtils.importESModule(
++        "resource:///modules/CloakfoxAppearance.sys.mjs"
++      );
++      initCloakfoxAppearance();
++    } catch (error) { Cu.reportError(error); }
+     // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
+     // cloakfox.s.* (cpp-first namespace), then snapshot all cloakfox
+     // seeds into sharedData so JSWindowActor children can read them.
+diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
+--- a/browser/installer/package-manifest.in
++++ b/browser/installer/package-manifest.in
+@@ -203,6 +203,7 @@
+ @RESPATH@/modules/*
+ @RESPATH@/moz-src/*
+ @RESPATH@/browser/actors/*
++@RESPATH@/browser/appearance/*
+ @RESPATH@/actors/*
+ 
+ ; ANGLE GLES-on-D3D rendering library
+diff --git a/toolkit/xre/nsCommandLineServiceMac.mm b/toolkit/xre/nsCommandLineServiceMac.mm
+--- a/toolkit/xre/nsCommandLineServiceMac.mm
++++ b/toolkit/xre/nsCommandLineServiceMac.mm
+@@ -10,6 +10,7 @@
+ #include "MacApplicationDelegate.h"
+ #include "MacAutoreleasePool.h"
+ #include <cstring>
++#include <cstdlib>
+ #include <Cocoa/Cocoa.h>
+ 
+ namespace CommandLineServiceMac {
+@@ -53,8 +54,32 @@
+   sArgsUsed = 0;
+ 
+   NSString* path = [NSString stringWithUTF8String:argv[0]];
++  NSString* appearancePath = nil;
++  if (forRestart) {
++    const char* requested = getenv("CLOAKFOX_RESTART_BUNDLE");
++    if (requested && *requested) {
++      NSString* candidate = [NSString stringWithUTF8String:requested];
++      unsetenv("CLOAKFOX_RESTART_BUNDLE");
++      NSBundle* bundle = [NSBundle bundleWithPath:candidate];
++      if ([candidate isAbsolutePath] && [candidate hasSuffix:@".app"] &&
++          ([[bundle bundleIdentifier] isEqualToString:@"org.mozilla.cloakfox"] ||
++           [[bundle bundleIdentifier]
++               isEqualToString:@"org.mozilla.cloakfox.appearance.firefox"]) &&
++          [[NSFileManager defaultManager]
++              isExecutableFileAtPath:[bundle executablePath]]) {
++        appearancePath = candidate;
++      }
++    }
++  }
++  // The appearance copy has a renamed executable. It still needs the normal
++  // updater relauncher so arguments, session and Dock handoff are preserved.
++  bool isAppearanceExecutable =
++      [[path lastPathComponent] isEqualToString:@"firefox"] &&
++      [[[NSBundle mainBundle] bundleIdentifier]
++          isEqualToString:@"org.mozilla.cloakfox.appearance.firefox"];
+   if (forRestart &&
+-      [path hasSuffix:[NSString stringWithUTF8String:MOZ_APP_NAME]]) {
++      ([path hasSuffix:[NSString stringWithUTF8String:MOZ_APP_NAME]] ||
++       isAppearanceExecutable)) {
+     // When we restart, we ask the updater binary to restart us instead.
+     // This avoids duplicate Dock icons, by giving this process a chance to
+     // shut down before the new process is launched.
+@@ -62,8 +87,16 @@
+     NSString* updaterPath = [[path stringByDeletingLastPathComponent]
+         stringByAppendingPathComponent:
+             @"updater.app/Contents/MacOS/org.mozilla.updater"];
+-    AddToCommandLine(updaterPath.UTF8String);
+-    AddToCommandLine("--openAppBundle");
++    // Cloakfox builds may omit the updater. NSWorkspace can relaunch the
++    // bundle directly in that case; never emit updater-only arguments.
++    if ([[NSFileManager defaultManager] isExecutableFileAtPath:updaterPath]) {
++      AddToCommandLine(updaterPath.UTF8String);
++      AddToCommandLine("--openAppBundle");
++    }
++  }
++
++  if (appearancePath) {
++    path = appearancePath;
+   }
+ 
+   // We adjust the path to point to the .app bundle, rather than the executable
