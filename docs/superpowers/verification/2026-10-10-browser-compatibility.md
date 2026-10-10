@@ -116,3 +116,45 @@ Local reports: `/tmp/cloakfox-cloudflare-loop-20261010/result.json` and
 `/tmp/cloakfox-cloudflare-loop-headers-20261010/result.json`. The latter contains
 only cookie names/attributes and request metadata, not cookie values. Console
 messages in scratch reports may contain private URLs; do not publish them raw.
+
+## Native-session comparison resolves the diagnostic loop
+
+A normal CLI launch of the signed fixed app, without Selenium, geckodriver or
+Marionette, reached the CodeSignal login page with the privacy master enabled.
+A second, fresh native profile also passed after one authorized checkbox click:
+the original-link response was HTTP 302 to CodeSignal, and the native
+accessibility tree showed **Welcome to CodeSignal / Log in to access this page**.
+No sign-in or assessment was performed.
+
+For a controlled comparison, `prefs.js` and `user.js` from that passing native
+profile were copied into a fresh disposable Selenium profile, excluding cookies
+and other site state. Both runs used the same diagnostic app and the same
+`cloakfox.s.cloak_cfg_0` configuration (SHA-256 of sorted JSON:
+`15d00dd11beb8d7d0b766d5dbc50557ac930f8ba128cee702407ad88573cd2d2`),
+including the same Linux Firefox UA. Both retained `cloakfox.enabled=true` in
+`user.js`. After an authorized checkbox click, the Selenium session saved and
+sent `cf_clearance` but again received HTTP 403 with a new challenge. Its UI
+explicitly reported remote control by Marionette. No privacy exceptions or
+automation-detection overrides were applied.
+
+This isolates a reproducible automation-associated failure in the diagnostic
+environment; it does not reveal Cloudflare's private decision logic.
+[Cloudflare's supported-browser documentation](https://developers.cloudflare.com/cloudflare-challenges/reference/supported-browsers/)
+explicitly excludes Selenium/automation frameworks from production challenge
+solving. Native challenge passage is now verified for the fixed payload with
+privacy enabled; the automation result must not be treated as native failure.
+
+The user's running Firefox-appearance copy and `/Applications/Cloakfox.app`
+both still report BuildID `20261010162253`; the running appearance marker points
+to `/Applications/Cloakfox.app`. They predate the fixed `20261010182521` payload.
+They were not replaced, restarted or modified during diagnosis. To use the fix,
+install the new DMG and launch the updated original Cloakfox app after quitting
+the old appearance instance; the appearance manager compares source fingerprints
+when preparing its copy and rebuilds it from the updated source.
+
+Native logs: `/tmp/cloakfox-cf-native-20261010/cloakfox-on-clean/`.
+Matched Selenium report:
+`/tmp/cloakfox-cf-native-20261010/selenium-same-persona/result.json`.
+The local diagnostic clone uses a distinct bundle ID solely so the native UI
+tool can select it among concurrent browser processes. Its engine/settings are
+otherwise the fixed app's; both comparison runs used that same clone.
