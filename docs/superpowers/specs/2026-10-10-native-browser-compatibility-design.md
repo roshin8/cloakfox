@@ -1,7 +1,7 @@
 # Cloakfox native browser compatibility design
 
 **Date:** 2026-10-10
-**Status:** Revised written spec awaiting user review
+**Status:** Approved by the user on 2026-10-10; implementation planning
 
 ## Requested outcome
 
