@@ -1,5 +1,24 @@
 # Fingerprint tests
 
+## Disabled WebGPU null safety
+
+`probe_webgpu_null_safety.py` checks that the disabled native GPU getter safely
+returns null in actor-free blank frames instead of crashing the content process.
+It also covers ordinary/srcdoc/navigated realms, retained getters after
+navigation, master-off/native-enabled controls and the worker WebGPU binding.
+Each read must complete in the original live document; a null WebDriver response
+cannot pass as the intended native null value. It uses disposable profiles and
+loopback pages, without requesting any GPU adapter/device.
+
+```sh
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  REPORT_DIR=/tmp/cloakfox-webgpu-results \
+  python3 tests/fingerprint/probe_webgpu_null_safety.py
+```
+
+Set `CLOAKFOX_HEADFUL=1` to inspect the local fixture. Run against the final
+packaged app as well as the development binary to detect a stale XUL payload.
+
 ## Website appearance
 
 Firefox Settings → General → Website appearance supports **Automatic**, **Light**

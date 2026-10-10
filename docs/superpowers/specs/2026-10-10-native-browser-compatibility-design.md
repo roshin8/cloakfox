@@ -72,8 +72,11 @@ local reproducer before implementation is considered complete.
 ## Cloudflare crash repair
 
 Make the native WebIDL contract match the existing disabled-WebGPU return:
-declare `GPU? gpu` in `WebGPU.webidl`. This adds the generated null check
-before DOM wrapping, preserving the intentional no-GPU result. Keep the native
+declare `GPU? gpu` in `WebGPU.webidl`. Nullable attributes make Gecko generate
+calls to `GetGpu()` rather than `Gpu()`, so rename the matching declaration and
+definition in both Navigator and WorkerNavigator without changing their bodies.
+This adds the generated null check before DOM wrapping, preserving the
+intentional no-GPU result. Keep the native
 getter, `[SameObject]`, secure-context restriction, and existing actor behavior.
 Master-off and WebGPU-enabled cases still return their native GPU object.
 

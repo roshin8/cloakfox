@@ -31,9 +31,9 @@
 
 ## File Map
 
-- `patches/cloakfox-webgpu-null-safety.patch`: one WebIDL contract change.
+- `patches/cloakfox-webgpu-null-safety.patch`: one WebIDL contract change and the matching native getter names.
 - `patches/order.txt`: register the patch immediately after `navigator-extra-spoofing.patch`.
-- `firefox-src/dom/webidl/WebGPU.webidl`: applied build input; ignored native checkout, not the outer-repo deliverable.
+- `firefox-src/dom/webidl/WebGPU.webidl`, `dom/base/Navigator.{h,cpp}`, `dom/workers/WorkerNavigator.{h,cpp}`: applied build inputs; ignored native checkout, not outer-repo deliverables.
 - `tests/fingerprint/probe_webgpu_null_safety.py`: local frame/worker regression, process-liveness assertion, JSON report.
 - `tests/fingerprint/README.md`: commands and limits of the verification.
 - `docs/superpowers/verification/2026-10-10-browser-compatibility.md`: append build, payload and live-widget evidence; shared only if both plans execute.
@@ -46,7 +46,7 @@
 - Consumes: `Navigator::Gpu() -> mozilla::webgpu::Instance*`; null is the intentional disabled return. `WorkerNavigator::Gpu()` continues returning a native instance.
 - Produces: nullable generated `Navigator_Binding::get_gpu` and `WorkerNavigator_Binding::get_gpu`; probe invocation `CLOAKFOX_BIN=<binary> REPORT_DIR=<directory> python3 tests/fingerprint/probe_webgpu_null_safety.py`, exit zero only if every matrix case and liveness check passes.
 
-- [ ] **Step 1: Add the local probe and explicit survival assertion.** Use `ThreadingHTTPServer` on `127.0.0.1:0`, a disposable profile per master case, and `Service(service_args=['--allow-system-access'], log_output=<report>/gecko-<case>.log)`. Read the binary from `CLOAKFOX_BIN`, never a fixed installed app path. Copy the already reproduced minimal page from `/tmp/cloakfox-compat-20261010/repro_gpu.py` into permanent test code, then extend the page to normal, blank, srcdoc, and navigated frames. The blank-frame core is:
+- [x] **Step 1: Add the local probe and explicit survival assertion.** Use `ThreadingHTTPServer` on `127.0.0.1:0`, a disposable profile per master case, and `Service(service_args=['--allow-system-access'], log_output=<report>/gecko-<case>.log)`. Read the binary from `CLOAKFOX_BIN`, never a fixed installed app path. Copy the already reproduced minimal page from `/tmp/cloakfox-compat-20261010/repro_gpu.py` into permanent test code, then extend the page to normal, blank, srcdoc, and navigated frames. The blank-frame core is:
 
 ```javascript
 const frame = document.createElement('iframe');
@@ -73,7 +73,7 @@ assert driver.execute_script('return document.body.dataset.probeAlive') == 'yes'
 
 The setup script captures the realm/getter without invoking it; Python captures the token **before** invoking runCrashProbe. On exceptions, preserve the report and fail; quit the disposable driver in `finally`. After quit, fail on `exited on signal 11`, `EXC_BAD_ACCESS`, or a crashed-frame marker in the corresponding native log. Never interpret a null WebDriver response as the expected native null result.
 
-- [ ] **Step 2: Run the red test on the current payload.**
+- [x] **Step 2: Run the red test on the current payload.**
 
 ```sh
 CLOAKFOX_BIN=/Applications/Cloakfox.app/Contents/MacOS/cloakfox REPORT_DIR=/tmp/cloakfox-webgpu-before python3 tests/fingerprint/probe_webgpu_null_safety.py
@@ -81,7 +81,7 @@ CLOAKFOX_BIN=/Applications/Cloakfox.app/Contents/MacOS/cloakfox REPORT_DIR=/tmp/
 
 Expected: the master-off control passes; master-on blank-frame case fails the completion/liveness assertion or records signal 11. This launches only disposable profiles.
 
-- [ ] **Step 3: Apply the exact nullable change as an ordered patch.**
+- [x] **Step 3: Apply the exact nullable change as an ordered patch.**
 
 ```diff
  interface mixin NavigatorGPU {
@@ -97,9 +97,12 @@ patch --dry-run -d firefox-src -p1 -i ../patches/cloakfox-webgpu-null-safety.pat
 patch -d firefox-src -p1 -i ../patches/cloakfox-webgpu-null-safety.patch
 ```
 
-Do not change `Navigator::Gpu()`, `Instance::PrefEnabled`, worker implementation, persona defaults or actors.
+The compiler requires nullable getters to be named GetGpu. Rename the page and
+worker declarations/definitions from Gpu to GetGpu without changing either body.
+Do not change Instance::PrefEnabled, persona defaults or actors. Compilation
+confirmed that the nullable binding inserts a null return before DOM wrapping.
 
-- [ ] **Step 4: Complete the value and realm matrix.** In master-on normal/srcdoc/navigated pages the actor may return undefined; record that presentation without replacing it. In an unpatched blank frame assert native null when disabled. For the enabled-native-object control, disable only `navigator:webgpu:disabled` in the disposable overlay and exercise a blank realm. Master-off and enabled-native blank getters must return an object with `a === b`. Test descriptor receiver rejection on `{}` and `[native code]` on the raw native getter. Create a dedicated worker on the local secure loopback origin and check `typeof navigator.gpu === 'object'` and stable object identity; the mixin nullability must not disable worker GPUs.
+- [x] **Step 4: Complete the value and realm matrix.** In master-on normal/srcdoc/navigated pages the actor may return undefined; record that presentation without replacing it. In an unpatched blank frame assert native null when disabled. For the enabled-native-object control, disable only `navigator:webgpu:disabled` in the disposable overlay and exercise a blank realm. Master-off and enabled-native blank getters must return an object with `a === b`. Test descriptor receiver rejection on `{}` and `[native code]` on the raw native getter. Create a dedicated worker on the local secure loopback origin and check `typeof navigator.gpu === 'object'` and stable object identity; the mixin nullability must not disable worker GPUs.
 
 ```javascript
 // Worker fixture; post the result without requesting any adapter/device.
@@ -109,17 +112,17 @@ postMessage({type: typeof a, same: a === navigator.gpu, nonnull: a !== null});
 
 For navigation, retain `{getter, navigator}` in the parent, navigate the child to another local document, then call the saved getter on its original receiver. Assert survival independently; a torn-down realm may reject, but must never crash or access a new window's data. Obtain a fresh getter from the new realm and assert its expected actor/native result.
 
-- [ ] **Step 5: Build the WebIDL change and run green verification.** From `firefox-src` run `./mach build` (a WebIDL change needs binding regeneration, not only `mach build binaries`). Use `obj-aarch64-apple-darwin/dist/bin/cloakfox` for the dev probe. Verify the generated `obj-aarch64-apple-darwin/dom/bindings/NavigatorBinding.cpp` nullable branch handles null before calling `GetOrCreateDOMReflector`. Run the probe and existing worker/navigator regressions:
+- [x] **Step 5: Build the WebIDL change and run green verification.** From `firefox-src` run `./mach build` (a WebIDL change needs binding regeneration, not only `mach build binaries`). Use the bundled `obj-aarch64-apple-darwin/dist/Cloakfox.app/Contents/MacOS/cloakfox` for the dev probe (the bare launcher produced mismatched runtime identity during verification). Verify the generated `obj-aarch64-apple-darwin/dom/bindings/NavigatorBinding.cpp` nullable branch handles null before calling `GetOrCreateDOMReflector`. Run the probe and existing worker/navigator regressions:
 
 ```sh
-CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/bin/cloakfox" REPORT_DIR=/tmp/cloakfox-webgpu-after python3 tests/fingerprint/probe_webgpu_null_safety.py
-CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/bin/cloakfox" python3 tests/fingerprint/probe_navigator_coherence.py
-CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/bin/cloakfox" python3 tests/fingerprint/probe_workers.py
+CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/Cloakfox.app/Contents/MacOS/cloakfox" REPORT_DIR=/tmp/cloakfox-webgpu-after python3 tests/fingerprint/probe_webgpu_null_safety.py
+CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/Cloakfox.app/Contents/MacOS/cloakfox" python3 tests/fingerprint/probe_navigator_coherence.py
+CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/Cloakfox.app/Contents/MacOS/cloakfox" python3 tests/fingerprint/probe_workers.py
 ```
 
 Expected: no process deaths, enabled native identity intact, and existing tests pass. Add the permanent probe command and evidence limits to the README.
 
-- [ ] **Step 6: Commit only this deliverable.**
+- [x] **Step 6: Commit only this deliverable.**
 
 ```sh
 git add patches/cloakfox-webgpu-null-safety.patch patches/order.txt tests/fingerprint/probe_webgpu_null_safety.py tests/fingerprint/README.md
@@ -134,9 +137,9 @@ git commit -m "fix: make the disabled native WebGPU binding null-safe"
 - Consumes: Task 1's green probe and compiled native binary; current macOS build/package configuration.
 - Produces: mounted-payload probe report, SHA-256/signature evidence, and read-only Cloudflare outcome with a precise statement of what was verified.
 
-- [ ] **Step 1: Check freshness and preserve the build baseline.** Record outer-repo HEAD, native patch diff, `upstream.sh`, application BuildID, and SHA-256 of the compiled executable/XUL. If the screen plan executes immediately afterward, combine this task with its final packaging task and run **both** probe sets on that payload. The Cloudflare patch remains independently buildable/testable; do not do two full packages unnecessarily.
+- [x] **Step 1: Check freshness and preserve the build baseline.** Record outer-repo HEAD, native patch diff, `upstream.sh`, application BuildID, and SHA-256 of the compiled executable/XUL. If the screen plan executes immediately afterward, combine this task with its final packaging task and run **both** probe sets on that payload. The Cloudflare patch remains independently buildable/testable; do not do two full packages unnecessarily.
 
-- [ ] **Step 2: Produce a newly named signed DMG.** Run `./mach package` inside `firefox-src`. Inspect the resulting app signature before creating the final DMG; if the package output is unsigned, sign a separate staging copy, never `/Applications/Cloakfox.app`:
+- [x] **Step 2: Produce a newly named signed DMG.** Run `./mach package` inside `firefox-src`. Inspect the resulting app signature before creating the final DMG; if the package output is unsigned, sign a separate staging copy, never `/Applications/Cloakfox.app`:
 
 ```sh
 codesign --force --deep --sign - /tmp/cloakfox-compat-package/Cloakfox.app
@@ -147,11 +150,11 @@ shasum -a 256 cloakfox-146.0.1-beta.25-browser-compat-20261010.dmg
 
 Create a fresh staging directory containing only the package's app and an Applications symlink. If that exact output filename already exists, choose a timestamp suffix; do not use `-ov` on a preexisting final artifact. This is ad-hoc local signing, not a Developer ID/notarization claim.
 
-- [ ] **Step 3: Mount this DMG read-only at a unique `/tmp` path and rerun Task 1's probe on its actual executable.** Compare its executable and XUL SHA-256 with the staging app, verify `codesign --verify --deep --strict`, and preserve BuildID/report before detaching only our mount. A stale packaged library is a test failure even if the dev build passed.
+- [x] **Step 3: Mount this DMG read-only at a unique `/tmp` path and rerun Task 1's probe on its actual executable.** Compare its executable and XUL SHA-256 with the staging app, verify `codesign --verify --deep --strict`, and preserve BuildID/report before detaching only our mount. A stale packaged library is a test failure even if the dev build passed.
 
-- [ ] **Step 4: Inspect the user-supplied CapitalOne link in the new app using a disposable profile with Firefox identity and the master on.** Observe the Cloudflare frame and capture a screenshot/native log. Do not click a CAPTCHA, sign in, or start an assessment. A normal verifying/challenge widget with no crashed frame is the repair criterion; acceptance is recorded separately. If it still crashes, obtain the new stack and continue diagnosis rather than declaring the patch sufficient.
+- [x] **Step 4: Inspect the user-supplied CapitalOne link in the new app using a disposable profile with Firefox identity and the master on.** Observe the Cloudflare frame and capture a screenshot/native log. Do not click a CAPTCHA, sign in, or start an assessment. A normal verifying/challenge widget with no crashed frame is the repair criterion; acceptance is recorded separately. If it still crashes, obtain the new stack and continue diagnosis rather than declaring the patch sufficient.
 
-- [ ] **Step 5: Audit patch reproducibility and document the measured result.** Run `bash scripts/test-patches.sh` against its separate extraction, inspect all results, and compare the repaired WebIDL there with the applied build input before its cleanup (or retain a separate scratch extraction for that comparison). Record any unrelated preexisting audit failures without rewriting unrelated patches. Commit the verification document only after evidence exists:
+- [x] **Step 5: Audit patch reproducibility and document the measured result.** Run `bash scripts/test-patches.sh` against its separate extraction, inspect all results, and compare the repaired WebIDL there with the applied build input before its cleanup (or retain a separate scratch extraction for that comparison). Record any unrelated preexisting audit failures without rewriting unrelated patches. Commit the verification document only after evidence exists:
 
 ```sh
 git add docs/superpowers/verification/2026-10-10-browser-compatibility.md
@@ -161,3 +164,7 @@ git commit -m "docs: record signed browser compatibility verification"
 ## Self-review
 
 Spec coverage: nullable contract, actor preservation, master/native worker controls and frame survival are Task 1; latest-source preservation, independent build, fresh signed payload and bounded live verification are Task 2. All five Review Focus cases have owning checks. No screen feature, Chrome identity override, challenge bypass or production-profile change is included.
+
+## Measured completion
+
+Implemented and verified on 2026-10-10. See [verification record](../verification/2026-10-10-browser-compatibility.md) for red/green results, final payload hashes, build/packaging rulings and the live Cloudflare checkbox screenshot. No challenge acceptance or TestDome implementation is claimed.
