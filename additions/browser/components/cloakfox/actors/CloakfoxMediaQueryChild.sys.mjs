@@ -4,7 +4,8 @@
 
 /* Cloakfox: pin fingerprinting-relevant CSS media features so window.matchMedia
  * reports persona-coherent, host-independent values instead of leaking the real
- * device/OS (prefers-color-scheme, pointer/hover, forced-colors, color-gamut …).
+ * device/OS (pointer/hover, forced-colors, color-gamut …). Color scheme follows
+ * Firefox's native Website appearance preferences, including live changes.
  *
  * Implemented by overriding the INHERITED MediaQueryList.prototype.matches
  * getter (native flags, native identity) — no own-property tell.
@@ -20,20 +21,18 @@
  *     controlled feature; otherwise we defer to native.
  *
  * This is what keeps the answer consistent with reality and free of the
- * "impossible result" oracle in BOTH directions, e.g. on a persona pinned to
- * prefers-color-scheme:light while the host is dark:
- *   "(prefers-color-scheme: dark)"                       -> false  (pinned)
- *   "(prefers-color-scheme: dark) and (min-width: 100px)"-> false  (pin ∧ native)
- *   "(prefers-color-scheme: light) and (min-width: 9e9px)"-> false (pin ∧ native)
- * A naive "defer the whole query when any clause is uncontrolled" would return
- * the host's real dark value for the middle case — a tell. Note: this covers
+ * "impossible result" oracle in BOTH directions, e.g. on a fine-pointer persona:
+ *   "(pointer: coarse)"                       -> false  (pinned)
+ *   "(pointer: coarse) and (min-width: 100px)" -> false  (pin ∧ native)
+ *   "(pointer: fine) and (min-width: 9e9px)"   -> false (pin ∧ native)
+ * A naive whole-query deferral would expose the host's coarse pointer for the
+ * middle case. Note: this covers
  * the JS matchMedia API only, not CSS @media in stylesheets (that needs C++).
  */
 
 // Desktop-plausible pins. color-gamut is OS-derived (macOS panels are wide-gamut).
 function pinsForOS(os) {
   return {
-    "prefers-color-scheme": "light",
     "prefers-reduced-motion": "no-preference",
     "prefers-contrast": "no-preference",
     "forced-colors": "none",

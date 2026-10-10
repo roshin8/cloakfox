@@ -1,0 +1,102 @@
+diff --git a/intl/components/src/Locale.cpp b/intl/components/src/Locale.cpp
+--- a/intl/components/src/Locale.cpp
++++ b/intl/components/src/Locale.cpp
+@@ -29,30 +29,13 @@
+ using namespace intl::LanguageTagLimits;
+ 
+ 
+-// Helper methods for header file
+-
+-const char* Locale::GetCamouLanguage() {
+-  if (auto lang = MaskConfig::GetString("locale:language"))
+-    return lang.value().c_str();
+-  return nullptr;
+-}
+-
+-const char* Locale::GetCamouRegion() {
+-  if (auto region = MaskConfig::GetString("locale:region"))
+-    return region.value().c_str();
+-  return nullptr;
+-}
+-
+-const char* Locale::GetCamouScript() {
+-  if (auto script = MaskConfig::GetString("locale:script"))
+-    return script.value().c_str();
+-  return nullptr;
+-}
+-
+ // Publicly exposed methods
+ 
+ const char* Locale::GetCamouLocale() {
+-  static std::string locale;
++  // This storage owns the returned pointer and must not retain a disabled
++  // or removed override. Keep it local to the calling thread.
++  static thread_local std::string locale;
++  locale.clear();
+ 
+   if (auto lang = MaskConfig::GetString("locale:language"))
+     if (auto region = MaskConfig::GetString("locale:region"))
+diff --git a/intl/components/src/Locale.h b/intl/components/src/Locale.h
+--- a/intl/components/src/Locale.h
++++ b/intl/components/src/Locale.h
+@@ -209,11 +209,8 @@
+ 
+  private:
+   LanguageSubtag mLanguage = {};
+-  mutable LanguageSubtag mCamouLanguage = {};
+   ScriptSubtag mScript = {};
+-  mutable ScriptSubtag mCamouScript = {};
+   RegionSubtag mRegion = {};
+-  mutable RegionSubtag mCamouRegion = {};
+ 
+   VariantsVector mVariants;
+   ExtensionsVector mExtensions;
+@@ -342,28 +339,13 @@
+     }
+   };
+ 
+-  const LanguageSubtag& Language() const {
+-    if (const char* lang = GetCamouLanguage()) {
+-      mCamouLanguage.Set(mozilla::Span<const char>(lang, strlen(lang)));
+-      return mCamouLanguage;
+-    }
+-    return mLanguage;
+-  }
+-  const ScriptSubtag& Script() const {
+-    if (const char* script = GetCamouScript()) {
+-      mCamouScript.Set(mozilla::Span<const char>(script, strlen(script)));
+-      return mCamouScript;
+-    }
+-    return mScript;
+-  }
+-  const RegionSubtag& Region() const {
+-    if (const char* region = GetCamouRegion()) {
+-      mCamouRegion.Set(mozilla::Span<const char>(region, strlen(region)));
+-      return mCamouRegion;
+-    }
+-    return mRegion;
+-  }
+-  
++  // Locale components describe the parsed tag, including explicit tags used
++  // by browser language matching. Apply persona defaults only when choosing
++  // a default locale, never while reading an already parsed tag.
++  const LanguageSubtag& Language() const { return mLanguage; }
++  const ScriptSubtag& Script() const { return mScript; }
++  const RegionSubtag& Region() const { return mRegion; }
++
+   auto Variants() const { return SubtagEnumeration(mVariants); }
+   auto Extensions() const { return SubtagEnumeration(mExtensions); }
+   Maybe<Span<const char>> PrivateUse() const {
+@@ -548,12 +530,6 @@
+ 
+   static const char* GetCamouLocale();
+ 
+-  static const char* GetCamouLanguage();
+-
+-  static const char* GetCamouRegion();
+-
+-  static const char* GetCamouScript();
+-
+   /**
+    * Returns an iterator over all supported locales.
+    *

@@ -4,6 +4,655 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+## 2026-10-10 — pre-push verification
+
+Rechecked the installed signed application against the current module, actor,
+settings and configuration sources; all bytes match. Fresh native incremental
+build passes. All 43 Node tests pass, and all seven new ordered native patches
+reverse/apply without fuzz and restore the exact source bytes. Both installed
+app signatures verify strictly, and the appearance-recovery DMG checksum is
+valid. Disposable-profile runtime results are recorded under
+`/tmp/cloakfox-prepush-20261010/`; these checks do not modify the active call.
+All 12 runtime probes pass: native profile selection, website appearance,
+settings overrides, locale tags, bundled-font fixture/reference widths,
+UA Client Hints, permission reporting, optional data-math noise, media failover,
+workers, signed appearance reuse/cold launch and the real restart round trip.
+The separate page/frame/worker identifier audit passes 259/259 checks. The font
+fixture's headless checks do not replace the earlier native compositor visual
+verification. Remote live camera/video delivery is not asserted by these probes.
+
+## 2026-10-10 — persistent macOS appearance app and profile binding
+
+Screen-share follow-up: macOS Settings showed the exact stable Firefox app
+enabled, but a full restart still reported native ScreenCapture DENIED (2).
+Filtered TCC logs confirm `Failed to match existing code requirement` for
+`org.mozilla.cloakfox.appearance.firefox`/`kTCCServiceScreenCapture`: stored
+requirement hash `256fcb1995831b8d03106a81e9473fb007540060`, running app hash
+`21f0988ab9333690182b4a8f3fa78453f8a7836b`. Adding an app with the same bundle ID
+while its old entry exists did not replace that stored requirement. Removed
+the stale row through System Settings and re-added the exact stable bundle.
+After the macOS relaunch, native ScreenCapture is AUTHORIZED (3), with Default
+User retained. A normal HackerRank Share again opens Firefox's site permission
+prompt and, after Allow, the native chooser. After the user's screen selection,
+Firefox reports **You are sharing your entire screen** and HackerRank's stopped
+sharing/failure overlay is gone. Remote viewer frames were not independently
+inspected. No signature or browser settings were changed.
+
+Implemented a stable per-profile `cloakfox-appearance/Firefox.app` path. An
+unchanged source reuses the signed copy without rebuilding/resigning. Verified
+signed resource seals plus executable/plist digests detect packaged updates;
+full content digests cover unsealed/loose development builds. Replacement is
+staged and signed before moving the old copy aside, with rollback on a failed
+install. The running copy is never overwritten. Legacy schema-1 copies remain
+readable so launching the updated original installation can migrate them.
+
+The signed copy carries `Contents/Resources/cloakfox-profile.ini`. The ordered
+`cloakfox-appearance-profile.patch` reads this during macOS profile selection,
+including the early XRE-provider path before the XPCOM directory service exists.
+It preserves explicit environment/command-line/profile-manager selection and
+background/reset behavior. An invalid owning profile opens the manager instead
+of creating a blank profile. The restart environment branch also avoids
+claiming/creating a new dedicated profile for an appearance copy. Settings now
+provides **Show app in Finder** for locating the actual bundle in OS permissions.
+
+Verification: native incremental build and packaging pass; all four actual-module
+cache tests pass (reuse, content updates, failed signing/replacement rollback,
+damaged copy and running-copy protection). Seven isolated native startup cases
+pass. The signed packaged appearance probe passes including plain cold launch
+without `--profile` or `XRE_PROFILE_*`, branding/source preservation and signed
+reuse. The packaged real-button restart probe passes both directions, restores
+profile/tabs, and honors the saved choice from the original installation.
+
+The initial plain-launch regression revealed the pre-XPCOM lookup bug and
+created three blank test profiles. These alone were removed from the active
+registry and archived under
+`profile-backups/appearance-regression-20261010T221435Z`. The final probe leaves
+only Default User registered. A standalone xpcshell networking-sandbox shutdown
+failure also occurs with an empty script; the filesystem-only probe disables its
+socket process, as a bare xpcshell executable has no macOS app path.
+
+Installed the strictly verified signed build at `/Applications/Cloakfox.app`;
+previous installation preserved under
+`app-backups/appearance-recovery-20261010/Cloakfox.app`. Signed installer:
+`cloakfox-146.0.1-beta.25-appearance-recovery-20261010.dmg`. Live migration verifies
+the stable copy uses Default User, exactly one profile remains registered, the
+seven original tabs and the extra New Tab window return, and the bundled
+extension is running. A real direct reopen through the native app launcher
+verifies the same Default User root, one registered profile and window tab counts
+of 7 and 1. Signature digest and mtime remain unchanged and strict/deep codesign
+verification passes. The settings button was clicked and Finder selects the
+stable `Firefox.app` at
+`~/Library/Caches/cloakfox/Profiles/v6fs6ydf.Default User/cloakfox-appearance/Firefox.app`.
+The initial native Screen Recording state was DENIED (2); the permission reset
+and successful screen-share retry at the start of this section supersede that
+initial result. Remote camera/viewer verification remains a separate check.
+
+## 2026-10-10 — scoped HackerRank camera failover compatibility
+
+Fresh-launch follow-up: launching the updated source app generated the signed
+Firefox appearance copy `a704eb1f-40ea-4edf-b949-fa1fba07a23f` for Default User.
+The initial restart retained the correct profile and restored all seven tabs.
+Directly reopening the copy later selected a new `gx673uci.default-default-6`
+profile: Gecko keys installation defaults by executable directory, and the
+new copy's installation entry was not associated with its originating profile.
+The live routing entries in profiles.ini and installs.ini were backed up under
+`profile-routing-backups/20261010-before-appearance-recovery`, then the exact
+`483E54E88499AD8` entry was changed back to Default User with all appearance
+processes stopped. Directly reopening the original copy now verifies the correct
+profile and restored interview tabs. That manual repair covered only the old
+copy; the permanent implementation and regression results above now supersede it.
+
+At the user's request, removed all seven other Cloakfox profiles from the active
+profile registry and directories, preserving Default User. Their data, five
+existing local-cache directories and the original registry files are archived
+under `profile-backups/unused-profiles-20261010T215716Z` in Cloakfox's Application
+Support directory. All existing installation defaults now reference Default
+User; the sole profile section is Profile0. Direct restart verifies the native
+profile service sees exactly one profile, the active root is Default User and
+all seven original tabs reopen. Regular Mozilla Firefox profiles were untouched.
+
+The current original copy's native Screen Recording state is DENIED (2).
+The fresh share attempt reports SDK error 6200, `user deny screen share`.
+Awaiting the user's macOS permission setup before testing capture, fresh-call
+recovery and remote camera delivery. Do not attribute this permission rejection
+to the earlier Zoom transport disconnect, or claim the fresh-launch media test
+has passed yet.
+
+The startup trace reproduced an SDK participant-ID change during failover,
+after the application saved its initial local ID. An ID-only live correction
+restored active camera capture and a normal video player while sharing stayed
+connected; no readiness flag, transport or permission changes were required.
+
+Added `CloakfoxHackerRankMediaChild`, restricted to top-level HTTPS
+`www.hackerrank.com/pair/*`. It discovers the initialized application store
+and AV getter without fixed bundle IDs/export names, refreshes only a stale
+connected local ID from the SDK, and increments the application's render
+epoch. It never starts capture or changes SDK/browser APIs. Default on;
+`cloakfox.compat.hackerrank_media=false` opts out on the next load. Unsupported
+application versions are left alone. This adapter depends on application
+capabilities and may need maintenance after site changes. It does not explain
+or fix the initial Zoom transport disconnect.
+
+Verification: red/green regression; all 39 Node tests pass. Real Gecko tests
+pass origin exclusion, two failovers on each of two fresh loads, zero capture
+starts, unchanged readiness and opt-out. Native build/package succeed. Bundled
+actor bytes match the tested source and bundled registration has the exact
+origin scope. The live reload test reconnects at 4,693 ms with mismatched IDs;
+the adapter reconciles the ID at 5,517 ms without manual state writes. After
+normal screen selection and the normal Join video call button, live state is
+connected, sharing true, capture active, camera video on, IDs matching, one
+video player, no attachment failure and no Video unavailable text. Remote
+peer receipt is awaiting user confirmation.
+
+Signed `/Applications/Cloakfox.app` updated and passes strict/deep codesign
+verification. Previous app preserved at
+`/Users/zeus/Library/Application Support/cloakfox/app-backups/media-recovery-20261010/Cloakfox.app`.
+The running cached Firefox appearance copy remains untouched; its working
+call uses a process-local registration of the exact tested compatibility
+actor. Launch the updated `/Applications/Cloakfox.app` after quitting the old
+copy to use bundled recovery across restarts; the saved appearance is honored
+by generating a fresh copy from the updated source. The old cached copy alone
+does not contain the bundled fix. New macOS app copies may need their normal
+camera/screen permissions again; no permission was reset in this follow-up.
+
+Installer: `cloakfox-146.0.1-beta.25-media-recovery-20261010.dmg`.
+Reports: `/tmp/cloakfox-media-recovery-{red,unit,gecko,packaged,build,package,sign,dmg-create,dmg-verify}-20261010.log`.
+Startup tracing was unregistered, its resource substitution removed and its
+two profile modules deleted. Temporary page console globals are removed and
+Developer Tools is closed. The live compatibility resource remains at
+`chrome/HackerRankMediaRecovery-20261010/CloakfoxHackerRankMediaChild.sys.mjs`
+in the active profile so this browser process can keep using the fix without
+changing its signature or stopping the call. After quitting this process, the
+temporary resource directory can be removed; the installed app supplies the
+bundled actor. No commit/push performed for this follow-up.
+
+## 2026-10-10 — editor sync: Math noise corrupts Firebase trees
+
+Follow-up: added **Randomize logarithms and powers**, backed by
+`cloakfox.opt.math_data_noise` (default false). Pages and workers choose this
+policy when their realm is created; reload affected pages after changing it.
+Off preserves native log/log2/log10/log1p/pow, while other function noise still
+uses the container seed and master switch. On restores deterministic noise to
+the five functions and can reproduce Firebase data loss. Worker installation
+reads an atomic StaticPref; the page actor has no extra per-call pref reads.
+`cloakfox-math-data-toggle.patch` follows the correctness patch, with a verified
+reverse/forward round trip. Settings' timer wording now describes fractional
+jitter accurately instead of claiming it hides the underlying quantization.
+
+Verification: two new actor tests fail before implementation and pass after;
+all 33 Node tests pass. Native build succeeds. Default worker probe passes
+31 signals, page/frame/worker audit passes 259/259, and both built and packaged
+apps pass default/off/on/master-off plus real Settings UI on/off tests.
+Packaged Zoom SDK local fake-camera preview passes at 1280x720 for both Firefox
+and Chrome identities; this does not establish reconnect or remote delivery.
+Installer `cloakfox-146.0.1-beta.25-math-toggle-20261010.dmg` has a valid hdiutil
+checksum. Reports: `/tmp/cloakfox-math-toggle-{build,unit,workers,realms,ui,packaged,zoom-preview,package,dmg-verify}-20261010.*`.
+The active app/call and temporary recovery override have not been changed.
+
+Live HackerRank investigation reproduced `Invalid operation` in Firepad's
+Firebase adapter. Its connection reports true, but SDK snapshots of revisions
+A2–A7 have only `t`. A separate authenticated REST read of the same records
+returns `a`, `o`, `t` for A2–A6, while A7 itself has only `t` on the server.
+No shared history was modified or deleted by the investigation.
+
+The failing live seed is 761685640. Page Math.log(4)/Math.log(2) is
+1.999999999999675; Firebase's Base12Num constructor truncates this to 1
+instead of 2, dropping nodes from three-field records. The installed worker
+reproduces levels=1 and Math.pow(2,-52)=-4.77993705469089e-13 instead of the
+native 2.220446049250313e-16. This is a verified browser math bug, independent
+of editor event reporting. The Firepad adapter then skips incomplete edits.
+
+Fix: leave logarithms and powers native in the page actor and worker method
+list (`cloakfox-math-data-correctness.patch`). Regression tests failed before
+the edit and pass afterward; all 31 Node unit tests pass. The updated worker
+probe fails on the installed app in six intended checks. The corrected build
+succeeds; page/worker checks pass (29 signals) on both the build and packaged
+app, and the broader page/frame/worker probe passes 259/259 checks. The probe
+preserves sample names as an array because WebDriver sorts object keys.
+Live recovery is
+verified: saved `math:trig_seed=0` as a field override in container 0, updated
+its generated cloak_cfg, then reloaded with the user's approval. Math reports
+levels [2,3] and the native power; SDK revisions A2–A6 retain `a`, `o`, `t`.
+The editor recovers the interviewer's Python document and the user confirms
+edits sync in both directions. A7 remains incomplete on the server and is
+skipped; no shared history was changed. Keep the temporary override until the
+corrected app is installed. No active app was replaced. The local build directory was
+missing from firefox-src; restored that directory from its inner Git HEAD
+without overwriting the other source changes, then completed the build.
+
+Verified installer: `cloakfox-146.0.1-beta.25-math-fix-20261010.dmg`;
+`mach package` succeeds and `hdiutil verify` reports a valid checksum. The
+previous root installer is preserved. The installed application still uses
+the temporary override; installing this artifact and restoring normal math
+function noise afterward remain user-session follow-up work.
+
+## 2026-10-09 — camera/microphone permission reporting fixed
+
+2026-10-10 live session recovery: repeated the user's requested permission reset
+through macOS Settings. Show in Finder verified the Firefox entry was the exact
+3cb73c96 appearance copy; removed and re-added that same copy, authenticated by
+the user, and reopened it. Native ScreenCapture state is authorized (3), with
+appearance=true. A fresh normal Grant Access still stalled.
+
+User-supplied errors add two concrete findings: the screen-media WebSocket can
+fail, followed by SDK IMPROPER_MEETING_STATE/closed (5002); a late capture callback
+also throws because desktopSharingValue is null after the SDK resets. Host DNS
+and TLS succeeded over IPv4 and IPv6; that does not establish WebSocket/media
+delivery. Native WebSocket logging was stopped, and a temporary parent HTTP
+observer was removed. A proposed appVersion comparison did not isolate that
+setting: generated config was refreshed by the persona bridge on reload, and
+the page still reported Chrome appVersion. No persistent override was added.
+
+Recovery used the page AV service's existing retireShareOperations() to clear
+the stranded request, followed by a trusted-click startShareScreen() on the
+current connected SDK, with real browser/OS capture permissions. The first retry
+returned INSUFFICIENT_PRIVILEGES/only host can grab screen share (6204). After
+the user stopped the other test share, the retry opened the normal permission
+prompt and native picker. The user selected sharing; startShareScreen resolved,
+and the actual lobby reports Screen share access granted. SDK capture is live
+and unmuted, desktop=true, metadata loaded, 1667x1070. Cached encode stats were
+fps=0/bitrate=0 at the first sample; remote delivery is awaiting user confirmation.
+This is live-session recovery, not a shipped browser fix for the SDK race.
+
+Second sample remains connected/live with one Zoom participant; cached stats
+still show zero fps/bitrate. There is no remote test receiver joined yet. Removed
+the temporary retry button and its click handler, kept the SDK's active preview
+element so capture continues, and closed Developer Tools. Final normal lobby
+still reports Screen share access granted. The diagnostic page variables will
+disappear on its next navigation/reload; no SDK method wrappers were installed
+for this recovery.
+
+2026-10-10 Zoom follow-up: on a clean reload with only a forwarding native
+getDisplayMedia observer and connection-change listener, Grant Access produces
+Connected -> Reconnecting (reason: failover) -> Connected. There is no capture
+API call; the AV service retains activeShareOperation.kind=start even though
+the current SDK sharing encode/decode statuses are success. A separate trusted
+click invoking the current SDK's startShareScreen with its existing share canvas
+then reaches Firefox's real screen permission prompt. Cancelled with Not now:
+native NotAllowedError and SDK user-deny error 6200; no content shared. This
+supports a request stranded during SDK failover, rather than persistent native
+capture denial. The cause of the failover and a durable fix remain unresolved.
+
+An earlier diagnostic wrapped the SDK mediaAgent proxy method and induced
+recursion. Discard those instrumented results; the clean comparison above does
+not modify SDK methods. Reload removed all forwarding hooks/listeners and the
+temporary test button, verified trace=undefined/button=false; Developer Tools
+closed and the original lobby again offers Grant Access. No browser source fix
+or build was made for the Zoom hang.
+
+2026-10-10 recurrence: the running Firefox-appearance copy uses the original
+v6fs6ydf.Default User profile, whereas yesterday's changes were saved in
+yyh04u5k.default-default-4. The original profile lacked both the HackerRank
+enumeration allowlist entry and devtools.selfxss.count. Restored these values
+in the active profile and saved them through Services.prefs. After reloading
+the real lobby, preview metadata reports 640x480, readyState=4, paused=false,
+live/unmuted video. A disposable loopback probe also confirms that the scoped
+legacy entry exposes device IDs on initial load and after reload; without the
+entry, IDs remain empty in both cases. No capture requested by this probe.
+
+Screen-sharing recurrence is independent: nsIOSPermissionRequest initially
+reported PERMISSION_STATE_DENIED (2) for the current appearance copy. Adding
+the exact copy over the existing enabled Firefox entry did not fix it. After
+removing the stale appearance entry, readding the exact copy and restarting,
+the native state is PERMISSION_STATE_AUTHORIZED (3). The real lobby reaches
+the screen permission request. The user selected content, but the lobby still
+reported Connecting. A separate trusted-click getDisplayMedia diagnostic then
+resolved with a live, unmuted video track (396x32, 30 fps); it immediately stopped
+the stream and sent no frames. That size suggests the small sharing indicator
+was selected, rather than the intended TextEdit window. Native capture works;
+HackerRank/Zoom end-to-end sharing remains unresolved.
+
+A forwarding getDisplayMedia diagnostic installed before a fresh Grant Access
+click stayed at waiting while Zoom repeatedly connected/reconnected. No screen
+stream was active in webrtcUI (camera=1, microphone=1, screen=0, window=0).
+Native WebSocket logging showed HTTP 101 handshakes; earlier connection errors
+alone do not establish a persistent transport failure. Logging is stopped and
+the forwarding diagnostic, local test button, and console were removed/closed.
+
+Directly opening the appearance copy selected a fresh profile because the app
+path has a different dedicated-install association. Restored the newly created
+association in profiles.ini and installs.ini to v6fs6ydf.Default User; backups
+are in /tmp/cloakfox-profile-association-backup-20261010. The original seven
+tabs returned. This is a runtime repair; source appearance-profile handling
+and stable permission identity still need a durable design. Finder is open
+at the exact current copy. The existing DMG predates the source defaults added
+yesterday. Do not assume every profile has those defaults installed.
+
+`permissions:spoof` defaults on and previously forced every native
+`PermissionStatus` to `prompt`. HackerRank's camera/microphone permission
+monitor treats `prompt` as revoked, discarding a real grant. The native patch
+now preserves Firefox's real Camera/Microphone state conversion and change
+events. Other permission privacy behavior is unchanged; capture authorization
+and OS permission checks are untouched.
+
+The old packaged browser reproduced a camera grant returning `prompt`.
+`probe_media_permissions.py` passes 13 checks in the rebuilt development app
+and 17 checks in the final packaged app (including the added removal-event and
+Always Ask cases). It uses a disposable local-origin permission manager and
+never requests a stream or records devices. Native build, patch reverse/reapply
+audit, reviewer check and DMG validation succeed. The running updated app
+(BuildID 20261009174323) now shows Camera connected and Microphone connected
+in the live HackerRank lobby. Camera frames and interview completion have not
+been tested.
+
+Screen sharing initially failed because macOS TCC rejected the replacement
+appearance app's ad-hoc code requirement despite its Settings switch being on.
+After the user completed authentication, the stale entry was removed and the
+exact running copy re-added. TCC now returns authValue=2 for ScreenCapture;
+the same copy was restarted. A local real `getDisplayMedia` call opens Firefox's
+native screen chooser and cancelling returns `NotAllowedError`. No screen stream
+or camera frames were captured by that diagnostic.
+
+After restarting the authorized appearance copy and retrying, HackerRank
+reaches Firefox's real screen permission prompt and macOS's native window/screen
+picker. The user confirms screen sharing now works. The focused native log also
+shows Zoom sockets exchanging binary data; earlier reconnect warnings were not
+a proven remaining transport defect. A disposable-profile WebSocket echo probe
+passes in both page and worker contexts. Some diagnostic coordinate clicks missed
+controls because the native screenshot has Retina scaling/padding; keyboard/AX
+and corrected input located the real pending permission prompt.
+
+Temporary WebSocket logging is stopped, its about:logging tab is closed, and the
+original interview tab is restored. No interview was joined by the agent. The
+isolated TextEdit test window is left open to avoid interrupting an active share.
+Actual camera frames and remote receipt by an interviewer remain unverified.
+Reports: `tests/fingerprint/reports/media-permissions-2026-10-09/`.
+
+### Camera follow-up: lobby preview restored
+
+2026-10-10 deeper source follow-up: the full loaded PairShell/provider factory
+28878 refreshes `localZoomUserId` after `zmClient.join` resolves. The earlier
+service-only inspection missed this delegated update; absence of that setter
+in `rejoinAfterLocalVideoAttachmentFailure` is not a demonstrated bug. The
+provider's `Connected` reconnect handler only logs/records telemetry, without
+an ID refresh there. The authorized reload reproduced an ID change after the
+initial join update (see the startup sequence below). Public provider source
+saved at `/tmp/cloakfox-reconnect-provider-20261010.js`. No website-specific
+state injection or permanent camera reconnect patch was shipped. This proves
+the stale application ID across failover, but does not establish why the first
+media connection failed or whether an ID-only repair restores the camera.
+
+Authorized reload startup sequence, 2026-10-10:
+- 303 ms: observer attached; cached and SDK local IDs agree.
+- 1,757 ms: SDK reports Connected; IDs still agree.
+- 2,721–2,722 ms: SDK video decode/encode initialization succeeds.
+- 2,882 ms: SDK reports Reconnecting; local IDs now disagree.
+- 4,624 ms: SDK reports Connected again; IDs still disagree.
+- 6,047/6,297 ms: video decode/encode initialization succeeds again; IDs
+  remain different through the end of the 30-second trace.
+The current loaded application's `isVideoDecodeReady` flag remains false, but
+the full public module export shows that flag is only declared/set in the
+store, with no video component consumers. It should not be treated as a causal
+readiness gate for this page version. The normal video component uses capture
+state, participant video state, connection status and the render epoch.
+Reload stopped sharing and the page's normal Share again control opened the
+browser chooser. Awaiting the user's intended screen selection before the
+camera attachment check. IPv4 and IPv6 TLS/HTTP root requests to the earlier
+Zoom media server both returned HTTP 404; this establishes current endpoint
+reachability only, not successful authenticated media transport.
+
+Startup tracing ran during the user-authorized reload. Temporary
+`MediaStartupTrace` WindowActors are
+registered only in the current browser process for the top-level
+`https://www.hackerrank.com/pair/*` document. They record bounded metadata
+(connection events, codec statuses, capture/share state and ID-match booleans)
+without modifying media, permissions, UI state or editor content. No actual
+participant IDs, camera frames, session tokens or URLs are collected.
+The local fixture verifies early actor attachment, reconnect event capture,
+ID-mismatch detection and exclusion of an unrelated private event field.
+Report: `/tmp/cloakfox-reconnect-trace-20261010/smoke.log`.
+
+Active profile root is `/Users/zeus/Library/Application Support/cloakfox/Profiles/v6fs6ydf.Default User`
+(appearance app remains under the separate Library/Caches path). Trace modules
+are in that profile's `chrome/MediaStartupTrace-20261010` directory, accessible
+through Firefox's existing sandbox policy; loading modules directly from /tmp
+failed in content processes. No sandbox settings or app signatures were changed.
+Parent records are available via
+`ChromeUtils.importESModule('resource://mediastartuptrace/MediaStartupTraceParent.sys.mjs').records`.
+After the test, unregister `MediaStartupTrace`, remove the `mediastartuptrace`
+resource substitution, and remove only the two diagnostic module files and
+their empty diagnostic directory. Browser restart also clears registration.
+Consoles are closed; the native sharing chooser is awaiting selection. The
+diagnostic registration is still present and must be removed after verification.
+
+2026-10-10 live interview recovery: initial state has device IDs available,
+camera selected, SDK capture active, and both codec initialization statuses
+`success`; HackerRank's `isVideoDecodeReady` is false. Reconciled that readiness
+flag, but attachment still failed. Camera-only stop/start succeeds without
+fixing the UI. A one-call observer on the AV service's ordinary `attachVideo`
+method confirms the UI targets the saved local Zoom ID instead of the current
+SDK local ID, receiving `INVALID_PARAMETERS`, code 6001, `user is not send
+video`. Direct attachment to the current SDK local ID succeeds. The observer
+restores the original method in `finally`; it does not wrap the SDK proxy.
+
+Resynchronized `localZoomUserId` from `getLocalParticipantId()`, kept readiness
+consistent with actual successful decoder initialization, cleared the prior
+attachment-failure latch and advanced the normal render epoch. The normal
+player attaches, `Video unavailable` disappears, and SDK encode counters show
+640x360 at 17 fps, bitrate 23111, RTT 55, with no attachment failure. Remote
+visibility is awaiting user confirmation. The ID mismatch was measured after
+the site's attachment recovery ran; this does not prove it caused the initial
+symptom. This is a session UI recovery, not a shipped browser patch. Earlier
+failover logs and the initial readiness mismatch still need a clean reproduction
+to establish a durable fix. Temporary statistics subscriptions are restored to
+their original off state, the one-call observer is removed, and Developer Tools
+is closed. The recovered camera player remains attached.
+No camera images were collected. A diagnostic cleanup call initially used the
+wrong wrapper argument (participant ID instead of an attachment object); it was
+corrected before the successful camera-only restart.
+
+The user reports that the camera light turns on and the other participant also
+sees Video unavailable. The active interview showed camera enabled. Its
+about:webrtc diagnostics showed successful ICE candidates and traffic; empty
+RTP sections do not establish a transport failure because this Zoom SDK also
+uses data channels. No specific permission, codec, or transport error was found.
+
+Disposable local-origin probes pass fake-camera capture, video playback,
+VideoFrame construction, and H.264 encoding with Firefox and Chrome UA settings.
+The exact signed appearance app also captures 30 live camera frames and emits
+30 H.264 chunks (10,488 bytes), with no encoder error. Only frame metadata and
+aggregate pixel statistics were returned, not camera images. Those tests do not
+establish usable image content or delivery through HackerRank/Zoom.
+
+Both UA settings select the same tested Zoom capability flags; only its browser
+classification changes. A live comparison with Firefox identity was proposed,
+but not performed. The interview ended before camera-device selection or live
+comparison could be tested. Root cause remains unresolved. Next: use a fresh
+authorized test call, verify selected camera, then compare native Firefox and
+Chrome identities while checking capture/encoder errors and remote receipt.
+No additional browser patch or UA change was made for this symptom.
+
+In a fresh lobby, the camera toggle reports on/Turn off camera while the preview
+still says Camera off. Turning the camera off and on reproduces the mismatch.
+The cached Zoom SDK's `createLocalVideoTrack().start(HTMLVideoElement)` succeeds
+at 1280x720 with a fake camera under both Firefox and Chrome identities in
+isolated local pages. This tests the SDK's direct HTML video preview path, not
+HackerRank's state management or custom video-player rendering.
+
+Diagnostic blocker: console evaluation throws NS_ERROR_UNEXPECTED reading
+`devtools.selfxss.count`; Cloakfox's branding preference file lacks the stock
+Firefox value of 0. Content debugging also reports target/actor errors; whether
+restoring that preference resolves those errors is untested. A diagnostic
+about:config tab is at its caution warning awaiting the user's click. No preference
+has been changed, and no camera fix or browser-identity comparison was made.
+
+Resolved later in the same session: Firefox reports saved Always Ask camera/mic
+permissions as granted, while initially returning anonymous devices with empty
+IDs. HackerRank filters these out and requires a selected ID before starting
+preview capture. The local enumeration probe reproduced this sequence; IDs
+became available after a successful native capture request.
+
+Refreshing the lobby's existing devicechange handler selected the real camera
+and microphone. The preview reported 640x480, readyState=4, paused=false, and a
+live, enabled, unmuted video track. The user confirmed it works. The current
+profile's native media.devices.enumerate.legacy.allowlist now includes the exact
+www.hackerrank.com host, preserving Firefox's Slack/Riverside entries. This
+exposes IDs earlier on that host while retaining capture permission checks.
+The missing devtools.selfxss.count default was also restored to 0, preserving
+normal console paste protection; console evaluation then worked.
+
+Both defaults are recorded in source for the next build. No DMG was rebuilt
+for these defaults. Reload persistence and remote video delivery were not
+independently verified; the working lobby was left open. Diagnostic consoles
+and the temporary about:config tab are closed.
+
+## 2026-10-09 — animation Math hot path optimized
+
+The actual HackerRank onboarding page animated its title slowly and delayed
+the rest of the page. Native sampling caught a saturated content main thread;
+a fresh-profile Gecko profile placed **13,855/15,948** samples in
+`currentTrigSeed`, which deserialized the entire `cloakfox-seeds` SharedMap
+value for each Math operation. The page's background animation makes tens of
+thousands of trig calls per frame. Its standalone typewriter completes in
+about 1.1 seconds, and the initial network response was about 283 ms.
+
+The Math actor now shares one process snapshot, invalidates it on the native
+SharedMap change event, and caches the master switch via a pref observer.
+Numeric inputs use the actor realm's equivalent engine intrinsic to avoid a
+second realm crossing; coercible inputs retain page-realm behavior. Sin/cos/tan
+keep the page path when the global fdlibm policy is false, preserving private/FPP
+realm policy on Windows. That policy guard updates live. Module observers retain
+no actor/window. Captured function references, containers and seed removal remain
+live, and existing result/descriptor/error semantics are preserved.
+
+The new actor tests reproduced **2,003 snapshot reads** for a 2,000-operation
+burst; the fixed actor reads once. A separate RED test exposed per-operation
+pref reads, and another caught the fdlibm guard omission. Final Node **29/29**
+and packaged Math/identifier/frame/worker regression **259/259** pass. One dev
+regression attempt overlapped resource staging during a build and failed loading
+`browser-webrtc.js`; the stable packaged rerun passes. Final native build,
+packaging, actor-source audit and DMG verification succeed.
+
+The packaged desktop page exposes its welcome button in **3.57 s** and its form
+in **3.97 s**. Thirty subsequent animation callbacks have a **44 ms median**
+and **74 ms maximum** gap. The background animation still carries overhead;
+this is not a claim of Chrome frame-rate parity or interview compatibility.
+No form details were entered, terms accepted or interview started. Existing
+user-profile confirmation requires installation of the updated DMG.
+
+Root installer: BuildID **20261009171117**, SHA256
+`638cba7ebbf7da5c2d5b52192392e158c647f879abd67e9c438df2646e933bef`.
+Reports: `tests/fingerprint/reports/onboarding-loading-2026-10-09/`.
+
+## 2026-10-09 — settings edits reverting to persona fixed
+
+Reproduced in the installed app: editing a UA saved a Chrome override pref,
+but the active config and settings display reverted to Firefox. The settings
+builder omitted the override layer that SeedSync applies at startup. It now
+applies overrides last when rebuilding, including on persona regeneration
+and reset actions. Also replaced the nonexistent
+`Services.contextualIdentityService` getter with the explicit service import,
+restoring actual containers in the settings dropdown.
+
+`probe_settings_overrides.py` passes **22/22** checks in the development and
+packaged apps: string/numeric edits, container selection/isolation, regeneration,
+reload/restart persistence, website navigator/HTTP UA and Client Hints, and
+single/all reset actions. Node **24/24**, scoring self-test, native build,
+packaging and DMG validation pass. The installer at the repository root includes
+these fixes; the installed Applications app has not been replaced automatically.
+Reports: `tests/fingerprint/reports/settings-overrides-2026-10-09/`.
+
+## 2026-10-09 — native UA Client Hints compatibility
+
+`cloakfox-user-agent-data.patch` adds native `navigator.userAgentData` for
+Chrome/Chromium/Edge user-agent overrides with the master enabled. Availability
+is decided before page scripts run; Firefox personas/master-off leave the API
+and interface absent. The navigator property honors secure-context gating,
+while the interface's insecure-context exposure matches Chromium. Brands,
+versions, mobile/platform and requested high-entropy hints derive from each
+navigator's own UA; unknown/reduced OS/device details are withheld. Getters
+return fresh native objects/frozen arrays; JSON and Promise conversion use
+native bindings. Pages, frames and all worker types share their own container's
+identity, without actors or page injection.
+
+Local and packaged-app regression: **67/67** checks each, including a reproduced reduced-Android
+metadata failure before correction. Native build, existing navigator coherence
+(all four containers), worker/container coherence, Node **24/24** and scoring
+checks pass. The actual HackerRank onboarding URL renders “Welcome to your
+interview” with a Chrome UA and no unsupported-browser dialog; no interview
+was joined and no proctoring permissions were accepted. Source audit confirms
+all 11 patched files apply and match the compiled source. Native packaging and
+DMG checksum validation pass; the new DMG is at the repository root. Reports are in
+`tests/fingerprint/reports/user-agent-data-2026-10-09/`.
+
+This implements the JavaScript Client Hints API, not HTTP `Accept-CH`
+negotiation or Chromium-only window-management/WebRTC functionality. Interview
+and proctoring compatibility remain unverified. Reload pages after identity or
+master changes; no separate toggle is required.
+
+## 2026-10-09 — malformed desktop text fixed
+
+Reproduced the user’s wrong characters and missing letters in `about:cloakfox`
+on the native desktop, with the master off. The bundled Menlo/Helvetica
+substitutes reuse host PostScript names; the compositor resolved a different
+font and interpreted the shaping font’s glyph IDs against it. For example,
+the bundled middle dot’s glyph ID is the host Helvetica `č` glyph.
+
+`cloakfox-bundled-font-rendering.patch` sends actual font tables over renderer
+IPC for fonts from the bundled `/fonts/` directory. Native system-font
+descriptors retain their existing path. Bundled family names and spacing
+behavior are unchanged. The patch applies to pristine Firefox source, and
+native build/package/DMG verification pass.
+
+The packaged desktop app was visually checked against exact-file webfont
+references (Helvetica, Menlo, Arial, Times New Roman), in ordinary content and
+`about:cloakfox` with the master off. The original headline and Settings’
+`files` labels (master on) also render correctly. The fixture’s automated
+text/readiness/width checks pass with the master off/on in all four cases; native captures were inspected separately
+because WebDriver screenshots bypassed the failure. Existing per-seed font
+metric tests and font-name regression pass. Reports are in
+`tests/fingerprint/reports/bundled-font-rendering-2026-10-09/`.
+
+## 2026-10-09 — Settings initialization locale bottleneck fixed
+
+User narrowed the intermittent `about:preferences` lag to trackpad scrolling
+just after opening or refreshing Settings; settled Settings and ordinary pages
+scroll normally. Earlier steady-state wheel/native-pan diagnostics passed.
+Sampling the actual running browser during initialization found roughly 89%
+of main-thread samples in locale component overrides repeatedly parsing the
+Cloakfox config. Those getters also returned pointers into destroyed strings
+and corrupted explicitly requested locale tags.
+
+`cloakfox-locale-tag-correctness.patch` restores components of parsed locale
+tags instead of applying persona defaults to every tag. Native default-locale
+selection retains its override, with owned thread-local storage cleared when
+the override is removed or disabled. The focused test reproduced six corrupted
+explicit tags before the fix; 100 maximize operations dropped from 328 ms to
+below the timer's 1 ms resolution after it.
+
+Development and packaged locale probes pass **17/17** each. The packaged
+Settings override regression passes **22/22**, Node checks **24/24**, and scoring,
+native rebuild, packaging and DMG verification succeed. Desktop native macOS pan
+checks on first load and refresh advance all eight gestures from 80 to 640 px;
+largest sampled animation-frame gaps are 32 ms and 17 ms respectively. Fresh
+profiles did not reproduce the user's full transient freeze before the fix, so
+confirmation in the user's existing profile after installation is outstanding.
+JS runtime default-locale refresh is outside this change; its cached behavior
+is recorded rather than claimed fixed.
+
+The root DMG is BuildID **20261009163611**, SHA256
+`ae90e3c178de337270ab4bc8d8945f5c2ed7bdbd668d15e67ef7837da3c192f0`.
+It has not been installed automatically. Current evidence is under
+`tests/fingerprint/reports/preferences-startup-2026-10-09/`; earlier scrolling
+diagnostics remain under `tests/fingerprint/reports/preferences-scroll-2026-10-09/`.
+
+## 2026-10-09 — Website appearance honors Dark and Automatic
+
+Removed the forced-light persona value, native `PreferredColorScheme` override,
+and `matchMedia` color-scheme pin. Firefox's Website appearance selection now
+controls both CSS and JavaScript in existing pages and frames. AutoConfig uses
+`defaultPref(..., 2)` so fresh profiles default to Automatic and saved selections
+survive restart. Old persona overlays containing the light pin are ignored for
+color scheme; regeneration is unnecessary.
+
+The rebuilt packaged app passes **52/52** appearance checks across containers 0
+and 2 with the master switch on/off: Dark, Light, Automatic with the actual
+built-in light/dark/system themes, live CSS/JS and change events, same-/cross-origin
+frames, and saved settings after restart. System appearance is simulated only
+inside disposable test profiles. Node **24/24** and the speech/media regression
+also pass. Native rebuild and packaging succeeded using the earlier clean build
+tree. Reports are under `tests/fingerprint/reports/website-appearance-2026-10-09/`.
+
 ## 2026-10-09 — full clean macOS build verified
 
 Extracted the full pristine Firefox archive into an isolated source tree,

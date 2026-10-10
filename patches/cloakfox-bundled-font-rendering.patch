@@ -1,0 +1,24 @@
+diff --git a/gfx/2d/ScaledFontMac.cpp b/gfx/2d/ScaledFontMac.cpp
+--- a/gfx/2d/ScaledFontMac.cpp
++++ b/gfx/2d/ScaledFontMac.cpp
+@@ -397,7 +397,19 @@
+   AutoRelease<CFURLRef> fontUrl(
+       (CFURLRef)CTFontCopyAttribute(ctFont, kCTFontURLAttribute));
+   if (fontUrl) {
+-    CFStringRef urlStr(CFURLCopyFileSystemPath(fontUrl, kCFURLPOSIXPathStyle));
++    AutoRelease<CFStringRef> urlStr(
++        CFURLCopyFileSystemPath(fontUrl, kCFURLPOSIXPathStyle));
++#ifdef MOZ_BUNDLED_FONTS
++    // Bundled fonts are registered in this process and can share a PostScript
++    // name with a system font. CoreText in the renderer may still resolve the
++    // system face even with the URL in the descriptor, interpreting our glyph
++    // IDs against a different font. Send the actual tables for fonts in the
++    // bundled-font directory; leave native system-font descriptors unchanged.
++    if (urlStr && CFStringFind(urlStr, CFSTR("/fonts/"), 0).location !=
++                      kCFNotFound) {
++      return false;
++    }
++#endif
+     cstr = CFStringGetCStringPtr(urlStr, kCFStringEncodingUTF8);
+     if (!cstr) {
+       if (!CFStringGetCString(urlStr, buf, sizeof(buf),

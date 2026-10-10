@@ -105,3 +105,24 @@ cloakfox-worker-config-cache.patch
 
 # Apply Math settings to existing realms without restarting them.
 cloakfox-live-worker-math.patch
+
+# Preserve bundled glyph identities across macOS renderer IPC.
+cloakfox-bundled-font-rendering.patch
+
+# Native UA Client Hints for Chromium user-agent overrides.
+cloakfox-user-agent-data.patch
+
+# Keep explicit locale tags intact during browser language initialization.
+cloakfox-locale-tag-correctness.patch
+
+# Preserve logarithms and powers used for data structures and numeric hashes.
+cloakfox-math-data-correctness.patch
+
+# Opt-in log/pow noise; default remains native for data correctness.
+cloakfox-math-data-toggle.patch
+
+# Refresh the HackerRank application local participant ID after Zoom failover.
+cloakfox-hackerrank-media-recovery.patch
+
+# Bind cosmetic app copies to the profile that created them on macOS reopen.
+cloakfox-appearance-profile.patch

@@ -1,5 +1,26 @@
 # Fingerprint tests
 
+## Website appearance
+
+Firefox Settings → General → Website appearance supports **Automatic**, **Light**
+and **Dark**, independently of the privacy master switch and container persona.
+Automatic follows the browser theme; the system theme follows the OS appearance.
+The native `layout.css.prefers-color-scheme.content-override` preference uses
+0 = Dark, 1 = Light, 2 = Automatic. Fresh profiles default to Automatic and user
+choices persist across restarts. Sites must support the corresponding color
+scheme for their own appearance to change.
+
+```bash
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_website_appearance.py
+```
+
+This uses disposable profiles and local same-/cross-origin frames, checks page
+JavaScript against native CSS, selects actual built-in themes, and verifies live
+MediaQueryList change events without reloading. It tests containers 0 and 2 with
+the master on/off, legacy persona overlays, default preferences and persistence
+after restart. Simulated OS appearance is confined to the test profile.
+
 ## Application appearance (macOS)
 
 In `about:cloakfox`, enable **Firefox appearance**, then click **Apply and
@@ -14,10 +35,29 @@ rebuild any older private appearance copy.
 
 The feature creates a private, locally signed `Firefox.app` copy under the
 profile's local `cloakfox-appearance` directory. It requires disk space for an
-extra app bundle. The original installation is preserved. Every switch to
-Firefox rebuilds the copy from that installation; launching the original app
-honors the saved choice after session restoration. Do not remove or relocate
+extra app bundle. The original installation is preserved. The copy lives at
+`<local profile>/cloakfox-appearance/Firefox.app` and is reused without resigning
+when the source payload is unchanged. Source updates (including loose development
+resources) rebuild it at that same path. Launching the original app honors the
+saved choice after session restoration. Do not remove or relocate
 the original app while using the copy. Linux and Windows controls are disabled.
+
+The signed copy contains a profile binding, so Finder and macOS permission
+relaunches select the profile that created it. Explicit `--profile`, `-P`, the
+profile manager and restart environment still take precedence. A missing or
+invalid binding target opens the profile manager instead of creating a blank
+profile. **Show app in Finder** reveals the actual running bundle for macOS
+Camera, Microphone and Screen Recording settings. Reusing an unchanged copy
+preserves its signature; a software update may still require macOS approval.
+
+If Screen Recording is enabled but sharing is denied after an update, macOS
+can retain the previous ad-hoc signature requirement for the same bundle ID.
+Adding the updated app while its old row exists may leave that stale requirement
+unchanged. In Screen & System Audio Recording, use the Firefox row's **Show in
+Finder** menu to verify that it is this appearance copy, remove that row, then
+add the app revealed by **about:cloakfox → Show app in Finder**. Complete macOS's
+**Quit & Reopen** prompt before retrying sharing. The browser's site prompt and
+native screen chooser still require their normal approvals.
 
 This is cosmetic branding: the extension keeps its internal ID, version,
 permissions, origin and privileged API. The private copy uses a different
@@ -34,13 +74,16 @@ CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
   python tests/fingerprint/probe_appearance.py
 CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
   python tests/fingerprint/probe_appearance_restart.py
+CLOAKFOX_XPCSHELL=/path/to/dist/bin/xpcshell \
+  python tests/fingerprint/probe_appearance_profile.py
+node --test tests/fingerprint/test_appearance_cache.mjs
 ```
 
 Both use disposable profiles with spaces in their paths. The first checks
 bundle metadata, icon payloads, legacy/Fluent branding, setting persistence,
-source preservation, fresh-copy creation and canceled restart handling. It
+source preservation, signed-copy reuse and canceled restart handling. It
 checks loaded extension metadata, toolbar labels, rendered popup branding,
-icon assets and working popup bridge across both directions and with the
+icon assets, plain reopening without profile arguments, and working popup bridge across both directions and with the
 privacy master switch off. Run
 it against a packaged app as well to cover `omni.ja` rebuilding. The second
 uses the actual restart button in both directions and reconnects geckodriver
@@ -50,6 +93,11 @@ probe to check macOS's application name and bundle identity during the handoff.
 Use an app under `/Applications` or a materialized test copy under `/tmp` for
 that probe; launching a development bundle under Documents via macOS Launch
 Services may require a system folder-access prompt.
+
+The native profile probe runs seven startup-selection cases against isolated
+profile databases. The cache tests cover sealed and loose source updates,
+concurrent preparation, failed signing, replacement rollback, damaged cached
+copies and protection of the running bundle.
 
 ## Page-visible identifier audit
 
@@ -554,3 +602,127 @@ tests/fingerprint/
 ├── mitm_h2_observer.py      — local byte-level observer
 └── antibot_battery.py       — manual pre-release validation tool
 ```
+
+## Bundled-font glyph rendering (macOS desktop)
+
+`probe_bundled_font_rendering.py` displays registered Helvetica, Menlo, Arial
+and Times New Roman beside webfonts loaded from the exact bundled files. It
+checks text/font readiness and matching reference widths in a content page
+and `about:cloakfox`, with the master off/on. Run with `CLOAKFOX_HEADFUL=1`
+to inspect the native desktop window; `CLOAKFOX_PREVIEW_SECONDS` controls
+the inspection interval (45 seconds per case by default).
+
+Verify `·`, `×`, `—`, `fi`, `ff`, `ffi`, `files`, `offline` and `Graphics`
+visually. Ordinary WebDriver screenshots use software rendering and can
+pass while the desktop compositor draws wrong or missing glyphs. A headless
+pass alone does **not** verify this regression.
+
+## Chromium UA Client Hints compatibility
+
+`probe_user_agent_data.py` uses local pages and disposable profiles to check
+`navigator.userAgentData` before the first page script runs, in same-/cross-origin
+frames and dedicated/shared/service workers. It exercises the Chromium-brand
+predicate used by HackerRank's onboarding dialog, Chrome/Edge versions,
+container isolation, Android metadata, native descriptors, frozen brand arrays,
+JSON output, requested-hint filtering, and secure-context/master/Firefox gates.
+
+The API is native and follows the selected `navigator.userAgent` override when
+Cloakfox is enabled. Chrome/Chromium and Edge identities enable it; reload pages
+after changing identity or the master switch. Firefox personas leave it absent.
+High-entropy details not established by the UA are empty, including reduced
+Mac/Windows OS revisions; the actual host's metadata is never substituted.
+
+This covers the JavaScript Client Hints API. It does not implement HTTP
+`Accept-CH` negotiation, Chromium's window-management APIs, or Chromium WebRTC
+behavior, and does not establish interview/proctoring compatibility.
+
+## Settings field overrides
+
+`probe_settings_overrides.py` edits the real `about:cloakfox` fields in disposable
+profiles with focus/clipboard masking enabled. It checks that saved pins reach
+the active config, the container dropdown lists and selects real containers,
+and settings reloads, persona regeneration and browser restarts retain edits.
+It also verifies a local page receives the edited navigator/HTTP user agents,
+hardware concurrency and UA Client Hints, and that individual/all reset actions
+restore persona values without affecting another container. Run with
+`CLOAKFOX_BIN=/path/to/cloakfox`; optional `REPORT_DIR` saves structured results.
+
+## Locale tag correctness and Settings initialization
+
+`probe_locale_tags.py` checks that explicit German, French, Japanese, Chinese,
+Arabic and British English tags retain their language/script/region with the
+master on and off. It records the cost of repeated `Intl.Locale.maximize()`
+operations and verifies native OS-preference locale overrides clear when removed
+or disabled. Firefox caches the JS runtime's default locale separately; the probe
+reports it but does not claim live `Intl.DateTimeFormat()` default updates from
+changing only Cloakfox config. Run with `CLOAKFOX_BIN` and optional `REPORT_DIR`.
+
+## Math animation hot path
+
+`node --test tests/fingerprint/test_math_seed_cache.mjs` drives the real Math
+actor with a SharedMap fixture that returns a fresh clone on each read. It checks
+that repeated operations and multiple windows deserialize once per published
+snapshot, while captured functions still receive live seeds/master updates and
+removed or invalid seeds clear noise. It also checks numeric calls avoid repeated
+preference reads and a second realm crossing, while coercion keeps the original
+page function. Sin/cos/tan preserve the page realm when the fdlibm global policy
+is false, including after live policy changes.
+
+Logarithms (`log`, `log2`, `log10`, `log1p`) and `pow` retain native values
+in pages and workers by default. Firebase uses truncated log ratios to build its children
+trees and powers to hash numbers; even tiny added noise can drop edit fields.
+The unit test and `probe_workers.py` cover the failing seed 761685640, the
+three/seven-child tree sizes, and exact binary scaling.
+The optional **Randomize logarithms and powers** setting
+(`cloakfox.opt.math_data_noise`, default false) restores noise to these five
+functions at realm creation. Reload affected pages after changing it so their
+workers use the same policy. Opting in can reproduce data loss and editor sync
+failures; other math function noise remains active with this option off.
+`probe_math_data_noise.py` tests default/off/on/master-off in real page and
+worker realms, including native tree sizing, binary scaling and consistency.
+
+`probe_identifier_leaks.py` remains the built-browser regression for numeric
+bits, special values, errors/descriptors, frames/workers, container isolation and
+live captured references. The actor unit test measures hot-path read counts;
+it does not replace runtime checks or establish desktop frame-rate parity.
+
+## Camera and microphone permission state
+
+`probe_media_permissions.py` uses a disposable profile and local HTTP origin to
+exercise the real native Permissions API with privacy enabled. It changes only
+that test origin's permission manager entries, checks grants, revocations,
+regrants, removal and Firefox's Always Ask semantics, and watches existing
+PermissionStatus change events. Notification permission privacy and master-off
+native behavior are also checked. It never calls getUserMedia/getDisplayMedia,
+opens devices, or records audio/video, so it does not verify actual capture or
+macOS TCC grants. Run with `CLOAKFOX_BIN` and optional `REPORT_DIR`.
+
+### HackerRank media failover compatibility
+
+`CloakfoxHackerRankMediaChild` is restricted to top-level HTTPS HackerRank
+`/pair/` pages. Zoom failover changes the local participant ID, but this
+application version retains its pre-failover ID. The actor refreshes that ID
+from the connected SDK and advances the normal video render epoch. It never
+starts camera/audio/sharing, changes permissions or transport, or alters
+fingerprint signals. The site's old `isVideoDecodeReady` flag is left alone.
+This is an application compatibility workaround, not a fix for the initial
+Zoom transport failure. Site bundle changes may require adapter maintenance;
+unsupported application shapes are left untouched. To opt out, set
+`cloakfox.compat.hackerrank_media=false` and reload.
+
+Run `node --test tests/fingerprint/test_hackerrank_media_recovery.mjs` for
+repeat failovers, invalid/disconnected IDs, late initialization, client
+replacement, teardown and opt-out. `probe_hackerrank_media_recovery.py` runs
+that actor through Gecko's real cross-realm bindings in a disposable profile:
+
+```sh
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python3 tests/fingerprint/probe_hackerrank_media_recovery.py
+```
+
+The probe first verifies the production origin restriction excludes its
+loopback fixture, then registers the same actor for loopback in that disposable
+profile only. It checks repeated failovers on two fresh loads, ID-dependent
+video rendering, zero capture-start calls, unchanged readiness and opt-out.
+It uses no real camera, screen or meeting. Live remote delivery requires an
+actual peer and is separate from this application-state regression.

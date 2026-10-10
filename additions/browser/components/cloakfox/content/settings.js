@@ -15,6 +15,10 @@
 
 /* global Services, ChromeUtils */
 
+const { ContextualIdentityService } = ChromeUtils.importESModule(
+  "resource://gre/modules/ContextualIdentityService.sys.mjs"
+);
+
 const { fillPersonaKeys, writeHttpProfilePrefs } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxPersonas.sys.mjs"
 );
@@ -28,18 +32,19 @@ function persistCloakCfg(ucid, seed) {
   try { ua = JSON.parse(cfg)["navigator.userAgent"] || ""; } catch (_e) {}
   writeHttpProfilePrefs(ucid, ua);
 }
-const { KEY_TYPES, readOverrides, setOverride, clearOverride, clearAllOverrides } =
+const { KEY_TYPES, readOverrides, applyOverrides, setOverride, clearOverride, clearAllOverrides } =
   ChromeUtils.importESModule("resource:///modules/CloakfoxOverrides.sys.mjs");
 
 const PREF_ENABLED = "cloakfox.enabled";
 
 async function initAppearanceControls() {
-  const { getAppearance, restartAppearance } = ChromeUtils.importESModule(
+  const { getAppearance, restartAppearance, revealAppearance } = ChromeUtils.importESModule(
     "resource:///modules/CloakfoxAppearance.sys.mjs"
   );
   const toggle = document.getElementById("cfx-firefox-appearance");
   const button = document.getElementById("cfx-appearance-restart");
   const status = document.getElementById("cfx-appearance-status");
+  const reveal = document.getElementById("cfx-appearance-reveal");
   const pref = toggle.dataset.pref;
   const appearance = await getAppearance();
   if (!appearance.supported) {
@@ -48,6 +53,12 @@ async function initAppearanceControls() {
     return;
   }
   const name = appearance.active ? "Firefox" : "Cloakfox";
+  reveal.hidden = false;
+  document.getElementById("cfx-appearance-permissions").hidden = false;
+  reveal.addEventListener("click", async () => {
+    try { await revealAppearance(); }
+    catch (error) { status.textContent = `Could not show the application: ${error.message}`; }
+  });
   document.title = name;
   document.querySelector(".brand-name").textContent = name;
   if (appearance.active) {
@@ -103,7 +114,7 @@ function u32(seedB64, i) {
 
 // MUST match SeedSync.buildCloakCfg shape — see CloakfoxSeedSync.sys.mjs.
 function buildCloakCfg(seedB64, ucid = null) {
-  return JSON.stringify({
+  const base = {
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
@@ -112,7 +123,9 @@ function buildCloakCfg(seedB64, ucid = null) {
     "fonts:spacing_seed": u32(seedB64, 3),
     "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
-  });
+  };
+  // Match SeedSync: saved field overrides win over the sampled persona.
+  return JSON.stringify(ucid !== null ? applyOverrides(ucid, base) : base);
 }
 
 // ── container enumeration ──────────────────────────────────────────
@@ -120,7 +133,7 @@ function buildCloakCfg(seedB64, ucid = null) {
 function getContainers() {
   const list = [{ ucid: 0, name: "Default (no container)" }];
   try {
-    for (const id of Services.contextualIdentityService.getPublicIdentities()) {
+    for (const id of ContextualIdentityService.getPublicIdentities()) {
       list.push({ ucid: id.userContextId, name: id.name || `Container ${id.userContextId}` });
     }
   } catch (_e) { /* CIS may be unavailable */ }

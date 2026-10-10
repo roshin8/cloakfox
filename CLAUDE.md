@@ -64,6 +64,18 @@ extension code (that pre-pivot design was removed):
   `CloakfoxPersonas`, `CloakfoxBFNetwork` (BrowserForge Bayesian net),
   `CloakfoxSeedSync` (parent → `Services.cpmm.sharedData` for the actors).
 
+### Site media compatibility
+
+`CloakfoxHackerRankMediaChild` is a separate compatibility actor, registered
+only for the top-level `https://www.hackerrank.com/pair/*` application. It
+refreshes HackerRank's cached local Zoom participant ID after failover and
+advances the application's video render epoch. It does not change capture,
+permissions, media transport, fingerprint signals, editor state or SDK internals.
+The application has no public recovery API: discovery uses the existing store
+capabilities and getAV getter signature, without hard-coded bundle IDs/export
+names. Site changes can invalidate this adapter; unsupported shapes are left
+alone. `cloakfox.compat.hackerrank_media=false` disables it on the next load.
+
 ## Critical Constraints
 
 - C++ patches MUST be applied before `./mach build` — they modify Gecko source directly

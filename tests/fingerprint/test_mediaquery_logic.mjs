@@ -18,7 +18,9 @@ const mod = await import(
 );
 const { pinsForOS, evaluateMedia } = mod._test;
 
-const mac = pinsForOS("macos"); // prefers-color-scheme: light, color-gamut: p3
+// A synthetic light pin exercises the generic evaluator. Production pins
+// deliberately exclude color scheme so native Website appearance wins.
+const mac = { ...pinsForOS("macos"), "prefers-color-scheme": "light" };
 const linux = pinsForOS("linux"); // color-gamut: srgb
 
 // Model a real host that is in DARK mode with a normal desktop viewport, so a
@@ -43,6 +45,13 @@ function nativeEval(atom) {
   return false;
 }
 const ev = (q, pins = mac) => evaluateMedia(q, pins, nativeEval);
+
+test("website appearance delegates to Firefox instead of pinning light", () => {
+  const pins = pinsForOS("macos");
+  assert.equal(evaluateMedia("(prefers-color-scheme: dark)", pins, nativeEval), undefined);
+  assert.equal(evaluateMedia("(prefers-color-scheme: light)", pins, nativeEval), undefined);
+  assert.equal(evaluateMedia("(pointer: fine) and (prefers-color-scheme: dark)", pins, nativeEval), true);
+});
 
 test("standalone controlled feature is spoofed to the pin", () => {
   assert.equal(ev("(prefers-color-scheme: light)"), true);

@@ -1,0 +1,23 @@
+Cloakfox: scoped HackerRank media failover compatibility.
+
+Refresh only the application's stale local participant ID after Zoom reconnects.
+The child actor is restricted to the top-level HTTPS /pair/ application.
+
+--- a/toolkit/modules/ActorManagerParent.sys.mjs
++++ b/toolkit/modules/ActorManagerParent.sys.mjs
+@@ -90,6 +90,15 @@
+  * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
+  */
+ let JSWINDOWACTORS = {
++  // Site compatibility: refresh HackerRank's local Zoom ID after failover.
++  CloakfoxHackerRankMedia: {
++    child: {
++      esModuleURI: "resource:///actors/CloakfoxHackerRankMediaChild.sys.mjs",
++      events: { DOMDocElementInserted: {} },
++    },
++    allFrames: false,
++    matches: ["https://www.hackerrank.com/pair/*"],
++  },
+   // Cloakfox: pin fingerprinting-relevant CSS media features so
+   // window.matchMedia reports persona-coherent, host-independent values
+   // (prefers-color-scheme, pointer/hover, forced-colors, color-gamut,

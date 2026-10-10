@@ -1,0 +1,50 @@
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -7,6 +7,7 @@
+ #include "WorkerPrivate.h"
+ 
+ #include <cmath>
++#include <cstring>
+ #include <utility>
+ 
+ #include "mozilla/Casting.h"
+@@ -6389,14 +6390,19 @@
+     return false;
+   }
+   JS::RootedObject math(aCx, &mathValue.toObject());
+-  // Logarithms and powers size data trees and encode numeric hashes. Keep
+-  // their native precision: tiny noise can discard entire Firebase fields.
+-  // Match CloakfoxMathChild's page policy.
++  // Match the page actor's realm-creation policy. Log/pow stay native unless
++  // explicitly opted in: noise can discard fields from Firebase data trees.
++  const bool noiseDataMath = StaticPrefs::cloakfox_opt_math_data_noise();
+   static constexpr const char* methods[] = {
+       "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+       "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+-      "exp", "expm1", "sqrt", "cbrt", "hypot"};
++      "exp", "expm1", "sqrt", "cbrt", "hypot",
++      "log", "log2", "log10", "log1p", "pow"};
+   for (const char* name : methods) {
++    if (!noiseDataMath &&
++        (std::strncmp(name, "log", 3) == 0 || std::strcmp(name, "pow") == 0)) {
++      continue;
++    }
+     JS::RootedValue original(aCx);
+     if (!JS_GetProperty(aCx, math, name, &original)) {
+       return false;
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2224,6 +2224,13 @@
+   value: false
+   mirror: always
+ 
++# Optional log/pow fingerprint noise. Atomic so worker realm creation can
++# read it safely; native precision is the default for data correctness.
++- name: cloakfox.opt.math_data_noise
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
+ #---------------------------------------------------------------------------
+ # Prefs starting with "consoleservice."
+ #---------------------------------------------------------------------------

@@ -8,13 +8,17 @@
  #include "PermissionStatusSink.h"
  #include "PermissionUtils.h"
  #include "mozilla/AsyncEventDispatcher.h"
-@@ -97,6 +98,11 @@
+@@ -97,6 +98,15 @@
  }
  
  PermissionState PermissionStatus::ComputeStateFromAction(uint32_t aAction) {
-+  // Cloakfox: normalize all permission states to 'prompt' when spoofing is
-+  // enabled — hides granted/denied state which can uniquely fingerprint users.
-+  if (MaskConfig::GetBool("permissions:spoof").value_or(false)) {
++  // Capture permission status drives stream setup and revocation handling.
++  // Keep camera/microphone states and change events native: reporting prompt
++  // after a real grant makes applications discard their authorized streams.
++  // Other permissions retain the configured fingerprint privacy behavior.
++  if (mName != PermissionName::Camera &&
++      mName != PermissionName::Microphone &&
++      MaskConfig::GetBool("permissions:spoof").value_or(false)) {
 +    return PermissionState::Prompt;
 +  }
    nsCOMPtr<nsIGlobalObject> global = GetOwnerGlobal();

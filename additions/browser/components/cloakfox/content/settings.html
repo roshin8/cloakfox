@@ -38,7 +38,9 @@
       <div class="hero-actions">
         <span id="cfx-appearance-status" role="status" aria-live="polite">Checking application appearance…</span>
         <button id="cfx-appearance-restart" class="btn btn-primary" hidden>Apply and restart</button>
+        <button id="cfx-appearance-reveal" class="btn btn-secondary" hidden>Show app in Finder</button>
       </div>
+      <p class="card-help" id="cfx-appearance-permissions" hidden>Use this app when adding Camera, Microphone or Screen Recording permission in macOS settings.</p>
     </section>
 
     <section class="hero">
@@ -235,8 +237,12 @@
           <span><strong>Perturb Math.PI / Math.E etc.</strong><small>Off by default. Spec-defined IEEE constants — perturbing them flags as anti-fingerprinting. Trig functions are noised regardless.</small></span>
         </label>
         <label class="flag-row">
+          <input type="checkbox" data-pref="cloakfox.opt.math_data_noise">
+          <span><strong>Randomize logarithms and powers</strong><small>Off by default. Adds fingerprint noise to Math.log/log2/log10/log1p/pow in pages and workers. Can break editor sync and numeric data processing. Reload affected pages after changing this.</small></span>
+        </label>
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.timer_high_precision_jitter">
-          <span><strong>Hide timer-precision quantization</strong><small>On by default. performance.now() returns fractional ms via deterministic jitter, hiding Firefox's 1ms quantization.</small></span>
+          <span><strong>Add fractional timer jitter</strong><small>On by default. Adds deterministic fractional milliseconds to performance.now(). Keeps underlying timer rounding; repeated measurements can still reveal it. Reload affected pages after changing this.</small></span>
         </label>
         <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.timer_quantization_off">

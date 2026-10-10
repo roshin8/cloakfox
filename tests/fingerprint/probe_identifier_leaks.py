@@ -49,6 +49,8 @@ function collect() {
   r.identity={userAgent:navigator.userAgent,appVersion:navigator.appVersion,platform:navigator.platform};
   r.values={samples:Object.values(r.functions).slice(0,23).map(f=>Math[f.name](.5,1.5)),sin:Math.sin(.5),pure:Math.sin(.5)===Math.sin(.5),sqrt:Math.sqrt(4),
     negativeZero:Object.is(Math.sin(-0),-0),nan:Number.isNaN(Math.sin(NaN)),infinity:Math.log(0)===-Infinity};
+  // WebDriver sorts object keys; preserve sample order explicitly as an array.
+  r.values.sampleNames=Object.keys(r.functions).slice(0,23);
   r.values.sampleBits=r.values.samples.map(v=>{
     const buf=new ArrayBuffer(8),view=new DataView(buf);
     view.setFloat64(0,v);return view.getBigUint64(0).toString(16).padStart(16,'0');
@@ -159,6 +161,14 @@ class Page(BaseHTTPRequestHandler):
         pass
 
 
+def expected_samples(observation, seed):
+    # Native log/pow are data-integrity requirements, independent of seed.
+    native_methods = {"Math.log", "Math.log2", "Math.log10", "Math.log1p", "Math.pow"}
+    return [bits if name in native_methods else expected_bits(bits, seed)
+            for name, bits in zip(observation["values"]["sampleNames"],
+                                  observation["values"]["sampleBits"])]
+
+
 def expected_bits(bits, seed):
     raw = int(bits, 16)
     value = struct.unpack('>d', raw.to_bytes(8, 'big'))[0]
@@ -224,7 +234,7 @@ def main():
                     if not enabled:
                         set_pref(driver, 'cloakfox.enabled', True)
                         configs0 = chrome(driver, "return JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_0'))")
-                        expected0 = [expected_bits(v, configs0['math:trig_seed']) for v in r['page']['values']['sampleBits']]
+                        expected0 = expected_samples(r['page'], configs0['math:trig_seed'])
                         deadline = time.monotonic()+5
                         while True:
                             fresh = driver.execute_async_script("""
@@ -276,7 +286,7 @@ def main():
                             continue
                         b, m = baseline[realm], masked[realm]
                         check(m['values']['sin'] != b['values']['sin'], f'Math masking exercised ({realm}, container={ucid})', m['values'])
-                        check(m['values']['sampleBits'] == [expected_bits(v, configs[0 if ucid == 0 else 1]['math:trig_seed']) for v in b['values']['sampleBits']],
+                        check(m['values']['sampleBits'] == expected_samples(b, configs[0 if ucid == 0 else 1]['math:trig_seed']),
                               f'Math uses configured seed ({realm}, container={ucid})', m['values']['sampleBits'])
                         check(m['values']['sampleBits'] == masked['page']['values']['sampleBits'],
                               f'Math matches its page ({realm}, container={ucid})', m['values']['samples'])
@@ -300,7 +310,7 @@ def main():
                     config = {**configs[1], 'math:trig_seed':seed}
                     chrome(driver, 'Services.prefs.setStringPref(arguments[0],arguments[1]);',
                            'cloakfox.s.cloak_cfg_2',json.dumps(config))
-                    expected2 = [expected_bits(v,seed) for v in baseline['page']['values']['sampleBits']]
+                    expected2 = expected_samples(baseline['page'], seed)
                     deadline=time.monotonic()+5
                     while True:
                         result=driver.execute_async_script("""
@@ -360,7 +370,7 @@ def main():
                     check(complete, f'all realms report after config refresh (seed={seed})', result and list(result))
                     if complete:
                         for realm, data in result.items():
-                            check(data['values']['sampleBits'] == [expected_bits(v, seed) for v in baseline[realm]['values']['sampleBits']],
+                            check(data['values']['sampleBits'] == expected_samples(baseline[realm], seed),
                                   f'new realm honors refreshed config ({realm}, seed={seed})', data['values'])
                 driver.execute_async_script("""
                   const done=arguments[0];

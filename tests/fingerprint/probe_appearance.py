@@ -6,7 +6,9 @@ import os
 import json
 import plistlib
 import shutil
+import subprocess
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -106,7 +108,7 @@ def prepare(driver, enabled):
 
 def main():
     assert os.uname().sysname == "Darwin", "This probe exercises macOS bundles"
-    binary = Path(os.environ["CLOAKFOX_BIN"]).absolute()
+    binary = Path(os.environ["CLOAKFOX_BIN"]).resolve()
     source_app = binary.parents[2]
     source_plist = source_app / "Contents/Info.plist"
     source_bytes = source_plist.read_bytes()
@@ -119,9 +121,41 @@ def main():
         profile = Path(temp) / "profile with spaces"
         profile.mkdir()
 
-        def launch(executable):
+        def launch(executable, bound=False):
             opts = Options()
             opts.binary_location = str(executable)
+            if bound:
+                # Finder/OS relaunch does not supply --profile or XRE_PROFILE_*.
+                # Geckodriver normally adds --profile, so launch ourselves and
+                # connect to the port published inside the owning profile.
+                env = {key: value for key, value in os.environ.items()
+                       if not key.startswith("XRE_PROFILE") and key != "CLOAKFOX_RESTART_BUNDLE"}
+                active_port = profile / "MarionetteActivePort"
+                active_port.unlink(missing_ok=True)
+                # Gecko publishes this discovery file only when port=0.
+                with (profile / "user.js").open("a") as prefs:
+                    prefs.write('\nuser_pref("marionette.port", 0);\n')
+                with (Path(temp) / "cold-launch.log").open("w") as log:
+                    process = subprocess.Popen([str(executable), "-headless", "-no-remote",
+                        "--marionette", "--remote-allow-system-access"], env=env, stdout=log, stderr=log)
+                deadline = time.monotonic() + 30
+                while time.monotonic() < deadline:
+                    if active_port.exists() and active_port.read_text().strip().isdigit():
+                        break
+                    if process.poll() is not None:
+                        raise AssertionError(f"Plain appearance launch exited ({process.returncode}) before opening its profile:\n" +
+                                             (Path(temp) / "cold-launch.log").read_text()[:5000])
+                    time.sleep(.1)
+                else:
+                    process.terminate(); process.wait(timeout=10)
+                    raise AssertionError("Plain appearance launch did not select its owning profile")
+                driver = webdriver.Firefox(options=opts, service=Service(
+                    executable_path=gecko, service_args=["--connect-existing", "--marionette-port",
+                        active_port.read_text().strip(), "--allow-system-access"],
+                    log_output=str(Path(temp) / "geckodriver.log")))
+                driver.set_script_timeout(180)
+                driver._appearance_process = process
+                return driver
             opts.add_argument("-headless")
             opts.add_argument("-profile")
             opts.add_argument(str(profile))
@@ -130,6 +164,17 @@ def main():
                 log_output=str(Path(temp) / "geckodriver.log")))
             driver.set_script_timeout(180)
             return driver
+
+        def close(driver):
+            process = getattr(driver, "_appearance_process", None)
+            if process:
+                # Connecting to an existing process does not transfer ownership
+                # to geckodriver; explicitly close this disposable test app.
+                chrome(driver, "setTimeout(() => Services.startup.quit(Ci.nsIAppStartup.eForceQuit),100);")
+                driver.service.stop()
+                process.wait(timeout=20)
+            else:
+                driver.quit()
 
         driver = launch(binary)
         try:
@@ -145,8 +190,10 @@ def main():
             driver.execute_script("arguments[0].click()", toggles[0])
             assert chrome(driver, "return Services.prefs.getBoolPref(arguments[0])", PREF)
             target = prepare(driver, True)
+            signature = Path(target["app"], "Contents/_CodeSignature/CodeResources").read_bytes()
             refreshed = prepare(driver, True)
-            assert refreshed["app"] != target["app"], "A new switch must use the current source payload"
+            assert refreshed == target, "An unchanged source must reuse the same signed appearance app"
+            assert Path(refreshed["app"], "Contents/_CodeSignature/CodeResources").read_bytes() == signature
             target = refreshed
             assert source_plist.read_bytes() == source_bytes, "Source bundle changed"
             driver.set_context("chrome")
@@ -162,7 +209,7 @@ def main():
             driver.set_context("content")
             assert cancelled == {"cancelled": True, "env": ""}, cancelled
         finally:
-            driver.quit()
+            close(driver)
 
         firefox_app = Path(target["app"])
         assert firefox_app.name == "Firefox.app"
@@ -185,7 +232,7 @@ def main():
         for size in [48, 128]:
             assert firefox_addon[f"icons/icon-{size}.png"] == (source_app / f"Contents/Resources/browser/appearance/icon{size}.png").read_bytes()
         assert addon_payload(source_app) == source_addon, "Source extension was modified"
-        driver = launch(target["executable"])
+        driver = launch(target["executable"], bound=True)
         try:
             assert chrome(driver, "return Services.dirsvc.get('ProfD',Ci.nsIFile).path") == str(profile)
             assert chrome(driver, "return Services.prefs.getStringPref('cloakfox.appearance.probe')") == "profile preserved"
@@ -214,7 +261,7 @@ def main():
             assert source_plist.read_bytes() == source_bytes
             assert addon_payload(source_app) == source_addon, "Source extension changed on restoration"
         finally:
-            driver.quit()
+            close(driver)
 
         driver = launch(restored["executable"])
         try:
@@ -224,7 +271,7 @@ def main():
             assert chrome(driver, "return Services.prefs.getStringPref('cloakfox.appearance.probe')") == "profile preserved"
             assert extension_branding(driver, "Cloakfox")["popup"] == original_extension["popup"], "Extension origin changed on restoration"
         finally:
-            driver.quit()
+            close(driver)
     print("PASS — Firefox/Cloakfox appearance, native bundle metadata and icons, Fluent branding, settings and profile preservation")
 
 

@@ -9,7 +9,8 @@ import { Subprocess } from "resource://gre/modules/Subprocess.sys.mjs";
 
 const PREF = "cloakfox.appearance.firefox";
 const MARKER = "cloakfox-appearance.json";
-const SCHEMA = 1;
+const SCHEMA = 2;
+const PROFILE_BINDING = "cloakfox-profile.ini";
 const ADDON_ID = "cloakfox-shield@cloakfox";
 const ADDON_PATH = "/builtin-addons/cloakfox-shield/";
 const FIREFOX_ADDON_PATH = "/builtin-addons/firefox-panel/";
@@ -55,10 +56,46 @@ export async function getAppearance() {
   if (!app.endsWith(".app")) throw new Error("Appearance switching needs a macOS app bundle.");
   const marker = PathUtils.join(app, "Contents", "Resources", MARKER);
   const metadata = await IOUtils.exists(marker) ? await IOUtils.readJSON(marker) : null;
-  if (metadata && (metadata.schema !== SCHEMA || !PathUtils.isAbsolute(metadata.sourceApp))) {
+  if (metadata && (![1, SCHEMA].includes(metadata.schema) || !PathUtils.isAbsolute(metadata.sourceApp))) {
     throw new Error("This appearance copy has invalid source information.");
   }
   return {supported: true, active: !!metadata, app, sourceApp: metadata?.sourceApp || app};
+}
+
+export async function revealAppearance() {
+  const status = await getAppearance();
+  if (!status.supported) throw new Error("Showing the application is available on macOS.");
+  file(status.app).reveal();
+}
+
+async function sourceFingerprint(source, info) {
+  const contents = PathUtils.join(source, "Contents");
+  const seal = PathUtils.join(contents, "_CodeSignature", "CodeResources");
+  if (await IOUtils.exists(seal)) {
+    try {
+      // A verified seal covers resources and nested code. Include the main
+      // executable and plist, which are covered by the code directory instead.
+      await run("/usr/bin/codesign", ["--verify", "--deep", "--strict", source]);
+      return JSON.stringify(await Promise.all([
+        seal, PathUtils.join(contents, "Info.plist"),
+        PathUtils.join(contents, "MacOS", info.CFBundleExecutable),
+      ].map(path => IOUtils.computeHexDigest(path, "sha256"))));
+    } catch (_error) { /* Unsealed development builds need a full digest. */ }
+  }
+  const entries = [];
+  const walk = async path => {
+    for (const child of (await IOUtils.getChildren(path)).sort()) {
+      const stat = await IOUtils.stat(child);
+      if (stat.type === "directory") await walk(child);
+      else entries.push([child.slice(source.length), await IOUtils.computeHexDigest(child, "sha256")]);
+    }
+  };
+  await walk(source);
+  const hash = Cc["@mozilla.org/security/hash;1"].createInstance(Ci.nsICryptoHash);
+  hash.init(hash.SHA256);
+  const bytes = new TextEncoder().encode(JSON.stringify(entries));
+  hash.update(bytes, bytes.length);
+  return hash.finish(true);
 }
 
 const BRAND_IMAGES = [
@@ -182,16 +219,36 @@ async function buildFirefoxCopy(status) {
   const infoPath = PathUtils.join(source, "Contents", "Info.plist");
   const info = await readPlist(infoPath);
   if (info.CFBundleName !== "Cloakfox") throw new Error("The source must be a Cloakfox app bundle.");
-  // Recreate on every switch from the current source. Dev-build JS and resource
-  // changes need not update the build ID or Info.plist timestamp.
+  const fingerprint = await sourceFingerprint(source, info);
+  const profileRoot = PathUtils.profileDir, profileLocal = PathUtils.localProfileDir;
+  if ([profileRoot, profileLocal].some(path => /[\r\n]/.test(path))) {
+    throw new Error("The profile path cannot contain a line break.");
+  }
+  const binding = `[CloakfoxProfile]\nRoot=${profileRoot}\nLocal=${profileLocal}\n`;
   const cache = PathUtils.join(PathUtils.localProfileDir, "cloakfox-appearance");
-  const root = PathUtils.join(cache, Services.uuid.generateUUID().toString());
+  const root = cache;
   if (root.startsWith(source + "/")) throw new Error("The profile must be outside the application bundle.");
   const app = PathUtils.join(root, "Firefox.app");
   const executable = PathUtils.join(app, "Contents", "MacOS", "firefox");
+  const marker = PathUtils.join(app, "Contents", "Resources", MARKER);
+  if (await IOUtils.exists(marker)) {
+    try {
+      const saved = await IOUtils.readJSON(marker);
+      if (saved.schema === SCHEMA && saved.sourceApp === source &&
+          saved.sourceFingerprint === fingerprint && saved.profileRoot === profileRoot &&
+          saved.profileLocal === profileLocal &&
+          await IOUtils.readUTF8(PathUtils.join(app, "Contents", "Resources", PROFILE_BINDING)) === binding) {
+        await run("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
+        return {app, executable};
+      }
+    } catch (_error) { /* Rebuild incomplete or invalid cached copies. */ }
+  }
+  // Never change the signature/resources of the executable currently running.
+  if (status.app === app) throw new Error("Restart in Cloakfox appearance before updating the Firefox copy.");
   await IOUtils.makeDirectory(root, {ignoreExisting: true});
   const stage = PathUtils.join(root, `${Services.uuid.generateUUID()}.app`);
   const scratch = PathUtils.join(root, `${Services.uuid.generateUUID()}.scratch`);
+  const backup = PathUtils.join(root, `${Services.uuid.generateUUID()}.previous.app`);
   await IOUtils.makeDirectory(scratch);
   try {
     // Materialize dev-build symlinks as well as packaged apps. Writing through
@@ -231,27 +288,28 @@ async function buildFirefoxCopy(status) {
     if (await IOUtils.exists(looseAddon)) {
       await IOUtils.move(looseAddon, PathUtils.join(PathUtils.parent(looseAddon), "firefox-panel"));
     }
-    await IOUtils.writeJSON(PathUtils.join(resources, MARKER), {schema: SCHEMA, sourceApp: source});
+    await IOUtils.writeUTF8(PathUtils.join(resources, PROFILE_BINDING), binding);
+    await IOUtils.writeJSON(PathUtils.join(resources, MARKER), {
+      schema: SCHEMA, sourceApp: source, sourceFingerprint: fingerprint, profileRoot, profileLocal,
+    });
     // A changed Info.plist invalidates the copied signature. Sign this local
     // variant, retaining executable entitlements; never alter the source app.
     await run("/usr/bin/codesign", ["--force", "--deep", "--sign", "-", "--preserve-metadata=entitlements,flags", stage]);
+    await run("/usr/bin/codesign", ["--verify", "--deep", "--strict", stage]);
     // macOS also quarantines files newly created by a quarantining browser.
     // Clear that marker on this locally generated, signed copy only (the
     // native restart launcher applies the same treatment to local relaunches).
     await run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", stage]);
-    await IOUtils.move(stage, app, {noOverwrite: true});
+    const replacing = await IOUtils.exists(app);
+    if (replacing) await IOUtils.move(app, backup, {noOverwrite: true});
+    try { await IOUtils.move(stage, app, {noOverwrite: true}); }
+    catch (error) {
+      if (replacing) await IOUtils.move(backup, app, {noOverwrite: true});
+      throw error;
+    }
     // Renaming into a browser-created directory can attach a new marker.
     await run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", root]);
-    for (const old of await IOUtils.getChildren(cache)) {
-      if (old === root || status.app.startsWith(old + "/")) continue;
-      const oldMarker = PathUtils.join(old, "Firefox.app", "Contents", "Resources", MARKER);
-      if (await IOUtils.exists(oldMarker)) {
-        const saved = await IOUtils.readJSON(oldMarker);
-        if (saved.schema === SCHEMA && saved.sourceApp === source) {
-          await IOUtils.remove(old, {recursive: true});
-        }
-      }
-    }
+    await IOUtils.remove(backup, {recursive: true, ignoreAbsent: true});
     return {app, executable};
   } finally {
     await IOUtils.remove(stage, {recursive: true, ignoreAbsent: true});
