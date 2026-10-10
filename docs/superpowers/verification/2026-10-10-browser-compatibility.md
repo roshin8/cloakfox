@@ -90,3 +90,29 @@ These scratch artifacts are local evidence, not committed fixtures.
 A separate read-only reviewer found no blocking or actionable correctness
 issues in the native patch and regression coverage. Packaging and live results
 were reviewed from the verification evidence rather than independently rerun.
+
+## Follow-up: challenge restarts after a human click
+
+The user subsequently reported that clicking the checkbox restarts verification.
+Diagnostic runs of the same signed staging app reproduced a fresh challenge
+without any content-process signal/EXC_BAD_ACCESS crash. The human performed
+the checkbox interaction; the agent only collected browser observations.
+
+The first capture showed an HTTP 200 challenge POST with Set-Cookie, saved
+`cf_clearance` cookies, then HTTP 403 on the original link with a new Ray ID.
+The second capture additionally confirmed that the subsequent original-link
+GET sent `cf_clearance` and `cf_chl_rc_ni`. Its HTTP User-Agent was stable across
+the challenge and reload and matched the page's navigator User-Agent. Cookie
+values, challenge tokens and the private link are not included in this record.
+
+This rules out the repaired WebGPU crash, a missing saved/sent clearance cookie,
+and a changing HTTP User-Agent for these observed runs. It does not establish
+why the site's challenge platform rejects/re-challenges the session. No new
+browser patch or privacy exception has been justified or applied; successful
+challenge passage remains unresolved. Selenium-driven diagnostics can themselves
+influence a challenge decision and are not a clean daily-use-browser control.
+
+Local reports: `/tmp/cloakfox-cloudflare-loop-20261010/result.json` and
+`/tmp/cloakfox-cloudflare-loop-headers-20261010/result.json`. The latter contains
+only cookie names/attributes and request metadata, not cookie values. Console
+messages in scratch reports may contain private URLs; do not publish them raw.
