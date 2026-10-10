@@ -1,7 +1,12 @@
 # TestDome Chrome identity and virtual screen design
 
 **Date:** 2026-10-10
-**Status:** Scope approved in conversation; written spec awaiting review
+**Status:** Superseded by [native browser compatibility design](2026-10-10-native-browser-compatibility-design.md)
+
+The subsequent user request asks to use the latest source/DMG and make
+TestDome work without Chrome. The linked replacement keeps the Firefox
+identity and includes the now-reproduced WebGPU crash cause. This earlier
+Chrome-identity proposal is historical, not an implementation requirement.
 
 ## Intent and success criteria
 
