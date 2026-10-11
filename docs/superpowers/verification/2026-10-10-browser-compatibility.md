@@ -208,3 +208,35 @@ Native failing and passing logs are in
 `/tmp/cloakfox-cf-native-20261010/native-user-config/` and
 `/tmp/cloakfox-cf-native-20261010/native-user-config-reset/` respectively.
 Private links, cookie values and identity seeds are omitted from this record.
+
+## Identity mismatch investigation
+
+The failing native Chrome profile's cached configuration claimed Chrome 120
+in both User-Agent fields but still contained Firefox 146 in
+`navigator.appVersion`. A fresh native disposable control changed only the
+appVersion configuration key to match that Chrome UA. It still returned HTTP
+403 after the authorized checkbox click, presented a new Ray ID/checkbox, and
+did not redirect to CodeSignal. Thus the appVersion contradiction is real but
+correcting it alone did not resolve the loop.
+
+The native failing control's browser console also recorded warnings from the
+Cloudflare challenge script for access to `InstallTrigger`, `Window.fullScreen`,
+`onmozfullscreenchange`, `onmozfullscreenerror`, and
+`WEBGL_debug_renderer_info`. These observations establish accessed APIs, not
+their purpose, uploaded values or weight in a rejection decision. WebGL context
+loss warnings also appeared in passing runs and do not independently explain
+the failure.
+
+The HTTP profile preferences are another distinction outside the cached persona
+JSON: both Chrome runs used `h2_profile=chrome`, while the passing Firefox run
+used `h2_profile=firefox`; all three used `h3_profile=0`. The settings UI derives
+these preferences from the chosen UA. The engine retains Gecko/SpiderMonkey and
+NSS TLS, so a Chrome UA cannot provide an actual Chrome implementation. Neither
+the exact TLS fingerprint sent nor the site's server-side rejection rule has
+been established by this investigation. Cloudflare documents client-side,
+header/session and TLS fingerprint signals, but that does not prove this site
+used any particular one.
+
+The redacted local control report is
+`/tmp/cloakfox-cf-native-20261010/native-user-config-chrome-appversion/redacted-result.json`.
+The user's restored, passing Firefox profile was not changed by this control.
