@@ -1,120 +1,77 @@
---- a/browser/components/sessionstore/SessionStore.sys.mjs
-+++ b/browser/components/sessionstore/SessionStore.sys.mjs
-@@ -309,6 +309,28 @@
-    */
-   getWindowId(aWindow) {
-     return aWindow.__SSi ?? null;
-+  },
-+
-+  // Cloakfox: destructive container-data action must not race session restore.
-+  assertContainerForgetReady() {
-+    if (SessionStoreInternal._restoreCount > 0 ||
-+        Object.keys(SessionStoreInternal._statesToRestore).length ||
-+        WINDOW_FLUSHING_PROMISES.size || SessionStoreInternal._browserSetState) {
-+      throw new Error("Wait for session restore to finish before forgetting container data");
+diff --git a/browser/components/sessionstore/SessionWriter.sys.mjs b/browser/components/sessionstore/SessionWriter.sys.mjs
+--- a/browser/components/sessionstore/SessionWriter.sys.mjs
++++ b/browser/components/sessionstore/SessionWriter.sys.mjs
+@@ -70,6 +70,17 @@
+     const unlock = await lockIOWithMutex();
+     try {
+       return await SessionWriterInternal.write(state, options);
++    } finally {
++      unlock();
 +    }
 +  },
 +
-+  async forgetContainerRestoreData(userContextId) {
-+    if (!Number.isSafeInteger(userContextId) || userContextId < 0 ||
-+        userContextId > 0xffffffff) {
-+      throw new Error("Invalid container ID");
-+    }
-+    this.assertContainerForgetReady();
-+    SessionStoreInternal._forgetTabsWithUserContextId(userContextId);
-+    await lazy.SessionSaver.run({ throwOnFailure: true });
-+    const { SessionFile } = ChromeUtils.importESModule(
-+      "resource:///modules/sessionstore/SessionFile.sys.mjs");
-+    await SessionFile.pruneContainerRestoreFiles(userContextId);
-   },
- 
-   getBrowserState: function ss_getBrowserState() {
-@@ -1670,12 +1692,12 @@
-         this._notifyOfClosedObjectsChange();
-         break;
-       case "clear-origin-attributes-data": {
--        let userContextId = 0;
--        try {
--          userContextId = JSON.parse(aData).userContextId;
--        } catch (e) {}
--        if (userContextId) {
--          this._forgetTabsWithUserContextId(userContextId);
-+        let pattern;
-+        try { pattern = JSON.parse(aData); } catch (e) {}
-+        const id = pattern?.userContextId;
-+        // An explicit zero matches default-container data; an absent key does not.
-+        if (Number.isSafeInteger(id) && id >= 0 && id <= 0xffffffff) {
-+          this._forgetTabsWithUserContextId(id);
-         }
-         break;
-       }
-@@ -5216,29 +5238,45 @@
++  async pruneContainerRestoreFiles(userContextId) {
++    const unlock = await lockIOWithMutex();
++    try {
++      const { pruneContainerRestoreFiles } = ChromeUtils.importESModule(
++        "resource:///modules/CloakfoxIdentityActions.sys.mjs");
++      await pruneContainerRestoreFiles(userContextId, SessionWriterInternal.Paths);
+     } finally {
+       unlock();
      }
+diff --git a/browser/components/sessionstore/SessionFile.sys.mjs b/browser/components/sessionstore/SessionFile.sys.mjs
+--- a/browser/components/sessionstore/SessionFile.sys.mjs
++++ b/browser/components/sessionstore/SessionFile.sys.mjs
+@@ -46,8 +46,13 @@
+    *
+    * @param aData - May get changed on shutdown.
+    */
+-  write(aData) {
+-    return SessionFileInternal.write(aData);
++  write(aData, options = {}) {
++    return SessionFileInternal.write(aData, options);
++  },
++
++  async pruneContainerRestoreFiles(userContextId) {
++    const writer = await SessionFileInternal.getWriter();
++    return writer.pruneContainerRestoreFiles(userContextId);
    },
- 
--  // This method deletes all the closedTabs matching userContextId.
-+  // Remove only this container from all current restorable records, including
-+  // default-container entries and mixed closed windows. Preserve other tabs.
-   _forgetTabsWithUserContextId(userContextId) {
--    for (let window of Services.wm.getEnumerator("navigator:browser")) {
--      let windowState = this._windows[window.__SSi];
--      if (windowState) {
--        // In order to remove the tabs in the correct order, we store the
--        // indexes, into an array, then we revert the array and remove closed
--        // data from the last one going backward.
--        let indexes = [];
--        windowState._closedTabs.forEach((closedTab, index) => {
--          if (closedTab.state.userContextId == userContextId) {
--            indexes.push(index);
--          }
--        });
--
--        for (let index of indexes.reverse()) {
--          this.removeClosedTabData(windowState, windowState._closedTabs, index);
--        }
--      }
--    }
--
--    // Notify of changes to closed objects.
-+    const { pruneContainerRestoreState } = ChromeUtils.importESModule(
-+      "resource:///modules/CloakfoxIdentityActions.sys.mjs"
-+    );
-+    const removeClosed = (win, list, index) =>
-+      this.removeClosedTabData(win, list, index);
-+    for (const win of Services.wm.getEnumerator("navigator:browser")) {
-+      const state = this._windows[win.__SSi];
-+      if (!state) continue;
-+      const wrapper = {
-+        _closedTabs: state._closedTabs,
-+        closedGroups: state.closedGroups,
-+        _lastClosedTabGroupCount: state._lastClosedTabGroupCount,
-+      };
-+      pruneContainerRestoreState(wrapper, userContextId, removeClosed);
-+      state.closedGroups = wrapper.closedGroups;
-+      state._lastClosedTabGroupCount = wrapper._lastClosedTabGroupCount;
-+    }
-+    const closed = { _closedWindows: this._closedWindows, savedGroups: this._savedGroups };
-+    pruneContainerRestoreState(closed, userContextId, removeClosed);
-+    for (const win of this._closedWindows) {
-+      if (!closed._closedWindows.includes(win)) {
-+        this._saveableClosedWindowData.delete(win);
-+        this._removeClosedAction(this._LAST_ACTION_CLOSED_WINDOW, win.closedId);
-+      }
-+    }
-+    this._closedWindows = closed._closedWindows;
-+    this._savedGroups = closed.savedGroups;
-+    pruneContainerRestoreState(LastSession.getState(), userContextId, removeClosed);
-+    pruneContainerRestoreState(this._deferredInitialState, userContextId, removeClosed);
-+    for (const state of Object.values(this._statesToRestore)) {
-+      pruneContainerRestoreState(state, userContextId, removeClosed);
-+    }
-+    this._closedObjectsChanged = true;
-     this._notifyOfClosedObjectsChange();
-+    this._notifyOfSavedTabGroupsChange();
-+    this.saveStateDelayed();
-   },
- 
    /**
+    * Wipe the contents of the session file, asynchronously.
+@@ -424,7 +429,7 @@
+     return Promise.resolve(lazy.SessionWriter);
+   },
+ 
+-  write(aData) {
++  write(aData, { throwOnFailure = false } = {}) {
+     if (lazy.RunState.isClosed) {
+       return Promise.reject(new Error("SessionFile is closed"));
+     }
+@@ -442,6 +447,7 @@
+ 
+     this._attempts++;
+     let options = { isFinalWrite, performShutdownCleanup };
++    let writeError;
+     let write = this.getWriter().then(writer => writer.write(aData, options));
+ 
+     // Wait until the write is done.
+@@ -477,6 +483,7 @@
+           err.stack
+         );
+         this._failures++;
++        writeError = err;
+         // By not doing anything special here we ensure that |promise| cannot
+         // be rejected anymore. The shutdown/cleanup code at the end of the
+         // function will thus always be executed.
+@@ -504,6 +511,7 @@
+     return promise.then(() => {
+       // Remove the blocker, no matter if writing failed or not.
+       IOUtils.profileBeforeChange.removeBlocker(promise);
++      if (throwOnFailure && writeError) throw writeError;
+ 
+       if (isFinalWrite) {
+         Services.obs.notifyObservers(
+diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/components/sessionstore/SessionSaver.sys.mjs
 --- a/browser/components/sessionstore/SessionSaver.sys.mjs
 +++ b/browser/components/sessionstore/SessionSaver.sys.mjs
 @@ -56,11 +56,11 @@
@@ -186,74 +143,124 @@
        }
      );
    },
---- a/browser/components/sessionstore/SessionFile.sys.mjs
-+++ b/browser/components/sessionstore/SessionFile.sys.mjs
-@@ -43,8 +43,13 @@
-    *
-    * @param aData - May get changed on shutdown.
-    */
--  write(aData) {
--    return SessionFileInternal.write(aData);
-+  write(aData, options = {}) {
-+    return SessionFileInternal.write(aData, options);
-+  },
+diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/components/sessionstore/SessionStore.sys.mjs
+--- a/browser/components/sessionstore/SessionStore.sys.mjs
++++ b/browser/components/sessionstore/SessionStore.sys.mjs
+@@ -296,6 +296,27 @@
+     "nsISupportsWeakReference",
+   ]);
+ 
 +
-+  async pruneContainerRestoreFiles(userContextId) {
-+    const writer = await SessionFileInternal.getWriter();
-+    return writer.pruneContainerRestoreFiles(userContextId);
-   },
-   /**
-    * Wipe the contents of the session file, asynchronously.
-@@ -419,7 +424,7 @@
-     return Promise.resolve(lazy.SessionWriter);
-   },
- 
--  write(aData) {
-+  write(aData, { throwOnFailure = false } = {}) {
-     if (lazy.RunState.isClosed) {
-       return Promise.reject(new Error("SessionFile is closed"));
-     }
-@@ -437,6 +442,7 @@
- 
-     this._attempts++;
-     let options = { isFinalWrite, performShutdownCleanup };
-+    let writeError;
-     let promise = this.getWriter().then(writer => writer.write(aData, options));
- 
-     // Wait until the write is done.
-@@ -472,6 +478,7 @@
-           err.stack
-         );
-         this._failures++;
-+        writeError = err;
-         // By not doing anything special here we ensure that |promise| cannot
-         // be rejected anymore. The shutdown/cleanup code at the end of the
-         // function will thus always be executed.
-@@ -499,6 +506,7 @@
-     return promise.then(() => {
-       // Remove the blocker, no matter if writing failed or not.
-       IOUtils.profileBeforeChange.removeBlocker(promise);
-+      if (throwOnFailure && writeError) throw writeError;
- 
-       if (isFinalWrite) {
-         Services.obs.notifyObservers(
---- a/browser/components/sessionstore/SessionWriter.sys.mjs
-+++ b/browser/components/sessionstore/SessionWriter.sys.mjs
-@@ -69,6 +69,17 @@
-     const unlock = await lockIOWithMutex();
-     try {
-       return await SessionWriterInternal.write(state, options);
-+    } finally {
-+      unlock();
++  // Cloakfox: destructive container-data action must not race session restore.
++  assertContainerForgetReady() {
++    if (this.#restoreCount > 0 ||
++        Object.keys(this.#statesToRestore).length ||
++        WINDOW_FLUSHING_PROMISES.size || this.#browserSetState) {
++      throw new Error("Wait for session restore to finish before forgetting container data");
 +    }
-+  },
++  }
 +
-+  async pruneContainerRestoreFiles(userContextId) {
-+    const unlock = await lockIOWithMutex();
-+    try {
-+      const { pruneContainerRestoreFiles } = ChromeUtils.importESModule(
-+        "resource:///modules/CloakfoxIdentityActions.sys.mjs");
-+      await pruneContainerRestoreFiles(userContextId, SessionWriterInternal.Paths);
-     } finally {
-       unlock();
++  async forgetContainerRestoreData(userContextId) {
++    if (!Number.isSafeInteger(userContextId) || userContextId < 0 ||
++        userContextId > 0xffffffff) {
++      throw new Error("Invalid container ID");
++    }
++    this.assertContainerForgetReady();
++    this.#forgetTabsWithUserContextId(userContextId);
++    await lazy.SessionSaver.run({ throwOnFailure: true });
++    await lazy.SessionFile.pruneContainerRestoreFiles(userContextId);
++  }
++
+   #globalState = new GlobalState();
+ 
+   // A counter to be used to generate a unique ID for each closed tab or window.
+@@ -1014,12 +1035,11 @@
+         this.#notifyOfClosedObjectsChange();
+         break;
+       case "clear-origin-attributes-data": {
+-        let userContextId = 0;
+-        try {
+-          userContextId = JSON.parse(aData).userContextId;
+-        } catch (e) {}
+-        if (userContextId) {
+-          this.#forgetTabsWithUserContextId(userContextId);
++        let pattern;
++        try { pattern = JSON.parse(aData); } catch (e) {}
++        const id = pattern?.userContextId;
++        if (Number.isSafeInteger(id) && id >= 0 && id <= 0xffffffff) {
++          this.#forgetTabsWithUserContextId(id);
+         }
+         break;
+       }
+@@ -5001,33 +5021,45 @@
      }
+   }
+ 
+-  // This method deletes all the closedTabs matching userContextId.
++  // Remove only this container from all current restorable records, including
++  // default-container entries and mixed closed windows. Preserve other tabs.
+   #forgetTabsWithUserContextId(userContextId) {
+-    for (let window of Services.wm.getEnumerator("navigator:browser")) {
+-      let windowState = this.#windows[window.__SSi];
+-      if (windowState) {
+-        // In order to remove the tabs in the correct order, we store the
+-        // indexes, into an array, then we revert the array and remove closed
+-        // data from the last one going backward.
+-        let indexes = [];
+-        windowState._closedTabs.forEach((closedTab, index) => {
+-          if (closedTab.state.userContextId == userContextId) {
+-            indexes.push(index);
+-          }
+-        });
+-
+-        for (let index of indexes.reverse()) {
+-          this.#removeClosedTabData(
+-            windowState,
+-            windowState._closedTabs,
+-            index
+-          );
+-        }
+-      }
+-    }
+-
+-    // Notify of changes to closed objects.
+-    this.#notifyOfClosedObjectsChange();
++    const { pruneContainerRestoreState } = ChromeUtils.importESModule(
++      "resource:///modules/CloakfoxIdentityActions.sys.mjs"
++    );
++    const removeClosed = (win, list, index) =>
++      this.#removeClosedTabData(win, list, index);
++    for (const win of Services.wm.getEnumerator("navigator:browser")) {
++      const state = this.#windows[win.__SSi];
++      if (!state) continue;
++      const wrapper = {
++        _closedTabs: state._closedTabs,
++        closedGroups: state.closedGroups,
++        _lastClosedTabGroupCount: state._lastClosedTabGroupCount,
++      };
++      pruneContainerRestoreState(wrapper, userContextId, removeClosed);
++      state.closedGroups = wrapper.closedGroups;
++      state._lastClosedTabGroupCount = wrapper._lastClosedTabGroupCount;
++    }
++    const closed = { _closedWindows: this.#closedWindows, savedGroups: this.#savedGroups };
++    pruneContainerRestoreState(closed, userContextId, removeClosed);
++    for (const win of this.#closedWindows) {
++      if (!closed._closedWindows.includes(win)) {
++        this.#saveableClosedWindowData.delete(win);
++        this.#removeClosedAction(this.LAST_ACTION_CLOSED_WINDOW, win.closedId);
++      }
++    }
++    this.#closedWindows = closed._closedWindows;
++    this.#savedGroups = closed.savedGroups;
++    pruneContainerRestoreState(LastSession.getState(), userContextId, removeClosed);
++    pruneContainerRestoreState(this.#deferredInitialState, userContextId, removeClosed);
++    for (const state of Object.values(this.#statesToRestore)) {
++      pruneContainerRestoreState(state, userContextId, removeClosed);
++    }
++    this.#closedObjectsChanged = true;
++    this.#notifyOfClosedObjectsChange();
++    this.#notifyOfSavedTabGroupsChange();
++    this.#saveStateDelayed();
+   }
+ 
+   /**

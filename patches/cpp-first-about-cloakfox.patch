@@ -39,16 +39,11 @@ additions/browser/components/cloakfox/ — no other Firefox files touched.
      'downloads',
 --- a/browser/components/about/AboutRedirector.cpp
 +++ b/browser/components/about/AboutRedirector.cpp
-@@ -63,7 +63,12 @@
-     {"framecrashed", "chrome://browser/content/aboutFrameCrashed.html",
-      nsIAboutModule::URI_SAFE_FOR_UNTRUSTED_CONTENT |
-          nsIAboutModule::URI_CAN_LOAD_IN_CHILD |
-          nsIAboutModule::HIDE_FROM_ABOUTABOUT},
-+    // Cloakfox: native settings page. ALLOW_SCRIPT lets the page run
-+    // its scripts; IS_SECURE_CHROME_UI grants chrome-priv so
-+    // Services.prefs is callable. Same flag pair as about:preferences.
+@@ -49,2 +49,7 @@
+ static const RedirEntry kRedirMap[] = {
++    // Cloakfox: privileged native settings, matching about:preferences.
 +    {"cloakfox", "chrome://browser/content/cloakfox/settings.html",
 +     nsIAboutModule::ALLOW_SCRIPT | nsIAboutModule::IS_SECURE_CHROME_UI},
-     {"logins", "chrome://browser/content/aboutlogins/aboutLogins.html",
-      nsIAboutModule::ALLOW_SCRIPT | nsIAboutModule::URI_MUST_LOAD_IN_CHILD |
-          nsIAboutModule::URI_CAN_LOAD_IN_PRIVILEGEDABOUT_PROCESS |
++    // Existing Firefox pages retain their original process/security flags.
++
+     {"aichatcontent", "chrome://browser/content/aiwindow/aiChatContent.html",

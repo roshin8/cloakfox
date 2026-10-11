@@ -56,7 +56,7 @@ export class CloakfoxGamepadChild extends JSWindowActorChild {
     const orig = navProto.getGamepads;
     const wrapped = Cu.exportFunction(function () {
       return Cu.cloneInto([null, null, null, null], pageWin);
-    }, pageWin);
+    }, pageWin, { functionName: orig.name, allowConstruct: false });
     setNativeIdentity(wrapped, orig.name, orig.length);
     // Define on the PROTOTYPE with native flags (methods are enumerable
     // on Navigator.prototype), not the instance. Instance assignment

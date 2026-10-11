@@ -1,0 +1,66 @@
+diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -6737,6 +6737,32 @@
+ // Call the original native Math function so argument conversion, exceptional
+ // values and caller-owned errors keep SpiderMonkey's behavior. Reserved slots
+ // are traced by the GC and are not properties visible to worker scripts.
++// A worker has a stable top-level site. Cache its derived Math seed until
++// the authoritative container overlay changes; hot animation calls need no
++// repeated JSON parsing or HMAC. Compare the site as well so a reused thread
++// or worker address cannot inherit another worker's identity.
++static uint32_t CloakfoxWorkerSiteMathSeed(WorkerPrivate* aWorker) {
++  if (!aWorker || !aWorker->CookieJarSettings()) return 0;
++  const uint32_t ucid = aWorker->GetOriginAttributes().mUserContextId;
++  const std::string snapshot = ::CloakConfigOverlay_Get(ucid);
++  nsAutoString partition;
++  if (NS_FAILED(aWorker->CookieJarSettings()->GetPartitionKey(partition))) return 0;
++  static thread_local bool initialized = false;
++  static thread_local uint32_t previousContainer = 0;
++  static thread_local uint32_t seed = 0;
++  static thread_local std::string previousSnapshot;
++  static thread_local nsString previousPartition;
++  if (!initialized || ucid != previousContainer || snapshot != previousSnapshot ||
++      partition != previousPartition) {
++    seed = CloakfoxSiteSeed::Derive(ucid, "math:trig_seed", aWorker->CookieJarSettings());
++    previousContainer = ucid;
++    previousSnapshot = snapshot;
++    previousPartition = partition;
++    initialized = true;
++  }
++  return seed;
++}
++
+ static bool CloakfoxWorkerMath(JSContext* aCx, unsigned aArgc, JS::Value* aVp) {
+   JS::CallArgs args = JS::CallArgsFromVp(aArgc, aVp);
+   JS::RootedValue original(
+@@ -6750,8 +6776,12 @@
+   if (StaticPrefs::cloakfox_enabled() && std::isfinite(value) &&
+       std::trunc(value) != value) {
+     const uint64_t bits = BitwiseCast<uint64_t>(value);
+-    const uint32_t seed = static_cast<uint32_t>(
+-        js::GetFunctionNativeReserved(&args.callee(), 1).toNumber());
++    WorkerPrivate* worker = GetCurrentThreadWorkerPrivate();
++    const uint32_t seed = CloakfoxWorkerSiteMathSeed(worker);
++    if (seed == 0) {
++      args.rval().set(result);
++      return true;
++    }
+     uint32_t hash = uint32_t(bits) ^ uint32_t(bits >> 32) ^ seed;
+     hash = (hash ^ (hash >> 16)) * uint32_t(2246822507);
+     hash = (hash ^ (hash >> 13)) * uint32_t(3266489909);
+@@ -6843,10 +6873,10 @@
+     }
+   }
+ 
+-  // Preserve the per-site/container seed while installing native Math functions.
+-  const uint32_t seed = CloakfoxSiteSeed::Derive(
+-      GetOriginAttributes().mUserContextId, "math:trig_seed", CookieJarSettings());
+-  if (seed != 0 && !InstallCloakfoxWorkerMath(aCx, global, seed)) {
++  // Install native pass-through functions so enabling masking takes effect
++  // for existing workers and their captured function references as well.
++  // Each call resolves the current site policy and container snapshot.
++  if (!IsChromeWorker() && !InstallCloakfoxWorkerMath(aCx, global, 0)) {
+     data->mScope = nullptr;
+     return nullptr;
+   }

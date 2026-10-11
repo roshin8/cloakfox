@@ -22,6 +22,38 @@ import { actorSiteSeed, siteSeedForWindow } from "resource:///modules/CloakfoxSi
 const NOISE_MAG_CONST = 1e-13;  // above float64 ULP at ~3.14 (~4.44e-16)
 const NOISE_MAG_TRIG  = 1e-12;
 
+// SharedMap.get deserializes a new copy on every read. Animation loops can
+// make tens of thousands of Math calls per frame, so share one snapshot across
+// this process's actors and discard it only when the parent publishes changes.
+// This listener captures no actor or window and lives with the module.
+const SHARED_KEY = "cloakfox-seeds";
+const sharedData = Services.cpmm.sharedData;
+let cachedSeeds;
+sharedData.addEventListener("change", event => {
+  if (event.changedKeys.includes(SHARED_KEY)) cachedSeeds = undefined;
+});
+function currentSeeds() {
+  return cachedSeeds ??= sharedData.get(SHARED_KEY) || {};
+}
+
+let mathEnabled = Services.prefs.getBoolPref("cloakfox.enabled", false);
+Services.prefs.addObserver("cloakfox.enabled", {
+  observe() {
+    mathEnabled = Services.prefs.getBoolPref("cloakfox.enabled", false);
+  },
+});
+// With the global policy off, private/FPP page realms can still select fdlibm
+// for these three intrinsics while the chrome realm uses the platform library.
+// Keep their page-realm path in that case, including after a live pref change.
+const FDLIBM_PREF = "javascript.options.use_fdlibm_for_sin_cos_tan";
+let useFdlibm = Services.prefs.getBoolPref(FDLIBM_PREF, false);
+Services.prefs.addObserver(FDLIBM_PREF, {
+  observe() {
+    useFdlibm = Services.prefs.getBoolPref(FDLIBM_PREF, false);
+  },
+});
+const isNumber = value => typeof value === "number";
+
 function makePRNG(seedBytes) {
   // xorshift128+ seeded from 32 bytes of seed material. Inline so we
   // don't carry the extension's lib/crypto.ts.
@@ -88,21 +120,30 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     const win = this.contentWindow;
     if (!win) return;
 
-    // Master enable check — one pref guards the whole cpp-first math layer.
-    if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
+    // Install pass-through wrappers before page scripts even when the master
+    // is off. Calls consult the live switch/overlay; enabling later preserves
+    // this page and the function references its scripts already captured.
 
     // Per-container seeds live in cloakfox.container.<ucid>.* prefs
     // which DON'T auto-sync to content processes. Read from
     // Services.cpmm.sharedData where CloakfoxSeedSync (parent-side)
     // keeps a live snapshot.
-    const seeds = Services.cpmm.sharedData.get("cloakfox-seeds") || {};
+    const seeds = currentSeeds();
     const ucid = win.docShell?.browsingContext?.originAttributes?.userContextId ?? 0;
     const seedB64 = actorSiteSeed(win, seeds, "actor:math",
       seeds[`cloakfox.container.${ucid}.math_seed`] || "");
     if (!seedB64) return;  // No seed => no spoofing for this container.
 
-    const trigSeed = siteSeedForWindow(win, seeds, "math:trig_seed");
-    if (!trigSeed) return;
+    let trigSnapshot;
+    let trigSeed = 0;
+    const currentTrigSeed = () => {
+      const snapshot = currentSeeds();
+      if (snapshot !== trigSnapshot) {
+        trigSeed = siteSeedForWindow(win, snapshot, "math:trig_seed");
+        trigSnapshot = snapshot;
+      }
+      return trigSeed;
+    };
     const prng = makePRNG(b64ToBytes(seedB64));
     const piOffset = (prng() - 0.5) * NOISE_MAG_CONST;
     const eOffset  = (prng() - 0.5) * NOISE_MAG_CONST;
@@ -143,9 +184,8 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     // Default: only wrap the functions, leave constants bit-exact. Power
     // users who want Spectre-style timing-attack defense via constant
     // perturbation can flip cloakfox.opt.math_constants_noise = true.
-    const noiseConstants = Services.prefs.getBoolPref(
-      "cloakfox.opt.math_constants_noise", false
-    );
+    const noiseConstants = Services.prefs.getBoolPref("cloakfox.enabled", false) &&
+      Services.prefs.getBoolPref("cloakfox.opt.math_constants_noise", false);
 
     for (const key of Object.getOwnPropertyNames(origMath)) {
       // Skip constants only when we plan to override them with
@@ -170,14 +210,20 @@ export class CloakfoxMathChild extends JSWindowActorChild {
       spoofedMath.SQRT1_2 = 1 / spoofedMath.SQRT2;
     }
 
-    // Trig / log / sqrt / pow family: exportFunction so the page sees
+    // Keep logarithms and powers native by default. Firebase uses log ratios to size
+    // trees and powers to encode numbers; tiny noise can drop whole fields
+    // or corrupt hashes. Opt-in data math noise applies on realm creation,
+    // matching the native worker policy; reload pages after changing it.
+    // Trig / sqrt family: exportFunction so the page sees
     // `function <name>() { [native code] }` when it introspects.
     const TRIG_FNS = [
       "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
       "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
-      "exp", "expm1", "log", "log2", "log10", "log1p",
-      "sqrt", "cbrt", "hypot", "pow",
+      "exp", "expm1", "sqrt", "cbrt", "hypot",
     ];
+    if (Services.prefs.getBoolPref("cloakfox.opt.math_data_noise", false)) {
+      TRIG_FNS.push("log", "log2", "log10", "log1p", "pow");
+    }
     // The wrapped function is chrome-compartment (Cu.exportFunction). It
     // captures `orig` and `origMath` from the page compartment. When the
     // page calls Math.sin(0.5), the chrome wrapped fn gets `args` as a
@@ -199,9 +245,9 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     const _ab  = new ArrayBuffer(8);
     const _f64 = new Float64Array(_ab);
     const _u32 = new Uint32Array(_ab);
-    const noise = (r) => {
+    const noise = (r, seed) => {
       _f64[0] = r;
-      let h = (_u32[0] ^ _u32[1] ^ trigSeed) >>> 0;
+      let h = (_u32[0] ^ _u32[1] ^ seed) >>> 0;
       h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
       h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
       h = (h ^ (h >>> 16)) >>> 0;
@@ -210,10 +256,18 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     for (const fn of TRIG_FNS) {
       const orig = origMath[fn];
       if (typeof orig !== "function") continue;
+      const numericOrig = Math[fn];
+      const realmSensitive = fn === "sin" || fn === "cos" || fn === "tan";
       const wrapped = Cu.exportFunction(function (...args) {
-        const r = orig.call(origMath, ...args);
-        return Number.isFinite(r) && !Number.isInteger(r) ? r + noise(r) : r;
-      }, pageWin);
+        // Numbers need no coercion and use the same engine intrinsic here.
+        // Avoid a second realm crossing for each operation in animation loops.
+        // Other inputs retain page-realm coercion and exception behavior.
+        const r = (!realmSensitive || useFdlibm) && args.every(isNumber)
+          ? numericOrig(...args) : orig.call(origMath, ...args);
+        const seed = mathEnabled ? currentTrigSeed() : 0;
+        return seed !== 0 && Number.isFinite(r) && !Number.isInteger(r)
+          ? r + noise(r, seed) : r;
+      }, pageWin, { functionName: fn, allowConstruct: false });
       // exportFunction yields name:"" and length:0; native Math methods
       // report their own name + arity (Math.sin.name==="sin",
       // Math.pow.length===2). Set both on the page-side function (Xray-waived

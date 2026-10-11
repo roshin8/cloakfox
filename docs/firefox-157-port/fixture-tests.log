@@ -1,0 +1,171 @@
+✔ prunes supported current, previous, upgrade and legacy restore files without losing other containers (1.340834ms)
+✔ backup read and atomic write failures reject instead of declaring data forgotten (0.430083ms)
+✔ strict SessionFile write rejects original writer failure after removing shutdown blocker (2.032375ms)
+✔ restore-file pruning uses SessionWriter mutex and releases it after failure (3.356958ms)
+✔ restore persistence failure prevents rotation and reports partial effects (0.251375ms)
+✔ waits for each target service-worker unregister callback and leaves other containers alone (1.478917ms)
+✔ service-worker unregister failure is reported instead of treated as successful clear (0.657583ms)
+✔ default-container clearing preserves shared permission flags; other IDs retain exact scope (0.07475ms)
+✔ cookie cleanup verification rejects residual target cookies but preserves other containers (0.187292ms)
+✔ animation math reuses one process snapshot across calls and windows (3.2815ms)
+✖ sin/cos/tan keep the page realm when its math-library policy can differ (2.608292ms)
+✖ numeric animation calls avoid realm round trips and repeated preference reads (0.955375ms)
+✖ published seed updates remain live in previously captured functions (1.057ms)
+✖ removed or invalid seeds clear cached noise and a later seed restores it (0.576708ms)
+✔ Firebase tree sizes retain all children with the failing live seed (0.499208ms)
+✔ logarithms and powers preserve native values used by data encoders (0.508834ms)
+✖ optional data-math noise applies to new pages and switching off restores native results (0.526292ms)
+✖ opt-in data-math noise respects the master switch and zero seed (0.521458ms)
+✔ website appearance delegates to Firefox instead of pinning light (1.098792ms)
+✔ standalone controlled feature is spoofed to the pin (0.091709ms)
+✔ ORACLE (unsatisfiable term): pin ∧ native-false = false (0.106833ms)
+✔ ORACLE (satisfiable term): must NOT leak the real controlled value (0.08425ms)
+✔ uncontrolled clauses honor their real native value (0.09875ms)
+✔ pure uncontrolled queries defer (undefined) (0.048375ms)
+✔ all-controlled conjunction ANDs correctly (0.058917ms)
+✔ comma list is OR across queries (0.054667ms)
+✔ not inverts a controlled query (0.103875ms)
+✔ media type prefix is honored (0.530917ms)
+✔ color-gamut is a min-feature (p3 matches srgb and p3) (0.072ms)
+✔ bare boolean-context feature has no controlled feature → defer (0.041833ms)
+✔ or-combined queries defer (not parsed) (0.037125ms)
+✔ without nativeEval, a mixed query defers rather than guess (0.036916ms)
+✔ pointer and hover queries defer to native digitizer/RDM capabilities (0.06325ms)
+✔ website color scheme is not a persona pin (0.054042ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 28
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 102.213
+
+✖ failing tests:
+
+test at tests/fingerprint/test_math_seed_cache.mjs:86:1
+✖ sin/cos/tan keep the page realm when its math-library policy can differ (2.608292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'sin',
+  +   'cos',
+  +   'tan'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/test_math_seed_cache.mjs:95:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'sin', 'cos', 'tan' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_math_seed_cache.mjs:98:1
+✖ numeric animation calls avoid realm round trips and repeated preference reads (0.955375ms)
+  AssertionError [ERR_ASSERTION]: numeric calls use the same engine intrinsic in the actor realm
+  
+  3000 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/test_math_seed_cache.mjs:103:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 3000,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_math_seed_cache.mjs:109:1
+✖ published seed updates remain live in previously captured functions (1.057ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to:
+  
+  0.479425538604203
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/test_math_seed_cache.mjs:113:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0.479425538604203,
+    expected: 0.479425538604203,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_math_seed_cache.mjs:122:1
+✖ removed or invalid seeds clear cached noise and a later seed restores it (0.576708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 6
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/test_math_seed_cache.mjs:129:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 6,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_math_seed_cache.mjs:159:1
+✖ optional data-math noise applies to new pages and switching off restores native results (0.526292ms)
+  AssertionError [ERR_ASSERTION]: log is opt-in
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/test_math_seed_cache.mjs:166:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: -1.2039728043259361,
+    expected: -1.2039728043259361,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_math_seed_cache.mjs:179:1
+✖ opt-in data-math noise respects the master switch and zero seed (0.521458ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to:
+  
+  0.6931471805599453
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/test_math_seed_cache.mjs:183:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0.6931471805599453,
+    expected: 0.6931471805599453,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }

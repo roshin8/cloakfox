@@ -64,7 +64,7 @@ export class CloakfoxWebGPUChild extends JSWindowActorChild {
     // Object.keys(navigator) (stock Firefox returns []). Native prototype
     // flags are {enumerable:true, configurable:true}.
     try {
-      const getter = Cu.exportFunction(function () { return undefined; }, pageWin);
+      const getter = Cu.exportFunction(function () { return undefined; }, pageWin, { functionName: "gpu", allowConstruct: false });
       setGetterIdentity(getter, "gpu");
       Object.defineProperty(navProto, "gpu", {
         get: getter,

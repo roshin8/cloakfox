@@ -9,20 +9,21 @@ OS from navigator.platform:
                         eSpeak), so a Windows persona listing macOS voices would
                         contradict its own navigator.
   * CloakfoxMediaQuery — pins fingerprinting-relevant CSS media features
-                        (prefers-color-scheme, pointer/hover, forced-colors,
+                        (pointer/hover, forced-colors,
                         color-gamut, dynamic-range) so they are persona-coherent
                         and host-independent, instead of leaking the real
-                        device/OS (e.g. the host's dark-mode setting).
+                        device/OS. Color scheme honors Website appearance.
 
 Checks (host-independent):
   1. Voices match the persona's OS (Windows persona -> Microsoft voices, etc.)
      and are consistent across two loads.
-  2. matchMedia pins: light (not dark), pointer/hover fine+hover, and the
+  2. matchMedia pins: pointer/hover fine+hover, and the
      color-gamut "min" semantics (a p3 persona matches srgb AND p3; nobody
      matches rec2020). macOS personas get p3, others srgb.
   3. An uncontrolled query ((min-width: 1px)) still delegates to native.
   4. The CSS stylesheet path (@media, resolved in C++) agrees with JS
-     matchMedia — both driven by the same persona keys.
+     matchMedia — both use persona keys for pinned features and native
+     Website appearance for color scheme.
   5. Compound queries obey the media-query grammar (and / , / not) instead of
      short-circuiting on the first pinned feature.
   6. Stealth: the wrappers must be native-identical — MediaQueryList.prototype
@@ -165,8 +166,8 @@ def main(bin_path: str) -> int:
                          f"({persona_os}, expected one of {markers})")
 
     # 2. media-feature pins
-    if not r["light"] or r["dark"]:
-        fails.append(f"prefers-color-scheme not pinned to light "
+    if r["light"] == r["dark"]:
+        fails.append(f"prefers-color-scheme must match exactly one theme "
                      f"(light={r['light']} dark={r['dark']})")
     if not r["pointer_fine"] or r["pointer_coarse"]:
         fails.append("pointer not pinned to fine")
@@ -196,8 +197,8 @@ def main(bin_path: str) -> int:
         fails.append("'(pointer: fine), (min-width: 99999px)' did not match — "
                      "comma/or handling broken")
     # CSS stylesheet path must agree with JS matchMedia (one source of truth:
-    # the persona emits document:prefersColorScheme / mediaFeature:colorGamut,
-    # read by both the C++ media-feature code and this actor).
+    # native Website appearance controls color scheme; the persona controls
+    # mediaFeature:colorGamut in C++ and the actor).
     if r["css_dark"] != r["dark"]:
         fails.append(f"CSS @media dark={r['css_dark']} but matchMedia dark="
                      f"{r['dark']} — stylesheet/JS contradiction exposes the spoof")

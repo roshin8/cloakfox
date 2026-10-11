@@ -1,0 +1,73 @@
+diff --git a/js/xpconnect/src/ExportHelpers.cpp b/js/xpconnect/src/ExportHelpers.cpp
+--- a/js/xpconnect/src/ExportHelpers.cpp
++++ b/js/xpconnect/src/ExportHelpers.cpp
+@@ -418,7 +418,8 @@
+     }
+   }
+ 
+-  unsigned flags = JS::IsConstructor(callable) ? JSFUN_CONSTRUCTOR : 0;
++  unsigned flags = options.allowConstruct && JS::IsConstructor(callable)
++                       ? JSFUN_CONSTRUCTOR : 0;
+   JSFunction* fun =
+       js::NewFunctionByIdWithReserved(cx, FunctionForwarder, nargs, flags, id);
+   if (!fun) {
+@@ -488,7 +489,8 @@
+       return false;
+     }
+ 
+-    RootedId id(cx, options.defineAs);
++    RootedId id(cx, options.functionName.isVoid() ? options.defineAs
++                                                  : options.functionName);
+     if (id.isVoid()) {
+       // If there wasn't any function name specified, copy the name from the
+       // function being imported.  But be careful in case the callable we have
+@@ -527,6 +529,7 @@
+     // And now, let's create the forwarder function in the target compartment
+     // for the function the be exported.
+     FunctionForwarderOptions forwarderOptions;
++    forwarderOptions.allowConstruct = options.allowConstruct;
+     forwarderOptions.allowCrossOriginArguments =
+         options.allowCrossOriginArguments;
+     if (!NewFunctionForwarder(cx, id, funObj, forwarderOptions, rval)) {
+diff --git a/js/xpconnect/src/xpcprivate.h b/js/xpconnect/src/xpcprivate.h
+--- a/js/xpconnect/src/xpcprivate.h
++++ b/js/xpconnect/src/xpcprivate.h
+@@ -2317,15 +2317,21 @@
+                                  JSObject* options = nullptr)
+       : OptionsBase(cx, options),
+         defineAs(cx, JS::PropertyKey::Void()),
++        functionName(cx, JS::PropertyKey::Void()),
++        allowConstruct(true),
+         allowCrossOriginArguments(false) {}
+ 
+   virtual bool Parse() override {
+     return ParseId("defineAs", &defineAs) &&
++           ParseId("functionName", &functionName) &&
++           ParseBoolean("allowConstruct", &allowConstruct) &&
+            ParseBoolean("allowCrossOriginArguments",
+                         &allowCrossOriginArguments);
+   }
+ 
+   JS::RootedId defineAs;
++  JS::RootedId functionName;
++  bool allowConstruct;
+   bool allowCrossOriginArguments;
+ };
+ 
+@@ -2333,7 +2339,7 @@
+  public:
+   explicit FunctionForwarderOptions(JSContext* cx = xpc_GetSafeJSContext(),
+                                     JSObject* options = nullptr)
+-      : OptionsBase(cx, options), allowCrossOriginArguments(false) {}
++      : OptionsBase(cx, options), allowCrossOriginArguments(false), allowConstruct(true) {}
+ 
+   JSObject* ToJSObject(JSContext* cx) {
+     JS::RootedObject obj(cx, JS_NewObjectWithGivenProto(cx, nullptr, nullptr));
+@@ -2357,6 +2363,7 @@
+   }
+ 
+   bool allowCrossOriginArguments;
++  bool allowConstruct;
+ };
+ 
+ class MOZ_STACK_CLASS StackScopedCloneOptions : public OptionsBase {

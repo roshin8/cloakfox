@@ -1,0 +1,60 @@
+diff --git a/dom/webidl/WebGPU.webidl b/dom/webidl/WebGPU.webidl
+--- a/dom/webidl/WebGPU.webidl
++++ b/dom/webidl/WebGPU.webidl
+@@ -85,7 +85,7 @@
+ };
+ 
+ interface mixin NavigatorGPU {
+-    [SameObject, Func="mozilla::webgpu::Instance::PrefEnabled", SecureContext] readonly attribute GPU gpu;
++    [SameObject, Func="mozilla::webgpu::Instance::PrefEnabled", SecureContext] readonly attribute GPU? gpu;
+ };
+ // NOTE: see `dom/webidl/Navigator.webidl`
+ // Navigator includes NavigatorGPU;
+diff --git a/dom/base/Navigator.h b/dom/base/Navigator.h
+--- a/dom/base/Navigator.h
++++ b/dom/base/Navigator.h
+@@ -216,7 +216,7 @@
+ 
+   mozilla::dom::CredentialsContainer* Credentials();
+   dom::Clipboard* Clipboard();
+-  webgpu::Instance* Gpu();
++  webgpu::Instance* GetGpu();
+   dom::LockManager* Locks();
+   NavigatorLogin* Login();
+   dom::PrivateAttribution* PrivateAttribution();
+diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
+--- a/dom/base/Navigator.cpp
++++ b/dom/base/Navigator.cpp
+@@ -2445,7 +2445,7 @@
+   return mAddonManager;
+ }
+ 
+-webgpu::Instance* Navigator::Gpu() {
++webgpu::Instance* Navigator::GetGpu() {
+   // Cloakfox: return null (navigator.gpu -> null) when WebGPU is disabled
+   if (MaskConfig::GetBool("navigator:webgpu:disabled").value_or(false)) {
+     return nullptr;
+diff --git a/dom/workers/WorkerNavigator.h b/dom/workers/WorkerNavigator.h
+--- a/dom/workers/WorkerNavigator.h
++++ b/dom/workers/WorkerNavigator.h
+@@ -118,7 +118,7 @@
+ 
+   dom::MediaCapabilities* MediaCapabilities();
+ 
+-  webgpu::Instance* Gpu();
++  webgpu::Instance* GetGpu();
+ 
+   dom::LockManager* Locks();
+ 
+diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
+--- a/dom/workers/WorkerNavigator.cpp
++++ b/dom/workers/WorkerNavigator.cpp
+@@ -368,7 +368,7 @@
+   return mMediaCapabilities;
+ }
+ 
+-webgpu::Instance* WorkerNavigator::Gpu() {
++webgpu::Instance* WorkerNavigator::GetGpu() {
+   if (!mWebGpu) {
+     WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+     MOZ_ASSERT(workerPrivate);

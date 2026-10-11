@@ -23,6 +23,25 @@
   </header>
 
   <main>
+<section class="card" id="sec-appearance">
+      <header class="card-header">
+        <span class="card-icon" data-color="violet">◐</span>
+        <div>
+          <h2>Application appearance</h2>
+          <p class="card-help">Choose the browser name and icon shown on your desktop.</p>
+        </div>
+      </header>
+      <label class="flag-row">
+        <input type="checkbox" data-pref="cloakfox.appearance.firefox" id="cfx-firefox-appearance">
+        <span><strong>Firefox appearance</strong><small>Uses Firefox names and icons after restarting. Keeps your current profile and privacy settings.</small></span>
+      </label>
+      <div class="hero-actions">
+        <span id="cfx-appearance-status" role="status" aria-live="polite">Checking application appearance…</span>
+        <button id="cfx-appearance-restart" class="btn btn-primary" hidden>Apply and restart</button>
+        <button id="cfx-appearance-reveal" class="btn btn-secondary" hidden>Show app in Finder</button>
+      </div>
+      <p class="card-help" id="cfx-appearance-permissions" hidden>Use this app when adding Camera, Microphone or Screen Recording permission in macOS settings.</p>
+    </section>
     <section class="hero">
       <div class="hero-row">
         <div class="hero-col">
@@ -47,6 +66,9 @@
           <select id="cfx-persona-choice" class="hero-select" aria-describedby="cfx-persona-help"></select>
         </div>
 
+        <div class="profile-field"><label for="cfx-persona-hardware">Graphics family for fresh generation</label>
+          <select id="cfx-persona-hardware"><option value="auto">Any graphics family</option></select>
+        </div>
       </div>
       <div class="profile-toolbar">
         <p id="cfx-generate-help">Cookies, logins and custom overrides are kept.</p>
@@ -102,6 +124,29 @@
       <div class="spoof-grid" id="grp-navigator"></div>
     </section>
 
+    <p id="cfx-chromium-status" class="card-help" role="status"></p>
+<section class="chromium-compatibility" id="sec-screen-management">
+        <h3>Chromium compatibility</h3>
+        <p class="card-help">Screen API compatibility for desktop Chromium identities. Capture uses normal permissions and the sharing chooser. Reload affected pages after changing these settings.</p>
+      <label class="flag-row">
+        <input id="cfx-screen-management" type="checkbox" data-pref="cloakfox.compat.screen_management">
+        <span><strong>Virtual screen-management API</strong><small>Listed sites receive the selected number of virtual screens, using your Display persona. Extra screens repeat that geometry horizontally.</small></span>
+      </label>
+      <p><label for="cfx-screen-count">Virtual screen count</label>
+        <select id="cfx-screen-count">
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+        </select>
+      </p>
+      <label for="cfx-screen-origins">Allowed HTTPS origins — one per line</label>
+      <textarea id="cfx-screen-origins" rows="4" spellcheck="false" style="display:block;box-sizing:border-box;width:100%;margin:10px 0"></textarea>
+      <div class="actions">
+        <button id="cfx-screen-origins-save" type="button">Save origins</button>
+        <button id="cfx-screen-origins-reset" type="button">Reset origins</button>
+      </div>
+      <p class="card-help">Use exact HTTPS origins, including any nondefault port. Paths and wildcards are excluded. An empty list disables access for all sites. Reset restores the initial TestDome entry.</p>
+      <p id="cfx-screen-origins-status" class="card-help" role="status" aria-live="polite"></p>
+      </section>
     <section class="card" id="sec-display">
       <header class="card-header">
         <span class="card-icon" data-color="cyan" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><rect x="3" y="3" width="10" height="10" rx="2"/></svg></span>
@@ -215,6 +260,31 @@
     </section>
 
     <section class="card" id="sec-hardening">
+<label class="flag-row">
+          <input type="checkbox" data-pref="cloakfox.opt.math_data_noise" aria-describedby="cfx-help-math-data-noise">
+          <span><strong>Randomize logarithms and powers</strong><small id="cfx-help-math-data-noise" class="flag-description" role="list">
+              <span role="listitem">Adds small numerical offsets to Math.log, log2, log10, log1p, and pow in pages and workers.</span>
+              <span role="listitem">Changes a math-fingerprint surface, but also changes values used by normal applications.</span>
+              <span role="listitem">Can break collaborative editor sync, serialization, and numerical data processing.</span>
+            </small></span>
+        </label>
+<label class="flag-row">
+          <input type="checkbox" data-pref="cloakfox.opt.clipboard_masking" aria-describedby="cfx-help-clipboard-masking">
+          <span><strong>Mask clipboard signals</strong><small id="cfx-help-clipboard-masking" class="flag-description" role="list">
+              <span role="listitem">Hides copy, cut, and paste events, clipboard shortcuts, and paste-specific input metadata.</span>
+              <span role="listitem">The inserted text and ordinary typing remain visible to the website.</span>
+              <span role="listitem">Custom editors that depend on paste events may lose paste support.</span>
+            </small></span>
+        </label>
+<label class="flag-row">
+          <input type="checkbox" data-pref="cloakfox.opt.focus_masking" aria-describedby="cfx-help-focus-masking">
+          <span><strong>Mask window and tab activity</strong><small id="cfx-help-focus-masking" class="flag-description" role="list">
+              <span role="listitem">Reports the page as focused and visible, and masks its reported fullscreen state.</span>
+              <span role="listitem">Hides window/tab departure events and keeps hover state and background timers active.</span>
+              <span role="listitem">Can interfere with fullscreen controls and increase CPU and battery use.</span>
+              <span role="listitem">Does not hide the real window, screen recordings, or changes you make in the editor.</span>
+            </small></span>
+        </label>
       <header class="card-header">
         <span class="card-icon" data-color="red" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><rect x="3" y="3" width="10" height="10" rx="2"/></svg></span>
         <div>

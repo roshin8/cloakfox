@@ -1,108 +1,4 @@
-Cloakfox: Camoufox September 2026 fixes adapted to Firefox 155 and per-container fonts.
-Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
-
---- a/browser/components/sessionstore/SessionStore.sys.mjs
-+++ b/browser/components/sessionstore/SessionStore.sys.mjs
-@@ -4952,7 +4952,11 @@
- 
-   maybeDontRestoreTabs(aWindow) {
-     // Don't restore the tabs if we restore the session at startup
--    this._windows[aWindow.__SSi]._maybeDontRestoreTabs = true;
-+    const winData = aWindow.__SSi && this._windows[aWindow.__SSi];
-+    if (!winData) {
-+      return;
-+    }
-+    winData._maybeDontRestoreTabs = true;
-   },
- 
-   isLastRestorableWindow() {
---- a/dom/base/nsGlobalWindowInner.cpp
-+++ b/dom/base/nsGlobalWindowInner.cpp
-@@ -8018,13 +8018,7 @@
- 
-   WebRTCIPManager::SetIPv4(userContextId, ipv4);
- 
--  // Self-destruct: set to undefined first to bust IC/shape caches on ARM64.
--  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
--    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
--    if (global) {
--      JS_DeleteProperty(cx, global, "setWebRTCIPv4");
--    }
--  }
-+
- }
- 
- void nsGlobalWindowInner::SetWebRTCIPv6(const nsAString& ipv6, ErrorResult& aRv) {
-@@ -8035,13 +8029,7 @@
- 
-   WebRTCIPManager::SetIPv6(userContextId, ipv6);
- 
--  // Self-destruct: set to undefined first to bust IC/shape caches on ARM64.
--  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
--    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
--    if (global) {
--      JS_DeleteProperty(cx, global, "setWebRTCIPv6");
--    }
--  }
-+
- }
- 
- 
---- a/dom/events/TouchEvent.cpp
-+++ b/dom/events/TouchEvent.cpp
-@@ -3,6 +3,7 @@
-  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
- 
- #include "mozilla/dom/TouchEvent.h"
-+#include "MaskConfig.hpp"
- 
- #include "gfxPlatform.h"
- #include "mozilla/BasePrincipal.h"
-@@ -211,10 +212,12 @@
- bool TouchEvent::PrefEnabled(nsIDocShell* aDocShell) {
-   MOZ_DIAGNOSTIC_ASSERT(NS_IsMainThread());
- 
-+  uint32_t context = 0;
-   auto touchEventsOverride = mozilla::dom::TouchEventsOverride::None;
-   if (aDocShell) {
-     if (BrowsingContext* bc = aDocShell->GetBrowsingContext()) {
-       touchEventsOverride = bc->TouchEventsOverride();
-+      context = bc->OriginAttributesRef().mUserContextId;
-     }
-   }
- 
-@@ -224,6 +227,9 @@
-   } else if (touchEventsOverride ==
-              mozilla::dom::TouchEventsOverride::Disabled) {
-     enabled = false;
-+  } else if (auto touchPoints = MaskConfig::GetUint32("navigator:maxTouchPoints", context)) {
-+    // Desktop digitizers expose Touch/TouchEvent, without legacy ontouch* APIs.
-+    enabled = touchPoints.value() > 0;
-   } else if (nsContentUtils::ShouldResistFingerprinting(
-                  aDocShell, RFPTarget::PointerEvents)) {
- #ifdef MOZ_WIDGET_COCOA
---- a/dom/events/moz.build
-+++ b/dom/events/moz.build
-@@ -190,3 +190,5 @@
-     "/layout/xul",
-     "/layout/xul/tree/",
- ]
-+
-+LOCAL_INCLUDES += ["/cloakcfg"]
---- a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
-+++ b/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
-@@ -317,7 +317,10 @@
-     return NS_ERROR_NOT_AVAILABLE;
-   }
- 
--  if (MaskConfig::GetBool("voices:blockIfNotDefined")) return NS_OK;
-+  // A configured voice list, including an empty/malformed one, must not
-+  // silently gain native host voices. Honor an explicit false when no list exists.
-+  if (MaskConfig::GetBool("voices:blockIfNotDefined").value_or(false) ||
-+      MaskConfig::GetJson().contains("voices")) return NS_OK;
- 
-   return AddVoiceImpl(aService, aUri, aName, aLang, aLocalService,
-                       aQueuesUtterances);
+diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
 --- a/dom/webidl/Window.webidl
 +++ b/dom/webidl/Window.webidl
 @@ -995,12 +995,12 @@
@@ -120,60 +16,42 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
    undefined setWebRTCIPv6(DOMString ipv6);
  };
  
---- a/gfx/thebes/gfxHarfBuzzShaper.cpp
-+++ b/gfx/thebes/gfxHarfBuzzShaper.cpp
-@@ -1503,18 +1503,13 @@
-     hb_glyph_position_t* glyphPositions =
-         hb_buffer_get_glyph_positions(mBuffer, &glyphCount);
+diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
+--- a/layout/base/nsLayoutUtils.cpp
++++ b/layout/base/nsLayoutUtils.cpp
+@@ -3,6 +3,9 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
--    hb_position_t cumulativeOffset = 0;
--
--    // Apply custom letter spacing
-+    // Perturb advances only: shaping offsets position combining marks.
-     for (uint32_t i = 0; i < glyphCount; ++i) {
-       if (aVertical) {
-         glyphPositions[i].y_advance -= spacing;
--        glyphPositions[i].y_offset -= cumulativeOffset;
-       } else {
-         glyphPositions[i].x_advance += spacing;
--        glyphPositions[i].x_offset += cumulativeOffset;
--      }
--      cumulativeOffset += spacing;
-+      }
-     }
+ #include "nsLayoutUtils.h"
++
++// Persona lookup lives in C++ gfx code; never applied to chrome documents.
++extern const char* CloakfoxSystemFontName(uint32_t context);
+ 
+ #include <algorithm>
+ #include <limits>
+@@ -9905,6 +9908,12 @@
+   } else if (!LookAndFeel::GetFont(aFontID, systemFontName, fontStyle)) {
+     return;
    }
- 
---- a/gfx/thebes/gfxMacPlatformFontList.mm
-+++ b/gfx/thebes/gfxMacPlatformFontList.mm
-@@ -18,8 +18,6 @@
- 
- #include "harfbuzz/hb.h"
- 
--// Cloakfox: implemented in gfxPlatformFontList.cpp (see comment at use site).
--extern const char* CloakfoxSystemFontName();
- 
- #include "AppleUtils.h"
- #include "MainThreadUtils.h"
-@@ -397,18 +395,7 @@
-   }
-   NS_ASSERTION(font, "system font not set");
- 
--  // Cloakfox: spoof the CSS2 system-font keyword resolution (font: caption |
--  // icon | menu | message-box | small-caption | status-bar) to match the
--  // persona's claimed OS. The Mac build otherwise always reports
--  // "-apple-system" here, which CreepJS's GeckoFonts map attributes to macOS —
--  // leaking the real host through getComputedStyle().fontFamily even when
--  // navigator.platform says Win32. Sibling of the system-ui hook in
--  // gfxPlatformFontList::GetSystemUIFontFamilies.
--  //
--  // The lookup lives in gfxPlatformFontList.cpp: MaskConfig.hpp pulls in
--  // nlohmann/json, which needs exceptions — disabled for Objective-C++ in this
--  // directory — so we call across to plain C++ instead of including it here.
--  aSystemFontName.AssignASCII(CloakfoxSystemFontName());
-+  aSystemFontName.AssignASCII("-apple-system");
- 
-   NSFontSymbolicTraits traits = font.fontDescriptor.symbolicTraits;
-   aFontStyle.style = (traits & NSFontItalicTrait) ? FontSlantStyle::ITALIC
++  if (!nsContentUtils::IsChromeDoc(aDocument)) {
++    if (const char* personaFont = CloakfoxSystemFontName(
++            aDocument->NodePrincipal()->OriginAttributesRef().mUserContextId)) {
++      systemFontName.AssignASCII(personaFont);
++    }
++  }
+   systemFontName.Trim("\"'");
+   NS_ConvertUTF16toUTF8 nameu8(systemFontName);
+   Servo_FontFamily_ForSystemFont(&nameu8, &aSystemFont->family);
+diff --git a/dom/events/moz.build b/dom/events/moz.build
+--- a/dom/events/moz.build
++++ b/dom/events/moz.build
+@@ -192,3 +192,5 @@
+     "/layout/xul",
+     "/layout/xul/tree/",
+ ]
++
++LOCAL_INCLUDES += ["/cloakcfg"]
+diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList.cpp
 --- a/gfx/thebes/gfxPlatformFontList.cpp
 +++ b/gfx/thebes/gfxPlatformFontList.cpp
 @@ -4,6 +4,7 @@
@@ -184,7 +62,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
  
  #include "FontVisibilityProvider.h"
  #include "GeckoProfiler.h"
-@@ -322,53 +323,9 @@
+@@ -321,53 +322,9 @@
  
    mFontPrefs = MakeUnique<FontPrefs>();
  
@@ -241,7 +119,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
    gfxFontUtils::GetPrefsFontList(kFontSystemWhitelistPref, mEnabledFontsList);
    mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty();
  
-@@ -1279,6 +1236,54 @@
+@@ -1276,6 +1233,54 @@
    }
  }
  
@@ -296,7 +174,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
  already_AddRefed<gfxFont> gfxPlatformFontList::SystemFindFontForChar(
      FontVisibilityProvider* aFontVisibilityProvider, uint32_t aCh,
      uint32_t aNextCh, Script aRunScript, FontPresentation aPresentation,
-@@ -1294,7 +1299,7 @@
+@@ -1291,7 +1296,7 @@
    // encoding errors: just use cached family from last time U+FFFD was seen.
    // This helps speed up pages with lots of encoding errors, binary-as-text,
    // etc.
@@ -305,7 +183,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
      gfxFontEntry* fontEntry = nullptr;
      auto& fallbackFamily = mReplacementCharFallbackFamily[level];
      if (fallbackFamily.mShared) {
-@@ -1369,12 +1374,14 @@
+@@ -1366,12 +1371,14 @@
  
    // no match? add to set of non-matching codepoints
    if (!font) {
@@ -322,7 +200,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
        mReplacementCharFallbackFamily[level] = fallbackFamily;
      }
    }
-@@ -1428,6 +1435,7 @@
+@@ -1425,6 +1432,7 @@
  
    if (SharedFontList()) {
      for (const auto name : defaultFallbacks) {
@@ -330,7 +208,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
        fontlist::Family* family =
            FindSharedFamily(aFontVisibilityProvider, nsDependentCString(name));
        if (!family || !IsVisibleToCSS(*family, level)) {
-@@ -1445,6 +1453,7 @@
+@@ -1442,6 +1450,7 @@
      }
    } else {
      for (const auto name : defaultFallbacks) {
@@ -338,7 +216,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
        gfxFontFamily* fallback =
            FindFamilyByCanonicalName(nsDependentCString(name));
        if (!fallback || !IsVisibleToCSS(*fallback, level)) {
-@@ -1477,6 +1486,7 @@
+@@ -1474,6 +1483,7 @@
      const gfxFontStyle* aMatchStyle, uint32_t& aCmapCount,
      FontFamily& aMatchedFamily) {
    bool useCmaps = IsFontFamilyWhitelistActive() ||
@@ -346,7 +224,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
                    gfxPlatform::GetPlatform()->UseCmapsDuringSystemFallback();
    FontVisibility level = aFontVisibilityProvider
                               ? aFontVisibilityProvider->GetFontVisibility()
-@@ -1523,7 +1533,8 @@
+@@ -1520,7 +1530,8 @@
      if (families) {
        for (uint32_t i = 0; i < SharedFontList()->NumFamilies(); i++) {
          fontlist::Family& family = families[i];
@@ -356,7 +234,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
            continue;
          }
          if (!family.IsFullyInitialized() &&
-@@ -1549,7 +1560,8 @@
+@@ -1546,7 +1557,8 @@
      // iterate over all font families to find a font that support the
      // character
      for (const RefPtr<gfxFontFamily>& family : mFontFamilies.Values()) {
@@ -366,7 +244,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
          continue;
        }
        // evaluate all fonts in this family for a match
-@@ -1807,19 +1819,7 @@
+@@ -1772,19 +1784,7 @@
    nsAutoCString key;
    GenerateFontListKey(aFamily, key);
  
@@ -387,7 +265,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
  
    bool allowHidden = bool(aFlags & FindFamiliesFlags::eSearchHiddenFamilies);
    FontVisibility visibilityLevel =
-@@ -2324,8 +2324,8 @@
+@@ -2289,8 +2289,8 @@
  // Also called from gfxMacPlatformFontList.mm (CSS2 system-font keywords). That
  // file can't include MaskConfig.hpp because nlohmann/json needs exceptions,
  // which are disabled for Objective-C++ in this directory — hence this helper.
@@ -398,7 +276,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
    if (!platform) {
      return nullptr;
    }
-@@ -2350,11 +2350,9 @@
+@@ -2315,11 +2315,9 @@
    return nullptr;
  }
  
@@ -413,7 +291,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
  }
  
  static void GetSystemUIFontFamilies(
-@@ -2364,9 +2362,15 @@
+@@ -2329,9 +2327,15 @@
    // Otherwise getComputedStyle() on `font-family: system-ui` reports the REAL
    // host's UI font (SF/Helvetica on macOS, Segoe UI on Windows, Cantarell/
    // DejaVu on Linux), contradicting navigator.platform.
@@ -432,7 +310,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
    }
  
    // TODO: On macOS, use CTCreateUIFontForLanguage or such thing (though the
-@@ -2479,10 +2483,25 @@
+@@ -2444,10 +2448,25 @@
    }
  }
  
@@ -459,7 +337,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
    if (aGenericType == StyleGenericFontFamily::MozEmoji ||
        aPrefLang == eFontPrefLang_Emoji) {
      // Emoji font has no lang
-@@ -2492,7 +2511,7 @@
+@@ -2457,7 +2476,7 @@
        ResolveEmojiFontNames(aFontVisibilityProvider, prefFonts);
        mEmojiPrefFont.reset(prefFonts);
      }
@@ -468,7 +346,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
    }
  
    auto index = static_cast<size_t>(aGenericType);
-@@ -2503,7 +2522,7 @@
+@@ -2468,7 +2487,7 @@
                              prefFonts);
      mLangGroupPrefFonts[aPrefLang][index].reset(prefFonts);
    }
@@ -477,7 +355,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
  }
  
  void gfxPlatformFontList::AddGenericFonts(
-@@ -2528,12 +2547,12 @@
+@@ -2493,12 +2512,12 @@
    eFontPrefLang prefLang = GetFontPrefLangFor(langGroup);
  
    // lookup pref fonts
@@ -494,7 +372,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
        aFamilyList.AppendElement(FamilyAndGeneric(f, aGenericType));
      }
    }
-@@ -2800,17 +2819,30 @@
+@@ -2765,17 +2784,30 @@
    FontFamily family =
        GetDefaultFontForPlatform(aFontVisibilityProvider, aStyle);
    if (!family.IsNull()) {
@@ -535,6 +413,22 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
  }
  
  void gfxPlatformFontList::GetFontFamilyNames(
+diff --git a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp b/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
+--- a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
++++ b/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
+@@ -317,7 +317,10 @@
+     return NS_ERROR_NOT_AVAILABLE;
+   }
+ 
+-  if (MaskConfig::GetBool("voices:blockIfNotDefined")) return NS_OK;
++  // A configured voice list, including an empty/malformed one, must not
++  // silently gain native host voices. Honor an explicit false when no list exists.
++  if (MaskConfig::GetBool("voices:blockIfNotDefined").value_or(false) ||
++      MaskConfig::GetJson().contains("voices")) return NS_OK;
+ 
+   return AddVoiceImpl(aService, aUri, aName, aLang, aLocalService,
+                       aQueuesUtterances);
+diff --git a/gfx/thebes/gfxPlatformFontList.h b/gfx/thebes/gfxPlatformFontList.h
 --- a/gfx/thebes/gfxPlatformFontList.h
 +++ b/gfx/thebes/gfxPlatformFontList.h
 @@ -598,14 +598,14 @@
@@ -565,6 +459,73 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
  
    static void FontWhitelistPrefChanged(const char* aPref, void* aClosure);
  
+diff --git a/dom/events/TouchEvent.cpp b/dom/events/TouchEvent.cpp
+--- a/dom/events/TouchEvent.cpp
++++ b/dom/events/TouchEvent.cpp
+@@ -3,6 +3,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "mozilla/dom/TouchEvent.h"
++#include "MaskConfig.hpp"
+ 
+ #include "gfxPlatform.h"
+ #include "mozilla/BasePrincipal.h"
+@@ -211,10 +212,12 @@
+ bool TouchEvent::PrefEnabled(nsIDocShell* aDocShell) {
+   MOZ_DIAGNOSTIC_ASSERT(NS_IsMainThread());
+ 
++  uint32_t context = 0;
+   auto touchEventsOverride = mozilla::dom::TouchEventsOverride::None;
+   if (aDocShell) {
+     if (BrowsingContext* bc = aDocShell->GetBrowsingContext()) {
+       touchEventsOverride = bc->TouchEventsOverride();
++      context = bc->OriginAttributesRef().mUserContextId;
+     }
+   }
+ 
+@@ -224,6 +227,9 @@
+   } else if (touchEventsOverride ==
+              mozilla::dom::TouchEventsOverride::Disabled) {
+     enabled = false;
++  } else if (auto touchPoints = MaskConfig::GetUint32("navigator:maxTouchPoints", context)) {
++    // Desktop digitizers expose Touch/TouchEvent, without legacy ontouch* APIs.
++    enabled = touchPoints.value() > 0;
+   } else if (nsContentUtils::ShouldResistFingerprinting(
+                  aDocShell, RFPTarget::PointerEvents)) {
+ #ifdef MOZ_WIDGET_COCOA
+diff --git a/gfx/thebes/gfxMacPlatformFontList.mm b/gfx/thebes/gfxMacPlatformFontList.mm
+--- a/gfx/thebes/gfxMacPlatformFontList.mm
++++ b/gfx/thebes/gfxMacPlatformFontList.mm
+@@ -18,8 +18,6 @@
+ 
+ #include "harfbuzz/hb.h"
+ 
+-// Cloakfox: implemented in gfxPlatformFontList.cpp (see comment at use site).
+-extern const char* CloakfoxSystemFontName();
+ 
+ #include "AppleUtils.h"
+ #include "MainThreadUtils.h"
+@@ -397,18 +395,7 @@
+   }
+   NS_ASSERTION(font, "system font not set");
+ 
+-  // Cloakfox: spoof the CSS2 system-font keyword resolution (font: caption |
+-  // icon | menu | message-box | small-caption | status-bar) to match the
+-  // persona's claimed OS. The Mac build otherwise always reports
+-  // "-apple-system" here, which CreepJS's GeckoFonts map attributes to macOS —
+-  // leaking the real host through getComputedStyle().fontFamily even when
+-  // navigator.platform says Win32. Sibling of the system-ui hook in
+-  // gfxPlatformFontList::GetSystemUIFontFamilies.
+-  //
+-  // The lookup lives in gfxPlatformFontList.cpp: MaskConfig.hpp pulls in
+-  // nlohmann/json, which needs exceptions — disabled for Objective-C++ in this
+-  // directory — so we call across to plain C++ instead of including it here.
+-  aSystemFontName.AssignASCII(CloakfoxSystemFontName());
++  aSystemFontName.AssignASCII("-apple-system");
+ 
+   NSFontSymbolicTraits traits = font.fontDescriptor.symbolicTraits;
+   aFontStyle.style = (traits & NSFontItalicTrait) ? FontSlantStyle::ITALIC
+diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
 --- a/gfx/thebes/gfxTextRun.cpp
 +++ b/gfx/thebes/gfxTextRun.cpp
 @@ -2227,7 +2227,7 @@
@@ -602,7 +563,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
        if (RefPtr<gfxFont> f = fe->FindOrMakeFont(&mStyle)) {
          return f.forget();
        }
-@@ -4065,16 +4068,15 @@
+@@ -4068,16 +4071,15 @@
          mFallbackGeneric != StyleGenericFontFamily::None
              ? mFallbackGeneric
              : pfl->GetDefaultGeneric(currentLang);
@@ -622,43 +583,7 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
        if (family.IsNull()) {
          continue;
        }
---- a/gfx/thebes/gfxUserFontSet.cpp
-+++ b/gfx/thebes/gfxUserFontSet.cpp
-@@ -463,7 +463,8 @@
-       pfl->AddUserFontSet(fontSet);
-       // Don't look up local fonts if the font whitelist is being used.
-       RefPtr<gfxFontEntry> fe;
--      if (!pfl->IsFontFamilyWhitelistActive()) {
-+      if (!pfl->IsFontFamilyWhitelistActive() &&
-+          !gfxPlatformFontList::MaskedFontListAppliesTo(fontSet->GetFontVisibilityProvider())) {
-         fe = gfxPlatform::GetPlatform()->LookupLocalFont(
-             fontSet->GetFontVisibilityProvider(), currSrc.mLocalName, Weight(),
-             Width(), SlantStyle());
---- a/layout/base/nsLayoutUtils.cpp
-+++ b/layout/base/nsLayoutUtils.cpp
-@@ -3,6 +3,9 @@
-  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
- 
- #include "nsLayoutUtils.h"
-+
-+// Persona lookup lives in C++ gfx code; never applied to chrome documents.
-+extern const char* CloakfoxSystemFontName(uint32_t context);
- 
- #include <algorithm>
- #include <limits>
-@@ -9906,6 +9909,12 @@
-   } else if (!LookAndFeel::GetFont(aFontID, systemFontName, fontStyle)) {
-     return;
-   }
-+  if (!nsContentUtils::IsChromeDoc(aDocument)) {
-+    if (const char* personaFont = CloakfoxSystemFontName(
-+            aDocument->NodePrincipal()->OriginAttributesRef().mUserContextId)) {
-+      systemFontName.AssignASCII(personaFont);
-+    }
-+  }
-   systemFontName.Trim("\"'");
-   NS_ConvertUTF16toUTF8 nameu8(systemFontName);
-   Servo_FontFamily_ForSystemFont(&nameu8, &aSystemFont->family);
+diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
 --- a/layout/style/nsMediaFeatures.cpp
 +++ b/layout/style/nsMediaFeatures.cpp
 @@ -476,7 +476,14 @@
@@ -677,3 +602,89 @@ Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
  }
  
  PointerCapabilities Gecko_MediaFeatures_PrimaryPointerCapabilities(
+diff --git a/gfx/thebes/gfxUserFontSet.cpp b/gfx/thebes/gfxUserFontSet.cpp
+--- a/gfx/thebes/gfxUserFontSet.cpp
++++ b/gfx/thebes/gfxUserFontSet.cpp
+@@ -469,7 +469,8 @@
+       pfl->AddUserFontSet(fontSet);
+       // Don't look up local fonts if the font whitelist is being used.
+       RefPtr<gfxFontEntry> fe;
+-      if (!pfl->IsFontFamilyWhitelistActive()) {
++      if (!pfl->IsFontFamilyWhitelistActive() &&
++          !gfxPlatformFontList::MaskedFontListAppliesTo(fontSet->GetFontVisibilityProvider())) {
+         fe = gfxPlatform::GetPlatform()->LookupLocalFont(
+             fontSet->GetFontVisibilityProvider(), currSrc.mLocalName, Weight(),
+             Width(), SlantStyle());
+diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/components/sessionstore/SessionStore.sys.mjs
+--- a/browser/components/sessionstore/SessionStore.sys.mjs
++++ b/browser/components/sessionstore/SessionStore.sys.mjs
+@@ -4638,7 +4638,11 @@
+    */
+   maybeDontRestoreTabs(aWindow) {
+     // Don't restore the tabs if we restore the session at startup
+-    this.#windows[aWindow.__SSi]._maybeDontRestoreTabs = true;
++    const winData = aWindow.__SSi && this.#windows[aWindow.__SSi];
++    if (!winData) {
++      return;
++    }
++    winData._maybeDontRestoreTabs = true;
+   }
+ 
+   #isLastRestorableWindow() {
+diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -8006,13 +8006,7 @@
+ 
+   WebRTCIPManager::SetIPv4(userContextId, ipv4);
+ 
+-  // Self-destruct: set to undefined first to bust IC/shape caches on ARM64.
+-  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
+-    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
+-    if (global) {
+-      JS_DeleteProperty(cx, global, "setWebRTCIPv4");
+-    }
+-  }
++
+ }
+ 
+ void nsGlobalWindowInner::SetWebRTCIPv6(const nsAString& ipv6, ErrorResult& aRv) {
+@@ -8023,13 +8017,7 @@
+ 
+   WebRTCIPManager::SetIPv6(userContextId, ipv6);
+ 
+-  // Self-destruct: set to undefined first to bust IC/shape caches on ARM64.
+-  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
+-    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
+-    if (global) {
+-      JS_DeleteProperty(cx, global, "setWebRTCIPv6");
+-    }
+-  }
++
+ }
+ 
+ 
+diff --git a/gfx/thebes/gfxHarfBuzzShaper.cpp b/gfx/thebes/gfxHarfBuzzShaper.cpp
+--- a/gfx/thebes/gfxHarfBuzzShaper.cpp
++++ b/gfx/thebes/gfxHarfBuzzShaper.cpp
+@@ -1502,18 +1502,13 @@
+     hb_glyph_position_t* glyphPositions =
+         hb_buffer_get_glyph_positions(mBuffer, &glyphCount);
+ 
+-    hb_position_t cumulativeOffset = 0;
+-
+-    // Apply custom letter spacing
++    // Perturb advances only: shaping offsets position combining marks.
+     for (uint32_t i = 0; i < glyphCount; ++i) {
+       if (aVertical) {
+         glyphPositions[i].y_advance -= spacing;
+-        glyphPositions[i].y_offset -= cumulativeOffset;
+       } else {
+         glyphPositions[i].x_advance += spacing;
+-        glyphPositions[i].x_offset += cumulativeOffset;
+-      }
+-      cumulativeOffset += spacing;
++      }
+     }
+   }
+ 

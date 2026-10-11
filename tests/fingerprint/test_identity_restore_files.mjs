@@ -37,8 +37,8 @@ test('strict SessionFile write rejects original writer failure after removing sh
 test('restore-file pruning uses SessionWriter mutex and releases it after failure', {skip: !existsSync(new URL('../../firefox-src/browser/components/sessionstore/SessionWriter.sys.mjs', import.meta.url))}, async()=>{
  const source=readFileSync(new URL('../../firefox-src/browser/components/sessionstore/SessionWriter.sys.mjs',import.meta.url),'utf8');
  const events=[];let finish;
- const context=vm.createContext({ChromeUtils:{defineESModuleGetters(){},importESModule:()=>({pruneContainerRestoreFiles:async id=>{events.push(id);if(id===7) await new Promise((_,reject)=>{finish=()=>reject(new Error('disk failure'))})}})}});
- vm.runInContext(source.replace('export const SessionWriter','const SessionWriter')+';globalThis.writer=SessionWriter;',context);
+ const context=vm.createContext({XPCOMUtils:{declareLazy:()=>({})},ChromeUtils:{defineESModuleGetters(){},importESModule:()=>({pruneContainerRestoreFiles:async id=>{events.push(id);if(id===7) await new Promise((_,reject)=>{finish=()=>reject(new Error('disk failure'))})}})}});
+ vm.runInContext(source.replace(/^import .*;\n/gm,'').replace('export const SessionWriter','const SessionWriter')+';globalThis.writer=SessionWriter;',context);
  const first=context.writer.pruneContainerRestoreFiles(7);
  const rejected=assert.rejects(first,/disk failure/);
  const second=context.writer.pruneContainerRestoreFiles(0);

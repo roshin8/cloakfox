@@ -20,7 +20,7 @@
  */
 
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
-import { sampleFingerprint } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
+import { sampleFingerprint, samplePersonaFingerprint } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
 import { sampleHostFingerprint } from "resource:///modules/CloakfoxHostPersona.sys.mjs";
 
 // Pin the UA's Firefox version to the build's milestone — BF's pool has
@@ -540,13 +540,11 @@ function bfToCloakKeys(fp, prng) {
   keys["font:generic:monospace"] = gen.mono;
 
   // CSS media features that the STYLESHEET path resolves in C++
-  // (Document::PreferredColorScheme, Gecko_MediaFeatures_ColorGamut /
-  // _PrefersContrast). These must be emitted, otherwise CSS `@media` sees the
+  // (Gecko_MediaFeatures_ColorGamut / _PrefersContrast). These must be emitted,
+  // otherwise CSS `@media` sees the
   // real host while CloakfoxMediaQueryChild pins the JS matchMedia side — a
-  // contradiction no real browser produces (verified: host dark-mode rule
-  // applied while matchMedia reported light). CloakfoxMediaQueryChild reads
+  // contradiction no real browser produces. CloakfoxMediaQueryChild reads
   // these same keys so both paths share one source of truth.
-  //   colorScheme: 0 = light, 1 = dark
   //   colorGamut:  0 = srgb, 1 = p3, 2 = rec2020
   //   contrast:    0 = no-preference, 1 = less, 2 = more, 3 = custom
   // Website appearance follows Firefox preferences; do not pin a persona theme.
@@ -619,10 +617,9 @@ function userOpt(name, def = false) {
  * cloak_cfg keys. Same seed → same persona across browser restarts.
  *
  * @param {string} seedB64  Master seed (32 bytes, base64).
- * @param {number|null} ucid  Container userContextId; reserved for
- *                            future per-container BF input constraints
- *                            (unused today since each container has its
- *                            own seed already).
+ * @param {number|null} ucid  Container userContextId; resolves the optional
+ *                            OS/hardware generation filters for that container.
+ * @param {Object|null} constraints  Explicit filters when validating a new generation.
  * @returns {Object}  Flat dict keyed on cloak_cfg keys.
  */
 // Missing mode means a pre-existing identity. Never silently re-sample it on
@@ -637,13 +634,20 @@ function sampleForMode(prng, mode, hostOS = Services.appinfo.OS) {
   return sampleHostFingerprint(prng, sampleFingerprint, mode === "host" ? hostOS : mode);
 }
 
-export function fillPersonaKeys(seedB64, ucid = null) {
+export function fillPersonaKeys(seedB64, ucid = null, constraints = null) {
   const prng = makeSeededPRNG(seedB64);
   const mode = personaOSMode(ucid);
-  let fp = sampleForMode(prng, mode);
+  const prefix = `cloakfox.container.${ucid}.`;
+  const rawOS = ucid === null ? "auto" : Services.prefs.getStringPref(prefix + "persona_os", "auto");
+  const rawHardware = ucid === null ? "auto" : Services.prefs.getStringPref(prefix + "persona_hardware", "auto");
+  const savedOS = ["auto", "windows", "macos", "linux"].includes(rawOS) ? rawOS : "auto";
+  const savedHardware = ["auto", "apple", "intel", "nvidia", "amd", "software", "other"].includes(rawHardware) ? rawHardware : "auto";
+  const filtered = constraints !== null || savedOS !== "auto" || savedHardware !== "auto";
+  const filters = constraints || { os: savedOS, hardware: savedHardware };
+  let fp = filtered ? samplePersonaFingerprint(prng, filters) : sampleForMode(prng, mode);
   if (ucid !== null) {
     const index = Services.prefs.getIntPref(`cloakfox.container.${ucid}.persona_index`, -1);
-    if (index >= 0 && index < 30) fp = previewPersona(index, mode);
+    if (!filtered && index >= 0 && index < 30) fp = previewPersona(index, mode);
   }
   const keys = bfToCloakKeys(fp, prng);
 
@@ -664,7 +668,7 @@ export function fillPersonaKeys(seedB64, ucid = null) {
 }
 
 /**
- * For about:cloakfox's "Persona override" dropdown: generate a
+ * Legacy fixed-persona picker compatibility: generate a
  * deterministic preview list of N personas using fixed seeds. The
  * persona_index pref pins which preview a container uses (overriding
  * its master seed).

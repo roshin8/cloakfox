@@ -1,0 +1,18 @@
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -6389,11 +6389,13 @@
+     return false;
+   }
+   JS::RootedObject math(aCx, &mathValue.toObject());
++  // Logarithms and powers size data trees and encode numeric hashes. Keep
++  // their native precision: tiny noise can discard entire Firebase fields.
++  // Match CloakfoxMathChild's page policy.
+   static constexpr const char* methods[] = {
+       "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+       "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+-      "exp", "expm1", "log", "log2", "log10", "log1p",
+-      "sqrt", "cbrt", "hypot", "pow"};
++      "exp", "expm1", "sqrt", "cbrt", "hypot"};
+   for (const char* name : methods) {
+     JS::RootedValue original(aCx);
+     if (!JS_GetProperty(aCx, math, name, &original)) {

@@ -34,6 +34,7 @@ media-features-spoofing.patch
 media-device-spoofing.patch
 mediasource-istypesupported-spoofing.patch
 navigator-extra-spoofing.patch
+cloakfox-webgpu-null-safety.patch
 navigator-spoofing.patch
 network-patches.patch
 notification-spoofing.patch
@@ -94,3 +95,50 @@ site-fingerprint-isolation.patch
 cloakfox-upstream-hardening.patch
 cloakfox-region-policy-proxy.patch
 cloakfox-privacy-completion.patch
+# Opt-in native focus, visibility, fullscreen and scheduling privacy.
+cloakfox-window-activity.patch
+
+# Restartable cosmetic macOS app names and icons.
+cloakfox-appearance.patch
+
+# Opt-in native clipboard event, shortcut and input metadata privacy.
+cloakfox-clipboard-signals.patch
+
+# Page-facing pointer departures and returns; preserve in-page transitions.
+cloakfox-pointer-activity.patch
+
+# Coherent hover state and native function identities without wrapper filenames.
+cloakfox-hover-activity.patch
+cloakfox-native-worker-math.patch
+cloakfox-exported-function-identity.patch
+
+# Cache authoritative container configuration before remote workers start.
+
+# Apply Math settings to existing realms without restarting them.
+cloakfox-live-worker-math.patch
+
+# Preserve bundled glyph identities across macOS renderer IPC.
+cloakfox-bundled-font-rendering.patch
+
+# Native UA Client Hints for Chromium user-agent overrides.
+cloakfox-user-agent-data.patch
+
+# Keep explicit locale tags intact during browser language initialization.
+
+# Preserve logarithms and powers used for data structures and numeric hashes.
+cloakfox-math-data-correctness.patch
+
+# Opt-in log/pow noise; default remains native for data correctness.
+cloakfox-math-data-toggle.patch
+
+# Refresh the HackerRank application local participant ID after Zoom failover.
+cloakfox-hackerrank-media-recovery.patch
+
+# Bind cosmetic app copies to the profile that created them on macOS reopen.
+cloakfox-appearance-profile.patch
+
+# Owner-scoped virtual screen geometry and Chromium eligibility.
+cloakfox-screen-presentation.patch
+cloakfox-testdome-screen-management.patch
+cloakfox-window-management-permission.patch
+cloakfox-screen-orientation-events.patch

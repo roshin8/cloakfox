@@ -50,7 +50,7 @@ export class CloakfoxMidiChild extends JSWindowActorChild {
       return pageWin.Promise.reject(
         new pageWin.DOMException("Permission denied", "NotAllowedError")
       );
-    }, pageWin);
+    }, pageWin, { functionName: orig.name, allowConstruct: false });
     setNativeIdentity(wrapped, orig.name, orig.length);
     // Replace on the PROTOTYPE with native flags, not the instance —
     // instance assignment leaks an own enumerable prop via

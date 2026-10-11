@@ -5,7 +5,7 @@ patches/cpp-first-worker-spoofers.patch lands at runtime.
 The window-side CloakfoxMath JSWindowActor doesn't fire in worker
 realms (workers have their own SpiderMonkey context). The
 WorkerPrivate.cpp::GetOrCreateGlobalScope injection evaluates a small
-IIFE that wraps Math.sin/cos/exp/log etc. with deterministic per-call
+native wrappers for Math.sin/cos/exp etc. with deterministic per-call
 ULP-magnitude noise. This probe confirms that:
 
   1. Worker Math.foo() output differs from native libm reference
@@ -46,7 +46,6 @@ NATIVE = {
     "cos_0_5":  0.8775825618903728,
     "tan_0_5":  0.5463024898437905,
     "exp_1":    2.718281828459045,
-    "log_2":    0.6931471805599453,
     "asin_0_5": 0.5235987755982989,
     "atan_1":   0.7853981633974483,
 }
@@ -65,7 +64,11 @@ r.main_sin_0_5  = Math.sin(0.5);
 r.main_cos_0_5  = Math.cos(0.5);
 r.main_tan_0_5  = Math.tan(0.5);
 r.main_exp_1    = Math.exp(1);
+// Data-processing math must retain its native precision.
 r.main_log_2    = Math.log(2);
+r.main_tree_levels = [3, 7].map(n => parseInt(Math.log(n + 1) / Math.log(2), 10));
+r.main_pow_2_neg_52 = Math.pow(2, -52);
+r.main_data_math = [Math.log(.3), Math.log2(.3), Math.log10(.3), Math.log1p(.3), Math.pow(2, -52)];
 r.main_asin_0_5 = Math.asin(0.5);
 r.main_atan_1   = Math.atan(1);
 
@@ -86,6 +89,9 @@ const workerSrc = `
   out.worker_tan_0_5  = Math.tan(0.5);
   out.worker_exp_1    = Math.exp(1);
   out.worker_log_2    = Math.log(2);
+  out.worker_tree_levels = [3, 7].map(n => parseInt(Math.log(n + 1) / Math.log(2), 10));
+  out.worker_pow_2_neg_52 = Math.pow(2, -52);
+  out.worker_data_math = [Math.log(.3), Math.log2(.3), Math.log10(.3), Math.log1p(.3), Math.pow(2, -52)];
   out.worker_asin_0_5 = Math.asin(0.5);
   out.worker_atan_1   = Math.atan(1);
   out.worker_sqrt_4   = Math.sqrt(4);
@@ -140,17 +146,23 @@ setTimeout(() => { if (!finalized) { r.worker_timeout = true; finalize(); } }, 4
 """
 
 
-def _build_driver(bin_path: str, profile_dir: str):
+def _build_driver(bin_path: str, profile_dir: str, *, data_noise: bool | None = None,
+                  enabled: bool = True):
     """Profile pre-seeded with cloakfox.enabled + a math_seed so SeedSync
     derives math:trig_seed into cloak_cfg before any worker can spawn —
     otherwise MaskConfig::GetUint32 returns nullopt and the worker
     spoofer is a no-op."""
     Path(profile_dir).mkdir(parents=True, exist_ok=True)
-    seed = base64.b64encode(secrets.token_bytes(32)).decode()
+    seed_bytes = bytearray(secrets.token_bytes(32))
+    # Keep other persona seeds random but reproduce the failing Math seed.
+    seed_bytes[16:20] = (761685640).to_bytes(4, "big")
+    seed = base64.b64encode(seed_bytes).decode()
     (Path(profile_dir) / "user.js").write_text(
-        f'user_pref("cloakfox.enabled", true);\n'
+        f'user_pref("cloakfox.enabled", {str(enabled).lower()});\n'
         f'user_pref("cloakfox.container.0.math_seed", "{seed}");\n'
         f'user_pref("cloakfox.container.0.timing_seed", "{seed}");\n'
+        + ('' if data_noise is None else
+           f'user_pref("cloakfox.opt.math_data_noise", {str(data_noise).lower()});\n')
     )
     opts = Options()
     opts.binary_location = bin_path
@@ -163,6 +175,16 @@ def _build_driver(bin_path: str, profile_dir: str):
 
 def assert_workers(r: dict) -> tuple[int, list[str]]:
     fails: list[str] = []
+
+    # Log/pow feed Firebase tree building and IEEE-754 number hashing. They
+    # must stay native in both realms even with a non-zero fingerprint seed.
+    for realm in ("main", "worker"):
+        if r.get(f"{realm}_log_2") != 0.6931471805599453:
+            fails.append(f"{realm} logarithm corrupted")
+        if r.get(f"{realm}_tree_levels") != [2, 3]:
+            fails.append(f"{realm} Firebase tree loses children")
+        if r.get(f"{realm}_pow_2_neg_52") != 2.220446049250313e-16:
+            fails.append(f"{realm} binary number scaling corrupted")
 
     # 1. Worker must run to completion (postMessage returned).
     if r.get("worker_timeout"):

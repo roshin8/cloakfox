@@ -1,0 +1,418 @@
+# WebGPU crash repair verification — 2026-10-10
+
+## Scope and change
+
+Implemented the Cloudflare WebGPU null-safety plan on outer-repo baseline
+`b6790033fa` (`cpp-first-exploration`), retaining the latest unrelated changes.
+`upstream.sh` remains Firefox 146.0.1, beta.25. The separate TestDome/screen API
+plan has not been implemented by this repair.
+
+The ordered patch changes `GPU gpu` to `GPU? gpu` and renames the page and worker
+getter declarations/definitions from `Gpu` to `GetGpu`. Both method bodies,
+privacy settings, existing actors, secure-context restriction and `[SameObject]`
+remain unchanged. The generated Navigator/WorkerNavigator bindings return null
+before calling `GetOrCreateDOMReflector`.
+
+## Reproduction and verification
+
+- **Red:** the installed baseline, executable SHA-256
+  `54ee08c14f7f59780d83dfe753f793cfe9f2e3d337b68308874874a9db0923ba`,
+  passed master-off but failed the disabled blank-frame completion assertion.
+  `/tmp/cloakfox-webgpu-before-fix/master-on-disabled-gecko.log:18` records a
+  child exiting on signal 11. The captured stack reached DOM wrapping with a
+  null WebGPU instance. No installed-app or user-profile changes were made.
+- **Build:** `./mach build` succeeded after all five source changes. The initial
+  WebIDL-only build failed because nullable getters require `GetGpu`; matching
+  page/worker renames resolved it. Build log:
+  `/tmp/cloakfox-webgpu-build-20261010.log`.
+- **Green:** `probe_webgpu_null_safety.py` passed master-off, master-on-disabled
+  and master-on-native-enabled on the bundled development app, signed staging
+  app and final mounted DMG. Coverage includes page/blank/srcdoc/navigated
+  frames, retained and fresh getters after same-frame navigation, native
+  descriptor/receiver behavior, stable native GPU identity and dedicated
+  workers. Completion, original-document sentinel and DOM liveness checks
+  prevent a null WebDriver response from masking a crash. Final report:
+  `/tmp/cloakfox-webgpu-final-probe/result.json`.
+- **Existing regressions:** signed staging passed navigator coherence in all
+  four containers and worker spoofing (17 worker plus 14 main signals).
+  Logs: `/tmp/cloakfox-webgpu-signed-navigator.log` and
+  `/tmp/cloakfox-webgpu-signed-workers.log`. `node --test
+  tests/fingerprint/test_*.mjs` passed 43 tests; Python probe-scoring tests passed.
+- **Reproducibility:** `bash scripts/test-patches.sh` applied all 92 patches to a
+  separate extraction, with zero failures. The script cleaned its extraction;
+  the current native checkout was never reset. Log:
+  `/tmp/cloakfox-webgpu-patch-audit-20261010.log`.
+
+Geckodriver 0.36.0 warned that 0.37.1 is recommended for this Firefox version;
+the recorded final probe runs completed successfully.
+
+## Packaging and rulings
+
+The bare `dist/bin/cloakfox` launcher produced mismatched runtime identity and
+failed initial GPU/navigator checks. Verification therefore uses the bundled
+`dist/Cloakfox.app/Contents/MacOS/cloakfox` and final package executable, which
+pass. The launcher discrepancy was not repaired as part of this change.
+
+`./mach package` succeeded but its intermediate app had a stale resource
+signature. A separate staging copy had Finder attributes cleared and was
+ad-hoc signed; `codesign --verify --deep --strict` succeeds on staging and the
+read-only final DMG payload. This is local signing, not notarization.
+
+Final artifact: `cloakfox-146.0.1-beta.25-webgpu-crash-fix-20261010.dmg`.
+Application BuildID: `20261010182521`.
+
+| Payload | SHA-256 |
+| --- | --- |
+| Final DMG | `54db315905b93a5425ac461f5d458bac56a864e7211e807fecd0966d51e89925` |
+| Mounted executable | `fbcfd5d22866fd9abe6831fe5c7ebe1fae6c02e51fa324ef0e34e124620629f5` |
+| Mounted XUL | `e4966014abe3409aad03e42dc134dc5610cae7d035049d45056c9aa496797c1a` |
+
+Mounted executable and XUL hashes exactly match signed staging. Old DMGs and
+`/Applications/Cloakfox.app` were preserved.
+
+## Live outcome
+
+Read-only headful checks used the signed staging app, disposable profiles,
+Firefox identity and privacy master enabled. Treet loaded its product listings
+and remained alive for the bounded observation. The user-supplied Capital One
+link displayed Cloudflare's normal **Verify you are human** checkbox instead of
+the broken-frame face; its native log contains no signal-11/EXC_BAD_ACCESS crash.
+Challenge completion was not tested: no CAPTCHA was clicked, no login was
+performed and no assessment was started.
+
+Screenshots and reports:
+`/tmp/cloakfox-webgpu-live-20261010/fixed-treet.png`,
+`/tmp/cloakfox-webgpu-live-20261010/fixed-treet-result.json`,
+`/tmp/cloakfox-webgpu-live-20261010/fixed-cloudflare.png`, and
+`/tmp/cloakfox-webgpu-live-20261010/fixed-cloudflare-result.json`.
+These scratch artifacts are local evidence, not committed fixtures.
+
+A separate read-only reviewer found no blocking or actionable correctness
+issues in the native patch and regression coverage. Packaging and live results
+were reviewed from the verification evidence rather than independently rerun.
+
+## Follow-up: challenge restarts after a human click
+
+The user subsequently reported that clicking the checkbox restarts verification.
+Diagnostic runs of the same signed staging app reproduced a fresh challenge
+without any content-process signal/EXC_BAD_ACCESS crash. The human performed
+the checkbox interaction; the agent only collected browser observations.
+
+The first capture showed an HTTP 200 challenge POST with Set-Cookie, saved
+`cf_clearance` cookies, then HTTP 403 on the original link with a new Ray ID.
+The second capture additionally confirmed that the subsequent original-link
+GET sent `cf_clearance` and `cf_chl_rc_ni`. Its HTTP User-Agent was stable across
+the challenge and reload and matched the page's navigator User-Agent. Cookie
+values, challenge tokens and the private link are not included in this record.
+
+This rules out the repaired WebGPU crash, a missing saved/sent clearance cookie,
+and a changing HTTP User-Agent for these observed runs. It does not establish
+why the site's challenge platform rejects/re-challenges the session. No new
+browser patch or privacy exception has been justified or applied; successful
+challenge passage remains unresolved. Selenium-driven diagnostics can themselves
+influence a challenge decision and are not a clean daily-use-browser control.
+
+Local reports: `/tmp/cloakfox-cloudflare-loop-20261010/result.json` and
+`/tmp/cloakfox-cloudflare-loop-headers-20261010/result.json`. The latter contains
+only cookie names/attributes and request metadata, not cookie values. Console
+messages in scratch reports may contain private URLs; do not publish them raw.
+
+## Native-session comparison isolates an automation-associated loop
+
+A normal CLI launch of the signed fixed app, without Selenium, geckodriver or
+Marionette, reached the CodeSignal login page with the privacy master enabled.
+A second, fresh native profile also passed after one authorized checkbox click:
+the original-link response was HTTP 302 to CodeSignal, and the native
+accessibility tree showed **Welcome to CodeSignal / Log in to access this page**.
+No sign-in or assessment was performed.
+
+For a controlled comparison, `prefs.js` and `user.js` from that passing native
+profile were copied into a fresh disposable Selenium profile, excluding cookies
+and other site state. Both runs used the same diagnostic app and the same
+`cloakfox.s.cloak_cfg_0` configuration (SHA-256 of sorted JSON:
+`15d00dd11beb8d7d0b766d5dbc50557ac930f8ba128cee702407ad88573cd2d2`),
+including the same Linux Firefox UA. Both retained `cloakfox.enabled=true` in
+`user.js`. After an authorized checkbox click, the Selenium session saved and
+sent `cf_clearance` but again received HTTP 403 with a new challenge. Its UI
+explicitly reported remote control by Marionette. No privacy exceptions or
+automation-detection overrides were applied.
+
+This isolates a reproducible automation-associated failure in the diagnostic
+environment; it does not reveal Cloudflare's private decision logic.
+[Cloudflare's supported-browser documentation](https://developers.cloudflare.com/cloudflare-challenges/reference/supported-browsers/)
+explicitly excludes Selenium/automation frameworks from production challenge
+solving. Native challenge passage is now verified for the fixed payload with
+privacy enabled; the automation result must not be treated as native failure.
+
+The user's running Firefox-appearance copy and `/Applications/Cloakfox.app`
+both still report BuildID `20261010162253`; the running appearance marker points
+to `/Applications/Cloakfox.app`. They predate the fixed `20261010182521` payload.
+They were not replaced, restarted or modified during diagnosis. To use the fix,
+install the new DMG and launch the updated original Cloakfox app after quitting
+the old appearance instance; the appearance manager compares source fingerprints
+when preparing its copy and rebuilds it from the updated source.
+
+Native logs: `/tmp/cloakfox-cf-native-20261010/cloakfox-on-clean/`.
+Matched Selenium report:
+`/tmp/cloakfox-cf-native-20261010/selenium-same-persona/result.json`.
+The local diagnostic clone uses a distinct bundle ID solely so the native UI
+tool can select it among concurrent browser processes. Its engine/settings are
+otherwise the fixed app's; both comparison runs used that same clone.
+
+## Follow-up: the user's Chrome identity overrides also reproduce the loop
+
+The clean native comparison above did not cover the user's manual identity
+overrides. Copying only the user's `cloakfox.*` preferences into a disposable
+native profile reproduced repeated HTTP 403 challenges with the fixed engine,
+without Selenium. The profile advertised Chrome 120 through navigator and HTTP
+User-Agent overrides while running Gecko. No cookies, history or credentials
+were copied.
+
+In another disposable profile with those same preferences, the settings UI reset
+only `navigator.userAgent`, `navigator.appVersion` and `headers.User-Agent` to
+the existing Firefox persona. The privacy master remained enabled, the persona
+seed was retained, and the unrelated Math override remained. After one authorized
+checkbox click, the link returned HTTP 302 to CodeSignal and the native UI showed
+**Welcome to CodeSignal / Log in to access this page**. Comparing the cached
+persona configurations before/after showed only the navigator and HTTP
+User-Agent keys changed: the old cached appVersion was already Firefox even
+though its stored manual override differed. This establishes a reproducible
+identity-override-associated failure for these settings, in addition to the
+separate automation-associated failure. It does not establish Cloudflare's
+private rejection reason.
+
+Removing override preferences offline alone was an invalid control because the
+valid cached `cloakfox.s.cloak_cfg_0` retained the old values. Resetting them
+through the settings UI rebuilt the configuration correctly.
+
+After the user installed/launched the fixed DMG, `/Applications/Cloakfox.app`
+reported BuildID `20261010182521`, but the already-running Firefox appearance
+copy still reported `20261010162253`. The three Default-container identity
+overrides were backed up locally, then reset through that user's settings UI.
+The old appearance window was closed and the updated original app launched
+against the same existing profile so its appearance copy could refresh. Privacy
+protection was retained. No challenge scripts, tokens or detection mechanisms
+were modified, and no sign-in or assessment was performed.
+
+The restarted user appearance copy reported BuildID `20261010182521`; its
+application.ini and XUL hashes matched the signed fixed staging payload. The
+actual profile retained `cloakfox.enabled=true` and
+`navigator:webgpu:disabled=true`, with matching Firefox navigator/HTTP UAs.
+On the same supplied link, the page first offered a verification-start button,
+then the normal checkbox. After the authorized interaction it left Cloudflare
+and reached CodeSignal, displaying **Assessment not found**. Thus actual-profile
+challenge passage is verified; the destination's assessment error remains
+separate and was not investigated by starting or submitting an assessment.
+
+Native failing and passing logs are in
+`/tmp/cloakfox-cf-native-20261010/native-user-config/` and
+`/tmp/cloakfox-cf-native-20261010/native-user-config-reset/` respectively.
+Private links, cookie values and identity seeds are omitted from this record.
+
+## Identity mismatch investigation
+
+The failing native Chrome profile's cached configuration claimed Chrome 120
+in both User-Agent fields but still contained Firefox 146 in
+`navigator.appVersion`. A fresh native disposable control changed only the
+appVersion configuration key to match that Chrome UA. It still returned HTTP
+403 after the authorized checkbox click, presented a new Ray ID/checkbox, and
+did not redirect to CodeSignal. Thus the appVersion contradiction is real but
+correcting it alone did not resolve the loop.
+
+The native failing control's browser console also recorded warnings from the
+Cloudflare challenge script for access to `InstallTrigger`, `Window.fullScreen`,
+`onmozfullscreenchange`, `onmozfullscreenerror`, and
+`WEBGL_debug_renderer_info`. These observations establish accessed APIs, not
+their purpose, uploaded values or weight in a rejection decision. WebGL context
+loss warnings also appeared in passing runs and do not independently explain
+the failure.
+
+The HTTP profile preferences are another distinction outside the cached persona
+JSON: both Chrome runs used `h2_profile=chrome`, while the passing Firefox run
+used `h2_profile=firefox`; all three used `h3_profile=0`. The settings UI derives
+these preferences from the chosen UA. The engine retains Gecko/SpiderMonkey and
+NSS TLS, so a Chrome UA cannot provide an actual Chrome implementation. Neither
+the exact TLS fingerprint sent nor the site's server-side rejection rule has
+been established by this investigation. Cloudflare documents client-side,
+header/session and TLS fingerprint signals, but that does not prove this site
+used any particular one.
+
+The redacted local control report is
+`/tmp/cloakfox-cf-native-20261010/native-user-config-chrome-appversion/redacted-result.json`.
+The user's restored, passing Firefox profile was not changed by this control.
+
+## Broader native API-access audit
+
+Two fresh disposable native profiles used the fixed engine, privacy enabled,
+matching Chrome 120 navigator UA/appVersion, and no WebDriver. A diagnostic-only
+JSWindowActor attached SpiderMonkey's `Debugger.onNativeCall` to Cloudflare
+challenge window globals. A local fixture verified ordinary getter and method
+capture first. Hooks returned `undefined` to preserve the original calls/results;
+no page API was replaced. The observer recorded names/counts, excluding script
+text, private URLs, cookies, tokens and return values. It also recorded identifier
+arguments for descriptor/property checks, which include challenge-internal keys.
+
+The corrected-appVersion sessions accessed Firefox getters including
+`InstallTrigger`, `fullScreen`, `mozInnerScreenX/Y`, Mozilla fullscreen properties,
+`Screen.mozOrientation`, and `navigator.oscpu/buildID`. Chromium-related
+observations included the `navigator.userAgentData` getter and an actual native
+`NavigatorUAData.getHighEntropyValues()` call, plus property-descriptor checks
+for `deviceMemory` and `connection` and reads/checks of `vendor`. Cloakfox already
+implements native UAData for Chromium identities; this call does not imply that
+a Chromium engine was loaded. WebKit-prefixed animation/transition event getters
+were also accessed, but Firefox supports these compatibility names.
+
+Other observed families included Window/Document/Navigator/Screen enumeration,
+Canvas/OffscreenCanvas, WebGL, offline audio, FontFace, Intl, CSS/layout, WebRTC,
+permissions/storage, timing/input, crypto, XHR and worker construction/messages.
+The aggregate contained 1,682 distinct native signatures with no observer-hook
+errors. Signatures include built-ins, receiver classes, setters, wrappers and
+descriptor-key variants, so this is not a count of distinct web APIs. Calls to
+`WEBGL_lose_context.loseContext()` were also observed; context-loss warnings
+alone do not establish a crash or rejection cause.
+
+Coverage is limited to executed window-global paths. Plain/absent property reads
+and `in`/`typeof` checks can bypass the native hook; worker-thread internals and
+unexecuted branches are not covered. No explicit `window.chrome` getter/call or
+`chrome` descriptor-key check was observed, which does not establish absence of
+a plain check. A descriptor inspection proves a check, not API availability or
+use. Debugging changes timing/JIT behavior and periodic flushing can miss final
+events around frame destruction; these runs do not establish a clean pass/fail
+comparison or Cloudflare's server-side rejection rule.
+
+The complete locally saved observed inventory is
+`/tmp/cloakfox-cf-api-audit-20261010/redacted-api-inventory.json`, with a readable
+summary at `/tmp/cloakfox-cf-api-audit-20261010/report.md`. The diagnostic-only
+app modifications were removed after capture. The installed app, DMG and user's
+restored Firefox profile were not modified by this audit.
+
+## Native screen-management delivery — 2026-10-10
+
+Implemented the separate native screen-management plan on this branch. The
+feature is off by default and requires the privacy master, explicit feature
+toggle, an owning desktop Chrome/Chromium/Edge identity, and an exact HTTPS
+origin in the editable list. Count is configurable from 1–8 and snapshotted
+when each inner window is created. Native bindings, frozen object identity,
+owner/container presentation, live invocation checks, inactive-frame rejection,
+virtual permission snapshots, and modern/legacy/iframe denial are implemented.
+The helper and WebIDL use native Gecko objects; no missing-API page shim was added.
+
+### Test evidence
+
+- **RED → GREEN:** the original native build lacked all four screen surfaces;
+  first-script API and Settings/presentation tests now pass. Additional RED
+  regressions caught a wrong-typed saved-origin value, portrait letterbox angle,
+  and Window-method initialization before document attachment. The fixes pass.
+- **Permission RED → GREEN:** Task 2 rejected the permission name with TypeError
+  and resolved a call despite modern empty-list denial. Task 3 passes exact
+  empty-list parsing, spacing/dictionaries, malformed/lookalike/nonempty
+  controls, inherited and iframe/legacy denial, workers denied, live gate
+  changes, query snapshots and permission privacy enabled.
+- **Final dev build:** Settings, presentation, API/policy, media permission,
+  UA Client Hints (67 checks), worker identity, navigator coherence (four
+  containers), and WebGPU null-safety pass. Logs are
+  `/tmp/cloakfox-screen-final-suite.log` and individual
+  `/tmp/cloakfox-screen-final-*.log` files; all nine final probes pass.
+- **Synthetic recording:** the deliberately empty-output guard fails. The real
+  headful fixture selects the observed no-preference VP8 fallback, using both
+  VideoEncoder and MediaRecorder capability checks. Dev output is 4,330 screen
+  bytes and 6,499 webcam/audio bytes; mounted output is 4,184 and 7,343 bytes.
+  All four blobs have EBML `[26,69,223,163]`; sources and AudioContexts are
+  stopped/closed. Reports: `/tmp/cloakfox-screen-final-testdome_recording/recording.json`
+  and `/tmp/cloakfox-screen-mounted-final-testdome_recording/recording.json`.
+- **Mounted payload:** Settings, presentation, API/policy, synthetic recording
+  and WebGPU null-safety pass on the read-only DMG application, with disposable
+  profiles. Logs: `/tmp/cloakfox-screen-mounted-final-*.log`.
+- **Reproducibility:** all 96 ordered patches apply to fresh Firefox 146.0.1
+  source. Before the audit script's cleanup, a test-only shell hook retained
+  the 30 files touched by these four patches; every SHA-256 matches the
+  compiled checkout. Reports: `/tmp/cloakfox-screen-patch-audit-final.log` and
+  `/tmp/cloakfox-screen-verification/patch-input-comparison-final.json`.
+
+### Signed artifact
+
+`./mach build` and `./mach package` succeeded. The intermediate packaged app
+had a stale resource signature; a separate staging copy was ad-hoc signed.
+Both staging and the read-only mounted app pass `codesign --verify --deep
+--strict`. This is local signing, not notarization. Mounted executable and XUL
+hashes match signed staging. The installed app, real profiles, and previous
+DMGs were preserved.
+
+Artifact: `cloakfox-146.0.1-beta.25-browser-compat-20261010-211128.dmg`.
+BuildID: `20261010210835`.
+
+| Payload | SHA-256 |
+| --- | --- |
+| Final DMG | `efc3751c67ee75954ea68bacde588fa4877913577af57f1ec133a91e17c2824f` |
+| Mounted executable | `d68fb39c3ff12bba810b11e10bbff01181d09ee3dec25f6eef5034649432ac05` |
+| Mounted XUL | `931cb9096e9c0a323ae2702109252ae47290adc13719337a38d135f7aebf78c6` |
+
+### Read-only live result and limits
+
+The supplied TestDome start-test link was checked in the mounted payload. A
+privileged, test-profile-only document observer recorded the native surfaces
+before page scripts: Chromium had getScreenDetails/ScreenDetails/ScreenDetailed
+and isExtended; Firefox had none. The Chromium page reached **Detect Screens**
+without the getScreenDetails compatibility warning. Its query was granted and
+the API returned one frozen virtual screen. The Firefox control queried denied
+and displayed the missing API/browser recommendation.
+
+No Detect Screens, Next, device-sharing, or Start the Test control was clicked;
+no assessment began and no real device capture was approved. Local APIs and
+synthetic encoding are verified. Physical webcam/screen capture, remote media
+delivery and full assessment support remain unverified. The unrelated live
+Cloudflare outcome remains the independently documented result above.
+
+Local evidence: `/tmp/cloakfox-screen-live-final/result.json`, `chromium.png` and
+`firefox.png`. Invitation URLs/candidate data are not committed.
+
+### Final fresh review and receiving-screen regression
+
+A fresh gpt-6-astra whole-branch review found no Critical issues and one
+Important gap: an ineligible ancestor could queue a trusted orientation change
+for an eligible virtual-screen child. The mixed cross-origin tree regression
+uses Gecko's privileged orientation override to exercise the native ancestor
+traversal; it failed with a trusted child event despite unchanged geometry.
+The receiving-screen runnable now rechecks virtual presentation at dispatch,
+including already queued work, while pending promises still resolve. It passes
+RED → GREEN, the final dev suite passes 9/9, and mounted probes pass 5/5.
+The ordered follow-up patch is `cloakfox-screen-orientation-events.patch`.
+
+The review's Minor codec-probe weakness is deferred: a future non-VP8 candidate
+could be selected while recording still exercises VP8. Both current dev and
+mounted selections are VP8/no-preference, so their recording evidence is valid.
+
+### User-visible version mismatch
+
+The running Firefox-appearance copy and installed source were still BuildID
+`20261010182521`; the final package is `20261010210835`. The saved user profile
+had no explicit screen-management enablement, and the feature defaults off.
+Install the final app, quit old copies, and launch `/Applications/Cloakfox.app`
+so any saved Firefox appearance is rebuilt from the new source. Enable
+**Virtual screen-management API**, keep `https://app.testdome.com` in the exact
+origin list, select a desktop Chromium identity in the active container, and
+reload the TestDome page. This package was not installed into the real profile
+as part of the isolated verification.
+
+### Implementation rulings and costs
+
+- Ruling: Keep existing feature branch/native checkout instead of a fresh worktree — the approved plan explicitly preserves this patched source/build cache; no main/master work or user-profile changes. Cost if wrong: source isolation is weaker; snapshots/ordered patches and explicit staging preserve unrelated changes.
+- Task 1: Ruling: local 443/80 sockets are denied by macOS for this process — fixture uses ephemeral loopback TLS/HTTP ports and explicitly lists its canonical TLS origin; production default remains tested in Settings. Cost: local navigation cannot directly exercise the production default-port route.
+- Task 1: Ruling: macOS standalone dist/bin executable fails XPCOM loading — native probes use the same build's dist/Cloakfox.app after ad-hoc signing. Cost: app packaging paths also influence the dev probe; final mounted-payload probes still validate distribution independently.
+- Task 2: Ruling: spec's no-own-getScreenDetails expectation contradicts native Gecko Window binding placement (baseline alert/requestAnimationFrame are own properties; Window.prototype.alert is undefined). Preserve generated native placement and compare it with alert, rather than altering the binding generator or adding a JS shim. Cost: shallow own-property checks cannot distinguish this native API from a shim; native descriptors/receivers/brands/function text supply the other checks.
+- Task 2: Ruling: Gecko denies unknown policy features (DefaultAllowListFeature returns eNone), so the planned Task 2 invocation check cannot pass before Task 3's feature registration. Move only window-management/eSelf registration into Task 2; keep native permission integration and modern header parsing in Task 3. Cost: legacy/iframe policy support lands one commit earlier; final scope and denial behavior are unchanged.
+- Task 2: Ruling: IMPL_EVENT_HANDLER requires global static atoms absent for these two events. Use EventTarget's existing string/dynamic-atom GetEventHandler and native atom SetEventHandler overloads for the two generated WebIDL accessors, preserving listener semantics without adding unrelated global HTML event names. Cost: a small atom lookup on handler access instead of a static atom pointer.
+- Task 2: Ruling: native ScreenDetails name collides with existing DOMTypes IPDL transport class — map WebIDL ScreenDetails to CloakfoxScreenDetails in Bindings.conf; mark Screen concrete after adding its derived interface so the existing nsScreen wrapper remains generated. Cost: a small explicit binding mapping replaces the plan’s default class mapping; public API names/brands stay unchanged.
+- Task 3: Ruling: existing Gecko iframe allow changes affect the next document, not the already loaded document (Task 2 baseline resolved before/after assignment, denied after navigation). Preserve that document-policy lifetime; test changing allow then navigating, while new queries still recheck the current document’s policy/gates. Cost: changing allow alone cannot revoke this loaded document until navigation/reload.
+- Final: Ruling: physical webcam/display capture, chooser, remote delivery and complete assessments remain unverified — headful synthetic output and read-only onboarding meet this plan's explicit scope — cost: capture/session failures may still require separate testing.
+- Final: Ruling: Cloudflare private rejection and general Chrome impersonation remain outside this feature — native screen eligibility is narrower than universal Chromium compatibility — cost: unrelated sites can still reject the browser.
+- Final: Ruling: nonempty modern Permissions-Policy allowlists remain unsupported — exact empty-list denial is the approved bounded parser contract — cost: broader modern delegation semantics are not provided.
+- Final: Ruling: immediate iframe allow revocation remains deferred to next navigation — existing Gecko document-policy lifetime is preserved and tested — cost: loaded documents retain their policy until navigation.
+- Final: Ruling: legacy screen owner behavior after feature eligibility is disabled stands — this plan repairs the eligible virtual presentation path — cost: older nonvirtual screen behavior is unchanged.
+- Final: Ruling: physical topology, monitor movement, per-display editing and extra Chromium screen APIs remain excluded — configurable virtual count and repeated persona geometry are the approved scope — cost: this feature cannot enumerate actual displays or supply every Chromium API.
+- Final: Ruling: broader WebGPU functionality and worker privacy parity remain outside this repair — the included regression proves native binding null safety only — cost: other WebGPU limitations may remain.
+- Final: Ruling: cross-platform execution and notarization remain unverified — delivery targets locally signed macOS payloads — cost: other systems and Gatekeeper distribution are not established.
+- Final: Ruling: parser caching is not added — no measured regression justifies expanding this feature — cost: eligibility checks retain their existing parse overhead.
+- Final: Ruling: unrelated unstaged TODO/PENDING/Cloudflare edits are preserved and excluded — they belong to other work — cost: final checkout remains dirty with those changes.
+- Final: Ruling: nested-patch whitespace reports stand — blank unified-diff context prefixes are required patch syntax, while fresh application and native compilation verify the actual source — cost: outer diff-check remains noisy for patch files.
+- Final: Ruling: preserve the existing feature branch and installed app — the approved plan requests commits and a new deliverable while leaving real profiles/apps unchanged; no merge/PR is requested — cost: installation and remote integration remain separate user actions.

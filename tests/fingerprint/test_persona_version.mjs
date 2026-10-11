@@ -8,11 +8,13 @@ const seed = Buffer.alloc(32, 19).toString('base64');
 const ua = version => `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${version}) Gecko/20100101 Firefox/${version}`;
 function harness(version = '155.0.1', hostOS = 'WINNT', sampler = () => ({ userAgent: ua('146.0'), screen: {} })) {
   const prefs = new Map();
+  const filters = [];
   const get = (key, fallback) => prefs.has(key) ? prefs.get(key) : fallback;
   const context = vm.createContext({
     AppConstants: { MOZ_APP_VERSION: version }, atob, btoa, console,
     crypto: { getRandomValues: bytes => bytes.fill(19) },
     sampleFingerprint: sampler,
+    samplePersonaFingerprint: (prng, constraints) => { filters.push({...constraints}); return sampler(prng); },
     ContextualIdentityService: { getPublicIdentities: () => [{ userContextId: 7 }] },
     Services: { appinfo: {OS: hostOS},
       prefs: { getStringPref: get, getIntPref: get, getBoolPref: get,
@@ -30,7 +32,7 @@ function harness(version = '155.0.1', hostOS = 'WINNT', sampler = () => ({ userA
       .replace(/^export /gm, '');
     vm.runInContext(source, context, { filename: name });
   }
-  return { prefs, context, start: () => context.initCloakfoxSeedSync(), cfg: () => JSON.parse(prefs.get('cloakfox.s.cloak_cfg_7')) };
+  return { prefs, context, filters, start: () => context.initCloakfoxSeedSync(), cfg: () => JSON.parse(prefs.get('cloakfox.s.cloak_cfg_7')) };
 }
 // New region/policy metadata is validated by its own suite; this regression
 // verifies every pre-existing config field remains byte-for-byte intact.
@@ -155,4 +157,16 @@ test('host mode flows through generated keys, pinned keys, preview labels and su
  h.prefs.set('cloakfox.container.7.persona_os_mode','legacy');
  const legacyList=h.context.listPersonas('Darwin');
  assert.ok(legacyList.some(p=>p.label.startsWith('Windows')));
+});
+
+test('saved 146 OS/hardware filters survive the port and invalid strings keep the legacy path', () => {
+  const h = harness('157.0.1');
+  h.prefs.set('cloakfox.container.7.persona_os', 'windows');
+  h.prefs.set('cloakfox.container.7.persona_hardware', 'intel');
+  h.context.fillPersonaKeys(seed, 7);
+  assert.deepEqual(h.filters, [{os:'windows', hardware:'intel'}]);
+  h.prefs.set('cloakfox.container.7.persona_os', 'invalid');
+  h.prefs.set('cloakfox.container.7.persona_hardware', 'invalid');
+  h.context.fillPersonaKeys(seed, 7);
+  assert.equal(h.filters.length, 1);
 });

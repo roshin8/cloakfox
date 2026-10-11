@@ -1,0 +1,25 @@
+$ mkdir -p lw
+Staged reviewed uBlock Origin 1.74.0 (4617614 bytes): lw/ublock-origin/uBlock0@raymondhill.net.xpi
+Staged @testpilot-containers 8.3.8
+Staged {c607c8df-14a7-4f28-894f-29e8722976af} 1.9.2
+$ cp -v ../settings/cloakfox.cfg lw/cloakfox.cfg
+../settings/cloakfox.cfg -> lw/cloakfox.cfg
+$ cp -v ../settings/policies.json lw/
+../settings/policies.json -> lw/policies.json
+$ cp -v ../settings/local-settings.js lw/
+../settings/local-settings.js -> lw/local-settings.js
+$ cp -v ../settings/chrome.css lw/
+../settings/chrome.css -> lw/chrome.css
+$ cp -v ../settings/properties.json lw/
+../settings/properties.json -> lw/properties.json
+$ touch lw/moz.build
+$ cp -v '../patches/librewolf/pack_vs.py' build/vs/
+../patches/librewolf/pack_vs.py -> build/vs/pack_vs.py
+$ cp -r '../additions/'* .
+$ python3 '../scripts/audit-font-pack.py' --check
+Verified 31 fonts and 6 license files
+$ cp '../bundle/fonts/macos/'*.ttf browser/fonts/
+$ cp '../bundle/fonts/licenses/'*.txt browser/fonts/
+$ cp '../bundle/fonts/FONT-NOTICES.txt' '../bundle/fonts/font-manifest.json' browser/fonts/
+Staged 31 bundled fonts into browser/fonts/
+Additions and settings copied successfully.

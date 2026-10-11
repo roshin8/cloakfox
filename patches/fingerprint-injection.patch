@@ -68,24 +68,20 @@ index 330a707789..241f87780b 100644
  
  #include <inttypes.h>
  #include <stdio.h>
-@@ -3439,6 +3440,8 @@ void nsGlobalWindowInner::SetName(const nsAString& aName,
- }
- 
- double nsGlobalWindowInner::GetInnerWidth(ErrorResult& aError) {
+@@ -3720,4 +3720,6 @@
+ double nsGlobalWindowInner::GetInnerWidth(CallerType aCallerType,
+                                           ErrorResult& aError) {
 +  if (auto value = MaskConfig::GetDouble("window.innerWidth"))
 +    return value.value();
-   FORWARD_TO_OUTER_OR_THROW(GetInnerWidthOuter, (aError), aError, 0);
- }
- 
-@@ -3450,6 +3453,8 @@ nsresult nsGlobalWindowInner::GetInnerWidth(double* aWidth) {
- }
- 
- double nsGlobalWindowInner::GetInnerHeight(ErrorResult& aError) {
+   FORWARD_TO_OUTER_OR_THROW(GetInnerWidthOuter, (aCallerType, aError), aError,
+                             0);
+@@ -3720,4 +3720,6 @@
+ double nsGlobalWindowInner::GetInnerHeight(CallerType aCallerType,
+                                            ErrorResult& aError) {
 +  if (auto value = MaskConfig::GetDouble("window.innerHeight"))
 +    return value.value();
-   // We ignore aCallerType; we only have that argument because some other things
-   // called by GetReplaceableWindowCoord need it.  If this ever changes, fix
-   //   nsresult nsGlobalWindowInner::GetInnerHeight(double* aInnerWidth)
+   FORWARD_TO_OUTER_OR_THROW(GetInnerHeightOuter, (aCallerType, aError), aError,
+                             0);
 @@ -3466,12 +3471,16 @@ nsresult nsGlobalWindowInner::GetInnerHeight(double* aHeight) {
  
  int32_t nsGlobalWindowInner::GetOuterWidth(CallerType aCallerType,

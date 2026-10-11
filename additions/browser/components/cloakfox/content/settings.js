@@ -1,3 +1,5 @@
+import { getPersonaHardwareFamilies } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
+import { PRESETS, browserValues, screenValues, languageValues, gpuValues } from "./settings-presets.mjs";
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -37,6 +39,60 @@ const { forgetContainerData } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxIdentityActions.sys.mjs");
 
 const PREF_ENABLED = "cloakfox.enabled";
+
+async function initAppearanceControls() {
+  const { getAppearance, restartAppearance, revealAppearance } = ChromeUtils.importESModule(
+    "resource:///modules/CloakfoxAppearance.sys.mjs"
+  );
+  const toggle = document.getElementById("cfx-firefox-appearance");
+  const button = document.getElementById("cfx-appearance-restart");
+  const status = document.getElementById("cfx-appearance-status");
+  const reveal = document.getElementById("cfx-appearance-reveal");
+  const pref = toggle.dataset.pref;
+  const appearance = await getAppearance();
+  if (!appearance.supported) {
+    toggle.disabled = true;
+    status.textContent = "Application appearance switching is available on macOS.";
+    return;
+  }
+  const name = appearance.active ? "Firefox" : "Cloakfox";
+  reveal.hidden = false;
+  document.getElementById("cfx-appearance-permissions").hidden = false;
+  reveal.addEventListener("click", async () => {
+    try { await revealAppearance(); }
+    catch (error) { status.textContent = `Could not show the application: ${error.message}`; }
+  });
+  document.title = name;
+  document.querySelector(".brand-name").textContent = name;
+  if (appearance.active) {
+    const icon = document.createElement("img");
+    icon.src = "resource:///appearance/icon32.png";
+    icon.alt = "";
+    icon.width = icon.height = 28;
+    document.querySelector(".brand-mark").replaceChildren(icon);
+  }
+  const render = () => {
+    const pending = Services.prefs.getBoolPref(pref, false) !== appearance.active;
+    status.textContent = `Active: ${name}${pending ? " · Restart to apply your choice." : ""}`;
+    button.hidden = !pending;
+  };
+  toggle.addEventListener("change", render);
+  button.addEventListener("click", async () => {
+    button.disabled = toggle.disabled = true;
+    status.textContent = toggle.checked ? "Preparing Firefox appearance…" : "Restoring Cloakfox appearance…";
+    try {
+      const result = await restartAppearance();
+      if (result.cancelled) {
+        status.textContent = `Active: ${name} · Restart canceled. Your choice is saved.`;
+      }
+    } catch (error) {
+      status.textContent = `Could not switch appearance: ${error.message}`;
+    } finally {
+      button.disabled = toggle.disabled = false;
+    }
+  });
+  render();
+}
 
 const masterSeedPref   = (ucid) => `cloakfox.container.${ucid}.math_seed`;
 const cloakCfgPref     = (ucid) => `cloakfox.s.cloak_cfg_${ucid}`;
@@ -190,6 +246,61 @@ const GROUPS = {
     ["navigator:webgpu:disabled",    "navigator:webgpu:disabled"],
   ],
 };
+
+const PRESET_GROUPS = {
+  "grp-navigator": {id: "browser", label: "Browser / OS preset", items: PRESETS.browsers, values: browserValues},
+  "grp-screen": {id: "screen", label: "Display preset", items: PRESETS.screens, values: screenValues},
+  "grp-graphics": {id: "gpu", label: "GPU preset", items: PRESETS.gpus.map(p => ({...p, name: p.renderer})), values: gpuValues},
+  "grp-locale": {id: "language", label: "Language preset", items: PRESETS.languages, values: languageValues},
+};
+function makePresetRow(definition, cfg, ucid, overrides, onChange) {
+  const row = document.createElement("div");
+  row.className = "spoof-row dyn picker-row";
+  const label = document.createElement("label");
+  label.className = "k";
+  label.textContent = definition.label;
+  const select = document.createElement("select");
+  select.id = `cfx-${definition.id}-preset`;
+  select.className = "v preset-select";
+  label.htmlFor = select.id;
+  const ownedKeys = Object.keys(definition.values(definition.items[0], cfg || {}));
+  const automatic = document.createElement("option");
+  automatic.value = "auto";
+  automatic.textContent = "Automatic — from persona";
+  select.appendChild(automatic);
+  const custom = document.createElement("option");
+  custom.value = "custom";
+  custom.textContent = "Custom / current values — edit fields below";
+  select.appendChild(custom);
+  const presetPref = `cloakfox.container.${ucid}.settings_preset.${definition.id}`;
+  const preferred = Services.prefs.getStringPref(presetPref, "");
+  let match = null;
+  for (const item of definition.items) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.name;
+    select.appendChild(option);
+    const values = definition.values(item, cfg || {});
+    if (Object.entries(values).every(([key, value]) => cfg?.[key] === value)
+        && (!match || item.id === preferred)) match = item.id;
+  }
+  select.value = ownedKeys.some(key => key in overrides) ? (match || "custom") : "auto";
+  select.addEventListener("change", () => {
+    if (select.value === "custom") return;
+    if (select.value === "auto") {
+      ownedKeys.forEach(key => clearOverride(ucid, key));
+      Services.prefs.clearUserPref(presetPref);
+    }
+    else {
+      Services.prefs.setStringPref(presetPref, select.value);
+      const item = definition.items.find(p => p.id === select.value);
+      for (const [key, value] of Object.entries(definition.values(item, cfg || {}))) setOverride(ucid, key, value);
+    }
+    onChange();
+  });
+  row.append(label, select, document.createElement("span"));
+  return row;
+}
 
 const FIELD_CHOICES = {
   "navigator.platform": ["Win32", "MacIntel", "Linux x86_64"],
@@ -354,6 +465,7 @@ function populateGrid(id, cfg, rows, ucid, overrides, onChange) {
   // Clear existing children EXCEPT static elements declared in HTML
   // (e.g. timezone group has a <select>; we never wipe that).
   Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
+  if (PRESET_GROUPS[id]) grid.appendChild(makePresetRow(PRESET_GROUPS[id], cfg, ucid, overrides, onChange));
   const wasOpen = grid.querySelector(".advanced-fields")?.open;
   grid.querySelector(".advanced-fields")?.remove();
   const advanced = document.createElement("details"); advanced.className = "advanced-fields"; advanced.open = wasOpen ?? !Services.prefs.getBoolPref("cloakfox.ui.collapse_advanced", false);
@@ -473,6 +585,39 @@ const TIMEZONES = [
 // ── wire up UI ──────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
+  function updateChromiumCompatibility() {
+    const ucid = parseInt(document.getElementById("cfx-container-select").value, 10) || 0;
+    const ua = getCloakCfg(ucid)?.["navigator.userAgent"] || "";
+    // Match the native desktop Chromium eligibility gate, including custom UAs.
+    const chromium = /(?:Chrome|Chromium)\/\d/.test(ua)
+      && !/(?:Firefox\/|iPhone|iPad|Android|Mobile)/.test(ua);
+    document.getElementById("sec-screen-management").hidden = !chromium;
+
+    const status = document.getElementById("cfx-chromium-status");
+    if (!chromium) {
+      status.textContent = "Choose a desktop Chrome or Edge identity to configure Chromium compatibility. Saved settings are retained.";
+    } else if (!Services.prefs.getBoolPref(PREF_ENABLED, false)) {
+      status.textContent = "Unavailable: enable Cloakfox to activate Chromium compatibility.";
+    } else if (!Services.prefs.getBoolPref("cloakfox.compat.screen_management", false)) {
+      status.textContent = "Unavailable: turn on the Screen API toggle below.";
+    } else {
+      try {
+        const origins = JSON.parse(Services.prefs.getStringPref("cloakfox.compat.screen_management.origins", "[]"));
+        if (!Array.isArray(origins)) throw new Error("Invalid origins");
+        const count = new Set(origins.filter(value => {
+          if (typeof value !== "string") return false;
+          const url = new URL(value);
+          return url.protocol === "https:" && url.origin === value && !url.hostname.includes("*");
+        })).size;
+        status.textContent = count ? `Enabled for ${count} allowed site${count === 1 ? "" : "s"} in this container. Reload affected pages to apply changes.`
+          : "Unavailable: add an HTTPS site to the allowlist below.";
+      } catch {
+        status.textContent = "Unavailable: correct and save the site allowlist below.";
+      }
+    }
+  }
+
+
   const enabledEl    = document.getElementById("cfx-enabled");
   const statusLabel  = document.getElementById("cfx-status-label");
   const selectEl     = document.getElementById("cfx-container-select");
@@ -548,6 +693,8 @@ document.addEventListener("DOMContentLoaded", () => {
       `Saved generation mode: ${mode === "host" ? "this computer’s OS" : osLabels[mode] === "all" ? "all operating systems" : osLabels[mode]}. Custom overrides may differ.`;
     document.getElementById("cfx-persona-choice").value = "-1";
     loadIdentityChoices();
+    updateChromiumCompatibility();
+    updateHardwareChoices(Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_hardware`, "auto"));
     updateHeadline(cfg, seedB64);
     populateGrid("grp-navigator", cfg, GROUPS["grp-navigator"], ucid, overrides, onEdit);
     populateGrid("grp-screen",    cfg, GROUPS["grp-screen"],    ucid, overrides, onEdit);
@@ -606,6 +753,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (generateNew.disabled) return;
     applyIdentity(-1);
   });
+  function updateHardwareChoices(selected = "auto") {
+    const select = document.getElementById("cfx-persona-hardware");
+    const os = selectedOSMode() === "legacy" ? "auto" : selectedOSMode();
+    select.replaceChildren(new Option("Any graphics family", "auto"));
+    for (const family of getPersonaHardwareFamilies(os)) select.append(new Option(family, family));
+    select.value = [...select.options].some(option => option.value === selected) ? selected : "auto";
+  }
   function selectedOSMode() {
     return { all:"legacy", Windows:"windows", macOS:"macos", Linux:"linux" }[document.getElementById("cfx-persona-filter").value];
   }
@@ -629,7 +783,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("cfx-persona-help").textContent =
       `${choice.options.length - 1} BrowserForge previews. Both fresh generation and previews use the operating system above. Selecting an OS or preview does not apply it. Custom overrides are kept.`;
   }
-  document.getElementById("cfx-persona-filter").addEventListener("change", loadIdentityChoices);
+  document.getElementById("cfx-persona-filter").addEventListener("change", () => { loadIdentityChoices(); updateHardwareChoices(); });
 
   identityChoice.addEventListener("change", () => { regenBtn.disabled = Number(identityChoice.value) < 0; });
 
@@ -668,6 +822,16 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!Number.isInteger(index) || index < -1 || index >= 30) throw new Error("Select a BrowserForge identity");
       if (index === -1) Services.prefs.clearUserPref(personaIndexPref(ucid));
       else Services.prefs.setIntPref(personaIndexPref(ucid), index);
+      const hardware = document.getElementById("cfx-persona-hardware").value;
+      const prefix = `cloakfox.container.${ucid}.`;
+      // A selected preview retains its 155 pin; fresh sampling may use hardware filters.
+      if (index === -1 && hardware !== "auto") {
+        Services.prefs.setStringPref(prefix + "persona_os", mode === "legacy" ? "auto" : mode);
+        Services.prefs.setStringPref(prefix + "persona_hardware", hardware);
+      } else {
+        Services.prefs.clearUserPref(prefix + "persona_os");
+        Services.prefs.clearUserPref(prefix + "persona_hardware");
+      }
       const seed = randomSeedB64();
       Services.prefs.setStringPref(masterSeedPref(ucid), seed);
       persistCloakCfg(ucid, seed);
@@ -756,14 +920,72 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const screenCountPref = "cloakfox.compat.screen_management.screen_count";
+  const screenOriginsPref = "cloakfox.compat.screen_management.origins";
+  const countSelect = document.getElementById("cfx-screen-count");
+  const savedCount = Services.prefs.getIntPref(screenCountPref, 1);
+  countSelect.value = String(savedCount >= 1 && savedCount <= 8 ? savedCount : 1);
+  countSelect.addEventListener("change", () => {
+    Services.prefs.setIntPref(screenCountPref, Number(countSelect.value));
+  });
+  const originsEditor = document.getElementById("cfx-screen-origins");
+  const originsStatus = document.getElementById("cfx-screen-origins-status");
+  try {
+    if (Services.prefs.getPrefType(screenOriginsPref) !== Services.prefs.PREF_STRING) {
+      throw new Error("Expected saved origins to be a string.");
+    }
+    const saved = JSON.parse(Services.prefs.getStringPref(screenOriginsPref, "[]"));
+    if (!Array.isArray(saved) || saved.some(value => typeof value !== "string")) {
+      throw new Error("Expected a JSON array of origins.");
+    }
+    originsEditor.value = saved.join("\n");
+  } catch (error) {
+    originsStatus.textContent = `Could not read saved origins: ${error.message}`;
+  }
+  document.getElementById("cfx-screen-origins-save").addEventListener("click", () => {
+    try {
+      const origins = [];
+      for (const [index, line] of originsEditor.value.split(/\r?\n/).entries()) {
+        const value = line.trim();
+        if (!value) continue;
+        let url;
+        try { url = new URL(value); }
+        catch { throw new Error(`Line ${index + 1}: enter a complete HTTPS origin.`); }
+        if (url.protocol !== "https:" || url.username || url.password ||
+            url.pathname !== "/" || url.search || url.hash ||
+            !url.hostname || url.hostname.includes("*")) {
+          throw new Error(`Line ${index + 1}: use an exact HTTPS origin without a path or wildcard.`);
+        }
+        if (!origins.includes(url.origin)) origins.push(url.origin);
+      }
+      Services.prefs.setStringPref(screenOriginsPref, JSON.stringify(origins));
+      originsEditor.value = origins.join("\n");
+      originsStatus.textContent = "Saved. Reload affected pages to update API availability.";
+      updateChromiumCompatibility();
+    } catch (error) {
+      originsStatus.textContent = error.message;
+    }
+  });
+  document.getElementById("cfx-screen-origins-reset").addEventListener("click", () => {
+    Services.prefs.setStringPref(screenOriginsPref, '["https://app.testdome.com"]');
+    originsEditor.value = "https://app.testdome.com";
+    originsStatus.textContent = "Origins reset. Reload affected pages to update API availability.";
+    updateChromiumCompatibility();
+  });
+
   // Opt-in flag toggles auto-bind via data-pref.
   for (const el of document.querySelectorAll("input[data-pref]")) {
     const pref = el.dataset.pref;
     el.checked = Services.prefs.getBoolPref(pref, false);
     el.addEventListener("change", () => {
       Services.prefs.setBoolPref(pref, el.checked);
+      if (pref === "cloakfox.compat.screen_management") updateChromiumCompatibility();
     });
   }
+  initAppearanceControls().catch(error => {
+    document.getElementById("cfx-appearance-status").textContent = `Could not read application appearance: ${error.message}`;
+  });
+
 });
 
 // Settings shell: move existing controls without duplicating state or handlers.
@@ -775,8 +997,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const details = [...main.querySelectorAll(":scope > details")];
   details.forEach((node, index) => { node.id ||= `cfx-reference-${index}`; });
   const categories = [
-    {id:"identity",label:"Persona & identity",description:"Choose a BrowserForge persona for this container, then customize its identity fields.",panels:["cfx-persona-panel","sec-identity"]},
-    {id:"display",label:"Display & graphics",description:"Customize screen geometry, pixel density and the graphics identity.",panels:["sec-display","sec-graphics"]},
+    {id:"identity",label:"Persona & identity",description:"Choose a BrowserForge persona for this container, then customize its identity fields.",panels:["cfx-persona-panel","sec-identity","sec-screen-management"]},
+    {id:"display",label:"Display & graphics",description:"Customize screen geometry, pixel density and the graphics identity.",panels:["sec-display","sec-graphics","sec-appearance"]},
     {id:"region",label:"Language & region",description:"Coordinate language, timezone and optional location for this container.",panels:["cfx-region-settings","sec-locale","sec-geo"]},
     {id:"media",label:"Audio & media",description:"Control audio characteristics, media capabilities and exposed device surfaces.",panels:["sec-audio","sec-media"]},
     {id:"connections",label:"Connections & proxies",description:"Choose this container’s connection policy and manage saved proxy routes.",panels:["sec-network-policy","cfx-proxy-manager","cfx-ip-conflict-panel"]},

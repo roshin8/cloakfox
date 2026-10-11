@@ -1,0 +1,24 @@
+{
+  "source": "https://app.testdome.com/ — public proctoring AppSettings codec profiles inspected read-only",
+  "retrieved": "2026-10-10",
+  "codecs": {
+    "h264": ["avc1.4d401e", "avc1.4d401f", "avc1.4d4028", "avc1.4d4029", "avc1.4d4032", "avc1.4d4033", "avc1.42e01e", "avc1.42e01f", "avc1.42e028", "avc1.42e029"],
+    "vp9": ["vp09.00.30.08", "vp09.00.31.08", "vp09.00.40.08", "vp09.00.41.08", "vp09.00.50.08", "vp09.00.51.08"],
+    "av1": ["av01.0.03M.08", "av01.0.04M.08", "av01.0.05M.08"],
+    "vp8": ["vp8"]
+  },
+  "order": [
+    {"family": "h264", "acceleration": "prefer-hardware"},
+    {"family": "vp9", "acceleration": "prefer-hardware"},
+    {"family": "av1", "acceleration": "prefer-hardware"},
+    {"family": "vp8", "acceleration": "prefer-hardware"},
+    {"family": "h264", "acceleration": "no-preference"},
+    {"family": "vp8", "acceleration": "no-preference"}
+  ],
+  "targets": {
+    "screen": {"width": 1920, "height": 1080, "framerate": 15, "bpp": 0.05},
+    "webcam": {"width": 640, "height": 360, "framerate": 15, "bpp": 0.08}
+  },
+  "webcamAv1Bpp": 0.03,
+  "audioBitrate": 64000
+}

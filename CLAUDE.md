@@ -4,7 +4,7 @@ Daily-driver privacy browser: Camoufox (C++ fingerprint spoofing) + ContainerShi
 
 ## What This Is
 
-A hard fork of Camoufox, rebased onto Firefox 155.0.1 with C++ engine patches, transformed into a daily-use browser with:
+A hard fork of Camoufox, rebased onto Firefox 157.0.1 with C++ engine patches, transformed into a daily-use browser with:
 - C++ level fingerprint spoofing (canvas, audio, fonts, WebGL, navigator, screen, WebRTC, etc.)
 - Firefox Multi-Account Containers with per-container unique fingerprints
 - Top-level schemeful-site deterministic noise within each container
@@ -13,14 +13,14 @@ A hard fork of Camoufox, rebased onto Firefox 155.0.1 with C++ engine patches, t
 ## Architecture
 
 Three layers:
-1. **C++ Engine** — Camoufox + LibreWolf patches (83 total) applied to Firefox 155.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
+1. **C++ Engine** — Camoufox + LibreWolf patches (102 active) applied to Firefox 157.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
 2. **Cloakfox Shield Extension** — Stripped ContainerShield. Popup UI plus a parent-process pref/persona bridge (`experiment-apis/cloakfox.js`). NO content or inject scripts — see "Spoofer Architecture (cpp-first)" below.
 3. **Config** — `policies.json` + `cloakfox.cfg` restore daily-driver features (search, bookmarks, passwords) while keeping privacy hardened.
 
 ## Build
 
 ```bash
-make fetch           # Download Firefox 155.0.1 source tarball
+make fetch           # Download Firefox 157.0.1 source tarball
 make setup-minimal   # Extract source + copy additions/ (policies, cloakcfg, extension)
 make dir             # Apply all patches (ordered via patches/order.txt)
 make extension       # Build Cloakfox Shield extension in-place
@@ -64,6 +64,18 @@ extension code (that pre-pivot design was removed):
   `CloakfoxPersonas`, `CloakfoxBFNetwork` (BrowserForge Bayesian net),
   `CloakfoxSeedSync` (parent → `Services.cpmm.sharedData` for the actors).
 
+### Site media compatibility
+
+`CloakfoxHackerRankMediaChild` is a separate compatibility actor, registered
+only for the top-level `https://www.hackerrank.com/pair/*` application. It
+refreshes HackerRank's cached local Zoom participant ID after failover and
+advances the application's video render epoch. It does not change capture,
+permissions, media transport, fingerprint signals, editor state or SDK internals.
+The application has no public recovery API: discovery uses the existing store
+capabilities and getAV getter signature, without hard-coded bundle IDs/export
+names. Site changes can invalidate this adapter; unsupported shapes are left
+alone. `cloakfox.compat.hackerrank_media=false` disables it on the next load.
+
 ## Critical Constraints
 
 - C++ patches MUST be applied before `./mach build` — they modify Gecko source directly
@@ -89,6 +101,10 @@ extension code (that pre-pivot design was removed):
 - Dev build is NON-packaged: actor `*.sys.mjs` are loose files under
   `obj-*/dist/bin/browser/actors/` and `…/Cloakfox.app/Contents/Resources/browser/actors/`
   — copy edited sources there to test JS-only changes with no rebuild.
+- After changing privileged resource modules in a loose development build,
+  launch previews with `-purgecaches`, including when reusing a preview profile.
+  An unchanged BuildID can retain old startup bytecode even though the UI loads
+  newer source. Verify the reused profile as well as a clean test profile.
 - Unit tests: `tests/fingerprint/test_*.mjs` (node --test) and `test_*.py`.
   Run in CI by the `unit-tests` job. NOTE: no Vitest suite exists despite
   earlier docs claiming one — do not assume `.test.ts` files are present.

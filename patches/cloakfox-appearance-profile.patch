@@ -1,0 +1,83 @@
+--- a/toolkit/profile/nsToolkitProfileService.cpp
++++ b/toolkit/profile/nsToolkitProfileService.cpp
+@@ -1481,6 +1481,35 @@
+   nsresult rv;
+   const char* arg;
+ 
++#ifdef XP_MACOSX
++  // A cosmetic app copy is a different Gecko installation path, but belongs
++  // to the profile that created it. Finder and macOS permission relaunches do
++  // not preserve XRE_PROFILE_PATH. Explicit profile selections still win.
++  nsCOMPtr<nsIFile> appearanceBinding;
++  nsCOMPtr<nsIFile> appearanceExe;
++  nsresult appearanceRv = NS_GetSpecialDirectory(
++      XRE_EXECUTABLE_FILE, getter_AddRefs(appearanceExe));
++  if (NS_FAILED(appearanceRv)) {
++    // Normal startup selects its profile before XPCOM's directory service
++    // exists. xpcshell already has it; the early XRE provider handles startup.
++    bool persistent = false;
++    appearanceRv = gDirServiceProvider->GetFile(
++        XRE_EXECUTABLE_FILE, &persistent, getter_AddRefs(appearanceExe));
++  }
++  if (NS_SUCCEEDED(appearanceRv)) {
++    nsCOMPtr<nsIFile> macos, contents;
++    if (NS_SUCCEEDED(appearanceExe->GetParent(getter_AddRefs(macos))) && macos &&
++        NS_SUCCEEDED(macos->GetParent(getter_AddRefs(contents))) && contents) {
++      contents->AppendNative("Resources"_ns);
++      contents->AppendNative("cloakfox-profile.ini"_ns);
++      bool exists = false;
++      if (NS_SUCCEEDED(contents->Exists(&exists)) && exists) {
++        appearanceBinding = contents;
++      }
++    }
++  }
++#endif
++
+   // Use the profile specified in the environment variables (generally from an
+   // app initiated restart).
+   nsCOMPtr<nsIFile> lf = GetFileFromEnv("XRE_PROFILE_PATH");
+@@ -1501,7 +1530,11 @@
+     RefPtr<nsToolkitProfile> profile;
+     GetProfileByDir(lf, localDir, getter_AddRefs(profile));
+ 
+-    if (profile && mIsFirstRun && mUseDedicatedProfile) {
++    if (profile && mIsFirstRun && mUseDedicatedProfile
++#ifdef XP_MACOSX
++        && !appearanceBinding
++#endif
++    ) {
+       if (profile ==
+           (mUseDevEditionProfile ? mDevEditionDefault : mNormalDefault)) {
+         // This is the first run of a dedicated profile build where the selected
+@@ -1759,6 +1792,31 @@
+     // Background tasks never use profiles known to the profile service.
+     *aProfile = nullptr;
+ 
++    return NS_OK;
++  }
++#endif
++
++#ifdef XP_MACOSX
++  if (appearanceBinding && !aIsResetting) {
++    nsINIParser binding;
++    nsAutoCString rootPath, localPath;
++    nsCOMPtr<nsIFile> root, local;
++    bool rootExists = false, localExists = false;
++    if (NS_FAILED(binding.Init(appearanceBinding)) ||
++        NS_FAILED(binding.GetString("CloakfoxProfile", "Root", rootPath)) ||
++        NS_FAILED(binding.GetString("CloakfoxProfile", "Local", localPath)) ||
++        NS_FAILED(XRE_GetFileFromPath(rootPath.get(), getter_AddRefs(root))) ||
++        NS_FAILED(XRE_GetFileFromPath(localPath.get(), getter_AddRefs(local))) ||
++        NS_FAILED(root->IsDirectory(&rootExists)) || !rootExists ||
++        NS_FAILED(local->IsDirectory(&localExists)) || !localExists) {
++      // Do not silently create a blank profile when the owning profile moved.
++      return NS_ERROR_SHOW_PROFILE_MANAGER;
++    }
++    GetProfileByDir(root, local, getter_AddRefs(mCurrent));
++    mStartupReason = "cloakfox-appearance"_ns;
++    root.forget(aRootDir);
++    local.forget(aLocalDir);
++    NS_IF_ADDREF(*aProfile = mCurrent);
+     return NS_OK;
+   }
+ #endif

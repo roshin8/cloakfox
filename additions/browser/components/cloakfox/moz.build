@@ -12,8 +12,7 @@ JAR_MANIFESTS += ["jar.mn"]
 # roverfox.s.* extension prefs into the new cpp-first cloakfox.s.*
 # namespace. Idempotent.
 EXTRA_JS_MODULES += [
-
-
+    "CloakfoxAppearance.sys.mjs",
     "CloakfoxBayesianNetwork.sys.mjs",
     "CloakfoxBFNetwork.sys.mjs",
     "CloakfoxContainerWorkflows.sys.mjs",
@@ -21,6 +20,7 @@ EXTRA_JS_MODULES += [
     "CloakfoxHostPersona.sys.mjs",
     "CloakfoxIdentityActions.sys.mjs",
     "CloakfoxInspector.sys.mjs",
+    "CloakfoxIPConflicts.sys.mjs",
     "CloakfoxMeasurements.sys.mjs",
     "CloakfoxNetworkPolicy.sys.mjs",
     "CloakfoxOverrides.sys.mjs",
@@ -28,7 +28,6 @@ EXTRA_JS_MODULES += [
     "CloakfoxPersonas.sys.mjs",
     "CloakfoxPrefMigration.sys.mjs",
     "CloakfoxPrivacyPolicy.sys.mjs",
-    "CloakfoxIPConflicts.sys.mjs",
     "CloakfoxProxyManager.sys.mjs",
     "CloakfoxRegions.sys.mjs",
     "CloakfoxReleaseStatus.sys.mjs",
@@ -41,6 +40,23 @@ EXTRA_JS_MODULES += [
     "CloakfoxWorkspaces.sys.mjs",
 ]
 
+FINAL_TARGET_FILES.appearance += [
+    "appearance/about-logo.png",
+    "appearance/about-logo.svg",
+    "appearance/about-logo@2x.png",
+    "appearance/about-wordmark.svg",
+    "appearance/about.png",
+    "appearance/aboutDialog.css",
+    "appearance/firefox-wordmark.svg",
+    "appearance/firefox.icns",
+    "appearance/icon128.png",
+    "appearance/icon16.png",
+    "appearance/icon32.png",
+    "appearance/icon48.png",
+    "appearance/icon64.png",
+    "appearance/LICENSE",
+]
+
 # JSWindowActor modules ship to resource:///actors/ and are registered
 # declaratively via toolkit/modules/ActorManagerParent.sys.mjs (see
 # patches/cpp-first-math-actor-registration.patch).
@@ -49,6 +65,7 @@ FINAL_TARGET_FILES.actors += [
     "actors/CloakfoxFeatureDetectParent.sys.mjs",
     "actors/CloakfoxGamepadChild.sys.mjs",
     "actors/CloakfoxGamepadParent.sys.mjs",
+    "actors/CloakfoxHackerRankMediaChild.sys.mjs",
     "actors/CloakfoxKeyboardChild.sys.mjs",
     "actors/CloakfoxKeyboardParent.sys.mjs",
     "actors/CloakfoxMathChild.sys.mjs",

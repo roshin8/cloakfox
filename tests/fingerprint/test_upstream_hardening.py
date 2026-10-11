@@ -214,11 +214,16 @@ int main() {
         method = block(source[source.rindex("  maybeDontRestoreTabs(aWindow)"):], "maybeDontRestoreTabs(aWindow)")
         result = subprocess.run(["node", "--input-type=module", "-e", """
 import assert from 'node:assert/strict';
-const store = {_windows: {tracked: {}}, """ + method + """};
+class Store {
+  #windows = {tracked: {}};
+  get tracked() { return this.#windows.tracked; }
+  """ + method + """
+}
+const store = new Store();
 store.maybeDontRestoreTabs({});
 store.maybeDontRestoreTabs({__SSi: 'gone'});
 store.maybeDontRestoreTabs({__SSi: 'tracked'});
-assert.equal(store._windows.tracked._maybeDontRestoreTabs, true);
+assert.equal(store.tracked._maybeDontRestoreTabs, true);
 """], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 

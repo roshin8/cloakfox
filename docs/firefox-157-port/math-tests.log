@@ -1,0 +1,17 @@
+✔ animation math reuses one process snapshot across calls and windows (25.849959ms)
+✔ sin/cos/tan keep the page realm when its math-library policy can differ (1.961959ms)
+✔ numeric animation calls avoid realm round trips and repeated preference reads (28.425292ms)
+✔ published seed updates remain live in previously captured functions (1.364708ms)
+✔ removed or invalid seeds clear cached noise and a later seed restores it (0.816542ms)
+✔ Firebase tree sizes retain all children with the failing live seed (0.947792ms)
+✔ logarithms and powers preserve native values used by data encoders (0.644834ms)
+✔ optional data-math noise applies to new pages and switching off restores native results (1.452416ms)
+✔ opt-in data-math noise respects the master switch and zero seed (0.769208ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 156.949042
