@@ -1,6 +1,7 @@
 """Actual ws/wss upgrades, echo, reconnect and container route enforcement."""
 import base64
 import json
+import os
 from pathlib import Path
 import socket
 import ssl
@@ -41,7 +42,7 @@ def main():
         endpoints=[Endpoint(),Endpoint(cert,key),Endpoint(),Endpoint()]
         proxy=Endpoint(proxy=True)
         profile=root/'profile';profile.mkdir()
-        d=launch(profile,root/'gecko.log')
+        d=launch(profile,root/'gecko.log',accept_insecure_certs=False)
         try:
             d.set_script_timeout(20)
             d.execute_script('''
@@ -54,6 +55,16 @@ def main():
               Services.prefs.setBoolPref('dom.security.https_only_mode',false);
               Services.prefs.setBoolPref('dom.security.https_first',false);
             ''',base64.b64encode(ssl.PEM_cert_to_DER_cert(ca.read_text())).decode())
+            if os.environ.get('NETWORK_PROFILE')=='chrome':
+                d.execute_script("""
+                  Services.prefs.setBoolPref('cloakfox.enabled',true);
+                  const {writeNetworkProfile}=ChromeUtils.importESModule('resource:///modules/CloakfoxNetworkProfiles.sys.mjs');
+                  for(const ucid of [1,2,3,4]) {
+                    Services.prefs.setStringPref('cloakfox.s.cloak_cfg_'+ucid,JSON.stringify({'navigator.userAgent':'Mozilla/5.0 Chrome/155.0.0.0'}));
+                    Services.prefs.setBoolPref('cloakfox.container.'+ucid+'.network_follow_identity',true);
+                    writeNetworkProfile(ucid);
+                  }
+                """)
             d.execute_script(SET,1,{'mode':0})
             d.execute_script(SET,2,{'mode':2})
             with socket.socket() as reserved:
@@ -81,6 +92,10 @@ def main():
             assert any(x['method']=='CONNECT' for x in proxy.requests),proxy.requests
             assert len(proxy.requests)==2 and all(x['method']=='CONNECT' for x in proxy.requests),proxy.requests
             assert {x['target'] for x in proxy.requests}=={f'ws-fixture.test:{e.server_address[1]}' for e in endpoints[:2]},proxy.requests
+            if os.environ.get('NETWORK_PROFILE')=='chrome':
+                from probe_network_identity import CHROME_CIPHERS
+                assert len(endpoints[1].hellos)==3
+                assert all(h['ciphers']==CHROME_CIPHERS for h in endpoints[1].hellos),endpoints[1].hellos
             report['proxy']=proxy.requests
             print(json.dumps(report,indent=2))
             print('PASS: ws/wss handshake, real echo, reconnect, proxy routing and fail-closed routes')

@@ -26,7 +26,7 @@ function harness(version = '155.0.1', hostOS = 'WINNT', sampler = () => ({ userA
     },
   });
   // Evaluate full production modules; replace only Gecko imports/ESM exports.
-  for (const name of ['CloakfoxRegions', 'CloakfoxPrivacyPolicy', 'CloakfoxHostPersona', 'CloakfoxPersonas', 'CloakfoxOverrides', 'CloakfoxSeedSync']) {
+  for (const name of ['CloakfoxRegions', 'CloakfoxPrivacyPolicy', 'CloakfoxHostPersona', 'CloakfoxNetworkProfiles', 'CloakfoxPersonas', 'CloakfoxOverrides', 'CloakfoxSeedSync']) {
     const source = readFileSync(new URL(`${name}.sys.mjs`, dir), 'utf8')
       .replace(/^import\s+[\s\S]*?\s+from\s+"[^"]+";\n/gm, '')
       .replace(/^export /gm, '');

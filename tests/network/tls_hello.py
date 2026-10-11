@@ -41,7 +41,11 @@ def client_hello(data):
             length=int.from_bytes(value[:2],'big'); assert length==len(value)-2
             cursor=2; names=[]
             while cursor<len(value):
-                n=value[cursor];cursor+=1; names.append(value[cursor:cursor+n].decode('ascii'));cursor+=n
+                n=value[cursor];cursor+=1
+                name=value[cursor:cursor+n];cursor+=n
+                assert n and len(name)==n
+                if n==2 and grease(int.from_bytes(name,'big')):continue
+                names.append(name.decode('ascii'))
             result['alpn']=names
         if kind==51:
             cursor=2; groups=[]

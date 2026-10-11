@@ -6,6 +6,7 @@ import socket
 import socketserver
 import ssl
 import threading
+from wire_fixture import peek_hello
 
 
 def read_exact(stream, count):
@@ -31,7 +32,9 @@ class Echo(socketserver.BaseRequestHandler):
         stream=self.request
         try:
             stream.settimeout(10)
-            if self.server.context:stream=self.server.context.wrap_socket(stream,server_side=True)
+            if self.server.context:
+                self.server.hellos.append(peek_hello(stream))
+                stream=self.server.context.wrap_socket(stream,server_side=True)
             data=headers(stream);lines=data.decode().split('\r\n')
             fields=dict(line.split(': ',1) for line in lines[1:] if ': ' in line)
             fields={k.lower():v for k,v in fields.items()}
@@ -86,7 +89,7 @@ class Endpoint(socketserver.ThreadingTCPServer):
     daemon_threads=True
     allow_reuse_address=True
     def __init__(self,certificate=None,key=None,proxy=False):
-        self.requests=[];self.accepts=0;self.context=None
+        self.requests=[];self.accepts=0;self.hellos=[];self.context=None
         if certificate:
             self.context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             self.context.minimum_version=ssl.TLSVersion.TLSv1_2

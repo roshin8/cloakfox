@@ -1,3 +1,7 @@
+> Current combined adapter: see “Experimental combined Gecko network adapter”
+> below. Earlier raw H2/H3 profile instructions are historical and are superseded
+> by the container intent toggle; they are not current Chrome-equivalence tests.
+
 # Fingerprint tests
 
 ## Letterboxing / native window geometry
@@ -456,3 +460,32 @@ order, TLS extension IDs, QUIC transport parameters and H2/H3 SETTINGS. TLS
 extension and QUIC parameter order can vary across fresh connections. GREASE,
 extension payloads, resumption, 0-RTT and packet scheduling are not compared.
 This is a reference capture, **not a claim that Cloakfox matches Chrome**.
+
+
+### Experimental combined Gecko network adapter
+
+Settings → Persona & identity → Identity exposes **Match network profile to
+browser identity (experimental)** for the selected container. Default/master
+Off uses native Firefox. Desktop Chrome identities opt into the measured Chrome
+155 fields; unsupported identities retain native networking with an explicit
+status. The legacy raw H2/H3 fingerprint preferences are compatibility metadata,
+not independent selectors on this branch.
+
+Run the local acceptance probes with `CLOAKFOX_BIN` pointing at the built or
+mounted application:
+
+```sh
+python tests/fingerprint/probe_network_identity.py
+python tests/fingerprint/probe_quic_identity.py
+python tests/fingerprint/probe_network_profile_controls.py
+python tests/fingerprint/probe_network_profile_settings.py
+NETWORK_PROFILE=chrome python tests/fingerprint/probe_websocket_routes.py
+```
+
+These check implemented cipher/group/key-share ordering, H2 frames/header order,
+QUIC receive limits/H3 settings, exact owner and pool separation, security and
+routing precedence, and actual Settings persistence. They do not establish full
+Chrome equivalence. ALPS, trust-anchor IDs, other TLS signatures/extensions,
+full GREASE shape and QUIC packet semantics remain open. WebTransport retains
+native Firefox networking. The shared selector exposes intent independently
+of Gecko, so a future Chromium engine can provide its own native adapter.

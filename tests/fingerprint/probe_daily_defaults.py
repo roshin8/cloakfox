@@ -40,9 +40,11 @@ return values;
 """
 
 
-def launch(profile, log, *, distro_addons=False):
+def launch(profile, log, *, distro_addons=False, accept_insecure_certs=None):
     options = Options()
     options.binary_location = os.environ["CLOAKFOX_BIN"]
+    if accept_insecure_certs is not None:
+        options.accept_insecure_certs = accept_insecure_certs
     options.add_argument("--headless")
     options.add_argument("-profile")
     options.add_argument(str(profile))

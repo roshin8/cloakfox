@@ -62,6 +62,12 @@ Prove invalid certificates fail, policy restrictions win, and two containers
 plus profile switches cannot share pools/tickets across profiles. Test the
 actual Settings toggle and packaged binary, including default-off migration.
 
-Status: reference measurement and requirements recorded. Native combined
-profile and Settings toggle are **not implemented**. The current DMG is
-unchanged; the previous Firefox-cohort tests remain historical evidence only.
+## Future Chromium engine boundary
+
+User requirement, 2026-10-11: preserve room for a Chromium engine. Browser-family intent belongs to a shared parent-process selector. A Gecko adapter owns its native profile IDs and NSS/neqo metadata; a future Chromium adapter must register capabilities and consume the same intent through its actual stack. Changing UA does not select an engine. Unknown/uninstalled adapters report unavailable.
+
+## Current work
+
+An experimental Gecko adapter and a container-scoped Settings toggle are being implemented. The first phase shapes measured Chrome 155 cipher/group/key-share ordering, H2 settings and pseudo-header order, QUIC flow-control/stream limits and H3 settings. The default remains native Firefox.
+
+This phase does **not meet full Chrome equivalence or the complete acceptance criteria above**. ALPS, trust-anchor IDs, full GREASE shape, QUIC extensions/packet behavior, comprehensive ECH/resumption/0-RTT and profile-generation draining remain open. Settings must disclose these gaps. Build/runtime/package verification is pending; the existing DMG is unchanged until a new verified package is recorded.

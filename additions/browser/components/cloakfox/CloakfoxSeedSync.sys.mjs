@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { initNetworkProfiles } from "resource:///modules/CloakfoxNetworkProfiles.sys.mjs";
 import {
   fillPersonaKeys,
   writeHttpProfilePrefs,
@@ -464,6 +465,7 @@ function applyTimerQuantizationPref() {
 }
 
 export function initCloakfoxSeedSync() {
+  initNetworkProfiles();
   // First-launch seed generation: every container needs random math/
   // keyboard/timing seeds for the JSWindowActors to produce per-user
   // unique fingerprints. Without these, actors early-return and signals

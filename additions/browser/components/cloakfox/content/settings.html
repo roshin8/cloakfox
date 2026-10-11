@@ -123,6 +123,11 @@
         </div>
       </header>
       <div class="spoof-grid" id="grp-navigator"></div>
+      <label class="flag-row">
+        <input id="cfx-network-follow-identity" type="checkbox">
+        <span><strong>Match network profile to browser identity (experimental)</strong><small>For desktop Chrome 155 identities, apply measured Chrome 155 settings to HTTP/2, TLS and QUIC/HTTP/3. Remaining differences are listed below. Off uses native Firefox networking.</small></span>
+      </label>
+      <p id="cfx-network-profile-status" class="card-help" role="status" aria-live="polite"></p>
     </section>
 
     <p id="cfx-chromium-status" class="card-help" role="status"></p>
@@ -358,7 +363,7 @@
       </p>
       <p class="card-help">
         We can't credibly spoof <em>as Chrome / Safari / Edge</em> because the JS engine (SpiderMonkey),
-        CSS engine (Gecko), TLS fingerprint, and WebRTC stack are all Firefox-specific and visible to
+        CSS engine (Gecko) and WebRTC remain Firefox-based. The optional network adapter changes selected TLS and HTTP fields, but full Chrome equivalence is pending. These differences are visible to
         sophisticated probes. A shallow Chrome UA disguise (for sites that only check the UA string) is
         a future opt-in feature.
       </p>

@@ -84,11 +84,14 @@ Development signing and local fixture tests do not complete these tasks.
   Traditional Chinese if those languages become supported targets.
 - [x] **Integrated on 157:** Native Performance Timeline coverage with exact owner/site keys; all three worker kinds covered. SAB mitigation remains separately deferred.
 - [x] **Verified on 157:** HTTP/3 SETTINGS measured on local wire fixtures and compared with stock Firefox.
-- [ ] **Requested, not implemented:** Add an optional Settings toggle to match
-  HTTP/2, TLS and QUIC/HTTP/3 together when a supported Chrome identity is chosen.
-  The user authorized this on 2026-10-11. Existing H2/H3 profile prefs do not
-  implement a complete Chrome network identity. Requirements, wire differences
-  and acceptance are in [the combined network identity spec](docs/superpowers/specs/2026-10-11-network-identity-toggle.md).
+- [ ] **Partial:** An experimental container toggle and shared network-profile adapter
+  are being implemented for measured Chrome 155 TLS/H2 and QUIC/H3 fields.
+  Preserve this adapter boundary for the future Chromium engine. Full matching
+  remains pending: ALPS, trust-anchor IDs, other TLS signatures/extensions,
+  GREASE shape, QUIC extensions/packet behavior, ECH/resumption/0-RTT and
+  connection-generation draining. WebTransport retains native negotiation.
+  See [the combined identity spec](docs/superpowers/specs/2026-10-11-network-identity-toggle.md)
+  and [implementation plan](docs/superpowers/plans/2026-10-11-network-profile-adapters.md).
 
 ## Older items — status needs rechecking
 

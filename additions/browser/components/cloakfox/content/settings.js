@@ -41,6 +41,9 @@ const { forgetContainerData } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxIdentityActions.sys.mjs");
 
 const PREF_ENABLED = "cloakfox.enabled";
+const { resolveNetworkProfile, writeNetworkProfile } = ChromeUtils.importESModule(
+  "resource:///modules/CloakfoxNetworkProfiles.sys.mjs"
+);
 
 async function initAppearanceControls() {
   const { getAppearance, restartAppearance, revealAppearance } = ChromeUtils.importESModule(
@@ -599,6 +602,43 @@ const TIMEZONES = [
 // ── wire up UI ──────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
+  function updateNetworkProfile() {
+    const ucid = Number(document.getElementById("cfx-container-select").value) || 0;
+    const pref = `cloakfox.container.${ucid}.network_follow_identity`;
+    const checkbox = document.getElementById("cfx-network-follow-identity");
+    checkbox.checked = Services.prefs.getBoolPref(pref, false);
+    const selected = resolveNetworkProfile(ucid);
+    const status = document.getElementById("cfx-network-profile-status");
+    if (!Services.prefs.getBoolPref(PREF_ENABLED, false)) {
+      status.textContent = "Native Firefox networking: Cloakfox protection is disabled. Your network choice is saved.";
+    } else if (selected.unsupported) {
+      status.textContent = "Native Firefox networking: this identity has no supported transport adapter.";
+    } else if (selected.experimental) {
+      status.textContent = "Experimental Chrome profile for HTTP/2, TLS and QUIC/HTTP/3, using Chrome 155 as the reference. Full Chrome equivalence is pending: "
+        + selected.gaps.join(", ") + ". Applies to new connections; active transfers keep their original profile.";
+    } else {
+      status.textContent = "Native Firefox HTTP/2, TLS and QUIC/HTTP/3. Applies to new connections.";
+    }
+  }
+  document.getElementById("cfx-network-follow-identity").addEventListener("change", event => {
+    const ucid = Number(document.getElementById("cfx-container-select").value) || 0;
+    Services.prefs.setBoolPref(`cloakfox.container.${ucid}.network_follow_identity`, event.target.checked);
+    writeNetworkProfile(ucid);
+    updateNetworkProfile();
+  });
+  const networkObserver = {observe(_subject, _topic, pref) {
+    if (pref === PREF_ENABLED || /\.network_follow_identity$/.test(pref) || /^cloakfox\.s\.cloak_cfg_\d+$/.test(pref)) {
+      updateNetworkProfile();
+    }
+  }};
+  for (const pref of [PREF_ENABLED, "cloakfox.container.", "cloakfox.s."]) {
+    Services.prefs.addObserver(pref, networkObserver);
+  }
+  window.addEventListener("unload", () => {
+    for (const pref of [PREF_ENABLED, "cloakfox.container.", "cloakfox.s."]) {
+      Services.prefs.removeObserver(pref, networkObserver);
+    }
+  }, {once: true});
   function updateChromiumCompatibility() {
     const ucid = parseInt(document.getElementById("cfx-container-select").value, 10) || 0;
     const ua = getCloakCfg(ucid)?.["navigator.userAgent"] || "";
@@ -708,6 +748,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("cfx-persona-choice").value = "-1";
     loadIdentityChoices();
     updateChromiumCompatibility();
+    updateNetworkProfile();
     updateHardwareChoices(Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_hardware`, "auto"));
     updateHeadline(cfg, seedB64);
     populateGrid("grp-navigator", cfg, GROUPS["grp-navigator"], ucid, overrides, onEdit);
