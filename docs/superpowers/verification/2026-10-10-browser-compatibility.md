@@ -117,7 +117,7 @@ Local reports: `/tmp/cloakfox-cloudflare-loop-20261010/result.json` and
 only cookie names/attributes and request metadata, not cookie values. Console
 messages in scratch reports may contain private URLs; do not publish them raw.
 
-## Native-session comparison resolves the diagnostic loop
+## Native-session comparison isolates an automation-associated loop
 
 A normal CLI launch of the signed fixed app, without Selenium, geckodriver or
 Marionette, reached the CodeSignal login page with the privacy master enabled.
@@ -158,3 +158,53 @@ Matched Selenium report:
 The local diagnostic clone uses a distinct bundle ID solely so the native UI
 tool can select it among concurrent browser processes. Its engine/settings are
 otherwise the fixed app's; both comparison runs used that same clone.
+
+## Follow-up: the user's Chrome identity overrides also reproduce the loop
+
+The clean native comparison above did not cover the user's manual identity
+overrides. Copying only the user's `cloakfox.*` preferences into a disposable
+native profile reproduced repeated HTTP 403 challenges with the fixed engine,
+without Selenium. The profile advertised Chrome 120 through navigator and HTTP
+User-Agent overrides while running Gecko. No cookies, history or credentials
+were copied.
+
+In another disposable profile with those same preferences, the settings UI reset
+only `navigator.userAgent`, `navigator.appVersion` and `headers.User-Agent` to
+the existing Firefox persona. The privacy master remained enabled, the persona
+seed was retained, and the unrelated Math override remained. After one authorized
+checkbox click, the link returned HTTP 302 to CodeSignal and the native UI showed
+**Welcome to CodeSignal / Log in to access this page**. Comparing the cached
+persona configurations before/after showed only the navigator and HTTP
+User-Agent keys changed: the old cached appVersion was already Firefox even
+though its stored manual override differed. This establishes a reproducible
+identity-override-associated failure for these settings, in addition to the
+separate automation-associated failure. It does not establish Cloudflare's
+private rejection reason.
+
+Removing override preferences offline alone was an invalid control because the
+valid cached `cloakfox.s.cloak_cfg_0` retained the old values. Resetting them
+through the settings UI rebuilt the configuration correctly.
+
+After the user installed/launched the fixed DMG, `/Applications/Cloakfox.app`
+reported BuildID `20261010182521`, but the already-running Firefox appearance
+copy still reported `20261010162253`. The three Default-container identity
+overrides were backed up locally, then reset through that user's settings UI.
+The old appearance window was closed and the updated original app launched
+against the same existing profile so its appearance copy could refresh. Privacy
+protection was retained. No challenge scripts, tokens or detection mechanisms
+were modified, and no sign-in or assessment was performed.
+
+The restarted user appearance copy reported BuildID `20261010182521`; its
+application.ini and XUL hashes matched the signed fixed staging payload. The
+actual profile retained `cloakfox.enabled=true` and
+`navigator:webgpu:disabled=true`, with matching Firefox navigator/HTTP UAs.
+On the same supplied link, the page first offered a verification-start button,
+then the normal checkbox. After the authorized interaction it left Cloudflare
+and reached CodeSignal, displaying **Assessment not found**. Thus actual-profile
+challenge passage is verified; the destination's assessment error remains
+separate and was not investigated by starting or submitting an assessment.
+
+Native failing and passing logs are in
+`/tmp/cloakfox-cf-native-20261010/native-user-config/` and
+`/tmp/cloakfox-cf-native-20261010/native-user-config-reset/` respectively.
+Private links, cookie values and identity seeds are omitted from this record.
