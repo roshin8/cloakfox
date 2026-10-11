@@ -266,24 +266,23 @@ The helper and WebIDL use native Gecko objects; no missing-API page shim was add
 - **Final dev build:** Settings, presentation, API/policy, media permission,
   UA Client Hints (67 checks), worker identity, navigator coherence (four
   containers), and WebGPU null-safety pass. Logs are
-  `/tmp/cloakfox-screen-task3-*.log`,
-  `/tmp/cloakfox-screen-dev-navigator_coherence.log`, and
-  `/tmp/cloakfox-screen-dev-webgpu_null_safety.log`.
+  `/tmp/cloakfox-screen-final-suite.log` and individual
+  `/tmp/cloakfox-screen-final-*.log` files; all nine final probes pass.
 - **Synthetic recording:** the deliberately empty-output guard fails. The real
   headful fixture selects the observed no-preference VP8 fallback, using both
-  VideoEncoder and MediaRecorder capability checks. Dev output is 4,490 screen
-  bytes and 7,742 webcam/audio bytes; mounted output is 4,331 and 6,404 bytes.
+  VideoEncoder and MediaRecorder capability checks. Dev output is 4,330 screen
+  bytes and 6,499 webcam/audio bytes; mounted output is 4,184 and 7,343 bytes.
   All four blobs have EBML `[26,69,223,163]`; sources and AudioContexts are
-  stopped/closed. Reports: `/tmp/cloakfox-screen-dev-recording/recording.json`
-  and `/tmp/cloakfox-screen-mounted-testdome_recording/recording.json`.
+  stopped/closed. Reports: `/tmp/cloakfox-screen-final-testdome_recording/recording.json`
+  and `/tmp/cloakfox-screen-mounted-final-testdome_recording/recording.json`.
 - **Mounted payload:** Settings, presentation, API/policy, synthetic recording
   and WebGPU null-safety pass on the read-only DMG application, with disposable
-  profiles. Logs: `/tmp/cloakfox-screen-mounted-*.log`.
-- **Reproducibility:** all 95 ordered patches apply to fresh Firefox 146.0.1
+  profiles. Logs: `/tmp/cloakfox-screen-mounted-final-*.log`.
+- **Reproducibility:** all 96 ordered patches apply to fresh Firefox 146.0.1
   source. Before the audit script's cleanup, a test-only shell hook retained
-  the 30 files touched by these three patches; every SHA-256 matches the
-  compiled checkout. Reports: `/tmp/cloakfox-screen-patch-audit.log` and
-  `/tmp/cloakfox-screen-verification/patch-input-comparison.json`.
+  the 30 files touched by these four patches; every SHA-256 matches the
+  compiled checkout. Reports: `/tmp/cloakfox-screen-patch-audit-final.log` and
+  `/tmp/cloakfox-screen-verification/patch-input-comparison-final.json`.
 
 ### Signed artifact
 
@@ -294,14 +293,14 @@ Both staging and the read-only mounted app pass `codesign --verify --deep
 hashes match signed staging. The installed app, real profiles, and previous
 DMGs were preserved.
 
-Artifact: `cloakfox-146.0.1-beta.25-browser-compat-20261010.dmg`.
-BuildID: `20261010204436`.
+Artifact: `cloakfox-146.0.1-beta.25-browser-compat-20261010-211128.dmg`.
+BuildID: `20261010210835`.
 
 | Payload | SHA-256 |
 | --- | --- |
-| Final DMG | `2b696369c94b0f437dd63a7399e5c4ae513e6893fddb8f0e58ed90f38fbf438e` |
-| Mounted executable | `7f598d42d7107ae0b5533faa10c11c5e791855385ef0cbf80e422530bdb36d4a` |
-| Mounted XUL | `261e45fc39bdc24409ab2273eefb9f709859897228f3b1277f6bd14d9aeb1335` |
+| Final DMG | `efc3751c67ee75954ea68bacde588fa4877913577af57f1ec133a91e17c2824f` |
+| Mounted executable | `d68fb39c3ff12bba810b11e10bbff01181d09ee3dec25f6eef5034649432ac05` |
+| Mounted XUL | `931cb9096e9c0a323ae2702109252ae47290adc13719337a38d135f7aebf78c6` |
 
 ### Read-only live result and limits
 
@@ -319,8 +318,36 @@ synthetic encoding are verified. Physical webcam/screen capture, remote media
 delivery and full assessment support remain unverified. The unrelated live
 Cloudflare outcome remains the independently documented result above.
 
-Local evidence: `/tmp/cloakfox-screen-live/result.json`, `chromium.png` and
+Local evidence: `/tmp/cloakfox-screen-live-final/result.json`, `chromium.png` and
 `firefox.png`. Invitation URLs/candidate data are not committed.
+
+### Final fresh review and receiving-screen regression
+
+A fresh gpt-6-astra whole-branch review found no Critical issues and one
+Important gap: an ineligible ancestor could queue a trusted orientation change
+for an eligible virtual-screen child. The mixed cross-origin tree regression
+uses Gecko's privileged orientation override to exercise the native ancestor
+traversal; it failed with a trusted child event despite unchanged geometry.
+The receiving-screen runnable now rechecks virtual presentation at dispatch,
+including already queued work, while pending promises still resolve. It passes
+RED → GREEN, the final dev suite passes 9/9, and mounted probes pass 5/5.
+The ordered follow-up patch is `cloakfox-screen-orientation-events.patch`.
+
+The review's Minor codec-probe weakness is deferred: a future non-VP8 candidate
+could be selected while recording still exercises VP8. Both current dev and
+mounted selections are VP8/no-preference, so their recording evidence is valid.
+
+### User-visible version mismatch
+
+The running Firefox-appearance copy and installed source were still BuildID
+`20261010182521`; the final package is `20261010210835`. The saved user profile
+had no explicit screen-management enablement, and the feature defaults off.
+Install the final app, quit old copies, and launch `/Applications/Cloakfox.app`
+so any saved Firefox appearance is rebuilt from the new source. Enable
+**Virtual screen-management API**, keep `https://app.testdome.com` in the exact
+origin list, select a desktop Chromium identity in the active container, and
+reload the TestDome page. This package was not installed into the real profile
+as part of the isolated verification.
 
 ### Implementation rulings and costs
 
@@ -332,3 +359,15 @@ Local evidence: `/tmp/cloakfox-screen-live/result.json`, `chromium.png` and
 - Task 2: Ruling: IMPL_EVENT_HANDLER requires global static atoms absent for these two events. Use EventTarget's existing string/dynamic-atom GetEventHandler and native atom SetEventHandler overloads for the two generated WebIDL accessors, preserving listener semantics without adding unrelated global HTML event names. Cost: a small atom lookup on handler access instead of a static atom pointer.
 - Task 2: Ruling: native ScreenDetails name collides with existing DOMTypes IPDL transport class — map WebIDL ScreenDetails to CloakfoxScreenDetails in Bindings.conf; mark Screen concrete after adding its derived interface so the existing nsScreen wrapper remains generated. Cost: a small explicit binding mapping replaces the plan’s default class mapping; public API names/brands stay unchanged.
 - Task 3: Ruling: existing Gecko iframe allow changes affect the next document, not the already loaded document (Task 2 baseline resolved before/after assignment, denied after navigation). Preserve that document-policy lifetime; test changing allow then navigating, while new queries still recheck the current document’s policy/gates. Cost: changing allow alone cannot revoke this loaded document until navigation/reload.
+- Final: Ruling: physical webcam/display capture, chooser, remote delivery and complete assessments remain unverified — headful synthetic output and read-only onboarding meet this plan's explicit scope — cost: capture/session failures may still require separate testing.
+- Final: Ruling: Cloudflare private rejection and general Chrome impersonation remain outside this feature — native screen eligibility is narrower than universal Chromium compatibility — cost: unrelated sites can still reject the browser.
+- Final: Ruling: nonempty modern Permissions-Policy allowlists remain unsupported — exact empty-list denial is the approved bounded parser contract — cost: broader modern delegation semantics are not provided.
+- Final: Ruling: immediate iframe allow revocation remains deferred to next navigation — existing Gecko document-policy lifetime is preserved and tested — cost: loaded documents retain their policy until navigation.
+- Final: Ruling: legacy screen owner behavior after feature eligibility is disabled stands — this plan repairs the eligible virtual presentation path — cost: older nonvirtual screen behavior is unchanged.
+- Final: Ruling: physical topology, monitor movement, per-display editing and extra Chromium screen APIs remain excluded — configurable virtual count and repeated persona geometry are the approved scope — cost: this feature cannot enumerate actual displays or supply every Chromium API.
+- Final: Ruling: broader WebGPU functionality and worker privacy parity remain outside this repair — the included regression proves native binding null safety only — cost: other WebGPU limitations may remain.
+- Final: Ruling: cross-platform execution and notarization remain unverified — delivery targets locally signed macOS payloads — cost: other systems and Gatekeeper distribution are not established.
+- Final: Ruling: parser caching is not added — no measured regression justifies expanding this feature — cost: eligibility checks retain their existing parse overhead.
+- Final: Ruling: unrelated unstaged TODO/PENDING/Cloudflare edits are preserved and excluded — they belong to other work — cost: final checkout remains dirty with those changes.
+- Final: Ruling: nested-patch whitespace reports stand — blank unified-diff context prefixes are required patch syntax, while fresh application and native compilation verify the actual source — cost: outer diff-check remains noisy for patch files.
+- Final: Ruling: preserve the existing feature branch and installed app — the approved plan requests commits and a new deliverable while leaving real profiles/apps unchanged; no merge/PR is requested — cost: installation and remote integration remain separate user actions.
