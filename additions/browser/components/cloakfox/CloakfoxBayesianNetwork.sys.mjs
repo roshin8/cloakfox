@@ -106,3 +106,70 @@ export function getNodeValues(name) {
 export function getNodeNames() {
   return NETWORK.nodes.map(n => n.name);
 }
+
+/** Categories describe sampled signals, not asserted physical device models. */
+export function personaOS(ua) {
+  if (/Android|Mobile|iPhone|iPad/.test(ua || "")) return null;
+  if (/Windows/.test(ua || "")) return "windows";
+  if (/Macintosh/.test(ua || "")) return "macos";
+  if (/Linux|X11/.test(ua || "")) return "linux";
+  return null;
+}
+
+export function personaHardware(renderer) {
+  const value = String(renderer || "");
+  if (/llvmpipe|softpipe|swiftshader|software/.test(value.toLowerCase())) return "software";
+  if (/Intel/i.test(value)) return "intel";
+  if (/NVIDIA|GeForce|Quadro/i.test(value)) return "nvidia";
+  if (/AMD|Radeon|ATI/i.test(value)) return "amd";
+  if (/Apple/i.test(value)) return "apple";
+  return "other";
+}
+
+function unpackVideoCard(value) {
+  try { return JSON.parse(value.replace(/^\*STRINGIFIED\*/, "")); }
+  catch { return null; }
+}
+
+function personaChoices(os, hardware) {
+  if (!["auto", "windows", "macos", "linux"].includes(os)) throw new Error("Unknown operating system.");
+  if (!["auto", "apple", "intel", "nvidia", "amd", "software", "other"].includes(hardware)) throw new Error("Unknown hardware family.");
+  const uaNode = NETWORK.nodes.find(node => node.name === "userAgent");
+  const gpuNode = NETWORK.nodes.find(node => node.name === "videoCard");
+  const choices = [];
+  for (const [ua, probability] of Object.entries(getProbsGivenParents(uaNode, {}))) {
+    if (!(probability > 0) || (os !== "auto" && personaOS(ua) !== os)) continue;
+    const gpus = Object.entries(getProbsGivenParents(gpuNode, {userAgent: ua}))
+      .filter(([value, weight]) => weight > 0 && (hardware === "auto" || personaHardware(unpackVideoCard(value)?.renderer) === hardware));
+    const mass = gpus.reduce((total, [,weight]) => total + weight, 0);
+    if (hardware === "auto" || mass > 0) choices.push({ua, probability: probability * (hardware === "auto" ? 1 : mass), gpus});
+  }
+  return choices;
+}
+
+function normalized(probs) {
+  const total = Object.values(probs).reduce((sum, value) => sum + value, 0);
+  return Object.fromEntries(Object.entries(probs).map(([value, weight]) => [value, weight / total]));
+}
+
+export function getPersonaHardwareFamilies(os = "auto") {
+  const families = new Set();
+  for (const choice of personaChoices(os, "auto")) {
+    for (const [gpu] of choice.gpus) families.add(personaHardware(unpackVideoCard(gpu)?.renderer));
+  }
+  return ["apple", "intel", "nvidia", "amd", "software", "other"].filter(family => families.has(family));
+}
+
+/** Condition the real network on OS/GPU, weighting UAs by matching GPU mass. */
+export function samplePersonaFingerprint(prng, {os = "auto", hardware = "auto"} = {}) {
+  if (os === "auto" && hardware === "auto") return sampleFingerprint(prng);
+  const choices = personaChoices(os, hardware);
+  if (!choices.length) throw new Error("BrowserForge has no matching persona for this OS and hardware family.");
+  const ua = sampleFromProbs(normalized(Object.fromEntries(choices.map(choice => [choice.ua, choice.probability]))), prng);
+  const inputs = {userAgent: ua};
+  if (hardware !== "auto") {
+    const choice = choices.find(value => value.ua === ua);
+    inputs.videoCard = sampleFromProbs(normalized(Object.fromEntries(choice.gpus)), prng);
+  }
+  return sampleFingerprint(prng, inputs);
+}

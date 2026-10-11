@@ -57,16 +57,31 @@
         </div>
       </div>
       <div class="hero-actions">
-        <button id="cfx-regenerate" class="btn btn-primary">
-          <span class="btn-icon">⟳</span> New persona
-        </button>
         <button id="cfx-clear" class="btn btn-ghost">Reset container</button>
         <span class="hero-overrides" id="cfx-override-count">No field overrides — every value comes from the persona.</span>
         <button id="cfx-clear-overrides" class="btn btn-ghost btn-small" hidden>Clear overrides</button>
       </div>
+      <div class="preset-control persona-generator">
+        <strong>Generate a full persona</strong>
+        <div class="persona-filters">
+          <div><label for="cfx-persona-os">Operating system</label>
+            <select id="cfx-persona-os">
+              <option value="auto">Automatic — any OS</option>
+              <option value="windows">Windows</option><option value="macos">macOS</option><option value="linux">Linux</option>
+            </select>
+          </div>
+          <div><label for="cfx-persona-hardware">Hardware family</label>
+            <select id="cfx-persona-hardware"><option value="auto">Automatic — any supported family</option></select>
+          </div>
+        </div>
+        <p class="card-help">Choose a category, then generate a fresh matching BrowserForge persona. Your saved persona stays the same until you generate another.</p>
+        <label class="generation-reset"><input id="cfx-generation-clear-overrides" type="checkbox"> Clear existing field overrides when generating</label>
+        <button id="cfx-regenerate" class="btn btn-primary" type="button">Generate new persona</button>
+        <p id="cfx-generation-status" class="card-help" role="status" aria-live="polite"></p>
+      </div>
       <p class="hero-note">
         Personas are sampled at runtime from <strong>BrowserForge</strong>'s real-world Bayesian network — coherent fingerprints
-        (matching webGl ↔ platform ↔ screen) drawn fresh each time you click <em>Sample a new persona</em>.
+        (matching webGl ↔ platform ↔ screen) drawn fresh each time you click <em>Generate new persona</em>.
         Click any value below to override it for this container; the persona keeps its other fields.
       </p>
     </section>
@@ -80,120 +95,23 @@
       <a href="#sec-geo">Geo &amp; network</a>
       <a href="#sec-media">Media</a>
       <a href="#sec-seeds">Seeds</a>
+      <a href="#sec-screen-management">Screen API</a>
       <a href="#sec-hardening">Hardening</a>
     </nav>
 
-    <section class="card" id="sec-identity">
-      <header class="card-header">
+    <details class="card settings-group" id="sec-identity" open>
+      <summary class="card-header">
         <span class="card-icon" data-color="violet">⌬</span>
         <div>
           <h2>Identity</h2>
           <p class="card-help">Navigator and User-Agent fields every page reads.</p>
         </div>
-      </header>
-      <div class="spoof-grid" id="grp-navigator"></div>
-    </section>
-
-    <section class="card" id="sec-display">
-      <header class="card-header">
-        <span class="card-icon" data-color="cyan">▢</span>
-        <div>
-          <h2>Display</h2>
-          <p class="card-help">Screen and window dimensions websites measure.</p>
-        </div>
-      </header>
-      <div class="spoof-grid" id="grp-screen"></div>
-    </section>
-
-    <section class="card" id="sec-graphics">
-      <header class="card-header">
-        <span class="card-icon" data-color="green">◢</span>
-        <div>
-          <h2>Graphics</h2>
-          <p class="card-help">WebGL vendor and renderer (GPU fingerprint).</p>
-        </div>
-      </header>
-      <div class="spoof-grid" id="grp-graphics"></div>
-    </section>
-
-    <section class="card" id="sec-audio">
-      <header class="card-header">
-        <span class="card-icon" data-color="amber">♪</span>
-        <div>
-          <h2>Audio</h2>
-          <p class="card-help">AudioContext fields tied to sound hardware.</p>
-        </div>
-      </header>
-      <div class="spoof-grid" id="grp-audio"></div>
-    </section>
-
-    <section class="card" id="sec-locale">
-      <header class="card-header">
-        <span class="card-icon" data-color="rose">◑</span>
-        <div>
-          <h2>Locale &amp; timezone</h2>
-          <p class="card-help">Language, region, and IANA timezone.</p>
-        </div>
-      </header>
-      <div class="spoof-grid" id="grp-locale"></div>
-      <div class="spoof-grid" id="grp-timezone">
-        <div class="spoof-row">
-          <span class="k">Active timezone</span>
-          <span class="v" id="cfx-tz-current">—</span>
-        </div>
-        <div class="spoof-row picker-row">
-          <label for="cfx-tz-select" class="k">Override timezone</label>
-          <select id="cfx-tz-select" class="v">
-            <option value="">(default — UTC)</option>
-          </select>
-        </div>
-      </div>
-    </section>
-
-    <section class="card" id="sec-geo">
-      <header class="card-header">
-        <span class="card-icon" data-color="blue">⊕</span>
-        <div>
-          <h2>Geolocation &amp; network</h2>
-          <p class="card-help">Coordinates websites get from <code>navigator.geolocation</code>, plus public IP overrides for WebRTC.</p>
-        </div>
-      </header>
-      <div class="spoof-grid" id="grp-geo"></div>
-      <p class="card-note" id="cfx-network-detected">Auto-detected — IPv4: — · IPv6: —</p>
-      <div class="spoof-grid" id="grp-network"></div>
-    </section>
-
-    <section class="card" id="sec-media">
-      <header class="card-header">
-        <span class="card-icon" data-color="violet">▶</span>
-        <div>
-          <h2>Media &amp; surfaces</h2>
-          <p class="card-help">Codec support, voices, and other browser surfaces fingerprinters probe.</p>
-        </div>
-      </header>
-      <div class="spoof-grid" id="grp-media"></div>
-      <div class="spoof-grid" id="grp-voices"></div>
-      <div class="spoof-grid" id="grp-hidden"></div>
-    </section>
-
-    <section class="card" id="sec-seeds">
-      <header class="card-header">
-        <span class="card-icon" data-color="slate">∎</span>
-        <div>
-          <h2>Per-vector noise seeds</h2>
-          <p class="card-help">Each seed drives one fingerprint vector at the C++ level. Regenerating the persona rotates all of these together.</p>
-        </div>
-      </header>
-      <div class="spoof-grid" id="grp-seeds"></div>
-    </section>
-
-    <section class="card" id="sec-screen-management">
-      <header class="card-header">
-        <span class="card-icon" data-color="slate">▣</span>
-        <div><h2>Screen API compatibility</h2>
-          <p class="card-help">Requires a desktop Chromium identity. Capture still uses normal permissions and the sharing chooser. Reload affected pages after changing these controls.</p>
-        </div>
-      </header>
+      </summary>
+      <div class="spoof-grid" id="grp-browser-presets"></div>
+      <p id="cfx-chromium-status" class="card-help compatibility-status" role="status" aria-live="polite"></p>
+      <section class="chromium-compatibility" id="sec-screen-management" hidden>
+        <h3>Chromium compatibility</h3>
+        <p class="card-help">Screen API compatibility for desktop Chromium identities. Capture uses normal permissions and the sharing chooser. Reload affected pages after changing these settings.</p>
       <label class="flag-row">
         <input id="cfx-screen-management" type="checkbox" data-pref="cloakfox.compat.screen_management">
         <span><strong>Virtual screen-management API</strong><small>Listed sites receive the selected number of virtual screens, using your Display persona. Extra screens repeat that geometry horizontally.</small></span>
@@ -212,71 +130,221 @@
       </div>
       <p class="card-help">Use exact HTTPS origins, including any nondefault port. Paths and wildcards are excluded. An empty list disables access for all sites. Reset restores the initial TestDome entry.</p>
       <p id="cfx-screen-origins-status" class="card-help" role="status" aria-live="polite"></p>
-    </section>
+      </section>
+      <div class="spoof-grid" id="grp-navigator"></div>
+    </details>
 
-    <section class="card" id="sec-hardening">
-      <header class="card-header">
+    <details class="card settings-group" id="sec-display">
+      <summary class="card-header">
+        <span class="card-icon" data-color="cyan">▢</span>
+        <div>
+          <h2>Display</h2>
+          <p class="card-help">Screen and window dimensions websites measure.</p>
+        </div>
+      </summary>
+      <div class="spoof-grid" id="grp-screen"></div>
+    </details>
+
+    <details class="card settings-group" id="sec-graphics">
+      <summary class="card-header">
+        <span class="card-icon" data-color="green">◢</span>
+        <div>
+          <h2>Graphics</h2>
+          <p class="card-help">WebGL vendor and renderer (GPU fingerprint).</p>
+        </div>
+      </summary>
+      <div class="spoof-grid" id="grp-graphics"></div>
+    </details>
+
+    <details class="card settings-group" id="sec-audio">
+      <summary class="card-header">
+        <span class="card-icon" data-color="amber">♪</span>
+        <div>
+          <h2>Audio</h2>
+          <p class="card-help">AudioContext fields tied to sound hardware.</p>
+        </div>
+      </summary>
+      <div class="spoof-grid" id="grp-audio"></div>
+    </details>
+
+    <details class="card settings-group" id="sec-locale">
+      <summary class="card-header">
+        <span class="card-icon" data-color="rose">◑</span>
+        <div>
+          <h2>Locale &amp; timezone</h2>
+          <p class="card-help">Language, region, and IANA timezone.</p>
+        </div>
+      </summary>
+      <div class="spoof-grid" id="grp-locale"></div>
+      <div class="spoof-grid" id="grp-timezone">
+        <div class="spoof-row">
+          <span class="k">Active timezone</span>
+          <span class="v" id="cfx-tz-current">—</span>
+        </div>
+        <div class="spoof-row picker-row">
+          <label for="cfx-tz-select" class="k">Override timezone</label>
+          <select id="cfx-tz-select" class="v">
+            <option value="">(default — UTC)</option>
+          </select>
+        </div>
+      </div>
+    </details>
+
+    <details class="card settings-group" id="sec-geo">
+      <summary class="card-header">
+        <span class="card-icon" data-color="blue">⊕</span>
+        <div>
+          <h2>Geolocation &amp; network</h2>
+          <p class="card-help">Coordinates websites get from <code>navigator.geolocation</code>, plus public IP overrides for WebRTC.</p>
+        </div>
+      </summary>
+      <div class="spoof-grid" id="grp-geo"></div>
+      <p class="card-note" id="cfx-network-detected">Auto-detected — IPv4: — · IPv6: —</p>
+      <div class="spoof-grid" id="grp-network"></div>
+    </details>
+
+    <details class="card settings-group" id="sec-media">
+      <summary class="card-header">
+        <span class="card-icon" data-color="violet">▶</span>
+        <div>
+          <h2>Media &amp; surfaces</h2>
+          <p class="card-help">Codec support, voices, and other browser surfaces fingerprinters probe.</p>
+        </div>
+      </summary>
+      <div class="spoof-grid" id="grp-media"></div>
+      <div class="spoof-grid" id="grp-voices"></div>
+      <div class="spoof-grid" id="grp-hidden"></div>
+    </details>
+
+    <details class="card settings-group" id="sec-seeds">
+      <summary class="card-header">
+        <span class="card-icon" data-color="slate">∎</span>
+        <div>
+          <h2>Per-vector noise seeds</h2>
+          <p class="card-help">Each seed drives one fingerprint vector at the C++ level. Regenerating the persona rotates all of these together.</p>
+        </div>
+      </summary>
+      <div class="spoof-grid" id="grp-seeds"></div>
+    </details>
+
+
+
+    <details class="card settings-group" id="sec-hardening">
+      <summary class="card-header">
         <span class="card-icon" data-color="red">⚠</span>
         <div>
           <h2>Optional hardening</h2>
-          <p class="card-help">Each toggle trades compatibility for stealth. Off by default unless you flip it on.</p>
+          <p class="card-help">Review the effects and tradeoffs below. Most options are off by default; fractional timer jitter is on. Reload affected websites after changing these settings.</p>
         </div>
-      </header>
+      </summary>
       <div class="flag-grid">
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.focus_masking">
-          <span><strong>Mask window and tab activity</strong><small>Reports pages as focused, visible and fullscreen; hides focus, visibility and pointer departure/return events, retains hover while away, and keeps background timers active. May affect fullscreen controls and increase battery use.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.focus_masking" aria-describedby="cfx-help-focus-masking">
+          <span><strong>Mask window and tab activity</strong><small id="cfx-help-focus-masking" class="flag-description" role="list">
+              <span role="listitem">Reports the page as focused and visible, and masks its reported fullscreen state.</span>
+              <span role="listitem">Hides window/tab departure events and keeps hover state and background timers active.</span>
+              <span role="listitem">Can interfere with fullscreen controls and increase CPU and battery use.</span>
+              <span role="listitem">Does not hide the real window, screen recordings, or changes you make in the editor.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.window_name_disabled">
-          <span><strong>Disable window.name</strong><small>Reads return empty, writes ignored. Breaks fpscanner, popup-orchestrated auth flows.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.window_name_disabled" aria-describedby="cfx-help-window-name-disabled">
+          <span><strong>Disable window.name</strong><small id="cfx-help-window-name-disabled" class="flag-description" role="list">
+              <span role="listitem">Websites read an empty window name; attempts to store a name are ignored.</span>
+              <span role="listitem">Reduces tracking that stores an identifier in window.name.</span>
+              <span role="listitem">Can break sign-in popups and workflows that identify windows by name.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.websocket_disabled">
-          <span><strong>Disable WebSocket</strong><small>Breaks any site with realtime chat / live data feeds.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.websocket_disabled" aria-describedby="cfx-help-websocket-disabled">
+          <span><strong>Disable WebSocket</strong><small id="cfx-help-websocket-disabled" class="flag-description" role="list">
+              <span role="listitem">Blocks websites from opening WebSocket connections.</span>
+              <span role="listitem">Can stop live chat, collaborative editor sync, multiplayer features, and live data feeds.</span>
+              <span role="listitem">Does not block ordinary HTTP requests or every other form of networking.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.clipboard_disabled">
-          <span><strong>Disable clipboard API</strong><small>navigator.clipboard.read/write fails. Breaks paste-from-image and copy buttons.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.clipboard_disabled" aria-describedby="cfx-help-clipboard-disabled">
+          <span><strong>Disable clipboard API</strong><small id="cfx-help-clipboard-disabled" class="flag-description" role="list">
+              <span role="listitem">Blocks website access through navigator.clipboard.read/write and related methods.</span>
+              <span role="listitem">Copy buttons, clipboard image uploads, and programmatic paste features may fail.</span>
+              <span role="listitem">This controls the clipboard API; use the separate signal-masking option for copy/cut/paste events.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.clipboard_masking">
-          <span><strong>Mask clipboard signals</strong><small>Hides copy/cut/paste events, clipboard shortcuts and paste-specific input metadata. Custom editors may lose clipboard support. Text changes and ordinary typing remain visible.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.clipboard_masking" aria-describedby="cfx-help-clipboard-masking">
+          <span><strong>Mask clipboard signals</strong><small id="cfx-help-clipboard-masking" class="flag-description" role="list">
+              <span role="listitem">Hides copy, cut, and paste events, clipboard shortcuts, and paste-specific input metadata.</span>
+              <span role="listitem">The inserted text and ordinary typing remain visible to the website.</span>
+              <span role="listitem">Custom editors that depend on paste events may lose paste support.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.eme_disabled">
-          <span><strong>Disable EME (DRM)</strong><small>Breaks Netflix, Spotify Web Player, Disney+, Prime Video.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.eme_disabled" aria-describedby="cfx-help-eme-disabled">
+          <span><strong>Disable protected-media playback (DRM)</strong><small id="cfx-help-eme-disabled" class="flag-description" role="list">
+              <span role="listitem">Blocks access to encrypted-media playback APIs used by DRM-protected content.</span>
+              <span role="listitem">Protected streaming services may refuse to play audio or video.</span>
+              <span role="listitem">Ordinary video playback and camera capture use separate APIs.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.mediadevices_disabled">
-          <span><strong>Disable mediaDevices</strong><small>navigator.mediaDevices.enumerateDevices returns empty. Breaks WebRTC / Meet / Zoom / Discord.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.mediadevices_disabled" aria-describedby="cfx-help-mediadevices-disabled">
+          <span><strong>Disable mediaDevices</strong><small id="cfx-help-mediadevices-disabled" class="flag-description" role="list">
+              <span role="listitem">Requests media-device disabling in the container’s configuration.</span>
+              <span role="listitem">Current limitation: the device-listing implementation does not reliably enforce this setting.</span>
+              <span role="listitem">Do not rely on it to block camera or microphone access; use browser or macOS permissions.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.notification_permission_disabled">
-          <span><strong>Hide notification permission state</strong><small>Notification.permission always returns "default". Sites can't tell granted/denied.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.notification_permission_disabled" aria-describedby="cfx-help-notification-permission-disabled">
+          <span><strong>Hide notification permission state</strong><small id="cfx-help-notification-permission-disabled" class="flag-description" role="list">
+              <span role="listitem">Reports Notification.permission as “default”, concealing the saved granted/denied state.</span>
+              <span role="listitem">New website notification-permission requests are automatically denied.</span>
+              <span role="listitem">Sites that require notification approval may keep prompting or fail their setup checks.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.storage_persisted_disabled">
-          <span><strong>Hide storage.persisted state</strong><small>navigator.storage.persisted() resolves false. Apps that need persistent storage break.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.storage_persisted_disabled" aria-describedby="cfx-help-storage-persisted-disabled">
+          <span><strong>Hide persistent-storage status</strong><small id="cfx-help-storage-persisted-disabled" class="flag-description" role="list">
+              <span role="listitem">Reports navigator.storage.persisted() as false, even if storage is persistent.</span>
+              <span role="listitem">Does not erase saved website data or revoke existing storage permissions.</span>
+              <span role="listitem">Offline apps may misread their storage protection and show warnings or change behavior.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.math_constants_noise">
-          <span><strong>Perturb Math.PI / Math.E etc.</strong><small>Off by default. Spec-defined IEEE constants — perturbing them flags as anti-fingerprinting. Trig functions are noised regardless.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.math_constants_noise" aria-describedby="cfx-help-math-constants-noise">
+          <span><strong>Randomize Math constants</strong><small id="cfx-help-math-constants-noise" class="flag-description" role="list">
+              <span role="listitem">Adds small offsets to constants such as Math.PI, Math.E, and related values.</span>
+              <span role="listitem">These constants normally have fixed values, so changing them can itself reveal customization.</span>
+              <span role="listitem">Can affect numerical calculations; leave off when exact results matter.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.math_data_noise">
-          <span><strong>Randomize logarithms and powers</strong><small>Off by default. Adds fingerprint noise to Math.log/log2/log10/log1p/pow in pages and workers. Can break editor sync and numeric data processing. Reload affected pages after changing this.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.math_data_noise" aria-describedby="cfx-help-math-data-noise">
+          <span><strong>Randomize logarithms and powers</strong><small id="cfx-help-math-data-noise" class="flag-description" role="list">
+              <span role="listitem">Adds small numerical offsets to Math.log, log2, log10, log1p, and pow in pages and workers.</span>
+              <span role="listitem">Changes a math-fingerprint surface, but also changes values used by normal applications.</span>
+              <span role="listitem">Can break collaborative editor sync, serialization, and numerical data processing.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.timer_high_precision_jitter">
-          <span><strong>Add fractional timer jitter</strong><small>On by default. Adds deterministic fractional milliseconds to performance.now(). Keeps underlying timer rounding; repeated measurements can still reveal it. Reload affected pages after changing this.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.timer_high_precision_jitter" aria-describedby="cfx-help-timer-high-precision-jitter">
+          <span><strong>Add fractional timer jitter</strong><small id="cfx-help-timer-high-precision-jitter" class="flag-description" role="list">
+              <span role="listitem">Adds deterministic fractional milliseconds to performance.now(); enabled by default.</span>
+              <span role="listitem">Underlying timer rounding remains, so repeated measurements may still reveal it.</span>
+              <span role="listitem">Timings are modified rather than made truly more precise; timing-sensitive apps may behave differently.</span>
+            </small></span>
         </label>
         <label class="flag-row">
-          <input type="checkbox" data-pref="cloakfox.opt.timer_quantization_off">
-          <span><strong>Disable timer quantization entirely</strong><small>Off by default. Drops Spectre / audio-FP timing defenses. Only flip if you want raw precision.</small></span>
+          <input type="checkbox" data-pref="cloakfox.opt.timer_quantization_off" aria-describedby="cfx-help-timer-quantization-off">
+          <span><strong>Disable timer rounding</strong><small id="cfx-help-timer-quantization-off" class="flag-description" role="list">
+              <span role="listitem">Turns off Firefox’s reduced timer precision, allowing finer timing measurements.</span>
+              <span role="listitem">Removes a timing defense that helps limit side-channel attacks and timing-based fingerprinting.</span>
+              <span role="listitem">Separate from fractional jitter: enabling this changes the underlying precision, not just the displayed fraction.</span>
+            </small></span>
         </label>
       </div>
-    </section>
+    </details>
 
     <details class="card collapsible">
       <summary>How Cloakfox works</summary>

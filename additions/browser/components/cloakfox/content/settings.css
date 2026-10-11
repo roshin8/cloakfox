@@ -275,6 +275,37 @@ main {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Native disclosure controls keep keyboard and screen-reader support. */
+.settings-group > summary {
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.settings-group > summary::-webkit-details-marker { display: none; }
+.settings-group > summary::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: 0.55rem 0.25rem 0 auto;
+  flex-shrink: 0;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(-45deg);
+}
+.settings-group[open] > summary {
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-group[open] > summary::after { transform: rotate(45deg); }
+.settings-group > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+  border-radius: var(--radius-sm);
+}
+
 .card-header h2 {
   margin: 0;
   font-size: 1rem;
@@ -544,3 +575,60 @@ code {
   border-radius: 3px;
   font-size: 0.85em;
 }
+
+/* Presets sit above the existing custom fields. */
+.preset-control { margin-top: 1rem; }
+.preset-control label { display: block; margin-bottom: 0.45rem; font-size: 0.85rem; }
+.preset-control select, .field-preset, .preset-select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+}
+.preset-control select { width: 100%; }
+.preset-select { min-width: 0; width: 100%; }
+.field-preset { max-width: 10rem; font-size: 0.78rem; }
+.preset-control select:focus-visible, .field-preset:focus-visible, .preset-select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.spoof-row.picker-row select.preset-select {
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.compatibility-status { margin: 0.75rem 0 1rem; }
+.chromium-compatibility {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin: 0 0 1.25rem;
+  scroll-margin-top: 5rem;
+}
+.chromium-compatibility h3 { margin: 0 0 0.4rem; font-size: 0.95rem; }
+.chromium-compatibility > .flag-row { margin-top: 0.85rem; }
+.section-nav a[hidden] { display: none; }
+
+/* Description bullets remain inside the checkbox label's phrasing content. */
+.flag-description [role="listitem"] {
+  position: relative;
+  padding-left: 0.9rem;
+  margin-top: 0.4rem;
+  line-height: 1.5;
+}
+.flag-description [role="listitem"]::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--text-dim);
+}
+.flag-row > span { min-width: 0; }
+
+.persona-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.7rem; }
+.generation-reset { display: flex !important; align-items: center; gap: 0.5rem; margin: 0.8rem 0 !important; }
+@media (max-width: 600px) { .persona-filters { grid-template-columns: 1fr; } }

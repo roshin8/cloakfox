@@ -101,6 +101,10 @@ alone. `cloakfox.compat.hackerrank_media=false` disables it on the next load.
 - Dev build is NON-packaged: actor `*.sys.mjs` are loose files under
   `obj-*/dist/bin/browser/actors/` and `…/Cloakfox.app/Contents/Resources/browser/actors/`
   — copy edited sources there to test JS-only changes with no rebuild.
+- After changing privileged resource modules in a loose development build,
+  launch previews with `-purgecaches`, including when reusing a preview profile.
+  An unchanged BuildID can retain old startup bytecode even though the UI loads
+  newer source. Verify the reused profile as well as a clean test profile.
 - Unit tests: `tests/fingerprint/test_*.mjs` (node --test) and `test_*.py`.
   Run in CI by the `unit-tests` job. NOTE: no Vitest suite exists despite
   earlier docs claiming one — do not assume `.test.ts` files are present.

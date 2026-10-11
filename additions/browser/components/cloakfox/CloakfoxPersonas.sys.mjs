@@ -19,7 +19,7 @@
  * unchanged from the C++ MaskConfig patches' perspective.
  */
 
-import { sampleFingerprint } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
+import { sampleFingerprint, samplePersonaFingerprint } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
 
 // Pin the UA's Firefox version to the build's milestone — BF's pool has
 // a mix of Firefox versions (135-147), but the page-visible UA must
@@ -572,15 +572,31 @@ function userOpt(name, def = false) {
  * cloak_cfg keys. Same seed → same persona across browser restarts.
  *
  * @param {string} seedB64  Master seed (32 bytes, base64).
- * @param {number|null} ucid  Container userContextId; reserved for
- *                            future per-container BF input constraints
- *                            (unused today since each container has its
- *                            own seed already).
+ * @param {number|null} ucid  Container userContextId; resolves the optional
+ *                            OS/hardware generation filters for that container.
+ * @param {Object|null} constraints  Explicit filters when validating a new generation.
  * @returns {Object}  Flat dict keyed on cloak_cfg keys.
  */
-export function fillPersonaKeys(seedB64, ucid = null) {
+export function fillPersonaKeys(seedB64, ucid = null, constraints = null) {
   const prng = makeSeededPRNG(seedB64);
-  const fp = sampleFingerprint(prng);
+  let index = -1;
+  if (ucid !== null) {
+    index = Services.prefs.getIntPref(`cloakfox.container.${ucid}.persona_index`, -1);
+  }
+  let filters = constraints;
+  if (!filters) {
+    const prefix = `cloakfox.container.${ucid}.`;
+    const os = ucid === null ? "auto" : Services.prefs.getStringPref(prefix + "persona_os", "auto");
+    const hardware = ucid === null ? "auto" : Services.prefs.getStringPref(prefix + "persona_hardware", "auto");
+    // Malformed stored preferences fall back to automatic; explicit generation errors are surfaced.
+    filters = {
+      os: ["auto", "windows", "macos", "linux"].includes(os) ? os : "auto",
+      hardware: ["auto", "apple", "intel", "nvidia", "amd", "software", "other"].includes(hardware) ? hardware : "auto",
+    };
+  }
+  const legacy = constraints === null && index >= 0 && index < 30
+    && filters.os === "auto" && filters.hardware === "auto";
+  const fp = legacy ? previewPersona(index) : samplePersonaFingerprint(prng, filters);
   const keys = bfToCloakKeys(fp, prng);
 
   // ── User opt-in dangerous-disable flags (unchanged from prior impl) ──
@@ -600,7 +616,7 @@ export function fillPersonaKeys(seedB64, ucid = null) {
 }
 
 /**
- * For about:cloakfox's "Persona override" dropdown: generate a
+ * Legacy fixed-persona picker compatibility: generate a
  * deterministic preview list of N personas using fixed seeds. The
  * persona_index pref pins which preview a container uses (overriding
  * its master seed).

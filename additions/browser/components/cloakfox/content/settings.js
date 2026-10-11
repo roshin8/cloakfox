@@ -15,6 +15,10 @@
 
 /* global Services, ChromeUtils */
 
+import { getPersonaHardwareFamilies, personaOS as sampledOS, personaHardware as sampledHardware } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
+
+import { PRESETS, browserValues, screenValues, languageValues, gpuValues } from "./settings-presets.mjs";
+
 const { ContextualIdentityService } = ChromeUtils.importESModule(
   "resource://gre/modules/ContextualIdentityService.sys.mjs"
 );
@@ -113,7 +117,7 @@ function u32(seedB64, i) {
 }
 
 // MUST match SeedSync.buildCloakCfg shape — see CloakfoxSeedSync.sys.mjs.
-function buildCloakCfg(seedB64, ucid = null) {
+function buildCloakCfg(seedB64, ucid = null, constraints = null, clearOverrides = false) {
   const base = {
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
@@ -122,10 +126,10 @@ function buildCloakCfg(seedB64, ucid = null) {
     // singular key silently no-ops the per-container font-spacing noise.
     "fonts:spacing_seed": u32(seedB64, 3),
     "math:trig_seed": u32(seedB64, 4),
-    ...fillPersonaKeys(seedB64, ucid),
+    ...fillPersonaKeys(seedB64, ucid, constraints),
   };
   // Match SeedSync: saved field overrides win over the sampled persona.
-  return JSON.stringify(ucid !== null ? applyOverrides(ucid, base) : base);
+  return JSON.stringify(ucid !== null && !clearOverrides ? applyOverrides(ucid, base) : base);
 }
 
 // ── container enumeration ──────────────────────────────────────────
@@ -243,6 +247,72 @@ const GROUPS = {
   ],
 };
 
+// Restore the old pickers through the native per-container override store.
+const PRESET_GROUPS = {
+  "grp-navigator": {id: "browser", label: "Browser / OS preset", items: PRESETS.browsers, values: browserValues},
+  "grp-screen": {id: "screen", label: "Display preset", items: PRESETS.screens, values: screenValues},
+  "grp-graphics": {id: "gpu", label: "GPU preset", items: PRESETS.gpus.map(p => ({...p, name: p.renderer})), values: gpuValues},
+  "grp-locale": {id: "language", label: "Language preset", items: PRESETS.languages, values: languageValues},
+};
+const FIELD_OPTIONS = {
+  "navigator.hardwareConcurrency": PRESETS.cores,
+  "navigator:maxTouchPoints": [0, 1, 5, 10],
+  "navigator.platform": ["Win32", "MacIntel", "Linux x86_64", "Linux armv8l", "iPhone", "iPad"],
+  "window.devicePixelRatio": [1, 1.25, 1.5, 2, 3],
+  "screen:orientation:type": ["landscape-primary", "portrait-primary", "landscape-secondary", "portrait-secondary"],
+  "AudioContext:sampleRate": [44100, 48000, 96000],
+  "AudioContext:maxChannelCount": [1, 2, 6, 8],
+};
+
+function makePresetRow(definition, cfg, ucid, overrides, onChange) {
+  const row = document.createElement("div");
+  row.className = "spoof-row dyn picker-row";
+  const label = document.createElement("label");
+  label.className = "k";
+  label.textContent = definition.label;
+  const select = document.createElement("select");
+  select.id = `cfx-${definition.id}-preset`;
+  select.className = "v preset-select";
+  label.htmlFor = select.id;
+  const ownedKeys = Object.keys(definition.values(definition.items[0], cfg || {}));
+  const automatic = document.createElement("option");
+  automatic.value = "auto";
+  automatic.textContent = "Automatic — from persona";
+  select.appendChild(automatic);
+  const custom = document.createElement("option");
+  custom.value = "custom";
+  custom.textContent = "Custom / current values — edit fields below";
+  select.appendChild(custom);
+  const presetPref = `cloakfox.container.${ucid}.settings_preset.${definition.id}`;
+  const preferred = Services.prefs.getStringPref(presetPref, "");
+  let match = null;
+  for (const item of definition.items) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.name;
+    select.appendChild(option);
+    const values = definition.values(item, cfg || {});
+    if (Object.entries(values).every(([key, value]) => cfg?.[key] === value)
+        && (!match || item.id === preferred)) match = item.id;
+  }
+  select.value = ownedKeys.some(key => key in overrides) ? (match || "custom") : "auto";
+  select.addEventListener("change", () => {
+    if (select.value === "custom") return;
+    if (select.value === "auto") {
+      ownedKeys.forEach(key => clearOverride(ucid, key));
+      Services.prefs.clearUserPref(presetPref);
+    }
+    else {
+      Services.prefs.setStringPref(presetPref, select.value);
+      const item = definition.items.find(p => p.id === select.value);
+      for (const [key, value] of Object.entries(definition.values(item, cfg || {}))) setOverride(ucid, key, value);
+    }
+    onChange();
+  });
+  row.append(label, select, document.createElement("span"));
+  return row;
+}
+
 // Boolean cloak_cfg keys render presence-as-on. Absence = no spoof.
 function fmtValue(key, v) {
   if (v === undefined || v === null || v === "") return "(not spoofed)";
@@ -308,6 +378,25 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     });
   } else {
     v.addEventListener("click", openEditMode);
+    if (FIELD_OPTIONS[key]) {
+      const picker = document.createElement("select");
+      picker.className = "field-preset";
+      picker.setAttribute("aria-label", `${label} preset`);
+      const custom = document.createElement("option");
+      custom.value = "custom"; custom.textContent = "Custom…";
+      picker.appendChild(custom);
+      for (const value of FIELD_OPTIONS[key]) {
+        const option = document.createElement("option");
+        option.value = String(value); option.textContent = String(value);
+        picker.appendChild(option);
+      }
+      picker.value = FIELD_OPTIONS[key].some(value => value === rawVal) ? String(rawVal) : "custom";
+      picker.addEventListener("change", () => {
+        if (picker.value === "custom") openEditMode();
+        else { setOverride(ucid, key, picker.value); onChange(); }
+      });
+      actions.prepend(picker);
+    }
   }
 
   function openEditMode() {
@@ -367,6 +456,7 @@ function populateGrid(id, cfg, rows, ucid, overrides, onChange) {
   // Clear existing children EXCEPT static elements declared in HTML
   // (e.g. timezone group has a <select>; we never wipe that).
   Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
+  if (PRESET_GROUPS[id] && id !== "grp-navigator") grid.appendChild(makePresetRow(PRESET_GROUPS[id], cfg, ucid, overrides, onChange));
   for (const [label, key] of rows) {
     grid.appendChild(makeRow(label, key, cfg, ucid, overrides, onChange));
   }
@@ -456,7 +546,8 @@ function updateHeadline(cfg, seedB64) {
   const platform = cfg["navigator.platform"] || "?";
   const w = cfg["screen.width"] ?? "?";
   const h = cfg["screen.height"] ?? "?";
-  const dpr = cfg["window.devicePixelRatio"] ?? "?";
+  const rawDpr = cfg["window.devicePixelRatio"];
+  const dpr = typeof rawDpr === "number" ? Number(rawDpr.toFixed(2)) : "?";
   const hwc = cfg["navigator.hardwareConcurrency"] ?? "?";
   const renderer = (cfg["webGl:renderer"] || "?").slice(0, 50);
   const tag = shortSeedTag(seedB64);
@@ -477,6 +568,53 @@ const TIMEZONES = [
 // ── wire up UI ──────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
+  function updateChromiumCompatibility() {
+    const ucid = parseInt(document.getElementById("cfx-container-select").value, 10) || 0;
+    const ua = getCloakCfg(ucid)?.["navigator.userAgent"] || "";
+    // Match the native desktop Chromium eligibility gate, including custom UAs.
+    const chromium = /(?:Chrome|Chromium)\/\d/.test(ua)
+      && !/(?:Firefox\/|iPhone|iPad|Android|Mobile)/.test(ua);
+    document.getElementById("sec-screen-management").hidden = !chromium;
+    document.querySelector('a[href="#sec-screen-management"]').hidden = !chromium;
+    const status = document.getElementById("cfx-chromium-status");
+    if (!chromium) {
+      status.textContent = "Choose a desktop Chrome or Edge identity to configure Chromium compatibility. Saved settings are retained.";
+    } else if (!Services.prefs.getBoolPref(PREF_ENABLED, false)) {
+      status.textContent = "Unavailable: enable Cloakfox to activate Chromium compatibility.";
+    } else if (!Services.prefs.getBoolPref("cloakfox.compat.screen_management", false)) {
+      status.textContent = "Unavailable: turn on the Screen API toggle below.";
+    } else {
+      try {
+        const origins = JSON.parse(Services.prefs.getStringPref("cloakfox.compat.screen_management.origins", "[]"));
+        if (!Array.isArray(origins)) throw new Error("Invalid origins");
+        const count = new Set(origins.filter(value => {
+          if (typeof value !== "string") return false;
+          const url = new URL(value);
+          return url.protocol === "https:" && url.origin === value && !url.hostname.includes("*");
+        })).size;
+        status.textContent = count ? `Enabled for ${count} allowed site${count === 1 ? "" : "s"} in this container. Reload affected pages to apply changes.`
+          : "Unavailable: add an HTTPS site to the allowlist below.";
+      } catch {
+        status.textContent = "Unavailable: correct and save the site allowlist below.";
+      }
+    }
+  }
+
+  // Section links reveal the destination before the browser scrolls to it.
+  function revealSection() {
+    const section = document.getElementById(location.hash.slice(1));
+    const group = section?.closest("details.settings-group");
+    if (group) group.open = true;
+  }
+  document.querySelector(".section-nav").addEventListener("click", event => {
+    const link = event.target.closest("a");
+    const section = link && document.getElementById(link.hash.slice(1));
+    const group = section?.closest("details.settings-group");
+    if (group) group.open = true;
+  });
+  window.addEventListener("hashchange", revealSection);
+  revealSection();
+
   const enabledEl    = document.getElementById("cfx-enabled");
   const statusLabel  = document.getElementById("cfx-status-label");
   const selectEl     = document.getElementById("cfx-container-select");
@@ -490,11 +628,38 @@ document.addEventListener("DOMContentLoaded", () => {
     const on = Services.prefs.getBoolPref(PREF_ENABLED, false);
     enabledEl.checked = on;
     if (statusLabel) statusLabel.textContent = on ? "Enabled" : "Disabled";
+    updateChromiumCompatibility();
   }
   syncStatus();
   enabledEl.addEventListener("change", () => {
     Services.prefs.setBoolPref(PREF_ENABLED, enabledEl.checked);
     syncStatus();
+  });
+
+  const personaOS = document.getElementById("cfx-persona-os");
+  const personaHardware = document.getElementById("cfx-persona-hardware");
+  const generationStatus = document.getElementById("cfx-generation-status");
+  const hardwareLabels = {apple: "Apple graphics", intel: "Intel graphics", nvidia: "NVIDIA", amd: "AMD / Radeon", software: "Software rendering", other: "Other graphics"};
+  let draftContainer = null;
+  function updateHardwareChoices(selected = "auto") {
+    personaHardware.replaceChildren();
+    const automatic = document.createElement("option");
+    automatic.value = "auto";
+    automatic.textContent = "Automatic — any supported family";
+    personaHardware.appendChild(automatic);
+    for (const family of getPersonaHardwareFamilies(personaOS.value)) {
+      const option = document.createElement("option");
+      option.value = family; option.textContent = hardwareLabels[family];
+      personaHardware.appendChild(option);
+    }
+    personaHardware.value = Array.from(personaHardware.options).some(o => o.value === selected) ? selected : "auto";
+  }
+  personaOS.addEventListener("change", () => {
+    updateHardwareChoices(personaHardware.value);
+    generationStatus.textContent = "Selection ready. Click Generate new persona to apply it.";
+  });
+  personaHardware.addEventListener("change", () => {
+    generationStatus.textContent = "Selection ready. Click Generate new persona to apply it.";
   });
 
   // Container dropdown.
@@ -538,12 +703,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function refreshContainer() {
     const ucid = parseInt(selectEl.value, 10) || 0;
+    if (draftContainer !== ucid) {
+      draftContainer = ucid;
+      const savedOS = Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_os`, "auto");
+      personaOS.value = ["auto", "windows", "macos", "linux"].includes(savedOS) ? savedOS : "auto";
+      updateHardwareChoices(Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_hardware`, "auto"));
+      generationStatus.textContent = "";
+    }
     const cfg = getCloakCfg(ucid);
     const overrides = readOverrides(ucid);
     const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
     const onEdit = () => { rebuildCloakCfg(ucid); refreshContainer(); };
 
     updateHeadline(cfg, seedB64);
+    const browserPresets = document.getElementById("grp-browser-presets");
+    browserPresets.replaceChildren(makePresetRow(PRESET_GROUPS["grp-navigator"], cfg, ucid, overrides, onEdit));
+    updateChromiumCompatibility();
     populateGrid("grp-navigator", cfg, GROUPS["grp-navigator"], ucid, overrides, onEdit);
     populateGrid("grp-screen",    cfg, GROUPS["grp-screen"],    ucid, overrides, onEdit);
     populateGrid("grp-graphics",  cfg, GROUPS["grp-graphics"],  ucid, overrides, onEdit);
@@ -595,9 +770,26 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const ucid = parseInt(selectEl.value, 10) || 0;
       const seed = randomSeedB64();
+      const filters = {os: personaOS.value, hardware: personaHardware.value};
+      const clearFields = document.getElementById("cfx-generation-clear-overrides").checked;
+      // Validate and sample before touching any saved configuration.
+      const generated = JSON.parse(buildCloakCfg(seed, ucid, filters, true));
+      if ((filters.os !== "auto" && sampledOS(generated["navigator.userAgent"]) !== filters.os)
+          || (filters.hardware !== "auto" && sampledHardware(generated["webGl:renderer"]) !== filters.hardware)) {
+        throw new Error("The generator returned a different OS or hardware family. No changes saved; the browser needs to load its updated generator.");
+      }
+      const cfg = JSON.stringify(clearFields ? generated : applyOverrides(ucid, generated));
+      if (clearFields) clearAllOverrides(ucid);
+      Services.prefs.clearUserPref(personaIndexPref(ucid));
+      Services.prefs.setStringPref(`cloakfox.container.${ucid}.persona_os`, filters.os);
+      Services.prefs.setStringPref(`cloakfox.container.${ucid}.persona_hardware`, filters.hardware);
       Services.prefs.setStringPref(masterSeedPref(ucid), seed);
-      persistCloakCfg(ucid, seed);
+      Services.prefs.setStringPref(cloakCfgPref(ucid), cfg);
+      writeHttpProfilePrefs(ucid, JSON.parse(cfg)["navigator.userAgent"] || "");
       refreshContainer();
+      generationStatus.textContent = clearFields
+        ? "New persona saved. Field overrides cleared. Reload affected websites to apply it."
+        : "New persona saved. Existing field overrides kept; they can replace generated values. Reload affected websites to apply it.";
       const hero = document.querySelector(".hero");
       if (hero) {
         hero.classList.remove("hero-flash");
@@ -605,11 +797,12 @@ document.addEventListener("DOMContentLoaded", () => {
         hero.classList.add("hero-flash");
       }
     } catch (e) {
+      generationStatus.textContent = "Generation failed: " + e.message;
       Cu.reportError("Cloakfox regenerate failed: " + e.message + "\n" + e.stack);
       const note = document.createElement("p");
       note.className = "card-note";
       note.style.color = "var(--danger)";
-      note.textContent = "Regenerate failed: " + e.message + " (see Browser Console)";
+      note.textContent = "Generation failed: " + e.message + " (see Browser Console)";
       regenBtn.parentElement.appendChild(note);
     }
   });
@@ -623,6 +816,9 @@ document.addEventListener("DOMContentLoaded", () => {
     Services.prefs.clearUserPref(cloakCfgPref(ucid));
     Services.prefs.clearUserPref(tzPref(ucid));
     Services.prefs.clearUserPref(personaIndexPref(ucid));
+    Services.prefs.clearUserPref(`cloakfox.container.${ucid}.persona_os`);
+    Services.prefs.clearUserPref(`cloakfox.container.${ucid}.persona_hardware`);
+    draftContainer = null;
     clearAllOverrides(ucid);
     refreshContainer();
   });
@@ -683,6 +879,7 @@ document.addEventListener("DOMContentLoaded", () => {
       Services.prefs.setStringPref(screenOriginsPref, JSON.stringify(origins));
       originsEditor.value = origins.join("\n");
       originsStatus.textContent = "Saved. Reload affected pages to update API availability.";
+      updateChromiumCompatibility();
     } catch (error) {
       originsStatus.textContent = error.message;
     }
@@ -691,6 +888,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Services.prefs.setStringPref(screenOriginsPref, '["https://app.testdome.com"]');
     originsEditor.value = "https://app.testdome.com";
     originsStatus.textContent = "Origins reset. Reload affected pages to update API availability.";
+    updateChromiumCompatibility();
   });
 
   // Opt-in flag toggles auto-bind via data-pref.
@@ -699,6 +897,7 @@ document.addEventListener("DOMContentLoaded", () => {
     el.checked = Services.prefs.getBoolPref(pref, false);
     el.addEventListener("change", () => {
       Services.prefs.setBoolPref(pref, el.checked);
+      if (pref === "cloakfox.compat.screen_management") updateChromiumCompatibility();
     });
   }
   initAppearanceControls().catch(error => {
