@@ -1,0 +1,62 @@
+python3 scripts/package.py macos --version 157.0.1 --release beta.25 --arch arm64
+bash /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/scripts/generate-assets-car.sh
+Assets.car: full Xcode not found (only Command Line Tools); using placeholder. Install Xcode to compile the real icon.
+Assets.car: keeping existing /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/additions/browser/branding/cloakfox/Assets.car (not overwriting with placeholder).
+Assets.car: synced into /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/browser/branding/cloakfox
+./mach package
+ 0:00.28 /usr/bin/make -C . -j8 -s -w package
+ 0:00.49 make[1]: Entering directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin'
+ 0:00.50 make[2]: Entering directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:00.51 make[3]: Entering directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:00.52 make[4]: Entering directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:00.52 BUILDSTATUS@browser/installer START_file_generate multilocale.txt
+ 0:00.52 BUILDSTATUS@browser/installer START_locale_manifest --output locale-manifest.in --base-path @RESPATH@ --locales  en-US --locale-entries @RESPATH@/browser/chrome/ @RESPATH@/chrome/
+ 0:00.52 BUILDSTATUS@browser/installer START_make_sourcestamp_file --output ../../dist//cloakfox-157.0.1-beta.25.en-US.mac.txt --buildid-header ../../buildid.h
+ 0:00.58 BUILDSTATUS@browser/installer END_locale_manifest --output locale-manifest.in --base-path @RESPATH@ --locales  en-US --locale-entries @RESPATH@/browser/chrome/ @RESPATH@/chrome/
+ 0:00.64 BUILDSTATUS@browser/installer END_make_sourcestamp_file --output ../../dist//cloakfox-157.0.1-beta.25.en-US.mac.txt --buildid-header ../../buildid.h
+ 0:00.64 BUILDSTATUS@browser/installer END_file_generate multilocale.txt
+ 0:02.97 Generating XPT artifacts archive (cloakfox-157.0.1-beta.25.en-US.mac.xpt_artifacts.zip)
+ 0:02.97 BUILDSTATUS@browser/installer START_zip cloakfox-157.0.1-beta.25.en-US.mac.xpt_artifacts.zip
+ 0:03.10 BUILDSTATUS@browser/installer END_zip cloakfox-157.0.1-beta.25.en-US.mac.xpt_artifacts.zip
+ 0:03.11 Generating update-related macOS framework artifacts archive (cloakfox-157.0.1-beta.25.en-US.mac.update_framework_artifacts.zip)
+ 0:03.11 BUILDSTATUS@browser/installer START_zip cloakfox-157.0.1-beta.25.en-US.mac.update_framework_artifacts.zip
+ 0:03.20 BUILDSTATUS@browser/installer END_zip cloakfox-157.0.1-beta.25.en-US.mac.update_framework_artifacts.zip
+ 0:03.20 Compressing...
+ 0:03.20 BUILDSTATUS@browser/installer START_package DMG
+ 0:06.55 Creating hybrid image...
+ 0:07.28 
+ 0:07.29 Preparing imaging engine…
+ 0:07.29 Reading Driver Descriptor Map (DDM : 0)…
+ 0:07.29    (CRC32 $27F61733: Driver Descriptor Map (DDM : 0))
+ 0:07.29 Reading Apple (Apple_partition_map : 1)…
+ 0:07.29    (CRC32 $552C80EB: Apple (Apple_partition_map : 1))
+ 0:07.29 Reading DiscRecording 9.0.3d5 (Apple_HFS : 2)…
+ 0:09.58    (CRC32 $D413D185: DiscRecording 9.0.3d5 (Apple_HFS : 2))
+ 0:09.59 Adding resources…
+ 0:09.59 Elapsed Time:  2.293s
+ 0:09.59 File size: 122566314 bytes, Checksum: CRC32 $420CC3FB
+ 0:09.59 Sectors processed: 669632, 669629 compressed
+ 0:09.59 Speed: 142.6MB/s
+ 0:09.59 Savings: 64.3%
+ 0:09.59 created: /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-157.0.1-beta.25.en-US.mac.dmg
+ 0:09.66 BUILDSTATUS@browser/installer END_package DMG
+ 0:09.66 make[4]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:09.68 make[4]: Entering directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:09.72 Making langpack
+ 0:09.72 make[5]: Entering directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:09.72 BUILDSTATUS@browser/locales START_l10n_stage --locale=en-US --manifest=../../l10n-manifest.json --merge-tree=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales/merge-dir/en-US --dest=../../dist/xpi-stage/locale-en-US --topsrcdir=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src --topobjdir=../..
+ 0:09.94 BUILDSTATUS@browser/locales END_l10n_stage --locale=en-US --manifest=../../l10n-manifest.json --merge-tree=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales/merge-dir/en-US --dest=../../dist/xpi-stage/locale-en-US --topsrcdir=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src --topobjdir=../..
+ 0:09.94 make[5]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:09.94 make[5]: Entering directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:09.95 BUILDSTATUS@browser/locales START_package_langpack --locale=en-US --xpi-stage=../../dist/xpi-stage/locale-en-US --metadata=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/browser/locales/en-US/langpack-metadata.ftl --output=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/mac/xpi/cloakfox-157.0.1-beta.25.en-US.langpack.xpi --eid=langpack-en-US@firefox.mozilla.org --app-version=157.0.1-beta.25 --max-app-ver=157.0.1-beta.25 --app-name=Cloakfox --l10n-basedir=/Users/zeus/.mozbuild/l10n-central --include=chrome --include=localization --include=browser --include=manifest.json
+ 0:10.14 BUILDSTATUS@browser/locales END_package_langpack --locale=en-US --xpi-stage=../../dist/xpi-stage/locale-en-US --metadata=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/browser/locales/en-US/langpack-metadata.ftl --output=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/mac/xpi/cloakfox-157.0.1-beta.25.en-US.langpack.xpi --eid=langpack-en-US@firefox.mozilla.org --app-version=157.0.1-beta.25 --max-app-ver=157.0.1-beta.25 --app-name=Cloakfox --l10n-basedir=/Users/zeus/.mozbuild/l10n-central --include=chrome --include=localization --include=browser --include=manifest.json
+ 0:10.14 make[5]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:10.14 make[4]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:10.14 make[3]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:10.14 make[2]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:10.14 make[1]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin'
+ 0:10.25 W Notification center failed: Install terminal-notifier to get a notification when the build finishes.
+ 0:10.25 Created package: /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-157.0.1-beta.25.en-US.mac.dmg
+Found package: /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-157.0.1-beta.25.en-US.mac.dmg
+Final package: cloakfox-157.0.1-beta.25.en-US.mac.dmg
+Packaging complete for macos

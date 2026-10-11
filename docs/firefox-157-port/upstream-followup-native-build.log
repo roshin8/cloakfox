@@ -1,0 +1,52 @@
+cd firefox-src && ./mach build
+ 0:00.23 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.23 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.32 Clobber not needed.
+ 0:00.36 W Adding make options from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:00.36 /usr/bin/make -f client.mk -j8 -s
+ 0:01.40 ./buildid.h.stub
+ 0:01.40 ./source-repo.h.stub
+ 0:01.54 ./application.ini.stub
+ 0:01.66 ./application.ini.h.stub
+ 0:02.25 ./buildid.h.stub
+ 0:02.25 ./source-repo.h.stub
+ 0:02.42 ./application.ini.stub
+ 0:02.58 dom/canvas
+ 0:02.77 ./application.ini.h.stub
+ 0:05.59 toolkit/library/buildid.cpp.stub
+ 0:05.88 browser/app/Info.plist.stub
+ 0:06.04 toolkit/library
+ 0:06.08 browser/app
+ 0:06.14 browser/app/cloakfox
+ 0:17.15 toolkit/library/build/XUL
+ 0:19.74 ./newtab-sources.stamp.stub
+ 0:20.11 ./dependentlibs.list.stub
+ 0:20.17 ./built_in_addons.json.stub
+ 0:20.33 ./buildid.h.stub
+ 0:20.33 ./source-repo.h.stub
+ 0:21.06 ./application.ini.stub
+ 0:21.26 ./application.ini.h.stub
+ 0:23.99 ./buildid.h.stub
+ 0:23.99 ./source-repo.h.stub
+ 0:24.12 ./application.ini.stub
+ 0:24.23 ./application.ini.h.stub
+ 0:24.35 browser/app/Info.plist.stub
+ 0:28.03 W 0 compiler warnings present.
+ 0:28.05 W Overall system resources - Wall time: 28s; CPU: 44%; Read bytes: 1488130048; Write bytes: 601366528; Read time: 5180; Write time: 349
+ 0:28.05 W Swap in/out (MB): 1666.421875/0.78125
+ 0:28.05 To view a profile of the build, run |mach resource-usage|.
+ 0:28.05 Your build was successful!
+ 0:28.05 To take your build for a test drive, run: |mach run|
+ 0:28.05 For more information on what to do now, see https://firefox-source-docs.mozilla.org/setup/contributing_code.html
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261011_011914.json

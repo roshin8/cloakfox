@@ -1,0 +1,143 @@
+F.FFF                                                                    [100%]
+=================================== FAILURES ===================================
+___ CamoufoxFollowup.test_crash_page_resources_exist_with_reporter_disabled ____
+
+self = <test_camoufox_followup.CamoufoxFollowup testMethod=test_crash_page_resources_exist_with_reporter_disabled>
+
+    def test_crash_page_resources_exist_with_reporter_disabled(self):
+        sys.path.insert(0,str(SRC/'python/mozbuild'))
+        from mozbuild.preprocessor import Preprocessor
+        output=io.StringIO()
+        pp=Preprocessor(); pp.out=output
+        pp.do_include(str(SRC/'toolkit/crashreporter/jar.mn'))
+        for suffix in ['html','js','css']:
+>           self.assertIn('content/global/crashes.'+suffix,output.getvalue())
+E           AssertionError: 'content/global/crashes.html' not found in '\ntoolkit.jar:\n'
+
+tests/fingerprint/test_camoufox_followup.py:92: AssertionError
+_ CamoufoxFollowup.test_voice_errors_are_suppressed_only_for_active_configured_voices _
+
+self = <test_camoufox_followup.CamoufoxFollowup testMethod=test_voice_errors_are_suppressed_only_for_active_configured_voices>
+
+        def test_voice_errors_are_suppressed_only_for_active_configured_voices(self):
+            method=block((SRC/'dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp').read_text(),
+                         'nsSynthVoiceRegistry::NotifyVoicesError(')
+            prefix=method[method.index('{')+1:method.index('  if (XRE_IsParentProcess())')]
+>           cpp(r'''
+    #include <cassert>
+    #include <optional>
+    #define LOG(...) ((void)0)
+    #define NS_OK 0
+    namespace StaticPrefs { bool enabled=true; bool cloakfox_enabled(){return enabled;} }
+    namespace MaskConfig { bool configured=false; std::optional<int> MVoices(){return configured?std::optional<int>(0):std::nullopt;} }
+    int notify(){
+    ''' + prefix + r'''
+    return 1;
+    }
+    int main(){
+     for(bool enabled:{false,true}) for(bool configured:{false,true}) {
+      StaticPrefs::enabled=enabled; MaskConfig::configured=configured;
+      assert(notify()==(enabled&&configured?0:1));
+     }
+    }
+    ''')
+
+tests/fingerprint/test_camoufox_followup.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+code = '\n#include <cassert>\n#include <optional>\n#define LOG(...) ((void)0)\n#define NS_OK 0\nnamespace StaticPrefs { bool ...ticPrefs::enabled=enabled; MaskConfig::configured=configured;\n  assert(notify()==(enabled&&configured?0:1));\n }\n}\n'
+
+    def cpp(code):
+        compiler = shutil.which("clang++") or shutil.which("g++")
+        if not compiler:
+            raise RuntimeError("C++ compiler required")
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "test.cpp"
+            source.write_text("#include <initializer_list>\n" + code.replace("CLOAKFOX_JSON_HEADER", str(ROOT / "additions/cloakcfg/json.hpp")))
+            binary = Path(tmp) / "test"
+            subprocess.run([compiler, "-std=c++17", str(source), "-o", str(binary)], check=True)
+            result = subprocess.run([str(binary)], capture_output=True, text=True)
+            if result.returncode:
+>               raise AssertionError(result.stderr)
+E               AssertionError: Assertion failed: (notify()==(enabled&&configured?0:1)), function main, file test.cpp, line 17.
+
+tests/fingerprint/test_upstream_hardening.py:38: AssertionError
+_ CamoufoxFollowup.test_webgl_uses_owner_principal_for_detached_and_offscreen_canvases _
+
+self = <test_camoufox_followup.CamoufoxFollowup testMethod=test_webgl_uses_owner_principal_for_detached_and_offscreen_canvases>
+
+        def test_webgl_uses_owner_principal_for_detached_and_offscreen_canvases(self):
+            method = block((SRC/'dom/canvas/ClientWebGLContext.cpp').read_text(),
+                           'uint32_t ClientWebGLContext::GetUserContextId() const')
+>           cpp(r'''
+    #include <cassert>
+    #include <cstdint>
+    struct Attr { uint32_t mUserContextId; };
+    struct Principal { Attr attrs; const Attr& OriginAttributesRef() { return attrs; } };
+    struct BrowsingContext { Attr attrs; const Attr& OriginAttributesRef() { return attrs; } };
+    struct Document { BrowsingContext* bc; BrowsingContext* GetBrowsingContext(){return bc;} };
+    struct Canvas { Document* doc; Principal* p; Document* OwnerDoc(){return doc;} Principal* NodePrincipal(){return p;} };
+    struct nsPIDOMWindowInner { BrowsingContext* bc; BrowsingContext* GetBrowsingContext(){return bc;} };
+    struct nsIGlobalObject { nsPIDOMWindowInner* win; Principal* p; Principal* PrincipalOrNull(){return p;} };
+    template<class T> using nsCOMPtr=T*;
+    nsPIDOMWindowInner* do_QueryInterface(nsIGlobalObject* g){return g->win;}
+    struct Offscreen { nsIGlobalObject* g; nsIGlobalObject* GetRelevantGlobal(){return g;} };
+    struct WorkerPrivate { Attr attrs; const Attr& GetOriginAttributes(){return attrs;} };
+    WorkerPrivate* worker=nullptr;
+    WorkerPrivate* GetCurrentThreadWorkerPrivate(){return worker;}
+    struct ClientWebGLContext { Canvas* mCanvasElement=nullptr; Offscreen* mOffscreenCanvas=nullptr; uint32_t GetUserContextId() const; };
+    ''' + method + r'''
+    int main(){
+     Principal owner{{7}}, other{{11}}; BrowsingContext stale{{99}};
+     Document attached{&stale}, detached{nullptr}; Canvas c{&detached,&owner};
+     ClientWebGLContext ctx; ctx.mCanvasElement=&c;
+     assert(ctx.GetUserContextId()==7);
+     c.doc=&attached; assert(ctx.GetUserContextId()==7);
+     c.p=&other; assert(ctx.GetUserContextId()==11);
+     ctx.mCanvasElement=nullptr;
+     nsPIDOMWindowInner win{nullptr}; nsIGlobalObject global{&win,&owner}; Offscreen off{&global};
+     ctx.mOffscreenCanvas=&off; assert(ctx.GetUserContextId()==7);
+     WorkerPrivate wp{{11}}; worker=&wp; global.win=nullptr; global.p=&other;
+     assert(ctx.GetUserContextId()==11);
+     global.p=nullptr; assert(ctx.GetUserContextId()==11);
+     worker=nullptr; assert(ctx.GetUserContextId()==0);
+     ctx.mOffscreenCanvas=nullptr; assert(ctx.GetUserContextId()==0);
+    }
+    ''')
+
+tests/fingerprint/test_camoufox_followup.py:17: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+code = '\n#include <cassert>\n#include <cstdint>\nstruct Attr { uint32_t mUserContextId; };\nstruct Principal { Attr attrs; c...er=nullptr; assert(ctx.GetUserContextId()==0);\n ctx.mOffscreenCanvas=nullptr; assert(ctx.GetUserContextId()==0);\n}\n'
+
+    def cpp(code):
+        compiler = shutil.which("clang++") or shutil.which("g++")
+        if not compiler:
+            raise RuntimeError("C++ compiler required")
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "test.cpp"
+            source.write_text("#include <initializer_list>\n" + code.replace("CLOAKFOX_JSON_HEADER", str(ROOT / "additions/cloakcfg/json.hpp")))
+            binary = Path(tmp) / "test"
+            subprocess.run([compiler, "-std=c++17", str(source), "-o", str(binary)], check=True)
+            result = subprocess.run([str(binary)], capture_output=True, text=True)
+            if result.returncode:
+>               raise AssertionError(result.stderr)
+E               AssertionError: Assertion failed: (ctx.GetUserContextId()==7), function main, file test.cpp, line 44.
+
+tests/fingerprint/test_upstream_hardening.py:38: AssertionError
+_ CamoufoxFollowup.test_windows_application_manifest_preserves_stock_privileges _
+
+self = <test_camoufox_followup.CamoufoxFollowup testMethod=test_windows_application_manifest_preserves_stock_privileges>
+
+    def test_windows_application_manifest_preserves_stock_privileges(self):
+        target=SRC/'browser/app/cloakfox.exe.manifest'
+>       self.assertTrue(target.exists(), 'renamed executable has no matching manifest')
+E       AssertionError: False is not true : renamed executable has no matching manifest
+
+tests/fingerprint/test_camoufox_followup.py:78: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_camoufox_followup.py::CamoufoxFollowup::test_crash_page_resources_exist_with_reporter_disabled
+FAILED tests/fingerprint/test_camoufox_followup.py::CamoufoxFollowup::test_voice_errors_are_suppressed_only_for_active_configured_voices
+FAILED tests/fingerprint/test_camoufox_followup.py::CamoufoxFollowup::test_webgl_uses_owner_principal_for_detached_and_offscreen_canvases
+FAILED tests/fingerprint/test_camoufox_followup.py::CamoufoxFollowup::test_windows_application_manifest_preserves_stock_privileges
+4 failed, 1 passed in 0.99s

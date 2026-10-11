@@ -1,0 +1,806 @@
+{
+  "patches": 107,
+  "pristineTargets": 224,
+  "drift": [],
+  "targetHashes": {
+    "dom/base/SpeechVoicesManager.cpp": "205edd38609cef3df3cfe51e86ad58db88ddacac20974300f9be29957dc12582",
+    "dom/media/webspeech/synth/SpeechSynthesis.cpp": "6c11dae049ca031d2f46ab128f73f6a34bd806bc52b1bff7c208bc4ee2d16c93",
+    "dom/media/mediacapabilities/MediaCapabilities.cpp": "d970b1e135ebea82c8a7092bc32ae1b3714b9ce6282f22f94ebdc53c5237852f",
+    "third_party/rust/neqo-http3/src/lib.rs": "e6a07060e4b43fb54d6cf34b93f69f328c243cf5004bdfae1ed092a1ef76e032",
+    "dom/events/EventStateManager.cpp": "158cde9786adc1eddc438ef5dca4fda1011b87e1d4632fa2b48b3bdfdb8818f3",
+    "browser/installer/package-manifest.in": "7b375b328d662bb3853428864c55fce578cf43e03b3c0ae8b760a9fae9e7e381",
+    "layout/style/res/ua.css": "059a0b1dcc9b2f5ad223a7739f6bd29ea6ef424042e03d8bb5a22b31b6db8b72",
+    "dom/base/WebRTCIPManager.cpp": "6806818123858dcade45b33d6ec9d908862852c5c3a11984ddeec393e2a85656",
+    "toolkit/components/remote/nsDBusRemoteClient.cpp": "6a27af07e577b8438dcffca07d6b9e1576ea9eac36331c65082882606a9c2bfc",
+    "dom/workers/WorkerPrivate.h": "a35d848c1cd83253967bba3b5325e53015d29db89c7c4b8342654ec3172e6075",
+    "dom/base/DocumentOrShadowRoot.h": "345ecfa94cd96ff649054fcbd94924633f9acf58fb5c721da89f8e9a986db201",
+    "dom/base/WebGLParamsManager.cpp": "1d3fc17cfb3b73791dd1fcf0541d48d33b1eba87015cc81f986afa8ecdc519f4",
+    "gfx/thebes/gfxTextRun.h": "d453dbb7dd55ebb5847cf18f040932d2cd6392d4dedf2143852735c98fc29873",
+    "dom/base/ScreenOrientation.cpp": "5af4bb3028924b4a58095533c8f33c57899e3a44c563f28eb5412ddb784af8b4",
+    "browser/base/content/browser-main.js": "449bee4adc08d22fd41a9312c19552a1bb6ff58c4354efbbb7a801101df37228",
+    "dom/base/CloakfoxScreenAccess.h": "4c4f9308e9f09125eeb331968f2aecb4499e8b83ccaab831c0899938385921eb",
+    "dom/media/mediasource/MediaSource.cpp": "c351802e121b7215c4ac733cf62d7540942f47bc4e005326a3076792e8052c45",
+    "dom/webidl/Window.webidl": "7d4d391d401728c5c28e9bd696c210a52eb81100074ee26d88c4a596f9cec027",
+    "dom/battery/BatteryManager.cpp": "5d1142cfb637f6c52b5272d397da9487b05d95e72c9e67bbb047494609715859",
+    "dom/events/EventStateManager.h": "dd92fd3c233092f114b3d72ce5a6f944f8fd988ae1e0c27c9d3511ff6ad6a478",
+    "dom/base/RoverfoxStorageManager.cpp": "2eab5afb9127f4eb2ee39d6740af85a01d0a32ee07d9ea16d679b4d779098035",
+    "toolkit/modules/ActorManagerParent.sys.mjs": "c6b18410a1b39e833392ab2f47ece99662f357341518a19973fda611136e9524",
+    "dom/base/Navigator.cpp": "fed1580c2efc589222a99b3444486ad1ff60caede17db77e70a654a16fc5bbc5",
+    "browser/components/sessionstore/SessionSaver.sys.mjs": "8157bf6b007602d1a8a74aca3cd0d3895d7c942d47cdc23ec276476c3e3a0515",
+    "dom/canvas/CanvasUtils.cpp": "547104e84278a0c50fd8cb171c1ae98952a166c47044fa20a0a387eec24fdec6",
+    "dom/webidl/WebGPU.webidl": "92697f1693e81d847c4cf006f9ad1d8ca495d3658fef1ed272d5e89b2d1ccb3c",
+    "third_party/rust/neqo-http3/src/conn_params.rs": "92f859aa2cd7f22c2bd3b064b990b2c262d044ee247c260e732fef5281b81c19",
+    "layout/base/nsPresContext.cpp": "e889469d4e7e12e76447bd4f06849d69f1eefc660ec5c7188e52631627aa9632",
+    "dom/base/AudioFingerprintManager.cpp": "f15470d7d513af71c4f2b5c6eb8591ffe0fa5a19b8a70703aec3891db20bb011",
+    "servo/components/style/gecko/non_ts_pseudo_class_list.rs": "c958dc199032f4a90464bd2d269b6911f7d1f2a8ce082ad7529977ccf8473ae8",
+    "browser/base/content/browser-init.js": "eb2b6def74362334e60528e92c986b97319c0ffbc9170b3bbf2b60d649433d4a",
+    "xpcom/build/nsXULAppAPI.h": "6e080947303ff1b13da66877bdfb278992f9b1f032c990c56b5eb30029544605",
+    "dom/media/mediaelement/HTMLMediaElement.cpp": "9e171205f91afdaaeadc8a8b4cf9cba1b4116e554122aed0390077732857047e",
+    "dom/media/webaudio/AudioContext.cpp": "e78c1d472e646b65834565812768f4e194345fba7caee2373a5d4770af7adb29",
+    "browser/components/sessionstore/SessionWriter.sys.mjs": "35974a2e8dbbb89612766b3399dea0db2790244e4dd00ff6a3bc5660b0454e1a",
+    "gfx/thebes/gfxPlatformFontList.cpp": "072adaea049c5320b972afe84ad228a731a1226d54f70d6c07a3e6092eb78579",
+    "dom/media/webrtc/jsapi/PeerConnectionImpl.h": "5057228d8e6d147a67ad7f7a98958ecb3b20d89dd4b5fe22bdf5eaa00f4712fa",
+    "dom/base/nsJSUtils.h": "b2ab1d78f368060956b19c46a2e5109419a5e9b1273f8e91c56187adc96baee7",
+    "dom/base/nsJSUtils.cpp": "ff272c2d91cf7072432312b324cb1aee844cb50d51223301ece6603b480d95cc",
+    "layout/base/nsLayoutUtils.h": "e004a3f8cc6d9aaec63d89cbb2645f31d00de3e327eeb011c4e9d550e9341151",
+    "third_party/rust/neqo-http3/.cargo-checksum.json": "9cb3ee40b57c0b1e03af3a1425733b7c3c70e2c5a319e02cc9e72042006c9a5f",
+    "toolkit/moz.configure": "67ecd4d52e7f125856fee358816922ea9498aa082345e14bf0dab8977d4dd54b",
+    "dom/webidl/ScreenDetailed.webidl": "4748ebb5fb6f8350ce95347eb5e8e061a1ac8ff3bfe1d550ff66f7cc5972b9fc",
+    "toolkit/components/remote/nsDBusRemoteServer.cpp": "2fc07014b7258128dff3eb87645298e0c294955f803d8dde3367b11c1e1d5204",
+    "toolkit/xre/nsXREDirProvider.cpp": "cd342420020256d0ad524d48f1d2842ffae661291d970dd73a2eea15772bd9df",
+    "dom/base/nsGlobalWindowOuter.cpp": "be55c7b46e8d0144af3691967a4e25b41cc9a80de75cb19288ed90ed87521c22",
+    "gfx/thebes/gfxPlatformFontList.h": "cfc286ef783e1dc26b7e3b6af167758502574bf9c6d5f321796bfcf13b60ecfb",
+    "dom/media/webaudio/AnalyserNode.h": "ce9cc1186759e66151bd551a7b4f198307222868291437975c681bb7b9b650ad",
+    "layout/style/res/html.css": "ffee72054f749dca19124b0541637e4c66ae4c48f34f318ce004209907e4bdef",
+    "dom/base/FontSpacingSeedManager.cpp": "2e3ce0550fb599219875d0f9db3d49e1d1d7673d8c53f964603c7056956b6c5e",
+    "dom/base/ScreenDetailed.h": "60c7462fbc75027d6d615d5f87f4e98ee8057cd07f8270a66f13c064d6dc8c6f",
+    "toolkit/profile/nsToolkitProfileService.cpp": "75bf2397ab6adeacdaa5b7aa9954822e929a29c56db6dd221dd6e8dfa9feaddc",
+    "dom/webidl/Screen.webidl": "9e6ef118db9475aa61d07091a4733693783459ce75217bd43c51dda76928d15d",
+    "cloakcfg/MaskConfig.hpp": "82960b3e34a3a92a2aaf26b21c7ce9a5101df0ecb5ca2a0d20c23ed32ee33f3f",
+    "gfx/thebes/gfxFont.cpp": "e29770ce932d1486562389f1f89bf5b6fe0728c6ab7eb85e4b8fadab7f83f39c",
+    "build/moz.configure/update-programs.configure": "2a99f3092188b410f6f9a5e2f2138b07bcd5ef430045d3c6a338155709fd0dda",
+    "layout/style/GeckoBindings.cpp": "2c63844faafdea6c8f85431524e46bba6642ad34eb655c655e2bd97f3a41d38a",
+    "dom/webidl/moz.build": "5a869f31b08b37cd91ae21734cf27ef575419b13e13e934e3448dff26fae190c",
+    "dom/canvas/ClientWebGLContext.h": "ad3f5b4c594281df9317e6a95771be7efa756b8e841bc7213444c0808befb4f0",
+    "netwerk/protocol/http/HttpBaseChannel.cpp": "7e7c0a00271dac8da126b994cae5fbeab319b7c0c8bee55e1e85027016fe2542",
+    "dom/base/moz.build": "6fd8318222d46b840198833a80f442c87b5d3d484844ccc3f21c05f76abdc739",
+    "dom/webidl/ScreenDetails.webidl": "471f9f7cec4626dc9c5e90e4acc545cbcfb182457c9503b4417ea018ce6daf3b",
+    "netwerk/protocol/http/Http2Session.cpp": "fc6a4f2480028f3177a86e79db7fa1675b9885e8f448cb0658c743e3d9d34600",
+    "dom/base/NavigatorManager.cpp": "b63231364cec508094b553e87320d87a0ebec7297dcded32b6e8a4490aa3f14a",
+    "browser/components/BrowserGlue.sys.mjs": "1d06f55516f83eaffe7260e23b9911660963194cf1ce162f512748c51aa6433a",
+    "layout/generic/nsTextFrame.cpp": "845580fb52e8257048025e557e9d5c6adbcb5bfde8d38e5b1f2e2501266e8a9f",
+    "dom/ipc/ContentParent.h": "16e08c7cabb7fb87a54829ccc436fd049347359e0710a36e123f595bd7b78809",
+    "toolkit/components/resistfingerprinting/RFPHelper.sys.mjs": "413f231df3a93090a274ab6e5a2c2cb397c1d1d276ffd129c347f9f6af91b5d7",
+    "dom/media/mediasource/moz.build": "e97dd88a69999f6d32c4447a98956a041baa2e05437360aae7e52bd2f0307049",
+    "dom/base/SpeechVoicesManager.h": "5bbc8fbdef03bf94c2722d8fb4b2a9a1095c34b51bb8c05c210dbe0ede6ce6fc",
+    "lw/moz.build": "ca33b0b1fe46fb72ae027212f7f871dd54db54bdf5089d15e796967fa19bb387",
+    "third_party/rust/neqo-http3/src/settings.rs": "2301bf854d3a9a6618be97788efd0592d5d03a6cd037b9a397c150cc68c9418a",
+    "widget/MouseEvents.h": "ebceb49610182a527ad4b640e931eeb8260dda8a129c7646185b05de0bc4d439",
+    "layout/base/nsLayoutUtils.cpp": "df59f21731aeacd9e9fb5c83335e54be53a419832af44372a9e8c0042c2b149f",
+    "dom/geolocation/moz.build": "c0f871681c028ae8420298a14034c60ac7fa9ab58792a0e3606983d30543f59c",
+    "dom/media/webrtc/jsapi/moz.build": "9fb25da8b22d41eb22211845980cb32ade7459fc9bab033ebb349ce146139b56",
+    "dom/base/nsHistory.cpp": "e43f039ee7fff402f19643745c6690b47fcaad2a36e4d0a4b1ec45a8601e1e60",
+    "dom/base/CloakfoxScreenPresentation.cpp": "7c7bd964882e6aee0f6bc544c15d508ccee7de2e066400e0aa15bab649115768",
+    "toolkit/components/extensions/NativeManifests.sys.mjs": "753821e553d5bd3fa9e7003812346620eda87bd732ae09b8cfcd2bd48423550e",
+    "dom/ipc/BrowserBridgeParent.cpp": "104e9ba2f91a2c9788f7251ee167e84ab54f9dec4752c60f134dd5ac84620c91",
+    "dom/base/CanvasFingerprintManager.cpp": "95e4a88cfed0054519ae08c105f8a721ee6d6ea45be62a59e7029d863410d7ad",
+    "dom/media/webrtc/jsapi/PeerConnectionImpl.cpp": "2313b28245ed056f26793c4e3e1817bbeed1b44a39544d6f1606db38e72ea805",
+    "layout/generic/MathMLTextRunFactory.cpp": "7593c952441a80d3c53cdee20563a46de0ace984e5cf0d84df0fe78e2dc4f7a4",
+    "dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp": "0228e0f3ba7b185edabee93edab6d44b19d5f368a3ce9a78a25726061c49364c",
+    "dom/base/nsGlobalWindowInner.h": "cba915880843ecdca4c9b37adc0884f0c35f9b4d39286bc8cdc1e0f46d9039fa",
+    "dom/websocket/WebSocket.cpp": "b9f6fface46473b2a9a7ba9266180023d2b53854133bb8e82d9bb3c2dd3436a7",
+    "gfx/src/moz.build": "53a99c53a5e2717c566f856abe3e78d58e6a7752d038edc8f3bf0cb07debcd20",
+    "toolkit/components/cleardata/nsIClearDataService.idl": "38a140a96f2da2fe770210dd2aac7625605783c50a0b619832b1f0df99d82355",
+    "dom/base/ScreenDetails.h": "c1daefc4da3aa834318a7ee2c2c9929e4f0336da62d11cb18631fdd610f32c4c",
+    "dom/security/featurepolicy/FeaturePolicy.h": "8020f4482393711573542a10ccec5478597aec9549ef7767b279229baa414f52",
+    "toolkit/components/resistfingerprinting/FontVisibilityProvider.h": "2d609d5025eaf97fcff1c85bc6d4940b912df9488446afad103bfc8b5a02ef19",
+    "dom/ipc/ContentParent.cpp": "d2f59c9b45186c1e4cf0ceb49121f24665045099329dbc16e10cb0ca2ccb576a",
+    "gfx/thebes/gfxUserFontSet.cpp": "751db5e46aafc88c5b30d57c89126ad680773408bd16f4ed5e253867d4401ceb",
+    "netwerk/protocol/http/Http2Compression.cpp": "401eaa04dc24c6d627d36393258b5ef57b38402814d19bffb39a0ebbb6c895ae",
+    "dom/permission/moz.build": "3256d970ebdf45088a4b5a2f122bbb50b122b1038e0647add799bbca4a9b7dcb",
+    "dom/workers/WorkerPrivate.cpp": "ef49c1b7df4460a032671caaf174948579221e8f6ec28465ef79bfeb9b861169",
+    "dom/media/webaudio/AnalyserNode.cpp": "62218e28a30bce71af6bd194aef6ebf2f7c218df3d91f7f528909d3d6a090c69",
+    "dom/canvas/OffscreenCanvas.cpp": "dc0e1556e0b56e502d66b2d9cd47cb7b30f071f512fc97a8548d3fc7a8aa5630",
+    "dom/system/NetworkGeolocationProvider.sys.mjs": "dbcc50859895f6d3eb1d5dcaeedd96640a9c0fc6a8cd3bfc2c9882496b73645b",
+    "modules/libpref/init/StaticPrefList.yaml": "4e80023895585f4effdce6900309031d2deb10676fa9afff9ecb47644d8c71ec",
+    "dom/canvas/CanvasRenderingContext2D.cpp": "2ed890c67a84ba0c0627bceb8caa33b723b466d4186323d849465baf0425714e",
+    "gfx/src/nsFontMetrics.h": "dc07faf7dc9045f6b51a2b31f24f2869a324cb7523201a9c33736abeb8d5b1b0",
+    "intl/components/src/Locale.cpp": "82a693326a9ef48aadbd8ef7898acb382fd6c3f615db6296e7ad72d2ee4c0238",
+    "dom/base/ScreenDimensionManager.h": "f2098d12ef64f88c408c4855160e241c8f30479a3f17f74cf70f3a3885a79e62",
+    "netwerk/socket/neqo_glue/NeqoHttp3Conn.h": "0db0cfde630c256b35d954aaa28a0bfa7a89c39e39584248e014fb426743d78c",
+    "gfx/2d/ScaledFontMac.cpp": "f254232221b0eb409c6ae2fbbb645284fe6bb6dcef950867fd761f6a38222c76",
+    "dom/svg/SVGGeometryElement.cpp": "1924e8b9386a03cfeafb7e09b0e0ba67abab8d8bde67ba68f6e53b885d464281",
+    "browser/app/firefox.exe.manifest": "4f9f8191ab893a94b1cc52ccf8b5d7e6fa00e4eb4a1d985b7b9a872ece323ced",
+    "toolkit/xre/MacLaunchHelper.mm": "5931402957d8a7d7b02c9b5fea8082f4aadd79a03edbcb0a09a6bbc443b25912",
+    "docshell/base/BrowsingContext.cpp": "12a693c4743f85ccc794ffeee582166b95a1fbc9620a6b7f39f9b11c2eb6c046",
+    "dom/notification/Notification.cpp": "e8144a98444ac67c608a8da036ddece0ebd765a5a05348d03eff39edfff74cda",
+    "dom/media/mediaelement/moz.build": "7e81054e381f8c8c752978baa534ebcc6d59f228c925db6570e24dc24b3f4c1e",
+    "layout/base/nsRefreshDriver.cpp": "e409c101eb61e5228d74f7a9923c2d0a9f012f56d4af27c95b36e3cb8bf4c12e",
+    "gfx/thebes/gfxHarfBuzzShaper.cpp": "d61896343f81a1e1effadaca10a6c81bce556062fc198f0328352cc3f9affa30",
+    "dom/security/featurepolicy/FeaturePolicy.cpp": "8f1619d90a01ccf60a604e47ffa0c340b02417975dd8944790d7ee394598f8f3",
+    "dom/base/AudioFingerprintManager.h": "8cdec90fa0d7e03cf7f98695029fe33289293b3e3356354c4f16c5eafa3e3d7d",
+    "browser/components/about/AboutRedirector.cpp": "06f163b7f9b2fb10d291ab6064584e0771667dc03d231141a64f9ce36ed3147a",
+    "dom/websocket/moz.build": "a2b8e84c0e9d8d19b99ca45a79976f057fb205b9c12592e64907efc60b40f41e",
+    "toolkit/components/antitracking/URLQueryStrippingListService.sys.mjs": "4a0d7ee4bd9b7a06b3bf98574dba5c22923927e5bcb428ecb516d571c0522ce1",
+    "dom/base/nsScreen.h": "f358a95a4133bc513725d56aeeeddd65614756cdb865d604dfaf600d4516f200",
+    "browser/components/BrowserComponents.manifest": "59dcd85fd8c53ea131aeb2271eb8d3f944bbdfc16f09c3d856d47e6292084cc3",
+    "dom/svg/SVGGraphicsElement.cpp": "a09b564a9d6cf489892b0fe44dfb06a18bc86e440f51b77cc47bd1a5334969b7",
+    "dom/base/WebGLParamsManager.h": "f2398c06f9c0b22751908fe797b7ff9cce606289ab5587829e5ae7fdda3283a9",
+    "js/src/vm/DateTime.cpp": "ff5de22cb16f57990d9dbaa05742747ce6bb05691a53090f84e6b1143e9bbb79",
+    "layout/style/moz.build": "48dd993eb43ab28595f816b9f08348d50db58877612f8b71a6c4bcc3d19dbd74",
+    "dom/quota/StorageManager.cpp": "bb536942114387df789bfd6a6fab2ab05dac3e0bb3a16a80a117423068d03b63",
+    "gfx/src/nsDeviceContext.cpp": "453109457e77e0ccfc39a905f1235cc803726bd9fd89f125acc0e4431ec3804b",
+    "js/public/Date.h": "67375431676a8c0a4e6ff5cf14ca8d6148f474b4f315ec0bf94d8d88580fe61e",
+    "dom/base/NavigatorUAData.h": "cf074b0e495fe274c8d040dc038295f624527de308870e9391e63893ffe58add",
+    "js/xpconnect/src/xpcprivate.h": "6058417549fe1be09ae658723242cb4fd517951f338fd01cb23c2a27b3d9b98c",
+    "dom/webidl/Navigator.webidl": "17278b1dfbc5faec140660671bd8a38b889ae81077fd1bf26d964d37b9722f4f",
+    "dom/base/nsFocusManager.cpp": "55799610041b1e1dc589630075e279afa06795170a60a4f93f833dc086db5271",
+    "dom/webidl/Permissions.webidl": "f01f4b78e726bd7092b1423c1f972379495549510cf6d063a3020c18f1626ab7",
+    "dom/geolocation/GeolocationPosition.cpp": "8b115009e80282dd967d4de0553bd832b5507d7b3457edbdefbd56516a0a47da",
+    "netwerk/base/nsProtocolProxyService.cpp": "8327cc94c8f1596621f4a2177fab46bcc5dcedba658f9a0010014d6b64a4ef8f",
+    "dom/base/nsGlobalWindowInner.cpp": "bf994ff83cf2bdcbb278113b65e2a7b39e7686009f0f5a39bb7b38168d0ae7bc",
+    "toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp": "fd315905a0bb2d7486f6841077f13dcbad7f0ea673aed3cbf07286e8634bea81",
+    "toolkit/crashreporter/jar.mn": "6eecddd2c4aaeec7481b0b9dc3719ed4c53a5075704a860636437f914629cb8c",
+    "browser/components/about/components.conf": "69978b92f9c59d299923cfc8b0512c723bd5d3705b715cbd1fb42542fecbc7da",
+    "layout/style/nsMediaFeatures.cpp": "efcb6485f64b306a7701bfedbfd2e82c515877835f47adc9cd3c7da14be11f0c",
+    "netwerk/protocol/http/nsHttpHandler.cpp": "ee7025e518565b6f79ddae0e8302a273da6880e066214c95a613d6b38f8c28a3",
+    "dom/base/CloakConfigOverlay.cpp": "2288d9421504b057157975a7e5b270c1b29b748667e2696d6b638ffb4354969c",
+    "dom/events/Clipboard.cpp": "770e21b1981b8382d89fa1938455711910fe088b3bcd04b0514abcb99f0f919a",
+    "dom/base/RoverfoxStorageManager.h": "ddf3422b95703dda32c7f4b7ee1ac8f147a363d599bfebeebe851a73c2e707f0",
+    "gfx/src/nsFontMetrics.cpp": "b72ce16a2afe89be02b2d15da0023888a1af5763860eed69702af398e2da37ec",
+    "toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h": "ad262f4b07365efa33f02b521d008de71fc263079e4f3339f3c5f34e8c9933b7",
+    "dom/battery/moz.build": "68b357044d55559f853328313f88c53ebd008bf0543bb11d8d04e0f48304ea38",
+    "dom/webidl/Element.webidl": "eca80a5ec88e1fd03b28c3d33650148e341c616fba17d1084c70f63d248cca88",
+    "dom/workers/WorkerNavigator.h": "267f3c4d5985959837c89ad8db2dadf36eac53d45f2e5f902099c60414337686",
+    "dom/chrome-webidl/ChromeUtils.webidl": "2868eff7560d8451bdd1e234c46de352b5ddadd50721a3f98c574dd4c5725744",
+    "layout/base/nsPresContext.h": "19d88b3719306166f63a3a474ba5075839b0d5bc1527999f4706a10e064a0847",
+    "dom/webidl/DocumentOrShadowRoot.webidl": "32fac7291055918b973ca8edbfde6cab2d6b83e8a8b6207c8624e075d8388930",
+    "dom/base/NavigatorManager.h": "cc9f5e9bbd686d1fd95fdc13941a005ba2a83f5447b3ad0c50d008f1ef66ed54",
+    "dom/webidl/Document.webidl": "ffb0d97dedf2d1c72128d368d27fcaf3025f2429bec52a89097656b2165b1c2f",
+    "ipc/ipdl/sync-messages.ini": "e1aa9dd0cbf61f035a603c3f6b38002d3eb3f69a8c6c8619b10d26ba4985ddd7",
+    "layout/base/nsRefreshDriver.h": "ead9354b98d708a03cba28aa04f985c7cc2edec1731d578bc8d0821296a09abd",
+    "layout/style/GeckoBindings.h": "ac2f4502df772336e798ab05c53db94f3f99dd734c335f754ae6930282e3964d",
+    "dom/events/PendingFullscreenEvent.h": "58987e8eab8fbd8dcb06a9621391a1354b308f35a5e3cf258903c67bb663b5ed",
+    "layout/base/moz.build": "a2380c6ff7997a004431eb69076fd0b643fb670ac729c04897ce1ac874624f88",
+    "browser/components/urlbar/UrlbarProviderInterventions.sys.mjs": "0d1a1424228e480c1c744232cca4ae9216e46c5ca51f2d2f8d44a60e3c3142eb",
+    "dom/notification/moz.build": "3f41ce74988ff164f331a4204c602cc15541ad3e16e2a6d0939237f15583f72a",
+    "dom/workers/WorkerNavigator.cpp": "63417283de117be63a91ee1533c2eb2cbf1a51a805c4b0e7ae5bd0f9a4793a0f",
+    "browser/extensions/moz.build": "a3690a2aa7301091a79c08cc3fcfd40c32aa077fb305d4a46850ca9ae144d4c9",
+    "intl/components/moz.build": "47a982edbbc319264c4f9f4d9627c91ec46c58483b1b5673a9b8247325ed0040",
+    "dom/base/WebRTCIPManager.h": "d2817a61f8e4e3085ce6f1c327104038f8f04a070b4a07683dfe91fb5499bff7",
+    "toolkit/components/cleardata/ClearDataService.sys.mjs": "adbae4d45fcc37d29d8700df4660fcdfb7d13b85d171e9abfcce1d8de39f96d4",
+    "dom/media/webaudio/AudioBuffer.cpp": "fe87571d6e08a4f867abe1e6588e1bd58ea693c8afab5c8e6b69b28c9e19de11",
+    "dom/svg/SVGTextContentElement.cpp": "1d95819642bb0fc6d32305cd813e40cd7a602b4a31f7f897f47d1d84d202f568",
+    "dom/base/ScreenDimensionManager.cpp": "981a3c16e11d9fc647a0122e3eadd61e16f9de9d9aa12e0c40ea54539aa23826",
+    "dom/svg/moz.build": "ab71f707080105450e19ac298514b44d5a08aef52ca363baf9ae37181b4f681f",
+    "servo/components/style/gecko/wrapper.rs": "1b4b195b32081357bf38b5889a2e153c79362e42c9371dab124ae4a680a637d2",
+    "layout/style/FontFaceImpl.cpp": "621adc39d9b568e81fbb5c2b8a9d4ac0ead3ef1f320ab135c6b9c7393cd7e0fc",
+    "dom/base/ScreenDetails.cpp": "8d2f149f23e64c97a4b4692bc6866ddf0a220dba6f1653e64231fe027ab12bb5",
+    "browser/components/sessionstore/SessionStore.sys.mjs": "9bab882ff314031fd0147210e21d089c7c5bec3d9c69b553dcd1741d95d8a216",
+    "browser/base/jar.mn": "8a902f9e8c148ebce5cd362a0f4c902c28707e838098d180417af94cfe78a011",
+    "dom/base/nsScreen.cpp": "8840bf7a08a4cec415f97eddb551a4a2924e6d52f7b37c26bcc4971d6ae16b50",
+    "dom/base/AbstractRange.cpp": "d9d27decb3192f0ed9983ba00b3ff628e1b17da471a451028a36e2cf9dfac8e9",
+    "gfx/thebes/gfxMacPlatformFontList.mm": "1abf3e80cd2113e49afc9d12a32b185459f906cfe16680843a4e39c3d89039ba",
+    "toolkit/xre/nsCommandLineServiceMac.mm": "bcb089a8fbc8084e72a3735c3c9821e7512ee0ce4cb1da58ba911cd150d397f4",
+    "dom/webidl/InputEvent.webidl": "6325c99e2ed7ba980e9b0b3fb7f5299a51111dc37e288057e5f1c6e7cda3afbf",
+    "dom/media/webaudio/moz.build": "5191134f31485a19ccc1db2574116f513b314ba8459f7916f66de3c2792e2c70",
+    "dom/base/FontSpacingSeedManager.h": "277c43fef37f6875e8064cb1b1ed8e7987b5fb8f8e2ff60b54174b4285d8e6ff",
+    "netwerk/socket/neqo_glue/src/lib.rs": "c4b97862df08f997953918dea59224e1b1ec2172cebc314c38be66716e0fb2c2",
+    "dom/permission/Permissions.cpp": "630ddccc5a294a1212c3b9b9dbf4533eb3890961d60b4ca68369e9520d2853c1",
+    "dom/base/nsFocusManager.h": "f53245fdfa8033d758090449f8fe6f41fcca054695edf9dc3755252ad8dae85f",
+    "dom/base/ScreenDetailed.cpp": "ff80a96a25da84fb82965b56e7cdb62878c66632436c0e0b9fb32fb56dd0e503",
+    "dom/permission/PermissionStatus.cpp": "6b5bd5b7b768ba12ab5283c608766e21c2259f331a7038a40d4cb031a929a1b7",
+    "modules/libpref/moz.build": "e0c5b98355493322477a76a439cb4b56de48118ddae019104ef9526e1c01d253",
+    "js/src/vm/ErrorObject.h": "7e6a72591d3c1e460185ca08d318770dfa8140bb95e406e3e34332840e80a0ce",
+    "netwerk/protocol/http/nsHttpChannelAuthProvider.cpp": "70f53e411463c345770b64addb99630447de1f8ba967d72740de936476a63fba",
+    "netwerk/protocol/http/Http3Session.cpp": "f6f5f6af68159c9c624e5137cf7900cf11a07e8b9efbb291d4f112704ac71141",
+    "layout/style/FontFaceSet.cpp": "957e00c853e2f23602c559c9aafac8d41b2d7f48ab641346963f525addb2a35c",
+    "dom/base/Navigator.h": "0e4805987ff05df79d4553e802102b4b49bf6ff9ef46d50395d2fb90e23bcde2",
+    "layout/style/FontFaceImpl.h": "1acfb421e1350bd9a3b14b08ecb2c6214e24d424edb18f25e6903f7b06e27d90",
+    "netwerk/protocol/http/moz.build": "16b6c1894eed3de79655f83883045f603cc80a40eb8f1b8869a1cb7094921c58",
+    "docshell/base/BrowsingContext.h": "8d7c1b1cbb608d5d950323af0b6e6942af1649600b50bbb5d8cd852ee28f551f",
+    "toolkit/components/extensions/parent/ext-storage.js": "8cde81c10205aaa9b77af02b98e4f845efb3c2f7a06608fd6c1cbc96774277a4",
+    "dom/base/Element.cpp": "f8fb4d1148c357a3dc08f52e0cc3bd47b97f2aefe10619c3317fb207b5378632",
+    "dom/events/InputEvent.h": "6bae75b3cecaa181ffd002139932c15aa5e7d4bae6a1932b3a5739f9785f3800",
+    "gfx/thebes/gfxTextRun.cpp": "1a9098f28253746aedf7b767b9f9bc760876560d49888f405d5e384a5f8e2eed",
+    "dom/events/moz.build": "352445e521e7dec2e6ce0c44d1d836e4abc1fc3b88d43923fabd51e36da6e87e",
+    "dom/indexedDB/IDBFactory.cpp": "e2183b5f361024a6872e90e6aebde914a1dc025ce5338ad303777a47d01c1e96",
+    "intl/components/src/Locale.h": "ce8a866131b01f76f3d8cbc527071d379f6bd8b488e2468f913ba941a43ce192",
+    "dom/geolocation/Geolocation.cpp": "19eab2b9e25f2fb3aeddad5ef57913a28a87f101509011aae4855faeaac5aaec",
+    "dom/media/moz.build": "44ec2c2966c5064408c2bf2455bd9abce47c1d5fe1f05fe582f461dd80a856d8",
+    "dom/base/ChromeUtils.h": "1ea5c5efef085a57cc32f8d4e5732931750690d5bcc89cc13f764b62df77ef57",
+    "modules/libpref/Preferences.cpp": "8d8a6ac4e8ee9970793bf1c0ab3dcc8b1f3568404ca035d924ccf47657fc7c27",
+    "toolkit/components/extensions/Extension.sys.mjs": "a5254e25738de421715248621c23a9a47c659887ad6e5517743ddba6de5e2ec3",
+    "browser/components/moz.build": "c663a4b894010530d7d3b051e4d5a9a6fa6f953eeaed66a55397b9d29224f7b1",
+    "widget/nsGUIEventIPC.h": "11bea845606ca16995dcd91a392d2cdc3ed6dece76d7ce1289c5f100e0db3f0c",
+    "dom/base/DocumentOrShadowRoot.cpp": "d238d169fc69bb2279941612f7c500fca801ca97e79d913824ebeb6c812f1743",
+    "dom/bindings/Bindings.conf": "9f42e5af3bb9c46f123eac2d4c197461c32e784d892f82f0bab2228e47d0be7a",
+    "python/mozversioncontrol/mozversioncontrol/repo/source.py": "89e21746d5df357afbb22678e2a3c3d5214ca78a42a80bc442bdd987fb0c5a4f",
+    "dom/permission/PermissionUtils.cpp": "a786b4d28a9e298f0e3aba71bc546f52fea7ab9f5b833b144d9c0189eb1d087f",
+    "browser/moz.configure": "b72235134bdfa03408f7154b86a70cacc0f7441d832118e643107be2862ae5c9",
+    "dom/base/ChromeUtils.cpp": "c9307f54f13153ad2fe0826f3dd8a389f222b3b1671a72e06bb38370a1caa16e",
+    "dom/base/VisualViewport.cpp": "fb55dfafca1429b28326c46e400ea7b0366fe149d415955fcadc1faebd4f1138",
+    "dom/webidl/NavigatorUAData.webidl": "40b68e36ff26a80b0a9158c9ddedd393f78c991ef7e2de37c98779bd26cf8104",
+    "moz.build": "1cd3fafa53a5a57be947e369650aa783bc0743c95eab44fc39b5c2a8e2e1d203",
+    "netwerk/dns/nsHostResolver.cpp": "50a34d7293db9a2344f7091f836ca1c576f50ed80ad6124b0bb2421332024609",
+    "js/xpconnect/src/ExportHelpers.cpp": "eb7508c6a5c23f71ae7afdb634e0be41ae8d40402c277304fce16f7f9d01a88b",
+    "dom/security/featurepolicy/FeaturePolicyUtils.cpp": "f141f8d87cb693f3858d3076f6732e25862cb0542abaca0c00872cc05200e11e",
+    "dom/ipc/PContent.ipdl": "83d600d447b5927d85c5ecfc390576c815697730d47b8c0efdc0e6941dba3830",
+    "dom/media/mediacapabilities/moz.build": "7db67582116e0c16e29be3cef61b8969d7a7e2f7adfe7e98adb91c5a616415c8",
+    "layout/generic/nsTextRunTransformations.cpp": "6f52bd55700f531adedae4e64cfdd115725139c12d86f4f6c66d612c5846213c",
+    "layout/mathml/nsMathMLChar.cpp": "c2f630f1877fe008c394e1b25743765b656026ccc55c5664d02c599205dd399f",
+    "dom/indexedDB/moz.build": "3f19a38f82b04ae7782861dc9e12f0c8b5e137dd3e9dfe82c314bac62abe8a54",
+    "dom/base/FontListManager.h": "a05457501a6b8371e3960db9ea5f4465d088d62fba808b48b6ac678cab06dfd8",
+    "dom/media/MediaDevices.cpp": "852243cf721f8dbf4de7340f8e8cf927e1f9b9e1061601b94e4b90a57096c6ac",
+    "intl/locale/OSPreferences.cpp": "a16a607c0e1c635428f89e9b5e1500fa61f89ce679c5a08721ee6ff51e99fc82",
+    "devtools/server/actors/thread.js": "8f359064ecc599eda1374dbe6dc0b20b9dae22ca951d4acf91f0baa2c4aa3ef4",
+    "devtools/server/actors/webconsole/listeners/console-api.js": "5f07c8e2391eb48874f99c14a6a9b7a734fece32381ef26c6f281bec52ad8384",
+    "python/mach/mach/telemetry.py": "7cab37980fad85a874551ef09bf40666431285f3e5c813e45c8b8bd7a4b223c6",
+    "dom/security/featurepolicy/FeaturePolicyUtils.h": "ad43aff5a493aeb83707f64fc993fcdca27ee26dcb24b1f021d9026256061b00",
+    "browser/app/cloakfox.exe.manifest": "4f9f8191ab893a94b1cc52ccf8b5d7e6fa00e4eb4a1d985b7b9a872ece323ced",
+    "layout/style/FontFace.cpp": "70a161ae58fb397913b48309650ba79e301a6157fc43e76e0fe5624d5818986a",
+    "netwerk/dns/GetAddrInfo.cpp": "3daef3b2bbf6502221227d36a1011a26234e2c3c96a14883aed977d038b47867",
+    "dom/base/CloakfoxScreenPresentation.h": "158f0137d1fa18fb349b9fb1a380bf1181c9f0dff02f28fa653cc03faa7e07a4",
+    "dom/base/Document.h": "3153b84af2aefe3989b1f1ad20f17e2551da28ec52c1f14277268f15c357ebed",
+    "dom/canvas/ClientWebGLContext.cpp": "d8fac6f40c2ab1f5e5b73e4dc67ed6c1c22581a148b302f4b3681575ed5533ac",
+    "gfx/thebes/gfxFont.h": "17d3caf6dddc6a81b3c9e5e90ffdd80cd26dc7cbc99217b02e3211d1d5086515",
+    "dom/base/Document.cpp": "cf46650a4c9b3bd227e250bda169e733c90856419b2d868343c7aa11642a922a",
+    "dom/webidl/WorkerNavigator.webidl": "99ee7928e3d19ab425db77f4358ab75ba61ea6dd42008e70d6812c796845f597",
+    "dom/media/webspeech/synth/moz.build": "cdd332be5b75ee327bee2ea3d809218266675b6234bed0706772103bd8b00d90",
+    "dom/workers/moz.build": "701aa2c5538ae496de0ee1da71f231a8d87e67cbcd62797450e91566cce7066b",
+    "gfx/thebes/moz.build": "c31b670a76cf64c47782dcf1f317e4261c4640a4ed3ab3202c5579f7b0bacb06",
+    "dom/quota/moz.build": "04b8a21d431ee1f6f88eee6c6eb6c35778523b63f6f88b1865d1c2d019cd1312",
+    "dom/base/NavigatorUAData.cpp": "ef0a2b46112b3083659b69d32e964878c9cf0595a3393cc30fb3905914f7e550",
+    "dom/base/FontListManager.cpp": "523a916892e09c82b07d1bb71930b033ad8ebd301647030c09ea1f538b530a8a",
+    "netwerk/protocol/http/Http2Compression.h": "e91472e0230d2803774e11517a63b76a36a22e66d1a51f58ea5f9ef939a259ba",
+    "dom/events/TouchEvent.cpp": "0e83dfe1fc09a0a07f2547f49fbe3bf57610b3855a4d118b8b5326e5418034fa",
+    "dom/events/EventDispatcher.cpp": "836145fc2653f396bed061ca7f1a94e7fa61baddbc41afc8d4c8a5726950ab29",
+    "dom/media/CubebUtils.cpp": "5a1a66d7e9b51b5e8cbe940992f4e35eceb1dcc140153579ca49f87c8f2583f9",
+    "browser/fonts/moz.build": "1eeda2b98087722820bb633abaf1d560e72d89b569264bd46d2b310588051dbe",
+    "dom/base/TimezoneManager.cpp": "ad9cefae7eb53cfb42a2c7568fbefd200f3033bd2ac20cf68d7627bbcc9e2c6a",
+    "browser/components/sessionstore/SessionFile.sys.mjs": "1236a21fcdd41dba4ba9b483b1d3c1b36e407573f93087d957973cc10d3a80f8",
+    "netwerk/base/nsIOService.cpp": "b63a85ee8098d22d863a1cbb1d7bc10be43f1b848bb0227b30ab80e6d71391e0",
+    "dom/events/InputEvent.cpp": "2011d76aea1a6ffdef2f1985fb512750044dc2ce6f30933dab23cc0a0a4a182a",
+    "browser/app/moz.build": "95d92315e65fde8dfbabefdee95518f1cfb37373466a3a43a34869ac30d84648",
+    "dom/base/CanvasFingerprintManager.h": "2aa3e4e7918cd613021ea69c7a6fe9a008eda2380747c27398e15b9a56b74b1b",
+    "dom/canvas/moz.build": "1562394160704ea8602e375950448da5c840d7befa45ebe0e8603e86fb94dbac",
+    "dom/base/TimezoneManager.h": "70439ab60d9e86d5631e32c17065bc96de037c6b5d422991361dc98967093434"
+  },
+  "results": [
+    {
+      "patch": "all-addons-private-mode.patch",
+      "exit": 0,
+      "log": "patching file 'toolkit/components/extensions/Extension.sys.mjs'\n"
+    },
+    {
+      "patch": "anti-font-fingerprinting.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/FontSpacingSeedManager.cpp'\npatching file 'dom/base/FontSpacingSeedManager.h'\npatching file 'dom/base/RoverfoxStorageManager.cpp'\npatching file 'dom/base/RoverfoxStorageManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/canvas/CanvasRenderingContext2D.cpp'\npatching file 'dom/canvas/OffscreenCanvas.cpp'\npatching file 'dom/webidl/Window.webidl'\npatching file 'dom/workers/WorkerPrivate.h'\npatching file 'gfx/src/nsFontMetrics.cpp'\npatching file 'gfx/src/nsFontMetrics.h'\npatching file 'gfx/thebes/gfxFont.cpp'\npatching file 'gfx/thebes/gfxFont.h'\npatching file 'gfx/thebes/gfxHarfBuzzShaper.cpp'\npatching file 'gfx/thebes/gfxTextRun.cpp'\npatching file 'gfx/thebes/gfxTextRun.h'\npatching file 'layout/base/nsLayoutUtils.cpp'\npatching file 'layout/base/nsLayoutUtils.h'\npatching file 'layout/base/nsPresContext.cpp'\npatching file 'layout/generic/MathMLTextRunFactory.cpp'\npatching file 'layout/generic/nsTextFrame.cpp'\npatching file 'layout/generic/nsTextRunTransformations.cpp'\npatching file 'layout/mathml/nsMathMLChar.cpp'\npatching file 'toolkit/components/resistfingerprinting/FontVisibilityProvider.h'\n"
+    },
+    {
+      "patch": "audio-context-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/CubebUtils.cpp'\npatching file 'dom/media/moz.build'\npatching file 'dom/media/webaudio/AudioContext.cpp'\npatching file 'dom/media/webaudio/moz.build'\n"
+    },
+    {
+      "patch": "audio-fingerprint-manager.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/AudioFingerprintManager.cpp'\npatching file 'dom/base/AudioFingerprintManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/media/webaudio/AnalyserNode.cpp'\npatching file 'dom/media/webaudio/AudioBuffer.cpp'\npatching file 'dom/media/webaudio/moz.build'\npatching file 'dom/webidl/Window.webidl'\n"
+    },
+    {
+      "patch": "browser-init.patch",
+      "exit": 0,
+      "log": "patching file 'browser/base/content/browser-init.js'\n"
+    },
+    {
+      "patch": "builtin-extension.patch",
+      "exit": 0,
+      "log": "patching file 'browser/extensions/moz.build'\n"
+    },
+    {
+      "patch": "canvas-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/CanvasFingerprintManager.cpp'\npatching file 'dom/base/CanvasFingerprintManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/canvas/CanvasRenderingContext2D.cpp'\npatching file 'dom/canvas/moz.build'\npatching file 'dom/webidl/Window.webidl'\npatching file 'dom/canvas/CanvasUtils.cpp'\n"
+    },
+    {
+      "patch": "chromeutil.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/ChromeUtils.cpp'\npatching file 'dom/base/ChromeUtils.h'\npatching file 'dom/chrome-webidl/ChromeUtils.webidl'\n"
+    },
+    {
+      "patch": "clipboard-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/events/Clipboard.cpp'\npatching file 'dom/events/moz.build'\n"
+    },
+    {
+      "patch": "codecs-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/mediaelement/HTMLMediaElement.cpp'\npatching file 'dom/media/mediaelement/moz.build'\n"
+    },
+    {
+      "patch": "document-lastmodified-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/Document.cpp'\n"
+    },
+    {
+      "patch": "config.patch",
+      "exit": 0,
+      "log": "patching file 'browser/installer/package-manifest.in'\npatching file 'lw/moz.build'\npatching file moz.build\n"
+    },
+    {
+      "patch": "cross-process-storage.patch",
+      "exit": 0,
+      "log": "patching file 'dom/ipc/ContentParent.cpp'\npatching file 'dom/ipc/ContentParent.h'\npatching file 'dom/ipc/PContent.ipdl'\npatching file 'ipc/ipdl/sync-messages.ini'\npatching file 'modules/libpref/Preferences.cpp'\n"
+    },
+    {
+      "patch": "domrect-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/Element.cpp'\n"
+    },
+    {
+      "patch": "fingerprint-injection.patch",
+      "exit": 0,
+      "log": "patching file 'browser/app/moz.build'\npatching file 'dom/base/Element.cpp'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsHistory.cpp'\npatching file 'dom/base/nsScreen.cpp'\npatching file 'dom/battery/BatteryManager.cpp'\npatching file 'dom/battery/moz.build'\npatching file 'dom/workers/WorkerNavigator.cpp'\npatching file 'dom/workers/moz.build'\nNo such line 113 in input file, ignoring\n"
+    },
+    {
+      "patch": "font-hijacker.patch",
+      "exit": 0,
+      "log": "patching file 'gfx/thebes/gfxPlatformFontList.cpp'\npatching file 'gfx/thebes/moz.build'\npatching file 'layout/style/FontFace.cpp'\npatching file 'layout/style/FontFaceImpl.cpp'\npatching file 'layout/style/FontFaceImpl.h'\npatching file 'layout/style/moz.build'\n"
+    },
+    {
+      "patch": "font-list-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/FontListManager.cpp'\npatching file 'dom/base/FontListManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/webidl/Window.webidl'\npatching file 'gfx/thebes/gfxPlatformFontList.cpp'\npatching file 'gfx/thebes/gfxTextRun.cpp'\npatching file 'layout/style/FontFaceSet.cpp'\n"
+    },
+    {
+      "patch": "font-bundle-packaging.patch",
+      "exit": 0,
+      "log": "patching file 'browser/installer/package-manifest.in'\n"
+    },
+    {
+      "patch": "system-font-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'gfx/thebes/gfxPlatformFontList.cpp'\npatching file 'gfx/thebes/gfxMacPlatformFontList.mm'\n"
+    },
+    {
+      "patch": "force-default-pointer.patch",
+      "exit": 0,
+      "log": "patching file 'layout/style/nsMediaFeatures.cpp'\n"
+    },
+    {
+      "patch": "geolocation-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/geolocation/Geolocation.cpp'\npatching file 'dom/geolocation/GeolocationPosition.cpp'\npatching file 'dom/geolocation/moz.build'\npatching file 'dom/system/NetworkGeolocationProvider.sys.mjs'\n"
+    },
+    {
+      "patch": "http2-fingerprint-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'netwerk/protocol/http/Http2Compression.cpp'\npatching file 'netwerk/protocol/http/Http2Compression.h'\npatching file 'netwerk/protocol/http/Http2Session.cpp'\n"
+    },
+    {
+      "patch": "indexeddb-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/indexedDB/IDBFactory.cpp'\npatching file 'dom/indexedDB/moz.build'\n"
+    },
+    {
+      "patch": "locale-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'browser/base/content/browser-init.js'\npatching file 'intl/components/moz.build'\npatching file 'intl/components/src/Locale.cpp'\npatching file 'intl/components/src/Locale.h'\npatching file 'intl/locale/OSPreferences.cpp'\n"
+    },
+    {
+      "patch": "macos-sandbox-crash-fix.patch",
+      "exit": 0,
+      "log": "patching file 'dom/ipc/ContentParent.cpp'\n"
+    },
+    {
+      "patch": "media-capabilities-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/mediacapabilities/MediaCapabilities.cpp'\npatching file 'dom/media/mediacapabilities/moz.build'\n"
+    },
+    {
+      "patch": "media-features-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'layout/style/nsMediaFeatures.cpp'\n"
+    },
+    {
+      "patch": "media-device-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/MediaDevices.cpp'\n"
+    },
+    {
+      "patch": "mediasource-istypesupported-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/mediasource/MediaSource.cpp'\npatching file 'dom/media/mediasource/moz.build'\n"
+    },
+    {
+      "patch": "navigator-extra-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/Navigator.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-webgpu-null-safety.patch",
+      "exit": 0,
+      "log": "patching file 'dom/webidl/WebGPU.webidl'\npatching file 'dom/base/Navigator.h'\npatching file 'dom/base/Navigator.cpp'\nNo such line 2444 in input file, ignoring\npatching file 'dom/workers/WorkerNavigator.h'\npatching file 'dom/workers/WorkerNavigator.cpp'\nNo such line 367 in input file, ignoring\n"
+    },
+    {
+      "patch": "navigator-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/NavigatorManager.cpp'\npatching file 'dom/base/NavigatorManager.h'\npatching file 'dom/base/Navigator.cpp'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/webidl/Window.webidl'\npatching file 'dom/workers/WorkerNavigator.cpp'\n"
+    },
+    {
+      "patch": "network-patches.patch",
+      "exit": 0,
+      "log": "patching file 'netwerk/protocol/http/moz.build'\npatching file 'netwerk/protocol/http/nsHttpHandler.cpp'\n"
+    },
+    {
+      "patch": "notification-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/notification/Notification.cpp'\npatching file 'dom/notification/moz.build'\n"
+    },
+    {
+      "patch": "permissions-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/permission/PermissionStatus.cpp'\npatching file 'dom/permission/moz.build'\n"
+    },
+    {
+      "patch": "range-domrect-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/AbstractRange.cpp'\n"
+    },
+    {
+      "patch": "screen-orientation-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/ScreenOrientation.cpp'\n"
+    },
+    {
+      "patch": "screen-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/ScreenDimensionManager.cpp'\npatching file 'dom/base/ScreenDimensionManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/base/nsScreen.cpp'\npatching file 'dom/webidl/Window.webidl'\npatching file 'gfx/src/moz.build'\npatching file 'gfx/src/nsDeviceContext.cpp'\npatching file 'layout/style/nsMediaFeatures.cpp'\n"
+    },
+    {
+      "patch": "shadow-root-bypass.patch",
+      "exit": 0,
+      "log": "patching file 'dom/webidl/Element.webidl'\n"
+    },
+    {
+      "patch": "speech-voices-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/SpeechVoicesManager.cpp'\npatching file 'dom/base/SpeechVoicesManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/webidl/Window.webidl'\npatching file 'dom/media/webspeech/synth/SpeechSynthesis.cpp'\npatching file 'dom/media/webspeech/synth/moz.build'\n"
+    },
+    {
+      "patch": "storage-estimate-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/quota/StorageManager.cpp'\npatching file 'dom/quota/moz.build'\n"
+    },
+    {
+      "patch": "svg-bbox-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/svg/SVGGraphicsElement.cpp'\n"
+    },
+    {
+      "patch": "svg-geometry-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/svg/SVGGeometryElement.cpp'\n"
+    },
+    {
+      "patch": "svg-metrics-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/svg/SVGTextContentElement.cpp'\npatching file 'dom/svg/moz.build'\n"
+    },
+    {
+      "patch": "text-metrics-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/canvas/CanvasRenderingContext2D.cpp'\n"
+    },
+    {
+      "patch": "timing-jitter-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/nsGlobalWindowInner.cpp'\n"
+    },
+    {
+      "patch": "timezone-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/TimezoneManager.cpp'\npatching file 'dom/base/TimezoneManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/webidl/Window.webidl'\npatching file 'js/public/Date.h'\npatching file 'dom/base/nsGlobalWindowOuter.cpp'\npatching file 'dom/workers/WorkerPrivate.cpp'\npatching file 'dom/base/nsJSUtils.h'\npatching file 'dom/base/nsJSUtils.cpp'\npatching file 'js/src/vm/DateTime.cpp'\n"
+    },
+    {
+      "patch": "vibration-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/Navigator.cpp'\n"
+    },
+    {
+      "patch": "visual-viewport-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/VisualViewport.cpp'\n"
+    },
+    {
+      "patch": "voice-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/webspeech/synth/moz.build'\npatching file 'dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp'\n"
+    },
+    {
+      "patch": "webgl-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/WebGLParamsManager.cpp'\npatching file 'dom/base/WebGLParamsManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/canvas/ClientWebGLContext.cpp'\npatching file 'dom/canvas/ClientWebGLContext.h'\npatching file 'dom/canvas/moz.build'\npatching file 'dom/webidl/Window.webidl'\n"
+    },
+    {
+      "patch": "webgl-readback-noise.patch",
+      "exit": 0,
+      "log": "patching file 'dom/canvas/ClientWebGLContext.cpp'\n"
+    },
+    {
+      "patch": "websocket-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/websocket/WebSocket.cpp'\npatching file 'dom/websocket/moz.build'\n"
+    },
+    {
+      "patch": "webrtc-ip-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/WebRTCIPManager.cpp'\npatching file 'dom/base/WebRTCIPManager.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.cpp'\npatching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.h'\npatching file 'dom/media/webrtc/jsapi/moz.build'\npatching file 'dom/webidl/Window.webidl'\n"
+    },
+    {
+      "patch": "cloakfox-webrtc-network-policy.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.cpp'\npatching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.h'\n"
+    },
+    {
+      "patch": "window-name-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/nsGlobalWindowOuter.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-enabled-staticpref.patch",
+      "exit": 0,
+      "log": "patching file 'modules/libpref/moz.build'\npatching file 'modules/libpref/init/StaticPrefList.yaml'\n"
+    },
+    {
+      "patch": "cloak-config-webidl.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/CloakConfigOverlay.cpp'\npatching file 'cloakcfg/MaskConfig.hpp'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/webidl/Window.webidl'\n"
+    },
+    {
+      "patch": "unified-maskconfig.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/AudioFingerprintManager.cpp'\npatching file 'dom/base/CanvasFingerprintManager.cpp'\npatching file 'dom/base/FontSpacingSeedManager.cpp'\npatching file 'dom/base/ScreenDimensionManager.cpp'\npatching file 'dom/base/WebGLParamsManager.cpp'\npatching file 'dom/base/WebRTCIPManager.cpp'\n"
+    },
+    {
+      "patch": "http3-fingerprint-spoofing.patch",
+      "exit": 0,
+      "log": "patching file 'modules/libpref/init/StaticPrefList.yaml'\npatching file 'netwerk/protocol/http/Http3Session.cpp'\npatching file 'netwerk/socket/neqo_glue/NeqoHttp3Conn.h'\npatching file 'netwerk/socket/neqo_glue/src/lib.rs'\npatching file 'third_party/rust/neqo-http3/src/conn_params.rs'\npatching file 'third_party/rust/neqo-http3/src/lib.rs'\npatching file 'third_party/rust/neqo-http3/src/settings.rs'\npatching file 'third_party/rust/neqo-http3/.cargo-checksum.json'\n"
+    },
+    {
+      "patch": "http2-profile-webidl.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/webidl/Window.webidl'\n"
+    },
+    {
+      "patch": "cpp-first-pref-reader.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/RoverfoxStorageManager.cpp'\npatching file 'dom/base/RoverfoxStorageManager.h'\n"
+    },
+    {
+      "patch": "cpp-first-pref-migration.patch",
+      "exit": 0,
+      "log": "patching file 'browser/components/BrowserGlue.sys.mjs'\n"
+    },
+    {
+      "patch": "cpp-first-actors-registration.patch",
+      "exit": 0,
+      "log": "patching file 'toolkit/modules/ActorManagerParent.sys.mjs'\n"
+    },
+    {
+      "patch": "cpp-first-about-cloakfox.patch",
+      "exit": 0,
+      "log": "patching file 'browser/components/moz.build'\npatching file 'browser/components/about/components.conf'\npatching file 'browser/components/about/AboutRedirector.cpp'\n"
+    },
+    {
+      "patch": "cpp-first-error-stack-depth.patch",
+      "exit": 0,
+      "log": "patching file 'js/src/vm/ErrorObject.h'\n"
+    },
+    {
+      "patch": "cpp-first-worker-spoofers.patch",
+      "exit": 0,
+      "log": "patching file 'dom/workers/WorkerPrivate.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-optional-assets-car.patch",
+      "exit": 0,
+      "log": "patching file 'browser/app/moz.build'\npatching file 'toolkit/moz.configure'\n"
+    },
+    {
+      "patch": "worker-container-identity.patch",
+      "exit": 0,
+      "log": "patching file 'cloakcfg/MaskConfig.hpp'\npatching file 'dom/base/RoverfoxStorageManager.cpp'\npatching file 'dom/workers/WorkerNavigator.cpp'\npatching file 'dom/workers/WorkerPrivate.cpp'\npatching file 'cloakcfg/MaskConfig.hpp'\npatching file 'dom/workers/WorkerNavigator.cpp'\npatching file 'dom/workers/WorkerPrivate.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-letterboxing.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'layout/style/nsMediaFeatures.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/base/Element.cpp'\npatching file 'layout/base/nsPresContext.cpp'\npatching file 'browser/base/content/browser-init.js'\npatching file 'dom/base/ScreenOrientation.cpp'\npatching file 'dom/base/VisualViewport.cpp'\npatching file 'dom/base/nsScreen.cpp'\npatching file 'dom/base/nsGlobalWindowOuter.cpp'\npatching file 'docshell/base/BrowsingContext.h'\npatching file 'toolkit/components/resistfingerprinting/RFPHelper.sys.mjs'\npatching file 'modules/libpref/init/StaticPrefList.yaml'\npatching file 'docshell/base/BrowsingContext.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-container-forget.patch",
+      "exit": 0,
+      "log": "patching file 'browser/components/sessionstore/SessionWriter.sys.mjs'\npatching file 'browser/components/sessionstore/SessionFile.sys.mjs'\npatching file 'browser/components/sessionstore/SessionSaver.sys.mjs'\npatching file 'browser/components/sessionstore/SessionStore.sys.mjs'\n"
+    },
+    {
+      "patch": "cloakfox-scoped-data-clear.patch",
+      "exit": 0,
+      "log": "patching file 'toolkit/components/cleardata/ClearDataService.sys.mjs'\npatching file 'toolkit/components/cleardata/nsIClearDataService.idl'\n"
+    },
+    {
+      "patch": "cloakfox-strict-proxy-guard.patch",
+      "exit": 0,
+      "log": "patching file 'netwerk/base/nsProtocolProxyService.cpp'\n"
+    },
+    {
+      "patch": "site-fingerprint-isolation.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/AbstractRange.cpp'\npatching file 'dom/base/Element.cpp'\npatching file 'dom/canvas/CanvasRenderingContext2D.cpp'\npatching file 'dom/canvas/CanvasUtils.cpp'\npatching file 'dom/canvas/ClientWebGLContext.cpp'\npatching file 'dom/media/webaudio/AnalyserNode.cpp'\npatching file 'dom/media/webaudio/AudioBuffer.cpp'\npatching file 'dom/svg/SVGGeometryElement.cpp'\npatching file 'dom/svg/SVGGraphicsElement.cpp'\npatching file 'dom/svg/SVGTextContentElement.cpp'\npatching file 'dom/workers/WorkerPrivate.cpp'\npatching file 'gfx/thebes/gfxFont.cpp'\npatching file 'gfx/thebes/gfxFont.h'\npatching file 'gfx/thebes/gfxHarfBuzzShaper.cpp'\npatching file 'gfx/thebes/gfxTextRun.cpp'\npatching file 'gfx/thebes/gfxTextRun.h'\npatching file 'layout/base/moz.build'\npatching file 'layout/base/nsPresContext.cpp'\npatching file 'layout/base/nsPresContext.h'\npatching file 'toolkit/components/resistfingerprinting/FontVisibilityProvider.h'\n"
+    },
+    {
+      "patch": "cloakfox-upstream-hardening.patch",
+      "exit": 0,
+      "log": "patching file 'dom/webidl/Window.webidl'\npatching file 'layout/base/nsLayoutUtils.cpp'\npatching file 'dom/events/moz.build'\npatching file 'gfx/thebes/gfxPlatformFontList.cpp'\npatching file 'dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp'\npatching file 'gfx/thebes/gfxPlatformFontList.h'\npatching file 'dom/events/TouchEvent.cpp'\npatching file 'gfx/thebes/gfxMacPlatformFontList.mm'\npatching file 'gfx/thebes/gfxTextRun.cpp'\npatching file 'layout/style/nsMediaFeatures.cpp'\npatching file 'gfx/thebes/gfxUserFontSet.cpp'\npatching file 'browser/components/sessionstore/SessionStore.sys.mjs'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'gfx/thebes/gfxHarfBuzzShaper.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-region-policy-proxy.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/AbstractRange.cpp'\npatching file 'dom/base/Element.cpp'\npatching file 'dom/base/Navigator.cpp'\npatching file 'dom/base/TimezoneManager.cpp'\npatching file 'dom/base/TimezoneManager.h'\npatching file 'dom/base/nsGlobalWindowOuter.cpp'\npatching file 'dom/canvas/CanvasRenderingContext2D.cpp'\npatching file 'dom/geolocation/Geolocation.cpp'\npatching file 'dom/geolocation/GeolocationPosition.cpp'\npatching file 'dom/svg/SVGGraphicsElement.cpp'\npatching file 'dom/svg/SVGTextContentElement.cpp'\npatching file 'dom/system/NetworkGeolocationProvider.sys.mjs'\npatching file 'dom/workers/WorkerNavigator.cpp'\npatching file 'dom/workers/WorkerPrivate.cpp'\npatching file 'netwerk/base/nsProtocolProxyService.cpp'\npatching file 'netwerk/protocol/http/nsHttpChannelAuthProvider.cpp'\npatching file 'intl/components/src/Locale.cpp'\npatching file 'intl/components/src/Locale.h'\npatching file 'netwerk/protocol/http/HttpBaseChannel.cpp'\npatching file 'netwerk/protocol/http/nsHttpHandler.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-privacy-completion.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/RoverfoxStorageManager.cpp'\npatching file 'modules/libpref/Preferences.cpp'\npatching file 'dom/workers/WorkerPrivate.cpp'\npatching file 'dom/base/RoverfoxStorageManager.h'\npatching file 'netwerk/base/nsIOService.cpp'\npatching file 'netwerk/dns/nsHostResolver.cpp'\npatching file 'modules/libpref/init/StaticPrefList.yaml'\npatching file 'toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h'\npatching file 'build/moz.configure/update-programs.configure'\npatching file 'toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp'\npatching file 'toolkit/components/antitracking/URLQueryStrippingListService.sys.mjs'\npatching file 'netwerk/dns/GetAddrInfo.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-window-activity.patch",
+      "exit": 0,
+      "log": "patching file 'servo/components/style/gecko/wrapper.rs'\npatching file 'docshell/base/BrowsingContext.h'\npatching file 'layout/base/nsRefreshDriver.h'\npatching file 'servo/components/style/gecko/non_ts_pseudo_class_list.rs'\npatching file 'layout/style/res/ua.css'\npatching file 'dom/base/Document.h'\npatching file 'layout/style/GeckoBindings.cpp'\npatching file 'dom/base/nsFocusManager.cpp'\npatching file 'layout/base/nsRefreshDriver.cpp'\npatching file 'dom/webidl/Document.webidl'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'modules/libpref/init/StaticPrefList.yaml'\npatching file 'dom/base/nsFocusManager.h'\npatching file 'dom/base/Document.cpp'\npatching file 'docshell/base/BrowsingContext.cpp'\npatching file 'dom/webidl/DocumentOrShadowRoot.webidl'\npatching file 'layout/style/GeckoBindings.h'\npatching file 'dom/base/DocumentOrShadowRoot.h'\npatching file 'dom/events/PendingFullscreenEvent.h'\npatching file 'layout/style/res/html.css'\npatching file 'dom/base/DocumentOrShadowRoot.cpp'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/workers/WorkerPrivate.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-appearance.patch",
+      "exit": 0,
+      "log": "patching file 'browser/installer/package-manifest.in'\npatching file 'toolkit/xre/MacLaunchHelper.mm'\npatching file 'browser/components/BrowserGlue.sys.mjs'\npatching file 'toolkit/xre/nsCommandLineServiceMac.mm'\n"
+    },
+    {
+      "patch": "cloakfox-clipboard-signals.patch",
+      "exit": 0,
+      "log": "patching file 'modules/libpref/init/StaticPrefList.yaml'\npatching file 'dom/base/Document.h'\npatching file 'dom/base/Document.cpp'\npatching file 'dom/events/EventDispatcher.cpp'\npatching file 'dom/events/InputEvent.h'\npatching file 'dom/events/InputEvent.cpp'\npatching file 'dom/webidl/InputEvent.webidl'\n"
+    },
+    {
+      "patch": "cloakfox-pointer-activity.patch",
+      "exit": 0,
+      "log": "patching file 'dom/events/EventStateManager.cpp'\npatching file 'dom/events/EventStateManager.h'\n"
+    },
+    {
+      "patch": "cloakfox-hover-activity.patch",
+      "exit": 0,
+      "log": "patching file 'widget/nsGUIEventIPC.h'\npatching file 'dom/events/EventStateManager.cpp'\npatching file 'widget/MouseEvents.h'\npatching file 'dom/events/EventStateManager.h'\npatching file 'dom/ipc/BrowserBridgeParent.cpp'\npatching file 'dom/base/Document.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-native-worker-math.patch",
+      "exit": 0,
+      "log": "patching file 'dom/workers/WorkerPrivate.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-exported-function-identity.patch",
+      "exit": 0,
+      "log": "patching file 'js/xpconnect/src/ExportHelpers.cpp'\npatching file 'js/xpconnect/src/xpcprivate.h'\n"
+    },
+    {
+      "patch": "cloakfox-live-worker-math.patch",
+      "exit": 0,
+      "log": "patching file 'dom/workers/WorkerPrivate.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-bundled-font-rendering.patch",
+      "exit": 0,
+      "log": "patching file 'gfx/2d/ScaledFontMac.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-user-agent-data.patch",
+      "exit": 0,
+      "log": "patching file 'dom/webidl/NavigatorUAData.webidl'\npatching file 'dom/webidl/Navigator.webidl'\npatching file 'dom/base/Navigator.cpp'\npatching file 'dom/base/Navigator.h'\npatching file 'dom/webidl/WorkerNavigator.webidl'\npatching file 'dom/webidl/moz.build'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/NavigatorUAData.cpp'\npatching file 'dom/base/NavigatorUAData.h'\npatching file 'dom/workers/WorkerNavigator.h'\npatching file 'dom/workers/WorkerNavigator.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-math-data-correctness.patch",
+      "exit": 0,
+      "log": "patching file 'dom/workers/WorkerPrivate.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-math-data-toggle.patch",
+      "exit": 0,
+      "log": "patching file 'dom/workers/WorkerPrivate.cpp'\npatching file 'modules/libpref/init/StaticPrefList.yaml'\n"
+    },
+    {
+      "patch": "cloakfox-hackerrank-media-recovery.patch",
+      "exit": 0,
+      "log": "patching file 'toolkit/modules/ActorManagerParent.sys.mjs'\n"
+    },
+    {
+      "patch": "cloakfox-appearance-profile.patch",
+      "exit": 0,
+      "log": "patching file 'toolkit/profile/nsToolkitProfileService.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-screen-presentation.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/base/nsScreen.h'\npatching file 'dom/base/CloakfoxScreenPresentation.cpp'\npatching file 'dom/base/NavigatorUAData.cpp'\npatching file 'dom/base/CloakfoxScreenPresentation.h'\npatching file 'dom/base/nsScreen.cpp'\npatching file 'dom/base/ScreenOrientation.cpp'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/NavigatorUAData.h'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-testdome-screen-management.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/ScreenDetails.cpp'\npatching file 'dom/base/nsGlobalWindowInner.cpp'\npatching file 'dom/webidl/moz.build'\npatching file 'dom/security/featurepolicy/FeaturePolicyUtils.cpp'\npatching file 'dom/webidl/Screen.webidl'\npatching file 'dom/bindings/Bindings.conf'\npatching file 'dom/base/CloakfoxScreenAccess.h'\npatching file 'dom/base/ScreenDetailed.h'\npatching file 'dom/base/nsGlobalWindowInner.h'\npatching file 'dom/webidl/ScreenDetailed.webidl'\npatching file 'dom/webidl/Window.webidl'\npatching file 'dom/base/ScreenDetailed.cpp'\npatching file 'dom/webidl/ScreenDetails.webidl'\npatching file 'dom/base/ScreenDetails.h'\npatching file 'dom/base/moz.build'\npatching file 'dom/base/nsScreen.cpp'\npatching file 'dom/base/nsScreen.h'\npatching file 'dom/base/CloakfoxScreenPresentation.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-window-management-permission.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/Document.cpp'\npatching file 'dom/security/featurepolicy/FeaturePolicyUtils.cpp'\npatching file 'dom/security/featurepolicy/FeaturePolicy.h'\npatching file 'dom/security/featurepolicy/FeaturePolicy.cpp'\npatching file 'dom/webidl/Permissions.webidl'\npatching file 'dom/permission/PermissionStatus.cpp'\npatching file 'dom/permission/Permissions.cpp'\npatching file 'dom/security/featurepolicy/FeaturePolicyUtils.h'\npatching file 'dom/permission/PermissionUtils.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-screen-orientation-events.patch",
+      "exit": 0,
+      "log": "patching file 'dom/base/ScreenOrientation.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-webgl-live-state-followup.patch",
+      "exit": 0,
+      "log": "patching file 'dom/canvas/ClientWebGLContext.cpp'\npatching file 'dom/canvas/ClientWebGLContext.h'\npatching file 'cloakcfg/MaskConfig.hpp'\n"
+    },
+    {
+      "patch": "cloakfox-audio-analyser-copy-followup.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/webaudio/AnalyserNode.cpp'\npatching file 'dom/media/webaudio/AnalyserNode.h'\n"
+    },
+    {
+      "patch": "cloakfox-speech-error-followup.patch",
+      "exit": 0,
+      "log": "patching file 'dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp'\n"
+    },
+    {
+      "patch": "cloakfox-stock-resource-followup.patch",
+      "exit": 0,
+      "log": "patching file 'browser/base/content/browser-main.js'\npatching file 'browser/base/jar.mn'\npatching file 'browser/components/BrowserComponents.manifest'\npatching file 'toolkit/crashreporter/jar.mn'\n"
+    },
+    {
+      "patch": "cloakfox-windows-manifest-followup.patch",
+      "exit": 0,
+      "log": "patching file 'browser/app/cloakfox.exe.manifest'\n"
+    },
+    {
+      "patch": "bootstrap.patch",
+      "exit": 0,
+      "log": "patching file 'python/mozversioncontrol/mozversioncontrol/repo/source.py'\n"
+    },
+    {
+      "patch": "custom-ubo-assets-bootstrap-location.patch",
+      "exit": 0,
+      "log": "patching file 'toolkit/components/extensions/parent/ext-storage.js'\n"
+    },
+    {
+      "patch": "dbus_name.patch",
+      "exit": 0,
+      "log": "patching file 'toolkit/components/remote/nsDBusRemoteClient.cpp'\npatching file 'toolkit/components/remote/nsDBusRemoteServer.cpp'\n"
+    },
+    {
+      "patch": "devtools-bypass.patch",
+      "exit": 0,
+      "log": "patching file 'devtools/server/actors/thread.js'\npatching file 'devtools/server/actors/webconsole/listeners/console-api.js'\n"
+    },
+    {
+      "patch": "disable-data-reporting-at-compile-time.patch",
+      "exit": 0,
+      "log": "patching file 'browser/moz.configure'\npatching file 'python/mach/mach/telemetry.py'\n"
+    },
+    {
+      "patch": "mozilla_dirs.patch",
+      "exit": 0,
+      "log": "patching file 'toolkit/components/extensions/NativeManifests.sys.mjs'\npatching file 'toolkit/xre/nsXREDirProvider.cpp'\npatching file 'xpcom/build/nsXULAppAPI.h'\n"
+    },
+    {
+      "patch": "urlbarprovider-interventions.patch",
+      "exit": 0,
+      "log": "patching file 'browser/components/urlbar/UrlbarProviderInterventions.sys.mjs'\n"
+    }
+  ]
+}

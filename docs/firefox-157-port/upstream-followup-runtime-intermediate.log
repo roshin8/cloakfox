@@ -1,0 +1,28 @@
+FAIL: webgl mutable render state {"BLEND_COLOR": [0.5, 0.25, 0.125, 0.5], "COLOR_CLEAR_VALUE": [0.25, 0.5, 0.75, 1], "COLOR_WRITEMASK": [true, true, true, true], "DEPTH_RANGE": [0.25, 0.75], "DEPTH_WRITEMASK": [false], "FRONT_FACE": [2304], "SCISSOR_BOX": [5, 6, 7, 8], "VIEWPORT": [1, 2, 3, 4]}
+FAIL: webgl renderer strings remain coherent ["Apple M1, or similar", "local-owner-renderer"]
+PASS: webgl actual context attributes {"anisotropy": null, "attrs": {"alpha": false, "antialias": true, "depth": false, "failIfMajorPerformanceCaveat": false, "powerPreference": "default", "premultipliedAlpha": true, "preserveDrawingBuffer": true, "stencil": true}, "extError": 1280, "fallback": 16, "fixed": 4096, "versionError": 1280, "versionOnly": null}
+PASS: webgl version gates {"anisotropy": null, "attrs": {"alpha": false, "antialias": true, "depth": false, "failIfMajorPerformanceCaveat": false, "powerPreference": "default", "premultipliedAlpha": true, "preserveDrawingBuffer": true, "stencil": true}, "extError": 1280, "fallback": 16, "fixed": 4096, "versionError": 1280, "versionOnly": null}
+PASS: webgl extension gates {"anisotropy": null, "attrs": {"alpha": false, "antialias": true, "depth": false, "failIfMajorPerformanceCaveat": false, "powerPreference": "default", "premultipliedAlpha": true, "preserveDrawingBuffer": true, "stencil": true}, "extError": 1280, "fallback": 16, "fixed": 4096, "versionError": 1280, "versionOnly": null}
+PASS: webgl captured fixed limit and null fallback {"anisotropy": null, "attrs": {"alpha": false, "antialias": true, "depth": false, "failIfMajorPerformanceCaveat": false, "powerPreference": "default", "premultipliedAlpha": true, "preserveDrawingBuffer": true, "stencil": true}, "extError": 1280, "fallback": 16, "fixed": 4096, "versionError": 1280, "versionOnly": null}
+FAIL: webgl2 mutable render state {"BLEND_COLOR": [0.5, 0.25, 0.125, 0.5], "COLOR_CLEAR_VALUE": [0.25, 0.5, 0.75, 1], "COLOR_WRITEMASK": [true, true, true, true], "DEPTH_RANGE": [0.25, 0.75], "DEPTH_WRITEMASK": [false], "FRONT_FACE": [2304], "SCISSOR_BOX": [5, 6, 7, 8], "VIEWPORT": [1, 2, 3, 4]}
+FAIL: webgl2 renderer strings remain coherent ["Apple M1, or similar", "local-owner-renderer"]
+PASS: webgl2 actual context attributes {"anisotropy": null, "attrs": {"alpha": false, "antialias": true, "depth": false, "failIfMajorPerformanceCaveat": false, "powerPreference": "default", "premultipliedAlpha": true, "preserveDrawingBuffer": true, "stencil": true}, "extError": 1280, "fallback": 16, "fixed": 4096, "versionError": 0, "versionOnly": 8}
+PASS: webgl2 version gates {"anisotropy": null, "attrs": {"alpha": false, "antialias": true, "depth": false, "failIfMajorPerformanceCaveat": false, "powerPreference": "default", "premultipliedAlpha": true, "preserveDrawingBuffer": true, "stencil": true}, "extError": 1280, "fallback": 16, "fixed": 4096, "versionError": 0, "versionOnly": 8}
+PASS: webgl2 extension gates {"anisotropy": null, "attrs": {"alpha": false, "antialias": true, "depth": false, "failIfMajorPerformanceCaveat": false, "powerPreference": "default", "premultipliedAlpha": true, "preserveDrawingBuffer": true, "stencil": true}, "extError": 1280, "fallback": 16, "fixed": 4096, "versionError": 0, "versionOnly": 8}
+PASS: webgl2 captured fixed limit and null fallback {"anisotropy": null, "attrs": {"alpha": false, "antialias": true, "depth": false, "failIfMajorPerformanceCaveat": false, "powerPreference": "default", "premultipliedAlpha": true, "preserveDrawingBuffer": true, "stencil": true}, "extError": 1280, "fallback": 16, "fixed": 4096, "versionError": 0, "versionOnly": 8}
+PASS: frequency reads do not accumulate noise {"byteSteps": 0, "floatDb": 7.62939453125e-06, "peakDb": -14.434335708618164, "state": "closed"}
+PASS: audio noise present when enabled and disabled by master switch {"byteSteps": 0, "floatDb": 7.62939453125e-06, "peakDb": -14.404804229736328, "state": "closed"}
+PASS: container 6 attached/detached/offscreen ownership ["local-owner-1", "local-owner-1", "local-owner-1", "local-owner-1"]
+PASS: container 6 worker owner "local-owner-1"
+PASS: container 7 attached/detached/offscreen ownership ["local-owner-2", "local-owner-2", "local-owner-2", "local-owner-2"]
+PASS: container 7 worker owner "local-owner-2"
+PASS: packaged crash-page resources [true, true, true]
+PASS: startup without development helper {"helper": "undefined", "ready": true}
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_camoufox_followup.py", line 149, in <module>
+    if __name__ == '__main__': main()
+                               ~~~~^^
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_camoufox_followup.py", line 147, in main
+    if failures: raise AssertionError('Regressions: ' + ', '.join(failures))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Regressions: webgl mutable render state, webgl renderer strings remain coherent, webgl2 mutable render state, webgl2 renderer strings remain coherent
