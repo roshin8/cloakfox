@@ -71,7 +71,7 @@ smaller measured subset.
 - [ ] Complete QPACK pressure and advanced QUIC fallback/migration acceptance.
 - [x] Verify the latest packaged application (16 mounted local runtime probes).
 - [x] Record the actual conformance boundary.
-- [ ] Commit and push the verified continuation.
+- [x] Commit and push the verified continuation (`cf2c058d4d`). Full-matching work above remains open.
 
 Interfaces: the versioned Gecko connection snapshot remains authoritative;
 new NSS presentation options are per socket, never global defaults. Native

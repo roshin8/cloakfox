@@ -81,3 +81,8 @@ NSS/neqo behave identically to Chromium's entire network stack. Gecko page/rende
 APIs also remain Gecko. The full-matching TODO remains unchecked; Chromium engine
 integration remains future work. The new artifact is a development/ad-hoc signed
 DMG, not a notarized release.
+
+Implementation and evidence commit `cf2c058d4d` is pushed to
+`origin/codex/firefox-157-port`. DMG SHA-256:
+`1024cfb8e4b3b4e947b9e1266cab977d12f9623c6de53280fd6a35946234def2`.
+Full matching is still unfinished; this commit records verified progress.
