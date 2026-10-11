@@ -17,7 +17,7 @@ from hyperframe.frame import Frame, SettingsFrame, WindowUpdateFrame
 from tls_hello import client_hello
 
 
-def peek_hello(sock):
+def peek_hello(sock, detailed=False):
     sock.settimeout(10)
     data=b''
     import time
@@ -35,7 +35,7 @@ def peek_hello(sock):
             if kind==22:assembled+=packet[offset+5:offset+5+size]
             offset+=5+size
         if len(assembled)>=4 and len(assembled)>=4+int.from_bytes(assembled[1:4],'big'):
-            return client_hello(assembled)
+            return client_hello(assembled, detailed=detailed)
         if packet==data:
             import time
             time.sleep(.005)
@@ -47,8 +47,11 @@ class Handler(socketserver.BaseRequestHandler):
         observation={}
         self.server.observed.append(observation)
         try:
-            observation['hello']=peek_hello(self.request)
-            with self.server.context.wrap_socket(self.request,server_side=True) as stream:
+            observation['hello']=peek_hello(self.request, detailed=self.server.detailed)
+            with self.server.context.wrap_socket(self.request,server_side=True,do_handshake_on_connect=False) as stream:
+                stream._cloakfox_observation=observation
+                stream.do_handshake()
+                observation['sessionReused']=stream.session_reused
                 observation['tlsVersion']=stream.version()
                 observation['cipher']=stream.cipher()[0]
                 observation['protocol']=stream.selected_alpn_protocol()
@@ -75,26 +78,40 @@ class Handler(socketserver.BaseRequestHandler):
                             observation['settings'].append(list(frame.settings.items()))
                         if isinstance(frame,WindowUpdateFrame) and frame.stream_id==0:
                             observation['windowUpdates'].append(frame.window_increment)
+                    responded=False
                     for event in conn.receive_data(incoming):
                         if isinstance(event,RequestReceived):
                             observation['pseudoHeaders'].append([k for k,v in event.headers if k.startswith(':')])
                             conn.send_headers(event.stream_id,[(':status','200'),('content-length','13')])
                             conn.send_data(event.stream_id,b'local-wire-ok',end_stream=True)
+                            responded=True
                     stream.sendall(conn.data_to_send())
+                    if responded and self.server.close_after_response: return
         except (OSError,ssl.SSLError,EOFError) as error:
             observation['error']=type(error).__name__
+            if self.server.detailed: observation['errorReason']=str(error)
 
 
 class TLSFixture(socketserver.ThreadingTCPServer):
     daemon_threads=True
     allow_reuse_address=True
-    def __init__(self,certificate,key):
+    def __init__(self,certificate,key, detailed=False,curve=None,
+                 resumption=False,close_after_response=False,maximum_version=None):
+        self.detailed=detailed
+        self.close_after_response=close_after_response
         self.observed=[]
         self.context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.minimum_version=ssl.TLSVersion.TLSv1_2
-        self.context.options|=ssl.OP_NO_TICKET
+        if not resumption: self.context.options|=ssl.OP_NO_TICKET
+        if maximum_version: self.context.maximum_version=maximum_version
         self.context.set_alpn_protocols(['h2','http/1.1'])
         self.context.load_cert_chain(certificate,key)
+        if curve:
+            self.context.set_ecdh_curve(curve)
+            def capture(stream,direction,version,content_type,message_type,data):
+                if direction=='read' and int(content_type)==22 and int(message_type)==1:
+                    stream._cloakfox_observation.setdefault('clientHellos',[]).append(client_hello(data,detailed=detailed))
+            self.context._msg_callback=capture
         super().__init__(('127.0.0.1',0),Handler)
         self.thread=threading.Thread(target=self.serve_forever,daemon=True);self.thread.start()
     def close(self):

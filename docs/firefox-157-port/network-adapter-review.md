@@ -22,3 +22,31 @@ Reviewer recommendations: certificate rejection is now checked with the Chrome a
 - Verify only local protocol fixtures. Cost: public challenge-site compatibility remains unknown.
 
 Deferred minors: none.
+
+
+## Conformance continuation review (2026-10-11)
+
+One fresh read-only reviewer examined the new canonical conformance patch and
+fixtures, then reviewed the repairs. This is separate from the historical
+review above; the full-matching requirement remains open.
+
+- Important: serialized Chrome handshake signature schemes differed from
+  receive-side acceptance. A trusted P-521 server proved the old Chrome-shaped
+  client accepted an unadvertised signature, while installed Chrome155 rejected
+  it and native Cloakfox accepted it. One shared per-socket list now constrains
+  both serialization and client peer-handshake signature validation. Existing
+  certificate-chain and algorithm policy remains authoritative. Real repaired
+  acceptance passes. This was a negotiation discrepancy, not a bypass of
+  configured cryptographic policy.
+- Minor: H3 ALPS tests used zero/default QPACK values. The fixture now withholds
+  ordinary server SETTINGS and observes a real non-default encoder-capacity
+  instruction of64 before releasing them. Accepted0RTT correctly uses cached
+  ordinary settings4096, which superseded the original ALPS value.
+- Minor: existing ordinary H2 SETTINGS allowed INITIAL_WINDOW_SIZE greater than
+  2^31-1; the new ALPS consumer inherited that behavior. A real ALPS overflow
+  was accepted before repair and is now rejected by the shared handler before
+  mutating stream windows.
+
+Follow-up review found no further Critical or Important issue in these repairs.
+That verdict does not certify full Chrome equivalence or the remaining protocol
+work. Mounted-package acceptance is recorded separately in the current evidence.

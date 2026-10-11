@@ -28,7 +28,8 @@ def capture(binary, root, certificate, kind):
         Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
     pin = base64.b64encode(hashlib.sha256(spki).digest()).decode()
     key = certificate.with_name("leaf-key.pem")
-    fixture = TLSFixture(certificate, key) if kind == "h2" else H3Fixtures(certificate, key, count=1)
+    detailed = os.environ.get('CHROME_WIRE_DETAILS') == '1'
+    fixture = TLSFixture(certificate, key, detailed=detailed,curve=os.environ.get('CHROME_WIRE_CURVE')) if kind == "h2" else H3Fixtures(certificate, key, count=1, detailed=detailed, alps=b"\x04\x04\x01\x00\x07\x00" if os.environ.get("CHROME_QUIC_ALPS")=="1" else None)
     try:
         port = fixture.server_address[1] if kind == "h2" else fixture.ports[0]
         args = [binary, "--headless=new", f"--user-data-dir={root}", "--no-first-run",
@@ -49,12 +50,19 @@ def capture(binary, root, certificate, kind):
             assert records, "No actual H2 request observed"
             record = records[0]
             assert record["tlsVersion"] == "TLSv1.3" and record["protocol"] == "h2", record
-            return {k: record[k] for k in ("hello", "settings", "windowUpdates", "pseudoHeaders")}
+            result={k: record[k] for k in ("hello", "settings", "windowUpdates", "pseudoHeaders")}
+            if 'clientHellos' in record:result['clientHellos']=record['clientHellos']
+            return result
         record = fixture.observed[0]
+        if os.environ.get("CHROME_QUIC_ALPS")=="1":
+            assert record.get("alpsClientEE"),record
         assert record["handshakes"] and record["alpn"] == ["h3"], record
         assert record["requests"] and record.get("settings") is not None, record
-        return {"hello": record["clientHellos"][0],
+        result={"hello": record["clientHellos"][0],
                 "transportParameters": record["transportParameters"][0], "settings": record["settings"]}
+        if detailed:
+            result.update(parameterDetails=record['parameterDetails'][0], initialPackets=record.get('initialPackets',[]))
+        return result
     finally:
         fixture.close()
 
@@ -63,6 +71,12 @@ def comparable(record):
     # Modern Chrome permutes TLS extensions and QUIC parameters. Preserve raw
     # order in the artifact, and compare sets for these two randomized fields.
     out = {**record, "hello": {**record["hello"], "extensions": sorted(record["hello"]["extensions"])}}
+    if 'shape' in out['hello']:
+        # GREASE payload size and ECH padding vary; retain in the artifact,
+        # rather than requiring repeated fresh random choices to be equal.
+        del out['hello']['shape']
+    out.pop('parameterDetails',None)
+    out.pop('initialPackets',None)
     if "transportParameters" in out:
         out["transportParameters"] = sorted(out["transportParameters"], key=lambda pair: pair[0])
     if "pseudoHeaders" in out:
@@ -77,7 +91,7 @@ def main():
                              text=True, timeout=10).stdout.strip()
     report = {"version": version, "referenceOnly": True,
               "trust": "temporary loopback fixture leaf SPKI only",
-              "limits": ["GREASE stripped", "extension payloads not compared",
+              "limits": ["GREASE values normalized; only public presentation fields retained" if os.environ.get('CHROME_WIRE_DETAILS')=='1' else "GREASE stripped; extension payloads not compared",
                          "fresh sessions only; no resumption, 0-RTT or packet-scheduling comparison"]}
     with tempfile.TemporaryDirectory(prefix="cloakfox-chrome-reference-") as temp:
         root = Path(temp)

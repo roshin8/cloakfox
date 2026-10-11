@@ -30,7 +30,8 @@ def main():
         assert not d.find_element(By.ID,'cfx-network-follow-identity').is_selected()
         toggle();assert profile(0)==1
         assert 'Experimental' in d.find_element(By.ID,'cfx-network-profile-status').text
-        assert 'ALPS' in d.find_element(By.ID,'cfx-network-profile-status').text
+        status=d.find_element(By.ID,'cfx-network-profile-status').text
+        assert 'trust-anchor IDs' in status and 'ALPS' not in status,status
         first=d.current_window_handle
         d.switch_to.new_window('tab');load()
         assert d.find_element(By.ID,'cfx-network-follow-identity').is_selected()

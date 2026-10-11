@@ -87,12 +87,15 @@ Development signing and local fixture tests do not complete these tasks.
 - [ ] **Partial:** An experimental container toggle and shared network-profile adapter
   are implemented experimentally for measured Chrome 155 TLS/H2 and QUIC/H3 fields.
   Preserve this adapter boundary for the future Chromium engine. Full matching
-  remains pending: ALPS, trust-anchor IDs, other TLS signatures/extensions,
-  GREASE shape, QUIC extensions/packet behavior, ECH/resumption/0-RTT and
-  complete resumed-protocol acceptance. Captured generation partitioning is implemented.
+  remains pending: trust-anchor IDs, policy-filtered signature differences,
+  HTTP/2 priority behavior, ECH retry/QUIC acceptance, QUIC loss/migration/ORIGIN
+  and QPACK-pressure coverage. Real TCP/H3 ALPS, detailed GREASE presentation,
+  HRR, TLS1.2/1.3 resumption, QUIC Retry/accepted0RTT and fresh TCP ECH are
+  implemented/tested. Captured generation partitioning is implemented.
   WebTransport retains native negotiation.
   See [the combined identity spec](docs/superpowers/specs/2026-10-11-network-identity-toggle.md)
   and [implementation plan](docs/superpowers/plans/2026-10-11-network-profile-adapters.md).
+  [Latest conformance evidence](docs/firefox-157-port/network-conformance-verification.md).
 
 ## Older items — status needs rechecking
 

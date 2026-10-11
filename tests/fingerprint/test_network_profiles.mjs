@@ -32,7 +32,8 @@ test('opt-in Chrome intent selects one combined native adapter profile', () => {
   assert.equal(result.profileId,1);assert.equal(result.family,'chrome');
   assert.deepEqual(result.protocols,{h2:'chrome',tls:1,quic:1,h3:1});
   assert.equal(result.experimental,true);
-  assert.ok(result.gaps.includes('ALPS')); // Never report complete parity while unsupported.
+  assert.ok(!result.gaps.includes('ALPS')); // Real h2/h3 negotiation and settings consumers now exist.
+  assert.ok(result.gaps.includes('trust-anchor IDs')); // Full Chrome parity is still not claimed.
   assert.equal(result.referenceMajor,155);
 });
 test('master off wins over the saved network choice', () => {

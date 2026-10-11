@@ -16,3 +16,10 @@ class DNSFixture(unittest.TestCase):
         for query in [b'', b'\0' * 12, self.query(1)[:-2]]:
             with self.assertRaises(ValueError): response(query)
         self.assertEqual(struct.unpack('!6H', response(self.query(65))[2][:12])[3], 0)
+    def test_explicit_https_records_and_no_external_resolution(self):
+        record=b'\x00\x01\x00\x00\x01\x00\x03\x02h2'
+        records={('positive.dns-fixture.test',65):record}
+        packet=response(self.query(65),records)[2]
+        self.assertEqual(struct.unpack('!6H',packet[:12])[3],1)
+        self.assertTrue(packet.endswith(record))
+        self.assertEqual(struct.unpack('!6H',response(self.query(1),records)[2][:12])[3],0)

@@ -49,3 +49,31 @@
 - [ ] Complete the fourth Important finding: full Chrome matching/acceptance; experimental intermediate work is not certified complete for that scope.
 - [x] Record implemented fields and remaining ALPS/trust-anchor/QUIC semantics explicitly. Full Chrome equivalence remains incomplete until those protocols and resumption/ECH/0-RTT cases are implemented and verified; do not equate matching basic wire fields with full equivalence.
 - [x] Commit/push verified intermediate work (`6d7253986e`) and record exact limits. Full matching remains open.
+
+
+## Task 5: Continue full-protocol conformance (2026-10-11)
+
+The user requested completion of the remaining matching requirement. Resume on
+this worktree at b93259177a. This task does not redefine full matching as a
+smaller measured subset.
+
+- [x] Capture detailed real Chrome TLS/H2 and QUIC/H3 shape without secrets.
+- [x] Extend real runtime checks for signatures, GREASE placement/lengths,
+  compression and absent Firefox-specific extensions; observe baseline RED.
+- [x] Implement per-socket NSS presentation while preserving policy filtering.
+- [x] Implement measured Initial/DCID/SCID, version, receive/datagram and GREASE behavior.
+- [ ] Implement full QUIC loss/migration and real H3 ORIGIN semantics.
+- [x] Implement real TCP/H3 ALPS negotiation, authenticated client EE, application
+  settings consumption and isolated resumption/accepted0RTT cache behavior.
+- [x] Verify fresh real TCP ECH decryption through verified DoH/HTTPS records.
+- [ ] Complete ECH retry/QUIC and trust-anchor behavior; do not add fake bytes.
+- [x] Verify TLS1.2/1.3 resumption, HRR, QUIC Retry/accepted0RTT and ownership/security.
+- [ ] Complete QPACK pressure and advanced QUIC fallback/migration acceptance.
+- [x] Verify the latest packaged application (16 mounted local runtime probes).
+- [x] Record the actual conformance boundary.
+- [ ] Commit and push the verified continuation.
+
+Interfaces: the versioned Gecko connection snapshot remains authoritative;
+new NSS presentation options are per socket, never global defaults. Native
+Firefox mode must retain its wire behavior. Chromium remains an independent
+future engine adapter.

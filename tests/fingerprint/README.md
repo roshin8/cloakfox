@@ -457,8 +457,11 @@ CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
 Chrome trusts only the temporary fixture leaf's SPKI; the system keychain and
 existing profiles are untouched. The artifact preserves cipher/group/signature
 order, TLS extension IDs, QUIC transport parameters and H2/H3 SETTINGS. TLS
-extension and QUIC parameter order can vary across fresh connections. GREASE,
-extension payloads, resumption, 0-RTT and packet scheduling are not compared.
+extension and QUIC parameter order can vary across fresh connections. Set
+`CHROME_WIRE_DETAILS=1` to retain normalized GREASE lengths/placement,
+public extension payloads and packet-header lengths. Fresh reference captures
+exclude resumption, 0-RTT and packet scheduling; separate acceptance probes cover
+those scenarios.
 This is a reference capture, **not a claim that Cloakfox matches Chrome**.
 
 
@@ -485,7 +488,42 @@ NETWORK_PROFILE=chrome python tests/fingerprint/probe_websocket_routes.py
 These check implemented cipher/group/key-share ordering, H2 frames/header order,
 QUIC receive limits/H3 settings, exact owner/generation and pool separation, security and
 routing precedence, and actual Settings persistence. They do not establish full
-Chrome equivalence. ALPS, trust-anchor IDs, other TLS signatures/extensions,
-full GREASE shape and QUIC packet semantics remain open. WebTransport retains
+Chrome equivalence. Trust-anchor IDs, policy-filtered signatures, HTTP/2
+priority behavior, ECH retry/QUIC acceptance and advanced QUIC behavior remain
+open. Real ALPS, resumption/accepted0RTT, detailed GREASE, Retry and fresh TCP
+ECH have separate acceptance probes below. WebTransport retains
 native Firefox networking. The shared selector exposes intent independently
 of Gecko, so a future Chromium engine can provide its own native adapter.
+
+
+### Detailed protocol acceptance
+
+Install `requirements-wire.txt` and `requirements-h3.txt`. Detailed local probes:
+
+```sh
+NETWORK_IDENTITY_DETAILS=1 python tests/fingerprint/probe_network_identity.py
+NETWORK_IDENTITY_DETAILS=1 python tests/fingerprint/probe_quic_identity.py
+python tests/fingerprint/probe_network_resumption.py
+QUIC_ALPS=1 python tests/fingerprint/probe_quic_resumption.py
+```
+
+TCP ALPS, adversarial certificate compression/signature selection and fresh
+ECH use the loopback BoringSSL server. Build official BoringSSL (the recorded
+reference commit is `5b83e5d1abf0ae0033ae52ab579d906b67633b2c`), then:
+
+```sh
+c++ -std=c++17 -I "$BORINGSSL/include" -I "$BORINGSSL" \
+  tests/network/alps_server.cc "$BORINGSSL_BUILD/libssl.a" \
+  "$BORINGSSL_BUILD/libcrypto.a" -lz -o /tmp/cloakfox-alps-server
+ALPS_SERVER=/tmp/cloakfox-alps-server python tests/fingerprint/probe_alps_identity.py
+ALPS_SERVER=/tmp/cloakfox-alps-server python tests/fingerprint/probe_signature_selection.py
+ALPS_SERVER=/tmp/cloakfox-alps-server python tests/fingerprint/probe_ech_identity.py
+```
+
+`ALPS_CHROME_REFERENCE=1` / `SIGNATURE_CHROME_REFERENCE=1` run the corresponding
+installed-Chrome comparison with a temporary leaf-SPKI pin. Product probes keep
+certificate verification enabled and import only the fixture CA into disposable
+profiles. The ECH probe serves actual HTTPS DNS records through verified local
+DoH and requires server-side decryption plus client-side accepted-ECH status.
+The H3 fixture withholds ordinary SETTINGS until the first request and requires
+a non-default QPACK capacity update from ALPS before releasing them.

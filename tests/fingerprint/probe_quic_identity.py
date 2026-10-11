@@ -11,8 +11,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix='cloakfox-quic-identity-') as tmp:
         root=Path(tmp);ca,cert,key=create_certificates(root,['quic-identity.test'])
         for name,profile_id,master in [('firefox',0,True),('chrome',1,True),('master-off',1,False)]:
-            fixture=H3Fixtures(cert,key,count=1);profile=root/name;profile.mkdir()
-            os.environ['MOZ_LOG']='SSLTokensCache:5'
+            detailed=os.environ.get('NETWORK_IDENTITY_DETAILS')=='1'
+            fixture=H3Fixtures(cert,key,count=1,detailed=detailed);profile=root/name;profile.mkdir()
+            os.environ['MOZ_LOG']='SSLTokensCache:5,sync'
             os.environ['MOZ_LOG_FILE']=str(root/(name+'-cache'))
             d=launch(profile,root/(name+'.log'),accept_insecure_certs=False)
             try:
@@ -36,8 +37,27 @@ def main():
                 assert response['status']==0 and response['body']=='local-http3-ok',(response,fixture.observed)
                 observed=fixture.observed[0];assert observed['handshakes'] and observed['alpn']==['h3']
                 record={"hello":observed['clientHellos'][0],"transportParameters":observed['transportParameters'][0],"settings":observed['settings']}
+                if detailed:
+                    record.update(parameterDetails=observed['parameterDetails'][0],initialPackets=observed.get('initialPackets',[]))
                 report[name]=record
                 if name=='chrome':
+                    record['cachePolicy']=[d.execute_script("return [Services.prefs.getBoolPref('network.http.http3.enable_0rtt'),Services.prefs.getIntPref('network.ssl_tokens_cache_records_per_entry'),Services.prefs.getIntPref('cloakfox.container.7.network_state')]")]
+                    if detailed:
+                        path=Path(os.environ.get('QUIC_IDENTITY_REPORT','/tmp/cloakfox-quic-identity.json'))
+                        path.write_text(json.dumps(report,indent=2)+'\n')
+                        assert record['hello']['signatures']==[1027,2052,1025,1283,2053,1281,2054,1537,513],record
+                        assert not any(kind in record['hello']['extensions'] for kind in [23,28,34,5,65281]),record
+                        shape=record['hello']['shape']
+                        assert shape['ciphers']==[4865,4866,4867] and shape['groups']==[4588,29,23,24],shape
+                        assert shape['keyShares']==[[4588,1216],[29,32]],shape
+                        assert shape['payloads']['27']=='020002' and shape['payloads']['45']=='0101',shape
+                        # Real initial packets and supported versions, measured against Chrome 155.
+                        assert record['initialPackets'],record
+                        first=record['initialPackets'][0]
+                        assert {key:first[key] for key in ['datagramLength','version','destinationIdLength','sourceIdLength','tokenLength']}=={'datagramLength':1250,'version':1,'destinationIdLength':8,'sourceIdLength':0,'tokenLength':0},first
+                        assert dict(record['transportParameters'])[32]==65536,record
+                        assert dict(record['transportParameters'])[17]==[1,1],record
+                        assert dict(record['transportParameters'])[15]=={'opaqueLength':0},record
                     assert record['hello']['ciphers']==[4865,4866,4867],('Chrome QUIC TLS order missing',record)
                     assert record['hello']['groups']==[4588,29,23,24],record
                     assert record['hello']['keyShareGroups']==[4588,29],record
@@ -68,6 +88,7 @@ def main():
                     assert len(observed['clientHellos'])>before_wt
                     assert all(h['ciphers']==[4865,4867,4866] for h in observed['clientHellos'][1:])
                     wt_hellos=len(observed['clientHellos'])
+                    record['cachePolicy'].append(d.execute_script("return [Services.prefs.getBoolPref('network.http.http3.enable_0rtt'),Services.prefs.getIntPref('network.ssl_tokens_cache_records_per_entry'),Services.prefs.getIntPref('cloakfox.container.7.network_state')]") )
                     # Same origin, different owner: native profile must not
                     # reuse owner 7's Chrome QUIC session or inherit its choice.
                     response=d.execute_async_script(READ,'https://quic-identity.test/other-owner',8)
@@ -85,6 +106,7 @@ def main():
                     assert len(observed['clientHellos'])==wt_hellos+3,'Switch-back must establish a fresh Chrome generation'
                     assert observed['clientHellos'][-1]['ciphers']==[4865,4866,4867]
                     final_generation=d.execute_script("return Services.prefs.getIntPref('cloakfox.container.7.network_state',0)>>>1")
+                    record['cachePolicy'].append(d.execute_script("return [Services.prefs.getBoolPref('network.http.http3.enable_0rtt'),Services.prefs.getIntPref('network.ssl_tokens_cache_records_per_entry'),Services.prefs.getIntPref('cloakfox.container.7.network_state')]") )
                     assert final_generation>initial_generation
                     requests=len(observed['requests'])
                     for mode,proxy in [(2,''),(1,'http://127.0.0.1:1')]:
@@ -106,20 +128,25 @@ def main():
                         time.sleep(0.1)
                     fixture_keys=[line for line in cache.splitlines() if 'quic-identity.test' in line]
                     for expected in expected_keys:
-                        assert expected in cache, ('QUIC cache must partition captured generation/profile', expected, fixture_keys)
+                        assert expected in cache, ('QUIC cache must partition captured generation/profile', expected, fixture_keys,record['cachePolicy'])
                     record['cacheGenerations']={'initial':initial_generation,'native':initial_generation+1,'switchBack':final_generation}
 
 
             except Exception:
                 print('Failed QUIC mode:',name,'observations:',fixture.observed,flush=True)
                 for log in root.glob('*.log'):shutil.copy2(log,Path('/tmp')/('cfx-quic-failure-'+log.name))
+                for log in root.glob(name+'-cache*'):shutil.copy2(log,Path('/tmp')/('cfx-quic-failure-'+log.name))
                 raise
             finally:
                 try:d.quit()
                 except Exception:pass
                 fixture.close()
         def comparable(record):
-            return {**record,'hello':{**record['hello'],'extensions':sorted(record['hello']['extensions'])}}
+            result={**record,'hello':{**record['hello'],'extensions':sorted(record['hello']['extensions'])}}
+            result['hello'].pop('shape',None)
+            result.pop('parameterDetails',None)
+            result.pop('initialPackets',None)
+            return result
         assert comparable(report['firefox'])==comparable(report['master-off']),report
         path=Path(os.environ.get('QUIC_IDENTITY_REPORT','/tmp/cloakfox-quic-identity.json'));path.write_text(json.dumps(report,indent=2)+'\n')
         print('PASS: native QUIC TLS fields, actual flow-control/stream limits and H3 SETTINGS; default/master off preserved;',path)

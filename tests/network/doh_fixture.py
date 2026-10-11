@@ -6,7 +6,7 @@ import struct
 from urllib.parse import urlsplit, parse_qs
 
 
-def response(query):
+def response(query, records=None):
     if len(query) < 12:
         raise ValueError('Truncated header')
     ident, flags, questions, _, _, _ = struct.unpack('!6H', query[:12])
@@ -30,6 +30,11 @@ def response(query):
     kind, dnsclass = struct.unpack('!HH', query[offset:offset + 4])
     end = offset + 4
     host = '.'.join(labels).lower()
+    if records is not None:
+        data=records.get((host,kind),b'') if dnsclass==1 else b''
+        answer=b'\xc0\x0c'+struct.pack('!HHIH',kind,1,0,len(data))+data if data else b''
+        packet=struct.pack('!6H',ident,0x8180,1,int(bool(data)),0,0)+query[12:end]+answer
+        return host,kind,packet
     address = {1: '192.0.2.7', 28: '2001:db8::7'}.get(kind)
     valid = dnsclass == 1 and host.endswith('.dns-fixture.test') and address
     data = ipaddress.ip_address(address).packed if valid else b''
@@ -43,7 +48,7 @@ class DoH(http.server.BaseHTTPRequestHandler):
 
     def answer(self, query):
         try:
-            host, kind, data = response(query)
+            host, kind, data = response(query,getattr(self.server,'records',None))
         except (ValueError, UnicodeError):
             self.send_error(400)
             return

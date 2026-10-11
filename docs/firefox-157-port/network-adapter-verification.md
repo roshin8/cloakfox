@@ -1,5 +1,7 @@
 # Experimental network adapter verification
 
+Historical first-phase evidence (111 patches). For the later ALPS/GREASE/resumption/ECH work and current artifact, see [network-conformance-verification.md](network-conformance-verification.md).
+
 Work on `codex/firefox-157-port`, based on `845c12c0e4`. Native Firefox 157.0.1-beta.25 macOS arm64. Reference: actual installed Chrome 155.0.8059.40, captured by the existing local reference probe.
 
 ## Behavior

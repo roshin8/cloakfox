@@ -8,6 +8,15 @@ import unittest
 
 @unittest.skipUnless(importlib.util.find_spec('aioquic'), 'Install requirements-h3.txt for actual QUIC fixture self-test')
 class QUICFixture(unittest.TestCase):
+    def test_parameter_details_keep_public_options_and_discard_connection_ids(self):
+        from aioquic.buffer import Buffer
+        from h3_fixture import transport_details
+        wire=Buffer(capacity=100)
+        for kind,value in [(15,b'private-cid'),(12584,b'INAK'),(58,b'abc')]:
+            wire.push_uint_var(kind);wire.push_uint_var(len(value));wire.push_bytes(value)
+        result=transport_details(wire.data)
+        self.assertEqual(result, [[15,{'length':11}], [12584,{'length':4,'publicOptions':'494e414b'}], ['GREASE',{'length':3}]])
+
     def test_real_http3_exchange_counts_datagrams(self):
         from aioquic.asyncio import QuicConnectionProtocol, connect
         from aioquic.h3.connection import H3Connection, H3_ALPN
