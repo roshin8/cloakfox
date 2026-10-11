@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let TestDome's inspected screen-management capability gate work in Cloakfox with its default Firefox identity and the approved single virtual screen.
+**Goal:** Provide configurable native virtual-screen compatibility for allowlisted HTTPS sites, including TestDome, when Cloakfox uses a desktop Chrome/Chromium/Edge identity.
 
-**Architecture:** Share a window-owned native screen presentation between the existing Screen getters and new cycle-collected ScreenDetailed/ScreenDetails objects. Expose the new bindings only to the approved HTTPS principal with the master enabled, and integrate a virtual window-management permission with real document policy/lifecycle checks. Preserve Firefox's actual camera and display-capture flows.
+**Architecture:** Share a window-owned native screen presentation between the existing Screen getters and new cycle-collected ScreenDetailed/ScreenDetails objects. Expose the new bindings only when the master, separate feature toggle, owning document's desktop Chromium identity and editable exact-origin allowlist all permit it. Integrate a virtual window-management permission with real document policy/lifecycle checks. Preserve Firefox's actual camera and display-capture flows.
 
 **Tech Stack:** Gecko 146 C++/WebIDL, cycle collection, FeaturePolicy, native Permissions API, ordered patches, Selenium/geckodriver, local TLS fixtures, WebCodecs/MediaRecorder.
 
@@ -12,10 +12,13 @@
 
 ## Global Constraints
 
-- “Keep the default Firefox identity; a Chrome identity override is not a prerequisite.”
-- “Enable these surfaces only for an HTTPS document with the exact principal origin `https://app.testdome.com` and `cloakfox.enabled=true`.”
-- “Both Firefox and Chromium personas are eligible.”
-- “Other origins, insecure contexts, opaque principals, workers, and master-off retain the existing absent screen-management surface.”
+- Keep the default browser identity Firefox; this optional API requires a desktop Chrome/Chromium/Edge identity in its owning document.
+- Require `cloakfox.enabled=true`, `cloakfox.compat.screen_management=true` and an exact HTTPS principal origin in `cloakfox.compat.screen_management.origins`.
+- Default the feature toggle to false and the editable origins JSON array to `["https://app.testdome.com"]`. Empty lists enable no sites; invalid configuration fails closed.
+- Exclude Firefox/Safari/mobile identities, unlisted origins, insecure contexts, opaque principals, workers, feature-off and master-off.
+- Make virtual screen count configurable from 1–8, default 1, through `cloakfox.compat.screen_management.screen_count`. Wrong-type/out-of-range values fall back to 1.
+- Keep the toggle, count dropdown and editable allowlist adjacent in one Settings group.
+- Snapshot count per inner window and apply count changes after reload. Primary geometry uses persona fields; additional virtual screens tile horizontally with the same configured properties. No physical monitor enumeration or per-display editor is added.
 - “There are no MAIN-world scripts or JS-installed missing-API polyfills.”
 - “Physical monitor changes never alter the virtual topology or emit physical display events.”
 - “Screen/webcam capture remains the normal Firefox permission-and-chooser flow.”
@@ -26,21 +29,24 @@
 
 ## Review Focus
 
-1. A getter is invoked from another container/realm, especially container zero: resolve its **owner**, not the executing global or a global fallback (Task 1).
+1. A getter is invoked from another container/realm, especially container zero: resolve its **owner** for both UA eligibility and geometry, not the executing global or a global fallback (Task 1).
 2. An explicit modern policy denial is ignored because Gecko 146 only reads Feature-Policy: reject and propagate the denial into children (Task 3).
 3. Retained screen objects/methods outlive a frame: preserve safe owned data and reject inactive calls without dereferencing a destroyed window (Tasks 1–2).
-4. Scope checks match a parent or a lookalike hostname: exclude opaque/cross-origin/insecure/alternate-port documents while allowing a same-origin child (Task 2).
+4. Scope/config checks match a parent, caller UA or lookalike hostname, or a count edit invalidates frozen arrays: snapshot count per inner window and test 1/2/3/8 plus invalid values; require the owner's desktop Chromium UA and an exact listed origin; validate editable lists, empty/malformed values, explicit ports and live removal (Tasks 1–2).
 5. Codec support claims pass but recording stalls: use a headful synthetic fixture and verify nonempty encoded bytes at the actual TestDome settings (Task 4).
 
 ---
 
 ## File Map and Delivery Order
 
-Task 1 introduces a focused presentation/access helper and fixes owner resolution only for the approved virtual-screen presentation. Task 2 adds native screen objects and exposure. Task 3 adds permission queries and header-policy integration; invocation policy is checked in Task 2 and becomes fully testable when Task 3 registers the policy name. Task 4 validates synthetic recording and the signed payload. Ship the screen feature after all four tasks pass, not after the intermediate Task 2 build.
+Task 1 delivers the toggle/allowlist controls, desktop-UA gate and focused presentation/access helper, and fixes owner resolution only for the eligible virtual-screen presentation. Task 2 adds native screen objects and exposure. Task 3 adds permission queries and header-policy integration; invocation policy is checked in Task 2 and becomes fully testable when Task 3 registers the policy name. Task 4 validates synthetic recording and the signed payload. Ship the screen feature after all four tasks pass, not after the intermediate Task 2 build.
 
 Outer-repo deliverables:
 
-- `patches/cloakfox-screen-presentation.patch`: shared native owned presentation and origin predicate.
+- `patches/cloakfox-screen-presentation.patch`: shared native owned presentation, reusable desktop-UA classifier, toggle and exact allowlist predicate.
+- `settings/cloakfox.cfg`: feature-off, initial allowlist and screen-count defaults.
+- `additions/browser/components/cloakfox/content/settings.html`, `settings.js`: adjacent feature checkbox, screen-count dropdown and editable origins list, validation and reload guidance.
+- `tests/fingerprint/probe_screen_management_settings.py`: actual Settings UI editing, persistence, reset, validation and scope controls.
 - `patches/cloakfox-testdome-screen-management.patch`: native objects, WebIDL, Window ownership/exposure.
 - `patches/cloakfox-window-management-permission.patch`: permission enum/query and modern denial integration.
 - `patches/order.txt`: append those three in that order after all current patches. If the independent WebGPU repair is present, retain its placement after `navigator-extra-spoofing.patch`.
@@ -55,18 +61,18 @@ Outer-repo deliverables:
 Applied native files (the patches, not the ignored checkout, are committed):
 
 - Create `dom/base/CloakfoxScreenPresentation.{h,cpp}`, `ScreenDetailed.{h,cpp}`, `ScreenDetails.{h,cpp}`.
-- Modify `dom/base/nsScreen.{h,cpp}`, `ScreenOrientation.cpp`, `nsGlobalWindowInner.{h,cpp}`, `moz.build`.
+- Modify `dom/base/nsScreen.{h,cpp}`, `ScreenOrientation.cpp`, `nsGlobalWindowInner.{h,cpp}`, `NavigatorUAData.{h,cpp}`, `moz.build`.
 - Create `dom/webidl/ScreenDetailed.webidl`, `ScreenDetails.webidl`; modify `Screen.webidl`, `Window.webidl`, `Permissions.webidl`, `moz.build`.
 - Modify `dom/permission/Permissions.cpp`, `PermissionStatus.cpp`, `PermissionUtils.cpp`.
 - Modify `dom/security/featurepolicy/FeaturePolicy.{h,cpp}`, `FeaturePolicyUtils.cpp`, and `dom/base/Document.cpp` for the bounded modern header denial.
 
 ### Task 1: Establish an owner-based virtual screen presentation
 
-**Files:** Create `screen_management_fixture.py`, `probe_screen_presentation.py`, `cloakfox-screen-presentation.patch`; apply the presentation helper and changes to nsScreen/ScreenOrientation/Window DPR listed above. Modify `patches/order.txt`.
+**Files:** Create `screen_management_fixture.py`, `probe_screen_presentation.py`, `probe_screen_management_settings.py`, `cloakfox-screen-presentation.patch`; apply the presentation/access helper, reusable UA classifier and changes to nsScreen/ScreenOrientation/Window DPR listed above. Modify `patches/order.txt`, `settings/cloakfox.cfg` and the existing Settings HTML/JS.
 
 **Interfaces:**
 - Consumes: `CloakConfigOverlay_Get(uint32_t userContextId) -> std::string`, `nsPIDOMWindowInner::GetExtantDoc()`, `GetBrowsingContext()->OriginAttributesRef().mUserContextId`, existing `UseCloakfoxLetterboxing(const Document*)`.
-- Produces: `CloakfoxScreenAccess::IsEligible(nsPIDOMWindowInner*) -> bool`, `IsEnabled(JSContext*, JSObject*) -> bool`; `CloakfoxScreenPresentation::Read(nsPIDOMWindowInner*) -> Maybe<CloakfoxScreenPresentation>`; `nsScreen::GetVirtualPresentation() const -> const CloakfoxScreenPresentation*`. Python `ScreenManagementFixture(binary: str, headful: bool = False)` context manager provides `driver`, `chrome(script, *args)`, `open(path, host='app.testdome.com', scheme='https', container=0)`, `set_config(container, updates)`, `set_master(enabled)`, and `report_path`.
+- Produces: `CloakfoxScreenAccess::IsEligible(nsPIDOMWindowInner*) -> bool`, `IsEnabled(JSContext*, JSObject*) -> bool`, `ReadUserAgent(nsPIDOMWindowInner*) -> Maybe<nsString>`, `IsOriginAllowed(const nsACString&) -> bool`; `NavigatorUAData::IsDesktopChromiumIdentity(const nsAString&) -> bool`; `CloakfoxScreenPresentation::Read(nsPIDOMWindowInner*, uint32_t screenIndex = 0) -> Maybe<CloakfoxScreenPresentation>`; `nsGlobalWindowInner::GetCloakfoxVirtualScreenCount() const -> uint32_t` returns its constructor-time validated snapshot; `nsScreen::GetVirtualPresentation() const -> const CloakfoxScreenPresentation*`. Python `ScreenManagementFixture(binary: str, headful: bool = False)` context manager provides `driver`, `chrome(script, *args)`, `open(path, host='app.testdome.com', scheme='https', container=0)`, `set_config(container, updates)`, `set_master(enabled)`, `set_feature(enabled)`, `set_origins(origins)`, `set_screen_count(count)` (save then reload to apply), and `report_path`. Tests explicitly enable the feature and pin a desktop Chromium UA; a separate unseeded-profile control checks the shipped disabled default.
 
 - [ ] **Step 1: Add the local TLS fixture.** Generate a one-day self-signed certificate with SANs for `app.testdome.com`, `other.testdome.invalid`, `app.testdome.com.evil.invalid`, and `sub.app.testdome.com`. Bind only loopback ports 443 and 80 so the production exact-origin predicate is exercised. Do not stop a process occupying either port; fail with the port/socket error. Route only these names to loopback via `network.dns.localDomains` in a disposable Firefox profile and use `options.accept_insecure_certs = True` only in that WebDriver profile. No `/etc/hosts` edits, system trust installs or production switches.
 
@@ -82,9 +88,9 @@ options.set_preference('network.dns.localDomains',
 options.set_preference('network.trr.mode', 5)
 ```
 
-Use the existing `probe_media_permissions.py` chrome-context pattern with `--allow-system-access`. Local handlers serve only fixture resources and fail unknown paths. Assert the fixture receives every allowed-host request; no fixture navigation may reach the real TestDome network. Record `location.origin` and `isSecureContext` before assertions. Start/stop servers and driver in context-manager `try/finally`; preserve reports outside the temporary profile. An additional loopback 8443 TLS listener covers alternate-port exclusion later.
+Use the existing `probe_media_permissions.py` chrome-context pattern with `--allow-system-access`. Local handlers serve only fixture resources and fail unknown paths. Assert the fixture receives every allowed-host request; no fixture navigation may reach the real TestDome network. Record `location.origin` and `isSecureContext` before assertions. Start/stop servers and driver in context-manager `try/finally`; preserve reports outside the temporary profile. An additional loopback 8443 TLS listener covers default alternate-port exclusion and explicit-port allowlisting later. Add `other.testdome.invalid` to the allowlist only in positive editable-list tests; it remains excluded by default. Neither test hostname represents a production site selection.
 
-- [ ] **Step 2: Add red presentation tests with explicit pins.** Set container 0 to Firefox/1366x768, available rectangle `{left:0,top:0,width:1300,height:728}`, pixel/color depth 24 and DPR 1; container 2 to Firefox/1920x1080, available `{left:0,top:25,width:1880,height:1030}`, depth 30 and DPR 2. Add a portrait case with explicit orientation type. Disable letterboxing **only in that fixture profile** to make pinned geometry assertions exact; also run a second case with letterboxing enabled to compare existing screen/DPR semantics.
+- [ ] **Step 2: Add red presentation tests with explicit pins.** With the feature enabled and TestDome listed, set container 0 to desktop Chrome/1366x768, available rectangle `{left:0,top:0,width:1300,height:728}`, pixel/color depth 24 and DPR 1; container 2 to desktop Edge/1920x1080, available `{left:0,top:25,width:1880,height:1030}`, depth 30 and DPR 2. Add a portrait case with explicit orientation type. Disable letterboxing **only in that fixture profile** to make pinned geometry assertions exact; also run a second case with letterboxing enabled to compare existing screen/DPR semantics.
 
 ```javascript
 window.presentation = () => ({
@@ -98,7 +104,7 @@ window.presentation = () => ({
 });
 ```
 
-Verify exact pinned available dimensions, repeat reads/reloads, two containers, live saved override updates, and scope-off behavior. Use a privileged test-only call to another tab's Screen getter to prove default-container zero does not get reinterpreted as the caller's nonzero container. Retain a removed child's screen/orientation objects, then read them while a second window has different pins; require survival and no substitution of that second window's persona.
+Verify exact pinned available dimensions, repeat reads/reloads, two containers, live saved override updates, and master/feature-off, Firefox-UA and removed-origin behavior. Use a privileged test-only call to another tab's Screen getter to prove default-container zero does not get reinterpreted as the caller's nonzero container. Retain a removed child's screen/orientation objects, then read them while a second window has different pins; require survival and no substitution of that second window's persona.
 
 ```python
 assert result['availWidth'] == 1300
@@ -108,7 +114,55 @@ assert result['dpr'] == 1
 
 Run `CLOAKFOX_BIN=/Applications/Cloakfox.app/Contents/MacOS/cloakfox python3 tests/fingerprint/probe_screen_presentation.py`. Expected red: current GetAvailRect derives full width/height-minus-top instead of the explicit available rectangle, and current realm-relative fallbacks can resolve the wrong owner. Preserve the observed assertion failure; do not weaken pins to match the defect.
 
-- [ ] **Step 3: Implement the shared helper and exact principal predicate.** Use the owning window's document/principal; compare `GetOriginNoSuffix()` exactly, without a top-level URL or prefix match. Require main thread, nonchrome window, a nonopaque content principal, secure context, HTTPS principal URI and `StaticPrefs::cloakfox_enabled()`.
+- [ ] **Step 3: Implement the settings controls and owner-based access helper.** Require main thread, nonchrome window, a nonopaque content principal, secure context, HTTPS principal URI, the master, the feature toggle, a listed exact principal origin and the owner's desktop Chromium UA. Keep these checks centralized in IsEligible so exposure, invocation, geometry and permission queries agree.
+
+Add shipped defaults:
+
+```javascript
+defaultPref("cloakfox.compat.screen_management", false);
+defaultPref("cloakfox.compat.screen_management.screen_count", 1);
+defaultPref("cloakfox.compat.screen_management.origins",
+  '["https://app.testdome.com"]');
+```
+
+Use main-thread `Preferences::GetBool`/`GetCString` for the eligibility preferences and `Preferences::GetInt` for the screen count; verify content-process propagation and live changes in the probe. Add a checkbox using the existing `data-pref` binding and a multiline exact-origin editor with explicit **Save origins** and **Reset origins** buttons. Label the feature **Virtual screen-management API** and explain that it requires a desktop Chromium identity, reports the selected virtual screen count and still uses normal capture permissions. Place the toggle, **Virtual screen count** dropdown and origins editor together in one card; the count and list are directly beside/below the toggle, adapting to narrow windows. Show reload guidance beside all controls. The dropdown offers 1–8, defaults to 1 and saves an integer pref using `setIntPref`; give it ID `cfx-screen-count`. Geometry continues to use the existing Display persona controls. Explain that extra displays reuse that geometry in a horizontal layout. Reset restores only the default origins list; it does not enable the feature or reset personas. Use stable element IDs `cfx-screen-management`, `cfx-screen-origins`, `cfx-screen-origins-save`, `cfx-screen-origins-reset` and an aria-live error/status element `cfx-screen-origins-status`. On load, render the saved JSON array as one origin per line; visibly report malformed stored values instead of displaying the default as if it were saved.
+
+The privileged Settings save handler validates the complete draft before writing the JSON preference. Preserve the previous saved value on any invalid line, show that line's error, deduplicate canonical origins, and allow an empty editor to save `[]`:
+
+```javascript
+function parseScreenManagementOrigins(text) {
+  const origins = [];
+  for (const [index, line] of text.split(/\r?\n/).entries()) {
+    const value = line.trim();
+    if (!value) continue;
+    let url;
+    try { url = new URL(value); }
+    catch { throw new Error(`Line ${index + 1}: enter a complete HTTPS origin.`); }
+    if (url.protocol !== "https:" || url.username || url.password ||
+        url.pathname !== "/" || url.search || url.hash ||
+        !url.hostname || url.hostname.includes("*")) {
+      throw new Error(`Line ${index + 1}: use an exact HTTPS origin without a path or wildcard.`);
+    }
+    if (!origins.includes(url.origin)) origins.push(url.origin);
+  }
+  return origins;
+}
+const editor = document.getElementById("cfx-screen-origins");
+const status = document.getElementById("cfx-screen-origins-status");
+document.getElementById("cfx-screen-origins-save").addEventListener("click", () => {
+  try {
+    const origins = parseScreenManagementOrigins(editor.value);
+    Services.prefs.setStringPref("cloakfox.compat.screen_management.origins",
+      JSON.stringify(origins));
+    editor.value = origins.join("\n");
+    status.textContent = "Saved. Reload affected pages to update API availability.";
+  } catch (error) {
+    status.textContent = error.message;
+  }
+});
+```
+
+`IsOriginAllowed` parses the same JSON array natively, canonicalizes candidates through `NS_NewURI` and principal origin serialization, and compares exact origins. Reject credentials, non-HTTPS, non-origin paths/query/fragment/wildcards; ignore invalid entries and fail closed on malformed JSON/nonarrays. Empty/invalid lists do not fall back to TestDome. Nondefault ports qualify only when explicitly listed. Read the document principal, never the parent URL or a prefix/substring match.
 
 ```cpp
 namespace mozilla::dom {
@@ -119,12 +173,17 @@ struct CloakfoxScreenPresentation {
   double mDevicePixelRatio = 1.0;
   OrientationType mOrientation = OrientationType::Landscape_primary;
   uint16_t mAngle = 0;
-  static Maybe<CloakfoxScreenPresentation> Read(nsPIDOMWindowInner* aWindow);
+  uint32_t mScreenCount = 1;
+  uint32_t mScreenIndex = 0;
+  static Maybe<CloakfoxScreenPresentation> Read(
+      nsPIDOMWindowInner* aWindow, uint32_t aScreenIndex = 0);
 };
 class CloakfoxScreenAccess final {
  public:
   static bool IsEligible(nsPIDOMWindowInner* aWindow);
   static bool IsEnabled(JSContext* aCx, JSObject* aGlobal);
+  static Maybe<nsString> ReadUserAgent(nsPIDOMWindowInner* aWindow);
+  static bool IsOriginAllowed(const nsACString& aOrigin);
 };
 }
 ```
@@ -134,16 +193,33 @@ nsAutoCString origin;
 nsIPrincipal* principal = doc->NodePrincipal();
 if (!principal->IsContentPrincipal() ||
     NS_FAILED(principal->GetOriginNoSuffix(origin)) ||
-    !origin.EqualsLiteral("https://app.testdome.com")) {
+    !IsOriginAllowed(origin)) {
   return false;
 }
+```
+
+Resolve UA from the owning window's explicit container: first `NavigatorManager::GetUserAgent(ucid, ua)`, then the string `navigator.userAgent` in `CloakConfigOverlay_Get(ucid)`, including zero. If both are absent, use the existing owner-aware static native `Navigator::GetUserAgent(window, doc, Nothing(), ua)` fallback; errors fail eligibility. Do not use the executing global or a `MaskConfig::GetString` context fallback for a borrowed getter. Verify the resolved value agrees with that owner's page-facing navigator in normal and borrowed-receiver tests.
+
+Expose `NavigatorUAData::IsDesktopChromiumIdentity(const nsAString&)` as a C++ helper reusing its existing complete-product-token `IsChromiumUA` parser. Require a valid Chrome/Chromium product (Edge includes Chrome) and exclude Android, Mobile, iPhone and iPad tokens. Keep mixed Firefox+Chrome tokens and malformed products excluded. Do not change the existing UA Client Hints classifier/mobile behavior or introduce a page-visible method.
+
+```cpp
+if (!StaticPrefs::cloakfox_enabled() ||
+    !Preferences::GetBool("cloakfox.compat.screen_management", false)) {
+  return false;
+}
+auto ua = ReadUserAgent(aWindow);
+if (!ua || !NavigatorUAData::IsDesktopChromiumIdentity(*ua)) return false;
 ```
 
 `IsEnabled` obtains `xpc::WindowOrNull(aGlobal)` only on the main thread, then calls IsEligible; active state/policy are invocation checks, not exposure criteria. In Read, obtain `userContextId` from the owner, parse **`CloakConfigOverlay_Get(userContextId)` directly**, including explicit zero. Do not call `MaskConfig::GetInt32(key, ucid)` here: its current implementation ignores the argument; zero also means current context in other MaskConfig entry points. Do not expand this task into a global MaskConfig refactor.
 
 Read only from a fully active owner; an inactive owner returns Nothing so retained objects use their last owned snapshot. Read the same documented persona keys for width/height, available rectangle, depth, `window.devicePixelRatio`, and `screen:orientation:type`. Parse only typed finite numbers; bounds-check int32 dimensions/depth, require positive dimensions/DPR, use deterministic virtual defaults 1920x1080/24-bit/DPR1 if an eligible persona field is absent or invalid. Preserve signed positions, and keep available rectangle coherent inside the virtual rectangle. Use `screen.pixelDepth` when no valid colorDepth exists; normal Screen reports the same depth for both. Default position is zero. Primary orientation angle is 0 and secondary is 180. Reuse existing letterboxing presentation when enabled: top-inner RFP rectangle, native zoom-derived DPR and orientation from that rectangle; no physical screen fallback for eligible virtual data.
 
-- [ ] **Step 4: Route both existing and future detailed getters through that owned helper.** Add a mutable `Maybe<CloakfoxScreenPresentation> mVirtualPresentation` on nsScreen, initialized **before** constructing its ScreenOrientation. GetVirtualPresentation refreshes from its original owner while eligible; when that owner is detached it keeps only the last owned snapshot, never another current inner window's config. Call it at the beginning of GetRect/GetAvailRect/PixelDepth/GetOrientationAngle/GetOrientationType. Eligible virtual paths return its fields; other screens retain their current native/legacy paths.
+Snapshot a validated count in each `nsGlobalWindowInner` constructor: read the integer pref, accept 1–8, otherwise store 1 in `mCloakfoxVirtualScreenCount`. Expose only the C++ getter `GetCloakfoxVirtualScreenCount() const`. Count changes do not alter an existing inner window's value; a newly loaded inner window reads the saved preference. This keeps `screen.isExtended`, detailed screens and their frozen array coherent even if they are first accessed at different times. The count does not depend on a physical display or another window.
+
+Read defaults to index zero for ordinary Screen/DPR callers. For detailed index i, require i < the owner's cached count; set mScreenCount/mScreenIndex, reuse primary size/depth/orientation/DPR and shift both full and available rectangles by i × primary width along x. Validate the entire topology's maximum coordinate using checked int64 arithmetic before narrowing to int32; on overflow use a coherent 1920×1080, 24-bit, DPR1 virtual base at (0,0) for every index. Never silently reduce the selected count or fall back to physical screens. Live primary-persona updates recompute each display's geometry, preserving indices and object identities.
+
+- [ ] **Step 4: Route both existing and future detailed getters through that owned helper.** Add a mutable `Maybe<CloakfoxScreenPresentation> mVirtualPresentation` and immutable `uint32_t mVirtualScreenIndex` on nsScreen, initialized **before** constructing its ScreenOrientation. Extend its native constructor with an optional index argument defaulting to zero; ScreenDetailed passes its own index. GetVirtualPresentation refreshes from its original owner while eligible; when that owner is detached it keeps only the last owned snapshot, never another current inner window's config. Call it at the beginning of GetRect/GetAvailRect/PixelDepth/GetOrientationAngle/GetOrientationType. Eligible virtual paths return its fields; other screens retain their current native/legacy paths.
 
 ```cpp
 const CloakfoxScreenPresentation* nsScreen::GetVirtualPresentation() const {
@@ -152,23 +228,23 @@ const CloakfoxScreenPresentation* nsScreen::GetVirtualPresentation() const {
       !CloakfoxScreenAccess::IsEligible(owner)) {
     return nullptr;
   }
-  if (auto value = CloakfoxScreenPresentation::Read(owner)) {
+  if (auto value = CloakfoxScreenPresentation::Read(owner, mVirtualScreenIndex)) {
     mVirtualPresentation = std::move(value);
   }
   return mVirtualPresentation ? mVirtualPresentation.ptr() : nullptr;
 }
 ```
 
-Initialize the cache with Read(aWindow) before constructing mScreenOrientation. An active owner with the master turned off returns to its existing native path; a disconnected/inactive owner retains the last owned snapshot. Convert `mOrientation` to the existing HAL enum for nsScreen's native orientation accessors. In ScreenOrientation's GetType/GetAngle/DeviceType/DeviceAngle, return the screen's owned virtual orientation first for nonsystem callers. Skip `MaybeChanged`/physical orientation dispatch for virtual screens. Make nsScreen's destructor protected for the subclass in Task 2. In `nsGlobalWindowInner::GetDevicePixelRatio`, use Read(this)'s DPR for eligible non-system calls; Read must calculate letterboxing DPR without recursively calling this method. This makes window and detailed DPR share the same owner resolution.
+Initialize the cache with Read(aWindow, mVirtualScreenIndex) before constructing mScreenOrientation. An active owner with the master turned off returns to its existing native path; a disconnected/inactive owner retains the last owned snapshot. Convert `mOrientation` to the existing HAL enum for nsScreen's native orientation accessors. In ScreenOrientation's GetType/GetAngle/DeviceType/DeviceAngle, return the screen's owned virtual orientation first for nonsystem callers. Skip `MaybeChanged`/physical orientation dispatch for virtual screens. Make nsScreen's destructor protected for the subclass in Task 2. In `nsGlobalWindowInner::GetDevicePixelRatio`, use Read(this)'s DPR for eligible non-system calls; Read must calculate letterboxing DPR without recursively calling this method. This makes window and detailed DPR share the same owner resolution.
 
 Register the helper header in EXPORTS.mozilla.dom and its cpp in dom/base/moz.build. Generate a patch from saved pre-edit native files, append its order entry, and dry-run/apply it without resetting the checkout. When editing source directly to develop the patch, verify a reverse dry run instead of applying it a second time.
 
-- [ ] **Step 5: Build and verify the independently testable presentation fix.** Run `./mach build` in firefox-src, then the presentation probe on `obj-aarch64-apple-darwin/dist/bin/cloakfox`. Require exact owner pins, live updates, letterboxing coherence, safe retained objects, repeat loads, and unchanged master-off/non-TestDome Screen behavior. Add malformed/wrong-type/negative-size/DPR-NaN inputs and require deterministic coherent virtual fallbacks with no physical substitution. Preserve signed available positions in a valid virtual rectangle case.
+- [ ] **Step 5: Build and verify the independently testable presentation fix.** Run `./mach build` in firefox-src, then the presentation probe on `obj-aarch64-apple-darwin/dist/bin/cloakfox`. Require exact owner pins, live updates, letterboxing coherence, safe retained objects, repeat loads, and unchanged master-off/feature-off/Firefox-UA/unlisted-origin Screen behavior. Run `probe_screen_management_settings.py` against the same build: operate the real checkbox/count dropdown/editor, check their adjacent placement, save count 2 and two valid origins, reject invalid drafts without changing the pref, clear/reset the list, reload and restart to verify count/list persistence. Verify the count pref default 1 and integer values 1/2/3/8 survive reloads. Add cases for 0/-1/9 and wrong pref types: the Settings selection must show fallback 1. Full native count/frozen-array assertions run in Task 2, once detailed-screen bindings exist; changing the pref must then leave an existing inner window's cached count unchanged. Verify native eligibility responds to edits in existing content processes. Cover canonical host case/default-port normalization, explicit 8443, duplicate entries, wildcard/path/credential/HTTP rejection, malformed stored JSON, nonarrays and empty lists. Pair a Firefox owner in container 0 with Chrome in container 2 and test borrowed calls in both directions: neither caller can supply eligibility to the other owner. Add malformed/wrong-type/negative-size/DPR-NaN inputs and require deterministic coherent virtual fallbacks with no physical substitution. Preserve signed available positions in a valid virtual rectangle case.
 
 - [ ] **Step 6: Commit the focused deliverable.**
 
 ```sh
-git add patches/cloakfox-screen-presentation.patch patches/order.txt tests/fingerprint/screen_management_fixture.py tests/fingerprint/probe_screen_presentation.py
+git add patches/cloakfox-screen-presentation.patch patches/order.txt settings/cloakfox.cfg additions/browser/components/cloakfox/content/settings.html additions/browser/components/cloakfox/content/settings.js tests/fingerprint/screen_management_fixture.py tests/fingerprint/probe_screen_presentation.py tests/fingerprint/probe_screen_management_settings.py
 git commit -m "fix: resolve virtual screen presentation from its owning window"
 ```
 
@@ -180,7 +256,7 @@ git commit -m "fix: resolve virtual screen presentation from its owning window"
 - Consumes: Task 1's `CloakfoxScreenAccess` and presentation helper and `ScreenManagementFixture`.
 - Produces: `ScreenDetailed final : nsScreen`, `ScreenDetails final : DOMEventTargetHelper`, `nsGlobalWindowInner::GetScreenDetails(ErrorResult&) -> already_AddRefed<Promise>`, `nsScreen::IsExtended() const -> bool`.
 - ScreenDetails: constructor `(nsPIDOMWindowInner*)`; `GetScreens(nsTArray<RefPtr<ScreenDetailed>>&) const -> void`; `CurrentScreen() const -> ScreenDetailed*`; `WrapObject(JSContext*, JS::Handle<JSObject*>) -> JSObject*`; inherited event handlers.
-- ScreenDetailed: constructor `(nsPIDOMWindowInner*)`; `IsPrimary()/IsInternal() const -> bool`; `GetLabel(nsAString&) const -> void`; `DevicePixelRatio() const -> double`; overridden WrapObject.
+- ScreenDetailed: constructor `(nsPIDOMWindowInner*, uint32_t screenIndex)`; `IsPrimary()/IsInternal() const -> bool`; `GetLabel(nsAString&) const -> void`; `DevicePixelRatio() const -> double`; overridden WrapObject.
 
 - [ ] **Step 1: Add the failing first-script native API test.** Run the collector as an inline script at the start of the TLS document, not after WebDriver injects anything.
 
@@ -203,6 +279,16 @@ window.result = (async () => {
     inheritance: s instanceof Screen && s instanceof ScreenDetailed && a instanceof EventTarget,
     extended: screen.isExtended, primary: s.isPrimary, internal: s.isInternal,
     label: s.label, dpr: s.devicePixelRatio,
+    displays: a.screens.map(display => ({
+      primary: display.isPrimary, internal: display.isInternal, label: display.label,
+      width: display.width, height: display.height,
+      left: display.left, top: display.top,
+      availWidth: display.availWidth, availHeight: display.availHeight,
+      availLeft: display.availLeft, availTop: display.availTop,
+      depth: display.colorDepth, pixelDepth: display.pixelDepth,
+      dpr: display.devicePixelRatio,
+      orientation: display.orientation.type, angle: display.orientation.angle
+    })),
     equal: ['width','height','left','top','availWidth','availHeight','availLeft','availTop','colorDepth','pixelDepth']
       .every(k => s[k] === screen[k]),
     orientation: s.orientation.type === screen.orientation.type && s.orientation.angle === screen.orientation.angle
@@ -210,7 +296,7 @@ window.result = (async () => {
 })();
 ```
 
-Run the probe on the Task 1 build. Expected: getScreenDetails/ScreenDetails/ScreenDetailed/isExtended are absent and the API test fails. Verify Firefox UA is pinned so a brand override cannot accidentally satisfy the test.
+Run the probe on the Task 1 build. Expected: getScreenDetails/ScreenDetails/ScreenDetailed/isExtended are absent and the API test fails. Pin a desktop Chrome UA, explicitly enable the feature and list the fixture origin. Also run a Firefox-UA negative control requiring method/classes/isExtended to remain absent. Do not infer success from changing UA alone.
 
 - [ ] **Step 2: Add native WebIDL using Gecko's frozen-sequence convention.** General FrozenArray is not implemented in this Gecko version; use the established `[Cached, Constant, Frozen] sequence` binding to obtain the same JS frozen-array contract. Do not add hand-built JS arrays or binding-generator changes.
 
@@ -244,15 +330,22 @@ partial interface Screen {
 
 Include `mozilla/dom/CloakfoxScreenPresentation.h` in nsScreen.h, nsGlobalWindowInner.h, ScreenDetails.h and ScreenDetailed.h so the native binding headers make the predicate visible. Existing Screen's Bindings.conf mapping to nsScreen remains unchanged; the new interfaces use Gecko's default mozilla::dom names/header paths. Native functions, brands and receiver checks come from bindings. No WebIDL constructor is added.
 
-- [ ] **Step 3: Implement one native detailed screen and cycle collection.** ScreenDetailed's inherited getters use Task 1's owned presentation. IsPrimary/IsInternal return true; GetLabel assigns `u"Screen"_ns`; DevicePixelRatio uses GetVirtualPresentation and its retained owned fallback. nsScreen::IsExtended returns false. ScreenDetails stores `RefPtr<ScreenDetailed> mScreen`, creates it for its own inner window, and returns that one object:
+- [ ] **Step 3: Implement N native detailed screens and cycle collection.** ScreenDetailed's inherited getters use Task 1's owned/indexed presentation. IsPrimary/IsInternal are true only for index zero; GetLabel returns "Screen" for N=1, otherwise "Screen " plus the one-based index. DevicePixelRatio uses GetVirtualPresentation and its retained owned fallback. nsScreen::IsExtended checks the owner's cached presentation count > 1. ScreenDetails stores `nsTArray<RefPtr<ScreenDetailed>> mScreens` and constructs N objects for its own inner window, with N from GetCloakfoxVirtualScreenCount():
 
 ```cpp
-void ScreenDetails::GetScreens(nsTArray<RefPtr<ScreenDetailed>>& aResult) const {
-  aResult.AppendElement(mScreen);
+ScreenDetails::ScreenDetails(nsPIDOMWindowInner* aWindow)
+    : DOMEventTargetHelper(aWindow) {
+  const uint32_t count = aWindow->GetCloakfoxVirtualScreenCount();
+  for (uint32_t index = 0; index < count; ++index) {
+    mScreens.AppendElement(new ScreenDetailed(aWindow, index));
+  }
 }
-ScreenDetailed* ScreenDetails::CurrentScreen() const { return mScreen; }
+void ScreenDetails::GetScreens(nsTArray<RefPtr<ScreenDetailed>>& aResult) const {
+  aResult.AppendElements(mScreens);
+}
+ScreenDetailed* ScreenDetails::CurrentScreen() const { return mScreens[0]; }
 
-NS_IMPL_CYCLE_COLLECTION_INHERITED(ScreenDetails, DOMEventTargetHelper, mScreen)
+NS_IMPL_CYCLE_COLLECTION_INHERITED(ScreenDetails, DOMEventTargetHelper, mScreens)
 NS_IMPL_ADDREF_INHERITED(ScreenDetails, DOMEventTargetHelper)
 NS_IMPL_RELEASE_INHERITED(ScreenDetails, DOMEventTargetHelper)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(ScreenDetails)
@@ -282,7 +375,7 @@ already_AddRefed<Promise> nsGlobalWindowInner::GetScreenDetails(ErrorResult& aRv
 }
 ```
 
-The Promise rejection helpers above are generated by Promise.h's DOMEXCEPTION macro and DOMExceptionNames.h. Do not call its protected legacy MaybeRejectWithDOMException method. Retained saved methods must recheck eligibility, policy and active state on each invocation. Register new cpp/header/WebIDL files in the existing sorted moz.build lists. Record the exact new file hunk counts in the patch and avoid malformed/truncated new-file hunks.
+The Promise rejection helpers above are generated by Promise.h's DOMEXCEPTION macro and DOMExceptionNames.h. Do not call its protected legacy MaybeRejectWithDOMException method. Retained saved methods must recheck eligibility, policy and active state on each invocation. Screen-count edits do not revoke access; they take effect only in new inner windows, while all four access gates still recheck immediately. Register new cpp/header/WebIDL files in the existing sorted moz.build lists. Record the exact new file hunk counts in the patch and avoid malformed/truncated new-file hunks.
 
 - [ ] **Step 5: Extend the native contract, scope, events and lifecycle matrix.** Assert the collector's fields above, `s.devicePixelRatio === window.devicePixelRatio`, frozen array mutation failure, readonly native descriptor flags, no own `getScreenDetails` property, native function text, illegal-receiver TypeError, correct instanceof/brands and no public constructors. Listener add/remove and event-handler assignments are exercised with page-generated untrusted events, preserving native EventTarget behavior:
 
@@ -296,13 +389,13 @@ details.dispatchEvent(new Event('screenschange'));
 if (calls !== 1) throw new Error('Native listener removal failed');
 ```
 
-Repeat for currentscreenchange and detailed-screen change, and exercise onscreenschange/oncurrentscreenchange/onchange. Notify `screen-information-changed` from chrome context in this disposable profile, then verify zero **trusted** topology/orientation events and unchanged one-screen topology. Update saved geometry pins and verify shared getters change without topology events.
+Repeat for currentscreenchange and detailed-screen change, and exercise onscreenschange/oncurrentscreenchange/onchange. Notify `screen-information-changed` from chrome context in this disposable profile, then verify zero **trusted** topology/orientation events and unchanged configured N-screen topology. Repeat the API collector for counts 1/2/3/8, require `screens.length === N`, exactly one primary/internal display, `currentScreen === screens[0]`, `screen.isExtended === (N > 1)`, stable labels and horizontal full/available rectangles. Assert all displays share the primary depth/DPR/orientation and its size; cover negative primary positions and coordinate-overflow fallback. Change count on an already loaded document: its array identity, length and isExtended must remain unchanged with no trusted topology event. After reload, the new inner window must expose the new count coherently. Retained old objects must remain safe. Update saved geometry pins and verify shared getters change without topology events.
 
-Test Firefox and Chromium identities with master on; default-container and nonzero-container reloads; same-origin child; unrelated cross-origin child embedded by the eligible parent; opaque sandboxed srcdoc; insecure HTTP; sibling/subdomain/lookalike host; HTTPS port 8443; dedicated/shared/service workers; master off after reload. Excluded Window surfaces and classes must be absent; workers must have neither method nor screen classes. A same-origin inheriting blank document may be eligible by principal/secure context, not by its `about:blank` URL.
+Test Chrome, Chromium and Edge identities with master/feature on and Firefox, Safari, mixed/malformed product and mobile-UA negative controls; default-container and nonzero-container reloads; same-origin child; unrelated cross-origin child embedded by the eligible parent; opaque sandboxed srcdoc; insecure HTTP; sibling/subdomain/lookalike host; HTTPS port 8443 absent until explicitly allowlisted; default and edited lists; dedicated/shared/service workers; master or feature off after reload. Excluded Window surfaces and classes must be absent; workers must have neither method nor screen classes. A same-origin inheriting blank document may be eligible by principal/secure context, not by its `about:blank` URL.
 
-Save a method on an eligible window, turn the master off without reload, and require NotAllowedError on invocation. Remove an eligible iframe retaining its method/object, then require an InvalidStateError Promise from the saved method and safe owned screen reads; never silently serve the new active document's persona. Record a same-origin navigation/BFCache-back case: each new inner has its own details identity; restored active inner can resume its original identity safely.
+Save a method on an eligible window, then independently disable the master, disable the feature, remove its origin and switch its owner UA to Firefox without reload; each change must make invocation reject with NotAllowedError. Reload after each binding-exposure change and require the surface absent. Re-enable/re-add/select Chromium and reload to restore it. Allowlisted sites cannot enable the feature or change the list from web content. Remove an eligible iframe retaining its method/object, then require an InvalidStateError Promise from the saved method and safe owned screen reads; never silently serve the new active document's persona. Record a same-origin navigation/BFCache-back case: each new inner has its own details identity; restored active inner can resume its original identity safely.
 
-- [ ] **Step 6: Build and run the green native contract suite.** Run `./mach build`, presentation and screen-management probes on dist/bin. Policy-header and permission-query assertions are tagged as Task 3 cases until that patch exists; don't mark final API acceptance complete yet. Commit only the new patch, order and regression code:
+- [ ] **Step 6: Build and run the green native contract suite.** Run `./mach build`, Settings, presentation and screen-management probes on dist/bin. The Settings probe now verifies both saved preferences and first-script API exposure after reload/restart; in Task 1 it checks eligibility through the presentation helper only. Policy-header and permission-query assertions are tagged as Task 3 cases until that patch exists; don't mark final API acceptance complete yet. Commit only the new patch, order and regression code:
 
 ```sh
 git add patches/cloakfox-testdome-screen-management.patch patches/order.txt tests/fingerprint/probe_screen_management.py
@@ -374,12 +467,13 @@ void FeaturePolicyUtils::ApplyWindowManagementDenial(
 
 Use Gecko's exported `mozilla/net/SFVService.h` and generated `nsIStructuredFieldValues.h`; its GetItems signature accepts `nsTArray<RefPtr<nsISFVItem>>&`. Document::InitFeaturePolicy reads `Permissions-Policy` from its own response channel and calls this helper after inherited/legacy policy initialization. Process the bounded modern denial even if the pref for the **legacy** header is off. No regex/substr matching and no broad modern-policy implementation: this revision supports only explicit empty-list window-management denial plus existing iframe/legacy policy semantics. Modern allowlists don't expand the principal scope, override ancestor denial, or grant physical permission.
 
-- [ ] **Step 4: Exercise policy parsing and inheritance failures.** Add extra spacing, a multi-directive dictionary, an absent directive, a valid nonempty list, malformed header and lookalike directive `x-window-management`. Only the valid exact empty-list directive adds denial. Verify denied top-level and nested same-origin children, remote cross-origin child remaining ineligible, iframe denial after changing allow, and master-off query denied with the new API absent after reload. Query from dedicated/shared/service workers returns denied, not its parent's state. Keep `permissions:spoof=true` and prove it doesn't convert the virtual grant/denial to prompt.
+- [ ] **Step 4: Exercise policy parsing and inheritance failures.** Add extra spacing, a multi-directive dictionary, an absent directive, a valid nonempty list, malformed header and lookalike directive `x-window-management`. Only the valid exact empty-list directive adds denial. Verify denied top-level and nested same-origin children, remote cross-origin child remaining ineligible, iframe denial after changing allow, and master-off/feature-off/Firefox-UA/unlisted-origin query denied with the new API absent after reload. Fresh queries must observe live gate changes without a restart. Query from dedicated/shared/service workers returns denied, not its parent's state. Keep `permissions:spoof=true` and prove it doesn't convert the virtual grant/denial to prompt.
 
 - [ ] **Step 5: Build and run complete screen/permission regressions.**
 
 ```sh
 # First run ./mach build inside firefox-src.
+CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/bin/cloakfox" python3 tests/fingerprint/probe_screen_management_settings.py
 CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/bin/cloakfox" python3 tests/fingerprint/probe_screen_presentation.py
 CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/bin/cloakfox" python3 tests/fingerprint/probe_screen_management.py
 CLOAKFOX_BIN="$PWD/firefox-src/obj-aarch64-apple-darwin/dist/bin/cloakfox" python3 tests/fingerprint/probe_media_permissions.py
@@ -436,9 +530,9 @@ Add a 45-second bounded timeout and diagnostic progress state; inject an empty-b
 
 - [ ] **Step 5: Verify the mounted payload, not a stale app.** Mount read-only to a unique temp path, run the presentation/API/permission/recording and optional WebGPU probes on that app executable with disposable profiles, verify codesign, BuildID, XUL/executable hashes and final DMG SHA-256. Detach only the mount created for this verification. Preserve all previous DMGs and leave the installed app/user profile unchanged.
 
-- [ ] **Step 6: Inspect read-only TestDome onboarding in the new payload.** Under Firefox identity/master on, load the user-supplied start-test URL and verify the missing-screen-management unsupported message is gone and first-script API exists. Do not click start-test, begin an assessment, alter challenge decisions or approve real device capture. Inspect the Cloudflare link as specified in its independent plan if included. If a new unsupported gate appears, report and diagnose the exact remaining gate instead of saying full compatibility is achieved.
+- [ ] **Step 6: Inspect read-only TestDome onboarding in the new payload.** With a desktop Chromium identity, master/feature on and the TestDome exact origin allowlisted, load the user-supplied start-test URL and verify the missing-screen-management unsupported message is gone and first-script API exists. Do not click start-test, begin an assessment, alter challenge decisions or approve real device capture. Run a separate Firefox-UA control that confirms the new API is absent, without claiming TestDome support for that identity. Inspect the Cloudflare link under its independent Firefox-identity plan if included. If a new unsupported gate appears, report and diagnose the exact remaining gate instead of saying full compatibility is achieved.
 
-- [ ] **Step 7: Document verified behavior and commit the deliverable.** README explains origin/master scope, native frozen sequence, reload requirements, local probes and standard capture chooser. Verification document records every actual report and signed artifact path/checksum, plus these separate conclusions: native screen API verified; synthetic recording verified; live onboarding observed; physical screen/webcam capture and full assessment support remain unverified unless separately exercised in an authorized non-assessment session.
+- [ ] **Step 7: Document verified behavior and commit the deliverable.** README explains the four eligibility gates, feature-off default, Settings checkbox and editable exact-origin list, configurable count (1–8, default 1), adjacent controls, count-after-reload semantics and persona-based tiled geometry, native frozen sequence, reload requirements, local probes and standard capture chooser. Verification document records every actual report and signed artifact path/checksum, plus these separate conclusions: native screen API verified; synthetic recording verified; live onboarding observed; physical screen/webcam capture and full assessment support remain unverified unless separately exercised in an authorized non-assessment session.
 
 ```sh
 git add tests/fingerprint/probe_testdome_recording.py tests/fingerprint/fixtures/testdome_codec_profiles.json tests/fingerprint/README.md docs/superpowers/verification/2026-10-10-browser-compatibility.md
@@ -447,4 +541,4 @@ git commit -m "test: verify native TestDome compatibility and signed payload"
 
 ## Self-review
 
-Spec coverage: exact origin/master and owner/deterministic presentation are Tasks 1–2; native classes/frozen identity/events/teardown and scope exclusion are Task 2; virtual grant, workers, masks and modern/legacy policy denial are Task 3; codec fallback, relevant regressions, reproducible ordered patches, signed DMG and bounded onboarding are Task 4. Each Review Focus case has an owning regression. Interfaces use one owned window and one screen; no global config fallback, new OS display access, UA refactor or page polyfill is planned. Tests distinguish local/native capability from physical capture and full assessment delivery.
+Spec coverage: owner-based desktop Chromium UA, master/feature gates, configurable exact-origin allowlist, Settings validation/count/list persistence, immutable per-document topology and owner/deterministic presentation are Tasks 1–2; native classes/frozen identity/events/teardown and scope exclusion are Task 2; virtual grant, workers, masks and modern/legacy policy denial are Task 3; codec fallback, relevant regressions, reproducible ordered patches, signed DMG and bounded onboarding are Task 4. Each Review Focus case has an owning regression. Interfaces use one owned window and a validated array of 1–8 virtual screens; no global config fallback, new OS display access, UA refactor or page polyfill is planned. Tests distinguish local/native capability from physical capture and full assessment delivery.
