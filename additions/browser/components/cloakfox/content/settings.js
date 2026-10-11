@@ -23,8 +23,10 @@ const { fillPersonaKeys, writeHttpProfilePrefs, personaOSMode, listPersonas } = 
 
 // Write a container's cloak_cfg and keep its H2/H3 wire profile coherent
 // with the persona in one step. Used by every cloak_cfg (re)write below.
-function persistCloakCfg(ucid, seed) {
-  const cfg = buildCloakCfg(seed, ucid);
+function persistCloakCfg(ucid, seed, clearOverrides = false) {
+  const cfg = buildCloakCfg(seed, ucid, clearOverrides);
+  // Build successfully before discarding saved fields; keep region/privacy policy.
+  if (clearOverrides) clearAllOverrides(ucid);
   Services.prefs.setStringPref(cloakCfgPref(ucid), cfg);
   let ua = "";
   try { ua = JSON.parse(cfg)["navigator.userAgent"] || ""; } catch (_e) {}
@@ -117,7 +119,7 @@ function u32(seedB64, i) {
 }
 
 // MUST match SeedSync.buildCloakCfg shape — see CloakfoxSeedSync.sys.mjs.
-function buildCloakCfg(seedB64, ucid = null) {
+function buildCloakCfg(seedB64, ucid = null, clearOverrides = false) {
   const base = {
     "fingerprint:secret": seedB64,
     "canvas:seed": u32(seedB64, 0),
@@ -129,7 +131,8 @@ function buildCloakCfg(seedB64, ucid = null) {
     "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   };
-  return JSON.stringify(ucid === null ? base : applyOverrides(ucid, base));
+  return JSON.stringify(ucid === null ? base : applyOverrides(
+    ucid, base, clearOverrides ? {} : readOverrides(ucid)));
 }
 
 // ── container enumeration ──────────────────────────────────────────
@@ -781,7 +784,7 @@ document.addEventListener("DOMContentLoaded", () => {
     regenBtn.disabled = true;
     document.getElementById("cfx-generate-new").textContent = filter.value === "all" ? "Generate new identity" : `Generate ${filter.value} identity`;
     document.getElementById("cfx-persona-help").textContent =
-      `${choice.options.length - 1} BrowserForge previews. Both fresh generation and previews use the operating system above. Selecting an OS or preview does not apply it. Custom overrides are kept.`;
+      `${choice.options.length - 1} BrowserForge previews. Both fresh generation and previews use the operating system above. Selecting an OS or preview does not apply it. Custom overrides are kept unless cleared during fresh generation.`;
   }
   document.getElementById("cfx-persona-filter").addEventListener("change", () => { loadIdentityChoices(); updateHardwareChoices(); });
 
@@ -805,7 +808,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const previousLabel = button.textContent;
     const status = document.getElementById("cfx-identity-status");
     identityBusy = true;
-    const controls = [...document.querySelectorAll(".hero button, .hero select"), selectEl];
+    const controls = [...document.querySelectorAll(".hero button, .hero select, .hero input"), selectEl];
     const previousDisabled = controls.map(control => control.disabled);
     controls.forEach(control => { control.disabled = true; });
     button.classList.add("identity-working");
@@ -833,12 +836,14 @@ document.addEventListener("DOMContentLoaded", () => {
         Services.prefs.clearUserPref(prefix + "persona_hardware");
       }
       const seed = randomSeedB64();
+      const clearOverrides = index === -1 &&
+        document.getElementById("cfx-generation-clear-overrides").checked;
       Services.prefs.setStringPref(masterSeedPref(ucid), seed);
-      persistCloakCfg(ucid, seed);
+      persistCloakCfg(ucid, seed, clearOverrides);
       Services.prefs.savePrefFile(null);
       refreshContainer();
       succeeded = true;
-      status.textContent = `${index === -1 ? "Generated and applied" : "Applied selected profile"} · ${shortSeedTag(seed)}. Reload website tabs to use it.`;
+      status.textContent = `${index === -1 ? "Generated and applied" : "Applied selected profile"} · ${shortSeedTag(seed)}.${clearOverrides ? " Field overrides cleared." : ""} Reload website tabs to use it.`;
       status.className = "identity-status identity-success";
       const hero = document.querySelector(".current-persona-strip");
       if (hero) {

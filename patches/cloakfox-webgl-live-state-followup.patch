@@ -1,0 +1,299 @@
+diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -791,28 +791,17 @@
+   Run<RPROC(SetUnpackColorSpace)>(*mUnpackColorSpace);
+ }
+ 
+-bool ClientWebGLContext::MBoolVal(const std::string& key, bool defaultValue) {
+-  if (auto value = MaskConfig::GetAttribute<bool>(key, mIsWebGL2);
+-      value.has_value())
+-    return value.value();
+-  return defaultValue;
+-}
+-
+ uint32_t ClientWebGLContext::GetUserContextId() const {
++  // Detached documents keep their principal's container without a browsing context.
+   if (mCanvasElement) {
+-    if (Document* doc = mCanvasElement->OwnerDoc()) {
+-      if (BrowsingContext* bc = doc->GetBrowsingContext()) {
+-        return bc->OriginAttributesRef().mUserContextId;
++    return mCanvasElement->NodePrincipal()->OriginAttributesRef().mUserContextId;
++  }
++  if (mOffscreenCanvas) {
++    if (nsIGlobalObject* global = mOffscreenCanvas->GetRelevantGlobal()) {
++      if (auto* principal = global->PrincipalOrNull()) {
++        return principal->OriginAttributesRef().mUserContextId;
+       }
+-    }
+-  } else if (mOffscreenCanvas) {
+-    if (nsIGlobalObject* global = mOffscreenCanvas->GetRelevantGlobal()) {
+-      nsCOMPtr<nsPIDOMWindowInner> win = do_QueryInterface(global);
+-      if (win) {
+-        if (BrowsingContext* bc = win->GetBrowsingContext()) {
+-          return bc->OriginAttributesRef().mUserContextId;
+-        }
+-      } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
++      if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+         return wp->GetOriginAttributes().mUserContextId;
+       }
+     }
+@@ -833,40 +822,15 @@
+ 
+   const auto& options = notLost->info.options;
+ 
+-  result.mAlpha.Construct(MBoolVal("alpha", options.alpha));
+-  result.mDepth = MBoolVal("depth", options.depth);
+-  result.mStencil = MBoolVal("stencil", options.stencil);
+-  result.mAntialias.Construct(MBoolVal("antialias", options.antialias));
+-  result.mPremultipliedAlpha = MBoolVal(
+-      "webGl:contextAttributes.premultipliedAlpha", options.premultipliedAlpha);
+-  result.mPreserveDrawingBuffer =
+-      MBoolVal("preserveDrawingBuffer", options.preserveDrawingBuffer);
+-  result.mFailIfMajorPerformanceCaveat = MBoolVal(
+-      "failIfMajorPerformanceCaveat", options.failIfMajorPerformanceCaveat);
+-  if (auto value =
+-          MaskConfig::GetAttribute<std::string>("powerPreference", mIsWebGL2);
+-      value.has_value()) {
+-    // Convert to enum
+-    switch (value.value()[0]) {
+-      case 'd':
+-        result.mPowerPreference = dom::WebGLPowerPreference::Default;
+-        break;
+-      case 'l':
+-        result.mPowerPreference = dom::WebGLPowerPreference::Low_power;
+-        break;
+-      case 'h':
+-        result.mPowerPreference = dom::WebGLPowerPreference::High_performance;
+-        break;
+-      default:
+-        // Invalid value
+-        result.mPowerPreference = options.powerPreference;
+-        break;
+-    }
+-  } else {
+-    result.mPowerPreference = options.powerPreference;
+-  }
+-  result.mForceSoftwareRendering = MBoolVal(
+-      "forceSoftwareRendering", options.forceSoftwareRendering);
++  result.mAlpha.Construct(options.alpha);
++  result.mDepth = options.depth;
++  result.mStencil = options.stencil;
++  result.mAntialias.Construct(options.antialias);
++  result.mPremultipliedAlpha = options.premultipliedAlpha;
++  result.mPreserveDrawingBuffer = options.preserveDrawingBuffer;
++  result.mFailIfMajorPerformanceCaveat = options.failIfMajorPerformanceCaveat;
++  result.mPowerPreference = options.powerPreference;
++  result.mForceSoftwareRendering = options.forceSoftwareRendering;
+ }
+ 
+ // -----------------------
+@@ -2275,11 +2239,71 @@
+   const auto& limits = Limits();
+   const auto& state = State();
+ 
+-  // -
++  // Only fixed device limits come from captured tables. Mutable state,
++  // framebuffer-dependent values and strings retain native validation.
++  const bool fromTable = [&]() {
++    switch (pname) {
++      case LOCAL_GL_MAX_TEXTURE_SIZE:
++      case LOCAL_GL_MAX_VIEWPORT_DIMS:
++      case LOCAL_GL_SUBPIXEL_BITS:
++      case LOCAL_GL_ALIASED_POINT_SIZE_RANGE:
++      case LOCAL_GL_ALIASED_LINE_WIDTH_RANGE:
++      case LOCAL_GL_MAX_RENDERBUFFER_SIZE:
++      case LOCAL_GL_MAX_CUBE_MAP_TEXTURE_SIZE:
++      case LOCAL_GL_MAX_VERTEX_ATTRIBS:
++      case LOCAL_GL_MAX_TEXTURE_IMAGE_UNITS:
++      case LOCAL_GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS:
++      case LOCAL_GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS:
++      case LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS:
++      case LOCAL_GL_MAX_VARYING_VECTORS:
++      case LOCAL_GL_MAX_FRAGMENT_UNIFORM_VECTORS:
++        return true;
++      case LOCAL_GL_MAX_3D_TEXTURE_SIZE:
++      case LOCAL_GL_MAX_ELEMENTS_VERTICES:
++      case LOCAL_GL_MAX_ELEMENTS_INDICES:
++      case LOCAL_GL_MAX_TEXTURE_LOD_BIAS:
++      case LOCAL_GL_MAX_ARRAY_TEXTURE_LAYERS:
++      case LOCAL_GL_MIN_PROGRAM_TEXEL_OFFSET:
++      case LOCAL_GL_MAX_PROGRAM_TEXEL_OFFSET:
++      case LOCAL_GL_MAX_VERTEX_UNIFORM_BLOCKS:
++      case LOCAL_GL_MAX_FRAGMENT_UNIFORM_BLOCKS:
++      case LOCAL_GL_MAX_COMBINED_UNIFORM_BLOCKS:
++      case LOCAL_GL_MAX_UNIFORM_BUFFER_BINDINGS:
++      case LOCAL_GL_MAX_UNIFORM_BLOCK_SIZE:
++      case LOCAL_GL_MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS:
++      case LOCAL_GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS:
++      case LOCAL_GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT:
++      case LOCAL_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS:
++      case LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS:
++      case LOCAL_GL_MAX_VARYING_COMPONENTS:
++      case LOCAL_GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS:
++      case LOCAL_GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS:
++      case LOCAL_GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS:
++      case LOCAL_GL_MAX_SAMPLES:
++      case LOCAL_GL_MAX_ELEMENT_INDEX:
++      case LOCAL_GL_MAX_SERVER_WAIT_TIMEOUT:
++      case LOCAL_GL_MAX_VERTEX_OUTPUT_COMPONENTS:
++      case LOCAL_GL_MAX_FRAGMENT_INPUT_COMPONENTS:
++      case LOCAL_GL_MAX_CLIENT_WAIT_TIMEOUT_WEBGL:
++        return mIsWebGL2;
++      case LOCAL_GL_MAX_DRAW_BUFFERS:
++      case LOCAL_GL_MAX_COLOR_ATTACHMENTS:
++        return mIsWebGL2 ||
++               IsExtensionEnabled(WebGLExtensionID::WEBGL_draw_buffers);
++      case LOCAL_GL_MAX_TEXTURE_MAX_ANISOTROPY:
++        return IsExtensionEnabled(
++            WebGLExtensionID::EXT_texture_filter_anisotropic);
++      case LOCAL_GL_MAX_VIEWS_OVR:
++        return IsExtensionEnabled(WebGLExtensionID::OVR_multiview2);
++      default:
++        return false;
++    }
++  }();
++
+   std::optional<
+       std::variant<int64_t, bool, double, std::string, std::nullptr_t>>
+       data;
+-  data = MaskConfig::GLParam(pname, mIsWebGL2);
++  if (fromTable) data = MaskConfig::GLParam(pname, mIsWebGL2);
+ 
+   if (data.has_value()) {
+     const auto& value = data.value();
+@@ -2299,33 +2323,7 @@
+       retval.set(StringValue(cx, std::get<std::string>(value), rv));
+       return;
+     }
+-    if (std::holds_alternative<std::nullptr_t>(value)) {
+-      retval.set(JS::NullValue());
+-      return;
+-    }
+-  }
+-  // If the value is not array (we will handle those later),
+-  // then check if it should be blocked.
+-  switch (pname) {
+-    case LOCAL_GL_DEPTH_RANGE:
+-    case LOCAL_GL_ALIASED_POINT_SIZE_RANGE:
+-    case LOCAL_GL_ALIASED_LINE_WIDTH_RANGE:
+-    case LOCAL_GL_COLOR_CLEAR_VALUE:
+-    case LOCAL_GL_BLEND_COLOR:
+-    case LOCAL_GL_MAX_VIEWPORT_DIMS:
+-    case LOCAL_GL_SCISSOR_BOX:
+-    case LOCAL_GL_VIEWPORT:
+-    case LOCAL_GL_COMPRESSED_TEXTURE_FORMATS:
+-    case LOCAL_GL_COLOR_WRITEMASK:
+-    case dom::WEBGL_debug_renderer_info_Binding::UNMASKED_RENDERER_WEBGL:
+-    case dom::WEBGL_debug_renderer_info_Binding::UNMASKED_VENDOR_WEBGL:
+-      break;
+-    default:
+-      if (MaskConfig::CheckBool(mIsWebGL2 ? "webGl2:parameters:blockIfNotDefined"
+-                                          : "webGl:parameters:blockIfNotDefined")) {
+-        retval.set(JS::NullValue());
+-        return;
+-      }
++    // Null means this device value was not captured; use the live context.
+   }
+ 
+   const auto fnSetRetval_Buffer = [&](const GLenum target) {
+@@ -2434,8 +2432,7 @@
+     case LOCAL_GL_DEPTH_RANGE:
+       retval.set(Create<dom::Float32Array>(
+           cx, this,
+-          MaskConfig::MParamGL<std::array<float, 2UL>>(pname, state.mDepthRange,
+-                                                       mIsWebGL2),
++          state.mDepthRange,
+           rv));
+       return;
+ 
+@@ -2459,16 +2456,14 @@
+     case LOCAL_GL_COLOR_CLEAR_VALUE:
+       retval.set(Create<dom::Float32Array>(
+           cx, this,
+-          MaskConfig::MParamGL<std::array<float, 4UL>>(pname, state.mClearColor,
+-                                                       mIsWebGL2),
++          state.mClearColor,
+           rv));
+       return;
+ 
+     case LOCAL_GL_BLEND_COLOR:
+       retval.set(Create<dom::Float32Array>(
+           cx, this,
+-          MaskConfig::MParamGL<std::array<float, 4UL>>(pname, state.mBlendColor,
+-                                                       mIsWebGL2),
++          state.mBlendColor,
+           rv));
+       return;
+ 
+@@ -2488,16 +2483,14 @@
+     case LOCAL_GL_SCISSOR_BOX:
+       retval.set(Create<dom::Int32Array>(
+           cx, this,
+-          MaskConfig::MParamGL<std::array<int32_t, 4UL>>(pname, state.mScissor,
+-                                                         mIsWebGL2),
++          state.mScissor,
+           rv));
+       return;
+ 
+     case LOCAL_GL_VIEWPORT:
+       retval.set(Create<dom::Int32Array>(
+           cx, this,
+-          MaskConfig::MParamGL<std::array<int32_t, 4UL>>(pname, state.mViewport,
+-                                                         mIsWebGL2),
++          state.mViewport,
+           rv));
+       return;
+ 
+@@ -2653,9 +2646,14 @@
+           allowRenderer = false;
+         }
+         if (allowRenderer) {
+-          ret = GetUnmaskedRenderer();
+-          if (ret) {
+-            ret = Some(webgl::SanitizeRenderer(*ret));
++          nsAutoString stored;
++          if (WebGLParamsManager::GetRenderer(GetUserContextId(), stored)) {
++            ret = Some(std::string(NS_ConvertUTF16toUTF8(stored).get()));
++          } else {
++            ret = GetUnmaskedRenderer();
++            if (ret) {
++              ret = Some(webgl::SanitizeRenderer(*ret));
++            }
+           }
+         }
+         if (!ret) {
+@@ -2834,9 +2832,7 @@
+         case LOCAL_GL_COLOR_WRITEMASK: {
+           const auto mask = uint8_t(*maybe);
+           const auto bs = std::bitset<4>(mask);
+-          const auto src = MaskConfig::MParamGL<std::array<bool, 4>>(
+-              pname, std::array<bool, 4>{bs[0], bs[1], bs[2], bs[3]},
+-              mIsWebGL2);
++          const auto src = std::array<bool, 4>{bs[0], bs[1], bs[2], bs[3]};
+           JS::Rooted<JS::Value> arr(cx);
+           if (!dom::ToJSValue(cx, src.data(), src.size(), &arr)) {
+             rv = NS_ERROR_OUT_OF_MEMORY;
+diff --git a/dom/canvas/ClientWebGLContext.h b/dom/canvas/ClientWebGLContext.h
+--- a/dom/canvas/ClientWebGLContext.h
++++ b/dom/canvas/ClientWebGLContext.h
+@@ -1090,7 +1090,6 @@
+ 
+  private:
+   // Helper for mask config values
+-  bool MBoolVal(const std::string& key, bool defaultValue);
+   // Per-context WebGL parameter support
+   uint32_t GetUserContextId() const;
+ 
+diff --git a/cloakcfg/MaskConfig.hpp b/cloakcfg/MaskConfig.hpp
+--- a/cloakcfg/MaskConfig.hpp
++++ b/cloakcfg/MaskConfig.hpp
+@@ -292,7 +292,7 @@
+   if (auto value = MaskConfig::GetNested(
+           isWebGL2 ? "webGl2:parameters" : "webGl:parameters",
+           std::to_string(pname));
+-      value.has_value()) {
++      value.has_value() && value->is_array()) {
+     return value.value().get<T>();
+   }
+   return defaultValue;

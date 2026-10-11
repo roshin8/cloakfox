@@ -153,8 +153,8 @@ export function readOverrides(ucid) {
  * Apply user overrides on top of a base cloak_cfg object. Override
  * values are spread last so they win. Returns a new object.
  */
-export function applyOverrides(ucid, baseObj) {
-  return applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...readOverrides(ucid) }));
+export function applyOverrides(ucid, baseObj, overrides = readOverrides(ucid)) {
+  return applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides }));
 }
 
 /**

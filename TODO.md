@@ -100,12 +100,12 @@ Development signing and local fixture tests do not complete these tasks.
 
 ## Upstream review — 2026-10-10
 
-- [ ] **Pending review:** Rebase the chosen release baseline onto current Firefox stable (157.0.1 at this review); preserve Cloakfox changes and rerun native/browser acceptance.
-- [ ] **Pending review:** Adapt/verify the Windows executable manifest, compare stock page-accessible resources, and evaluate the Linux Rust target-selection fix from current Camoufox. [Source findings](docs/upstream-patch-audit-2026-10-10.md).
+- [x] **Development port verified:** Firefox 157.0.1 on `codex/firefox-157-port`; native macOS build, patch replay and local acceptance pass. Distribution and other-platform gates remain above.
+- [x] **Source/package verified:** Added the Windows manifest and stock crash resources; removed paired development-helper startup/registration/resources. Rust Linux vendor fix already present and behavior-tested. Windows/Linux native runtime builds remain unverified. [Source findings](docs/upstream-patch-audit-2026-10-10.md).
 
 ## Additional upstream privacy fixes — source audit
 
-- [ ] **Not implemented:** Adapt WebGL live-state/context-attribute consistency fixes; preserve configured device limits and verify version/extension/error behavior.
-- [ ] **Not implemented:** Apply audio analyser noise to output copies instead of the internal smoothing buffer; verify repeated float/byte reads with site-derived seeds.
-- [ ] **Pending verification:** Audit principal-based identity ownership for detached documents, particularly WebGL, with multiple containers and DOMParser/createHTMLDocument controls.
-- [ ] **Not implemented:** Adapt speech-backend error suppression while a configured voice list is active; verify backend failure controls. [Evidence and further conditional differences](docs/upstream-patch-audit-2026-10-10.md#follow-up-fingerprintingprivacy-behavior-comparison).
+- [x] **Implemented and runtime verified:** WebGL mutable state/actual attributes, fixed limits, null fallback, renderer coherence and version/extension errors. See [follow-up verification](docs/firefox-157-port/upstream-followup-verification.md).
+- [x] **Implemented and runtime verified:** Analyser noise applies to output copies with existing site seeds; float/byte repeated reads, master-off and allocation-failure controls pass.
+- [x] **Implemented and runtime verified:** WebGL owner principals preserve identities for attached/detached documents, DOMParser, createHTMLDocument, OffscreenCanvas and workers in two containers.
+- [x] **Implemented and runtime verified:** Speech backend errors are suppressed for active environment-configured voice lists; no-list and master-off controls still forward errors. [Evidence and further conditional differences](docs/upstream-patch-audit-2026-10-10.md#follow-up-fingerprintingprivacy-behavior-comparison).

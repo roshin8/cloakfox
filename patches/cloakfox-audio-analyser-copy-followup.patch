@@ -1,0 +1,117 @@
+diff --git a/dom/media/webaudio/AnalyserNode.cpp b/dom/media/webaudio/AnalyserNode.cpp
+--- a/dom/media/webaudio/AnalyserNode.cpp
++++ b/dom/media/webaudio/AnalyserNode.cpp
+@@ -214,37 +214,45 @@
+   mSmoothingTimeConstant = aValue;
+ }
+ 
++// Keep frequency noise out of FFT smoothing state. Each read receives its
++// own transformed copy, with the existing container/site policy seed.
++const float* AnalyserNode::NoisedOutput(AlignedTArray<float>& aScratch) const {
++  uint32_t userContextId = 0;
++  AudioContext* context = GetParentObject();
++  nsIGlobalObject* globalObj = context ? context->GetParentObject() : nullptr;
++  nsPIDOMWindowInner* global = globalObj ? globalObj->GetAsInnerWindow() : nullptr;
++  if (global) {
++    if (BrowsingContext* bc = global->GetBrowsingContext()) {
++      userContextId = bc->OriginAttributesRef().mUserContextId;
++    }
++  } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
++    userContextId = wp->GetOriginAttributes().mUserContextId;
++  }
++  uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
++        global ? global->GetExtantDoc() : nullptr);
++  if (!seed || !aScratch.SetLength(mOutputBuffer.Length(), fallible)) {
++    return mOutputBuffer.Elements();
++  }
++  PodCopy(aScratch.Elements(), mOutputBuffer.Elements(), mOutputBuffer.Length());
++  AudioFingerprintManager::ApplyTransformation(aScratch.Elements(),
++                                                aScratch.Length(), seed);
++  return aScratch.Elements();
++}
++
+ void AnalyserNode::GetFloatFrequencyData(const Float32Array& aArray) {
+   if (!FFTAnalysis()) {
+     // Might fail to allocate memory
+     return;
+   }
+ 
+-  // Apply audio fingerprint transformation to frequency data
+-  {
+-    uint32_t userContextId = 0;
+-    AudioContext* context = GetParentObject();
+-    nsIGlobalObject* globalObj = context ? context->GetParentObject() : nullptr;
+-    nsPIDOMWindowInner* global = globalObj ? globalObj->GetAsInnerWindow() : nullptr;
+-    if (global) {
+-      if (BrowsingContext* bc = global->GetBrowsingContext()) {
+-        userContextId = bc->OriginAttributesRef().mUserContextId;
+-      }
+-    } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+-      userContextId = wp->GetOriginAttributes().mUserContextId;
+-    }
+-    uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
+-          global ? global->GetExtantDoc() : nullptr);
+-    if (seed != 0) {
+-      AudioFingerprintManager::ApplyTransformation(mOutputBuffer.Elements(), mOutputBuffer.Length(), seed);
+-    }
+-  }
++  AlignedTArray<float> noised;
++  const float* output = NoisedOutput(noised);
+   aArray.ProcessData([&](const Span<float>& aData, JS::AutoCheckCannotGC&&) {
+     size_t length = std::min(size_t(aData.Length()), mOutputBuffer.Length());
+ 
+     for (size_t i = 0; i < length; ++i) {
+       aData[i] = WebAudioUtils::ConvertLinearToDecibels(
+-          mOutputBuffer[i], -std::numeric_limits<float>::infinity());
++          output[i], -std::numeric_limits<float>::infinity());
+     }
+   });
+ }
+@@ -255,25 +263,8 @@
+     return;
+   }
+ 
+-  // Apply audio fingerprint transformation to frequency data
+-  {
+-    uint32_t userContextId = 0;
+-    AudioContext* context = GetParentObject();
+-    nsIGlobalObject* globalObj = context ? context->GetParentObject() : nullptr;
+-    nsPIDOMWindowInner* global = globalObj ? globalObj->GetAsInnerWindow() : nullptr;
+-    if (global) {
+-      if (BrowsingContext* bc = global->GetBrowsingContext()) {
+-        userContextId = bc->OriginAttributesRef().mUserContextId;
+-      }
+-    } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+-      userContextId = wp->GetOriginAttributes().mUserContextId;
+-    }
+-    uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
+-          global ? global->GetExtantDoc() : nullptr);
+-    if (seed != 0) {
+-      AudioFingerprintManager::ApplyTransformation(mOutputBuffer.Elements(), mOutputBuffer.Length(), seed);
+-    }
+-  }
++  AlignedTArray<float> noised;
++  const float* output = NoisedOutput(noised);
+   const double rangeScaleFactor = 1.0 / (mMaxDecibels - mMinDecibels);
+ 
+   aArray.ProcessData([&](const Span<uint8_t>& aData, JS::AutoCheckCannotGC&&) {
+@@ -281,7 +272,7 @@
+ 
+     for (size_t i = 0; i < length; ++i) {
+       const double decibels = WebAudioUtils::ConvertLinearToDecibels(
+-          mOutputBuffer[i], mMinDecibels);
++          output[i], mMinDecibels);
+       // scale down the value to the range of [0, UCHAR_MAX]
+       const double scaled = std::max(
+           0.0,
+diff --git a/dom/media/webaudio/AnalyserNode.h b/dom/media/webaudio/AnalyserNode.h
+--- a/dom/media/webaudio/AnalyserNode.h
++++ b/dom/media/webaudio/AnalyserNode.h
+@@ -62,6 +62,7 @@
+   bool FFTAnalysis();
+   void ApplyBlackmanWindow(float* aBuffer, uint32_t aSize);
+   void GetTimeDomainData(float* aData, size_t aLength);
++  const float* NoisedOutput(AlignedTArray<float>& aScratch) const;
+ 
+  private:
+   explicit AnalyserNode(AudioContext* aContext);

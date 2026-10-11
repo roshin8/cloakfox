@@ -1,0 +1,24 @@
+diff --git a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp b/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
+--- a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
++++ b/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
+@@ -11,6 +11,7 @@
+ #include "SpeechSynthesisVoice.h"
+ #include "mozilla/ClearOnShutdown.h"
+ #include "mozilla/StaticPrefs_media.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPtr.h"
+ #include "mozilla/dom/ContentChild.h"
+ #include "mozilla/dom/ContentParent.h"
+@@ -394,6 +395,12 @@
+ 
+ NS_IMETHODIMP
+ nsSynthVoiceRegistry::NotifyVoicesError(const nsAString& aError) {
++  if (mozilla::StaticPrefs::cloakfox_enabled() && MaskConfig::MVoices()) {
++    LOG(LogLevel::Debug,
++        ("nsSynthVoiceRegistry::NotifyVoicesError ignored: configured voices"));
++    return NS_OK;
++  }
++
+   if (XRE_IsParentProcess()) {
+     nsTArray<SpeechSynthesisParent*> ssplist;
+     GetAllSpeechSynthActors(ssplist);
