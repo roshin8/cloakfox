@@ -44,7 +44,8 @@
 ## Task 4: Verification and measured completion status
 
 - [x] Run patch replay, Node/Python suites and relevant local runtime probes.
-- [ ] Rebuild/package and test the mounted DMG if native checks are green.
-- [ ] Dispatch one fresh whole-change reviewer per executing-plans. Fix Important/Critical findings with regression tests.
-- [ ] Record implemented fields and remaining ALPS/trust-anchor/QUIC semantics explicitly. Full Chrome equivalence remains incomplete until those protocols and resumption/ECH/0-RTT cases are implemented and verified; do not equate matching basic wire fields with full equivalence.
+- [x] Rebuild/package and test the mounted DMG if native checks are green.
+- [x] Dispatch one fresh whole-change reviewer and repair the three correctness findings with regression tests.
+- [ ] Complete the fourth Important finding: full Chrome matching/acceptance; experimental intermediate work is not certified complete for that scope.
+- [x] Record implemented fields and remaining ALPS/trust-anchor/QUIC semantics explicitly. Full Chrome equivalence remains incomplete until those protocols and resumption/ECH/0-RTT cases are implemented and verified; do not equate matching basic wire fields with full equivalence.
 - [ ] Commit/push verified work and report exact limits.

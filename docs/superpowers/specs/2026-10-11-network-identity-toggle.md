@@ -68,6 +68,6 @@ User requirement, 2026-10-11: preserve room for a Chromium engine. Browser-famil
 
 ## Current work
 
-An experimental Gecko adapter and a container-scoped Settings toggle are being implemented. The first phase shapes measured Chrome 155 cipher/group/key-share ordering, H2 settings and pseudo-header order, QUIC flow-control/stream limits and H3 settings. The default remains native Firefox.
+An experimental Gecko adapter and a container-scoped Settings toggle are implemented experimentally. The first phase shapes measured Chrome 155 cipher/group/key-share ordering, H2 settings and pseudo-header order, QUIC flow-control/stream limits and H3 settings. The default remains native Firefox.
 
-This phase does **not meet full Chrome equivalence or the complete acceptance criteria above**. ALPS, trust-anchor IDs, full GREASE shape, QUIC extensions/packet behavior, comprehensive ECH/resumption/0-RTT and profile-generation draining remain open. Settings must disclose these gaps. Build/runtime/package verification is pending; the existing DMG is unchanged until a new verified package is recorded.
+This phase does **not meet full Chrome equivalence or the complete acceptance criteria above**. ALPS, trust-anchor IDs, full GREASE shape, QUIC extensions/packet behavior, comprehensive ECH/resumption/0-RTT exchanges remain open. Captured generation partitioning is implemented for pooling/coalescing/peer keys; complete resumed-protocol acceptance is still pending. Settings must disclose these gaps. Build, local runtime and mounted-package checks pass for the implemented fields; evidence is in [network adapter verification](../../firefox-157-port/network-adapter-verification.md). Full matching remains an Important open requirement.

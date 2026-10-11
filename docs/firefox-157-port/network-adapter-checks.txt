@@ -1,0 +1,21 @@
+Final mounted package runtime checks (2026-10-11):
+PASS: combined native TLS/H2 Chrome fields, master/default off and certificate rejection; /tmp/cfx-final-dmg-tls-h2.json
+PASS: owner/profile pool isolation, profile switches, conservative native traffic, TLS policy and blocked/required-proxy refusal
+PASS: native QUIC TLS fields, actual flow-control/stream limits and H3 SETTINGS; default/master off preserved; /tmp/cfx-final-dmg-quic-h3.json
+PASS: production toggle, identity/master reconciliation, two Settings views, container isolation and restart persistence
+PASS: ws/wss handshake, real echo, reconnect, proxy routing and fail-closed routes
+PASS: repeatable TLS/H2 stock Firefox parity; TLS 1.3 and certificate rejection intact
+PASS: QUIC extension sets, ordered transport parameters and H3 SETTINGS parity; extension order remains randomized
+PASS: real negotiated HTTP/3 controls; blocked and required-proxy routes emitted no UDP to independent live endpoints
+PASS: real HTTPS DoH A/AAAA, strict failure/exclusion, explicit native fallback control, required-proxy remote DNS, refusal/recovery
+PASS: accepted TCP speculative control; blocked/required-proxy sinks stayed empty; real IPv6 HTTP control and scope rejection
+PASS: real proxy routing, refusal has no fallback, blocked scope, other container unaffected
+
+Units: 234 JavaScript passed; 25 Python passed, 16 opt-in skipped.
+CI-native unittest discovery: 6 tests passed.
+Patch replay: 111 patches, 256 pristine targets; zero offset/fuzz/drift.
+Native build and DMG packaging succeeded.
+Mounted XUL bytes equal package stage; UUID equals native build; seven packaged resources equal tracked source.
+DMG SHA256: 2ebbfbf44d31a050c8d07f0fce58f1a870ab27c840b25c0ff9995dd9a132d05d
+Development package: ad-hoc signing, no Apple notarization asserted.
+Full Chrome matching remains an Important open requirement.

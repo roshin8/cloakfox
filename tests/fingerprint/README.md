@@ -466,7 +466,7 @@ This is a reference capture, **not a claim that Cloakfox matches Chrome**.
 
 Settings → Persona & identity → Identity exposes **Match network profile to
 browser identity (experimental)** for the selected container. Default/master
-Off uses native Firefox. Desktop Chrome identities opt into the measured Chrome
+Off uses native Firefox. Desktop Chrome/Chromium major 155 identities opt into the measured Chrome
 155 fields; unsupported identities retain native networking with an explicit
 status. The legacy raw H2/H3 fingerprint preferences are compatibility metadata,
 not independent selectors on this branch.
@@ -483,7 +483,7 @@ NETWORK_PROFILE=chrome python tests/fingerprint/probe_websocket_routes.py
 ```
 
 These check implemented cipher/group/key-share ordering, H2 frames/header order,
-QUIC receive limits/H3 settings, exact owner and pool separation, security and
+QUIC receive limits/H3 settings, exact owner/generation and pool separation, security and
 routing precedence, and actual Settings persistence. They do not establish full
 Chrome equivalence. ALPS, trust-anchor IDs, other TLS signatures/extensions,
 full GREASE shape and QUIC packet semantics remain open. WebTransport retains

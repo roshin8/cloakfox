@@ -41,8 +41,9 @@ def main():
             assert len(records(servers[0]))==3 and other['hello']==native['hello']
             d.execute_script("Services.prefs.setBoolPref('cloakfox.container.7.network_follow_identity',true)")
             request(servers[0],7)
-            assert len(records(servers[0]))==3,'Chrome request must reuse only its Chrome pool'
-            assert len(chrome['pseudoHeaders'])==2 and len(other['pseudoHeaders'])==1
+            assert len(records(servers[0]))==4,'Switching back must open a fresh Chrome generation'
+            assert records(servers[0])[-1]['hello']['ciphers']==CHROME_CIPHERS
+            assert len(chrome['pseudoHeaders'])==1 and len(other['pseudoHeaders'])==1
             conservative=READ.replace('let body =',"channel.QueryInterface(Ci.nsIHttpChannelInternal).beConservative=true; let body =")
             request(servers[1],0,conservative);conservative_native=records(servers[1])[-1]
             request(servers[1],7,conservative);record=records(servers[1])[-1]

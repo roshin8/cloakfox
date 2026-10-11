@@ -7,6 +7,7 @@
 // descriptor, not reuse Gecko/NSS/neqo knobs or assume a UA switches engines.
 const NETWORK_ADAPTERS = Object.freeze({
   gecko: {
+    commit: writeGeckoNetworkProfile,
     nativeFamily: "firefox",
     profiles: {
       firefox: {profileId: 0, experimental: false, referenceMajor: null, gaps: [],
@@ -36,7 +37,7 @@ export function selectNetworkProfile({engine = "gecko", ua = "", followIdentity 
   let family;
   if (typeof ua === "string" && /Firefox\/\d/.test(ua)) family = "firefox";
   else if (typeof ua === "string" && /(?:Chrome|Chromium)\/\d/.test(ua)
-      && !/(?:iPhone|iPad|Android|Mobile)/.test(ua)) family = "chrome";
+      && !/(?:iPhone|iPad|Android|Mobile|Edg\/|OPR\/|Vivaldi\/|YaBrowser\/|SamsungBrowser\/)/.test(ua)) family = "chrome";
   if (!family || !Object.hasOwn(adapter.profiles, family)) return {...native, unsupported: true};
   const profile = adapter.profiles[family];
   if (profile.referenceMajor !== null) {
@@ -52,14 +53,39 @@ export function resolveNetworkProfile(ucid, ua) {
     try { ua = JSON.parse(Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${ucid}`, "{}"))["navigator.userAgent"] || ""; }
     catch { ua = ""; }
   }
+  if (Services.prefs.getIntPref(`cloakfox.container.${ucid}.network_state`, 0) < 0) {
+    return {...selectNetworkProfile({enabled: false}), unsupported: true,
+      reason: "Network generation exhausted; use a fresh browser profile"};
+  }
   return selectNetworkProfile({ua,
     enabled: Services.prefs.getBoolPref("cloakfox.enabled", false),
     followIdentity: Services.prefs.getBoolPref(`cloakfox.container.${ucid}.network_follow_identity`, false)});
 }
 
-export function writeNetworkProfile(ucid, ua) {
+export function writeNetworkProfile(ucid, ua, options = {}) {
   const selected = resolveNetworkProfile(ucid, ua);
-  // A single integer commits all native transports. Compatibility pref names
+  // Generation encoding and socket/cache metadata belong to the adapter,
+  // just like protocol capabilities. Chromium supplies its own commit path.
+  return NETWORK_ADAPTERS[selected.backend].commit(ucid, selected, options);
+}
+
+function writeGeckoNetworkProfile(ucid, selected, {advanceGeneration = false} = {}) {
+  const statePref = `cloakfox.container.${ucid}.network_state`;
+  const previous = Services.prefs.getIntPref(statePref, 0);
+  if (previous < 0) return {...selected, generation: 0x3fffff};
+  let generation = previous >>> 1;
+  if (advanceGeneration || (previous & 1) !== selected.profileId) generation++;
+  // Bits 8–29 of Gecko socket metadata carry this generation. Never wrap and
+  // revive old connections/tickets. Exhaustion requires a fresh profile.
+  if (generation >= 0x3fffff) {
+    Services.prefs.setIntPref(statePref, -1);
+    Services.prefs.setIntPref(`cloakfox.container.${ucid}.network_profile`, 0);
+    Services.prefs.setCharPref(`cloakfox.container.${ucid}.h2_profile`, "firefox");
+    Services.prefs.setIntPref(`cloakfox.container.${ucid}.h3_profile`, 0);
+    return {...resolveNetworkProfile(ucid, undefined), generation: 0x3fffff};
+  }
+  // A single integer commits profile and generation to all native transports.
+  // Compatibility pref names
   // remain for tools, but native adapters do not read a partially written set.
   Services.prefs.setCharPref(`cloakfox.container.${ucid}.h2_profile`, selected.protocols.h2);
   Services.prefs.setIntPref(`cloakfox.container.${ucid}.h3_profile`, selected.protocols.h3);
@@ -67,7 +93,9 @@ export function writeNetworkProfile(ucid, ua) {
   if (Services.prefs.getIntPref(pref, -1) !== selected.profileId) {
     Services.prefs.setIntPref(pref, selected.profileId);
   }
-  return selected;
+  const state = (generation * 2) + selected.profileId;
+  if (previous !== state) Services.prefs.setIntPref(statePref, state);
+  return {...selected, generation};
 }
 
 let networkProfilesInitialized = false;
@@ -82,7 +110,7 @@ export function initNetworkProfiles() {
   networkProfilesInitialized = true;
   const observer = {observe(_subject, _topic, pref) {
     const match = /^(?:cloakfox\.s\.cloak_cfg_(\d+)|cloakfox\.container\.(\d+)\.network_follow_identity)$/.exec(pref);
-    if (match) writeNetworkProfile(Number(match[1] ?? match[2]));
+    if (match) writeNetworkProfile(Number(match[1] ?? match[2]), undefined, {advanceGeneration: true});
     else if (pref === "cloakfox.enabled") {
       reconcileNetworkProfiles();
     }

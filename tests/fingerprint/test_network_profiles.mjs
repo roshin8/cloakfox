@@ -111,3 +111,50 @@ test('unmeasured Chrome versions retain native networking with explicit status',
   }
   assert.equal(h.select({ua:chrome.replace('Chrome/155.','Chromium/155.'),followIdentity:true}).profileId,1);
 });
+
+
+test('Edge, Opera and other Chromium-branded families are unsupported', () => {
+  const h=load();
+  for(const suffix of [' Edg/155.0',' OPR/140.0',' Vivaldi/7.0',' YaBrowser/25.0',' SamsungBrowser/25.0']) {
+    const result=h.select({ua:chrome+suffix,followIdentity:true});
+    assert.equal(result.profileId,0);assert.equal(result.unsupported,true);
+  }
+});
+
+test('profile and identity changes advance an atomic generation without switch-back revival', () => {
+  const h=load();h.prefs.set('cloakfox.enabled',true);
+  h.prefs.set('cloakfox.container.7.network_follow_identity',true);
+  h.prefs.set('cloakfox.s.cloak_cfg_7',JSON.stringify({'navigator.userAgent':chrome}));
+  h.context.initNetworkProfiles();
+  const key='cloakfox.container.7.network_state';
+  const original=h.prefs.get(key);assert.equal(original,3);
+  h.context.writeNetworkProfile(7);assert.equal(h.prefs.get(key),original);
+  h.prefs.set('cloakfox.container.7.network_follow_identity',false);h.context.writeNetworkProfile(7);
+  assert.equal(h.prefs.get(key),4);
+  h.prefs.set('cloakfox.container.7.network_follow_identity',true);h.context.writeNetworkProfile(7);
+  assert.equal(h.prefs.get(key),7);
+  const observer=h.observers.find(([branch])=>branch==='cloakfox.s.')[1];
+  observer.observe(null,'nsPref:changed','cloakfox.s.cloak_cfg_7');
+  assert.equal(h.prefs.get(key),9);
+});
+
+
+test('generation exhaustion cannot wrap and revive an old profile', () => {
+  const h=load();h.prefs.set('cloakfox.enabled',true);
+  h.prefs.set('cloakfox.container.7.network_follow_identity',true);
+  h.prefs.set('cloakfox.s.cloak_cfg_7',JSON.stringify({'navigator.userAgent':chrome}));
+  h.prefs.set('cloakfox.container.7.network_state',0x7ffffd);
+  const result=h.context.writeNetworkProfile(7,undefined,{advanceGeneration:true});
+  assert.equal(result.profileId,0);assert.equal(result.unsupported,true);
+  assert.equal(h.prefs.get('cloakfox.container.7.network_state'),-1);
+  assert.equal(h.context.resolveNetworkProfile(7).profileId,0);
+  assert.equal(h.context.resolveNetworkProfile(7).unsupported,true);
+  assert.equal(h.context.writeNetworkProfile(7).profileId,0);
+  h.prefs.set('cloakfox.s.cloak_cfg_8',JSON.stringify({'navigator.userAgent':chrome}));
+  h.prefs.set('cloakfox.container.8.network_follow_identity',true);
+  h.context.initNetworkProfiles();
+  assert.equal(h.prefs.get('cloakfox.container.8.network_profile'),1);
+  h.prefs.set('cloakfox.enabled',false);
+  h.observers.find(([branch])=>branch==='cloakfox.enabled')[1].observe(null,'nsPref:changed','cloakfox.enabled');
+  assert.equal(h.prefs.get('cloakfox.container.8.network_profile'),0);
+});

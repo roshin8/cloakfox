@@ -612,7 +612,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!Services.prefs.getBoolPref(PREF_ENABLED, false)) {
       status.textContent = "Native Firefox networking: Cloakfox protection is disabled. Your network choice is saved.";
     } else if (selected.unsupported) {
-      status.textContent = "Native Firefox networking: this identity has no supported transport adapter.";
+      status.textContent = "Native Firefox networking: " + (selected.reason || "this identity has no supported transport adapter") + ".";
     } else if (selected.experimental) {
       status.textContent = "Experimental Chrome profile for HTTP/2, TLS and QUIC/HTTP/3, using Chrome 155 as the reference. Full Chrome equivalence is pending: "
         + selected.gaps.join(", ") + ". Applies to new connections; active transfers keep their original profile.";

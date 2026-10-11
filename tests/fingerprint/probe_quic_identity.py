@@ -1,5 +1,5 @@
 """Actual QUIC/H3 exchanges for the combined native adapter (local only)."""
-import base64,json,os,ssl,sys,tempfile,shutil
+import base64,json,os,ssl,sys,tempfile,shutil,time
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'network'))
 from h3_fixture import H3Fixtures,create_certificates
@@ -31,6 +31,7 @@ def main():
                   const selected=ChromeUtils.importESModule('resource:///modules/CloakfoxNetworkProfiles.sys.mjs').writeNetworkProfile(7);
                   if(selected.profileId!==(arguments[3]?arguments[2]:0))throw new Error('Incorrect profile');
                 """,base64.b64encode(ssl.PEM_cert_to_DER_cert(ca.read_text())).decode(),f'quic-identity.test;h3=:{fixture.ports[0]}',profile_id,master)
+                initial_generation=d.execute_script("return Services.prefs.getIntPref('cloakfox.container.7.network_state',0)>>>1")
                 response=d.execute_async_script(READ,'https://quic-identity.test/identity',7)
                 assert response['status']==0 and response['body']=='local-http3-ok',(response,fixture.observed)
                 observed=fixture.observed[0];assert observed['handshakes'] and observed['alpn']==['h3']
@@ -81,16 +82,32 @@ def main():
                     d.execute_script("Services.prefs.setBoolPref('cloakfox.container.7.network_follow_identity',true)")
                     response=d.execute_async_script(READ,'https://quic-identity.test/profile-on',7)
                     assert response['status']==0 and response['body']=='local-http3-ok'
-                    assert len(observed['clientHellos'])==wt_hellos+2,'Reuse only Chrome profile pool'
+                    assert len(observed['clientHellos'])==wt_hellos+3,'Switch-back must establish a fresh Chrome generation'
+                    assert observed['clientHellos'][-1]['ciphers']==[4865,4866,4867]
+                    final_generation=d.execute_script("return Services.prefs.getIntPref('cloakfox.container.7.network_state',0)>>>1")
+                    assert final_generation>initial_generation
                     requests=len(observed['requests'])
                     for mode,proxy in [(2,''),(1,'http://127.0.0.1:1')]:
                         d.execute_script(SET,7,{'mode':mode,'proxyURL':proxy})
                         response=d.execute_async_script(READ,'https://quic-identity.test/refused',7)
                         assert response['status']!=0,response
                     assert len(observed['requests'])==requests,'No direct QUIC fallback'
-                    cache=(root/(name+'-cache.moz_log')).read_text()
-                    assert 'key=cfx-gecko-profile-1:quic-identity.test:443^userContextId=7' in cache, 'Chrome QUIC resumption key must include its captured profile'
-                    assert 'key=quic-identity.test:443^userContextId=7' in cache, 'Native profile must retain its own cache key'
+                    # Flush logging in every process before inspecting cache lookups.
+                    d.quit()
+                    # Packaged builds may run networking in a separate socket process.
+                    # Collect all process logs; the parent log alone can be empty.
+                    expected_keys=[f'key=cfx-gecko-generation-{generation}-profile-{profile}:quic-identity.test:443^userContextId=7'
+                                   for generation,profile in [(initial_generation,1),(initial_generation+1,0),(final_generation,1)]]
+                    deadline=time.monotonic()+5
+                    while True:
+                        cache='\n'.join(path.read_text() for path in root.glob(name+'-cache*'))
+                        if all(expected in cache for expected in expected_keys) or time.monotonic()>=deadline:break
+                        # Child process shutdown/log flush can trail parent shutdown.
+                        time.sleep(0.1)
+                    fixture_keys=[line for line in cache.splitlines() if 'quic-identity.test' in line]
+                    for expected in expected_keys:
+                        assert expected in cache, ('QUIC cache must partition captured generation/profile', expected, fixture_keys)
+                    record['cacheGenerations']={'initial':initial_generation,'native':initial_generation+1,'switchBack':final_generation}
 
 
             except Exception:

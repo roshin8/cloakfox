@@ -18,6 +18,9 @@ def main():
     report={}
     with tempfile.TemporaryDirectory(prefix='cloakfox-network-identity-') as tmp:
         root=Path(tmp);ca,cert,key=create_certificates(root,['identity-wire.test'])
+        untrusted_root=root/'untrusted';untrusted_root.mkdir()
+        _,untrusted_cert,untrusted_key=create_certificates(untrusted_root,['identity-wire.test'])
+        untrusted=TLSFixture(untrusted_cert,untrusted_key)
         servers=[TLSFixture(cert,key) for _ in range(3)]
         options=Options();options.binary_location=os.environ['CLOAKFOX_BIN'];options.accept_insecure_certs=False
         options.add_argument('-headless');options.add_argument('-purgecaches')
@@ -52,6 +55,9 @@ def main():
                     assert [list(map(list,settings)) for settings in observed['settings']]==CHROME_SETTINGS,observed
                     assert observed['windowUpdates'][0]==15663105,observed
                     assert observed['pseudoHeaders'][0]==[':method',':authority',':scheme',':path'],observed
+                    for rejected_url in [url(untrusted),url(server,'wrong.test')]:
+                        try:d.get(rejected_url);raise AssertionError('Chrome profile accepted invalid certificate')
+                        except InsecureCertificateException:pass
                 d.set_context('chrome')
             assert report['firefox']['hello']==report['master-off']['hello']
             assert report['firefox']['settings']==report['master-off']['settings']
@@ -63,5 +69,5 @@ def main():
             print('PASS: combined native TLS/H2 Chrome fields, master/default off and certificate rejection;',target)
         finally:
             d.quit()
-            for server in servers:server.close()
+            for server in servers+[untrusted]:server.close()
 if __name__=='__main__':main()

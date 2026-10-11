@@ -1,6 +1,23 @@
 --- a/netwerk/base/moz.build
 +++ b/netwerk/base/moz.build
-@@ -163,6 +163,7 @@
+@@ -146,40 +146,41 @@
+     "nsSimpleURI.h",
+     "nsStandardURL.h",
+     "nsStreamListenerWrapper.h",
+     "nsURIHashKey.h",
+     "nsURLHelper.h",
+     "nsURLParsers.h",
+     "SimpleChannel.h",
+     "URIHasher.h",
+ ]
+ 
+ EXPORTS.mozilla += [
+     "LoadContextInfo.h",
+     "LoadInfo.h",
+     "LoadTainting.h",
+     "nsRedirectHistoryEntry.h",
+ ]
+ 
  EXPORTS.mozilla.net += [
      "CacheInfoIPCTypes.h",
      "CaptivePortalService.h",
@@ -8,9 +25,43 @@
      "ContentRange.h",
      "Dashboard.h",
      "DashboardTypes.h",
+     "DefaultURI.h",
+     "ExecuteIfOnMainThreadEventTarget.h",
+     "InterceptionInfo.h",
+     "IPv4Parser.h",
+     "NetworkConnectivityService.h",
+     "NoVarySearchUtils.h",
+     "PrivateBrowsingChannel.h",
+     "ProtocolHandlerInfo.h",
+     "RedirectChannelRegistrar.h",
+     "RequestContextService.h",
+     "SimpleURIUnknownSchemes.h",
+     "SSLTokensCache.h",
+     "ThrottleQueue.h",
+ ]
+ 
+ UNIFIED_SOURCES += [
+     "ArrayBufferInputStream.cpp",
 --- a/netwerk/protocol/http/Http2Session.cpp
 +++ b/netwerk/protocol/http/Http2Session.cpp
-@@ -27,6 +27,7 @@
+@@ -10,40 +10,41 @@
+ // Log on level :5, instead of default :4.
+ #undef LOG
+ #define LOG(args) LOG5(args)
+ #undef LOG_ENABLED
+ #define LOG_ENABLED() LOG5_ENABLED()
+ 
+ #include <algorithm>
+ 
+ #include "AltServiceChild.h"
+ #include "CacheControlParser.h"
+ #include "Http2Session.h"
+ #include "Http2Stream.h"
+ #include "Http2StreamBase.h"
+ #include "Http2StreamTunnel.h"
+ #include "Http2WebTransportSession.h"
+ #include "LoadContextInfo.h"
+ #include "mozilla/EndianUtils.h"
  #include "mozilla/Preferences.h"
  #include "mozilla/Sprintf.h"
  #include "mozilla/StaticPrefs_network.h"
@@ -18,7 +69,41 @@
  #include "mozilla/StaticPrefs_cloakfox.h"
  #include "mozilla/glean/NetwerkMetrics.h"
  #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
-@@ -1090,36 +1091,24 @@
+ #include "nsHttp.h"
+ #include "nsHttpConnection.h"
+ #include "nsHttpConnectionMgr.h"
+ #include "nsHttpHandler.h"
+ #include "nsIRequestContext.h"
+ #include "nsISupportsPriority.h"
+ #include "nsITLSSocketControl.h"
+ #include "nsNetUtil.h"
+ #include "nsQueryObject.h"
+ #include "nsSocketTransportService2.h"
+ #include "nsStandardURL.h"
+ #include "nsURLHelper.h"
+ #include "prnetdb.h"
+ #include "sslerr.h"
+ #include "sslt.h"
+ 
+ namespace mozilla {
+@@ -1073,96 +1074,84 @@
+   static const uint32_t maxDataLen =
+       24 + kFrameHeaderBytes + maxSettings * 6 + 13 + prioritySize;
+   char* packet = EnsureOutputBuffer(maxDataLen);
+   memcpy(packet, kMagicHello, 24);
+   mOutputQueueUsed += 24;
+   LogIO(this, nullptr, "Magic Connection Header", packet, 24);
+ 
+   packet = mOutputQueueBuffer.get() + mOutputQueueUsed;
+   memset(packet, 0, maxDataLen - 24);
+ 
+   // frame header will be filled in after we know how long the frame is
+   uint8_t numberOfEntries = 0;
+ 
+   // entries need to be listed in order by ID
+   // 1st entry is bytes 9 to 14
+   // 2nd entry is bytes 15 to 20
+   // 3rd entry is bytes 21 to 26
    // 4th entry is bytes 27 to 32
    // 5th entry is bytes 33 to 38
  
@@ -68,7 +153,11 @@
  
    // Let the other endpoint know about our default HPACK decompress table size.
    // Safari omits HEADER_TABLE_SIZE entirely from its SETTINGS frame.
-@@ -1131,7 +1120,7 @@
+   uint32_t maxHpackBufferSize = gHttpHandler->DefaultHpackBuffer();
+   mDecompressor.SetInitialMaxBufferSize(maxHpackBufferSize);
+   if (!safariH2) {
+     NetworkEndian::writeUint16(
+         packet + kFrameHeaderBytes + (6 * numberOfEntries),
          SETTINGS_TYPE_HEADER_TABLE_SIZE);
      NetworkEndian::writeUint32(
          packet + kFrameHeaderBytes + (6 * numberOfEntries) + 2,
@@ -77,7 +166,12 @@
      numberOfEntries++;
    }
  
-@@ -1144,8 +1133,8 @@
+   // We don't support HTTP/2 Push. Set SETTINGS_TYPE_ENABLE_PUSH to 0
+   NetworkEndian::writeUint16(packet + kFrameHeaderBytes + (6 * numberOfEntries),
+                              SETTINGS_TYPE_ENABLE_PUSH);
+   // The value portion of the setting pair is already initialized to 0
+   numberOfEntries++;
+ 
    // We might also want to set the SETTINGS_TYPE_MAX_CONCURRENT to 0
    // to indicate that we don't support any incoming push streams,
    // but some websites panic when we do that, so we don't by default.
@@ -88,9 +182,43 @@
      NetworkEndian::writeUint16(
          packet + kFrameHeaderBytes + (6 * numberOfEntries),
          SETTINGS_TYPE_MAX_CONCURRENT);
+     NetworkEndian::writeUint32(
+         packet + kFrameHeaderBytes + (6 * numberOfEntries) + 2,
+         chromeH2 ? 1000u : (safariH2 ? 100u : 0u));
+     numberOfEntries++;
+   }
+   mWaitingForSettingsAck = true;
+ 
+   // Advertise the Push RWIN for the session, and on each new pull stream
+   // send a window update
+   NetworkEndian::writeUint16(packet + kFrameHeaderBytes + (6 * numberOfEntries),
+                              SETTINGS_TYPE_INITIAL_WINDOW);
+   NetworkEndian::writeUint32(
+       packet + kFrameHeaderBytes + (6 * numberOfEntries) + 2,
+       chromeH2 ? 6291456u : (safariH2 ? 2097152u : mPushAllowance));
+   numberOfEntries++;
+ 
+   if (chromeH2) {
 --- a/netwerk/protocol/http/Http2Session.h
 +++ b/netwerk/protocol/http/Http2Session.h
-@@ -311,7 +311,7 @@
+@@ -294,41 +294,41 @@
+   [[nodiscard]] bool TryToActivate(Http2StreamBase* stream);
+   void ConnectPushedStream(Http2StreamBase* stream);
+   void ConnectSlowConsumer(Http2StreamBase* stream);
+ 
+   [[nodiscard]] nsresult ConfirmTLSProfile();
+   [[nodiscard]] static bool ALPNCallback(nsITLSSocketControl* tlsSocketControl);
+ 
+   uint64_t Serial() { return mSerial; }
+ 
+   void PrintDiagnostics(nsCString& log) override;
+ 
+   // Streams need access to these
+   uint32_t SendingChunkSize() { return mSendingChunkSize; }
+   uint32_t PushAllowance() { return mPushAllowance; }
+   Http2Compressor* Compressor() { return &mCompressor; }
+   nsISocketTransport* SocketTransport() { return mSocketTransport; }
+   int64_t ServerSessionWindow() { return mServerSessionWindow; }
    void DecrementServerSessionWindow(uint32_t bytes) {
      mServerSessionWindow -= bytes;
    }
@@ -99,7 +227,41 @@
  
    void SendPing() override;
    bool UseH2Deps() { return mUseH2Deps; }
-@@ -444,6 +444,7 @@
+   void SetCleanShutdown(bool) override;
+ 
+   // overload of nsAHttpTransaction
+   [[nodiscard]] nsresult ReadSegmentsAgain(nsAHttpSegmentReader*, uint32_t,
+                                            uint32_t*, bool*) final;
+   [[nodiscard]] nsresult WriteSegmentsAgain(nsAHttpSegmentWriter*, uint32_t,
+                                             uint32_t*, bool*) final;
+   [[nodiscard]] bool Do0RTT(bool aCanSendEarlyData) final { return true; }
+   [[nodiscard]] nsresult Finish0RTT(bool aRestart, bool aAlpnChanged) final;
+ 
+   // For use by an HTTP2Stream
+   void Received421(nsHttpConnectionInfo* ci);
+ 
+   void SendPriorityFrame(uint32_t streamID, uint32_t dependsOn, uint8_t weight);
+   void IncrementTrrCounter() { mTrrStreams++; }
+ 
+   void SendPriorityUpdateFrame(uint32_t streamID, uint8_t urgency,
+@@ -427,40 +427,41 @@
+ 
+   nsresult SessionError(enum errorType);
+ 
+   // This is intended to be nsHttpConnectionMgr:nsConnectionHandle taken
+   // from the first transaction on this session. That object contains the
+   // pointer to the real network-level nsHttpConnection object.
+   RefPtr<nsAHttpConnection> mConnection;
+ 
+   // The underlying socket transport object is needed to propogate some events
+   nsISocketTransport* mSocketTransport;
+ 
+   // These are temporary state variables to hold the argument to
+   // Read/WriteSegments so it can be accessed by On(read/write)segment
+   // further up the stack.
+   RefPtr<nsAHttpSegmentReader> mSegmentReader;
+   nsAHttpSegmentWriter* mSegmentWriter;
+   const uint32_t kMaxStreamID;
    uint32_t mSendingChunkSize;    /* the transmission chunk size */
    uint32_t mNextStreamID;        /* 24 bits */
    uint32_t mConcurrentHighWater; /* max parallelism on session */
@@ -107,19 +269,82 @@
    uint32_t mPushAllowance;       /* rwin for unmatched pushes */
  
    internalStateType mDownstreamState; /* in frame, between frames, etc..  */
+ 
+   // Maintain 2 indexes - one by stream ID, one by transaction pointer.
+   // There are also several lists of streams: ready to write, queued due to
+   // max parallelism, streams that need to force a read for push, and the full
+   // set of pushed streams.
+   nsTHashMap<nsUint32HashKey, WeakPtr<Http2StreamBase>> mStreamIDHash;
+   nsRefPtrHashtable<nsPtrHashKey<nsAHttpTransaction>, Http2StreamBase>
+       mStreamTransactionHash;
+   nsTArray<RefPtr<Http2StreamTunnel>> mTunnelStreams;
+ 
+   Http2StreamQueueManager mQueueManager;
+ 
+   // Compression contexts for header transport.
+   // HTTP/2 compresses only HTTP headers and does not reset the context in
+   // between frames. Even data that is not associated with a stream (e.g invalid
+   // stream ID) is passed through these contexts to keep the compression
+   // context correct.
 --- a/netwerk/protocol/http/Http3Session.cpp
 +++ b/netwerk/protocol/http/Http3Session.cpp
-@@ -132,7 +132,8 @@
+@@ -115,91 +115,80 @@
+   // connection between Firefox and the proxy (e.g., when using CONNECT-UDP).
+   //
+   // We track this flag for two main reasons:
+   // 1. To select the correct hostname during TLS negotiation on the outer
+   //    connection.
+   // 2. To explicitly enable Path MTU Discovery (PMTUD) on the outer connection,
+   //    since the outer path’s MTU must be at least as large as the inner one.
+   bool isOuterConnection = false;
+   if (!aIsTunnel) {
+     if (auto* proxyInfo = aConnInfo->ProxyInfo()) {
+       isOuterConnection = proxyInfo->IsHttp3Proxy();
+     }
+   }
+ 
+   // Create security control and info object for quic.
+   mSocketControl = new QuicSocketControl(
+       isOuterConnection ? aConnInfo->ProxyInfo()->Host()
                          : aConnInfo->GetOrigin(),
        isOuterConnection ? aConnInfo->ProxyInfo()->Port()
                          : aConnInfo->OriginPort(),
 -      aProviderFlags, aConnInfo->GetOriginAttributes(), this);
 +      aProviderFlags, aConnInfo->GetOriginAttributes(),
-+      mConnInfo->GetCloakfoxNetworkProfile(), this);
++      mConnInfo->GetCloakfoxNetworkProfile(),
++      mConnInfo->GetCloakfoxNetworkGeneration(), this);
    const nsCString& alpn = isOuterConnection ? aConnInfo->GetProxyNPNToken()
                                              : aConnInfo->GetNPNToken();
  
-@@ -168,21 +169,8 @@
+   NetAddr selfAddr;
+   MOZ_ALWAYS_SUCCEEDS(aSelfAddr->GetNetAddr(&selfAddr));
+   NetAddr peerAddr;
+   MOZ_ALWAYS_SUCCEEDS(aPeerAddr->GetNetAddr(&peerAddr));
+ 
+   LOG3(
+       ("Http3Session::Init origin=%s, alpn=%s, selfAddr=%s, peerAddr=%s,"
+        " qpack table size=%u, max blocked streams=%u webtransport=%d "
+        "[this=%p]",
+        PromiseFlatCString(mSocketControl->GetHostName()).get(),
+        PromiseFlatCString(alpn).get(), selfAddr.ToString().get(),
+        peerAddr.ToString().get(), gHttpHandler->DefaultQpackTableSize(),
+        gHttpHandler->DefaultHttp3MaxBlockedStreams(),
+        mConnInfo->GetWebTransport(), this));
+ 
+   if (mConnInfo->GetWebTransport()) {
+     ExtState(ExtendedConnectKind::WebTransport).mStatus = NEGOTIATING;
+   }
+   if (isOuterConnection) {
+     ExtState(ExtendedConnectKind::ConnectUDP).mStatus = NEGOTIATING;
+   }
+ 
+   mUseNSPRForIO =
+       StaticPrefs::network_http_http3_use_nspr_for_io() || aIsTunnel;
+ 
+   uint32_t idleTimeout = StaticPrefs::network_http_http3_idle_timeout();
+ 
+   // 0 means "use neqo's spec-compliant default PTO scaling".
+   uint32_t fastPto = mConnInfo->GetIsTrrServiceChannel()
                           ? StaticPrefs::network_trr_fast_pto_for_http3_conn()
                           : 0;
  
@@ -143,42 +368,141 @@
  
    nsresult rv;
    if (mUseNSPRForIO) {
+     rv = NeqoHttp3Conn::InitUseNSPRForIO(
+         mSocketControl->GetHostName(), alpn, selfAddr, peerAddr,
+         gHttpHandler->DefaultQpackTableSize(),
+         gHttpHandler->DefaultHttp3MaxBlockedStreams(),
+         StaticPrefs::network_http_http3_max_data(),
+         StaticPrefs::network_http_http3_max_stream_data(),
+         StaticPrefs::network_http_http3_version_negotiation_enabled(),
+         mConnInfo->GetWebTransport(), gHttpHandler->Http3QlogDir(), idleTimeout,
+         fastPto, h3Profile, getter_AddRefs(mHttp3Connection));
+   } else {
+     rv = NeqoHttp3Conn::Init(
+         mSocketControl->GetHostName(), alpn, selfAddr, peerAddr,
+         gHttpHandler->DefaultQpackTableSize(),
+         gHttpHandler->DefaultHttp3MaxBlockedStreams(),
+         StaticPrefs::network_http_http3_max_data(),
+         StaticPrefs::network_http_http3_max_stream_data(),
+         StaticPrefs::network_http_http3_version_negotiation_enabled(),
 --- a/netwerk/protocol/http/QuicSocketControl.cpp
 +++ b/netwerk/protocol/http/QuicSocketControl.cpp
-@@ -21,10 +21,18 @@
+@@ -4,44 +4,56 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "QuicSocketControl.h"
+ 
+ #include "Http3Session.h"
+ #include "SharedCertVerifier.h"
+ #include "nsISocketProvider.h"
+ #include "nsIWebProgressListener.h"
+ #include "nsNSSComponent.h"
+ #include "nsSocketTransportService2.h"
+ #include "nsThreadUtils.h"
+ #include "ssl.h"
+ #include "sslt.h"
+ 
+ namespace mozilla {
+ namespace net {
+ 
  QuicSocketControl::QuicSocketControl(
      const nsCString& aHostName, int32_t aPort, uint32_t aProviderFlags,
      const mozilla::OriginAttributes& aOriginAttributes,
 -    Http3Session* aHttp3Session)
-+    uint32_t aNetworkProfile, Http3Session* aHttp3Session)
++    uint32_t aNetworkProfile, uint32_t aNetworkGeneration,
++                                     Http3Session* aHttp3Session)
      : CommonSocketControl(aHostName, aPort, aProviderFlags) {
    mOriginAttributes = aOriginAttributes;
    COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
-+  if (aNetworkProfile == 1) {
++  if (aNetworkGeneration || aNetworkProfile == 1) {
 +    // Partition every cache consumer (tokens and certificate metadata) using
 +    // the captured adapter. Prefix the opaque peer ID before its OA suffix;
 +    // existing host/site clearing and private-container parsing stay intact.
 +    nsAutoCString unused;
 +    MOZ_ALWAYS_SUCCEEDS(CommonSocketControl::GetPeerId(unused));
-+    mPeerId.Insert("cfx-gecko-profile-1:", 0);
++    nsAutoCString prefix;
++    prefix.AppendPrintf("cfx-gecko-generation-%u-profile-%u:",
++                        aNetworkGeneration, aNetworkProfile);
++    mPeerId.Insert(prefix, 0);
 +  }
    mHttp3Session = do_GetWeakReference(
        static_cast<nsISupportsWeakReference*>(aHttp3Session));
  }
+ 
+ void QuicSocketControl::SetCertVerificationResult(PRErrorCode errorCode) {
+   COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+ 
+   if (errorCode) {
+     mFailedVerification = true;
+     SetCanceled(errorCode);
+   }
+ 
+   CallAuthenticated();
+ }
+ 
+ NS_IMETHODIMP
+ QuicSocketControl::GetSSLVersionOffered(int16_t* aSSLVersionOffered) {
+   COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+   *aSSLVersionOffered = nsITLSSocketControl::TLS_VERSION_1_3;
+   return NS_OK;
 --- a/netwerk/protocol/http/QuicSocketControl.h
 +++ b/netwerk/protocol/http/QuicSocketControl.h
-@@ -29,7 +29,7 @@
+@@ -12,40 +12,41 @@
+ namespace mozilla {
+ namespace net {
+ 
+ class Http3Session;
+ 
+ // IID for the QuicSocketControl interface
+ #define NS_QUICSOCKETCONTROL_IID \
+   {0xdbc67fd0, 0x1ac6, 0x457b, {0x91, 0x4e, 0x4c, 0x86, 0x60, 0xff, 0x00, 0x69}}
+ 
+ class QuicSocketControl final : public CommonSocketControl {
+  public:
+   NS_INLINE_DECL_STATIC_IID(NS_QUICSOCKETCONTROL_IID);
+ 
+   NS_INLINE_DECL_REFCOUNTING_INHERITED(QuicSocketControl, CommonSocketControl);
+ 
+   NS_IMETHOD GetSSLVersionOffered(int16_t* aSSLVersionOffered) override;
+ 
    QuicSocketControl(const nsCString& aHostName, int32_t aPort,
                      uint32_t aProviderFlags,
                      const mozilla::OriginAttributes& aOriginAttributes,
--                    Http3Session* aHttp3Session);
-+                    uint32_t aNetworkProfile, Http3Session* aHttp3Session);
++                    uint32_t aNetworkProfile, uint32_t aNetworkGeneration,
+                     Http3Session* aHttp3Session);
  
    void SetNegotiatedNPN(const nsACString& aValue);
    void SetInfo(uint16_t aCipherSuite, uint16_t aProtocolVersion,
+                uint16_t aKeaGroup, uint16_t aSignatureScheme,
+                bool aEchAccepted);
+ 
+   void CallAuthenticated();
+ 
+   void HandshakeCompleted();
+   void SetCertVerificationResult(PRErrorCode errorCode) override;
+ 
+   NS_IMETHOD GetEchConfig(nsACString& aEchConfig) override;
+   NS_IMETHOD SetEchConfig(const nsACString& aEchConfig) override;
+   NS_IMETHOD GetRetryEchConfig(nsACString& aEchConfig) override;
+   void SetRetryEchConfig(const nsACString& aEchConfig);
+   bool IsBuiltCertChainRootBuiltInRoot() const;
+ 
+  private:
+   ~QuicSocketControl() = default;
 --- a/netwerk/protocol/http/nsHttpConnectionInfo.cpp
 +++ b/netwerk/protocol/http/nsHttpConnectionInfo.cpp
-@@ -12,6 +12,7 @@
+@@ -1,34 +1,35 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ // HttpLog.h should generally be included first
+ #include "HttpLog.h"
+ 
+ // Log on level :5, instead of default :4.
+ #undef LOG
+ #define LOG(args) LOG5(args)
+ #undef LOG_ENABLED
  #define LOG_ENABLED() LOG5_ENABLED()
  
  #include "mozilla/HashFunctions.h"
@@ -186,18 +510,77 @@
  #include "mozilla/net/DNS.h"
  #include "mozilla/net/NeckoChannelParams.h"
  #include "nsComponentManagerUtils.h"
-@@ -97,6 +98,10 @@
+ #include "nsHttpConnectionInfo.h"
+ #include "nsHttpHandler.h"
+ #include "nsICryptoHash.h"
+ #include "nsIDNSByTypeRecord.h"
+ #include "nsIProtocolProxyService.h"
+ #include "nsNetCID.h"
+ #include "nsProxyInfo.h"
+ #include "prnetdb.h"
+ 
+ static nsresult SHA256(const char* aPlainText, nsAutoCString& aResult) {
+   nsresult rv;
+   nsCOMPtr<nsICryptoHash> hasher =
+       do_CreateInstance(NS_CRYPTO_HASH_CONTRACTID, &rv);
+   if (NS_FAILED(rv)) {
+     LOG(("nsHttpDigestAuth: no crypto hash!\n"));
+     return rv;
+   }
+@@ -80,70 +81,77 @@
+ }
+ 
+ void nsHttpConnectionInfo::Init(const nsACString& host, int32_t port,
+                                 const nsACString& npnToken,
+                                 const nsACString& username,
+                                 nsProxyInfo* proxyInfo,
+                                 const OriginAttributes& originAttributes,
+                                 bool e2eSSL, bool aIsHttp3,
+                                 bool aWebTransport) {
+   LOG(("Init nsHttpConnectionInfo @%p\n", this));
+ 
+   mUsername = username;
+   mProxyInfo = proxyInfo;
+   mEndToEndSSL = e2eSSL;
+   mUsingConnect = false;
+   mNPNToken = npnToken;
+   mIsHttp3 = aIsHttp3;
    mWebTransport = aWebTransport;
    mOriginAttributes = originAttributes;
    mTlsFlags = 0x0;
 +  // WebTransport requires extensions absent from the measured ordinary
 +  // Chrome profile. Keep its complete native negotiation and separate pool.
-+  mCloakfoxProfile = aWebTransport ? 0 :
-+      CloakfoxNetworkProfileForContainer(originAttributes.mUserContextId);
++  const uint32_t networkState =
++      CloakfoxNetworkStateForContainer(originAttributes.mUserContextId);
++  mCloakfoxGeneration = networkState >> 1;
++  mCloakfoxProfile = aWebTransport ? 0 : (networkState & 1u);
    mIsTrrServiceChannel = false;
    mTRRMode = nsIRequest::TRR_DEFAULT_MODE;
    mIPv4Disabled = false;
-@@ -127,6 +132,7 @@
+   mIPv6Disabled = false;
+   mHttp3Policy = Http3Policy::Allowed;
+   mHasIPHintAddress = false;
+   mIsWildCard = host.Equals("*"_ns);
+ 
+   mUsingHttpsProxy = (proxyInfo && proxyInfo->IsHTTPS());
+   mUsingHttpProxy = mUsingHttpsProxy || (proxyInfo && proxyInfo->IsHTTP());
+ 
+   if (mUsingHttpProxy) {
+     mUsingConnect = mEndToEndSSL || proxyInfo->IsHttp3Proxy();
+     if (!mUsingConnect) {
+       uint32_t resolveFlags = 0;
+       if (NS_SUCCEEDED(mProxyInfo->GetResolveFlags(&resolveFlags)) &&
+           resolveFlags & nsIProtocolProxyService::RESOLVE_ALWAYS_TUNNEL) {
+         mUsingConnect = true;
+       }
+     }
+   }
+ 
+   if (mUsingHttpsProxy) {
+     mIsHttp3ProxyConnection = "masque"_ns.Equals(proxyInfo->Type());
+     if (mIsHttp3ProxyConnection) {
+       mProxyNPNToken = "h3"_ns;
+     }
    }
  
    SetOriginServer(host, port);
@@ -205,79 +588,413 @@
  }
  
  void nsHttpConnectionInfo::BuildHashKey() {
-@@ -353,6 +359,7 @@
+   //
+   // build hash key:
+   //
+   // the hash key uniquely identifies the connection type.  two connections
+   // are "equal" if they end up talking the same protocol to the same server
+   // and are both used for anonymous or non-anonymous connection only;
+   // anonymity of the connection is setup later from nsHttpChannel::AsyncOpen
+   // where we know we use anonymous connection (LOAD_ANONYMOUS load flag)
+   //
+ 
+   const char* keyHost;
+   int32_t keyPort;
+ 
+   if (mUsingHttpProxy && !mUsingConnect) {
+     keyHost = ProxyHost();
+     keyPort = ProxyPort();
+   } else {
+@@ -336,40 +344,42 @@
+   RefPtr<nsHttpConnectionInfo> clone;
+   if (mRoutedHost.IsEmpty()) {
+     clone = new nsHttpConnectionInfo(mOrigin, mOriginPort, mNPNToken, mUsername,
+                                      mProxyInfo, mOriginAttributes,
+                                      mEndToEndSSL, mIsHttp3, mWebTransport);
+   } else {
+     MOZ_ASSERT(mEndToEndSSL);
+     clone = new nsHttpConnectionInfo(mOrigin, mOriginPort, mNPNToken, mUsername,
+                                      mProxyInfo, mOriginAttributes, mRoutedHost,
+                                      mRoutedPort, mIsHttp3, mWebTransport);
+   }
+ 
+   // Make sure the anonymous, insecure-scheme, and private flags are transferred
+   clone->SetAnonymous(GetAnonymous());
+   clone->SetPrivate(GetPrivate());
+   clone->SetInsecureScheme(GetInsecureScheme());
+   clone->SetNoSpdy(GetNoSpdy());
    clone->SetBeConservative(GetBeConservative());
    clone->SetAnonymousAllowClientCert(GetAnonymousAllowClientCert());
    clone->SetFallbackConnection(GetFallbackConnection());
 +  clone->mCloakfoxProfile = mCloakfoxProfile;
++  clone->mCloakfoxGeneration = mCloakfoxGeneration;
    clone->SetTlsFlags(GetTlsFlags());
    clone->SetIsTrrServiceChannel(GetIsTrrServiceChannel());
    clone->SetTRRMode(GetTRRMode());
-@@ -412,6 +419,7 @@
+   clone->SetIPv4Disabled(GetIPv4Disabled());
+   clone->SetIPv6Disabled(GetIPv6Disabled());
+   clone->SetHttp3Policy(GetHttp3Policy());
+   clone->SetHasIPHintAddress(HasIPHintAddress());
+   clone->SetEchConfig(GetEchConfig());
+   clone->SetWebTransportId(GetWebTransportId());
+   clone->SetHappyEyeballsEnabled(GetHappyEyeballsEnabled());
+ 
+   MOZ_ASSERT(clone->Equals(this));
+ 
+   return clone.forget();
+ }
+ 
+ already_AddRefed<nsHttpConnectionInfo>
+ nsHttpConnectionInfo::CloneAndAdoptHTTPSSVCRecord(
+     nsISVCBRecord* aRecord) const {
+   MOZ_ASSERT(aRecord);
+@@ -395,40 +405,42 @@
+     clone = new nsHttpConnectionInfo(mOrigin, mOriginPort,
+                                      alpn ? std::get<0>(*alpn) : EmptyCString(),
+                                      mUsername, mProxyInfo, mOriginAttributes,
+                                      mEndToEndSSL, isHttp3, mWebTransport);
+   } else {
+     MOZ_ASSERT(mEndToEndSSL);
+     clone = new nsHttpConnectionInfo(
+         mOrigin, mOriginPort, alpn ? std::get<0>(*alpn) : EmptyCString(),
+         mUsername, mProxyInfo, mOriginAttributes, name,
+         port ? *port : mOriginPort, isHttp3, mWebTransport);
+   }
+ 
+   // Make sure the anonymous, insecure-scheme, and private flags are transferred
+   clone->SetAnonymous(GetAnonymous());
+   clone->SetPrivate(GetPrivate());
+   clone->SetInsecureScheme(GetInsecureScheme());
+   clone->SetNoSpdy(GetNoSpdy());
    clone->SetBeConservative(GetBeConservative());
    clone->SetAnonymousAllowClientCert(GetAnonymousAllowClientCert());
    clone->SetFallbackConnection(GetFallbackConnection());
 +  clone->mCloakfoxProfile = mCloakfoxProfile;
++  clone->mCloakfoxGeneration = mCloakfoxGeneration;
    clone->SetTlsFlags(GetTlsFlags());
    clone->SetIsTrrServiceChannel(GetIsTrrServiceChannel());
    clone->SetTRRMode(GetTRRMode());
-@@ -465,6 +473,7 @@
+   clone->SetIPv4Disabled(GetIPv4Disabled());
+   clone->SetIPv6Disabled(GetIPv6Disabled());
+   clone->SetHttp3Policy(GetHttp3Policy());
+   clone->SetHappyEyeballsEnabled(GetHappyEyeballsEnabled());
+ 
+   bool hasIPHint = false;
+   (void)aRecord->GetHasIPHintAddress(&hasIPHint);
+   if (hasIPHint) {
+     clone->SetHasIPHintAddress(hasIPHint);
+   }
+ 
+   nsAutoCString echConfig;
+   (void)aRecord->GetEchConfig(echConfig);
+   clone->SetEchConfig(echConfig);
+ 
+   return clone.forget();
+ }
+@@ -448,40 +460,42 @@
+   RefPtr<nsHttpConnectionInfo> clone;
+   if (mEndToEndSSL && port != mOriginPort) {
+     const nsACString& routedHost =
+         mRoutedHost.IsEmpty() ? mOrigin : mRoutedHost;
+     clone = new nsHttpConnectionInfo(mOrigin, mOriginPort, alpnStr, mUsername,
+                                      mProxyInfo, mOriginAttributes, routedHost,
+                                      port, isHttp3, mWebTransport);
+   } else {
+     clone = new nsHttpConnectionInfo(mOrigin, port, alpnStr, mUsername,
+                                      mProxyInfo, mOriginAttributes,
+                                      mEndToEndSSL, isHttp3, mWebTransport);
+   }
+ 
+   clone->SetAnonymous(GetAnonymous());
+   clone->SetPrivate(GetPrivate());
+   clone->SetInsecureScheme(GetInsecureScheme());
+   clone->SetNoSpdy(GetNoSpdy());
    clone->SetBeConservative(GetBeConservative());
    clone->SetAnonymousAllowClientCert(GetAnonymousAllowClientCert());
    clone->SetFallbackConnection(GetFallbackConnection());
 +  clone->mCloakfoxProfile = mCloakfoxProfile;
++  clone->mCloakfoxGeneration = mCloakfoxGeneration;
    clone->SetTlsFlags(GetTlsFlags());
    clone->SetIsTrrServiceChannel(GetIsTrrServiceChannel());
    clone->SetTRRMode(GetTRRMode());
-@@ -552,6 +561,7 @@
+   clone->SetIPv4Disabled(GetIPv4Disabled());
+   clone->SetIPv6Disabled(GetIPv6Disabled());
+   clone->SetHttp3Policy(GetHttp3Policy());
+   clone->SetHappyEyeballsEnabled(GetHappyEyeballsEnabled());
+   // Preserve the WebTransport id so the clone hashes to the same connection
+   // entry as the origin connection info — WebTransport server cert hashes are
+   // stored under that entry and looked up by Http3Session::Init.
+   clone->SetWebTransportId(GetWebTransportId());
+ 
+   // IPHints and echConfig are handled in HappyEyeballsConnectionAttempt.
+   return clone.forget();
+ }
+ 
+ /* static */
+ void nsHttpConnectionInfo::SerializeHttpConnectionInfo(
+     nsHttpConnectionInfo* aInfo, HttpConnectionInfoCloneArgs& aArgs) {
+   aArgs.host() = aInfo->GetOrigin();
+@@ -535,74 +549,79 @@
+         aInfoArgs.endToEndSSL(), aInfoArgs.isHttp3(), aInfoArgs.webTransport());
+   } else {
+     MOZ_ASSERT(aInfoArgs.endToEndSSL());
+     cinfo = new nsHttpConnectionInfo(
+         aInfoArgs.host(), aInfoArgs.port(), aInfoArgs.npnToken(),
+         aInfoArgs.username(), pi, aInfoArgs.originAttributes(),
+         aInfoArgs.routedHost(), aInfoArgs.routedPort(), aInfoArgs.isHttp3(),
+         aInfoArgs.webTransport());
+   }
+   // Transfer Webtransport ids
+   cinfo->SetWebTransportId(aInfoArgs.webTransportId());
+ 
+   // Make sure the anonymous, insecure-scheme, and private flags are transferred
+   cinfo->SetAnonymous(aInfoArgs.anonymous());
+   cinfo->SetPrivate(aInfoArgs.aPrivate());
+   cinfo->SetInsecureScheme(aInfoArgs.insecureScheme());
+   cinfo->SetNoSpdy(aInfoArgs.noSpdy());
    cinfo->SetBeConservative(aInfoArgs.beConservative());
    cinfo->SetAnonymousAllowClientCert(aInfoArgs.anonymousAllowClientCert());
    cinfo->SetFallbackConnection(aInfoArgs.fallbackConnection());
 +  cinfo->mCloakfoxProfile = (aInfoArgs.tlsFlags() & kCloakfoxChromeTlsFlag) ? 1 : 0;
++  cinfo->mCloakfoxGeneration =
++      (aInfoArgs.tlsFlags() & kCloakfoxGenerationMask) >> 8;
    cinfo->SetTlsFlags(aInfoArgs.tlsFlags());
    cinfo->SetIsTrrServiceChannel(aInfoArgs.isTrrServiceChannel());
    cinfo->SetTRRMode(static_cast<nsIRequest::TRRMode>(aInfoArgs.trrMode()));
-@@ -586,6 +596,7 @@
+   cinfo->SetIPv4Disabled(aInfoArgs.isIPv4Disabled());
+   cinfo->SetIPv6Disabled(aInfoArgs.isIPv6Disabled());
+   uint8_t http3Policy = aInfoArgs.http3Policy();
+   if (http3Policy > static_cast<uint8_t>(Http3Policy::Only)) {
+     http3Policy = static_cast<uint8_t>(Http3Policy::Allowed);
+   }
+   cinfo->SetHttp3Policy(static_cast<Http3Policy>(http3Policy));
+   cinfo->SetHasIPHintAddress(aInfoArgs.hasIPHintAddress());
+   cinfo->SetEchConfig(aInfoArgs.echConfig());
+   cinfo->SetHappyEyeballsEnabled(aInfoArgs.happyEyeballsEnabled());
+ 
+   return cinfo.forget();
+ }
+ 
+ void nsHttpConnectionInfo::CloneAsDirectRoute(nsHttpConnectionInfo** outCI,
+                                               nsProxyInfo* aProxyInfo) {
+   // Explicitly use an empty npnToken when |mIsHttp3| is true, since we want to
+   // create a non-http3 connection info.
+   RefPtr<nsHttpConnectionInfo> clone = new nsHttpConnectionInfo(
+       mOrigin, mOriginPort,
+       (mRoutedHost.IsEmpty() && !mIsHttp3) ? mNPNToken : ""_ns, mUsername,
+       aProxyInfo ? aProxyInfo : mProxyInfo.get(), mOriginAttributes,
+       mEndToEndSSL, false, mWebTransport);
+   // Make sure the anonymous, insecure-scheme, and private flags are transferred
+   clone->SetAnonymous(GetAnonymous());
+   clone->SetPrivate(GetPrivate());
+   clone->SetInsecureScheme(GetInsecureScheme());
+   clone->SetNoSpdy(GetNoSpdy());
    clone->SetBeConservative(GetBeConservative());
    clone->SetAnonymousAllowClientCert(GetAnonymousAllowClientCert());
    clone->SetFallbackConnection(GetFallbackConnection());
 +  clone->mCloakfoxProfile = mCloakfoxProfile;
++  clone->mCloakfoxGeneration = mCloakfoxGeneration;
    clone->SetTlsFlags(GetTlsFlags());
    clone->SetIsTrrServiceChannel(GetIsTrrServiceChannel());
    clone->SetTRRMode(GetTRRMode());
-@@ -680,7 +691,10 @@
+   clone->SetIPv4Disabled(GetIPv4Disabled());
+   clone->SetIPv6Disabled(GetIPv6Disabled());
+   // This clone is deliberately not h3 (empty npnToken, isHttp3 = false), so an
+   // Only policy would contradict it. Unlike CloneAndAdoptHTTPSSVCRecord and
+   // CloneAndAdoptPortAndAlpn, which describe the endpoint an h3-only attempt is
+   // dialling and must keep it.
+   clone->SetHttp3Policy(GetHttp3Only() ? Http3Policy::Allowed
+                                        : GetHttp3Policy());
+   clone->SetHasIPHintAddress(HasIPHintAddress());
+   clone->SetEchConfig(GetEchConfig());
+   clone->SetHappyEyeballsEnabled(GetHappyEyeballsEnabled());
+ 
+   clone.forget(outCI);
+ }
+ 
+ already_AddRefed<nsHttpConnectionInfo>
+ nsHttpConnectionInfo::CreateConnectUDPFallbackConnInfo() {
+@@ -612,40 +631,46 @@
+ 
+   RefPtr<nsProxyInfo> proxyInfo = mProxyInfo->CreateFallbackProxyInfo();
+   RefPtr<nsHttpConnectionInfo> clone;
+   CloneAsDirectRoute(getter_AddRefs(clone), proxyInfo);
+   return clone.forget();
+ }
+ 
+ nsresult nsHttpConnectionInfo::CreateWildCard(nsHttpConnectionInfo** outParam) {
+   // T???mozilla.org:443 (https:proxy.ducksong.com:3128) [specifc form]
+   // TS??*:0 (https:proxy.ducksong.com:3128)   [wildcard form]
+ 
+   if (!mUsingHttpsProxy) {
+     MOZ_ASSERT(false);
+     return NS_ERROR_NOT_IMPLEMENTED;
+   }
+ 
+   RefPtr<nsHttpConnectionInfo> clone;
+   clone = new nsHttpConnectionInfo("*"_ns, 0, mNPNToken, mUsername, mProxyInfo,
+                                    mOriginAttributes, true, mIsHttp3,
+                                    mWebTransport);
++  // Preserve the request/established connection snapshot across delayed proxy
++  // setup; constructing a wildcard must not re-read the current preference.
++  clone->mCloakfoxProfile = mCloakfoxProfile;
++  clone->mCloakfoxGeneration = mCloakfoxGeneration;
++  clone->SetBeConservative(GetBeConservative());
++  clone->SetTlsFlags(GetTlsFlags());
+   // Make sure the anonymous and private flags are transferred!
+   clone->SetAnonymous(GetAnonymous());
+   clone->SetPrivate(GetPrivate());
+   clone->SetFallbackConnection(GetFallbackConnection());
+   clone.forget(outParam);
+   return NS_OK;
+ }
+ 
+ void nsHttpConnectionInfo::SetTRRMode(nsIRequest::TRRMode aTRRMode) {
+   if (mTRRMode != aTRRMode) {
+     mTRRMode = aTRRMode;
+     RebuildHashKey();
+   }
+ }
+ 
+ void nsHttpConnectionInfo::SetIPv4Disabled(bool aNoIPv4) {
+   if (mIPv4Disabled != aNoIPv4) {
+     mIPv4Disabled = aNoIPv4;
+     RebuildHashKey();
+   }
+@@ -663,60 +688,67 @@
+     mHttp3Policy = aPolicy;
+     RebuildHashKey();
+   }
+ }
+ 
+ void nsHttpConnectionInfo::SetWebTransport(bool aWebTransport) {
+   if (mWebTransport != aWebTransport) {
+     mWebTransport = aWebTransport;
+     RebuildHashKey();
+   }
+ }
+ 
+ void nsHttpConnectionInfo::SetWebTransportId(uint64_t id) {
+   if (mWebTransportId != id) {
+     mWebTransportId = id;
+     RebuildHashKey();
+   }
  }
  
  void nsHttpConnectionInfo::SetTlsFlags(uint32_t aTlsFlags) {
 -  mTlsFlags = aTlsFlags;
 +  // Bit 30 carries this Gecko adapter snapshot through existing socket/IPC
 +  // metadata and NSS peer IDs; the original security flags remain unchanged.
-+  mTlsFlags = (aTlsFlags & ~kCloakfoxChromeTlsFlag) |
++  mTlsFlags = (aTlsFlags & ~(kCloakfoxChromeTlsFlag | kCloakfoxGenerationMask)) |
++      (mCloakfoxGeneration << 8) |
 +      ((mCloakfoxProfile == 1 && !GetBeConservative()) ? kCloakfoxChromeTlsFlag : 0);
    const uint32_t tlsFlagsLength = 8;
    const uint32_t tlsFlagsIndex =
        UnderlyingIndex(HashKeyIndex::End) + strlen("[tlsflags0x");
-@@ -715,6 +729,7 @@
+   mHashKey.Replace(tlsFlagsIndex, tlsFlagsLength,
+                    nsPrintfCString("%08x", mTlsFlags));
+ }
+ 
+ bool nsHttpConnectionInfo::UsingProxy() {
+   if (!mProxyInfo) return false;
+   return !mProxyInfo->IsDirect();
+ }
+ 
+ bool nsHttpConnectionInfo::HostIsLocalIPLiteral() const {
+   NetAddr netAddr;
+   // If the host/proxy host is not an IP address literal, return false.
+   nsAutoCString host(ProxyHost() ? ProxyHost() : Origin());
+   if (NS_FAILED(netAddr.InitFromString(host))) {
+     return false;
+   }
+   return netAddr.IsIPAddrLocal();
+ }
+ 
+ // static
+ CoalescingKey nsHttpConnectionInfo::BuildOriginFrameHashKey(
+     nsHttpConnectionInfo* ci, const nsACString& host, int32_t port) {
+   nsCString newKey(host);
+   newKey.Append(ci->GetAnonymous() ? "~A:" : "~.:");
+   newKey.Append(ci->GetFallbackConnection() ? "~F:" : "~.:");
+   newKey.AppendInt(port);
+   newKey.AppendLiteral("/[");
+   nsAutoCString suffix;
    ci->GetOriginAttributes().CreateSuffix(suffix);
    newKey.Append(suffix);
    newKey.AppendLiteral("]viaORIGIN.FRAME");
-+  newKey.AppendPrintf("[cfx-profile:%u]", ci->GetCloakfoxNetworkProfile());
++  newKey.AppendPrintf("[cfx-profile:%u-generation:%u]",
++                      ci->GetCloakfoxNetworkProfile(),
++                      ci->GetCloakfoxNetworkGeneration());
    return CoalescingKey{HashString(newKey), std::move(newKey)};
  }
  
+ }  // namespace net
+ }  // namespace mozilla
 --- a/netwerk/protocol/http/nsHttpConnectionInfo.h
 +++ b/netwerk/protocol/http/nsHttpConnectionInfo.h
-@@ -122,6 +122,9 @@
+@@ -105,40 +105,44 @@
+   // field.
+   enum class HashKeyIndex : uint32_t {
+     Proxy = 0,
+     EndToEndSSL,
+     Anonymous,
+     Private,
+     InsecureScheme,
+     NoSpdy,
+     BeConservative,
+     AnonymousAllowClientCert,
+     FallbackConnection,
+     WebTransport,
+     HappyEyeballs,
+     End,
+   };
+   constexpr inline auto UnderlyingIndex(HashKeyIndex aIndex) const {
+     return std::underlying_type_t<HashKeyIndex>(aIndex);
    }
  
   public:
 +  uint32_t GetCloakfoxNetworkProfile() const {
 +    return GetBeConservative() ? 0 : mCloakfoxProfile;
 +  }
++  uint32_t GetCloakfoxNetworkGeneration() const { return mCloakfoxGeneration; }
    const nsCString& HashKey() const { return mHashKey; }
  
    const nsCString& GetOrigin() const { return mOrigin; }
-@@ -230,6 +233,7 @@
+   const char* Origin() const { return mOrigin.get(); }
+   int32_t OriginPort() const { return mOriginPort; }
+ 
+   const nsCString& GetRoutedHost() const { return mRoutedHost; }
+   const char* RoutedHost() const { return mRoutedHost.get(); }
+   int32_t RoutedPort() const { return mRoutedPort; }
+ 
+   // OK to treat these as an infalible allocation
+   already_AddRefed<nsHttpConnectionInfo> Clone() const;
+   // This main prupose of this function is to clone this connection info, but
+   // replace mRoutedHost with SvcDomainName in the given SVCB record. Note that
+   // if SvcParamKeyPort and SvcParamKeyAlpn are presented in the SVCB record,
+   // mRoutedPort and mNPNToken will be replaced as well.
+   already_AddRefed<nsHttpConnectionInfo> CloneAndAdoptHTTPSSVCRecord(
+       nsISVCBRecord* aRecord) const;
+   already_AddRefed<nsHttpConnectionInfo> CloneAndAdoptPortAndAlpn(
+       uint16_t aPort,
+@@ -213,40 +217,41 @@
+     return GetHashCharAt(HashKeyIndex::Private) == 'P';
+   }
+   void SetInsecureScheme(bool insecureScheme) {
+     SetHashCharAt(insecureScheme ? 'I' : '.', HashKeyIndex::InsecureScheme);
+   }
+   bool GetInsecureScheme() const {
+     return GetHashCharAt(HashKeyIndex::InsecureScheme) == 'I';
+   }
+ 
+   void SetNoSpdy(bool aNoSpdy) {
+     SetHashCharAt(aNoSpdy ? 'X' : '.', HashKeyIndex::NoSpdy);
+     if (aNoSpdy && mNPNToken == "h2"_ns) {
+       mNPNToken.Truncate();
+       RebuildHashKey();
+     }
+   }
+   bool GetNoSpdy() const { return GetHashCharAt(HashKeyIndex::NoSpdy) == 'X'; }
  
    void SetBeConservative(bool aBeConservative) {
      SetHashCharAt(aBeConservative ? 'C' : '.', HashKeyIndex::BeConservative);
@@ -285,17 +1002,86 @@
    }
    bool GetBeConservative() const {
      return GetHashCharAt(HashKeyIndex::BeConservative) == 'C';
-@@ -374,6 +378,7 @@
+   }
+ 
+   void SetAnonymousAllowClientCert(bool anon) {
+     SetHashCharAt(anon ? 'B' : '.', HashKeyIndex::AnonymousAllowClientCert);
+   }
+   bool GetAnonymousAllowClientCert() const {
+     return GetHashCharAt(HashKeyIndex::AnonymousAllowClientCert) == 'B';
+   }
+ 
+   void SetFallbackConnection(bool aFallback) {
+     SetHashCharAt(aFallback ? 'F' : '.', HashKeyIndex::FallbackConnection);
+   }
+   bool GetFallbackConnection() const {
+     return GetHashCharAt(HashKeyIndex::FallbackConnection) == 'F';
+   }
+ 
+   void SetHappyEyeballsEnabled(bool aEnabled) {
+@@ -357,40 +362,42 @@
+ 
+   nsCString mOrigin;
+   int32_t mOriginPort = 0;
+   nsCString mRoutedHost;
+   int32_t mRoutedPort;
+ 
+   nsCString mHashKey;
+   nsCString mUsername;
+   nsCOMPtr<nsProxyInfo> mProxyInfo;
+   bool mUsingHttpProxy = false;
+   bool mUsingHttpsProxy = false;
+   bool mEndToEndSSL = false;
+   // if will use CONNECT with http proxy
+   bool mUsingConnect = false;
+   nsCString mNPNToken;
+   nsCString mProxyNPNToken;
+   OriginAttributes mOriginAttributes;
    nsIRequest::TRRMode mTRRMode;
  
    uint32_t mTlsFlags = 0;
 +  uint32_t mCloakfoxProfile = 0;
++  uint32_t mCloakfoxGeneration = 0;
    uint16_t mIsTrrServiceChannel : 1;
    uint16_t mIPv4Disabled : 1;
    uint16_t mIPv6Disabled : 1;
+ 
+   Http3Policy mHttp3Policy = Http3Policy::Allowed;
+ 
+   bool mLessThanTls13;  // This will be set to true if we negotiate less than
+                         // tls1.3. If the tls version is till not know or it
+                         // is 1.3 or greater the value will be false.
+   bool mIsHttp3 = false;
+   bool mIsHttp3ProxyConnection = false;
+   bool mWebTransport = false;
+ 
+   bool mHasIPHintAddress = false;
+   nsCString mEchConfig;
+ 
+   uint64_t mWebTransportId = 0;  // current dedicated Id only used for
+                                  // Webtransport, zero means not dedicated
+   bool mIsWildCard = false;
+ 
 --- a/netwerk/protocol/http/nsHttpConnectionMgr.cpp
 +++ b/netwerk/protocol/http/nsHttpConnectionMgr.cpp
-@@ -805,6 +805,12 @@
+@@ -788,40 +788,48 @@
+       listLen--;
+       continue;  // without adjusting iterator
+     }
+ 
+     if (aNoHttp3 && potentialMatch->UsingHttp3()) {
+       j++;
+       continue;
+     }
+     if (aNoHttp2 && potentialMatch->UsingSpdy()) {
+       j++;
+       continue;
+     }
+ 
+     // Check this is a match and not a hash collision.
+     const nsCString& matchKey = listOfWeakConns->ElementAt(j).mKey;
+     if (matchKey != key.mString) {
+       LOG(("FindCoalescableConnectionByHashKey() hash %" PRIu32
             " collides but key differs new=%s matched=%s - skipping\n",
             key.mHash, key.mString.get(), matchKey.get()));
        j++;
@@ -303,14 +1089,50 @@
 +    }
 +
 +    if (potentialMatch->ConnectionInfo()->GetCloakfoxNetworkProfile() !=
-+        ci->GetCloakfoxNetworkProfile()) {
++        ci->GetCloakfoxNetworkProfile() ||
++        potentialMatch->ConnectionInfo()->GetCloakfoxNetworkGeneration() !=
++        ci->GetCloakfoxNetworkGeneration()) {
 +      ++j;
        continue;
      }
  
+     bool couldJoin;
+     if (justKidding) {
+       couldJoin =
+           potentialMatch->TestJoinConnection(ci->GetOrigin(), ci->OriginPort());
+     } else {
+       couldJoin =
+           potentialMatch->JoinConnection(ci->GetOrigin(), ci->OriginPort());
+     }
+     if (couldJoin) {
+       LOG(
+           ("FindCoalescableConnectionByHashKey() found match conn=%p "
+            "key=%" PRIu32 " newCI=%s matchedCI=%s join ok\n",
+            potentialMatch.get(), key.mHash, ci->HashKey().get(),
+            potentialMatch->ConnectionInfo()->HashKey().get()));
+       return potentialMatch.get();
+     }
+     LOG(("FindCoalescableConnectionByHashKey() found match conn=%p key=%" PRIu32
 --- a/netwerk/socket/neqo_glue/src/lib.rs
 +++ b/netwerk/socket/neqo_glue/src/lib.rs
-@@ -519,8 +519,18 @@
+@@ -502,93 +502,105 @@
+             .pmtud(pmtud_enabled)
+             .spurious_recovery(spurious_recovery)
+             .hystart_css_baseline(css_baseline);
+ 
+         // 0 means "use neqo's spec-compliant default PTO scaling".
+         if fast_pto > 0 {
+             if let Ok(v) = u8::try_from(fast_pto) {
+                 params = params.fast_pto(v);
+             } else {
+                 debug_assert!(false, "fast_pto value {fast_pto} exceeds u8::MAX");
+             }
+         }
+ 
+         // Set a short timeout when fuzzing.
+         #[cfg(feature = "fuzzing")]
+         if static_prefs::pref!("fuzzing.necko.http3") {
+             params = params.idle_timeout(Duration::from_millis(10));
          }
  
          // Cloakfox: H3 fingerprint profile resolved per-container in C++
@@ -330,7 +1152,37 @@
  
          // Cloakfox: the Chrome/Safari H3 SETTINGS arms advertise
          // SETTINGS_QPACK_BLOCKED_STREAMS=100 (settings.rs). That value tells the
-@@ -558,7 +568,9 @@
+         // peer how many streams our DECODER tolerates being blocked on the
+         // encoder stream, so the decoder must be built for at least that many —
+         // otherwise an encoder-heavy origin exceeds our real limit (Firefox's
+         // default is 10) and the connection dies with QPACK_DECOMPRESSION_FAILED.
+         // Raise the decoder capacity to match what we advertise.
+         let effective_blocked_streams = match fp_profile {
+             H3FingerprintProfile::Chrome | H3FingerprintProfile::Safari => {
+                 core::cmp::max(max_blocked_streams, 100)
+             }
+             H3FingerprintProfile::Firefox => max_blocked_streams,
+         };
+ 
+         let http3_settings = Http3Parameters::default()
+             .max_table_size_encoder(max_table_size)
+             .max_table_size_decoder(max_table_size)
+             .max_blocked_streams(effective_blocked_streams)
+             .connection_parameters(params)
+             .webtransport(webtransport)
+             .connect(true)
+             .http3_datagram(true)
+             .fingerprint_profile(fp_profile);
+ 
+         let Ok(mut conn) = Connection::new_client(
+             origin_conv,
+             &[alpn_conv],
+             Rc::new(RefCell::new(RandomConnectionIdGenerator::new(3))),
+             local,
+             remote,
+             http3_settings.get_connection_parameters().clone(),
+             Instant::now(),
+         ) else {
              return Err(NS_ERROR_INVALID_ARG);
          };
  
@@ -341,7 +1193,11 @@
          let mut named_groups = Vec::with_capacity(6);
          if static_prefs::pref!("security.tls.enable_kyber")
              && static_prefs::pref!("network.http.http3.enable_kyber")
-@@ -570,8 +582,8 @@
+         {
+             named_groups.push(nss_rs::TLS_GRP_KEM_MLKEM768X25519);
+             additional_shares += 1;
+         }
+         named_groups.extend_from_slice(&[
              nss_rs::TLS_GRP_EC_X25519,
              nss_rs::TLS_GRP_EC_SECP256R1,
              nss_rs::TLS_GRP_EC_SECP384R1,
@@ -351,9 +1207,43 @@
          // ML-KEM-1024 goes last so that it is never offered as a key share, but can
          // still be negotiated through a HelloRetryRequest.
          if static_prefs::pref!("security.tls.enable_mlkem1024") {
+             named_groups.push(nss_rs::TLS_GRP_KEM_MLKEM1024);
+         }
+         // These operations are infallible when conn.state == State::Init.
+         conn.set_groups(&named_groups)
+             .map_err(|_| NS_ERROR_UNEXPECTED)?;
+         // If additional_shares == 2, send mlkem768x25519, x25519, and p256.
+         // If additional_shares == 1, send x25519 and p256.
+         conn.send_additional_key_shares(additional_shares)
+             .map_err(|_| NS_ERROR_UNEXPECTED)?;
+ 
+         if static_prefs::pref!("security.tls.enable_certificate_compression_zlib")
+             && static_prefs::pref!("network.http.http3.enable_certificate_compression_zlib")
+         {
+             enable_zlib_decoder(&mut conn).map_err(|_| NS_ERROR_UNEXPECTED)?;
+         }
+ 
+         if static_prefs::pref!("security.tls.enable_certificate_compression_zstd")
 --- a/security/manager/ssl/nsNSSIOLayer.cpp
 +++ b/security/manager/ssl/nsNSSIOLayer.cpp
-@@ -28,6 +28,8 @@
+@@ -11,40 +11,42 @@
+ 
+ #include "NSSCertDBTrustDomain.h"
+ #include "NSSErrorsService.h"
+ #include "NSSSocketControl.h"
+ #include "SSLServerCertVerification.h"
+ #include "ScopedNSSTypes.h"
+ #include "TLSClientAuthCertSelection.h"
+ #include "brotli/decode.h"
+ #include "keyhi.h"
+ #include "mozilla/Base64.h"
+ #include "mozilla/BaseProfiler.h"
+ #include "mozilla/Logging.h"
+ #include "mozilla/Preferences.h"
+ #include "mozilla/RandomNum.h"
+ #include "mozilla/ScopeExit.h"
+ #include "mozilla/StaticPrefs_security.h"
+ #include "mozilla/glean/SecurityManagerSslMetrics.h"
  #include "mozilla/net/SSLTokensCache.h"
  #include "mozilla/net/SocketProcessChild.h"
  #include "mozilla/psm/EnabledSignatureSchemes.h"
@@ -362,7 +1252,41 @@
  #include "mozilla/psm/IPCClientCertsChild.h"
  #include "mozilla/psm/PIPCClientCertsChild.h"
  #include "mozilla/psm/mozilla_abridged_certs_generated.h"
-@@ -1588,7 +1590,10 @@
+ #include "mozpkix/pkixnss.h"
+ #include "mozpkix/pkixtypes.h"
+ #include "mozpkix/pkixutil.h"
+ #include "nsArray.h"
+ #include "nsArrayUtils.h"
+ #include "nsCRT.h"
+ #include "nsCharSeparatedTokenizer.h"
+ #include "nsClientAuthRemember.h"
+ #include "nsContentUtils.h"
+ #include "nsISocketProvider.h"
+ #include "nsIWebProgressListener.h"
+ #include "nsNSSComponent.h"
+ #include "nsPrintfCString.h"
+ #include "nsServiceManagerUtils.h"
+ #include "prmem.h"
+ #include "prnetdb.h"
+ #include "secder.h"
+@@ -1571,52 +1573,55 @@
+         100 - StaticPrefs::security_tls_ech_grease_probability()) {
+       MOZ_LOG(gPIPNSSLog, LogLevel::Debug,
+               ("[%p] nsSSLIOLayerSetOptions: enabling TLS ECH Grease\n", fd));
+       if (SECSuccess != SSL_EnableTls13GreaseEch(fd, PR_TRUE)) {
+         return NS_ERROR_FAILURE;
+       }
+       // ECH Padding can be between 1 and 255
+       if (SECSuccess !=
+           SSL_SetTls13GreaseEchSize(
+               fd, std::clamp(StaticPrefs::security_tls_ech_grease_size(), 1U,
+                              255U))) {
+         return NS_ERROR_FAILURE;
+       }
+       infoObject->UpdateEchExtensionStatus(EchExtensionStatus::kGREASE);
+     }
+   }
+ 
    // Include a modest set of named groups in supported_groups and determine how
    // many key shares to send. Please change getKeaGroupName in
    // nsNSSCallbacks.cpp when changing the lists here.
@@ -374,7 +1298,10 @@
    bool tls13 = range.max >= SSL_LIBRARY_VERSION_TLS_1_3;
  
    AutoTArray<SSLNamedGroup, 8> namedGroups;
-@@ -1599,7 +1604,7 @@
+   if (StaticPrefs::security_tls_enable_kyber() && tls13) {
+     namedGroups.AppendElement(ssl_grp_kem_mlkem768x25519);
+     additional_shares += 1;
+   }
    namedGroups.AppendElement(ssl_grp_ec_curve25519);
    namedGroups.AppendElement(ssl_grp_ec_secp256r1);
    namedGroups.AppendElement(ssl_grp_ec_secp384r1);
@@ -383,7 +1310,41 @@
  
    // Only include named FFDHE shares if ciphersuites that can use FFDHE are
    // enabled.
-@@ -1715,6 +1720,29 @@
+   if (StaticPrefs::security_ssl3_dhe_rsa_aes_128_sha() ||
+       StaticPrefs::security_ssl3_dhe_rsa_aes_256_sha()) {
+     namedGroups.AppendElement(ssl_grp_ffdhe_2048);
+     namedGroups.AppendElement(ssl_grp_ffdhe_3072);
+   }
+ 
+   if (StaticPrefs::security_tls_enable_mlkem1024() && tls13) {
+     namedGroups.AppendElement(ssl_grp_kem_mlkem1024);
+   }
+ 
+   if (SECSuccess !=
+       SSL_NamedGroupConfig(fd, namedGroups.Elements(), namedGroups.Length())) {
+     return NS_ERROR_FAILURE;
+   }
+ 
+   // If additional_shares == 2, send mlkem768x25519, x25519, and p256.
+   // If additional_shares == 1, send x25519 and p256.
+@@ -1698,40 +1703,63 @@
+     }
+ 
+     // On ARM, prefer (TLS_CHACHA20_POLY1305_SHA256) over AES when hardware
+     // support for AES isn't available. However, it may be disabled. If enabled,
+     // it will either be element [0] or [1]*. If [0], we're done. If [1], swap
+     // it with [0] (TLS_AES_128_GCM_SHA256).
+     // *(assuming the compile-time order remains unchanged)
+     if (enabledCiphers > 1) {
+       if (ciphers[0] != TLS_CHACHA20_POLY1305_SHA256 &&
+           ciphers[1] == TLS_CHACHA20_POLY1305_SHA256) {
+         std::swap(ciphers[0], ciphers[1]);
+ 
+         if (SSL_CipherSuiteOrderSet(fd, ciphers.data(), enabledCiphers) !=
+             SECSuccess) {
+           return NS_ERROR_FAILURE;
+         }
+       }
      }
    }
  #endif
@@ -413,6 +1374,23 @@
  
    // Set the Peer ID so that SSL proxy connections work properly and to
    // separate anonymous and/or private browsing connections.
+   nsAutoCString peerId;
+   infoObject->GetPeerId(peerId);
+   if (SECSuccess != SSL_SetSockPeerID(fd, peerId.get())) {
+     return NS_ERROR_FAILURE;
+   }
+ 
+   uint32_t flags = infoObject->GetProviderFlags();
+   if (flags & nsISocketProvider::NO_PERMANENT_STORAGE) {
+     if (SECSuccess != SSL_OptionSet(fd, SSL_ENABLE_SESSION_TICKETS, false) ||
+         SECSuccess != SSL_OptionSet(fd, SSL_NO_CACHE, true)) {
+       return NS_ERROR_FAILURE;
+     }
+   }
+ 
+   return NS_OK;
+ }
+ 
 --- a/third_party/rust/neqo-http3/.cargo-checksum.json
 +++ b/third_party/rust/neqo-http3/.cargo-checksum.json
 @@ -1 +1 @@
@@ -421,7 +1399,24 @@
 \ No newline at end of file
 --- a/third_party/rust/neqo-http3/src/settings.rs
 +++ b/third_party/rust/neqo-http3/src/settings.rs
-@@ -75,6 +75,9 @@
+@@ -58,85 +58,91 @@
+ 
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct HSetting {
+     pub setting_type: HSettingType,
+     pub value: u64,
+ }
+ 
+ impl HSetting {
+     #[must_use]
+     pub const fn new(setting_type: HSettingType, value: u64) -> Self {
+         Self {
+             setting_type,
+             value,
+         }
+     }
+ }
+ 
  #[derive(Clone, Debug, Default, PartialEq, Eq)]
  pub struct HSettings {
      settings: Vec<HSetting>,
@@ -431,7 +1426,7 @@
  }
  
  impl HSettings {
-@@ -82,6 +85,7 @@
+     #[must_use]
      pub fn new(settings: &[HSetting]) -> Self {
          Self {
              settings: settings.to_vec(),
@@ -439,7 +1434,36 @@
          }
      }
  
-@@ -118,8 +122,10 @@
+     #[must_use]
+     pub fn get(&self, setting: HSettingType) -> u64 {
+         self.settings
+             .iter()
+             .find(|s| s.setting_type == setting)
+             .map_or_else(|| hsetting_default(setting), |v| v.value)
+     }
+ 
+     pub fn encode_frame_contents<B: Buffer>(&self, enc: &mut Encoder<B>) {
+         enc.encode_vvec_with(|enc_inner| {
+             #[cfg(feature = "build-fuzzing-corpus")]
+             let start = enc_inner.len();
+ 
+             for iter in &self.settings {
+                 match iter.setting_type {
+                     HSettingType::MaxHeaderListSize => {
+                         enc_inner.encode_varint(SETTINGS_MAX_HEADER_LIST_SIZE);
+                         enc_inner.encode_varint(iter.value);
+                     }
+                     HSettingType::MaxTableCapacity => {
+                         enc_inner.encode_varint(SETTINGS_QPACK_MAX_TABLE_CAPACITY);
+                         enc_inner.encode_varint(iter.value);
+                     }
+                     HSettingType::BlockedStreams => {
+                         enc_inner.encode_varint(SETTINGS_QPACK_BLOCKED_STREAMS);
+                         enc_inner.encode_varint(iter.value);
+                     }
+                     HSettingType::EnableWebTransport => {
+                         enc_inner.encode_varint(SETTINGS_ENABLE_WEB_TRANSPORT);
+                         enc_inner.encode_varint(iter.value);
                      }
                      HSettingType::EnableH3Datagram => {
                          if iter.value == 1 {
@@ -452,7 +1476,41 @@
                              enc_inner.encode_varint(SETTINGS_H3_DATAGRAM);
                              enc_inner.encode_varint(iter.value);
                          }
-@@ -256,30 +262,14 @@
+                     }
+                     HSettingType::EnableConnect => {
+                         if iter.value == 1 {
+                             enc_inner.encode_varint(SETTINGS_ENABLE_CONNECT_PROTOCOL);
+                             enc_inner.encode_varint(iter.value);
+                         }
+                     }
+                 }
+             }
+ 
+             #[cfg(feature = "build-fuzzing-corpus")]
+             neqo_common::write_item_to_fuzzing_corpus("hsettings", &enc_inner.as_ref()[start..]);
+         });
+     }
+ 
+     /// # Errors
+     ///
+@@ -239,81 +245,68 @@
+                     setting_type: HSettingType::MaxTableCapacity,
+                     value: max_table,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::BlockedStreams,
+                     value: blocked,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::EnableWebTransport,
+                     value: webtransport,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::EnableH3Datagram,
+                     value: datagram,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::EnableConnect,
                      value: connect,
                  },
              ],
@@ -489,7 +1547,16 @@
              ],
              // Safari's h3fp is sparse: only MaxTableCapacity=4096 and
              // BlockedStreams=100, in that order. No datagram, no connect,
-@@ -296,7 +286,10 @@
+             // no webtransport, no header-list-size.
+             H3FingerprintProfile::Safari => vec![
+                 HSetting {
+                     setting_type: HSettingType::MaxTableCapacity,
+                     value: 4096,
+                 },
+                 HSetting {
+                     setting_type: HSettingType::BlockedStreams,
+                     value: 100,
+                 },
              ],
          };
  
@@ -501,6 +1568,23 @@
      }
  }
  
+ #[derive(Debug)]
+ pub struct HttpZeroRttChecker {
+     settings: Http3Parameters,
+ }
+ 
+ impl HttpZeroRttChecker {
+     /// Right now we only have QPACK settings, so that is all this takes.
+     #[must_use]
+     pub const fn new(settings: Http3Parameters) -> Self {
+         Self { settings }
+     }
+ 
+     /// Save the settings that matter for 0-RTT.
+     #[must_use]
+     pub fn save(settings: &Http3Parameters) -> Vec<u8> {
+         let mut enc = Encoder::default();
+         enc.encode_varint(SETTINGS_ZERO_RTT_VERSION)
 --- a/third_party/rust/neqo-transport/.cargo-checksum.json
 +++ b/third_party/rust/neqo-transport/.cargo-checksum.json
 @@ -1 +1 @@
@@ -510,7 +1594,24 @@
 \ No newline at end of file
 --- a/third_party/rust/neqo-transport/src/connection/mod.rs
 +++ b/third_party/rust/neqo-transport/src/connection/mod.rs
-@@ -610,6 +610,12 @@
+@@ -593,40 +593,46 @@
+             .set_bytes(RetrySourceConnectionId, retry_cid.to_vec());
+ 
+         // ...and save their choices for later validation.
+         self.remote_initial_source_cid = Some(remote_cid);
+     }
+ 
+     fn retry_sent(&self) -> bool {
+         self.tps
+             .borrow()
+             .local()
+             .get_bytes(RetrySourceConnectionId)
+             .is_some()
+     }
+ 
+     /// Set ALPN preferences. Strings that appear earlier in the list are given
+     /// higher preference.
+     /// # Errors
      /// When the operation fails, which is usually due to bad inputs or bad connection state.
      pub fn set_alpn<A: AsRef<[u8]>>(&mut self, protocols: &[A]) -> Res<()> {
          self.crypto.tls_mut().set_alpn(protocols)?;
@@ -523,6 +1624,23 @@
          Ok(())
      }
  
+     /// Enable a set of ciphers.
+     /// # Errors
+     /// When the operation fails, which is usually due to bad inputs or bad connection state.
+     pub fn set_ciphers(&mut self, ciphers: &[Cipher]) -> Res<()> {
+         if self.state != State::Init {
+             qerror!("[{self}] Cannot enable ciphers in state {:?}", self.state);
+             return Err(Error::ConnectionState);
+         }
+         self.crypto.tls_mut().set_ciphers(ciphers)?;
+         Ok(())
+     }
+ 
+     /// Enable a set of key exchange groups.
+     /// # Errors
+     /// When the operation fails, which is usually due to bad inputs or bad connection state.
+     pub fn set_groups(&mut self, groups: &[Group]) -> Res<()> {
+         if self.state != State::Init {
 --- a/third_party/rust/nss-rs/.cargo-checksum.json
 +++ b/third_party/rust/nss-rs/.cargo-checksum.json
 @@ -1 +1 @@
@@ -532,7 +1650,24 @@
 \ No newline at end of file
 --- a/third_party/rust/nss-rs/src/agent.rs
 +++ b/third_party/rust/nss-rs/src/agent.rs
-@@ -623,6 +623,22 @@
+@@ -606,40 +606,56 @@
+         if self.state != HandshakeState::New {
+             warn!("[{self}] Cannot enable ciphers in state {:?}", self.state);
+             return Err(Error::Internal);
+         }
+ 
+         let all_ciphers = unsafe { ssl::SSL_GetImplementedCiphers() };
+         let cipher_count = usize::from(unsafe { ssl::SSL_GetNumImplementedCiphers() });
+         for i in 0..cipher_count {
+             let p = all_ciphers.wrapping_add(i);
+             secstatus_to_res(unsafe {
+                 ssl::SSL_CipherPrefSet(self.fd, i32::from(*p), PRBool::from(false))
+             })?;
+         }
+ 
+         for c in ciphers {
+             secstatus_to_res(unsafe {
+                 ssl::SSL_CipherPrefSet(self.fd, i32::from(*c), PRBool::from(true))
              })?;
          }
          Ok(())
@@ -555,9 +1690,43 @@
      }
  
      /// Set key exchange groups.
+     ///
+     /// # Errors
+     ///
+     /// If the underlying API fails (which shouldn't happen).
+     pub fn set_groups(&mut self, groups: &[Group]) -> Res<()> {
+         // SSLNamedGroup is a different size to Group, so copy one by one.
+         let group_vec: Vec<_> = groups
+             .iter()
+             .map(|&g| ssl::SSLNamedGroup::Type::from(g))
+             .collect();
+ 
+         let ptr = group_vec.as_slice().as_ptr();
+         secstatus_to_res(unsafe {
+             ssl::SSL_NamedGroupConfig(self.fd, ptr, c_uint::try_from(group_vec.len())?)
+         })
+     }
+ 
 --- a/third_party/rust/nss-rs/src/ssl.rs
 +++ b/third_party/rust/nss-rs/src/ssl.rs
-@@ -88,6 +88,17 @@
+@@ -71,40 +71,51 @@
+ impl Opt {
+     #[must_use]
+     pub const fn as_int(self) -> PRInt32 {
+         self as PRInt32
+     }
+ 
+     // Some options are backwards, like SSL_NO_LOCKS, so use this to manage that.
+     fn map_enabled(self, enabled: bool) -> PRIntn {
+         let v = match self {
+             Self::Locking => !enabled,
+             _ => enabled,
+         };
+         PRIntn::from(v)
+     }
+ 
+     pub(crate) fn set(self, fd: *mut PRFileDesc, value: bool) -> Res<()> {
+         secstatus_to_res(unsafe { SSL_OptionSet(fd, self.as_int(), self.map_enabled(value)) })
      }
  }
  
@@ -575,3 +1744,20 @@
  experimental_api!(SSL_HelloRetryRequestCallback(
      fd: *mut PRFileDesc,
      cb: SSLHelloRetryRequestCallback,
+     arg: *mut c_void,
+ ));
+ experimental_api!(SSL_RecordLayerWriteCallback(
+     fd: *mut PRFileDesc,
+     cb: SSLRecordWriteCallback,
+     arg: *mut c_void,
+ ));
+ experimental_api!(SSL_RecordLayerData(
+     fd: *mut PRFileDesc,
+     epoch: Epoch,
+     ct: SSLContentType::Type,
+     data: *const u8,
+     len: c_uint,
+ ));
+ experimental_api!(SSL_SendSessionTicket(
+     fd: *mut PRFileDesc,
+     extra: *const u8,
