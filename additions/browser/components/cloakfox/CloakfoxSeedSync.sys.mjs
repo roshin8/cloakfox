@@ -4,13 +4,15 @@
 
 import {
   fillPersonaKeys,
+  writeHttpProfilePrefs,
   genericFontListUnion,
+  migratePersonaVersion,
 } from "resource:///modules/CloakfoxPersonas.sys.mjs";
 import { applyOverrides } from "resource:///modules/CloakfoxOverrides.sys.mjs";
 // ContextualIdentityService must be imported explicitly: there is no
 // Services.contextualIdentityService getter. Reading it yields undefined, so
 // calling through it throws a TypeError — see ensureSeedsForAllContainers.
-import { ContextualIdentityService } from "resource://gre/modules/ContextualIdentityService.sys.mjs";
+import { ContextualIdentityService } from "moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs";
 
 /* Cloakfox: parent-side seed sync for content-process JSWindowActors.
  *
@@ -97,6 +99,7 @@ function buildCloakCfg(seedB64, ucid = null) {
   // individual fields (hwc=16, timezone=Berlin) without losing the
   // rest of the persona's coherent identity.
   const base = {
+    "fingerprint:secret": seedB64,
     "canvas:seed": u32(seedB64, 0),
     "audio:seed": u32(seedB64, 1),
     "font:seed": u32(seedB64, 2),
@@ -112,6 +115,18 @@ function buildCloakCfg(seedB64, ucid = null) {
     ...fillPersonaKeys(seedB64, ucid),
   };
   return JSON.stringify(ucid !== null ? applyOverrides(ucid, base) : base);
+}
+
+// Explicit settings edits rebuild the same identity; they never rotate its seed.
+export function refreshContainerConfig(ucid) {
+  if (!Number.isInteger(ucid) || ucid < 0) throw new Error("Invalid container");
+  const seed = Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`, "");
+  if (!seed) throw new Error("Container identity has not initialized");
+  const cfg = buildCloakCfg(seed, ucid);
+  Services.prefs.setStringPref(`cloakfox.s.cloak_cfg_${ucid}`, cfg);
+  writeHttpProfilePrefs(ucid, JSON.parse(cfg)["navigator.userAgent"] || "");
+  publish();
+  return JSON.parse(cfg);
 }
 
 // Decide whether a container's cloak_cfg must be (re)generated. Pure so it can
@@ -136,6 +151,12 @@ export function needsCfgRebuild(curCfg) {
 }
 
 function ensureContainerSeeds(ucid) {
+  // Initialize the mode before generating the first master seed. Existing
+  // seeds with no mode are deliberately legacy, including imported v1 backups.
+  if (!Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`, "") &&
+      !Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_os_mode`, "")) {
+    Services.prefs.setStringPref(`cloakfox.container.${ucid}.persona_os_mode`, "legacy");
+  }
   // First, the per-actor seeds (math/keyboard/timing) used by JSWindow
   // Actors. Each is independent so a missing one doesn't gate the others.
   for (const name of SEED_PREF_NAMES) {
@@ -188,6 +209,24 @@ function ensureContainerSeeds(ucid) {
         } catch (_e) { /* corrupt → generated alone, as before */ }
         Services.prefs.setStringPref(
           cfgPref, JSON.stringify(existing ? { ...generated, ...existing } : generated));
+      }
+    }
+    // Existing complete cfgs also need build-version upgrades. Do not rebuild
+    // their persona or rotate seeds; retain every unrelated persisted value.
+    const current = Services.prefs.getStringPref(cfgPref, "");
+    if (current) {
+      const parsed = JSON.parse(current);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        // Backfill only the internal secret; preserve the existing persona and
+        // vector seeds. The secret is consumed only by privileged/native code.
+        if (!parsed["fingerprint:secret"]) {
+          parsed["fingerprint:secret"] = Services.prefs.getStringPref(
+            `cloakfox.container.${ucid}.math_seed`, "");
+        }
+        const migrated = JSON.stringify(applyOverrides(ucid, migratePersonaVersion(parsed)));
+        if (migrated !== current) {
+          Services.prefs.setStringPref(cfgPref, migrated);
+        }
       }
     }
   } catch (_e) { /* ignore */ }
@@ -302,9 +341,16 @@ function publish() {
 
 const observer = {
   observe(_subject, topic, data) {
-    if (topic !== "nsPref:changed") return;
+    if (topic !== "nsPref:changed" || data === "cloakfox.font_identity_epoch") return;
     // Re-snapshot. Cheaper than diffing — pref count is small.
     publish();
+    if (data?.startsWith("cloakfox.s.cloak_cfg_")) {
+      // Dynamic strings are sanitized out of content preference IPC. A numeric
+      // epoch tells owning pres contexts to refresh their prepared font identity
+      // from the existing authoritative native config bridge on the main thread.
+      const current = Services.prefs.getIntPref("cloakfox.font_identity_epoch", 0);
+      Services.prefs.setIntPref("cloakfox.font_identity_epoch", (current + 1) & 0x7fffffff);
+    }
   },
 };
 
@@ -322,10 +368,20 @@ const observer = {
 const CONTAINER_TOPICS = [
   "contextual-identity-created",
   "contextual-identity-updated",
+  "contextual-identity-deleted",
 ];
 
 const containerObserver = {
   observe(_subject, topic, _data) {
+    if (topic === "contextual-identity-deleted") {
+      // ContextualIdentityService's notification carries the deleted identity
+      // in wrappedJSObject. Its OA data clear cannot reach our typed grants.
+      try {
+        ChromeUtils.importESModule("resource:///modules/CloakfoxTrackingProtection.sys.mjs")
+          .clearBounceExceptions(_subject.wrappedJSObject.userContextId);
+      } catch (error) { Cu.reportError(error); }
+      return;
+    }
     if (!CONTAINER_TOPICS.includes(topic)) return;
     try {
       ensureSeedsForAllContainers();

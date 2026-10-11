@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_daily_settings_ui.py", line 26, in <module>
+    if __name__ == '__main__': main()
+                               ^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_daily_settings_ui.py", line 20, in main
+    driver.find_element(By.ID,'cfx-network-apply').click()
+  File "/Users/zeus/Documents/cloakfox/tests/.cpp-first-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webelement.py", line 114, in click
+    self._execute(Command.CLICK_ELEMENT)
+  File "/Users/zeus/Documents/cloakfox/tests/.cpp-first-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webelement.py", line 508, in _execute
+    return self._parent.execute(command, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/tests/.cpp-first-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 450, in execute
+    self.error_handler.check_response(response)
+  File "/Users/zeus/Documents/cloakfox/tests/.cpp-first-venv/lib/python3.12/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.ElementNotInteractableException: Message: Element <button id="cfx-network-apply" class="btn btn-primary"> could not be scrolled into view; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception
+Stacktrace:
+RemoteError@chrome://remote/content/shared/RemoteError.sys.mjs:8:8
+WebDriverError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:169:5
+ElementNotInteractableError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:338:5
+webdriverClickElement@chrome://remote/content/marionette/interaction.sys.mjs:165:11
+interaction.clickElement@chrome://remote/content/marionette/interaction.sys.mjs:134:11
+clickElement@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:333:29
+receiveMessage@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:205:31
+

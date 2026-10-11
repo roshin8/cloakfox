@@ -1,0 +1,18 @@
+$ mkdir -p lw
+$ cp -v /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/cloakfox.cfg lw/cloakfox.cfg
+/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/cloakfox.cfg -> lw/cloakfox.cfg
+$ cp -v /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/policies.json lw/
+/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/policies.json -> lw/policies.json
+$ cp -v /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/local-settings.js lw/
+/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/local-settings.js -> lw/local-settings.js
+$ cp -v /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/chrome.css lw/
+/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/chrome.css -> lw/chrome.css
+$ cp -v /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/properties.json lw/
+/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/settings/properties.json -> lw/properties.json
+$ touch lw/moz.build
+$ cp -v '/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/patches/librewolf/pack_vs.py' build/vs/
+/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/patches/librewolf/pack_vs.py -> build/vs/pack_vs.py
+$ cp -r '/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/additions/'* .
+$ cp '/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/bundle/fonts/macos/'*.ttf browser/fonts/
+Staged 31 bundled fonts into browser/fonts/
+Additions and settings copied successfully.

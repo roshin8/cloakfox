@@ -1,0 +1,77 @@
+ 0:00.30 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.30 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.39 Clobber not needed.
+ 0:00.67 /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/events/moz.build
+ 0:00.67 Build configuration changed. Regenerating backend.
+ 0:00.67 /Users/zeus/.mozbuild/srcdirs/firefox-src-2b50123a5247/_virtualenvs/build/bin/python /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Finished reading 2436 moz.build files in 1.83s
+Read 58 gyp files in parallel contributing 0.00s to total wall time
+Processed into 18788 build config descriptors in 1.46s
+RecursiveMake backend executed in 1.48s
+  5268 total backend files; 0 created; 1 updated; 5267 unchanged; 0 deleted; 16 -> 1982 Makefile
+FasterMake backend executed in 0.12s
+  77 total backend files; 0 created; 0 updated; 77 unchanged; 0 deleted
+Clangd backend executed in 0.78s
+  1252 total backend files; 0 created; 1 updated; 1251 unchanged; 0 deleted
+Total wall time: 5.82s; CPU time: 4.62s; Efficiency: 79%; Untracked: 0.15s
+ 0:07.34 W Adding make options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:07.34 /usr/bin/make -f client.mk -j8 -s
+ 0:08.68 ./buildid.h.stub
+ 0:08.68 ./source-repo.h.stub
+ 0:08.86 ./application.ini.stub
+ 0:08.97 ./application.ini.h.stub
+ 0:17.27 ./buildid.h.stub
+ 0:17.27 ./source-repo.h.stub
+ 0:17.28 accessible/generic
+ 0:17.29 accessible/base
+ 0:17.44 ./application.ini.stub
+ 0:17.78 dom/animation
+ 0:17.92 dom/canvas
+ 0:18.11 ./application.ini.h.stub
+ 0:18.17 dom/bindings
+ 0:18.32 dom/events
+ 0:31.47 dom/html
+ 0:33.57 dom/ipc
+ 0:39.22 dom/media/webspeech/synth
+ 0:39.56 dom/performance
+ 0:41.51 dom/svg
+ 0:44.40 editor/libeditor
+ 0:45.07 gfx/ipc
+ 0:46.88 gfx/layers
+ 0:49.01 gfx/src
+ 0:49.40 gfx/thebes
+ 1:00.00 layout/base
+ 1:00.25 layout/build
+ 1:00.81 layout/forms
+ 1:03.29 layout/generic
+ 1:08.01 layout/inspector
+ 1:08.46 layout/ipc
+ 1:09.28 layout/mathml
+ 1:14.82 layout/painting
+ 1:15.06 layout/printing
+ 1:15.94 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/layout/base/Unified_cpp_layout_base2.cpp:29:
+ 1:15.94 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/nsLayoutUtils.cpp:9912:19: error: no member named 'IsChrome' in 'mozilla::dom::Document'
+ 1:15.94 E  9912 |   if (!aDocument->IsChrome()) {
+ 1:15.94 E       |        ~~~~~~~~~  ^
+ 1:16.05 layout/svg
+ 1:18.11 E 1 error generated.
+ 1:18.13 E make[4]: *** [Unified_cpp_layout_base2.o] Error 1
+ 1:18.13 E make[3]: *** [layout/base/target-objects] Error 2
+ 1:18.13 E make[3]: *** Waiting for unfinished jobs....
+ 1:27.25 E make[2]: *** [compile] Error 2
+ 1:27.25 E make[1]: *** [default] Error 2
+ 1:27.25 E make: *** [build] Error 2
+ 1:27.36 W 0 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260907_232520.json

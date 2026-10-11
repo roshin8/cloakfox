@@ -1,0 +1,19 @@
+# Final integration review — 2026-09-07
+
+**No additional actionable integration defect found in the reviewed stable source.** This is a read-only source review while build 3 runs, not a build or live-runtime result. No original-checkout changes, code edits, browser runs or builds were performed by this reviewer.
+
+## Integration checks
+
+- BrowserGlue `_beforeUIStartup` imports migration, SeedSync and WebRTCSync before opening the first window. WebRTCSync initializes NetworkPolicy and ContainerWorkflows before checking optional public-IP lookup enablement. Disabling lookup therefore does not disable routing or temporary cleanup registration. The modules, actors and settings scripts are registered in moz.build/jar.mn.
+- NetworkPolicy publishes numeric `effective_webrtc_mode` and `network_epoch`; PeerConnectionImpl reads/observes these exact names in the same per-container namespace. The native resolver takes the stricter raw/mirrored policy, so sanitized malformed string preferences cannot relax the mirror. Proxy URL changes advance the numeric epoch even when the string itself is excluded from content IPC. Native changes close existing connections and request transport removal; the HTTP proxy callback separately cancels missing required proxies after Gecko bypass processing.
+- SeedSync publishes the numeric font epoch after configuration changes. PresContext refreshes a single atomic container-ID/site-seed snapshot on its owning main thread, and Stylo font groups consume that prepared value. The authoritative native config getter refreshes on main-thread access and falls back to synchronous parent retrieval when the dynamic string is absent from content prefs. Changed identities flush font caches and reconstruct frames to discard existing shaped advances. Font cache keys include site seeds. The master switch still gates the config overlay. These source contracts agree; live font toggle/reload coverage remains root's responsibility.
+- Patch order places the native RTC policy after its older RTC spoofing patch, and site-fingerprint-isolation last after the native container/worker/config/font prerequisites. The copy-additions script stages the pinned uBlock XPI before copying additions; config.patch installs it in distribution/extensions and the package manifest includes it. Staging errors stop packaging. No automatic-update trust root is implied by the development release UI.
+- IdentityActions uses the rebuilt flags API and excludes shared permission categories for container zero. Nonzero permission cleanup remains origin-attribute scoped. Awaited service-worker unregister, cookie verification and SessionStore persistence precede identity rotation. The settings wording preserves shared permissions and reports incomplete deletion rather than rotating after an error.
+
+A byte comparison of additions/browser/components/cloakfox and additions/cloakcfg against their source destinations found matching files at the review checkpoint except MaskConfig.hpp. Its difference is the existing intentionally patch-applied overlay implementation; copying its unpatched addition over the completed source would remove that implementation. This is not a new task regression.
+
+## Previously reported workflow findings
+
+The latest source inspected now handles domwindowclosed, checks rule ownership before rollback, awaits rollback persistence and reports when cleanup cannot be saved. UI also states the actual native opener/named-target routing limitation. These address the concrete prior review findings. Task7 is still being finalized by its owner; this review does not substitute for that owner's final regression evidence. Import remains a sequence of changes rather than a crash-atomic transaction, and must not be represented as providing crash-atomic restore.
+
+No new broad warning or release-readiness claim is introduced. Final build, fresh patch-stack reconciliation and sequential live probes belong to the root task.

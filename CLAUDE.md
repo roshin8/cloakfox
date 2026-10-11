@@ -4,23 +4,23 @@ Daily-driver privacy browser: Camoufox (C++ fingerprint spoofing) + ContainerShi
 
 ## What This Is
 
-A hard fork of Camoufox (Firefox 146.0.1 fork with C++ engine patches) transformed into a daily-use browser with:
+A hard fork of Camoufox, rebased onto Firefox 155.0.1 with C++ engine patches, transformed into a daily-use browser with:
 - C++ level fingerprint spoofing (canvas, audio, fonts, WebGL, navigator, screen, WebRTC, etc.)
 - Firefox Multi-Account Containers with per-container unique fingerprints
-- Per-domain deterministic fingerprinting within each container
+- Top-level schemeful-site deterministic noise within each container
 - Bundled "Cloakfox Shield" extension for container management, settings UI, monitoring
 
 ## Architecture
 
 Three layers:
-1. **C++ Engine** — Camoufox + LibreWolf patches (~36 total) applied to Firefox 146.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
+1. **C++ Engine** — Camoufox + LibreWolf patches (83 total) applied to Firefox 155.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
 2. **Cloakfox Shield Extension** — Stripped ContainerShield. Popup UI plus a parent-process pref/persona bridge (`experiment-apis/cloakfox.js`). NO content or inject scripts — see "Spoofer Architecture (cpp-first)" below.
 3. **Config** — `policies.json` + `cloakfox.cfg` restore daily-driver features (search, bookmarks, passwords) while keeping privacy hardened.
 
 ## Build
 
 ```bash
-make fetch           # Download Firefox 146.0.1 source tarball
+make fetch           # Download Firefox 155.0.1 source tarball
 make setup-minimal   # Extract source + copy additions/ (policies, cloakcfg, extension)
 make dir             # Apply all patches (ordered via patches/order.txt)
 make extension       # Build Cloakfox Shield extension in-place
@@ -30,7 +30,7 @@ make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 
 ## Repo Structure
 
-- `patches/` — Flat directory of all C++ engine patches (29 top-level + 7 in `patches/librewolf/`)
+- `patches/` — Flat directory of all C++ engine patches (68 top-level + 7 in `patches/librewolf/`)
 - `patches/order.txt` — Explicit apply order; overrides alphabetical default
 - `settings/` — policies.json, cloakfox.cfg, local-settings.js
 - `additions/cloakcfg/` — MaskConfig.hpp, MouseTrajectories.hpp, json.hpp (copied into firefox-src)

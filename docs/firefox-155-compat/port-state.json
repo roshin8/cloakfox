@@ -1,0 +1,14 @@
+{
+  "scratch": "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-155-port-7aslxcji",
+  "phase": "complete",
+  "last_pass": "ported-pass-15",
+  "status": "All 28 initial failures ported; newer original-checkout letterboxing patch, probe and README reconciled. 75/75 patches apply; 174 patched targets and 3 changed additions match full source. macOS arm64 build passes. Expanded letterboxing, About dialog, navigator coherence and additional-vector probes pass on the reconciled build; other previous probe results retained.",
+  "compile_note": "Mozilla clang19.1.7, SDK26, cbindgen0.29.4. CI pins updated to cbindgen0.29.4 and Linux clang19 minimum. 75patches apply,174targets match verified stack.",
+  "completed_utc": "2026-09-07T20:41:37.512219+00:00",
+  "limitations": [
+    "Linux and Windows not built",
+    "No live QUIC SETTINGS capture",
+    "Full async capture-stream rendering route not exercised end to end",
+    "Per-domain isolation not established"
+  ]
+}

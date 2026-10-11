@@ -1,5 +1,21 @@
 # Cloakfox — pending work
 
+## 2026-09-08 — current privacy completion status
+
+The approved privacy shortlist is implemented and locally verified in the Firefox
+155 worktree: tracking cleanup/bounce exceptions, DNS controls, native-profile
+workspaces, permission expiry, worker policy updates, host-compatible personas,
+font-license validation, backup v2, release preparation and real classifier-list
+status. The final macOS build and all 22 live probes pass; 183 Node tests pass.
+See [current evidence and limitations](docs/privacy-completion/README.md).
+
+Release activation remains pending owner MAR keys/HTTPS hosting/platform signing,
+a working Safe Browsing key and real update/list-download acceptance tests.
+Windows/Linux runtime parity was not tested in this macOS pass. Older dated
+entries below are historical investigations; use the current evidence above for
+this worktree's state.
+
+
 Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
@@ -37,11 +53,14 @@ host-present fonts; the cross-container linkage is gone. New regression:
 ctx 0 shows despite one shared process whitelist).
 
 **Residual / deliberately out of scope:**
-- **Full cross-OS font independence** needs bundled font files — a host can only
-  expose fonts it actually has (a Mac can't show `Segoe UI`), so a Windows
-  persona on a Mac still can't present Windows-only fonts. `bundle/fonts/` does
-  not exist here. Large project (+ font licensing); the "union whitelist" half of
-  full independence was intentionally NOT built for this reason.
+- **Cross-OS rendering remains limited (updated 2026-09-08).** The repository
+  now has 31 bundled open font files plus native per-container generic routing.
+  Hashes, actual embedded license attribution and full license texts are in
+  `bundle/fonts/`; the prior claim that this directory was absent is obsolete.
+  Approximate aliases and host rasterization do not reproduce authentic foreign
+  OS fonts. Host-constrained persona sampling is available for new/explicitly
+  changed identities; legacy identities retain their existing appearance.
+  See `bundle/fonts/README.md` for the remaining rendering limits.
 - **`"font:seed"` dead key.** `buildCloakCfg` emits `font:seed` (singular) with
   no C++ reader (`fonts:seed` or otherwise) — likely reserved/dormant. Harmless;
   worth confirming intent.
@@ -113,15 +132,16 @@ the Mac) are BLOCKED and the whitelist matches the persona OS.
    load). Verified: fresh-profile launch 1 now BLOCKS host Mac fonts
    (Helvetica Neue/Menlo/Zapfino); `enabled=false` correctly skips the fallback.
    Built + relinked (compile 15s, XUL relink 22s).
-2. **Cross-OS ceiling.** An allowlist can only REMOVE fonts, not add ones the
-   host lacks. A Windows persona on a Mac host shows only the common web-safe
-   intersection, not the full Windows set. It no longer self-contradicts (no
-   Mac-only fonts under a Win UA), but shows fewer fonts than a real Windows
-   box. True cross-OS font faking needs font-metric bundling — large, separate.
-3. **Global, not per-container.** The system-font allowlist is process-wide
-   (set once at gfx init from ctx-0's persona), so non-default containers get
-   ctx-0's font set for system-font enumeration regardless of their own persona
-   OS. `IsFontAllowed` is per-context but only gates @font-face load status.
+2. **Cross-OS ceiling — superseded description, residual still open.** The
+   existing 31-file open-substitute pack supplies covered families even when
+   the host lacks them. It does not reproduce every claimed OS font or the
+   foreign native rasterizer. The September 8 work adds host-coherent sampling
+   and packaged license/hash evidence, not new font availability. See the
+   current `bundle/fonts/README.md` for precise limitations.
+3. **Global enumeration bug — fixed 2026-08-01.** The process-wide union
+   permits font loading; per-container resolution now narrows it using each
+   context's live allowlist. The historical ctx-0-only behavior below is not
+   the current architecture. See the August 1 entry and container-font probe.
 
 ## 2026-07-27 — actor descriptor-leak fixes + architecture reconciliation
 

@@ -27,6 +27,8 @@ run() {
 
 # Copy settings into lw/ directory
 run 'mkdir -p lw'
+python3 "$REPO/scripts/stage_ublock.py" --output-dir lw/ublock-origin || exit 1
+python3 "$REPO/scripts/stage_container_addons.py" --output-dir lw/container-addons || exit 1
 run "cp -v $REPO/settings/cloakfox.cfg lw/cloakfox.cfg"
 [ -f "$REPO/settings/policies.json" ] && run "cp -v $REPO/settings/policies.json lw/"
 [ -f "$REPO/settings/local-settings.js" ] && run "cp -v $REPO/settings/local-settings.js lw/"
@@ -48,7 +50,25 @@ run "cp -r '$REPO/additions/'* ."
 # runtime by MOZ_BUNDLED_FONTS / ActivateBundledFonts). The Mac manifest entry
 # is added by patches/font-bundle-packaging.patch.
 if ls "$REPO/bundle/fonts/macos/"*.ttf >/dev/null 2>&1; then
+    run "python3 '$REPO/scripts/audit-font-pack.py' --check"
     run "cp '$REPO/bundle/fonts/macos/'*.ttf browser/fonts/"
+    # Attribution and exact-byte manifest are release artifacts, not just repo
+    # documentation. Keep a separate idempotent install rule for older trees.
+    run "cp '$REPO/bundle/fonts/licenses/'*.txt browser/fonts/"
+    run "cp '$REPO/bundle/fonts/FONT-NOTICES.txt' '$REPO/bundle/fonts/font-manifest.json' browser/fonts/"
+    if ! grep -q "Cloakfox: bundled font license notices" browser/fonts/moz.build; then
+        {
+            echo ""
+            echo "# Cloakfox: bundled font license notices."
+            echo "FINAL_TARGET_FILES.fonts += ["
+            for f in "$REPO/bundle/fonts/licenses/"*.txt "$REPO/bundle/fonts/FONT-NOTICES.txt" "$REPO/bundle/fonts/font-manifest.json"; do
+                basename "$f"
+            done | LC_ALL=C sort -f | while IFS= read -r font_notice; do
+                echo "    \"$font_notice\","
+            done
+            echo "]"
+        } >> browser/fonts/moz.build
+    fi
     # Idempotency guard: the standard flow runs this script twice (make setup
     # bakes it into the `unpatched` tag, then make dir re-runs it), so appending
     # unconditionally would duplicate the FINAL_TARGET_FILES.fonts entries and

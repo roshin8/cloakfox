@@ -36,6 +36,8 @@ import os
 import secrets
 import sys
 import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import time
 from pathlib import Path
 
@@ -44,7 +46,7 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
 
-PROBE_HTML = """<!doctype html>
+PROBE_HTML = r"""<!doctype html>
 <title>cfx-probe</title>
 <body>
 <pre id="r"></pre>
@@ -440,12 +442,27 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         prof = os.path.join(tmp, "profile")
-        probe_html = os.path.join(tmp, "probe.html")
-        Path(probe_html).write_text(PROBE_HTML)
+        # file: has no stable schemeful site for actor noise. Serve the same
+        # page on a real loopback HTTP origin, retaining secure-context APIs.
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                payload = PROBE_HTML.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
 
-        d = _build_driver(bin_path, prof)
+            def log_message(self, *args):
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+
+        d = None
         try:
-            d.get(f"file://{probe_html}")
+            d = _build_driver(bin_path, prof)
+            d.get(f"http://127.0.0.1:{server.server_port}/probe.html")
             deadline = time.time() + 12
             while time.time() < deadline:
                 if d.title == "PROBE_DONE":
@@ -456,7 +473,10 @@ def main() -> None:
                 sys.exit("probe never finished — no data-cfx-probe attribute")
             result = json.loads(attr)
         finally:
-            d.quit()
+            if d is not None:
+                d.quit()
+            server.shutdown()
+            server.server_close()
 
     print(json.dumps(result, indent=2))
     print()

@@ -1,0 +1,30 @@
+name: Release security readiness
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 12 * * *'
+  push:
+    tags: ['v*']
+  pull_request:
+    paths: ['upstream.sh', 'scripts/release*', 'tests/release/**', '.github/workflows/release-security.yml']
+permissions:
+  contents: read
+jobs:
+  security-rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python -m unittest discover -s tests/release -p 'test_*.py'
+      - run: node --test tests/release/test_*.mjs
+      - run: python scripts/release_security.py --output security-readiness.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-readiness
+          path: security-readiness.json

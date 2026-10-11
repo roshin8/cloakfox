@@ -147,11 +147,14 @@ return (async () => {
 
 
 def run(bin_path: str, probe: str, cfg: dict | None, enabled: bool = True,
-        async_probe: bool = False):
+        async_probe: bool = False, letterboxing: bool | None = None):
     with tempfile.TemporaryDirectory() as t:
         prof = os.path.join(t, "p")
         Path(prof).mkdir()
         js = f'user_pref("cloakfox.enabled", {str(enabled).lower()});\n'
+        if letterboxing is not None:
+            js += ('user_pref("privacy.resistFingerprinting.letterboxing", '
+                   f'{str(letterboxing).lower()});\n')
         if cfg is not None:
             # CloakfoxSeedSync.needsCfgRebuild() REGENERATES any cloak_cfg that
             # is missing the font keys — an upgrade path for profiles written
@@ -277,14 +280,26 @@ def main(bin_path: str) -> int:
                     f"covered-all-true={ms_all} ({len(ms_cov)} types); "
                     f"changed-vs-base={ms_changed or 'none'}"))
 
-    vv = run(bin_path, OPTIN_PROBE,
-             {"navigator.platform": "Win32", "window:visualViewport:spoof": True,
-              "window.outerWidth": 1536, "window.outerHeight": 864,
-              "window.innerWidth": 1536, "window.innerHeight": 738},
-             async_probe=True)
+    # The visual-viewport patch spoofs scroll offsets/scale, not dimensions.
+    # Letterboxing intentionally takes precedence; its coherence is covered by
+    # probe_letterboxing.py. Exercise this legacy opt-in with letterboxing off.
+    viewport_probe = r"""
+return (async () => {
+  document.body.style.height = '3000px';
+  scrollTo(0, 200);
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  return JSON.stringify({scrollY, pageTop: visualViewport.pageTop});
+})();
+"""
+    vv_base = run(bin_path, viewport_probe, {"navigator.platform": "Win32"},
+                  async_probe=True, letterboxing=False)
+    vv = run(bin_path, viewport_probe,
+             {"navigator.platform": "Win32", "window:visualViewport:spoof": True},
+             async_probe=True, letterboxing=False)
     results.append(("visual-viewport-spoofing",
-                    vv["vv"] != base["vv"],
-                    f"base={base['vv']} flagged={vv['vv']}"))
+                    vv_base["scrollY"] > 0 and vv_base["pageTop"] > 0 and
+                    vv["scrollY"] > 0 and vv["pageTop"] == 0,
+                    f"base={vv_base} flagged={vv}"))
 
     idb_base = run(bin_path, IDB_PROBE, {"navigator.platform": "Win32"}, async_probe=True)
     idb_hid = run(bin_path, IDB_PROBE,

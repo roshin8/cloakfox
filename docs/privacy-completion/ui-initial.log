@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_daily_settings_ui.py", line 69, in <module>
+    if __name__ == '__main__': main()
+                               ^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_daily_settings_ui.py", line 64, in main
+    assert 'selected-scope.test' in grants and 'default-scope.test' not in grants, grants
+AssertionError: Site permission grants
+Review stored camera, microphone, location and notification grants in the selected container. Temporary tab grants remain in the tab’s Firefox permission controls. Expiry only shortens existing consent; websites must still request permission. Revoking or expiring a grant prevents future use, but may not stop an already active stream or location watch. Stop it in the tab or close the tab.
+Browsing context
+Normal browsing
+Private browsing
+Container-specific grants. Normal and private grants are separate.
+Camera · https://default-scope.test
+No expiry
+Revoke
+Expire when session ends
+15 minutes
+1 hour
+1 day
+Set expiry
+Refresh grants

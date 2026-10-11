@@ -1,0 +1,1205 @@
+ 0:00.23 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.23 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.31 Clobber not needed.
+ 0:00.38 W Adding make options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:00.38 /usr/bin/make -f client.mk -j8 -s
+ 0:00.72 Elapsed: 0.14s; From dist/xpi-stage: Kept 174 existing; Added/updated 754; Removed 0 files and 0 directories.
+ 0:00.72 Elapsed: 0.15s; From _tests: Kept 11 existing; Added/updated 690; Removed 0 files and 0 directories.
+ 0:00.91 Elapsed: 0.34s; From dist/bin: Kept 184 existing; Added/updated 3110; Removed 0 files and 0 directories.
+ 0:01.09 Elapsed: 0.51s; From dist/include: Kept 3092 existing; Added/updated 5305; Removed 0 files and 0 directories.
+ 0:01.14 ./mozilla-config.h.stub
+ 0:01.14 ./buildid.h.stub
+ 0:01.14 ./source-repo.h.stub
+ 0:01.14 ./RelationType.h.stub
+ 0:01.15 ./stl.sentinel.stub
+ 0:01.15 ./Role.h.stub
+ 0:01.15 ./MacSelectorMap.h.stub
+ 0:01.15 ./xpcAccEvents.h.stub
+ 0:01.16 config
+ 0:01.32 ./buildconfig.rs.stub
+ 0:01.33 ./fficonfig.h.stub
+ 0:01.33 ./ffi.h.stub
+ 0:01.34 ./cbindgen-metadata.json.stub
+ 0:01.34 ./UseCounterList.h.stub
+ 0:01.34 ./UseCounterWorkerList.h.stub
+ 0:01.34 ./CSSStyleProperties.webidl.stub
+ 0:01.34 ./CSSPageDescriptors.webidl.stub
+ 0:01.52 ./CSSPositionTryDescriptors.webidl.stub
+ 0:01.52 ./CSSFontFaceDescriptors.webidl.stub
+ 0:01.52 ./CSSCounterStyleRule.webidl.stub
+ 0:01.52 ./BaseChars.h.stub
+ 0:01.53 ./IsCombiningDiacritic.h.stub
+ 0:01.58 ./js-confdefs.h.stub
+ 0:01.60 ./js-config.h.stub
+ 0:01.74 ./PrefsGenerated.h.stub
+ 0:01.74 ./ProfilingCategoryList.h.stub
+ 0:01.75 ./ReservedWordsGenerated.h.stub
+ 0:01.75 ./StatsPhasesGenerated.h.stub
+ 0:01.80 ./ABIFunctionTypeGenerated.h.stub
+ 0:01.88 ./MIROpsGenerated.h.stub
+ 0:01.92 ./LIROpsGenerated.h.stub
+ 0:01.94 ./CacheIROpsGenerated.h.stub
+ 0:01.95 ./AtomicOperationsGenerated.h.stub
+ 0:01.97 ./WasmBuiltinModuleGenerated.h.stub
+ 0:01.98 ./FrameIdList.h.stub
+ 0:02.07 ./FrameTypeList.h.stub
+ 0:02.16 ./NonCustomCSSPropertyId.h.stub
+ 0:02.18 ./ServoCSSPropList.h.stub
+ 0:02.22 ./PseudoStyleTypeList.h.stub
+ 0:02.23 ./CompositorAnimatableProperties.h.stub
+ 0:02.23 ./CountedUnknownProperties.h.stub
+ 0:02.29 ./StaticPrefListAll.h.stub
+ 0:02.33 ./angle_commit.h.stub
+ 0:02.33 ./ANGLEShaderProgramVersion.h.rsp.stub
+ 0:02.39 ./registered_field_trials.h.stub
+ 0:02.41 ./GeckoTraceEvents.h.stub
+ 0:02.43 ./glean_adapter.rs.stub
+ 0:02.43 ./metrics_yamls.cached.stub
+ 0:02.49 ./pings_yamls.cached.stub
+ 0:02.56 ./NimbusFeatureManifest.h.stub
+ 0:02.56 ./TelemetryHistogramEnums.h.stub
+ 0:02.64 ./TelemetryHistogramNameMap.h.stub
+ 0:02.69 ./TelemetryScalarData.h.stub
+ 0:02.69 ./TelemetryScalarEnums.h.stub
+ 0:02.84 ./TelemetryEventData.h.stub
+ 0:02.87 ./TelemetryEventEnums.h.stub
+ 0:02.87 ./TelemetryProcessEnums.h.stub
+ 0:02.92 ./TelemetryProcessData.h.stub
+ 0:02.98 ./TelemetryUserInteractionData.h.stub
+ 0:03.00 ./TelemetryUserInteractionNameMap.h.stub
+ 0:03.10 ./validated.yaml.stub
+ 0:03.10 ./profiling_categories.rs.stub
+ 0:03.11 ./ErrorList.h.stub
+ 0:03.11 ./ErrorNamesInternal.h.stub
+ 0:03.14 ./error_list.rs.stub
+ 0:03.18 ./extra_xpc_msg.h.stub
+ 0:03.29 ./Services.h.stub
+ 0:03.30 ./GeckoProcessTypes.h.stub
+ 0:03.32 ./Components.h.stub
+ 0:03.35 ./static_atoms.rs.stub
+ 0:03.35 ./StaticAtomList.h.stub
+ 0:03.46 ./StaticAtoms.h.stub
+ 0:03.46 ./xpidl.stub.stub
+ 0:03.62 ./application.ini.stub
+ 0:03.64 config/nsinstall_real
+ 0:03.65 ./selfhosted.out.h.stub
+ 0:03.65 ./ANGLEShaderProgramVersion.h.stub
+ 0:03.67 ./GleanPings.h.stub
+ 0:03.69 ./CrashAnnotations.h.stub
+ 0:03.81 ./application.ini.h.stub
+ 0:04.68 WARNING: mkdir -dot- requested by /Library/Developer/CommandLineTools/usr/bin/make -C /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/makefiles/xpidl xpidl
+ 0:04.69 config/makefiles/xpidl/Bits.xpt
+ 0:04.69 config/makefiles/xpidl/SiteCategories.xpt
+ 0:04.85 config/makefiles/xpidl/accessibility.xpt
+ 0:04.88 config/makefiles/xpidl/alerts.xpt
+ 0:04.97 config/makefiles/xpidl/appshell.xpt
+ 0:05.00 config/makefiles/xpidl/appstartup.xpt
+ 0:05.06 config/makefiles/xpidl/autocomplete.xpt
+ 0:05.19 ./GleanMetrics.h.stub
+ 0:05.20 ./GleanJSMetricsLookup.cpp.stub
+ 0:05.21 config/makefiles/xpidl/autoplay.xpt
+ 0:05.23 config/makefiles/xpidl/backgroundhangmonitor.xpt
+ 0:05.25 config/makefiles/xpidl/browsercompsbase.xpt
+ 0:05.43 config/makefiles/xpidl/caps.xpt
+ 0:05.43 ./metrics.rs.stub
+ 0:05.44 config/makefiles/xpidl/captivedetect.xpt
+ 0:05.48 config/makefiles/xpidl/cascade_bindings.xpt
+ 0:05.62 config/makefiles/xpidl/chrome.xpt
+ 0:05.65 ./factory.rs.stub
+ 0:05.68 config/makefiles/xpidl/commandhandler.xpt
+ 0:05.68 config/makefiles/xpidl/commandlines.xpt
+ 0:05.80 config/makefiles/xpidl/composer.xpt
+ 0:05.89 config/makefiles/xpidl/content-classifier.xpt
+ 0:05.92 config/makefiles/xpidl/content_events.xpt
+ 0:06.00 config/makefiles/xpidl/content_geckomediaplugins.xpt
+ 0:06.02 config/makefiles/xpidl/contextualidentity.xpt
+ 0:06.08 config/makefiles/xpidl/dap.xpt
+ 0:06.10 config/makefiles/xpidl/docshell.xpt
+ 0:06.20 config/makefiles/xpidl/dom.xpt
+ 0:06.24 config/makefiles/xpidl/dom_audiochannel.xpt
+ 0:06.28 ./GeneratedElementDocumentState.h.stub
+ 0:06.29 ./speculationrules_ffi_generated.h.stub
+ 0:06.31 config/makefiles/xpidl/dom_base.xpt
+ 0:06.38 ./fragmentdirectives_ffi_generated.h.stub
+ 0:06.49 ./data_encoding_ffi_generated.h.stub
+ 0:06.51 ./mime_guess_ffi_generated.h.stub
+ 0:06.52 config/makefiles/xpidl/dom_bindings.xpt
+ 0:06.58 ./audioipc2_client_ffi_generated.h.stub
+ 0:06.59 ./audioipc2_server_ffi_generated.h.stub
+ 0:06.67 ./RsdparsaSdpInc.h.stub
+ 0:06.69 ./midir_impl_ffi_generated.h.stub
+ 0:06.70 ./origin_trials_ffi_generated.h.stub
+ 0:06.76 ./webrender_ffi_generated.h.stub
+ 0:06.79 ./wgpu_ffi_generated.h.stub
+ 0:06.88 ./jxl_decoder_ffi.h.stub
+ 0:06.88 config/makefiles/xpidl/dom_events.xpt
+ 0:06.90 ./unicode_bidi_ffi_generated.h.stub
+ 0:06.90 ./mapped_hyph.h.stub
+ 0:06.94 ./fluent_ffi_generated.h.stub
+ 0:07.08 config/makefiles/xpidl/dom_geolocation.xpt
+ 0:07.09 config/makefiles/xpidl/dom_identitycredential.xpt
+ 0:07.11 ./l10nregistry_ffi_generated.h.stub
+ 0:07.14 ./localization_ffi_generated.h.stub
+ 0:07.27 config/makefiles/xpidl/dom_indexeddb.xpt
+ 0:07.30 config/makefiles/xpidl/dom_localstorage.xpt
+ 0:07.31 ./fluent_langneg_ffi_generated.h.stub
+ 0:07.39 ./locale_service_glue_generated.h.stub
+ 0:07.48 ./oxilangtag_ffi_generated.h.stub
+ 0:07.48 config/makefiles/xpidl/dom_media.xpt
+ 0:07.49 config/makefiles/xpidl/dom_modelcontext.xpt
+ 0:07.51 ./unic_langid_ffi_generated.h.stub
+ 0:07.57 ./collator_glue.h.stub
+ 0:07.61 ./Locale.h.stub
+ 0:07.67 ./normalizer_glue.h.stub
+ 0:07.67 ./properties_glue.h.stub
+ 0:07.72 config/makefiles/xpidl/dom_network.xpt
+ 0:07.72 ./ServoStyleConsts.h.stub
+ 0:07.80 ./mp4parse_ffi_generated.h.stub
+ 0:07.86 ./http_sfv_ffi_generated.h.stub
+ 0:07.86 ./idna_glue.h.stub
+ 0:07.88 ./MozURL_ffi.h.stub
+ 0:07.91 config/makefiles/xpidl/dom_notification.xpt
+ 0:07.91 ./rust_helper.h.stub
+ 0:08.06 ./ssl_tokens_cache.h.stub
+ 0:08.07 ./uritemplate_glue.h.stub
+ 0:08.09 ./urlpattern_glue.h.stub
+ 0:08.11 config/makefiles/xpidl/dom_payments.xpt
+ 0:08.11 ./happy_eyeballs_glue.h.stub
+ 0:08.27 ./neqo_glue_ffi_generated.h.stub
+ 0:08.31 ./signature_cache_ffi.h.stub
+ 0:08.32 ./lockstore_ffi_generated.h.stub
+ 0:08.33 config/makefiles/xpidl/dom_permission.xpt
+ 0:08.33 config/makefiles/xpidl/dom_power.xpt
+ 0:08.48 ./mozilla_abridged_certs_generated.h.stub
+ 0:08.52 config/makefiles/xpidl/dom_push.xpt
+ 0:08.53 ./pdf_trust_anchors_ffi_generated.h.stub
+ 0:08.54 ./qwac_trust_anchors_ffi_generated.h.stub
+ 0:08.61 config/makefiles/xpidl/dom_quota.xpt
+ 0:08.64 config/makefiles/xpidl/dom_security.xpt
+ 0:08.70 ./mls_gk_ffi_generated.h.stub
+ 0:08.72 ./content_classifier_ffi.h.stub
+ 0:08.74 config/makefiles/xpidl/dom_serializers.xpt
+ 0:08.79 ./dap_ffi_generated.h.stub
+ 0:08.83 config/makefiles/xpidl/dom_sidebar.xpt
+ 0:08.86 config/makefiles/xpidl/dom_simpledb.xpt
+ 0:08.93 ./fog_ffi_generated.h.stub
+ 0:08.95 ./jog_ffi_generated.h.stub
+ 0:09.04 config/makefiles/xpidl/dom_storage.xpt
+ 0:09.08 config/makefiles/xpidl/dom_system.xpt
+ 0:09.08 ./profiler_ffi_generated.h.stub
+ 0:09.14 config/makefiles/xpidl/dom_webauthn.xpt
+ 0:09.23 ./gk_rust_utils_ffi_generated.h.stub
+ 0:09.38 config/makefiles/xpidl/dom_webspeechrecognition.xpt
+ 0:09.39 config/makefiles/xpidl/dom_webspeechsynth.xpt
+ 0:09.65 config/makefiles/xpidl/dom_workers.xpt
+ 0:09.85 config/makefiles/xpidl/dom_xslt.xpt
+ 0:09.89 config/makefiles/xpidl/dom_xul.xpt
+ 0:09.93 config/makefiles/xpidl/downloads.xpt
+ 0:10.01 config/makefiles/xpidl/editor.xpt
+ 0:10.03 config/makefiles/xpidl/enterprisepolicies.xpt
+ 0:10.04 config/makefiles/xpidl/extensions.xpt
+ 0:10.07 config/makefiles/xpidl/exthandler.xpt
+ 0:10.16 config/makefiles/xpidl/fastfind.xpt
+ 0:10.19 config/makefiles/xpidl/fog.xpt
+ 0:10.22 config/makefiles/xpidl/gfx.xpt
+ 0:10.27 config/makefiles/xpidl/html5.xpt
+ 0:10.32 config/makefiles/xpidl/htmlparser.xpt
+ 0:10.39 config/makefiles/xpidl/http-sfv.xpt
+ 0:10.43 config/makefiles/xpidl/imglib2.xpt
+ 0:10.45 config/makefiles/xpidl/inspector.xpt
+ 0:10.48 config/makefiles/xpidl/intl.xpt
+ 0:10.51 config/makefiles/xpidl/jar.xpt
+ 0:10.57 config/makefiles/xpidl/jsdevtools.xpt
+ 0:10.62 config/makefiles/xpidl/kvstore.xpt
+ 0:10.68 config/makefiles/xpidl/layout_base.xpt
+ 0:10.71 config/makefiles/xpidl/layout_style.xpt
+ 0:10.74 config/makefiles/xpidl/layout_xul_tree.xpt
+ 0:10.81 config/makefiles/xpidl/locale.xpt
+ 0:10.83 config/makefiles/xpidl/lockstore.xpt
+ 0:10.89 config/makefiles/xpidl/loginmgr.xpt
+ 0:10.92 config/makefiles/xpidl/migration.xpt
+ 0:10.96 config/makefiles/xpidl/mimetype.xpt
+ 0:11.01 config/makefiles/xpidl/ml.xpt
+ 0:11.04 config/makefiles/xpidl/mozfind.xpt
+ 0:11.05 config/makefiles/xpidl/mozintl.xpt
+ 0:11.08 config/makefiles/xpidl/necko.xpt
+ 0:11.15 config/makefiles/xpidl/necko_about.xpt
+ 0:11.17 config/makefiles/xpidl/necko_cache2.xpt
+ 0:11.22 config/makefiles/xpidl/necko_cookie.xpt
+ 0:11.25 config/makefiles/xpidl/necko_dns.xpt
+ 0:11.26 config/makefiles/xpidl/necko_file.xpt
+ 0:11.31 config/makefiles/xpidl/necko_http.xpt
+ 0:11.36 config/makefiles/xpidl/necko_res.xpt
+ 0:11.47 config/makefiles/xpidl/necko_socket.xpt
+ 0:11.49 config/makefiles/xpidl/necko_strconv.xpt
+ 0:11.53 config/makefiles/xpidl/necko_viewsource.xpt
+ 0:11.54 config/makefiles/xpidl/necko_websocket.xpt
+ 0:11.68 config/makefiles/xpidl/necko_webtransport.xpt
+ 0:11.70 config/makefiles/xpidl/necko_wifi.xpt
+ 0:11.76 config/makefiles/xpidl/parentalcontrols.xpt
+ 0:11.77 config/makefiles/xpidl/peerconnection.xpt
+ 0:11.84 config/makefiles/xpidl/permissions.xpt
+ 0:11.85 config/makefiles/xpidl/pipnss.xpt
+ 0:11.91 config/makefiles/xpidl/places.xpt
+ 0:11.95 config/makefiles/xpidl/pref.xpt
+ 0:11.97 config/makefiles/xpidl/prefetch.xpt
+ 0:11.98 config/makefiles/xpidl/profiler.xpt
+ 0:12.05 config/makefiles/xpidl/remote.xpt
+ 0:12.06 config/makefiles/xpidl/reputationservice.xpt
+ 0:12.22 config/makefiles/xpidl/sandbox.xpt
+ 0:12.24 config/makefiles/xpidl/satchel.xpt
+ 0:12.24 config/makefiles/xpidl/services.xpt
+ 0:12.26 config/makefiles/xpidl/sessionstore.xpt
+ 0:12.27 config/makefiles/xpidl/shellservice.xpt
+ 0:12.34 config/makefiles/xpidl/shistory.xpt
+ 0:12.37 config/makefiles/xpidl/spellchecker.xpt
+ 0:12.58 config/makefiles/xpidl/startupcache.xpt
+ 0:12.66 config/makefiles/xpidl/storage.xpt
+ 0:12.66 config/makefiles/xpidl/telemetry.xpt
+ 0:12.67 config/makefiles/xpidl/thumbnails.xpt
+ 0:12.68 config/makefiles/xpidl/toolkit_antitracking.xpt
+ 0:12.75 config/makefiles/xpidl/toolkit_asyncshutdown.xpt
+ 0:12.94 config/makefiles/xpidl/toolkit_cleardata.xpt
+ 0:13.01 config/makefiles/xpidl/toolkit_contentanalysis.xpt
+ 0:13.02 config/makefiles/xpidl/toolkit_crashservice.xpt
+ 0:13.03 config/makefiles/xpidl/toolkit_finalizationwitness.xpt
+ 0:13.03 config/makefiles/xpidl/toolkit_geolocation.xpt
+ 0:13.24 config/makefiles/xpidl/toolkit_media.xpt
+ 0:13.24 config/makefiles/xpidl/toolkit_modules.xpt
+ 0:13.25 config/makefiles/xpidl/toolkit_processtools.xpt
+ 0:13.26 config/makefiles/xpidl/toolkit_resistfingerprinting.xpt
+ 0:13.26 config/makefiles/xpidl/toolkit_shell.xpt
+ 0:13.43 config/makefiles/xpidl/toolkit_terminator.xpt
+ 0:13.48 config/makefiles/xpidl/toolkit_xulstore.xpt
+ 0:13.48 config/makefiles/xpidl/toolkitprofile.xpt
+ 0:13.63 config/makefiles/xpidl/toolkitremote.xpt
+ 0:13.75 config/makefiles/xpidl/txmgr.xpt
+ 0:13.93 config/makefiles/xpidl/txtsvc.xpt
+ 0:13.96 config/makefiles/xpidl/uconv.xpt
+ 0:13.96 config/makefiles/xpidl/update.xpt
+ 0:13.96 config/makefiles/xpidl/uriloader.xpt
+ 0:13.97 config/makefiles/xpidl/url-classifier.xpt
+ 0:14.02 config/makefiles/xpidl/urlformatter.xpt
+ 0:14.03 config/makefiles/xpidl/webBrowser_core.xpt
+ 0:14.25 config/makefiles/xpidl/webbrowserpersist.xpt
+ 0:14.27 config/makefiles/xpidl/webextensions.xpt
+ 0:14.27 config/makefiles/xpidl/webvtt.xpt
+ 0:14.29 config/makefiles/xpidl/widget.xpt
+ 0:14.38 config/makefiles/xpidl/windowcreator.xpt
+ 0:14.41 config/makefiles/xpidl/windowwatcher.xpt
+ 0:14.45 config/makefiles/xpidl/xpcom_base.xpt
+ 0:14.69 config/makefiles/xpidl/xpcom_components.xpt
+ 0:14.69 config/makefiles/xpidl/xpcom_ds.xpt
+ 0:14.77 config/makefiles/xpidl/xpcom_io.xpt
+ 0:14.77 config/makefiles/xpidl/xpcom_system.xpt
+ 0:14.77 config/makefiles/xpidl/xpcom_threads.xpt
+ 0:14.79 config/makefiles/xpidl/xpconnect.xpt
+ 0:15.10 config/makefiles/xpidl/xul.xpt
+ 0:15.24 config/makefiles/xpidl/xulapp.xpt
+ 0:15.26 config/makefiles/xpidl/zipwriter.xpt
+ 0:15.49 config/makefiles/xpidl/xptdata.stub
+ 0:16.07 build/pure_virtual
+ 0:16.07 memory/build
+ 0:16.07 mozglue/baseprofiler
+ 0:16.07 memory/mozalloc
+ 0:16.07 mfbt
+ 0:16.07 mozglue/misc
+ 0:16.11 ./buildid.h.stub
+ 0:16.12 ./source-repo.h.stub
+ 0:16.44 ./application.ini.stub
+ 0:16.60 ./application.ini.h.stub
+ 0:16.72 third_party/fmt
+ 0:16.81 xpcom/glue/standalone
+ 0:17.16 config/external/mozinference/libmozinference.dylib.symbols.stub
+ 0:17.35 third_party/llama.cpp
+ 0:17.59 dom/media/fake-cdm
+ 0:17.60 dom/media/gmp-plugin-openh264
+ 0:17.64 ipc/app/plugin-container.Info.plist.stub
+ 0:17.64 ipc/app/media-plugin-helper.Info.plist.stub
+ 0:17.65 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozglue/misc/PerfStats.cpp:5:
+ 0:17.65 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozglue/misc/PerfStats.h:225:36: error: no member named 'fetch_add' in 'std::atomic<double>'
+ 0:17.65 E   225 |     singleton->mRecordedTimes[idx].fetch_add(
+ 0:17.65 E       |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^
+ 0:17.65 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozglue/misc/PerfStats.h:235:36: error: no member named 'fetch_add' in 'std::atomic<double>'
+ 0:17.65 E   235 |     singleton->mRecordedTimes[idx].fetch_add(aDuration.ToMilliseconds(),
+ 0:17.65 E       |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^
+ 0:17.65 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozglue/misc/PerfStats.h:244:36: error: no member named 'fetch_add' in 'std::atomic<double>'
+ 0:17.65 E   244 |     singleton->mRecordedTimes[idx].fetch_add(double(aIncrementAmount),
+ 0:17.65 E       |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^
+ 0:17.67 E 3 errors generated.
+ 0:17.68 E make[4]: *** [PerfStats.o] Error 1
+ 0:17.68 E make[3]: *** [mozglue/misc/target-objects] Error 2
+ 0:17.68 E make[3]: *** Waiting for unfinished jobs....
+ 0:17.81 ipc/app/gpu-helper.Info.plist.stub
+ 0:22.02    Compiling proc-macro2 v1.0.101
+ 0:22.58    Compiling unicode-ident v1.0.6
+ 0:22.71    Compiling serde_core v1.0.228
+ 0:23.39    Compiling quote v1.0.40
+ 0:23.80    Compiling syn v2.0.106
+ 0:25.74    Compiling serde v1.0.228
+ 0:26.23    Compiling cfg-if v1.0.0
+ 0:26.30    Compiling libc v0.2.186
+ 0:27.14    Compiling bitflags v2.10.0
+ 0:27.37    Compiling synstructure v0.13.1
+ 0:27.41    Compiling thiserror v2.0.12
+ 0:27.78    Compiling shlex v1.3.0
+ 0:27.83    Compiling autocfg v1.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/autocfg)
+ 0:28.04    Compiling log v0.4.29
+ 0:28.20    Compiling memchr v2.7.4
+ 0:28.37    Compiling mozbuild v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/mozbuild)
+ 0:28.62    Compiling stable_deref_trait v1.2.0
+ 0:28.75    Compiling foldhash v0.2.0
+ 0:28.86    Compiling equivalent v1.0.1
+ 0:28.95    Compiling minimal-lexical v0.2.1
+ 0:29.12    Compiling nom v7.1.3
+ 0:29.16    Compiling glob v0.3.1
+ 0:29.19    Compiling zmij v1.0.20
+ 0:29.38    Compiling rustc-hash v2.1.1
+ 0:29.47    Compiling itoa v1.0.15
+ 0:29.52    Compiling winnow v0.7.13
+ 0:29.57    Compiling semver v1.0.16
+ 0:29.73    Compiling once_cell v1.21.4
+ 0:29.79    Compiling toml_datetime v0.7.3
+ 0:29.88    Compiling serde_spanned v1.0.3
+ 0:29.92    Compiling toml_writer v1.0.4
+ 0:30.00    Compiling fastrand v2.1.1
+ 0:30.07    Compiling heck v0.5.0
+ 0:30.12    Compiling jobserver v0.1.33
+ 0:30.17    Compiling siphasher v1.0.1
+ 0:30.24    Compiling libm v0.2.6
+ 0:30.33    Compiling getrandom v0.3.3
+ 0:30.42    Compiling writeable v0.6.2
+ 0:30.54    Compiling toml_parser v1.0.4
+ 0:30.66    Compiling cc v1.2.30
+ 0:30.71    Compiling serde_json v1.0.149
+ 0:30.92    Compiling toml v0.9.8
+ 0:31.35    Compiling encoding_rs v0.8.35 (https://github.com/hsivonen/encoding_rs?rev=1236d1bc423e6ba35a06485f74a6304db2d703b5#1236d1bc)
+ 0:31.39    Compiling anyhow v1.0.103
+ 0:31.49    Compiling litemap v0.8.0
+ 0:31.53    Compiling num-traits v0.2.19
+ 0:31.94    Compiling either v1.8.1
+ 0:32.05    Compiling icu_properties_data v2.1.2 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/icu_properties_data)
+ 0:32.27    Compiling itertools v0.15.0
+ 0:32.71    Compiling clang-sys v1.7.0
+ 0:32.89    Compiling aho-corasick v1.1.0
+ 0:33.21    Compiling itertools v0.14.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/itertools)
+ 0:33.29    Compiling regex-syntax v0.8.5
+ 0:33.33    Compiling hashbrown v0.17.1
+ 0:33.58    Compiling icu_normalizer_data v2.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/icu_normalizer_data)
+ 0:33.70    Compiling hashbrown v0.16.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/hashbrown)
+ 0:33.78    Compiling nsstring v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/nsstring)
+ 0:33.82    Compiling libloading v0.8.6
+ 0:33.94    Compiling bindgen v0.72.0 (https://github.com/glandium/rust-bindgen?rev=5274da5a06411accb266c10819b989ac25a81b7d#5274da5a)
+ 0:34.22    Compiling regex-automata v0.4.14
+ 0:34.33    Compiling camino v1.1.2
+ 0:34.69    Compiling rustix v1.1.4
+ 0:34.81    Compiling indexmap v2.11.4
+ 0:35.38    Compiling regex v1.12.3
+ 0:35.65    Compiling cexpr v0.6.0
+ 0:35.77    Compiling errno v0.3.14
+ 0:36.85    Compiling tempfile v3.27.0
+ 0:37.27    Compiling harfbuzz-traits v0.6.0 (https://github.com/hsivonen/rust-harfbuzz?rev=9d58a23a98772a197291d04af93f7041b7093d95#9d58a23a)
+ 0:37.40    Compiling static_assertions v1.1.0
+ 0:37.46    Compiling fs-err v2.9.0
+ 0:37.70    Compiling lazy_static v1.4.0
+ 0:37.96    Compiling getrandom v0.2.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/getrandom)
+ 0:38.07    Compiling pkg-config v0.3.26
+ 0:38.08    Compiling version_check v0.9.4
+ 0:38.73    Compiling serde_derive v1.0.228
+ 0:38.78    Compiling thiserror-impl v2.0.12
+ 0:38.89    Compiling zerofrom-derive v0.1.3
+ 0:38.93    Compiling yoke-derive v0.8.0
+ 0:41.48    Compiling zerovec-derive v0.11.1
+ 0:42.55    Compiling displaydoc v0.2.4
+ 0:43.86    Compiling uniffi_internal_macros v0.31.0
+ 0:43.90    Compiling scroll_derive v0.12.0
+ 0:44.31    Compiling percent-encoding v2.3.2
+ 0:44.35    Compiling bytes v1.11.1
+ 0:45.08    Compiling zerofrom v0.1.4
+ 0:45.12    Compiling scroll v0.12.0
+ 0:45.14    Compiling form_urlencoded v1.2.2
+ 0:45.29    Compiling nserror v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/nserror)
+ 0:45.40    Compiling yoke v0.8.0
+ 0:45.81    Compiling typenum v1.16.0
+ 0:45.86    Compiling smawk v0.3.2
+ 0:45.90    Compiling zerovec v0.11.4
+ 0:45.94    Compiling zerotrie v0.2.2
+ 0:45.98    Compiling plain v0.2.3
+ 0:46.03    Compiling goblin v0.9.2
+ 0:46.39    Compiling uniffi_pipeline v0.31.0
+ 0:46.43    Compiling textwrap v0.16.1
+ 0:47.02    Compiling tinystr v0.8.1
+ 0:47.16    Compiling potential_utf v0.1.4
+ 0:47.26    Compiling smallvec v1.15.2
+ 0:47.30    Compiling allocator-api2 v0.2.21 (https://github.com/glandium/allocator-api2?rev=ad5f3d56a5a4519eff52af4ff85293431466ef5c#ad5f3d56)
+ 0:47.30    Compiling icu_collections v2.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/icu_collections)
+ 0:47.38    Compiling icu_locale_core v2.1.1
+ 0:47.85    Compiling utf8_iter v1.0.4 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/utf8_iter)
+ 0:47.89    Compiling uniffi_meta v0.31.0
+ 0:48.00    Compiling icu_provider v2.1.1
+ 0:48.08    Compiling unicode-bidi v0.3.15 (https://github.com/servo/unicode-bidi?rev=ca612daf1c08c53abe07327cb3e6ef6e0a760f0c#ca612daf)
+ 0:48.62    Compiling thin-vec v0.2.16
+ 0:48.83    Compiling icu_properties v2.1.2 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/icu_properties)
+ 0:48.87    Compiling utf16_iter v1.0.5 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/utf16_iter)
+ 0:49.00    Compiling write16 v1.0.0
+ 0:49.10    Compiling icu_normalizer v2.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/icu_normalizer)
+ 0:49.84    Compiling idna_adapter v1.2.1
+ 0:49.95    Compiling idna v1.1.0
+ 0:49.99    Compiling basic-toml v0.1.2
+ 0:50.46    Compiling askama_parser v0.14.0
+ 0:50.90    Compiling url v2.5.7
+ 0:51.41    Compiling weedle2 v5.0.0
+ 0:51.83    Compiling uniffi_macros v0.31.0
+ 0:52.51    Compiling uniffi_udl v0.31.0
+ 0:52.63    Compiling goblin v0.8.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/goblin)
+ 0:53.18    Compiling cargo-platform v0.1.2
+ 0:54.03    Compiling uniffi_core v0.31.0
+ 0:54.36    Compiling cargo_metadata v0.19.2
+ 0:55.05    Compiling cstr v0.2.11
+ 0:55.13    Compiling core-foundation-sys v0.8.7
+ 0:55.18    Compiling pin-project-lite v0.2.14
+ 0:55.26    Compiling byteorder v1.5.0
+ 0:55.31    Compiling xpcom_macros v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/xpcom/xpcom_macros)
+ 0:55.43    Compiling generic-array v0.14.6
+ 0:55.48    Compiling vcpkg v0.2.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/vcpkg)
+ 0:55.55    Compiling threadbound v0.1.5
+ 0:55.63    Compiling crossbeam-utils v0.8.21
+ 0:55.66    Compiling libsqlite3-sys v0.35.0
+ 0:55.94    Compiling termcolor v1.4.1
+ 0:55.98    Compiling scopeguard v1.1.0
+ 0:56.20    Compiling env_logger v0.10.0
+ 0:56.46    Compiling lock_api v0.4.9
+ 0:56.69    Compiling ident_case v1.0.1
+ 0:56.80    Compiling strsim v0.11.1
+ 0:56.96    Compiling fnv v1.0.7
+ 0:57.03    Compiling parking_lot_core v0.9.10
+ 0:57.07    Compiling darling_core v0.20.10
+ 0:57.98    Compiling parking_lot v0.12.3
+ 0:58.10    Compiling askama_derive v0.14.0
+ 0:58.16    Compiling xpcom v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/xpcom)
+ 0:58.49    Compiling euclid v0.22.13
+ 0:58.61    Compiling bincode v1.3.3
+ 0:58.89    Compiling hashlink v0.11.0
+ 0:59.14    Compiling hashlink v0.10.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/hashlink)
+ 0:59.19    Compiling app_units v0.7.8
+ 0:59.22    Compiling hex v0.4.3
+ 0:59.30    Compiling fallible-streaming-iterator v0.1.9
+ 0:59.36    Compiling base64 v0.22.1
+ 0:59.40    Compiling fallible-iterator v0.3.0
+ 0:59.64    Compiling rusqlite v0.37.0
+ 0:59.69    Compiling uuid v1.3.0
+ 0:59.81    Compiling tracing-core v0.1.33
+ 0:59.94    Compiling tracing-attributes v0.1.28
+ 1:00.36    Compiling sharded-slab v0.1.7
+ 1:00.73    Compiling thread_local v1.1.8
+ 1:00.94    Compiling tracing-subscriber v0.3.20
+ 1:01.02    Compiling crypto-common v0.1.6
+ 1:01.12    Compiling block-buffer v0.10.3
+ 1:02.40    Compiling cfg_aliases v0.2.2
+ 1:02.51    Compiling digest v0.10.7
+ 1:02.64    Compiling error-support-macros v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/error/macros)
+ 1:02.88    Compiling uniffi v0.31.0
+ 1:03.21    Compiling rand_core v0.6.4
+ 1:03.36    Compiling rustversion v1.0.19
+ 1:03.49    Compiling iana-time-zone v0.1.64
+ 1:03.65    Compiling malloc_size_of_derive v0.1.3 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/malloc_size_of_derive)
+ 1:04.09    Compiling cpufeatures v0.2.8
+ 1:04.70    Compiling chrono v0.4.42
+ 1:04.80    Compiling tracing v0.1.41
+ 1:05.45    Compiling tracing-support v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/tracing)
+ 1:06.08    Compiling darling_macro v0.20.10
+ 1:06.26    Compiling error-support v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/error)
+ 1:06.41    Compiling askama v0.14.0
+ 1:06.82    Compiling darling v0.20.10
+ 1:06.92    Compiling bindgen v0.69.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/bindgen)
+ 1:07.01    Compiling uniffi_bindgen v0.31.0
+ 1:07.13    Compiling wr_malloc_size_of v0.2.2 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/wr_malloc_size_of)
+ 1:07.17    Compiling slab v0.4.8
+ 1:07.23    Compiling arrayref v0.3.6
+ 1:07.27    Compiling ppv-lite86 v0.2.17
+ 1:07.31    Compiling base64 v0.21.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/base64)
+ 1:07.38    Compiling zeroize_derive v1.4.2
+ 1:07.42    Compiling rand_chacha v0.3.1
+ 1:07.47    Compiling ordered-float v3.4.0
+ 1:07.47    Compiling id-arena v2.2.1
+ 1:07.57    Compiling rand v0.8.6
+ 1:07.66    Compiling rkv v0.20.0
+ 1:07.80    Compiling pkcs11-bindings v0.1.7
+ 1:08.26    Compiling serde_bytes v0.11.9
+ 1:08.32    Compiling arrayvec v0.7.6
+ 1:08.37    Compiling async-trait v0.1.89
+ 1:08.42    Compiling futures-core v0.3.31
+ 1:08.51    Compiling futures-sink v0.3.31
+ 1:08.59    Compiling futures-channel v0.3.31
+ 1:08.75    Compiling strum_macros v0.27.1
+ 1:09.18    Compiling sha2 v0.10.8
+ 1:09.70    Compiling phf_shared v0.13.1
+ 1:09.79    Compiling num_cpus v1.16.0
+ 1:09.83    Compiling adler2 v2.0.1
+ 1:09.88    Compiling phf_generator v0.13.1
+ 1:09.92    Compiling zeroize v1.8.1
+ 1:10.06    Compiling gecko-profiler v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/tools/profiler/rust-api)
+ 1:10.36    Compiling icu_locale_data v2.1.1
+ 1:10.40    Compiling simd-adler32 v0.3.7
+ 1:10.66    Compiling miniz_oxide v0.8.9
+ 1:11.04    Compiling thiserror v1.999.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/thiserror)
+ 1:11.09    Compiling profiler-macros v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/tools/profiler/rust-api/macros)
+ 1:11.13    Compiling enum-map-derive v0.17.0
+ 1:11.48    Compiling futures-macro v0.3.31
+ 1:12.10    Compiling whatsys v0.3.2
+ 1:12.34    Compiling bitflags v1.999.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/bitflags)
+ 1:12.38    Compiling crc32fast v1.4.2
+ 1:12.42    Compiling pin-utils v0.1.0
+ 1:12.49    Compiling futures-task v0.3.31
+ 1:12.54    Compiling futures-io v0.3.31
+ 1:12.61    Compiling flate2 v1.1.4
+ 1:12.95    Compiling enum-map v2.7.3
+ 1:13.09    Compiling crossbeam-channel v0.5.15
+ 1:13.29    Compiling core-foundation v0.10.0
+ 1:13.50    Compiling unic-langid-impl v0.9.6
+ 1:13.62    Compiling static_prefs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/modules/libpref/init/static_prefs)
+ 1:13.70    Compiling zeitstempel v0.2.1
+ 1:13.78    Compiling objc2 v0.6.3
+ 1:13.91    Compiling icu_locale v2.1.1
+ 1:14.31    Compiling unic-langid v0.9.6
+ 1:14.63    Compiling futures-util v0.3.31
+ 1:14.81    Compiling rustc-hash v1.999.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/rustc-hash)
+ 1:14.87    Compiling ohttp v0.7.2 (https://github.com/martinthomson/ohttp?rev=600931b5a1e947776cbaad931ed78f1e89005352#600931b5)
+ 1:14.92    Compiling nss-rs v0.13.4 (https://github.com/mozilla/nss-rs#da11b438)
+ 1:14.92    Compiling objc2-encode v4.1.0
+ 1:14.96    Compiling async-task v4.3.0
+ 1:15.50    Compiling moz_task v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/moz_task)
+ 1:16.03    Compiling strum v0.27.1
+ 1:16.09    Compiling phf_macros v0.13.1
+ 1:16.34    Compiling inherent v1.0.7
+ 1:16.39    Compiling bhttp v0.7.2
+ 1:16.56    Compiling futures-executor v0.3.28
+ 1:16.64    Compiling derive_more-impl v2.0.1
+ 1:17.29    Compiling futures v0.3.28
+ 1:17.36    Compiling ffi-support v0.4.4
+ 1:17.61    Compiling cmake v0.1.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/cmake)
+ 1:17.69    Compiling dtoa v0.4.8
+ 1:17.98    Compiling crossbeam-epoch v0.9.20
+ 1:18.02    Compiling smallbitvec v2.5.1
+ 1:18.20    Compiling dtoa-short v0.3.3
+ 1:18.29    Compiling cubeb-sys v0.34.1
+ 1:18.32    Compiling phf v0.13.1
+ 1:18.39    Compiling objc2-core-foundation v0.3.2
+ 1:18.55    Compiling phf_codegen v0.13.1
+ 1:18.67    Compiling mls-rs-codec-derive v0.2.0
+ 1:18.72    Compiling cssparser-macros v0.7.0 (https://github.com/servo/rust-cssparser?rev=eff8704e994dc54e5df2a936b78b51828ee21464#eff8704e)
+ 1:18.77    Compiling nss_build_common v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/rc_crypto/nss/nss_build_common)
+ 1:18.96    Compiling pollster v0.3.0
+ 1:19.08    Compiling rayon-core v1.12.1
+ 1:19.32    Compiling precomputed-hash v0.1.1
+ 1:19.54    Compiling cssparser v0.37.0 (https://github.com/servo/rust-cssparser?rev=eff8704e994dc54e5df2a936b78b51828ee21464#eff8704e)
+ 1:19.68    Compiling viaduct v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/viaduct)
+ 1:20.20    Compiling mls-rs-codec v0.7.0
+ 1:20.72    Compiling nss_sys v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/rc_crypto/nss/nss_sys)
+ 1:20.79    Compiling selectors v0.26.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/selectors)
+ 1:21.39    Compiling fluent-langneg v0.13.0
+ 1:21.46    Compiling core-foundation v0.9.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/core-foundation)
+ 1:21.55    Compiling type-map v0.5.1
+ 1:21.60    Compiling hashbrown v0.15.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/hashbrown-0.15)
+ 1:21.65    Compiling rustc_version v0.4.0
+ 1:21.74    Compiling half v2.5.0
+ 1:21.79    Compiling maybe-async v0.2.10
+ 1:21.91    Compiling servo_arc v0.4.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/servo_arc)
+ 1:22.04    Compiling paste v1.0.11
+ 1:22.09    Compiling khronos_api v3.1.0 (https://github.com/jamienicol/gl-rs?rev=71c792dbfe0ec5caeb242fc90937e19098386342#71c792db)
+ 1:22.21    Compiling to_shmem v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/to_shmem)
+ 1:22.59    Compiling intl-memoizer v0.5.3
+ 1:22.79    Compiling crossbeam-deque v0.8.2
+ 1:22.79    Compiling derive_more v2.0.1
+ 1:22.95    Compiling intl_pluralrules v7.0.2
+ 1:23.04    Compiling serde_with_macros v3.12.0
+ 1:23.28    Compiling to_shmem_derive v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/to_shmem_derive)
+ 1:23.41    Compiling fluent-syntax v0.12.0
+ 1:23.46    Compiling unicase v2.6.0
+ 1:23.48    Compiling cubeb-core v0.34.1
+ 1:23.71    Compiling num-integer v0.1.46
+ 1:23.79    Compiling core_maths v0.1.0
+ 1:23.80    Compiling self_cell v1.2.0
+ 1:23.90    Compiling new_debug_unreachable v1.0.4
+ 1:23.99    Compiling rsclientcerts-util v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/rsclientcerts-util)
+ 1:24.03    Compiling fluent-bundle v0.16.0
+ 1:25.07    Compiling mls-rs-core v0.26.0
+ 1:25.37    Compiling objc2-io-surface v0.3.2
+ 1:25.62    Compiling objc2-foundation v0.3.2
+ 1:25.67    Compiling block2 v0.6.2
+ 1:25.90    Compiling naga-types v30.0.0 (https://github.com/gfx-rs/wgpu?rev=f7ebc076619e8e6f55def9a13199c1ccc02cc4b4#f7ebc076)
+ 1:25.94    Compiling lalrpop-util v0.19.12
+ 1:26.02    Compiling naga v30.0.0 (https://github.com/gfx-rs/wgpu?rev=f7ebc076619e8e6f55def9a13199c1ccc02cc4b4#f7ebc076)
+ 1:26.07    Compiling webrender_build v0.0.2 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/webrender_build)
+ 1:26.16    Compiling serde_path_to_error v0.1.11
+ 1:26.45    Compiling bytemuck_derive v1.9.3
+ 1:26.49    Compiling neqo-common v0.30.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 1:26.59    Compiling icu_casemap_data v2.1.1
+ 1:26.68    Compiling bit-vec v0.10.1
+ 1:26.77    Compiling macro_rules_attribute-proc_macro v0.2.2
+ 1:26.82    Compiling xml-rs v0.8.4
+ 1:26.87    Compiling serde_with v3.12.0
+ 1:26.91    Compiling unicode-width v0.2.0
+ 1:27.09    Compiling typeid v1.0.3
+ 1:27.41    Compiling void v1.0.2
+ 1:27.50    Compiling macro_rules_attribute v0.2.2
+ 1:27.55    Compiling malloc_size_of v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/malloc_size_of)
+ 1:27.67    Compiling trust-anchor-build-util v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/trust-anchor-build-util)
+ 1:27.71    Compiling qlog v0.16.0
+ 1:28.02    Compiling gl_generator v0.14.0 (https://github.com/jamienicol/gl-rs?rev=71c792dbfe0ec5caeb242fc90937e19098386342#71c792db)
+ 1:28.09    Compiling codespan-reporting v0.13.1
+ 1:28.20    Compiling bit-set v0.11.1
+ 1:28.35    Compiling objc2-metal v0.3.2
+ 1:28.87    Compiling jexl-parser v0.4.0
+ 1:29.05    Compiling rayon v1.10.0
+ 1:29.34    Compiling nss-as v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/rc_crypto/nss)
+ 1:30.47    Compiling bytemuck v1.22.0
+ 1:30.52    Compiling objc2-core-graphics v0.3.2
+ 1:30.63    Compiling core-graphics-types v0.2.0
+ 1:30.74    Compiling sync-guid v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/guid)
+ 1:30.78    Compiling mtu v0.4.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 1:30.88    Compiling storage_variant v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/storage/variant)
+ 1:31.03    Compiling payload-support v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/payload)
+ 1:31.07    Compiling foreign-types-macros v0.2.3
+ 1:31.08    Compiling glslopt v0.1.14
+ 1:31.11    Compiling glsl v6.0.2
+ 1:31.19    Compiling icu_collator_data v2.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/icu_collator_data)
+ 1:31.28    Compiling foreign-types-shared v0.3.1
+ 1:31.33    Compiling raw-window-handle v0.6.2
+ 1:31.37    Compiling ref-cast v1.0.24
+ 1:31.37    Compiling atomic_refcell v0.1.9
+ 1:31.43    Compiling icu_calendar_data v2.1.1
+ 1:31.49    Compiling wgpu-types v30.0.0 (https://github.com/gfx-rs/wgpu?rev=f7ebc076619e8e6f55def9a13199c1ccc02cc4b4#f7ebc076)
+ 1:32.19    Compiling glsl-to-cxx v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/glsl-to-cxx)
+ 1:32.31    Compiling foreign-types v0.5.0
+ 1:32.75    Compiling core-graphics-types v0.1.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/core-graphics-types)
+ 1:32.84    Compiling objc2-quartz-core v0.3.2
+ 1:33.32    Compiling jexl-eval v0.4.0
+ 1:33.86    Compiling gleam v0.15.1 (https://github.com/jamienicol/gleam?rev=68ca4e5cc31135b843af07ff213a94b9ddce64cf#68ca4e5c)
+ 1:34.82    Compiling enumset_derive v0.8.1
+ 1:35.17    Compiling uniffi_build v0.31.0
+ 1:35.35    Compiling fluent-pseudo v0.3.3
+ 1:35.69    Compiling wgpu-hal v30.0.0 (https://github.com/gfx-rs/wgpu?rev=f7ebc076619e8e6f55def9a13199c1ccc02cc4b4#f7ebc076)
+ 1:36.18    Compiling firefox-versioning v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/firefox-versioning)
+ 1:36.36    Compiling peek-poke-derive v0.3.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/peek-poke/peek-poke-derive)
+ 1:36.45    Compiling ref-cast-impl v1.0.24
+ 1:36.54    Compiling memmap2 v0.9.11
+ 1:36.59    Compiling icu_segmenter_data v2.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/icu_segmenter_data)
+ 1:36.70    Compiling subtle v2.6.1
+ 1:36.83    Compiling crossbeam-queue v0.3.8
+ 1:36.92    Compiling same-file v1.0.6
+ 1:36.96    Compiling coremidi-sys v3.2.0
+ 1:37.03    Compiling walkdir v2.3.2
+ 1:37.37    Compiling peek-poke v0.3.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/peek-poke)
+ 1:37.53    Compiling swgl v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/swgl)
+ 1:37.63    Compiling icu_segmenter v2.1.2
+ 1:37.87    Compiling build-parallel v0.1.2
+ 1:37.99    Compiling enumset v1.1.2
+ 1:38.32    Compiling wgpu-naga-bridge v30.0.0 (https://github.com/gfx-rs/wgpu?rev=f7ebc076619e8e6f55def9a13199c1ccc02cc4b4#f7ebc076)
+ 1:38.47    Compiling fluent v0.17.0
+ 1:38.68    Compiling ron v0.12.0
+ 1:38.75    Compiling icu_casemap v2.1.1
+ 1:38.85    Compiling raw-window-metal v1.1.0
+ 1:39.02    Compiling core-graphics v0.23.1
+ 1:39.34    Compiling rc_crypto v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/rc_crypto)
+ 1:39.41    Compiling mls-rs-crypto-traits v0.21.0
+ 1:39.41    Compiling calendrical_calculations v0.2.3
+ 1:39.46    Compiling flatbuffers v25.12.19
+ 1:39.56    Compiling hashbrown v0.13.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/hashbrown-0.13)
+ 1:39.65    Compiling md-5 v0.10.5
+ 1:39.69    Compiling quinn-udp v0.6.0
+ 1:39.70    Compiling coreaudio-sys v0.2.18
+ 1:39.76    Compiling num-derive v0.4.2
+ 1:39.96    Compiling toml v0.5.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/toml)
+ 1:40.15    Compiling malloc_buf v0.0.6
+ 1:40.19    Compiling mach2 v0.4.1
+ 1:40.26    Compiling socket2 v0.6.3
+ 1:40.32    Compiling strck v1.0.0
+ 1:40.38    Compiling profiling v1.0.7
+ 1:40.47    Compiling powerfmt v0.2.0
+ 1:40.51    Compiling time-core v0.1.8
+ 1:40.68    Compiling ixdtf v0.6.4
+ 1:40.70    Compiling chunky-vec v0.1.0
+ 1:40.75    Compiling pin-cell v0.2.0
+ 1:40.80    Compiling num-conv v0.2.0
+ 1:40.84    Compiling fluent-fallback v0.7.2
+ 1:40.87    Compiling icu_calendar v2.1.1
+ 1:40.91    Compiling time-macros v0.2.27
+ 1:41.11    Compiling deranged v0.5.8
+ 1:41.81    Compiling diplomat_core v0.14.0
+ 1:43.53    Compiling objc v0.2.7 (https://github.com/glandium/rust-objc?rev=4de89f5aa9851ceca4d40e7ac1e2759410c04324#4de89f5a)
+ 1:44.07    Compiling style v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/style)
+ 1:44.77    Compiling mls-rs-crypto-hpke v0.20.0
+ 1:45.05    Compiling jwcrypto v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/jwcrypto)
+ 1:45.12    Compiling icu_collator v2.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/icu_collator)
+ 1:45.53    Compiling core-text v20.1.0
+ 1:45.84    Compiling neqo-transport v0.30.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 1:46.67    Compiling mime_guess v2.0.4
+ 1:47.83    Compiling sfv v0.14.0
+ 1:48.56    Compiling webrender_api v0.62.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/webrender_api)
+ 1:50.23    Compiling cubeb v0.34.1
+ 1:50.33    Compiling mls-rs-identity-x509 v0.20.0
+ 1:50.47    Compiling num-bigint v0.4.6
+ 1:50.58    Compiling mozglue-static v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozglue/static/rust)
+ 1:50.87    Compiling hashbrown v0.14.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/hashbrown-0.14)
+ 1:50.95    Compiling skv v0.0.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/skv)
+ 1:52.30    Compiling jxl_simd v0.5.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/jxl_simd)
+ 1:52.48    Compiling keccak v0.1.6
+ 1:52.67    Compiling wgpu-core v30.0.0 (https://github.com/gfx-rs/wgpu?rev=f7ebc076619e8e6f55def9a13199c1ccc02cc4b4#f7ebc076)
+ 1:53.21    Compiling neqo-udp v0.30.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 1:53.25    Compiling types v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/types)
+ 1:53.31    Compiling arraystring v0.3.0
+ 1:53.52    Compiling debug_tree v0.4.0
+ 1:53.59    Compiling mio v1.2.0
+ 1:53.79    Compiling iovec v0.1.4
+ 1:53.89    Compiling authenticator v0.6.0 (https://github.com/mozilla/authenticator-rs?tag=v0.6.0#86caf8b8)
+ 1:53.98    Compiling litrs v0.4.1
+ 1:54.05    Compiling encoding_c v0.9.8
+ 1:54.10    Compiling tracy-rs v0.1.2
+ 1:54.17    Compiling cache-padded v1.2.0
+ 1:54.26    Compiling spin v0.10.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/spin)
+ 1:54.26    Compiling cose v0.1.4 (https://github.com/franziskuskiefer/cose-rust?rev=43c22248d136c8b38fe42ea709d08da6355cf04b#43c22248)
+ 1:54.33    Compiling block v0.1.6
+ 1:54.33    Compiling svg_fmt v0.4.1
+ 1:54.44    Compiling ash v0.38.0+1.3.281
+ 1:54.46    Compiling replace_with v0.1.8
+ 1:54.50    Compiling encoding_c_mem v0.2.6
+ 1:54.50    Compiling time v0.3.47
+ 1:54.55    Compiling l10nregistry v0.3.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/l10nregistry-rs)
+ 1:54.74    Compiling document-features v0.2.11
+ 1:55.19    Compiling etagere v0.2.13
+ 1:55.27    Compiling coremidi v0.8.0
+ 1:55.37    Compiling mls-rs v0.54.0
+ 1:55.69    Compiling audioipc2 v0.6.0 (https://github.com/mozilla/audioipc?rev=88fe860#88fe8606)
+ 1:56.07    Compiling rsclientcerts v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/rsclientcerts)
+ 1:56.41    Compiling sha3 v0.10.8
+ 1:56.45    Compiling jxl_transforms v0.5.1
+ 1:56.64    Compiling kvstore v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/kvstore)
+ 1:56.69    Compiling num-rational v0.4.2
+ 1:56.69    Compiling fallible_collections v0.5.1
+ 1:57.50    Compiling url-macro v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/url-macro)
+ 1:57.55 W warning: mozglue-static@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 1:57.55    Compiling diplomat v0.14.0
+ 1:57.83    Compiling neqo-qpack v0.30.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 1:59.01    Compiling mls-rs-crypto-nss v0.2.1 (https://github.com/mozilla/mls-platform-api?rev=2a2e344019bfc76b7e566ee6e0549cf668d90127#2a2e3440)
+ 1:59.81    Compiling trust-anchors v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/trust_anchors)
+ 2:00.34    Compiling wgpu-core-deps-apple v30.0.0 (https://github.com/gfx-rs/wgpu?rev=f7ebc076619e8e6f55def9a13199c1ccc02cc4b4#f7ebc076)
+ 2:00.41    Compiling icu_time v2.1.1
+ 2:00.76    Compiling audio_thread_priority v0.35.1
+ 2:00.90    Compiling fluent-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/fluent-ffi)
+ 2:01.08    Compiling cubeb-backend v0.34.1
+ 2:01.20    Compiling qwac-trust-anchors v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/qwac_trust_anchors)
+ 2:01.49    Compiling pdf-trust-anchors v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/pdf_trust_anchors)
+ 2:01.53    Compiling dom v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/base/rust)
+ 2:01.75    Compiling style_traits v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/style_traits)
+ 2:01.79    Compiling mls-rs-provider-sqlite v0.22.0 (https://github.com/mozilla/mls-platform-api?rev=2a2e344019bfc76b7e566ee6e0549cf668d90127#2a2e3440)
+ 2:01.93    Compiling num-iter v0.1.45
+ 2:01.98    Compiling serde_cbor_2 v0.13.0
+ 2:02.03    Compiling context_id v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/context_id)
+ 2:02.07    Compiling icu_provider_adapters v2.1.1
+ 2:02.21    Compiling itertools v0.13.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/itertools-0.13)
+ 2:02.29    Compiling uluru v3.0.0
+ 2:02.39    Compiling rand_distr v0.4.3
+ 2:02.49    Compiling style_derive v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/style_derive)
+ 2:02.55    Compiling urlpattern v0.6.0
+ 2:02.68    Compiling plane-split v0.18.0
+ 2:02.97    Compiling clubcard v0.3.3
+ 2:03.10    Compiling http v1.4.0
+ 2:03.39    Compiling extend v1.2.0
+ 2:03.80    Compiling jxl_macros v0.5.1
+ 2:04.10    Compiling prost-derive v0.13.5
+ 2:05.27    Compiling num-complex v0.4.6
+ 2:05.46    Compiling dirs-sys v0.3.7
+ 2:05.56    Compiling bitreader v0.3.6
+ 2:05.60    Compiling seahash v4.1.0
+ 2:05.74    Compiling murmurhash3 v0.0.5
+ 2:05.79    Compiling mime v0.3.16
+ 2:05.85    Compiling quick-error v1.2.3
+ 2:05.90    Compiling zerocopy v0.8.27
+ 2:05.94    Compiling harfbuzz-sys v0.6.1 (https://github.com/hsivonen/rust-harfbuzz?rev=9d58a23a98772a197291d04af93f7041b7093d95#9d58a23a)
+ 2:06.06    Compiling runloop v0.1.0
+ 2:06.11    Compiling zlib-rs v0.6.3 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/zlib-rs)
+ 2:06.20    Compiling diplomat-runtime v0.14.0
+ 2:06.33    Compiling topological-sort v0.1.0
+ 2:06.43    Compiling moz_cbor v0.1.2
+ 2:06.47    Compiling array-init v2.1.0
+ 2:06.56    Compiling jxl v0.5.1
+ 2:07.32    Compiling icu_capi v2.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/icu_capi)
+ 2:08.36    Compiling prost v0.13.5
+ 2:08.85    Compiling harfbuzz v0.6.0 (https://github.com/hsivonen/rust-harfbuzz?rev=9d58a23a98772a197291d04af93f7041b7093d95#9d58a23a)
+ 2:08.98    Compiling dns-parser v0.8.0
+ 2:09.31    Compiling rust_cascade v1.5.0
+ 2:09.45    Compiling adblock v0.12.1
+ 2:09.57    Compiling mp4parse v0.17.0 (https://github.com/mozilla/mp4parse-rust?rev=8a49a0769764152022bf14a8253bcde1971a75df#8a49a076)
+ 2:10.66    Compiling num v0.4.3
+ 2:10.75    Compiling dirs v4.0.0
+ 2:10.86    Compiling neqo-http3 v0.30.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 2:12.75    Compiling webrender v0.62.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/webrender)
+ 2:14.55    Compiling clubcard-crlite v0.4.0
+ 2:15.03    Compiling mls-platform-api v0.2.0 (https://github.com/mozilla/mls-platform-api?rev=2a2e344019bfc76b7e566ee6e0549cf668d90127#2a2e3440)
+ 2:16.80    Compiling l10nregistry-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/l10nregistry-ffi)
+ 2:16.97    Compiling coreaudio-sys-utils v0.1.0 (https://github.com/mozilla/cubeb-coreaudio-rs?rev=840f69c1b3f95accd582555e10abcef8ee67514b#840f69c1)
+ 2:20.11    Compiling buildid_reader v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/buildid_reader)
+ 2:20.65    Compiling lockstore_rs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/lockstore/lockstore_rs)
+ 2:20.98    Compiling prio v0.16.2
+ 2:22.32    Compiling midir v0.10.3 (https://github.com/mozilla/midir.git?rev=54759f681f3b523e120d047adec2bb1a97152017#54759f68)
+ 2:22.78    Compiling collator_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/js/src/builtin/intl/collator_glue)
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.87 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 2:22.88 W warning: swgl@0.1.0: clang++: warning: overriding '-ffast-math' option with '-ffp-contract=off' [-Woverriding-option]
+ 2:23.18    Compiling ringbuf v0.2.8
+ 2:23.32    Compiling triple_buffer v5.0.6
+ 2:23.37    Compiling filter_adult v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/filter_adult)
+ 2:23.45    Compiling properties_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/js/src/irregexp/properties_glue)
+ 2:23.50    Compiling storage v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/storage/rust)
+ 2:23.61    Compiling init_rust_components v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/init_rust_components)
+ 2:23.71    Compiling mozurl v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/mozurl)
+ 2:23.99    Compiling dogear v0.5.0
+ 2:24.04    Compiling locale_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/js/src/builtin/intl/locale_glue)
+ 2:24.09    Compiling unic-langid-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/locale/rust/unic-langid-ffi)
+ 2:24.20    Compiling audio-mixer v0.2.1
+ 2:24.24    Compiling uritemplate-next v0.2.0
+ 2:24.38    Compiling sha1 v0.10.5
+ 2:24.61    Compiling ipdl_utils v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/ipc/rust/ipdl_utils)
+ 2:24.69    Compiling happy-eyeballs v0.11.0 (https://github.com/mozilla/happy-eyeballs?tag=v0.11.0#8a0ae302)
+ 2:25.10    Compiling webrtc-sdp v0.3.13
+ 2:25.23    Compiling normalizer_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/js/src/builtin/normalizer_glue)
+ 2:25.28    Compiling unicode-bidi-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/bidi/rust/unicode-bidi-ffi)
+ 2:25.65    Compiling origin-trial-token v0.1.1
+ 2:26.00    Compiling float-cmp v0.6.0
+ 2:26.12    Compiling chardetng v1.0.0
+ 2:26.24    Compiling xmldecl v0.2.0
+ 2:26.34    Compiling atomic v0.4.6
+ 2:26.47    Compiling rustc-demangle v0.1.21
+ 2:26.52    Compiling typed-arena-nomut v0.1.0
+ 2:26.63    Compiling data-encoding v2.3.3
+ 2:26.67    Compiling oxilangtag v0.1.3
+ 2:27.00    Compiling data-encoding-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/fs/parent/rust/data-encoding-ffi)
+ 2:27.08    Compiling oxilangtag-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/locale/rust/oxilangtag-ffi)
+ 2:27.13    Compiling profiler_helper v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/tools/profiler/rust-helper)
+ 2:27.31    Compiling wpf-gpu-raster v0.1.0 (https://github.com/FirefoxGraphics/wpf-gpu-raster?rev=99979da091fd58fba8477e7fcdf5ec0727102916#99979da0)
+ 2:27.38    Compiling cubeb-coreaudio v0.1.0 (https://github.com/mozilla/cubeb-coreaudio-rs?rev=840f69c1b3f95accd582555e10abcef8ee67514b#840f69c1)
+ 2:27.72    Compiling encoding_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/encoding_glue)
+ 2:27.89    Compiling chardetng_c v1.0.0
+ 2:27.98    Compiling origin-trials-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/origin-trials/ffi)
+ 2:28.08    Compiling rsdparsa_capi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/media/webrtc/sdp/rsdparsa_capi)
+ 2:28.12    Compiling jsrust_shared v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/js/src/rust/shared)
+ 2:28.17    Compiling crypto_hash v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/crypto_hash)
+ 2:28.21    Compiling uritemplate_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/uritemplate_glue)
+ 2:28.43    Compiling bookmark_sync v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/places/bookmark_sync)
+ 2:28.56    Compiling fluent-langneg-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/locale/rust/fluent-langneg-ffi)
+ 2:28.91    Compiling urlpattern_glue v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/urlpattern_glue)
+ 2:29.08    Compiling midir_impl v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/midi/midir_impl)
+ 2:29.37    Compiling dap_ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/dap/ffi)
+ 2:30.00    Compiling lockstore_ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/lockstore/lockstore_ffi)
+ 2:30.18    Compiling buildid_reader_ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/buildid_reader/ffi)
+ 2:30.22    Compiling localization-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/localization-ffi)
+ 2:30.59    Compiling mls_gk v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/mls/mls_gk)
+ 2:30.77    Compiling interrupt-support v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/interrupt)
+ 2:30.81    Compiling glean-core v68.0.1
+ 2:31.26    Compiling autofill v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/autofill)
+ 2:31.38    Compiling logins v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/logins)
+ 2:31.42    Compiling webext-storage v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/webext-storage)
+ 2:31.57    Compiling tabs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/tabs)
+ 2:31.78    Compiling sql-support v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/sql)
+ 2:31.83    Compiling sync15 v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/sync15)
+ 2:32.27    Compiling remote_settings v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/remote_settings)
+ 2:33.42    Compiling relevancy v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/relevancy)
+ 2:37.07    Compiling glean v68.0.1
+ 2:37.19    Compiling suggest v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/suggest)
+ 2:37.98    Compiling firefox-on-glean v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean/api)
+ 2:38.11    Compiling search v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/search)
+ 2:41.25    Compiling breach-alerts v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/breach-alerts)
+ 2:42.66    Compiling ads-client v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/ads-client)
+ 2:45.45    Compiling geckoservo v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/ports/geckolib)
+ 2:48.40    Compiling cert_storage v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/cert_storage)
+ 2:48.85    Compiling content_classifier_engine v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/content-classifier/content_classifier_engine)
+ 2:49.21    Compiling authrs_bridge v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/webauthn/authrs_bridge)
+ 2:49.24    Compiling mp4parse_capi v0.17.0 (https://github.com/mozilla/mp4parse-rust?rev=8a49a0769764152022bf14a8253bcde1971a75df#8a49a076)
+ 2:49.61    Compiling gkrust-uniffi-components v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/uniffi-bindgen-gecko-js/components)
+ 2:49.95    Compiling jxl_decoder v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/image/rust/jxl)
+ 2:50.10    Compiling cascade_bloom_filter v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/cascade_bloom_filter)
+ 2:50.24    Compiling mime-guess-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/fs/parent/rust/mime-guess-ffi)
+ 2:50.35    Compiling mdns_service v0.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/media/webrtc/transport/mdns_service)
+ 2:50.78    Compiling harfbuzz_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/harfbuzz_glue)
+ 2:50.89    Compiling libz-rs-sys v0.6.3
+ 2:51.49    Compiling cose-c v0.1.5
+ 2:51.62    Compiling dom_speculationrules v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/base/speculationrules)
+ 2:51.96    Compiling audioipc2-client v0.6.0 (https://github.com/mozilla/audioipc?rev=88fe860#88fe8606)
+ 2:53.32    Compiling audioipc2-server v0.6.0 (https://github.com/mozilla/audioipc?rev=88fe860#88fe8606)
+ 2:54.47    Compiling osclientcerts v0.1.4 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/osclientcerts)
+ 2:54.58    Compiling ipcclientcerts v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/ipcclientcerts)
+ 2:54.62    Compiling idna_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/idna_glue)
+ 2:55.05    Compiling http_sfv v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/http-sfv)
+ 2:55.86    Compiling app_collator_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/app_collator_glue)
+ 2:55.99    Compiling mapped_hyph v0.4.3 (https://github.com/jfkthame/mapped_hyph.git?rev=eff105f6ad7ec9b79816cfc1985a28e5340ad14b#eff105f6)
+ 2:56.13    Compiling dom_fragmentdirectives v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/base/fragmentdirectives)
+ 2:56.44    Compiling viaduct-necko v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/services/application-services/components/viaduct-necko)
+ 2:56.47    Compiling oblivious_http v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/oblivious_http)
+ 2:56.80    Compiling wr_glyph_rasterizer v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/wr_glyph_rasterizer)
+ 2:57.09    Compiling jog v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean/bindings/jog)
+ 2:57.25    Compiling data_storage v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/data_storage)
+ 2:58.48    Compiling wgpu_bindings v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wgpu_bindings)
+ 2:58.69    Compiling fog_control v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean)
+ 2:58.72    Compiling happy_eyeballs_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/happy_eyeballs_glue)
+ 2:59.18    Compiling neqo_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/socket/neqo_glue)
+ 2:59.64    Compiling gecko-trace v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/gecko-trace)
+ 2:59.98    Compiling binary_http v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/binary_http)
+ 3:00.44    Compiling locale_service_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/locale/rust/locale_service_glue)
+ 3:00.65    Compiling sitecategories v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/sitecategories)
+ 3:01.19    Compiling ssl_tokens_cache v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/ssl_tokens_cache)
+ 3:01.28    Compiling abridged_certs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/abridged_certs)
+ 3:01.56    Compiling gecko_tracing v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/gecko_tracing)
+ 3:01.68    Compiling rure v0.2.2 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/rust/rure)
+ 3:01.71    Compiling processtools v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/processtools)
+ 3:01.80    Compiling signature_cache v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/certverifier/signature_cache)
+ 3:01.84    Compiling aa-stroke v0.1.0 (https://github.com/FirefoxGraphics/aa-stroke?rev=5776bdfc8ad664a1503db668fab397d818a5f98a#5776bdfc)
+ 3:02.06    Compiling gecko_logger v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/gecko_logger)
+ 3:02.11    Compiling gkrust_utils v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/gkrust_utils)
+ 3:02.14    Compiling netwerk_helper v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/rust-helper)
+ 3:02.19    Compiling moz_asserts v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozglue/static/rust/moz_asserts)
+ 3:02.22    Compiling object v0.36.4
+ 3:02.26    Compiling qcms v0.3.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/qcms)
+ 3:02.47    Compiling prefs_parser v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/modules/libpref/parser)
+ 3:03.95    Compiling mozilla-central-workspace-hack v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/workspace-hack)
+ 3:08.02    Compiling webrender_bindings v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/webrender_bindings)
+ 3:08.46    Compiling gkrust-shared v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/rust/shared)
+ 4:15.40    Compiling gkrust v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/rust)
+Process Process-1:
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/process.py", line 320, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozsystemmonitor/mozsystemmonitor/resourcemonitor.py", line 309, in _collect
+    while not _poll(pipe, poll_interval=sleep_interval):
+              ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozsystemmonitor/mozsystemmonitor/resourcemonitor.py", line 238, in _poll
+    return pipe.poll(poll_interval)
+           ~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 264, in poll
+    return self._poll(timeout)
+           ~~~~~~~~~~^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 458, in _poll
+    r = wait([self], timeout)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 1187, in wait
+    ready = selector.select(timeout)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/selectors.py", line 398, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt
+ 6:22.76 E make[4]: *** [force-cargo-library-build] Interrupt: 2
+ 6:22.76 E make[3]: *** [toolkit/library/rust/target-objects] Interrupt: 2
+ 6:22.76 E make[2]: *** [compile] Interrupt: 2
+ 6:22.76 E make[1]: *** [default] Interrupt: 2
+ 6:22.76 E make: *** [build] Interrupt: 2
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260906_001733.json
+Error running mach:
+
+    mach build
+
+The error occurred in code that was called by the mach command. This is either
+a bug in the called code itself or in the way that mach is calling it.
+You can invoke ``./mach busted`` to check if this issue is already on file. If it
+isn't, please use ``./mach busted file build`` to report it. If ``./mach busted`` is
+misbehaving, you can also inspect the dependencies of bug 1543241.
+
+If filing a bug, please include the full output of mach, including this error
+message.
+
+The details of the failure are as follows:
+
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/main.py", line 416, in _run
+    return Registrar._run_command_handler(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        handler,
+        ^^^^^^^^
+    ...<4 lines>...
+        **vars(args.command_args),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/registrar.py", line 124, in _run_command_handler
+    result = fn(instance, **kwargs)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/build_commands.py", line 351, in build
+    return driver.build(
+           ~~~~~~~~~~~~^
+        command_context.metrics,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+        allow_subdirectory_build=allow_subdirectory_build,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 1261, in build
+    status = self._build(
+        monitor,
+    ...<9 lines>...
+        allow_subdirectory_build,
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 1558, in _build
+    status = self._run_client_mk(
+        line_handler=output.on_stdout_line,
+    ...<5 lines>...
+        append_env=client_mk_env,
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 2055, in _run_client_mk
+    return self._run_make(
+           ~~~~~~~~~~~~~~^
+        srcdir=True,
+        ^^^^^^^^^^^^
+    ...<11 lines>...
+        append_env=append_env,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/base.py", line 934, in _run_make
+    return fn(**params)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/base.py", line 937, in _run_command_in_srcdir
+    return self.run_process(cwd=self.topsrcdir, **args)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/mixin/process.py", line 196, in run_process
+    status = p.kill(sig=sig)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 926, in kill
+    self.proc.kill(sig=sig, timeout=timeout)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 251, in kill
+    self.send_signal(sig)
+    ~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 248, in send_signal
+    send_sig(sig or signal.SIGKILL)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 232, in send_sig
+    os.kill(pid, sig)
+    ~~~~~~~^^^^^^^^^^
+ProcessLookupError: [Errno 3] No such process

@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_privacy_inspector.py", line 50, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_privacy_inspector.py", line 46, in main
+    assert isinstance(ui,list) and all(x['children'] for x in ui),ui
+AssertionError: {'error': 'settings UI timeout'}

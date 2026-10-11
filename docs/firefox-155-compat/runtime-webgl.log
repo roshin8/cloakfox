@@ -1,0 +1,14 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+  SIGNAL          seedA       seedB       seedA again
+    readPixels    48480087    34880087    48480087
+    webglDataURL  c5bb2640    799dd097    42b2728c
+    canvas2d      ff746101    839b1644    5e69413f
+  corner pixel: noised=[8, 14, 153, 255] baseline=[7, 14, 153, 255]
+  linked=True glerror=0
+
+FAIL — WebGL readback noise regressed:
+  - webglDataURL changed between two runs of the SAME seed (c5bb2640 vs 42b2728c) — noise must be deterministic per container, not random per call
+  - canvas2d changed between two runs of the SAME seed (ff746101 vs 5e69413f) — noise must be deterministic per container, not random per call

@@ -1,0 +1,13 @@
+routing startup {'filters': True}
+{
+  "originRequests": [
+    "/direct",
+    "/proxied",
+    "/other-container",
+    "/browser-background"
+  ],
+  "proxyTunnels": [
+    "origin.test:63694"
+  ]
+}
+PASS: real proxy routing, refusal has no fallback, blocked scope, other container unaffected

@@ -1,5 +1,25 @@
 # Fingerprint tests
 
+## Letterboxing / native window geometry
+
+```bash
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_letterboxing.py
+```
+
+Uses a disposable profile and local HTTP pages. Checks responsive browser chrome,
+shared viewport buckets, JavaScript/CSS/screen/visual-viewport agreement, same-
+and cross-origin frames, multiple containers, scroll offsets, reload/navigation,
+cursor default, and live master/letterboxing switches. `GECKODRIVER` may specify the driver binary;
+otherwise it must be on PATH. The probe asserts that Cloakfox actually launched.
+
+Letterboxing is enabled by default independently of global RFP (which stays off).
+While enabled, native geometry ignores saved persona viewport/screen dimensions:
+the actual content viewport drives layout and the protected screen dimensions.
+The tabs and toolbar retain Firefox's normal flexible sizing. Disabling
+`privacy.resistFingerprinting.letterboxing` restores legacy persona geometry,
+but never restores the physical browser-window size hijack.
+
 Two tools for validating the H2/H3 transport-fingerprint patches land as
 designed and match the browser they claim to mimic.
 
@@ -275,3 +295,118 @@ tests/fingerprint/
 ├── mitm_h2_observer.py      — local byte-level observer
 └── antibot_battery.py       — manual pre-release validation tool
 ```
+
+## Firefox 155 compatibility regressions
+
+`probe_media_capabilities.py` checks decoding and encoding hooks independently,
+native fallback for unsupported formats, and rejection of invalid inputs. It
+uses disposable profiles and a local HTTP page.
+
+`probe_webgl_readback.py` checks deterministic seeded pixel reads and canvas
+exports (`toDataURL` and `toBlob`), plus native Firefox canvas randomization
+when Cloakfox is disabled or the canvas seed is absent.
+
+`test_canvas_extraction_policy.py` and `test_webgl_async_readback.py` run without
+a browser and compile the production policy/noise helpers. Both run in CI.
+
+`probe_worker_canvas.py` compares the same font-free OffscreenCanvas drawing
+in windows and dedicated workers across four containers, including a zero
+seed, and checks pixel/blob hashes remain stable after reloads.
+
+`test_cpp_first_worker_cache.py` compiles the production preference-reader helper
+and checks that worker reads use cached container configuration without touching
+main-thread Preferences or IPC APIs. It also runs in CI.
+
+`probe_about_dialog.py` opens the custom chrome dialog and checks the displayed
+build version, absence of dialog errors, and close-command handling under the
+current content security policy. It dispatches the command directly; it does
+not simulate a physical Escape key press.
+
+
+## Daily-driver privacy checks
+
+After a native build, run the disposable-profile suite sequentially:
+
+```sh
+CLOAKFOX_BIN=/absolute/path/to/cloakfox python run_daily_driver.py --output /tmp/cloakfox-daily-results
+```
+
+Use the Selenium virtualenv and geckodriver described above. The suite covers
+persistent defaults, engine-version migration over HTTP and JavaScript, the
+bundled signed blocker and user removal, proxy failure and native bypass handling,
+WebRTC policy and local STUN packets, container data/restore clearing, shared
+permission preservation, site-bound outputs, and container/backup workflows.
+It uses disposable profiles. The blocker test restores production addon defaults
+that geckodriver otherwise disables. The WebRTC packet test explicitly enables
+loopback ICE in its test profile to obtain a meaningful positive control.
+
+Safe Browsing preferences alone do not establish working provider lists; the
+suite reports missing provider configuration. Automatic browser updates also
+remain unavailable until owner-controlled release signing and hosting are
+configured. See `docs/daily-driver-privacy/` for implementation and evidence.
+
+
+## Camoufox upstream hardening (September 2026)
+
+```bash
+python tests/fingerprint/test_upstream_hardening.py
+node --test tests/fingerprint/test_mediaquery_logic.mjs tests/fingerprint/test_webrtc_lookup.mjs
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python tests/fingerprint/probe_upstream_hardening.py
+```
+
+The native snippet tests require the applied Firefox source tree, a C++17
+compiler, and Node. They execute the real shaping loop, voice-registration gate,
+font filtering helpers, generic/emoji cache resolution, and SessionStore method. Assertions cover horizontal and
+vertical glyph advances without changing shaping offsets; native voice admission
+with absent/false/true flags; chrome/internal font exemptions and owner-container
+selection; and tracked/untracked SessionStore windows.
+
+The live probe requires Selenium/geckodriver and disposable profiles. It checks
+page/iframe setter absence, privileged Xray access, actual rendered font families
+via InspectorUtils, native chrome CSS2 fonts, different container personas,
+Touch/TouchEvent plus CSS/JS pointer agreement at zero/five touch points, and
+native voice registration with a sentinel positive control. An Arial-only
+container exercises last-resort fallback. It never speaks audio.
+This probe is included in `run_daily_driver.py`.
+
+
+## Region, policies, templates and proxy manager
+
+The daily runner includes `regions`, `privacy_inspector`, `proxy_manager`, and
+`templates`. Run them sequentially against a rebuilt browser:
+
+```sh
+CLOAKFOX_BIN=/absolute/path/to/cloakfox python tests/fingerprint/run_daily_driver.py \
+  --output /tmp/cloakfox-controls --only regions --only privacy_inspector \
+  --only proxy_manager --only templates
+node --test tests/fingerprint/test_*.mjs
+```
+
+These probes use local servers and disposable profiles. Region measurements run
+in page-owned functions, because Selenium's sandbox has its own Date/Intl realm.
+The region probe checks document and dedicated-worker headers/languages/locale,
+DST, explicit locales, denied/granted coarse location, and container switching.
+Policy coverage checks vector/site/container isolation, expiry, unchanged seeds,
+actual inspector window/worker measurement, reversible repairs and UI loading.
+The proxy probe uses local HTTP Basic and SOCKS5 fixtures, including rejected
+credentials, connection reuse isolation, proxy DNS and no direct fallback. It
+never logs credentials. Template coverage checks persisted settings before page
+opening, fresh secrets and empty site data, proxy-required failure, redacted
+exports and restart stability. Inspector unit tests also cover stale repair/undo
+and exclusion of private windows.
+
+HTTP authentication intentionally supports Basic only. Diagnostics require an
+explicit HTTPS endpoint and report reachability, not exit IP or location.
+New controls do not provision any external account or service.
+
+
+### September 2026 privacy completion probes
+
+`run_daily_driver.py` now includes native tracking/bounce protection, HTTPS DoH,
+IPv6/speculative transport checks, HTTP/3 UDP controls, worker startup/live policy,
+host persona mode and isolated profile workspaces. Install
+`tests/network/requirements-h3.txt` alongside Selenium for the full runner.
+The workspace probe isolates app-data directories and cleans up only its owned
+native test child. See `docs/privacy-completion/README.md` for evidence and exact
+coverage limits. The identity workflow probe exercises encrypted v2 and v1 import.

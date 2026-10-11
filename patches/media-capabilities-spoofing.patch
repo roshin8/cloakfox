@@ -1,6 +1,7 @@
---- a/b/dom/media/mediacapabilities/MediaCapabilities.cpp	2026-04-18 06:50:04
-+++ b/dom/media/mediacapabilities/MediaCapabilities.cpp	2026-04-18 06:50:53
-@@ -10,6 +10,7 @@
+diff --git a/dom/media/mediacapabilities/MediaCapabilities.cpp b/dom/media/mediacapabilities/MediaCapabilities.cpp
+--- a/dom/media/mediacapabilities/MediaCapabilities.cpp
++++ b/dom/media/mediacapabilities/MediaCapabilities.cpp
+@@ -6,6 +6,7 @@
  
  #include <utility>
  
@@ -8,12 +9,11 @@
  #include "AllocationPolicy.h"
  #include "DecoderTraits.h"
  #include "MP4Decoder.h"
-@@ -191,6 +192,18 @@
-     return nullptr;
-   }
- 
-+  // Cloakfox: return generic 'supported+smooth+powerEfficient' info to avoid
-+  // revealing which codecs are hardware-accelerated on this device.
+@@ -810,6 +811,17 @@
+   // Step 3: Let p be a new Promise (already have it!)
+   // Step 4: In parallel, run the Create a MediaCapabilitiesDecodingInfo
+   //         algorithm with configuration and resolve p with its result.
++  // Cloakfox: keep the native validation above, then hide hardware support.
 +  if (MaskConfig::GetBool("mediaCapabilities:spoof").value_or(false)) {
 +    MediaCapabilitiesDecodingInfo info;
 +    info.mSupported = true;
@@ -24,28 +24,29 @@
 +    return promise.forget();
 +  }
 +
-   // If configuration is not a valid MediaConfiguration, return a Promise
-   // rejected with a TypeError.
-   if (!aConfiguration.mVideo.WasPassed() &&
-@@ -641,6 +654,16 @@
-     return nullptr;
+   CreateMediaCapabilitiesDecodingInfo(aConfiguration, aRv, promise, behavior);
+   return promise.forget();
+ }
+@@ -1309,6 +1321,16 @@
+     return encodePromise.forget();
    }
  
-+  // Cloakfox: spoofed encoding info mirrors decodingInfo logic.
++  // Cloakfox: spoof encoding support after native argument validation.
 +  if (MaskConfig::GetBool("mediaCapabilities:spoof").value_or(false)) {
 +    MediaCapabilitiesInfo info;
 +    info.mSupported = true;
 +    info.mSmooth = true;
 +    info.mPowerEfficient = true;
-+    promise->MaybeResolve(info);
-+    return promise.forget();
++    encodePromise->MaybeResolve(info);
++    return encodePromise.forget();
 +  }
 +
-   // If configuration is not a valid MediaConfiguration, return a Promise
-   // rejected with a TypeError.
-   if (!aConfiguration.mVideo.WasPassed() &&
---- a/b/dom/media/mediacapabilities/moz.build	2026-04-18 00:00:00
-+++ b/dom/media/mediacapabilities/moz.build	2026-04-18 00:00:00
+   LOG("Processing EncodingInfo for: {}", aConfiguration);
+ 
+   // Step 1: Let info be a new MediaCapabilitiesEncodingInfo instance.
+diff --git a/dom/media/mediacapabilities/moz.build b/dom/media/mediacapabilities/moz.build
+--- a/dom/media/mediacapabilities/moz.build
++++ b/dom/media/mediacapabilities/moz.build
 @@ -14,3 +14,7 @@
  include("/ipc/chromium/chromium-config.mozbuild")
  

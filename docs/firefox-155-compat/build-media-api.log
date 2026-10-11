@@ -1,0 +1,200 @@
+ 0:00.23 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.23 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.32 Clobber not needed.
+ 0:00.36 W Adding make options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:00.36 /usr/bin/make -f client.mk -j8 -s
+ 0:00.94 ./buildid.h.stub
+ 0:00.94 ./source-repo.h.stub
+ 0:01.08 ./application.ini.stub
+ 0:01.19 ./application.ini.h.stub
+ 0:01.45 ./buildid.h.stub
+ 0:01.45 ./source-repo.h.stub
+ 0:01.97 dom/canvas
+ 0:02.02 dom/debugger
+ 0:02.02 dom/crypto
+ 0:02.17 dom/documentpip
+ 0:03.72 dom/encoding
+ 0:04.91    Compiling gkrust v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/rust)
+ 0:05.55 dom/events
+ 0:06.15 dom/fetch
+ 0:07.71 dom/file/ipc
+ 0:14.03 dom/file
+ 0:15.70 dom/file/uri
+ 0:18.56 dom/filesystem/compat
+ 0:19.56 dom/filesystem
+ 0:20.73 dom/flex
+ 0:21.28 dom/fs/api
+ 0:22.20 dom/fs/child
+ 0:22.83 dom/fs/parent/datamodel
+ 0:24.03 dom/fs/parent
+ 0:24.28 dom/fs/shared
+ 0:25.55 dom/gamepad
+ 0:27.48 dom/geolocation
+ 0:28.16 dom/grid
+ 0:29.61 dom/html/input
+ 0:31.55 dom/html
+ 0:31.98 dom/indexedDB
+ 0:35.50 dom/ipc/jsactor
+ 0:38.54 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dom/geolocation/Unified_mm_dom_geolocation0.mm:2:
+ 0:38.54 W /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/geolocation/GeolocationSystemMac.mm:130:10: warning: @available does not guard availability here; use if (@available) instead [-Wunsupported-availability-guard]
+ 0:38.54 W   130 |     if (!@available(macOS 15.0, *)) {
+ 0:38.54 W       |          ^
+ 0:39.40 W 1 warning generated.
+ 0:39.95 dom/ipc
+ 0:43.56 dom/jsurl
+ 0:48.80 dom/l10n
+ 0:50.62 dom/localstorage
+ 0:50.94 dom/locks
+ 0:51.08 dom/mathml
+ 0:53.83 dom/media/autoplay
+ 0:54.10 dom/media/bridge
+ 0:56.37 dom/media/doctor
+ 0:57.24 dom/media/driftcontrol
+ 0:58.14 dom/media/eme
+ 0:58.76 dom/media/encoder
+ 1:00.02 dom/media/flac
+ 1:02.81 dom/media/gmp/rlz
+ 1:03.30 dom/media/gmp
+ 1:06.42 dom/media/gmp/widevine-adapter
+ 1:08.47 dom/media/imagecapture
+ 1:10.14 dom/media/ipc
+ 1:11.17 dom/media/mediacapabilities
+ 1:13.08 dom/media/mediacontrol
+ 1:15.26 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dom/media/mediacapabilities/Unified_cpp_mediacapabilities0.cpp:2:
+ 1:15.26 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/media/mediacapabilities/MediaCapabilities.cpp:1312:5: error: use of undeclared identifier 'promise'
+ 1:15.26 E  1312 |     promise->MaybeResolve(info);
+ 1:15.26 E       |     ^
+ 1:15.29 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/media/mediacapabilities/MediaCapabilities.cpp:1313:12: error: use of undeclared identifier 'promise'
+ 1:15.29 E  1313 |     return promise.forget();
+ 1:15.29 E       |            ^
+ 1:15.33 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/media/mediacapabilities/MediaCapabilities.cpp:1322:5: error: use of undeclared identifier 'promise'
+ 1:15.33 E  1322 |     promise->MaybeResolve(info);
+ 1:15.33 E       |     ^
+ 1:15.37 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/media/mediacapabilities/MediaCapabilities.cpp:1323:12: error: use of undeclared identifier 'promise'
+ 1:15.37 E  1323 |     return promise.forget();
+ 1:15.37 E       |            ^
+ 1:16.18 E 4 errors generated.
+ 1:16.20 E make[4]: *** [Unified_cpp_mediacapabilities0.o] Error 1
+ 1:16.20 E make[3]: *** [dom/media/mediacapabilities/target-objects] Error 2
+ 1:16.20 E make[3]: *** Waiting for unfinished jobs....
+Process Process-1:
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/process.py", line 320, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozsystemmonitor/mozsystemmonitor/resourcemonitor.py", line 309, in _collect
+    while not _poll(pipe, poll_interval=sleep_interval):
+              ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozsystemmonitor/mozsystemmonitor/resourcemonitor.py", line 238, in _poll
+    return pipe.poll(poll_interval)
+           ~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 264, in poll
+    return self._poll(timeout)
+           ~~~~~~~~~~^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 458, in _poll
+    r = wait([self], timeout)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 1187, in wait
+    ready = selector.select(timeout)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/selectors.py", line 398, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt
+ 3:30.53 E make[4]: *** [force-cargo-library-build] Interrupt: 2
+ 3:30.53 E make[3]: *** [toolkit/library/rust/target-objects] Interrupt: 2
+ 3:30.53 E make[2]: *** [compile] Interrupt: 2
+ 3:30.53 E make[1]: *** [default] Interrupt: 2
+ 3:30.53 E make: *** [build] Interrupt: 2
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260906_002852.json
+Error running mach:
+
+    mach build
+
+The error occurred in code that was called by the mach command. This is either
+a bug in the called code itself or in the way that mach is calling it.
+You can invoke ``./mach busted`` to check if this issue is already on file. If it
+isn't, please use ``./mach busted file build`` to report it. If ``./mach busted`` is
+misbehaving, you can also inspect the dependencies of bug 1543241.
+
+If filing a bug, please include the full output of mach, including this error
+message.
+
+The details of the failure are as follows:
+
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/main.py", line 416, in _run
+    return Registrar._run_command_handler(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        handler,
+        ^^^^^^^^
+    ...<4 lines>...
+        **vars(args.command_args),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/registrar.py", line 124, in _run_command_handler
+    result = fn(instance, **kwargs)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/build_commands.py", line 351, in build
+    return driver.build(
+           ~~~~~~~~~~~~^
+        command_context.metrics,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+        allow_subdirectory_build=allow_subdirectory_build,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 1261, in build
+    status = self._build(
+        monitor,
+    ...<9 lines>...
+        allow_subdirectory_build,
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 1558, in _build
+    status = self._run_client_mk(
+        line_handler=output.on_stdout_line,
+    ...<5 lines>...
+        append_env=client_mk_env,
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 2055, in _run_client_mk
+    return self._run_make(
+           ~~~~~~~~~~~~~~^
+        srcdir=True,
+        ^^^^^^^^^^^^
+    ...<11 lines>...
+        append_env=append_env,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/base.py", line 934, in _run_make
+    return fn(**params)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/base.py", line 937, in _run_command_in_srcdir
+    return self.run_process(cwd=self.topsrcdir, **args)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/mixin/process.py", line 196, in run_process
+    status = p.kill(sig=sig)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 926, in kill
+    self.proc.kill(sig=sig, timeout=timeout)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 251, in kill
+    self.send_signal(sig)
+    ~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 248, in send_signal
+    send_sig(sig or signal.SIGKILL)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 232, in send_sig
+    os.kill(pid, sig)
+    ~~~~~~~^^^^^^^^^^
+ProcessLookupError: [Errno 3] No such process

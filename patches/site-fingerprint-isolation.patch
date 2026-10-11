@@ -1,0 +1,740 @@
+--- a/dom/base/AbstractRange.cpp
++++ b/dom/base/AbstractRange.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -984,7 +985,7 @@
+   // Cloakfox: same sub-pixel noise pattern as Element::GetBoundingClientRect.
+   // Range-based text measurements are a separate code path used for font
+   // fingerprinting via document.createRange().
+-  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::ForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value();
+     auto n = [&s]() {
+       s = s * 1664525u + 1013904223u;
+@@ -1053,7 +1054,7 @@
+       aFlushLayout);
+   // Cloakfox: noise each rect in the list. CreepJS uses Range.getClientRects
+   // against rendered text to probe per-character metrics.
+-  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::ForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value();
+     auto n = [&s]() {
+       s = s * 1664525u + 1013904223u;
+--- a/dom/base/Element.cpp
++++ b/dom/base/Element.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -1226,7 +1227,7 @@
+   // Layout-based fingerprints (e.g. font rendering detection) measure
+   // getBoundingClientRect across elements; we add deterministic per-context
+   // jitter so every container sees a different value.
+-  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value();
+     auto n = [&s]() {
+       s = s * 1664525u + 1013904223u;
+@@ -1256,7 +1257,7 @@
+ 
+   // Cloakfox: same sub-pixel noise as getBoundingClientRect, applied to
+   // every rect in the list. CreepJS measures per-rect for multi-line text.
+-  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value();
+     auto n = [&s]() {
+       s = s * 1664525u + 1013904223u;
+@@ -6826,7 +6827,7 @@
+   // Cloakfox: add integer jitter (±1px) to offset measurements. Covers
+   // Element.offsetWidth/Height/Left/Top, which CreepJS and fingerprint.com
+   // use for font detection via span.offsetWidth comparison.
+-  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value() ^ static_cast<uint32_t>(aRect.width * 31 +
+                                                        aRect.height * 17);
+     s = s * 1664525u + 1013904223u;
+--- a/dom/canvas/CanvasRenderingContext2D.cpp
++++ b/dom/canvas/CanvasRenderingContext2D.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -2325,7 +2326,8 @@
+         }
+       }
+     }
+-    uint32_t canvasSeed = CanvasFingerprintManager::GetSeed(userContextId);
++    uint32_t canvasSeed = CloakfoxSiteSeed::Derive(userContextId, "canvas:seed",
++        GetCookieJarSettings());
+     if (canvasSeed != 0) {
+       CanvasFingerprintManager::ApplyCanvasNoise(
+           ret.get(), out_imageSize->width * out_imageSize->height * 4,
+@@ -5323,7 +5325,9 @@
+         processor.mBoundingBox.YMost() + baselineAnchor;
+     // Cloakfox: add deterministic sub-pixel noise to text metrics using
+     // canvas:seed so measureText is not a reliable font fingerprint.
+-    if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++    if (auto seed = std::optional<uint32_t>(CloakfoxSiteSeed::Configured(
++        PrincipalOrNull() ? PrincipalOrNull()->OriginAttributesRef().mUserContextId : 0,
++        "canvas:seed", GetCookieJarSettings())); seed.value_or(0)) {
+       uint32_t s = seed.value();
+       auto noise = [&s]() {
+         s = s * 1664525u + 1013904223u;
+@@ -6823,7 +6827,8 @@
+         }
+       }
+     }
+-    uint32_t canvasSeed = CanvasFingerprintManager::GetSeed(userContextId);
++    uint32_t canvasSeed = CloakfoxSiteSeed::Derive(userContextId, "canvas:seed",
++        GetCookieJarSettings());
+     if (canvasSeed != 0) {
+       JS::AutoCheckCannotGC nogc2;
+       bool isShared2;
+--- a/dom/canvas/CanvasUtils.cpp
++++ b/dom/canvas/CanvasUtils.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -377,11 +378,15 @@
+ // Keep permission/placeholder checks first, and leave unconfigured or disabled
+ // contexts on Firefox's native policy. A configured zero intentionally disables
+ // noise rather than requesting Firefox's randomization.
+-static bool UseCloakfoxCanvasNoise(nsIPrincipal* aPrincipal) {
+-  return StaticPrefs::cloakfox_enabled() && aPrincipal &&
+-         MaskConfig::GetUint32("canvas:seed",
+-                              aPrincipal->OriginAttributesRef().mUserContextId)
+-             .has_value();
++static bool UseCloakfoxCanvasNoise(nsIPrincipal* aPrincipal,
++                                  nsICookieJarSettings* aSettings) {
++  if (!StaticPrefs::cloakfox_enabled() || !aPrincipal) return false;
++  const uint32_t ucid = aPrincipal->OriginAttributesRef().mUserContextId;
++  auto seed = CloakfoxSiteSeed::BaseSeed(ucid, "canvas:seed");
++  // Preserve intentional zero, but missing context/secret must retain Firefox's
++  // native extraction policy rather than silently bypass its randomization.
++  return seed && (*seed == 0 ||
++      CloakfoxSiteSeed::Derive(ucid, "canvas:seed", aSettings) != 0);
+ }
+ 
+ ImageExtraction ImageExtractionResult(dom::HTMLCanvasElement* aCanvasElement,
+@@ -396,7 +401,7 @@
+     return ImageExtraction::Placeholder;
+   }
+ 
+-  if (UseCloakfoxCanvasNoise(aPrincipal)) {
++  if (UseCloakfoxCanvasNoise(aPrincipal, ownerDoc->CookieJarSettings())) {
+     return ImageExtraction::Unrestricted;
+   }
+ 
+@@ -564,7 +569,8 @@
+     return ImageExtraction::Placeholder;
+   }
+ 
+-  if (UseCloakfoxCanvasNoise(aPrincipal)) {
++  if (UseCloakfoxCanvasNoise(aPrincipal,
++          CloakfoxSiteSeed::SettingsForGlobal(aOffscreenCanvas->GetRelevantGlobal()))) {
+     return ImageExtraction::Unrestricted;
+   }
+ 
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -1457,7 +1458,8 @@
+   // Randomize path above, which re-randomises per call and would break the
+   // same-container-same-fingerprint invariant).
+   if (buffer) {
+-    const uint32_t seed = MaskConfig::GetUint32("canvas:seed", GetUserContextId()).value_or(0);
++    const uint32_t seed = CloakfoxSiteSeed::Derive(GetUserContextId(), "canvas:seed",
++          GetCookieJarSettings());
+     const auto size = *out_imageSize;
+     if (seed && size.width > 0 && size.height > 0) {
+       CheckedInt<uint32_t> len =
+@@ -5772,7 +5774,8 @@
+   }
+ 
+   CloakfoxNoiseReadPixels(
+-      desc, dest, MaskConfig::GetUint32("canvas:seed", GetUserContextId()).value_or(0));
++      desc, dest, CloakfoxSiteSeed::Derive(GetUserContextId(), "canvas:seed",
++          GetCookieJarSettings()));
+   return true;
+ }
+ 
+@@ -5812,7 +5815,8 @@
+   // Capture the requesting canvas's identity before dispatch. The IPC reply
+   // runs later without the initiating realm, and its overlay may have changed.
+   const uint32_t noiseSeed =
+-      MaskConfig::GetUint32("canvas:seed", GetUserContextId()).value_or(0);
++      CloakfoxSiteSeed::Derive(GetUserContextId(), "canvas:seed",
++          GetCookieJarSettings());
+   const size_t expectedSize = checkedByteSize.value();
+   const auto desc = webgl::ReadPixelsDesc{{0, 0}, size};
+ 
+--- a/dom/media/webaudio/AnalyserNode.cpp
++++ b/dom/media/webaudio/AnalyserNode.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -232,7 +233,8 @@
+     } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+       userContextId = wp->GetOriginAttributes().mUserContextId;
+     }
+-    uint32_t seed = AudioFingerprintManager::GetSeed(userContextId);
++    uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
++          global ? global->GetExtantDoc() : nullptr);
+     if (seed != 0) {
+       AudioFingerprintManager::ApplyTransformation(mOutputBuffer.Elements(), mOutputBuffer.Length(), seed);
+     }
+@@ -266,7 +268,8 @@
+     } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+       userContextId = wp->GetOriginAttributes().mUserContextId;
+     }
+-    uint32_t seed = AudioFingerprintManager::GetSeed(userContextId);
++    uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
++          global ? global->GetExtantDoc() : nullptr);
+     if (seed != 0) {
+       AudioFingerprintManager::ApplyTransformation(mOutputBuffer.Elements(), mOutputBuffer.Length(), seed);
+     }
+@@ -307,7 +310,8 @@
+       } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+         userContextId = wp->GetOriginAttributes().mUserContextId;
+       }
+-      uint32_t seed = AudioFingerprintManager::GetSeed(userContextId);
++      uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
++          global ? global->GetExtantDoc() : nullptr);
+       if (seed != 0) {
+         AudioFingerprintManager::ApplyTransformation(aData.Elements(), length, seed);
+       }
+@@ -339,7 +343,8 @@
+       } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+         userContextId = wp->GetOriginAttributes().mUserContextId;
+       }
+-      uint32_t seed = AudioFingerprintManager::GetSeed(userContextId);
++      uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
++          global ? global->GetExtantDoc() : nullptr);
+       if (seed != 0) {
+         AudioFingerprintManager::ApplyTransformation(tmpBuffer.Elements(), length, seed);
+       }
+--- a/dom/media/webaudio/AudioBuffer.cpp
++++ b/dom/media/webaudio/AudioBuffer.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -315,7 +316,8 @@
+         }
+       }
+       // Seed lookup runs even when global is null (workers get ucid=0 fallback)
+-      uint32_t seed = AudioFingerprintManager::GetSeed(userContextId);
++      uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
++          global ? global->GetExtantDoc() : nullptr);
+       if (seed != 0) {
+         JS::AutoCheckCannotGC nogc;
+         bool isShared;
+@@ -388,7 +390,8 @@
+           }
+         }
+         // Seed lookup runs even when global is null (workers get ucid=0 fallback)
+-        uint32_t seed = AudioFingerprintManager::GetSeed(userContextId);
++        uint32_t seed = CloakfoxSiteSeed::ForContext(userContextId, "audio:seed",
++          global ? global->GetExtantDoc() : nullptr);
+         if (seed != 0) {
+           AudioFingerprintManager::ApplyTransformation(
+               aData.Elements(), calculateCount(aData.Length()), seed);
+--- a/dom/svg/SVGGeometryElement.cpp
++++ b/dom/svg/SVGGeometryElement.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -301,7 +302,7 @@
+   RefPtr<Path> flat = GetOrBuildPathForMeasuring();
+   float length = flat ? flat->ComputeLength() : 0.f;
+   // Cloakfox: sub-pixel noise to defeat SVG path-length fingerprinting.
+-  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value() ^ static_cast<uint32_t>(length * 1000);
+     s = s * 1664525u + 1013904223u;
+     length += (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+--- a/dom/svg/SVGGraphicsElement.cpp
++++ b/dom/svg/SVGGraphicsElement.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -43,8 +44,8 @@
+ }
+ 
+ // Cloakfox: sub-pixel noise on a gfx::Rect for SVG bbox spoofing.
+-static gfx::Rect CloakNoiseRect(gfx::Rect aRect) {
+-  auto seed = MaskConfig::GetUint32("canvas:seed");
++static gfx::Rect CloakNoiseRect(Document* aDoc, gfx::Rect aRect) {
++  auto seed = CloakfoxSiteSeed::ForDocument(aDoc, "canvas:seed");
+   if (!seed || seed.value() == 0) return aRect;
+   uint32_t s = seed.value();
+   auto n = [&s]() {
+@@ -100,12 +101,12 @@
+ 
+     rec.Scale(1 / dom::UserSpaceMetrics::GetZoom(this));
+ 
+-    return MakeAndAddRef<SVGRect>(this, CloakNoiseRect(ToRect(rec)));
++    return MakeAndAddRef<SVGRect>(this, CloakNoiseRect(OwnerDoc(), ToRect(rec)));
+   }
+ 
+   if (!NS_SVGNewGetBBoxEnabled()) {
+     return MakeAndAddRef<SVGRect>(
+-        this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(
++        this, CloakNoiseRect(OwnerDoc(), ToRect(SVGUtils::GetBBox(
+                   frame, {SVGBBoxFlag::IncludeFillGeometry,
+                           SVGBBoxFlag::UseUserSpaceOfUseElement,
+                           SVGBBoxFlag::DisregardCSSZoom}))));
+@@ -129,13 +130,13 @@
+   flags +=
+       {SVGBBoxFlag::UseUserSpaceOfUseElement, SVGBBoxFlag::DisregardCSSZoom};
+   return MakeAndAddRef<SVGRect>(
+-      this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(frame, flags))));
++      this, CloakNoiseRect(OwnerDoc(), ToRect(SVGUtils::GetBBox(frame, flags))));
+ }
+ 
+ // Cloakfox: noise the 6 components of a 2D affine matrix. Applied to
+ // getCTM / getScreenCTM so SVG transform fingerprints differ per container.
+-static gfx::Matrix CloakNoiseMatrix(gfx::Matrix m) {
+-  auto seed = MaskConfig::GetUint32("canvas:seed");
++static gfx::Matrix CloakNoiseMatrix(Document* aDoc, gfx::Matrix m) {
++  auto seed = CloakfoxSiteSeed::ForDocument(aDoc, "canvas:seed");
+   if (!seed || seed.value() == 0) return m;
+   uint32_t s = seed.value();
+   auto n = [&s]() {
+@@ -157,7 +158,7 @@
+   if (m.IsSingular()) {
+     m = {};
+   }
+-  return MakeAndAddRef<SVGMatrix>(ThebesMatrix(CloakNoiseMatrix(m)));
++  return MakeAndAddRef<SVGMatrix>(ThebesMatrix(CloakNoiseMatrix(OwnerDoc(), m)));
+ }
+ 
+ already_AddRefed<SVGMatrix> SVGGraphicsElement::GetScreenCTM() {
+@@ -169,7 +170,7 @@
+   if (m.IsSingular()) {
+     m = {};
+   }
+-  return MakeAndAddRef<SVGMatrix>(ThebesMatrix(CloakNoiseMatrix(m)));
++  return MakeAndAddRef<SVGMatrix>(ThebesMatrix(CloakNoiseMatrix(OwnerDoc(), m)));
+ }
+ 
+ bool SVGGraphicsElement::IsSVGFocusable(bool* aIsFocusable,
+--- a/dom/svg/SVGTextContentElement.cpp
++++ b/dom/svg/SVGTextContentElement.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -118,7 +119,7 @@
+   SVGTextFrame* textFrame = GetSVGTextFrame();
+   float length = textFrame ? textFrame->GetComputedTextLength(this) : 0.0f;
+   // Cloakfox: sub-pixel noise to defeat SVG text-based font fingerprinting.
+-  if (auto seed = MaskConfig::GetUint32("canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value() ^ static_cast<uint32_t>(length * 1000);
+     s = s * 1664525u + 1013904223u;
+     length += (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -6822,9 +6823,10 @@
+   // worker-scope Math spoofer silently did not install in any non-default
+   // container (measured: ctx 2 worker returned an exact, unnoised
+   // Math.sin(0.5) while ctx 0's was noised).
+-  if (auto seedOpt = MaskConfig::GetUint32(
+-          "math:trig_seed", GetOriginAttributes().mUserContextId);
+-      seedOpt.has_value() && seedOpt.value() != 0) {
++  if (auto seedOpt = std::optional<uint32_t>(CloakfoxSiteSeed::Derive(
++          GetOriginAttributes().mUserContextId, "math:trig_seed",
++          CookieJarSettings()));
++      seedOpt.value() != 0) {
+     nsCString src;
+     src.AppendPrintf(
+         "(()=>{const M=Math,imul=M.imul,oFPTS=Function.prototype.toString;"
+--- a/gfx/thebes/gfxFont.cpp
++++ b/gfx/thebes/gfxFont.cpp
+@@ -3340,10 +3340,10 @@
+     const T* aText, uint8_t aLength, uint32_t aHash, Script aRunScript,
+     nsAtom* aLanguage, bool aVertical, uint16_t aAppUnitsPerDevUnit,
+     gfx::ShapedTextFlags aFlags, RoundingFlags aRounding,
+-    gfxTextPerfMetrics* aTextPerf GFX_MAYBE_UNUSED, uint32_t aUserContextId,
++    gfxTextPerfMetrics* aTextPerf GFX_MAYBE_UNUSED, uint32_t aUserContextId, uint32_t aSiteSeed,
+     Func aCallback) {
+   WordCacheKey key(aText, aLength, aHash, aRunScript, aLanguage,
+-                   aAppUnitsPerDevUnit, aFlags, aRounding, aUserContextId);
++                   aAppUnitsPerDevUnit, aFlags, aRounding, aUserContextId, aSiteSeed);
+   {
+     // If we have a word cache, attempt to look up the word in it.
+     AutoReadLock lock(mLock);
+@@ -3375,6 +3375,7 @@
+     return false;
+   }
+   newShapedWord->SetUserContextId(aUserContextId);
++  newShapedWord->SetSiteSeed(aSiteSeed);
+   DebugOnly<bool> ok = ShapeText(aText, 0, aLength, aRunScript, aLanguage,
+                                  aVertical, aRounding, newShapedWord.get());
+   NS_WARNING_ASSERTION(ok, "failed to shape word - expect garbled text");
+@@ -3432,7 +3433,8 @@
+       aKey.mRounding != aLookup.mRounding ||
+       aKey.mAppUnitsPerDevUnit != aLookup.mAppUnitsPerDevUnit ||
+       aKey.mScript != aLookup.mScript || aKey.mLanguage != aLookup.mLanguage ||
+-      aKey.mUserContextId != aLookup.mUserContextId) {
++      aKey.mUserContextId != aLookup.mUserContextId ||
++      aKey.mSiteSeed != aLookup.mSiteSeed) {
+     return false;
+   }
+ 
+@@ -3463,13 +3465,13 @@
+ 
+ bool gfxFont::ProcessSingleSpaceShapedWord(
+     bool aVertical, uint16_t aAppUnitsPerDevUnit, gfx::ShapedTextFlags aFlags,
+-    RoundingFlags aRounding, uint32_t aUserContextId,
++    RoundingFlags aRounding, uint32_t aUserContextId, uint32_t aSiteSeed,
+     const std::function<void(gfxShapedWord*)>& aCallback) {
+   static const uint8_t space = ' ';
+   return ProcessShapedWordInternal(
+       &space, 1, gfxShapedWord::HashMix(gfxShapedWord::sHashInitialValue, ' '),
+       Script::LATIN, /* aLanguage = */ nullptr, aVertical, aAppUnitsPerDevUnit,
+-      aFlags, aRounding, nullptr, aUserContextId, aCallback);
++      aFlags, aRounding, nullptr, aUserContextId, aSiteSeed, aCallback);
+ }
+ 
+ bool gfxFont::ShapeText(const uint8_t* aText, uint32_t aOffset,
+@@ -3826,7 +3828,7 @@
+       bool processed = ProcessShapedWordInternal(
+           aString + wordStart, static_cast<uint8_t>(length), hash, aRunScript,
+           aLanguage, vertical, appUnitsPerDevUnit, wordFlags, rounding, tp,
+-          aTextRun->GetUserContextId(),
++          aTextRun->GetUserContextId(), aTextRun->GetSiteSeed(),
+           [&](gfxShapedWord* aShapedWord) {
+             aTextRun->CopyGlyphDataFrom(aShapedWord, aRunStart + wordStart);
+           });
+@@ -3853,7 +3855,7 @@
+             gfxShapedWord::HashMix(gfxShapedWord::sHashInitialValue, boundary),
+             aRunScript, aLanguage, vertical, appUnitsPerDevUnit,
+             flags | gfx::ShapedTextFlags::TEXT_IS_8BIT, rounding, tp,
+-            aTextRun->GetUserContextId(),
++            aTextRun->GetUserContextId(), aTextRun->GetSiteSeed(),
+             [&](gfxShapedWord* aShapedWord) {
+               aTextRun->CopyGlyphDataFrom(aShapedWord, aRunStart + i);
+               if (boundary == ' ') {
+--- a/gfx/thebes/gfxFont.h
++++ b/gfx/thebes/gfxFont.h
+@@ -750,6 +750,13 @@
+   // Optional accessor overridden by shaped words and text runs for container ID.
+   // Default returns 0 for non-textrun shaped text objects.
+   virtual uint32_t GetUserContextId() const { return 0; }
++  uint32_t GetSiteSeed() const { return mSiteSeed; }
++  void SetSiteSeed(uint32_t seed) { mSiteSeed = seed; }
++
++ private:
++  uint32_t mSiteSeed = 0;
++
++ public:
+ 
+   /**
+    * This class records the information associated with a character in the
+@@ -1965,7 +1972,7 @@
+   bool ProcessSingleSpaceShapedWord(
+       bool aVertical, uint16_t aAppUnitsPerDevUnit,
+       mozilla::gfx::ShapedTextFlags aFlags, RoundingFlags aRounding,
+-      uint32_t aUserContextId,
++      uint32_t aUserContextId, uint32_t aSiteSeed,
+       const std::function<void(gfxShapedWord*)>& aCallback);
+ 
+   // Called by the gfxFontCache timer to increment the age of all the words,
+@@ -2234,7 +2241,7 @@
+                                  uint16_t aAppUnitsPerDevUnit,
+                                  mozilla::gfx::ShapedTextFlags aFlags,
+                                  RoundingFlags aRounding,
+-                                 gfxTextPerfMetrics* aTextPerf, uint32_t aUserContextId,
++                                 gfxTextPerfMetrics* aTextPerf, uint32_t aUserContextId, uint32_t aSiteSeed,
+                                  Func aCallback);
+ 
+   // whether a given feature is included in feature settings from both the
+@@ -2271,6 +2278,7 @@
+     PLDHashNumber mHashKey;
+     bool mTextIs8Bit;
+     uint32_t mUserContextId;
++    uint32_t mSiteSeed;
+ 
+     static constexpr PLDHashNumber ComputeHash(uint32_t aStringHash,
+                                                Script aScriptCode,
+@@ -2278,17 +2286,17 @@
+                                                int16_t aAppUnitsPerDevUnit,
+                                                ShapedTextFlags aFlags,
+                                                RoundingFlags aRounding,
+-                                               uint32_t aUserContextId) {
++                                               uint32_t aUserContextId, uint32_t aSiteSeed) {
+       return (aStringHash + static_cast<int32_t>(aScriptCode) +
+               aAppUnitsPerDevUnit * 0x100 + uint16_t(aFlags) * 0x10000 +
+               int(aRounding) + aLanguageHash +
+-              aUserContextId * 16777619u);
++              aUserContextId * 16777619u + aSiteSeed * 2166136261u);
+     }
+ 
+     WordCacheKey(const uint8_t* aText, uint8_t aLength, uint32_t aStringHash,
+                  Script aScriptCode, nsAtom* aLanguage,
+                  uint16_t aAppUnitsPerDevUnit, ShapedTextFlags aFlags,
+-                 RoundingFlags aRounding, uint32_t aUserContextId)
++                 RoundingFlags aRounding, uint32_t aUserContextId, uint32_t aSiteSeed)
+         : mLanguage(aLanguage),
+           mFlags(aFlags),
+           mScript(aScriptCode),
+@@ -2298,9 +2306,9 @@
+           mHashKey(ComputeHash(aStringHash, aScriptCode,
+                                aLanguage ? aLanguage->hash() : 0,
+                                aAppUnitsPerDevUnit, aFlags, aRounding,
+-                               aUserContextId)),
++                               aUserContextId, aSiteSeed)),
+           mTextIs8Bit(true),
+-          mUserContextId(aUserContextId) {
++          mUserContextId(aUserContextId), mSiteSeed(aSiteSeed) {
+       NS_ASSERTION(aFlags & ShapedTextFlags::TEXT_IS_8BIT,
+                    "8-bit flag should have been set");
+       mText.mSingle = aText;
+@@ -2309,7 +2317,7 @@
+     WordCacheKey(const char16_t* aText, uint8_t aLength, uint32_t aStringHash,
+                  Script aScriptCode, nsAtom* aLanguage,
+                  uint16_t aAppUnitsPerDevUnit, ShapedTextFlags aFlags,
+-                 RoundingFlags aRounding, uint32_t aUserContextId)
++                 RoundingFlags aRounding, uint32_t aUserContextId, uint32_t aSiteSeed)
+         : mLanguage(aLanguage),
+           mFlags(aFlags),
+           mScript(aScriptCode),
+@@ -2319,9 +2327,9 @@
+           mHashKey(ComputeHash(aStringHash, aScriptCode,
+                                aLanguage ? aLanguage->hash() : 0,
+                                aAppUnitsPerDevUnit, aFlags, aRounding,
+-                               aUserContextId)),
++                               aUserContextId, aSiteSeed)),
+           mTextIs8Bit(false),
+-          mUserContextId(aUserContextId) {
++          mUserContextId(aUserContextId), mSiteSeed(aSiteSeed) {
+       // We can NOT assert that TEXT_IS_8BIT is false in aFlags here,
+       // because this might be an 8bit-only word from a 16-bit textrun,
+       // in which case the text we're passed is still in 16-bit form,
+--- a/gfx/thebes/gfxHarfBuzzShaper.cpp
++++ b/gfx/thebes/gfxHarfBuzzShaper.cpp
+@@ -1491,8 +1491,7 @@
+ 
+   // Resolve seed from manager using user context ID.
+   // seed == 0 means no perturbation (consistent with AudioFingerprintManager).
+-  uint32_t userContextId = aShapedText ? aShapedText->GetUserContextId() : 0;
+-  uint32_t seed = mozilla::dom::FontSpacingSeedManager::GetSeed(userContextId);
++  uint32_t seed = aShapedText ? aShapedText->GetSiteSeed() : 0;
+ 
+   if (seed != 0) {
+     // Generate a random float [0, 0.1] to offset the letter spacing
+--- a/gfx/thebes/gfxTextRun.cpp
++++ b/gfx/thebes/gfxTextRun.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -172,6 +173,7 @@
+       mUserContextId(aUserContextId ? aUserContextId
+                                    : aFontGroup->GetUserContextId()),
+       mShapingState(eShapingState_Normal) {
++  SetSiteSeed(aFontGroup->GetSiteSeed());
+   NS_ASSERTION(mAppUnitsPerDevUnit > 0, "Invalid app unit scale");
+   NS_ADDREF(mFontGroup);
+ 
+@@ -1581,7 +1583,7 @@
+   gfxFontShaper::RoundingFlags roundingFlags =
+       aFont->GetRoundOffsetsToPixels(aDrawTarget);
+   aFont->ProcessSingleSpaceShapedWord(
+-      vertical, mAppUnitsPerDevUnit, flags, roundingFlags, mUserContextId,
++      vertical, mAppUnitsPerDevUnit, flags, roundingFlags, mUserContextId, GetSiteSeed(),
+       [&](gfxShapedWord* aShapedWord) {
+         const GlyphRun* prevRun = TrailingGlyphRun();
+         bool isCJK = prevRun && prevRun->mFont == aFont &&
+@@ -1882,7 +1884,11 @@
+ 
+   // Resolve container identity on the owning thread. Worker documents can only
+   // be accessed on the main thread, so use the worker origin attributes there.
+-  if (!NS_IsMainThread()) {
++  const auto preparedIdentity = mFontVisibilityProvider
++      ? mFontVisibilityProvider->GetCloakfoxFontIdentity() : Nothing();
++  if (preparedIdentity) {
++    mUserContextId = uint32_t(*preparedIdentity >> 32);
++  } else if (!NS_IsMainThread()) {
+     if (auto* worker = dom::GetCurrentThreadWorkerPrivate()) {
+       mUserContextId = worker->GetOriginAttributes().mUserContextId;
+     }
+@@ -1895,6 +1901,19 @@
+       }
+     }
+   }
++}
++
++uint32_t gfxFontGroup::GetSiteSeed() const {
++  if (mFontVisibilityProvider) {
++    if (auto identity = mFontVisibilityProvider->GetCloakfoxFontIdentity()) {
++      return uint32_t(*identity);
++    }
++  }
++  // Non-document providers (OffscreenCanvas) resolve only on their owning
++  // main/DOM-worker thread. Stylo document providers always use the snapshot.
++  auto* doc = NS_IsMainThread() && mFontVisibilityProvider
++                  ? mFontVisibilityProvider->GetDocument() : nullptr;
++  return CloakfoxSiteSeed::ForContext(mUserContextId, "fonts:spacing_seed", doc);
+ }
+ 
+ gfxFontGroup::~gfxFontGroup() {
+--- a/gfx/thebes/gfxTextRun.h
++++ b/gfx/thebes/gfxTextRun.h
+@@ -961,6 +961,7 @@
+ 
+   const gfxFontStyle* GetStyle() const { return &mStyle; }
+   uint32_t GetUserContextId() const { return mUserContextId; }
++  uint32_t GetSiteSeed() const;
+ 
+   // Get the presContext for which this fontGroup was constructed. This may be
+   // null! (In the case of canvas not connected to a document.)
+--- a/layout/base/moz.build
++++ b/layout/base/moz.build
+@@ -146,6 +146,7 @@
+     "../tables",
+     "../xul",
+     "../xul/tree/",
++    "/cloakcfg",
+     "/docshell/base",
+     "/dom/base",
+     "/dom/html",
+--- a/layout/base/nsPresContext.cpp
++++ b/layout/base/nsPresContext.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -331,6 +332,7 @@
+ 
+ static const char* gExactCallbackPrefs[] = {
+     "cloakfox.enabled",
++    "cloakfox.font_identity_epoch",
+     "privacy.resistFingerprinting.letterboxing",
+     "dom.meta-viewport.enabled",
+     "image.animation_mode",
+@@ -532,12 +534,32 @@
+   static_cast<nsPresContext*>(aSelf)->PreferenceChanged(aPrefName);
+ }
+ 
++void nsPresContext::RefreshCloakfoxFontIdentity() {
++  MOZ_ASSERT(NS_IsMainThread());
++  const uint32_t ucid = mDocument->NodePrincipal()->OriginAttributesRef().mUserContextId;
++  const uint32_t seed = CloakfoxSiteSeed::ForContext(
++      ucid, "fonts:spacing_seed", mDocument);
++  mCloakfoxFontIdentity = (uint64_t(ucid) << 32) | seed;
++}
++
+ void nsPresContext::PreferenceChanged(const char* aPrefName) {
+   if (!mPresShell) {
+     return;
+   }
+ 
+   nsDependentCString prefName(aPrefName);
++  if (prefName.EqualsLiteral("cloakfox.enabled") ||
++      prefName.EqualsLiteral("cloakfox.font_identity_epoch")) {
++    const uint64_t oldIdentity = mCloakfoxFontIdentity;
++    RefreshCloakfoxFontIdentity();
++    if (uint64_t(mCloakfoxFontIdentity) != oldIdentity) {
++      FlushFontCache();
++      // Existing text runs already contain shaped advances. A rare identity
++      // change must discard those too, not merely change future word-cache keys.
++      RebuildAllStyleData(nsChangeHint_ReconstructFrame, RestyleHint::RecascadeSubtree());
++    }
++    if (prefName.EqualsLiteral("cloakfox.font_identity_epoch")) return;
++  }
+   if (prefName.EqualsLiteral("cloakfox.enabled") ||
+       prefName.EqualsLiteral("privacy.resistFingerprinting.letterboxing")) {
+     // Refresh protected geometry and cached iframe CSS even when the viewport
+@@ -661,6 +683,7 @@
+   MOZ_ASSERT(aDeviceContext);
+ 
+   mDeviceContext = aDeviceContext;
++  RefreshCloakfoxFontIdentity();
+ 
+   // In certain rare cases (such as changing page mode), we tear down layout
+   // state and re-initialize a new prescontext for a document. Given that we
+@@ -849,6 +872,7 @@
+   MOZ_ASSERT(doc);
+   // Have to update PresContext's mDocument before calling any other methods.
+   mDocument = doc;
++  RefreshCloakfoxFontIdentity();
+ 
+   LookAndFeel::HandleGlobalThemeChange();
+ 
+--- a/layout/base/nsPresContext.h
++++ b/layout/base/nsPresContext.h
+@@ -13,6 +13,7 @@
+ #include "gfxTypes.h"
+ #include "mozilla/AppUnits.h"
+ #include "mozilla/Attributes.h"
++#include "mozilla/Atomics.h"
+ #include "mozilla/DepthOrderedFrameList.h"
+ #include "mozilla/EnumeratedArray.h"
+ #include "mozilla/MediaEmulationData.h"
+@@ -146,6 +147,11 @@
+ 
+   FONT_VISIBILITY_PROVIDER_IMPL
+ 
++  mozilla::Maybe<uint64_t> GetCloakfoxFontIdentity() const override {
++    return mozilla::Some(uint64_t(mCloakfoxFontIdentity));
++  }
++
++
+   enum nsPresContextType : uint8_t {
+     eContext_Galley,        // unpaginated screen presentation
+     eContext_PrintPreview,  // paginated screen presentation
+@@ -1201,6 +1207,8 @@
+   // the PresShell owns a strong reference to the nsPresContext, and is
+   // responsible for nulling this pointer before it is destroyed
+   mozilla::PresShell* MOZ_NON_OWNING_REF mPresShell;  // [WEAK]
++  void RefreshCloakfoxFontIdentity();
++  mozilla::Atomic<uint64_t, mozilla::Relaxed> mCloakfoxFontIdentity{0};
+   RefPtr<mozilla::dom::Document> mDocument;
+   RefPtr<nsDeviceContext> mDeviceContext;  // [STRONG] could be weak, but
+                                            // better safe than sorry.
+--- a/toolkit/components/resistfingerprinting/FontVisibilityProvider.h
++++ b/toolkit/components/resistfingerprinting/FontVisibilityProvider.h
+@@ -44,6 +44,14 @@
+   virtual void UserFontSetUpdated(gfxUserFontEntry* aUpdatedFont = nullptr) = 0;
+   // Document-free providers, such as font-list queries, use the default context.
+   virtual mozilla::dom::Document* GetDocument() const { return nullptr; }
++  // Packed {container ID, site-derived spacing seed}, prepared by the owning
++  // presentation context on main. Safe to read during parallel style traversal.
++  // Nothing means this provider has no prepared document identity (e.g. worker
++  // OffscreenCanvas); Some(0) is an intentional default-container/disabled seed.
++  virtual mozilla::Maybe<uint64_t> GetCloakfoxFontIdentity() const {
++    return mozilla::Nothing();
++  }
++
+ 
+   void ReportBlockedFontFamily(const gfxFontFamily& aFamily) const;
+   void ReportBlockedFontFamily(const mozilla::fontlist::Family& aFamily) const;

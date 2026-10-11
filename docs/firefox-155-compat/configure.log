@@ -1,0 +1,227 @@
+ 0:00.43 Using Python 3.14.4 from /Users/zeus/.mozbuild/srcdirs/firefox-src-2b50123a5247/_virtualenvs/build/bin/python
+ 0:00.43 Adding configure options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+ 0:00.43   --enable-application=browser
+ 0:00.43   --allow-addon-sideload
+ 0:00.43   --disable-crashreporter
+ 0:00.43   --disable-backgroundtasks
+ 0:00.43   --disable-debug
+ 0:00.43   --disable-default-browser-agent
+ 0:00.43   --disable-tests
+ 0:00.43   --disable-updater
+ 0:00.43   --enable-release
+ 0:00.43   --disable-system-policies
+ 0:00.43   --with-app-name=cloakfox
+ 0:00.43   --with-branding=browser/branding/cloakfox
+ 0:00.43   --with-unsigned-addon-scopes=app,system
+ 0:00.43   --enable-bootstrap
+ 0:00.43   --enable-bundled-fonts
+ 0:00.43   --target=aarch64-apple-darwin
+ 0:00.43   --disable-bootstrap
+ 0:00.43   --without-wasm-sandboxed-libraries
+ 0:00.43   --disable-debug-symbols
+ 0:00.43   CC=/Users/zeus/.mozbuild/clang/bin/clang
+ 0:00.43   MOZ_REQUIRE_SIGNING=
+ 0:00.43   CXX=/Users/zeus/.mozbuild/clang/bin/clang++
+ 0:00.43   CBINDGEN=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/.compat-tools/bin/cbindgen
+ 0:00.43   HOST_CC=/Users/zeus/.mozbuild/clang/bin/clang
+ 0:00.43   HOST_CXX=/Users/zeus/.mozbuild/clang/bin/clang++
+ 0:00.43 checking for vcs source checkout... no
+ 0:00.45 checking for a shell... /bin/sh
+ 0:00.47 checking for host system type... aarch64-apple-darwin25.5.0
+ 0:00.48 checking for target system type... aarch64-apple-darwin
+ 0:00.64 checking whether cross compiling... yes
+ 0:00.67 checking if configuration file confvars.sh exists... /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/browser/confvars.sh
+ 0:00.67 checking if configuration file configure.sh exists... /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/browser/branding/cloakfox/configure.sh
+ 0:00.68 checking for the target C compiler... /Users/zeus/.mozbuild/clang/bin/clang
+ 0:00.68 checking for ccache... not found
+ 0:00.69 Using target sysroot in /Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk
+ 0:00.86 checking whether the target C compiler can be used... yes
+ 0:00.86 checking for the target C++ compiler... /Users/zeus/.mozbuild/clang/bin/clang++
+ 0:00.92 checking whether the target C++ compiler can be used... yes
+ 0:01.00 checking for unwind.h... yes
+ 0:01.38 checking for target linker... lld
+ 0:01.46 checking for _Unwind_Backtrace... yes
+ 0:01.46 checking for Python 3... /Users/zeus/.mozbuild/srcdirs/firefox-src-2b50123a5247/_virtualenvs/build/bin/python (3.14.4)
+ 0:01.46 Using host sysroot in /Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk
+ 0:01.46 checking the target C compiler version... 19.1.7
+ 0:01.48 checking the target C compiler works... yes
+ 0:01.48 checking the target C++ compiler version... 19.1.7
+ 0:01.50 checking the target C++ compiler works... yes
+ 0:01.51 checking for the host C compiler... /Users/zeus/.mozbuild/clang/bin/clang
+ 0:01.51 checking whether the host C compiler can be used... yes
+ 0:01.51 checking the host C compiler version... 19.1.7
+ 0:01.51 checking the host C compiler works... yes
+ 0:01.51 checking for the host C++ compiler... /Users/zeus/.mozbuild/clang/bin/clang++
+ 0:01.51 checking whether the host C++ compiler can be used... yes
+ 0:01.51 checking the host C++ compiler version... 19.1.7
+ 0:01.51 checking the host C++ compiler works... yes
+ 0:01.54 checking for host linker... lld
+ 0:01.63 checking for 64-bit OS... yes
+ 0:01.71 checking for __thread keyword for TLS variables... yes
+ 0:01.71 checking for the assembler... /Users/zeus/.mozbuild/clang/bin/clang
+ 0:01.73 checking for llvm-objdump... /Users/zeus/.mozbuild/clang/bin/llvm-objdump
+ 0:01.75 checking for ar... /Users/zeus/.mozbuild/clang/bin/llvm-ar
+ 0:01.98 checking whether ar supports response files... yes
+ 0:02.00 checking for host_ar... /Users/zeus/.mozbuild/clang/bin/llvm-ar
+ 0:02.05 checking for i8mm target feature... yes
+ 0:02.07 checking for ARM SVE2 target feature... yes
+ 0:02.09 checking for ARM dotprod target feature... yes
+ 0:02.16 checking for strndup... yes
+ 0:02.22 checking for posix_memalign... yes
+ 0:02.29 checking for memalign... no
+ 0:02.35 checking for malloc_usable_size... no
+ 0:02.37 checking for malloc.h... no
+ 0:02.39 checking for malloc_np.h... no
+ 0:02.43 checking for malloc/malloc.h... yes
+ 0:02.46 checking for stdint.h... yes
+ 0:02.48 checking for inttypes.h... yes
+ 0:02.51 checking for alloca.h... yes
+ 0:02.53 checking for sys/byteorder.h... no
+ 0:02.56 checking for getopt.h... yes
+ 0:02.59 checking for unistd.h... yes
+ 0:02.62 checking for nl_types.h... yes
+ 0:02.64 checking for cpuid.h... no
+ 0:02.66 checking for fts.h... yes
+ 0:02.69 checking for sys/statvfs.h... yes
+ 0:02.71 checking for sys/statfs.h... no
+ 0:02.73 checking for sys/vfs.h... no
+ 0:02.76 checking for sys/mount.h... yes
+ 0:02.79 checking for sys/quota.h... no
+ 0:02.81 checking for sys/queue.h... yes
+ 0:02.84 checking for sys/types.h... yes
+ 0:02.87 checking for netinet/in.h... yes
+ 0:02.89 checking for byteswap.h... no
+ 0:02.92 checking for memfd_create in sys/mman.h... no
+ 0:02.99 checking for clock_gettime(CLOCK_MONOTONIC)... yes
+ 0:03.07 checking for res_ninit()... no
+ 0:03.13 checking for dladdr... yes
+ 0:03.19 checking for gethostbyname_r in -lc_r... no
+ 0:03.26 checking for socket in -lsocket... no
+ 0:03.29 checking for pthread.h... yes
+ 0:03.31 checking whether the C compiler supports -pthread... yes
+ 0:03.45 checking whether 64-bits std::atomic requires -latomic... no
+ 0:03.48 checking whether the C++ compiler supports -Wdeprecated-literal-operator... yes
+ 0:03.50 checking whether the C compiler supports -Winvalid-utf8... yes
+ 0:03.53 checking whether the C++ compiler supports -Winvalid-utf8... yes
+ 0:03.55 checking whether the C compiler supports -Wduplicate-method-arg... yes
+ 0:03.57 checking whether the C++ compiler supports -Wduplicate-method-arg... yes
+ 0:03.59 checking whether the C compiler supports -Wduplicate-method-match... yes
+ 0:03.62 checking whether the C++ compiler supports -Wduplicate-method-match... yes
+ 0:03.64 checking whether the C compiler supports -Wmissing-method-return-type... yes
+ 0:03.66 checking whether the C++ compiler supports -Wmissing-method-return-type... yes
+ 0:03.68 checking whether the C compiler supports -Wobjc-signed-char-bool... yes
+ 0:03.70 checking whether the C++ compiler supports -Wobjc-signed-char-bool... yes
+ 0:03.73 checking whether the C compiler supports -Wsemicolon-before-method-body... yes
+ 0:03.75 checking whether the C++ compiler supports -Wsemicolon-before-method-body... yes
+ 0:03.77 checking whether the C compiler supports -Wsuper-class-method-mismatch... yes
+ 0:03.79 checking whether the C++ compiler supports -Wsuper-class-method-mismatch... yes
+ 0:03.82 checking whether the C compiler supports -Wformat... yes
+ 0:03.84 checking whether the C++ compiler supports -Wformat... yes
+ 0:03.86 checking whether the C compiler supports -Wno-character-conversion... no
+ 0:03.88 checking whether the C++ compiler supports -Wno-character-conversion... no
+ 0:03.90 checking whether the C++ compiler supports -fno-sized-deallocation... yes
+ 0:03.92 checking whether the C++ compiler supports -fno-aligned-new... yes
+ 0:03.94 checking whether the C compiler supports -fdiagnostics-absolute-paths... yes
+ 0:03.97 checking whether the C++ compiler supports -fdiagnostics-absolute-paths... yes
+ 0:04.02 checking whether the C linker supports -Wl,--build-id=sha1... no
+ 0:04.04 checking whether the C assembler supports -Wa,--noexecstack... yes
+ 0:04.09 checking whether the C linker supports -Wl,-z,noexecstack... no
+ 0:04.14 checking whether the C linker supports -Wl,-z,text... no
+ 0:04.19 checking whether the C linker supports -Wl,-z,relro... no
+ 0:04.24 checking whether the C linker supports -Wl,-z,now... no
+ 0:04.29 checking whether the C linker supports -Wl,-z,nocopyreloc... no
+ 0:04.36 checking whether the C linker supports -Wl,-dead_strip... yes
+ 0:04.38 checking whether the C assembler supports -fPIC... yes
+ 0:04.40 checking whether the C compiler supports -fPIC... yes
+ 0:04.42 checking whether the C++ compiler supports -fPIC... yes
+ 0:04.49 checking what kind of list files are supported by the linker... linkerlist
+ 0:04.49 checking for llvm_profdata... not found
+ 0:04.53 checking for rustc... /Users/zeus/.cargo/bin/rustc
+ 0:04.53 checking for cargo... /Users/zeus/.cargo/bin/cargo
+ 0:04.61 Actually using '/Users/zeus/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc'
+ 0:04.68 Actually using '/Users/zeus/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo'
+ 0:04.69 checking rustc version... 1.94.1
+ 0:04.70 checking cargo version... 1.94.1
+ 0:04.74 checking for rust host triplet... aarch64-apple-darwin
+ 0:04.77 checking for rust target triplet... aarch64-apple-darwin
+ 0:04.77 checking for rustdoc... /Users/zeus/.cargo/bin/rustdoc
+ 0:04.78 checking for cbindgen... /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/.compat-tools/bin/cbindgen
+ 0:04.78 checking for rustfmt... /Users/zeus/.cargo/bin/rustfmt
+ 0:04.78 checking for clang for bindgen... /Users/zeus/.mozbuild/clang/bin/clang++
+ 0:04.80 checking for libclang for bindgen... /Users/zeus/.mozbuild/clang/lib/libclang.dylib
+ 0:05.50 checking that libclang is new enough... yes
+ 0:05.50 checking bindgen cflags... ['-x', 'c++', '-fno-sized-deallocation', '-fno-aligned-new', '-DTRACING=1', '-DIMPL_LIBXUL', '-DMOZILLA_INTERNAL_API', '-DRUST_BINDGEN', '-isysroot', '/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk', '-mmacosx-version-min=11.0', '-stdlib=libc++', '-std=gnu++20']
+ 0:05.52 checking for tm_zone and tm_gmtoff in struct tm... yes
+ 0:05.59 checking for getpagesize... yes
+ 0:05.65 checking for gmtime_r... yes
+ 0:05.72 checking for localtime_r... yes
+ 0:05.79 checking for gettid... no
+ 0:05.85 checking for setpriority... yes
+ 0:05.92 checking for syscall... yes
+ 0:05.98 checking for getc_unlocked... yes
+ 0:06.05 checking for pthread_getname_np... yes
+ 0:06.11 checking for pthread_get_name_np... no
+ 0:06.18 checking for nl_langinfo and CODESET... yes
+ 0:06.25 checking for __cxa_demangle... yes
+ 0:06.32 checking for _getc_nolock... no
+ 0:06.39 checking for localeconv... yes
+ 0:06.44 checking for nodejs... /Users/zeus/.mozbuild/node/bin/node (22.16.0)
+ 0:06.44 checking for tar... /usr/bin/tar
+ 0:06.44 checking for unzip... /usr/bin/unzip
+ 0:06.44 checking for the Mozilla API key... no
+ 0:06.44 checking for the Google Location Service API key... no
+ 0:06.44 checking for the Google Safebrowsing API key... no
+ 0:06.44 checking for the Bing API key... no
+ 0:06.44 checking for the Adjust SDK key... no
+ 0:06.44 checking for the Leanplum SDK key... no
+ 0:06.44 checking for the Pocket API key... no
+ 0:06.50 checking for stat64... yes
+ 0:06.57 checking for lstat64... yes
+ 0:06.64 checking for truncate64... no
+ 0:06.70 checking for statvfs64... no
+ 0:06.76 checking for statvfs... yes
+ 0:06.83 checking for statfs64... yes
+ 0:06.89 checking for statfs... yes
+ 0:06.95 checking for lutimes... yes
+ 0:07.02 checking for posix_fadvise... no
+ 0:07.08 checking for posix_fallocate... no
+ 0:07.14 checking for eventfd... no
+ 0:07.20 checking for arc4random... yes
+ 0:07.27 checking for arc4random_buf... yes
+ 0:07.33 checking for mallinfo... no
+ 0:07.35 checking for sys/ioccom.h... yes
+ 0:07.38 checking for execinfo.h... yes
+ 0:07.40 checking for sys/single_threaded.h... no
+ 0:07.46 checking for vld1_s16_x3 in arm_neon.h... yes
+ 0:07.52 checking for vld1_u16_x2 in arm_neon.h... yes
+ 0:07.58 checking for vld1q_u8_x4 in arm_neon.h... yes
+ 0:07.58 checking for dump_syms... not found
+ 0:07.61 checking for sin_len in struct sockaddr_in... yes
+ 0:07.65 checking for sin_len6 in struct sockaddr_in6... yes
+ 0:07.67 checking for sa_len in struct sockaddr... yes
+ 0:07.71 checking for pthread_cond_timedwait_monotonic_np... no
+ 0:07.71 checking ONNX install path... no
+ 0:07.74 checking for valid C compiler optimization flags... yes
+ 0:07.74 checking for gmake... /usr/bin/make
+ 0:07.75 checking for gmake version... 3.81
+ 0:07.75 checking for watchman... not found
+ 0:07.75 checking for xargs... /usr/bin/xargs
+ 0:07.75 checking for mkfshfs... /sbin/newfs_hfs
+ 0:07.75 checking for hfs_tool... not found
+ 0:07.77 checking for dsymutil... /Users/zeus/.mozbuild/clang/bin/dsymutil
+ 0:07.79 checking for otool... /Users/zeus/.mozbuild/clang/bin/llvm-otool
+ 0:08.04 checking for strip... /Users/zeus/.mozbuild/clang/bin/llvm-strip
+ 0:08.05 Creating config.status
+ 0:08.18 Reticulating splines...
+ 0:13.47 Finished reading 2436 moz.build files in 1.60s
+ 0:13.47 Read 58 gyp files in parallel contributing 0.00s to total wall time
+ 0:13.47 Processed into 18786 build config descriptors in 1.08s
+ 0:13.47 RecursiveMake backend executed in 1.59s
+ 0:13.47   5269 total backend files; 11 created; 1307 updated; 3951 unchanged; 0 deleted; 16 -> 1982 Makefile
+ 0:13.47 FasterMake backend executed in 0.13s
+ 0:13.47   77 total backend files; 0 created; 2 updated; 75 unchanged; 0 deleted
+ 0:13.47 Clangd backend executed in 0.76s
+ 0:13.47   1252 total backend files; 0 created; 1 updated; 1251 unchanged; 0 deleted
+ 0:13.47 Total wall time: 5.31s; CPU time: 4.56s; Efficiency: 86%; Untracked: 0.14s
+ 0:14.13 Configure complete!
+ 0:14.13 Be sure to run |mach build| to pick up any changes

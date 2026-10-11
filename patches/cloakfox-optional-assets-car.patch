@@ -1,18 +1,35 @@
-Cloakfox: make the macOS Assets.car copy optional.
-
-The fork ships its own firefox.icns (referenced by CFBundleIconFile) and
-only an uncompiled Assets.xcassets; producing Assets.car needs Xcode's
-actool, which isn't available in every build environment. Copy the
-compiled asset catalog only when a prebuilt one is present so `mach
-build` doesn't hard-fail at packaging on machines without Xcode.
-
---- a/browser/app/Makefile.in
-+++ b/browser/app/Makefile.in
-@@ -93,4 +93,6 @@
- 	cp -RL $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/firefox.icns '$(dist_dest)/Contents/Resources/firefox.icns'
- 	cp -RL $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/document.icns '$(dist_dest)/Contents/Resources/document.icns'
--	cp -RL $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/Assets.car '$(dist_dest)/Contents/Resources/Assets.car'
-+	# Cloakfox: Assets.car is optional (fork ships firefox.icns; the
-+	# compiled asset catalog needs Xcode actool). Copy only if present.
-+	if test -f $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/Assets.car; then cp -RL $(topsrcdir)/$(MOZ_BRANDING_DIRECTORY)/Assets.car '$(dist_dest)/Contents/Resources/Assets.car'; fi
- 	$(MKDIR) -p '$(dist_dest)/Contents/Library/LaunchServices'
+diff --git a/browser/app/moz.build b/browser/app/moz.build
+--- a/browser/app/moz.build
++++ b/browser/app/moz.build
+@@ -74,8 +74,9 @@
+     extra_files = [
+         (f"{branding}/firefox.icns", "Resources/firefox.icns"),
+         (f"{branding}/document.icns", "Resources/document.icns"),
+-        (f"{branding}/Assets.car", "Resources/Assets.car"),
+-    ]
++    ]
++    if CONFIG["MOZ_BRANDING_HAS_ASSET_CATALOG"]:
++        extra_files.append((f"{branding}/Assets.car", "Resources/Assets.car"))
+     if CONFIG["MOZ_UPDATER"]:
+         extra_files.append((
+             f"!/{FINAL_TARGET}/org.mozilla.updater",
+diff --git a/toolkit/moz.configure b/toolkit/moz.configure
+--- a/toolkit/moz.configure
++++ b/toolkit/moz.configure
+@@ -3292,6 +3292,16 @@
+     return f"{build_project}/branding/nightly"
+ 
+ 
++# Cloakfox ships .icns icons; a precompiled Xcode asset catalog is optional.
++@depends(real_branding_directory, build_environment)
++@imports("os")
++def branding_has_asset_catalog(branding, build_env):
++    return os.path.isfile(os.path.join(build_env.topsrcdir, branding, "Assets.car"))
++
++
++set_config("MOZ_BRANDING_HAS_ASSET_CATALOG", branding_has_asset_catalog)
++
++
+ confvar(
+     "MOZ_APP_DISPLAYNAME",
+     nargs=1,

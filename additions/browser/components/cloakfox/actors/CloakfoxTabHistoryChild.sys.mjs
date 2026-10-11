@@ -1,3 +1,4 @@
+import { actorSiteSeed } from "resource:///modules/CloakfoxSiteSeed.sys.mjs";
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -72,7 +73,8 @@ export class CloakfoxTabHistoryChild extends JSWindowActorChild {
     // per-container pick.
     const seeds = Services.cpmm.sharedData.get("cloakfox-seeds") || {};
     const ucid = win.docShell?.browsingContext?.originAttributes?.userContextId ?? 0;
-    const seedB64 = seeds[`cloakfox.container.${ucid}.math_seed`] || "";
+    const seedB64 = actorSiteSeed(win, seeds, "actor:tab-history",
+      seeds[`cloakfox.container.${ucid}.math_seed`] || "");
     if (!seedB64) return;
 
     const prng = makePRNG(b64ToBytes(seedB64));

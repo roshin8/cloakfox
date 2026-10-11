@@ -1,0 +1,175 @@
+ 0:00.26 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.26 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.36 Clobber not needed.
+ 0:00.49 /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/browser/components/cloakfox/moz.build
+ 0:00.49 Build configuration changed. Regenerating backend.
+ 0:00.49 /Users/zeus/.mozbuild/srcdirs/firefox-src-2b50123a5247/_virtualenvs/build/bin/python /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/sandbox.py", line 210, in exec_function
+    func(*args, **kwargs)
+    ~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/sandbox.py", line 185, in execute
+    exec(code, self)
+    ~~~~^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/moz.build", line 139, in <module>
+    LOCAL_INCLUDES += [
+    ...<15 lines>...
+    ]
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/util.py", line 1083, in __iadd__
+    return super().__iadd__(other)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/util.py", line 571, in __iadd__
+    StrictOrderingOnAppendList.ensure_sorted(other)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/util.py", line 545, in ensure_sorted
+    raise UnsortedError(srtd, l)
+mozbuild.util.UnsortedError: An attempt was made to add an unsorted sequence to a list. The incoming list is unsorted starting at element 0. We expected "../forms" but got "/cloakcfg"
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1123, in read_mozbuild
+    yield from self._read_mozbuild(
+        path, config, descend=descend, metadata=metadata
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1196, in _read_mozbuild
+    sandbox.exec_file(path)
+    ~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 227, in exec_file
+    Sandbox.exec_file(self, path, becomes_current_path)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/sandbox.py", line 162, in exec_file
+    self.exec_source(source, path, becomes_current_path)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/sandbox.py", line 189, in exec_source
+    self.exec_function(
+    ~~~~~~~~~~~~~~~~~~^
+        execute, path=path, becomes_current_path=becomes_current_path
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/sandbox.py", line 243, in exec_function
+    raise SandboxExecutionError(source_stack, exc[0], exc[1], exc[2])
+mozbuild.frontend.sandbox.SandboxExecutionError: (['/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/moz.build'], <class 'mozbuild.util.UnsortedError'>, UnsortedError([<SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../forms>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../generic>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../mathml>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../painting>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../printing>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../style>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../tables>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../xul>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../xul/tree/>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/cloakcfg>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/docshell/base>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/dom/base>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/dom/html>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/dom/svg>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/dom/xul>], [<SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/cloakcfg>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../forms>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../generic>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../mathml>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../painting>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../printing>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../style>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../tables>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../xul>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)../xul/tree/>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/docshell/base>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/dom/base>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/dom/html>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/dom/svg>, <SourcePath (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base)/dom/xul>]), <traceback object at 0x110660dc0>)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config.status", line 726, in <module>
+    config_status(**args)
+    ~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/config_status.py", line 203, in config_status
+    definitions = list(definitions)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/emitter.py", line 151, in emit
+    for out in output:
+               ^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 900, in read_topsrcdir
+    yield from self.read_mozbuild(path, self.config)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1128, in read_mozbuild
+    raise bre
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1123, in read_mozbuild
+    yield from self._read_mozbuild(
+        path, config, descend=descend, metadata=metadata
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1299, in _read_mozbuild
+    yield from self.read_mozbuild(
+        child_path, context.config, metadata=child_metadata
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1128, in read_mozbuild
+    raise bre
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1123, in read_mozbuild
+    yield from self._read_mozbuild(
+        path, config, descend=descend, metadata=metadata
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1299, in _read_mozbuild
+    yield from self.read_mozbuild(
+        child_path, context.config, metadata=child_metadata
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/frontend/reader.py", line 1136, in read_mozbuild
+    raise BuildReaderError(
+        list(self._execution_stack), sys.exc_info()[2], sandbox_exec_error=se
+    )
+mozbuild.frontend.reader.BuildReaderError: 
+==============================
+FATAL ERROR PROCESSING MOZBUILD FILE
+==============================
+
+The error occurred while processing the following file:
+
+    /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/moz.build
+
+The error was triggered on line 139 of this file:
+
+    LOCAL_INCLUDES += [
+
+An error was encountered as part of executing the file itself. The error appears to be the fault of the script.
+
+The error as reported by Python is:
+
+    ['mozbuild.util.UnsortedError: An attempt was made to add an unsorted sequence to a list. The incoming list is unsorted starting at element 0. We expected "../forms" but got "/cloakcfg"\n']
+
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260907_200733.json
+Error running mach:
+
+    mach build
+
+The error occurred in code that was called by the mach command. This is either
+a bug in the called code itself or in the way that mach is calling it.
+You can invoke ``./mach busted`` to check if this issue is already on file. If it
+isn't, please use ``./mach busted file build`` to report it. If ``./mach busted`` is
+misbehaving, you can also inspect the dependencies of bug 1543241.
+
+If filing a bug, please include the full output of mach, including this error
+message.
+
+The details of the failure are as follows:
+
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/main.py", line 416, in _run
+    return Registrar._run_command_handler(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        handler,
+        ^^^^^^^^
+    ...<4 lines>...
+        **vars(args.command_args),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/registrar.py", line 124, in _run_command_handler
+    result = fn(instance, **kwargs)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/build_commands.py", line 351, in build
+    return driver.build(
+           ~~~~~~~~~~~~^
+        command_context.metrics,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+        allow_subdirectory_build=allow_subdirectory_build,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 1261, in build
+    status = self._build(
+        monitor,
+    ...<9 lines>...
+        allow_subdirectory_build,
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 1433, in _build
+    self.ensure_backend_current()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/base.py", line 315, in ensure_backend_current
+    self.run_process(
+    ~~~~~~~~~~~~~~~~^
+        [self.substs["PYTHON3"], mozpath.join(self.topobjdir, "config.status")],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        cwd=self.topobjdir,
+        ^^^^^^^^^^^^^^^^^^^
+        pass_thru=True,
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/mixin/process.py", line 212, in run_process
+    raise Exception(
+        f"Process executed with non-0 exit code {status}: {' '.join(mozshellutil.quote(arg) for arg in args)}"
+    )
+Exception: Process executed with non-0 exit code 1: /Users/zeus/.mozbuild/srcdirs/firefox-src-2b50123a5247/_virtualenvs/build/bin/python /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config.status

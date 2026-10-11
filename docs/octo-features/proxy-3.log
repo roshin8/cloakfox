@@ -1,0 +1,8 @@
+proxy preflight 1 {'entryPresent': True, 'errorCode': None, 'errorName': 'Error', 'loginCount': 0, 'mode': 1, 'reason': 'Proxy route changed or credentials are unavailable', 'refMatches': True, 'revisionMatches': True, 'stage': 'resolve-failed', 'urlMatches': True}
+proxy request 1 {'body': '', 'proxy': None, 'status': 2152398920, 'ucid': 1} http-attempt-count 0 socks-attempt-count 0
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_proxy_manager.py", line 220, in <module>
+    main()
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_proxy_manager.py", line 187, in main
+    assert result['status'] == 0 and result['body'] == 'authenticated-route-ok', result
+AssertionError: {'body': '', 'proxy': None, 'status': 2152398920, 'ucid': 1}

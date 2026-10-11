@@ -96,6 +96,7 @@ function buildCloakCfg(seedB64, ucid) {
     "resource:///modules/CloakfoxOverrides.sys.mjs"
   );
   const base = {
+    "fingerprint:secret": seedB64,
     "canvas:seed": u32(seedB64, 0),
     "audio:seed":  u32(seedB64, 1),
     "font:seed":   u32(seedB64, 2),

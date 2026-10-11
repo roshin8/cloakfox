@@ -1,0 +1,84 @@
+{
+  "nativePositiveControl": {
+    "addresses": [
+      "127.0.0.1"
+    ],
+    "status": 0
+  },
+  "encryptedIPv4": {
+    "addresses": [
+      "192.0.2.7"
+    ],
+    "status": 0
+  },
+  "encryptedIPv6": {
+    "addresses": [
+      "2001:db8::7"
+    ],
+    "status": 0
+  },
+  "excludedFailsClosed": {
+    "addresses": [],
+    "error": "NS_ERROR_UNKNOWN_HOST",
+    "status": 2152398878
+  },
+  "failedResolverIPv4": {
+    "addresses": [],
+    "status": 2152398878
+  },
+  "failedResolverIPv6": {
+    "addresses": [],
+    "status": 2152398878
+  },
+  "explicitFallbackPositiveControl": {
+    "addresses": [
+      "127.0.0.1"
+    ],
+    "status": 0
+  },
+  "proxy": {
+    "success": {
+      "body": "origin-ok",
+      "proxy": "127.0.0.1",
+      "status": 0,
+      "ucid": 2
+    },
+    "refused": {
+      "body": "",
+      "proxy": "127.0.0.1",
+      "status": 2152398920,
+      "ucid": 2
+    },
+    "recovered": {
+      "body": "origin-ok",
+      "proxy": "127.0.0.1",
+      "status": 0,
+      "ucid": 2
+    },
+    "tunnels": [
+      "origin.test:49532",
+      "origin.test:49532"
+    ]
+  },
+  "resolverRecovery": {
+    "addresses": [
+      "192.0.2.7"
+    ],
+    "status": 0
+  },
+  "dohQueries": [
+    [
+      "positive-v4.dns-fixture.test",
+      1
+    ],
+    [
+      "positive-v6.dns-fixture.test",
+      28
+    ],
+    [
+      "recovery.dns-fixture.test",
+      1
+    ]
+  ]
+}
+PASS: real HTTPS DoH A/AAAA, strict failure/exclusion, explicit native fallback control, required-proxy remote DNS, refusal/recovery

@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_regions.py", line 120, in <module>
+    main()
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_regions.py", line 97, in main
+    assert surface['locale'] == region['locale'], data
+AssertionError: {'window': {'explicit': 'ja-JP', 'language': 'de-DE', 'languages': ['de-DE', 'de', 'en-US'], 'locale': 'en-US', 'summer': 300, 'timezone': 'America/Chicago', 'winter': 360}, 'worker': {'explicit': 'ja-JP', 'language': 'de-DE', 'languages': ['de-DE', 'de', 'en-US'], 'locale': 'de-DE', 'summer': -120, 'timezone': 'Europe/Berlin', 'winter': -60}}

@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_native_webrtc_policy.py", line 145, in <module>
+    main()
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_native_webrtc_policy.py", line 136, in main
+    WebDriverWait(driver, 10).until(lambda d: d.execute_script('return savedPC.signalingState') == 'closed')
+  File "/Users/zeus/Documents/cloakfox/tests/.cpp-first-venv/lib/python3.12/site-packages/selenium/webdriver/support/wait.py", line 121, in until
+    raise TimeoutException(message, screen, stacktrace)
+selenium.common.exceptions.TimeoutException: Message: 
+

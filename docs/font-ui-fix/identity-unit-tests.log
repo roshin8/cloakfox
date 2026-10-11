@@ -1,0 +1,36 @@
+✔ host selection retains complete correlated tuple without mutation (0.818834ms)
+✔ reject unsupported hosts and absent host distribution (0.6465ms)
+✔ host aliases normalize consistently (0.068792ms)
+✔ real Bayesian tuples select every supported OS deterministically (24.133583ms)
+✔ fresh cfg derives Firefox major from 155.0.1 (5.998333ms)
+✔ fresh cfg derives Firefox major from 156.0a1 (1.620917ms)
+✔ fresh cfg derives Firefox major from 157.0b3 (1.958334ms)
+✔ fresh cfg derives Firefox major from 155.2.0esr (1.416583ms)
+✔ startup migrates legacy identity only and keeps seeds and unrelated cfg (2.146792ms)
+✔ explicit identity overrides remain pinned while other generated fields migrate (1.637208ms)
+✔ unrecognized direct cfg identity is preserved (1.330542ms)
+✔ explicit Firefox-shaped UA and header overrides remain on their chosen version (1.31075ms)
+✔ font-key upgrade also migrates identity without losing existing values (2.123542ms)
+✔ corrupt cfg rebuilds from persisted seeds with current identity (1.324792ms)
+✔ divergent navigator and HTTP overrides each retain the explicit choice (1.501167ms)
+✔ first master seed selects mixed OS mode; existing seeded identity remains legacy (2.982583ms)
+✔ host mode flows through generated keys, pinned keys, preview labels and summary (3.698917ms)
+✔ strict settings schema rejects secrets, IDs, arbitrary overrides and malformed settings (2.313166ms)
+✔ opening pages reject privileged schemes and embedded authentication (0.219959ms)
+✔ version 0 migration preserves settings and derives required route without accepting future versions (0.250125ms)
+✔ capture copies only enumerated settings and detaches records from source objects (0.163958ms)
+✔ catalog import creates fresh IDs, survives reload, and rejects hostile imports atomically (0.394917ms)
+✔ creation writes distinct persistent secrets into fresh containers before opening pages (1.282209ms)
+✔ missing proxy is rejected before creation, unbound required preset remains explicitly blocked (0.341833ms)
+✔ failed initialization removes only newly created identity and saves cleanup; opening failure preserves configured container (0.183875ms)
+✔ native creation generates fresh independent seeds, config and opening tabs after route binding and persistence (0.752666ms)
+✔ settings UI mounts, saves selected container settings and creates edited templates through the native API (5.902333ms)
+✔ template mode preserves legacy pins and gives new presets mixed OS mode (0.180166ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 120.573792

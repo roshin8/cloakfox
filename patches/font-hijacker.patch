@@ -1,19 +1,18 @@
 diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList.cpp
-index bc0e123f85..52ec46f76b 100644
 --- a/gfx/thebes/gfxPlatformFontList.cpp
 +++ b/gfx/thebes/gfxPlatformFontList.cpp
-@@ -13,6 +13,7 @@
- #include "gfxTextRun.h"
- #include "gfxUserFontSet.h"
- #include "SharedFontList-impl.h"
+@@ -3,6 +3,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "gfxPlatformFontList.h"
 +#include "MaskConfig.hpp"
  
+ #include "FontVisibilityProvider.h"
  #include "GeckoProfiler.h"
- #include "nsCRT.h"
-@@ -303,6 +304,53 @@ gfxPlatformFontList::gfxPlatformFontList(bool aNeedFullnamePostscriptNames)
-
+@@ -320,6 +321,53 @@
+ 
    mFontPrefs = MakeUnique<FontPrefs>();
-
+ 
 +  // Hijack the kFontSystemWhitelistPref pref
 +  if (std::vector<std::string> fontValues = MaskConfig::GetStringList("fonts");
 +      !fontValues.empty()) {
@@ -65,22 +64,20 @@ index bc0e123f85..52ec46f76b 100644
    mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty();
  
 diff --git a/gfx/thebes/moz.build b/gfx/thebes/moz.build
-index 3d99906827..a9d1191688 100644
 --- a/gfx/thebes/moz.build
 +++ b/gfx/thebes/moz.build
-@@ -301,3 +301,6 @@ DEFINES["GRAPHITE2_STATIC"] = True
- CXXFLAGS += ["-Werror=switch"]
-
+@@ -301,3 +301,6 @@
+ COMPILE_FLAGS["WARNINGS_CXXFLAGS"] += ["-Werror=switch"]
+ 
  include("/tools/fuzzing/libfuzzer-config.mozbuild")
 +
 +# DOM Mask
 +LOCAL_INCLUDES += ["/cloakcfg"]
 \ No newline at end of file
 diff --git a/layout/style/FontFace.cpp b/layout/style/FontFace.cpp
-index f1a90334ea..47d3a881ac 100644
 --- a/layout/style/FontFace.cpp
 +++ b/layout/style/FontFace.cpp
-@@ -237,7 +237,16 @@ void FontFace::SetSizeAdjust(const nsACString& aValue, ErrorResult& aRv) {
+@@ -239,7 +239,16 @@
    mImpl->SetSizeAdjust(aValue, aRv);
  }
  
@@ -98,11 +95,11 @@ index f1a90334ea..47d3a881ac 100644
  
  Promise* FontFace::Load(ErrorResult& aRv) {
    EnsurePromise();
-@@ -247,7 +256,17 @@ Promise* FontFace::Load(ErrorResult& aRv) {
+@@ -249,7 +258,17 @@
      return nullptr;
    }
  
--  mImpl->Load(aRv);
+-  mImpl->Load();
 +  nsAutoCString fontFamily;
 +  GetFamily(fontFamily);
 +
@@ -114,23 +111,20 @@ index f1a90334ea..47d3a881ac 100644
 +    mLoaded->MaybeReject(NS_ERROR_FAILURE);
 +  }
 +
+   mImpl->UpdateOwnerKeepAlive();
    return mLoaded;
  }
- 
 diff --git a/layout/style/FontFaceImpl.cpp b/layout/style/FontFaceImpl.cpp
-index 9d1f7c8c5b..926315ca2f 100644
 --- a/layout/style/FontFaceImpl.cpp
 +++ b/layout/style/FontFaceImpl.cpp
-@@ -357,22 +357,16 @@ void FontFaceImpl::DoLoad() {
+@@ -355,20 +355,14 @@
  void FontFaceImpl::SetStatus(FontFaceLoadStatus aStatus) {
    gfxFontUtils::AssertSafeThreadOrServoFontMetricsLocked();
  
 -  if (mStatus == aStatus) {
 -    return;
 -  }
-+  nsAutoCString fontFamily;
-+  GetFamily(fontFamily);
- 
+-
 -  if (aStatus < mStatus) {
 -    // We're being asked to go backwards in status!  Normally, this shouldn't
 -    // happen.  But it can if the FontFace had a user font entry that had
@@ -138,34 +132,36 @@ index 9d1f7c8c5b..926315ca2f 100644
 -    // if we used a local() rule.  For now, just ignore the request to
 -    // go backwards in status.
 -    return;
+-  }
+-
+-  mStatus = aStatus;
++  nsAutoCString fontFamily;
++  GetFamily(fontFamily);
++
 +  if (IsFontAllowed(fontFamily)) {
 +    mStatus = FontFaceLoadStatus::Loaded;
 +  } else {
 +    mStatus = FontFaceLoadStatus::Error;
-   }
++  }
  
--  mStatus = aStatus;
--
    if (mInFontFaceSet) {
      mFontFaceSet->OnFontFaceStatusChanged(this);
-   }
- 
 diff --git a/layout/style/FontFaceImpl.h b/layout/style/FontFaceImpl.h
-index 70c06609e9..66b2666621 100644
 --- a/layout/style/FontFaceImpl.h
 +++ b/layout/style/FontFaceImpl.h
-@@ -13,6 +13,7 @@
- #include "mozilla/ServoStyleConsts.h"
+@@ -8,6 +8,7 @@
+ #include "gfxUserFontSet.h"
+ #include "mozilla/RWLock.h"
  #include "mozilla/dom/FontFaceBinding.h"
 +#include "MaskConfig.hpp"
  #include "nsTHashSet.h"
-
+ 
  class gfxFontFaceBufferSource;
-
-@@ -33,6 +34,20 @@
+@@ -26,6 +27,20 @@
+ }  // namespace mozilla
  
  namespace mozilla::dom {
- 
++
 +// Helper function to check if a font is in the allowed list
 +inline bool IsFontAllowed(const nsACString& aFontName) {
 +  if (std::vector<std::string> maskValues =
@@ -179,16 +175,13 @@ index 70c06609e9..66b2666621 100644
 +  }
 +  return true;
 +}
-+
+ 
  class FontFaceImpl final {
    NS_INLINE_DECL_THREADSAFE_REFCOUNTING(FontFaceImpl)
- 
 diff --git a/layout/style/moz.build b/layout/style/moz.build
-index a14ab6a7ac..6e6a727abf 100644
 --- a/layout/style/moz.build
 +++ b/layout/style/moz.build
-@@ -378,4 +378,7 @@
-     CbindgenHeader(
+@@ -369,3 +369,6 @@
          "ServoStyleConsts.h",
          inputs=["/servo/ports/geckolib", "/servo/components/style"],
      )

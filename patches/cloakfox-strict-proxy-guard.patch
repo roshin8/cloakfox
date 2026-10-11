@@ -1,0 +1,46 @@
+--- a/netwerk/base/nsProtocolProxyService.cpp
++++ b/netwerk/base/nsProtocolProxyService.cpp
+@@ -9,6 +9,8 @@
+ #include "mozilla/CondVar.h"
+ #include "mozilla/Logging.h"
+ #include "mozilla/Mutex.h"
++#include "mozilla/Preferences.h"
++#include "nsIPrincipal.h"
+ #include "mozilla/ScopeExit.h"
+ #include "mozilla/StaticPrefs_network.h"
+ #include "mozilla/Tokenizer.h"
+@@ -138,6 +140,34 @@
+     }
+   }
+ 
++  // Cloakfox: filters are advisory in Gecko; native bypass rules can remove
++  // their proxy afterwards. A required container route must fail closed here.
++  nsCOMPtr<nsILoadInfo> loadInfo;
++  if (aChannel) loadInfo = aChannel->LoadInfo();
++  if (loadInfo) {
++    auto* loading = loadInfo->GetLoadingPrincipal();
++    auto* triggering = loadInfo->TriggeringPrincipal();
++    const bool background = loading && loading->IsSystemPrincipal() &&
++                            (!triggering || triggering->IsSystemPrincipal());
++    if (!background) {
++      const uint32_t ucid = loadInfo->GetOriginAttributes().mUserContextId;
++      nsAutoCString pref("cloakfox.container.");
++      pref.AppendInt(ucid);
++      pref.AppendLiteral(".network_mode");
++      const int32_t mode = Preferences::GetType(pref.get()) == nsIPrefBranch::PREF_INVALID
++                               ? 0 : Preferences::GetInt(pref.get(), 2);
++      nsAutoCString expected("cloakfox-container:");
++      expected.AppendInt(ucid);
++      nsAutoCString isolation;
++      if (aProxyInfo) aProxyInfo->GetConnectionIsolationKey(isolation);
++      if (mode != 0 && (mode != 1 || !aProxyInfo || !isolation.Equals(expected))) {
++        aChannel->Cancel(NS_ERROR_PROXY_CONNECTION_REFUSED);
++        aProxyInfo = nullptr;
++        aStatus = NS_ERROR_PROXY_CONNECTION_REFUSED;
++      }
++    }
++  }
++
+   aCallback->OnProxyAvailable(aRequest, aChannel, aProxyInfo, aStatus);
+ }
+ 

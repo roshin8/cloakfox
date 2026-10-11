@@ -1,0 +1,23 @@
+# Independent workflow review — 2026-09-07
+
+Read-only review of CloakfoxContainerWorkflows.sys.mjs, content/container-workflows.js and test_container_workflows.mjs against actual Firefox 155 source. No implementation edits, builds or browser runs.
+
+## Findings
+
+1. **P1: closing the last temporary window skips immediate cleanup.** `initCloakfoxContainerWorkflows` (line 321) listens only for `TabClose`. `browser/components/tabbrowser/content/tabbrowser.js:9174` explicitly documents that closing a window tears down tabs without emitting that event. Closing a window containing the final temporary tabs while another browser window stays open leaves cookies/site data and the temporary identity until restart. This contradicts the settings promise that cleanup follows the last tab closing. Observe window destruction/unload as well, scheduling cleanup after the window leaves enumeration; cover whole-window closure with another window remaining open.
+
+2. **P2: failed import can delete another concurrent site-rule change.** `performRestore` line 163 rolls back each hostname unconditionally. During awaited save, a settings window can reassign that hostname to an existing container. A later disk error deletes that reassignment. Track imported host-to-ID ownership and remove a rule only while it still belongs to the transaction. Existing pre-install conflict checks do not cover this race.
+
+3. **P2: rollback is neither durably awaited nor crash atomic.** Native `save` line 227 saves prefs before awaiting containers.json. On an identity-file failure, rollback deletes pref branches in memory and calls CIS.remove, which only schedules a later containers.json save; it never saves prefs or awaits rollback persistence. The returned error nevertheless states that new containers were removed. Actual CIS.save (ContextualIdentityService.sys.mjs:372) immediately snapshots identities/rules and returns IOUtils.write with a temporary path; each create/remove independently calls saveSoon. A crash can retain partially imported identities/settings, including before final save. Persist a transaction/recovery marker before first mutation, await rollback durability, retain the marker on failure, and recover partial imports on startup. At minimum propagate rollback persistence failure honestly rather than claiming completed removal.
+
+4. **P2: site-rule scope omits an actual native bypass.** DocumentLoadListener.cpp:779 declines switching when the browsing-context group has more than one top-level context (opener/openee/named-target relationships). These are ordinary HTTP(S) top-level navigations, yet UI says matching future navigations use the selected container and only excludes private/background requests. Either explicitly disclose this native limitation or enforce routing safely for these cases; do not imply unconditional routing. Exact ASCII host matching itself is correctly delegated to ContextualIdentityService and uses native URI asciiHost.
+
+## Evidence and strengths
+
+A read-only Node harness invoked the production restoreIdentityBackup with the existing test fixture. Its save hook changed example.com from imported ID71 to existing ID99 and threw a disk error. Result: `concurrentRuleSurvives:false`, `saveCalls:1`, and error `Import failed; newly created containers were removed. disk identity write failed`. A simulated previously persisted preference snapshot remained set. This verifies control flow, not real disk I/O.
+
+The eight focused tests exercise the production helpers but do not cover window teardown, durable rollback, or reassignment after rule installation. No full test suite was rerun during review.
+
+Backup encryption uses WebCrypto PBKDF2-SHA256 with fixed 600000 iterations, random 16-byte salt, AES-GCM with random 12-byte nonce and authenticated format/version context. Strict envelope/decoded-size checks prevent attacker-selected KDF cost. Validation allowlists identity settings, canonical hosts and known override keys; import uses fresh native IDs and prechecks existing rules. Export writes encrypted content through IOUtils temporary-file replacement. No page MAIN-world code or plaintext profile backup was introduced.
+
+Temporary cleanup serializes per ID, retains its persisted recovery marker on errors, retries, and awaits the shared forget service before removal. Startup recovery intentionally closes remaining temporary tabs. Marker creation precedes opening the temporary tab, although the identity itself is persisted first; a crash in that gap can leave an empty ordinary container. The shared forget service, not CIS.remove alone, is the meaningful data-clear boundary.

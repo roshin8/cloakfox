@@ -19,7 +19,6 @@
   --ok: #3fb950;
   --warn: #f5a623;
   --danger: #f85149;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
@@ -101,7 +100,7 @@ header {
 }
 .row .label { color: var(--text-muted); }
 .row .value {
-  font-family: var(--mono); color: var(--text);
+  font-family: var(--sans); color: var(--text);
   text-align: right; max-width: 65%;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -119,13 +118,13 @@ header {
   display: flex; align-items: center; justify-content: space-between;
 }
 .seed-tag {
-  font-family: var(--mono); font-weight: normal;
+  font-family: var(--sans); font-weight: normal;
   letter-spacing: 0; text-transform: none;
   font-size: 0.7rem; color: var(--accent);
 }
 
 .preview-body {
-  font-family: var(--mono); font-size: 0.78rem; line-height: 1.45;
+  font-family: var(--sans); font-size: 0.78rem; line-height: 1.45;
   color: var(--text);
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);

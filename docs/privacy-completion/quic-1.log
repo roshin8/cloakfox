@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_network_quic.py", line 80, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_network_quic.py", line 58, in main
+    assert positive['status']==0 and positive['body']=='local-http3-ok' and positive['protocol']=='h3',positive
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'body': '', 'protocol': '', 'proxy': None, 'status': 2152398861, 'ucid': 1}

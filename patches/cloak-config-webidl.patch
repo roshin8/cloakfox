@@ -1,8 +1,9 @@
 --- a/b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:16:00
 +++ b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:15:37
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,74 @@
 +/* Cloakfox: Per-context MaskConfig overlay via RoverfoxStorageManager. */
 +#include "RoverfoxStorageManager.h"
++#include "nsPIDOMWindowInlines.h"
 +#include "json.hpp"
 +#include "nsString.h"
 +#include "nsContentUtils.h"

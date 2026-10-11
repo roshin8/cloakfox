@@ -1,0 +1,64 @@
+/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_actors.py:47: SyntaxWarning: invalid escape sequence '\s'
+  PROBE_HTML = """<!doctype html>
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+{
+  "history_length": 1,
+  "history_plausible": false,
+  "gamepad_array": 0,
+  "gamepad_all_null": true,
+  "midi": "fn-undefined",
+  "webgpu_in": true,
+  "webgpu_value": "object",
+  "fd_webdriver": true,
+  "fd_doNotTrack": "unspecified",
+  "fd_gpc": true,
+  "fd_pdfViewer": true,
+  "fd_onLine": true,
+  "fd_cookieEnabled": true,
+  "fd_javaEnabled": false,
+  "hwc": 12,
+  "max_touch": 0,
+  "uad_typeof": "undefined",
+  "connection_typeof": "undefined",
+  "geolocation_in": true,
+  "math_pi": 3.141592653589793,
+  "math_pi_is_default": true,
+  "math_pi_default": true,
+  "math_sin_half_jitter": 0,
+  "perf_now_t0": 223,
+  "perf_now_fractional": false,
+  "perf_now_monotonic": true,
+  "tz_intl": "America/Chicago",
+  "tz_offset": 300,
+  "canvas_hash": "a384468f",
+  "canvas_url_len": 4762,
+  "canvas_stable": true,
+  "webrtc_setter_typeof": "function",
+  "webrtc_setter_v6_typeof": "function",
+  "audio_sum": "106.28748364",
+  "timing_min_minus_delay": "1.00",
+  "timing_max_minus_delay": "10.00",
+  "timing_spread": "9.00",
+  "webrtc_candidates": [
+    "candidate:0 1 UDP 2122187007 61ee892f-c6b8-4d53-b176-174d4c0364b1.local 56362 typ host",
+    "candidate:2 1 UDP 2122252543 aef748b8-0060-4fde-a2a8-e32fd10a38a5.local 63962 typ host",
+    "candidate:4 1 TCP 2105458943 61ee892f-c6b8-4d53-b176-174d4c0364b1.local 9 typ host tcptype active",
+    "candidate:5 1 TCP 2105524479 aef748b8-0060-4fde-a2a8-e32fd10a38a5.local 9 typ host tcptype active",
+    "candidate:1 1 UDP 1685987327 73.45.247.143 56362 typ srflx raddr 0.0.0.0 rport 0",
+    "candidate:3 1 UDP 1686052607 2601:246:5601:6980:6193:f585:ffbf:bcf8 63962 typ srflx raddr 0.0.0.0 rport 0"
+  ],
+  "webrtc_srflx_ips": [
+    "73.45.247.143",
+    "0.0.0.0"
+  ]
+}
+
+FAIL: 8 actor signal(s) regressed
+  - Math trig: sin(0.5) is exactly the spec value — actor not noising functions
+  - Timer jitter: performance.now() = 223 is exact integer ms — high-precision jitter wrap not active
+  - TabHistory actor: history.length=1 not in [3..50]
+  - Gamepad actor: getGamepads() returned 0 items, all_null=True
+  - WebGPU actor: 'gpu' in nav=True, typeof gpu=object
+  - FeatureDetect actor: navigator.webdriver = True, want False
+  - Timezone actor: Intl.DateTimeFormat resolvedOptions.timeZone = 'America/Chicago', want 'UTC'
+  - Timezone actor: getTimezoneOffset() = 300, want 0 (UTC)

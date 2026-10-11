@@ -1,14 +1,16 @@
---- a/b/dom/base/nsRange.cpp	2026-04-18 08:36:12
-+++ b/dom/base/nsRange.cpp	2026-04-18 09:06:21
-@@ -10,6 +10,7 @@
+diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
+--- a/dom/base/AbstractRange.cpp
++++ b/dom/base/AbstractRange.cpp
+@@ -3,6 +3,8 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
- #include "nsRange.h"
- 
+ #include "mozilla/dom/AbstractRange.h"
++
 +#include "MaskConfig.hpp"
- #include "RangeBoundary.h"
+ 
  #include "mozilla/Assertions.h"
- #include "mozilla/CheckedInt.h"
-@@ -3126,6 +3127,20 @@
+ #include "mozilla/ContentIterator.h"
+@@ -979,6 +981,20 @@
    nsRect r = accumulator.mResultRect.IsEmpty() ? accumulator.mFirstRect
                                                 : accumulator.mResultRect;
    rect->SetLayoutRect(r);
@@ -29,7 +31,7 @@
    return rect.forget();
  }
  
-@@ -3167,6 +3182,24 @@
+@@ -1035,6 +1051,24 @@
        endRef.GetContainer(),
        *endRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets), aClampToEdge,
        aFlushLayout);

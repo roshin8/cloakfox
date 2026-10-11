@@ -1,0 +1,397 @@
+ 0:00.22 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.22 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.30 Clobber not needed.
+ 0:00.32 /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/browser/components/cloakfox/moz.build
+ 0:00.32 Build configuration changed. Regenerating backend.
+ 0:00.32 /Users/zeus/.mozbuild/srcdirs/firefox-src-2b50123a5247/_virtualenvs/build/bin/python /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Finished reading 2436 moz.build files in 1.46s
+Read 58 gyp files in parallel contributing 0.00s to total wall time
+Processed into 18787 build config descriptors in 0.84s
+RecursiveMake backend executed in 1.45s
+  5268 total backend files; 0 created; 2 updated; 5266 unchanged; 0 deleted; 16 -> 1982 Makefile
+FasterMake backend executed in 0.11s
+  77 total backend files; 0 created; 2 updated; 75 unchanged; 0 deleted
+Clangd backend executed in 0.77s
+  1252 total backend files; 0 created; 1 updated; 1251 unchanged; 0 deleted
+Total wall time: 4.76s; CPU time: 4.23s; Efficiency: 89%; Untracked: 0.12s
+ 0:05.79 W Adding make options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:05.79 /usr/bin/make -f client.mk -j8 -s
+ 0:06.72 Elapsed: 0.28s; From dist/bin: Kept 3298 existing; Added/updated 1; Removed 0 files and 0 directories.
+ 0:07.07 ./buildid.h.stub
+ 0:07.07 ./source-repo.h.stub
+ 0:07.24 ./application.ini.stub
+ 0:07.26 config/makefiles/xpidl/toolkit_cleardata.xpt
+ 0:07.35 ./application.ini.h.stub
+ 0:07.40 config/makefiles/xpidl/xptdata.stub
+ 0:08.16 toolkit/library/rust/libgkrust.a
+ 0:08.17 accessible/basetypes
+ 0:08.17 accessible/aom
+ 0:08.18 accessible/base
+ 0:08.18 accessible/generic
+ 0:08.19 ./buildid.h.stub
+ 0:08.19 ./source-repo.h.stub
+ 0:08.19 accessible/html
+ 0:08.43 ./application.ini.stub
+ 0:08.58 ./application.ini.h.stub
+ 0:08.65 accessible/ipc
+ 0:11.19 accessible/xpcom
+ 0:12.28    Compiling xpcom v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/xpcom)
+ 0:13.50    Compiling style v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/style)
+ 0:15.20 accessible/xul
+ 0:15.60 browser/components/about
+ 0:17.09 browser/components/migration
+ 0:17.21    Compiling moz_task v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/moz_task)
+ 0:17.37 caps
+ 0:17.37    Compiling firefox-on-glean v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean/api)
+ 0:17.66    Compiling storage_variant v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/storage/variant)
+ 0:17.81    Compiling kvstore v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/kvstore)
+ 0:19.31    Compiling fluent-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/fluent-ffi)
+ 0:20.26 chrome
+ 0:20.46    Compiling l10nregistry-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/l10nregistry-ffi)
+ 0:20.98    Compiling lockstore_rs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/lockstore/lockstore_rs)
+ 0:21.40    Compiling storage v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/storage/rust)
+ 0:21.57    Compiling mozurl v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/mozurl)
+ 0:21.61    Compiling bookmark_sync v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/places/bookmark_sync)
+ 0:21.81    Compiling urlpattern_glue v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/urlpattern_glue)
+ 0:23.29    Compiling lockstore_ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/lockstore/lockstore_ffi)
+ 0:23.33    Compiling localization-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/localization-ffi)
+ 0:23.59    Compiling cert_storage v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/cert_storage)
+ 0:23.73    Compiling osclientcerts v0.1.4 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/osclientcerts)
+ 0:23.77 devtools/shared/heapsnapshot
+ 0:23.85    Compiling authrs_bridge v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/webauthn/authrs_bridge)
+ 0:25.14    Compiling crypto_hash v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/crypto_hash)
+ 0:25.52    Compiling mls_gk v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/mls/mls_gk)
+ 0:25.55    Compiling abridged_certs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/abridged_certs)
+ 0:25.93    Compiling content_classifier_engine v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/content-classifier/content_classifier_engine)
+ 0:25.96    Compiling cascade_bloom_filter v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/cascade_bloom_filter)
+ 0:26.09    Compiling processtools v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/processtools)
+ 0:26.20    Compiling oblivious_http v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/oblivious_http)
+ 0:26.28    Compiling sitecategories v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/sitecategories)
+ 0:26.30    Compiling binary_http v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/binary_http)
+ 0:26.42 docshell/base
+ 0:26.80    Compiling http_sfv v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/http-sfv)
+ 0:26.92    Compiling uritemplate_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/uritemplate_glue)
+ 0:27.10 docshell/shistory
+ 0:28.02 dom/abort
+ 0:31.05 dom/animation
+ 0:31.41 dom/bindings
+ 0:31.70 dom/broadcastchannel
+ 0:35.36 dom/cache
+ 0:38.84 dom/canvas
+ 0:39.34    Compiling wr_glyph_rasterizer v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/wr_glyph_rasterizer)
+ 0:39.62 dom/clients/api
+ 0:41.33    Compiling webrender v0.62.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/webrender)
+ 0:43.78    Compiling happy_eyeballs_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/happy_eyeballs_glue)
+ 0:44.02 dom/clients/manager
+ 0:45.16    Compiling jog v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean/bindings/jog)
+ 0:50.36    Compiling geckoservo v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/ports/geckolib)
+ 0:57.76    Compiling webrender_bindings v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/webrender_bindings)
+ 1:00.12    Compiling neqo_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/socket/neqo_glue)
+ 1:02.77    Compiling gecko-trace v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/gecko-trace)
+ 1:04.02    Compiling data_storage v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/data_storage)
+ 1:05.07    Compiling fog_control v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean)
+ 1:05.18    Compiling wgpu_bindings v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wgpu_bindings)
+ 1:06.23 dom/console
+ 1:11.06 dom/cookiestore
+ 1:16.48    Compiling gkrust-shared v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/rust/shared)
+ 1:17.38 dom/credentialmanagement/digital
+ 1:18.81 dom/credentialmanagement/identity
+ 1:22.01 dom/crypto
+ 1:26.17 dom/documentpip
+ 1:26.45 dom/events
+ 1:30.94 dom/fetch
+ 1:43.94 dom/file/ipc
+ 1:45.14 dom/file
+ 1:49.38 dom/file/uri
+ 1:50.58 dom/filesystem
+ 1:53.04 dom/flex
+ 1:54.88 dom/fs/api
+ 1:56.55 dom/fs/child
+ 2:00.13 dom/fs/parent/datamodel
+ 2:00.88 dom/fs/parent
+ 2:06.44 dom/gamepad
+ 2:07.45 dom/geolocation
+ 2:11.48 dom/grid
+ 2:13.38    Compiling gkrust v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/rust)
+ 2:13.45 dom/html
+ 2:13.94 dom/indexedDB
+ 2:19.83 dom/ipc/jsactor
+ 2:29.81 dom/ipc
+ 2:30.40 dom/jsurl
+ 2:32.82 dom/l10n
+ 2:35.25 dom/localstorage
+ 2:35.79 dom/locks
+ 2:36.79 dom/mathml
+ 2:40.01 dom/media/eme
+ 2:44.01 dom/media/gmp
+ 2:45.94 dom/media/ipc
+ 2:47.35 dom/media/mediacapabilities
+ 2:54.26 dom/media/mediacontrol
+ 2:58.65 dom/media/mediaelement
+ 3:01.91 dom/media/systemservices
+ 3:02.97 dom/media
+ 3:04.49 dom/media/webaudio
+ 3:06.48 dom/media/webcodecs
+ 3:10.23 dom/media/webrtc/jsapi
+ 3:12.58 dom/media/webrtc/transport/ipc
+ 3:14.15 dom/media/webspeech/synth/cocoa
+ 3:17.04 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:110:
+ 3:17.98 dom/media/webspeech/synth
+ 3:19.08 dom/media/webvtt
+ 3:19.30 dom/messagechannel
+ 3:21.12 dom/midi
+ 3:22.35 dom/mls
+ 3:23.03 dom/modelcontext
+ 3:25.59 dom/network
+ 3:26.27 W 1 warning generated.
+ 3:26.31 dom/notification
+ 3:26.33 dom/onnx
+ 3:26.74 dom/payments/ipc
+ 3:26.93 dom/payments
+ 3:29.71 dom/performance
+ 3:30.30 dom/permission
+ 3:30.95 dom/power
+ 3:32.35 dom/promise
+ 3:32.62 dom/prototype
+ 3:34.46 dom/push
+ 3:35.90 dom/quota
+ 3:36.04 dom/reporting
+ 3:36.10 dom/script
+ 3:36.25 dom/security/featurepolicy
+ 3:37.93 dom/security/sanitizer
+ 3:38.36 dom/security
+ 3:41.21 dom/security/trusted-types
+ 3:43.70 dom/serializers
+ 3:44.02 dom/serviceworkers
+ 3:45.04 dom/simpledb
+ 3:46.72 dom/smil
+ 3:46.88 dom/storage
+ 3:47.78 dom/streams
+ 3:50.98 dom/svg
+ 3:51.69 dom/system/mac
+ 3:55.06 dom/url
+ 3:56.55 dom/view-transitions
+ 3:58.62 dom/vr
+ 3:59.25 dom/webauthn
+ 4:02.75 dom/webbrowserpersist
+ 4:04.32 dom/webgpu
+ 4:04.53 dom/webscheduling
+ 4:07.64 dom/webserial
+ 4:08.09 dom/websocket
+ 4:08.19 dom/webtransport/api
+ 4:10.20 dom/webtransport/parent
+ 4:10.53 dom/workers/loader
+ 4:11.90 dom/workers/remoteworkers
+ 4:13.18 dom/workers/sharedworkers
+ 4:14.01 dom/workers
+ 4:14.61 dom/worklet
+ 4:18.96 dom/xhr
+ 4:19.10 dom/xml
+ 4:19.71 dom/xslt/xml
+ 4:19.90 dom/xslt/xpath
+ 4:20.02 dom/xslt/xslt
+ 4:22.71 dom/xul
+ 4:22.89 editor/composer
+ 4:23.95 editor/libeditor
+ 4:25.54 editor/spellchecker
+ 4:26.60 editor/txmgr
+ 4:28.93 extensions/permissions
+ 4:29.47 extensions/spellcheck/src
+ 4:30.62 gfx/config
+ 4:32.78 gfx/gl
+ 4:34.78 gfx/ipc
+ 4:36.03 gfx/layers
+ 4:38.05 gfx/src
+ 4:39.25 gfx/thebes
+ 4:43.23 gfx/vr
+ 4:44.93 gfx/webrender_bindings
+ 4:48.34 hal
+ 5:03.44 image/remote
+ 5:03.53 image
+ 5:08.11 intl/hyphenation/glue
+ 5:08.76 intl/l10n
+ 5:11.88 intl/strres
+ 5:13.60 ipc/glue
+ 5:17.72 js/xpconnect/loader
+ 5:19.83 js/xpconnect/src
+ 5:19.94 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/ipc/glue/Unified_mm_ipc_glue0.mm:11:
+ 5:20.40 W 1 warning generated.
+ 5:21.71 layout/base
+ 5:21.77 layout/build
+ 5:21.90 layout/forms
+ 5:24.81 layout/generic
+ 5:28.47 layout/inspector
+ 5:29.08 layout/ipc
+ 5:31.27 layout/mathml
+ 5:36.79 layout/painting
+ 5:37.51 layout/printing
+ 5:39.11 layout/svg
+ 5:42.20 layout/tables
+ 5:45.35 layout/xul
+ 5:45.42 layout/xul/tree
+ 5:48.21 netwerk/cache2
+ 5:49.47 netwerk/cookie
+ 5:49.93 netwerk/ipc
+ 5:50.21 netwerk/protocol/data
+ 5:53.01 netwerk/protocol/file
+ 5:55.56 netwerk/protocol/http
+ 5:55.62 netwerk/protocol/res
+ 5:57.62 netwerk/protocol/viewsource
+ 5:58.53 netwerk/protocol/websocket
+ 6:00.93 netwerk/url-classifier
+ 6:01.82 parser/html
+ 6:14.70 toolkit/components/antitracking/bouncetrackingprotection
+ 6:14.70 toolkit/components/antitracking/scopedprefs
+ 6:14.71 toolkit/components/antitracking
+ 6:14.72 toolkit/components/backgroundhangmonitor
+ 6:14.72 toolkit/components/browser
+ 6:16.57 toolkit/components/clearsitedata
+ 6:16.64 toolkit/components/contentanalysis
+ 6:18.27 toolkit/components/credentialmanagement
+ 6:19.85 toolkit/components/extensions
+ 6:19.85 toolkit/components/extensions/webidl-api
+ 6:20.63 toolkit/components/extensions/webrequest
+ 6:22.37 toolkit/components/find
+ 6:22.43 toolkit/components/formautofill
+ 6:23.86 toolkit/components/geolocation
+ 6:24.50 toolkit/components/mediasniffer
+ 6:26.09 toolkit/components/ml/backends/llama
+ 6:26.44 toolkit/components/places
+ 6:27.64 toolkit/components/satchel
+ 6:27.64 toolkit/components/resistfingerprinting
+ 6:28.16     Finished `release` profile [optimized] target(s) in 6m 19s
+ 6:28.51 toolkit/components/sessionstore
+ 6:28.81 toolkit/components/typeaheadfind
+ 6:29.00 toolkit/components/url-classifier
+ 6:32.05 toolkit/components/windowwatcher
+ 6:32.33 toolkit/library/buildid.cpp.stub
+ 6:32.39 toolkit/mozapps/macos-frameworks
+ 6:32.64 toolkit/xre
+ 6:32.73 tools/performance
+ 6:36.47 uriloader/base
+ 6:37.01 uriloader/exthandler
+ 6:38.39 widget/cocoa
+ 6:38.47 W 2 warnings generated.
+ 6:38.52 widget/headless
+ 6:38.61 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/toolkit/xre/Unified_mm_toolkit_xre0.mm:20:
+ 6:38.61 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/toolkit/xre/Unified_mm_toolkit_xre0.mm:20:
+ 6:38.95 widget
+ 6:39.28 W 2 warnings generated.
+ 6:39.89 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:11:
+ 6:40.98 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+ 6:40.98 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+ 6:40.98 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+ 6:40.98 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+ 6:40.99 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+ 6:40.99 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+ 6:40.99 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+ 6:41.34 xpcom/base
+ 6:41.52 W 8 warnings generated.
+ 6:41.69 xpcom/components
+ 6:44.81 xpcom/io
+ 6:48.56 xpcom/reflect/xptinfo
+ 6:50.04 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.04 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/cocoa/MacOSNotificationCenter.mm:5:
+ 6:50.04 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.04 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/cocoa/MacOSNotificationCenter.mm:5:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.05 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:50.06 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+ 6:52.43 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:2:
+ 6:52.44 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:2:
+ 6:52.44 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:2:
+ 6:52.49 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+ 6:52.49 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/cocoa/nsCocoaWindow.mm:8:
+ 6:52.49 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+ 6:52.49 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/cocoa/nsCocoaWindow.mm:8:
+ 6:52.49 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+ 6:52.50 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/cocoa/nsCocoaWindow.mm:8:
+ 6:53.02 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa2.mm:128:
+ 6:53.02 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/cocoa/nsWidgetFactory.mm:29:
+ 6:53.02 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa2.mm:128:
+ 6:53.02 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/cocoa/nsWidgetFactory.mm:29:
+ 6:53.45 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+ 6:53.47 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+ 6:53.71 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+ 6:53.86 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+ 6:53.87 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+ 6:53.87 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+ 6:53.87 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+ 6:53.87 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+ 6:53.87 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+ 6:53.87 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+ 6:53.90 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:74:
+ 6:53.90 W /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/cocoa/nsMacPermissionMonitor.mm:111:8: warning: @available does not guard availability here; use if (@available) instead [-Wunsupported-availability-guard]
+ 6:53.90 W   111 |   if (!@available(macOS 11.0, *)) {
+ 6:53.90 W       |        ^
+ 6:53.90 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:83:
+ 6:53.91 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:83:
+ 6:53.91 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:101:
+ 6:53.91 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:101:
+ 6:54.40 W 26 warnings generated.
+ 6:54.50 xpcom/threads
+ 6:54.53 W 2 warnings generated.
+ 6:55.40 xpfe/appshell
+ 6:57.34 W 21 warnings generated.
+ 6:58.03 browser/app/Info.plist.stub
+ 6:58.15 accessible/mac
+ 6:58.45 dom/base
+ 6:59.52 dom/origin-trials
+ 7:01.97 layout/style
+ 7:04.25 netwerk/base
+ 7:05.53 netwerk/dns
+ 7:10.07 security/manager/ssl
+ 7:19.46 toolkit/components/glean
+ 7:19.71 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/netwerk/base/Unified_cpp_netwerk_base3.cpp:74:
+ 7:19.71 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/nsProtocolProxyService.cpp:145:19: error: value of type 'already_AddRefed<nsILoadInfo>' is not contextually convertible to 'bool'
+ 7:19.71 E   145 |   if (aChannel && aChannel->LoadInfo()) {
+ 7:19.71 E       |                   ^~~~~~~~~~~~~~~~~~~~
+ 7:19.71 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/nsProtocolProxyService.cpp:145:16: error: invalid operands to binary expression ('nsIChannel *' and 'already_AddRefed<nsILoadInfo>')
+ 7:19.71 E   145 |   if (aChannel && aChannel->LoadInfo()) {
+ 7:19.71 E       |       ~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~
+ 7:19.71 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/nsProtocolProxyService.cpp:146:11: error: variable 'loadInfo' with type 'auto *' has incompatible initializer of type 'already_AddRefed<nsILoadInfo>'
+ 7:19.71 E   146 |     auto* loadInfo = aChannel->LoadInfo();
+ 7:19.71 E       |           ^          ~~~~~~~~~~~~~~~~~~~~
+ 7:20.33 E 3 errors generated.
+ 7:20.34 E make[4]: *** [Unified_cpp_netwerk_base3.o] Error 1
+ 7:20.34 E make[3]: *** [netwerk/base/target-objects] Error 2
+ 7:20.34 E make[3]: *** Waiting for unfinished jobs....
+ 7:42.54 E make[2]: *** [compile] Error 2
+ 7:42.54 E make[1]: *** [default] Error 2
+ 7:42.55 E make: *** [build] Error 2
+ 7:42.66 W 61 compiler warnings present.
+ 7:42.68 W Notification center failed: Install terminal-notifier to get a notification when the build finishes.
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260907_201108.json

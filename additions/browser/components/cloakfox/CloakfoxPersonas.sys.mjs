@@ -10,21 +10,23 @@
  * renderer matches platform, screen matches devicePixelRatio, etc. —
  * coherence comes for free from the joint distribution.
  *
- * Replaces the predefined 30-personas-per-OS pool. Cross-OS by default
- * (Mac host can pretend to be Windows; the BF distribution covers all
- * three desktop OSes with proper coherence).
+ * Identities sample complete cross-OS tuples by default. Host-conditioned
+ * sampling is an explicit option. Existing identities retain their saved mode.
+ * Host rendering is not an authentic renderer for a foreign OS.
  *
  * Non-BF fields (audio context, geolocation, locale, opt-in flags) are
  * filled with sensible defaults below so the cloak_cfg shape stays
  * unchanged from the C++ MaskConfig patches' perspective.
  */
 
+import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 import { sampleFingerprint } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
+import { sampleHostFingerprint } from "resource:///modules/CloakfoxHostPersona.sys.mjs";
 
 // Pin the UA's Firefox version to the build's milestone — BF's pool has
 // a mix of Firefox versions (135-147), but the page-visible UA must
 // match the actual binary or that's an instant flag.
-const FIREFOX_VERSION = "146.0";
+const FIREFOX_VERSION = `${parseInt(AppConstants.MOZ_APP_VERSION, 10)}.0`;
 
 // US cities for geolocation jitter. BF doesn't emit lat/lng so we draw
 // from this pool and apply ±0.04° (~5km) noise. Synced with the older
@@ -323,6 +325,50 @@ function normalizeUA(ua) {
     .replace(/Firefox\/\d+\.\d+/, `Firefox/${FIREFOX_VERSION}`);
 }
 
+// Upgrade only the generated desktop Firefox identity shape. Version tokens
+// change in place, preserving OS, hardware, and all seed-derived entropy.
+// Custom identity strings are left alone; explicit override prefs are applied
+// last by SeedSync, even when they contain the same shape as generated values.
+export function migratePersonaVersion(keys) {
+  const out = { ...keys };
+  const generatedUA = /^(?:Mozilla\/)?5\.0 \((?:Windows NT|Macintosh;|X11;|Linux )[^)]*; rv:\d+\.\d+\) Gecko\/20100101 Firefox\/\d+\.\d+$/;
+  for (const key of ["navigator.userAgent", "headers.User-Agent", "navigator.appVersion"]) {
+    if (typeof out[key] === "string" && generatedUA.test(out[key])) {
+      out[key] = normalizeUA(out[key]);
+    }
+  }
+  // Early BrowserForge identities could persist a coherent navigator tuple
+  // alongside the font set of another OS. This is visible to users as an
+  // unexpected generic fallback (for example, a MacIntel identity rendering
+  // every textarea with DejaVu Sans Mono) and is also fingerprint-incoherent.
+  // Repair only a recognized generated Firefox UA with explicit contradictory
+  // generic metadata. Configs without generic metadata and custom UAs retain
+  // their historical values.
+  const ua = out["navigator.userAgent"];
+  if (typeof ua === "string" && generatedUA.test(ua)) {
+    const os = detectOSFromUA(ua);
+    const expected = GENERIC_FONTS[os];
+    const genericKeys = [
+      ["font:generic:serif", "serif"],
+      ["font:generic:sans-serif", "sans"],
+      ["font:generic:monospace", "mono"],
+    ];
+    const hasGenericMetadata = genericKeys.some(([key]) => key in out);
+    const contradictsOS = hasGenericMetadata && genericKeys.some(
+      ([key, slot]) => key in out && out[key] !== expected[slot]
+    );
+    if (contradictsOS) {
+      const canonical = CANONICAL_FONTS[os];
+      const retainedOptional = Array.isArray(out.fonts)
+        ? out.fonts.filter(font => canonical.optional.includes(font))
+        : [];
+      out.fonts = [...new Set([...canonical.base, ...retainedOptional])].sort();
+      for (const [key, slot] of genericKeys) out[key] = expected[slot];
+    }
+  }
+  return out;
+}
+
 // Derive the HTTP/2 + HTTP/3 fingerprint profile that keeps the wire
 // transport coherent with the persona's browser family. h3 int mapping
 // matches settings/cloakfox.cfg and the test harness: firefox=0, chrome=1,
@@ -503,7 +549,7 @@ function bfToCloakKeys(fp, prng) {
   //   colorScheme: 0 = light, 1 = dark
   //   colorGamut:  0 = srgb, 1 = p3, 2 = rec2020
   //   contrast:    0 = no-preference, 1 = less, 2 = more, 3 = custom
-  keys["document:prefersColorScheme"] = 0;
+  // Website appearance follows Firefox preferences; do not pin a persona theme.
   keys["mediaFeature:colorGamut"] = os === "macos" ? 1 : 0;
   keys["mediaFeature:prefersContrast"] = 0;
 
@@ -579,9 +625,26 @@ function userOpt(name, def = false) {
  *                            own seed already).
  * @returns {Object}  Flat dict keyed on cloak_cfg keys.
  */
+// Missing mode means a pre-existing identity. Never silently re-sample it on
+// an ordinary settings change or upgrade.
+export function personaOSMode(ucid) {
+  const mode = ucid === null ? "legacy" : Services.prefs.getStringPref(
+    `cloakfox.container.${ucid}.persona_os_mode`, "legacy");
+  return ["host", "legacy", "windows", "macos", "linux"].includes(mode) ? mode : "legacy";
+}
+function sampleForMode(prng, mode, hostOS = Services.appinfo.OS) {
+  if (mode === "legacy") return sampleFingerprint(prng);
+  return sampleHostFingerprint(prng, sampleFingerprint, mode === "host" ? hostOS : mode);
+}
+
 export function fillPersonaKeys(seedB64, ucid = null) {
   const prng = makeSeededPRNG(seedB64);
-  const fp = sampleFingerprint(prng);
+  const mode = personaOSMode(ucid);
+  let fp = sampleForMode(prng, mode);
+  if (ucid !== null) {
+    const index = Services.prefs.getIntPref(`cloakfox.container.${ucid}.persona_index`, -1);
+    if (index >= 0 && index < 30) fp = previewPersona(index, mode);
+  }
   const keys = bfToCloakKeys(fp, prng);
 
   // ── User opt-in dangerous-disable flags (unchanged from prior impl) ──
@@ -610,7 +673,7 @@ export function fillPersonaKeys(seedB64, ucid = null) {
  * UI's perspective the API is identical — array of {index, label} —
  * but personas come from BF runtime sampling rather than a baked file.
  */
-export function listPersonas(_hostOS) {
+export function listPersonas(hostOS = Services.appinfo.OS, mode = "legacy") {
   const N = 30;
   const out = [];
   for (let i = 0; i < N; i++) {
@@ -618,8 +681,8 @@ export function listPersonas(_hostOS) {
     // looks the same, index 1 always looks the same, etc. Across browser
     // restarts the user sees a stable list.
     const prng = mulberry32(0xC10A * (i + 1));
-    const fp = sampleFingerprint(prng);
-    const platform = fp.platform || "?";
+    const fp = sampleForMode(prng, mode, hostOS);
+    const platform = ({MacIntel: "macOS", Win32: "Windows", "Linux x86_64": "Linux"})[fp.platform] || fp.platform || "?";
     const w = (fp.screen && fp.screen.width) || "?";
     const h = (fp.screen && fp.screen.height) || "?";
     const dpr = (fp.screen && fp.screen.devicePixelRatio) || "?";
@@ -647,9 +710,9 @@ function mulberry32(seed) {
  * when a container has cloakfox.container.<ucid>.persona_index set so
  * the same fixed-seed preview gets sampled.
  */
-function previewPersona(index) {
+function previewPersona(index, mode = "legacy", hostOS = Services.appinfo.OS) {
   const prng = mulberry32(0xC10A * (index + 1));
-  return sampleFingerprint(prng);
+  return sampleForMode(prng, mode, hostOS);
 }
 
 /**
@@ -660,20 +723,21 @@ function previewPersona(index) {
  *
  * Most callers should use fillPersonaKeys directly.
  */
-export function pickPersona(seedB64, _hostOS, ucid = null) {
+export function pickPersona(seedB64, hostOS = Services.appinfo.OS, ucid = null) {
+  const mode = personaOSMode(ucid);
   if (ucid !== null) {
     try {
       const idx = Services.prefs.getIntPref(
         `cloakfox.container.${ucid}.persona_index`, -1
       );
       if (idx >= 0 && idx < 30) {
-        return bfToFlatPreview(previewPersona(idx));
+        return bfToFlatPreview(previewPersona(idx, mode, hostOS));
       }
     } catch (_e) { /* fall through */ }
   }
   // Deterministic from master seed.
   const prng = makeSeededPRNG(seedB64);
-  return bfToFlatPreview(sampleFingerprint(prng));
+  return bfToFlatPreview(sampleForMode(prng, mode, hostOS));
 }
 
 // For the legacy pickPersona API — flatten BF output to a few headline

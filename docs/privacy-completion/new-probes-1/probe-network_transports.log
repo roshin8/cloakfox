@@ -1,0 +1,47 @@
+{
+  "quic": {
+    "tested": false,
+    "separateProbe": "probe_network_quic.py supplies negotiated HTTP/3 and UDP controls."
+  },
+  "ipv6": {
+    "tested": true,
+    "direct": {
+      "body": "origin-ok",
+      "proxy": null,
+      "status": 0,
+      "ucid": 1
+    },
+    "blocked": {
+      "body": "",
+      "proxy": null,
+      "status": 2152398920,
+      "ucid": 2
+    },
+    "requiredProxy": {
+      "body": "",
+      "proxy": null,
+      "status": 2152398920,
+      "ucid": 3
+    }
+  },
+  "speculation": {
+    "dispatch": [
+      {
+        "dispatched": true
+      },
+      {
+        "dispatched": true
+      },
+      {
+        "dispatched": true
+      }
+    ],
+    "acceptedConnections": [
+      1,
+      0,
+      0
+    ],
+    "negativeObservationSeconds": 2
+  }
+}
+PASS: accepted TCP speculative control; blocked/required-proxy sinks stayed empty; real IPv6 HTTP control and scope rejection

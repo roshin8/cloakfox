@@ -1,0 +1,102 @@
+{
+  "branch": "codex/firefox-155-compat",
+  "nativeBuild": "build-5.log",
+  "tests": 144,
+  "runtimeProbes": [
+    {
+      "probe": "daily_defaults",
+      "exit": 0,
+      "seconds": 3.6,
+      "log": "regressions-1/probe-daily_defaults.log"
+    },
+    {
+      "probe": "persona_version",
+      "exit": 0,
+      "seconds": 3.9,
+      "log": "regressions-1/probe-persona_version.log"
+    },
+    {
+      "probe": "network_policy",
+      "exit": 0,
+      "seconds": 2.8,
+      "log": "regressions-1/probe-network_policy.log"
+    },
+    {
+      "probe": "native_webrtc_policy",
+      "exit": 0,
+      "seconds": 6.1,
+      "log": "regressions-1/probe-native_webrtc_policy.log"
+    },
+    {
+      "probe": "identity_forget",
+      "exit": 0,
+      "seconds": 7.1,
+      "log": "regressions-1/probe-identity_forget.log"
+    },
+    {
+      "probe": "shared_permissions",
+      "exit": 0,
+      "seconds": 2.0,
+      "log": "regressions-1/probe-shared_permissions.log"
+    },
+    {
+      "probe": "site_isolation",
+      "exit": 0,
+      "seconds": 3.3,
+      "log": "regressions-1/probe-site_isolation.log"
+    },
+    {
+      "probe": "container_workflows",
+      "exit": 0,
+      "seconds": 18.4,
+      "log": "regressions-1/probe-container_workflows.log"
+    },
+    {
+      "probe": "daily_settings_ui",
+      "exit": 0,
+      "seconds": 2.4,
+      "log": "ui-final/probe-daily_settings_ui.log"
+    },
+    {
+      "probe": "upstream_hardening",
+      "exit": 0,
+      "seconds": 12.1,
+      "log": "regressions-1/probe-upstream_hardening.log"
+    },
+    {
+      "probe": "regions",
+      "exit": 0,
+      "seconds": 7.2,
+      "log": "runtime-final/probe-regions.log"
+    },
+    {
+      "probe": "privacy_inspector",
+      "exit": 0,
+      "seconds": 6.8,
+      "log": "ui-final/probe-privacy_inspector.log"
+    },
+    {
+      "probe": "proxy_manager",
+      "exit": 0,
+      "seconds": 3.4,
+      "log": "runtime-final/probe-proxy_manager.log"
+    },
+    {
+      "probe": "templates",
+      "exit": 0,
+      "seconds": 6.3,
+      "log": "runtime-final/probe-templates.log"
+    },
+    {
+      "probe": "bundled_blocker",
+      "exit": 0,
+      "seconds": 5.0,
+      "log": "runtime-final/probe-bundled_blocker.log"
+    }
+  ],
+  "patchesApplied": 82,
+  "nativeFilesCompared": 191,
+  "sourceMismatches": [],
+  "additionMismatches": [],
+  "followupPatchSHA256": "9cff7951f942be59fedd96e9c0f9ae5b454d8fba91576a1815af54ab4c1a081e"
+}

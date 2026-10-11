@@ -1,0 +1,629 @@
+diff --git a/browser/base/content/browser-init.js b/browser/base/content/browser-init.js
+--- a/browser/base/content/browser-init.js
++++ b/browser/base/content/browser-init.js
+@@ -125,7 +125,7 @@
+     updateBookmarkToolbarVisibility();
+ 
+     // Set a sane starting width/height for all resolutions on new profiles.
+-    if (true || ChromeUtils.shouldResistFingerprinting("RoundWindowSize", null)) {
++    if (ChromeUtils.shouldResistFingerprinting("RoundWindowSize", null)) {
+       // When the fingerprinting resistance is enabled, making sure that we don't
+       // have a maximum window to interfere with generating rounded window dimensions.
+       document.documentElement.setAttribute("sizemode", "normal");
+@@ -491,47 +491,8 @@
+       }
+     }
+ 
+-    // Set default size
+-    window.resizeTo(1280, 1040);
+-
+-    // Hijack the outer window size
+-    let outerWidth, outerHeight;
+-    if ((outerWidth = ChromeUtils.camouGetInt("window.outerWidth"))) {
+-      document.documentElement.style.setProperty('width', outerWidth + 'px');
+-      browser.style.setProperty('width', outerWidth + 'px');
+-      window.resizeTo(outerWidth, window.outerHeight);
+-    }
+-    if ((outerHeight = ChromeUtils.camouGetInt("window.outerHeight"))) {
+-      document.documentElement.style.setProperty('height', outerHeight + 'px');
+-      browser.style.setProperty('height', outerHeight + 'px');
+-      window.resizeTo(window.outerWidth, outerHeight);
+-    }
+-    browser.style.setProperty('box-sizing', 'content-box');
+-
+-    // Hijack the inner window size
+-    let innerWidth = ChromeUtils.camouGetInt("window.innerWidth") || ChromeUtils.camouGetInt("document.body.clientWidth");
+-    let innerHeight = ChromeUtils.camouGetInt("window.innerHeight") || ChromeUtils.camouGetInt("document.body.clientHeight");
+-
+-    if (innerWidth || innerHeight) {
+-      let win_inner_style = document.createElement('style');
+-      win_inner_style.innerHTML = `
+-        .browserStack {
+-          ${innerWidth ? `width: ${innerWidth}px !important;` : ''}
+-          ${innerHeight ? `height: ${innerHeight}px !important;` : ''}
+-          ${innerHeight ? `flex: unset !important;` : ''}
+-          overflow: auto;
+-          contain: size;
+-          scrollbar-width: none;
+-        }
+-      `;
+-      document.head.appendChild(win_inner_style);
+-    }
+-
+-    if (innerWidth && innerHeight && !(outerWidth || outerHeight)) {
+-      let stackRect = __browserStack.getBoundingClientRect();
+-      let toolbarTop = stackRect.y;
+-      window.resizeBy(width - innerWidth, height + toolbarTop - innerHeight);
+-    }
++    // Native chrome stays flexible. RFPHelper letterboxes only web content;
++    // persona dimensions must never constrain the physical browser interface.
+ 
+     // Install addons if specified
+     let addonPaths = ChromeUtils.camouGetStringList("addons");
+diff --git a/docshell/base/BrowsingContext.cpp b/docshell/base/BrowsingContext.cpp
+--- a/docshell/base/BrowsingContext.cpp
++++ b/docshell/base/BrowsingContext.cpp
+@@ -3509,6 +3509,24 @@
+   });
+ }
+ 
++void BrowsingContext::DidSet(FieldIndex<IDX_InnerSizeSpoofedForRFP>,
++                             CSSIntSize aOldValue) {
++  if (GetInnerSizeSpoofedForRFP() == aOldValue) {
++    return;
++  }
++
++  // Cloakfox device-size queries use the top viewport even in fixed-size
++  // frames. Invalidate them when this replicated value changes, including
++  // documents hosted in a different process from their top-level document.
++  WalkPresContexts([](nsPresContext* aPc) {
++    if (nsGlobalWindowInner::UseCloakfoxLetterboxing(aPc->Document())) {
++      aPc->MediaFeatureValuesChanged(
++          {MediaFeatureChangeReason::SystemMetricsChange},
++          MediaFeatureChangePropagation::JustThisDocument);
++    }
++  });
++}
++
+ void BrowsingContext::DidSet(FieldIndex<IDX_AnimationsPlayBackRateMultiplier>,
+                              double aOldValue) {
+   MOZ_ASSERT(IsTop());
+diff --git a/docshell/base/BrowsingContext.h b/docshell/base/BrowsingContext.h
+--- a/docshell/base/BrowsingContext.h
++++ b/docshell/base/BrowsingContext.h
+@@ -1567,6 +1567,8 @@
+     return IsTop();
+   }
+ 
++  void DidSet(FieldIndex<IDX_InnerSizeSpoofedForRFP>, CSSIntSize aOldValue);
++
+   bool CanSet(FieldIndex<IDX_EmbeddedInContentDocument>, bool,
+               ContentParent* aSource) {
+     return CheckOnlyEmbedderCanSet(aSource);
+diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
+--- a/dom/base/Element.cpp
++++ b/dom/base/Element.cpp
+@@ -1124,7 +1124,8 @@
+   Document* doc = OwnerDoc();
+   nsPresContext* presContext = doc->GetPresContext();
+ 
+-  if (doc->GetBodyElement() == this) {
++  if (doc->GetBodyElement() == this &&
++      !nsGlobalWindowInner::UseCloakfoxLetterboxing(doc)) {
+     if (auto conf = MaskConfig::GetInt32Rect(
+             "document.body.clientLeft", "document.body.clientTop",
+             "document.body.clientWidth", "document.body.clientHeight")) {
+diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
+--- a/dom/base/ScreenOrientation.cpp
++++ b/dom/base/ScreenOrientation.cpp
+@@ -696,7 +696,9 @@
+ }
+ 
+ OrientationType ScreenOrientation::DeviceType(CallerType aCallerType) const {
+-  if (nsContentUtils::ShouldResistFingerprinting(
++  if ((aCallerType == CallerType::NonSystem &&
++       nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) ||
++      nsContentUtils::ShouldResistFingerprinting(
+           aCallerType, GetRelevantGlobal(), RFPTarget::ScreenOrientation)) {
+     Document* doc = GetResponsibleDocument();
+     BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
+@@ -710,7 +712,9 @@
+ }
+ 
+ uint16_t ScreenOrientation::DeviceAngle(CallerType aCallerType) const {
+-  if (nsContentUtils::ShouldResistFingerprinting(
++  if ((aCallerType == CallerType::NonSystem &&
++       nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) ||
++      nsContentUtils::ShouldResistFingerprinting(
+           aCallerType, GetRelevantGlobal(), RFPTarget::ScreenOrientation)) {
+     Document* doc = GetResponsibleDocument();
+     BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
+@@ -725,6 +729,10 @@
+ 
+ OrientationType ScreenOrientation::GetType(CallerType aCallerType,
+                                            ErrorResult& aRv) const {
++  if (aCallerType == CallerType::NonSystem &&
++      nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) {
++    return DeviceType(aCallerType);
++  }
+   // Cloakfox: always landscape-primary on desktop profiles
+   if (auto v = MaskConfig::GetString("screen:orientation:type")) {
+     const std::string& s = v.value();
+@@ -751,6 +759,10 @@
+ 
+ uint16_t ScreenOrientation::GetAngle(CallerType aCallerType,
+                                      ErrorResult& aRv) const {
++  if (aCallerType == CallerType::NonSystem &&
++      nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) {
++    return DeviceAngle(aCallerType);
++  }
+   Document* doc = GetResponsibleDocument();
+   BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
+   if (!bc) {
+diff --git a/dom/base/VisualViewport.cpp b/dom/base/VisualViewport.cpp
+--- a/dom/base/VisualViewport.cpp
++++ b/dom/base/VisualViewport.cpp
+@@ -136,7 +136,8 @@
+ 
+ double VisualViewport::Scale() const {
+   // Cloakfox: spoof zoom to 1 (matches non-zoomed viewport)
+-  if (MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
++  if (!nsGlobalWindowInner::UseCloakfoxLetterboxing(GetDocumentIfCurrent()) &&
++      MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
+     return 1.0;
+   }
+   double scale = 1;
+@@ -148,7 +149,8 @@
+ 
+ CSSPoint VisualViewport::VisualViewportOffset() const {
+   // Cloakfox: zero offset (no scroll/zoom)
+-  if (MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
++  if (!nsGlobalWindowInner::UseCloakfoxLetterboxing(GetDocumentIfCurrent()) &&
++      MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
+     return CSSPoint(0, 0);
+   }
+   CSSPoint offset = CSSPoint(0, 0);
+@@ -161,7 +163,8 @@
+ 
+ CSSPoint VisualViewport::LayoutViewportOffset() const {
+   // Cloakfox: zero offset (matches spoofed visual viewport)
+-  if (MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
++  if (!nsGlobalWindowInner::UseCloakfoxLetterboxing(GetDocumentIfCurrent()) &&
++      MaskConfig::GetBool("window:visualViewport:spoof").value_or(false)) {
+     return CSSPoint(0, 0);
+   }
+   CSSPoint offset = CSSPoint(0, 0);
+diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -87,6 +87,7 @@
+ #include "mozilla/StaticPrefs_dom.h"
+ #include "mozilla/StaticPrefs_extensions.h"
+ #include "mozilla/StaticPrefs_privacy.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StorageAccess.h"
+ #include "mozilla/StoragePrincipalHelper.h"
+ #include "mozilla/TelemetryHistogramEnums.h"
+@@ -3735,9 +3736,20 @@
+   FORWARD_TO_OUTER_OR_THROW(SetNameOuter, (aName, aError), aError, );
+ }
+ 
++bool nsGlobalWindowInner::UseCloakfoxLetterboxing(const Document* aDocument) {
++  return StaticPrefs::cloakfox_enabled() &&
++         StaticPrefs::privacy_resistFingerprinting_letterboxing() &&
++         aDocument && !aDocument->NodePrincipal()->IsSystemPrincipal() &&
++         aDocument->GetBrowsingContext() &&
++         aDocument->GetBrowsingContext()->IsContent();
++}
++
+ double nsGlobalWindowInner::GetInnerWidth(ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetDouble("window.innerWidth"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetDouble("window.innerWidth")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetInnerWidthOuter, (aError), aError, 0);
+ }
+ 
+@@ -3749,8 +3761,11 @@
+ }
+ 
+ double nsGlobalWindowInner::GetInnerHeight(ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetDouble("window.innerHeight"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetDouble("window.innerHeight")) {
++      return value.value();
++    }
++  }
+   // We ignore aCallerType; we only have that argument because some other things
+   // called by GetReplaceableWindowCoord need it.  If this ever changes, fix
+   //   nsresult nsGlobalWindowInner::GetInnerHeight(double* aInnerWidth)
+@@ -3767,16 +3782,22 @@
+ 
+ int32_t nsGlobalWindowInner::GetOuterWidth(CallerType aCallerType,
+                                            ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.outerWidth"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetInt32("window.outerWidth")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetOuterWidthOuter, (aCallerType, aError), aError,
+                             0);
+ }
+ 
+ int32_t nsGlobalWindowInner::GetOuterHeight(CallerType aCallerType,
+                                             ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.outerHeight"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetInt32("window.outerHeight")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetOuterHeightOuter, (aCallerType, aError), aError,
+                             0);
+ }
+@@ -3791,13 +3812,27 @@
+ 
+ int32_t nsGlobalWindowInner::GetScreenX(CallerType aCallerType,
+                                         ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.screenX")) return value.value();
++  if (aCallerType == CallerType::NonSystem && !IsChromeWindow()) {
++    if (UseCloakfoxLetterboxing(mDoc)) {
++      return 0;
++    }
++    if (auto value = MaskConfig::GetInt32("window.screenX")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetScreenXOuter, (aCallerType, aError), aError, 0);
+ }
+ 
+ int32_t nsGlobalWindowInner::GetScreenY(CallerType aCallerType,
+                                         ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.screenY")) return value.value();
++  if (aCallerType == CallerType::NonSystem && !IsChromeWindow()) {
++    if (UseCloakfoxLetterboxing(mDoc)) {
++      return 0;
++    }
++    if (auto value = MaskConfig::GetInt32("window.screenY")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetScreenYOuter, (aCallerType, aError), aError, 0);
+ }
+ 
+@@ -3822,16 +3857,26 @@
+ 
+ float nsGlobalWindowInner::GetMozInnerScreenX(CallerType aCallerType,
+                                               ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.screenX")) {
+-    return static_cast<float>(value.value());
++  if (aCallerType == CallerType::NonSystem && !IsChromeWindow()) {
++    if (UseCloakfoxLetterboxing(mDoc)) {
++      return 0;
++    }
++    if (auto value = MaskConfig::GetInt32("window.screenX")) {
++      return static_cast<float>(value.value());
++    }
+   }
+   FORWARD_TO_OUTER_OR_THROW(GetMozInnerScreenXOuter, (aCallerType), aError, 0);
+ }
+ 
+ float nsGlobalWindowInner::GetMozInnerScreenY(CallerType aCallerType,
+                                               ErrorResult& aError) {
+-  if (MaskConfig::GetInt32("window.screenY")) {
+-    return CloakfoxMozInnerScreenY();
++  if (aCallerType == CallerType::NonSystem && !IsChromeWindow()) {
++    if (UseCloakfoxLetterboxing(mDoc)) {
++      return 0;
++    }
++    if (MaskConfig::GetInt32("window.screenY")) {
++      return CloakfoxMozInnerScreenY();
++    }
+   }
+   FORWARD_TO_OUTER_OR_THROW(GetMozInnerScreenYOuter, (aCallerType), aError, 0);
+ }
+@@ -3856,8 +3901,11 @@
+ double nsGlobalWindowInner::GetDevicePixelRatio(CallerType aCallerType,
+                                                 ErrorResult& aError) {
+   ENSURE_ACTIVE_DOCUMENT(aError, 0.0);
+-  if (auto value = MaskConfig::GetDouble("window.devicePixelRatio"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetDouble("window.devicePixelRatio")) {
++      return value.value();
++    }
++  }
+ 
+   RefPtr<nsPresContext> presContext = GetPresContextForRatio(mDoc);
+   if (NS_WARN_IF(!presContext)) {
+@@ -3865,7 +3913,8 @@
+     return 1.0;
+   }
+ 
+-  if (nsIGlobalObject::ShouldResistFingerprinting(
++  if ((aCallerType == CallerType::NonSystem && UseCloakfoxLetterboxing(mDoc)) ||
++      nsIGlobalObject::ShouldResistFingerprinting(
+           aCallerType, RFPTarget::WindowDevicePixelRatio)) {
+     return nsRFPService::GetDevicePixelRatioAtZoom(presContext->GetFullZoom());
+   }
+@@ -3928,38 +3977,56 @@
+ }
+ 
+ int32_t nsGlobalWindowInner::GetScrollMinX(ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.scrollMinX"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetInt32("window.scrollMinX")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetScrollBoundaryOuter, (eSideLeft), aError, 0);
+ }
+ 
+ int32_t nsGlobalWindowInner::GetScrollMinY(ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.scrollMinY"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetInt32("window.scrollMinY")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetScrollBoundaryOuter, (eSideTop), aError, 0);
+ }
+ 
+ int32_t nsGlobalWindowInner::GetScrollMaxX(ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.scrollMaxX"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetInt32("window.scrollMaxX")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetScrollBoundaryOuter, (eSideRight), aError, 0);
+ }
+ 
+ int32_t nsGlobalWindowInner::GetScrollMaxY(ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetInt32("window.scrollMaxY"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetInt32("window.scrollMaxY")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetScrollBoundaryOuter, (eSideBottom), aError, 0);
+ }
+ 
+ double nsGlobalWindowInner::GetScrollX(ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetDouble("screen.pageXOffset"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetDouble("screen.pageXOffset")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetScrollXOuter, (), aError, 0);
+ }
+ 
+ double nsGlobalWindowInner::GetScrollY(ErrorResult& aError) {
+-  if (auto value = MaskConfig::GetDouble("screen.pageYOffset"))
+-    return value.value();
++  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++    if (auto value = MaskConfig::GetDouble("screen.pageYOffset")) {
++      return value.value();
++    }
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetScrollYOuter, (), aError, 0);
+ }
+ 
+diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
+--- a/dom/base/nsGlobalWindowInner.h
++++ b/dom/base/nsGlobalWindowInner.h
+@@ -673,6 +673,10 @@
+   // https://w3c.github.io/webappsec-secure-contexts/#dom-window-issecurecontext
+   bool IsSecureContext() const;
+ 
++  // Independent of global RFP: protect geometry using the actual letterboxed
++  // viewport. Never apply content geometry policy to the browser's chrome.
++  static bool UseCloakfoxLetterboxing(const mozilla::dom::Document* aDocument);
++
+   mozilla::dom::External* External();
+ 
+   mozilla::dom::Worklet* GetPaintWorklet(mozilla::ErrorResult& aRv);
+diff --git a/dom/base/nsGlobalWindowOuter.cpp b/dom/base/nsGlobalWindowOuter.cpp
+--- a/dom/base/nsGlobalWindowOuter.cpp
++++ b/dom/base/nsGlobalWindowOuter.cpp
+@@ -3533,8 +3533,10 @@
+ 
+ CSSIntSize nsGlobalWindowOuter::GetOuterSize(CallerType aCallerType,
+                                              ErrorResult& aError) {
+-  if (nsIGlobalObject::ShouldResistFingerprinting(aCallerType,
+-                                                  RFPTarget::WindowOuterSize)) {
++  if ((aCallerType == CallerType::NonSystem &&
++       nsGlobalWindowInner::UseCloakfoxLetterboxing(mDoc)) ||
++      nsIGlobalObject::ShouldResistFingerprinting(aCallerType,
++                                                 RFPTarget::WindowOuterSize)) {
+     if (BrowsingContext* bc = GetBrowsingContext()) {
+       return bc->TopInnerSizeSpoofedForRFP();
+     }
+diff --git a/dom/base/nsScreen.cpp b/dom/base/nsScreen.cpp
+--- a/dom/base/nsScreen.cpp
++++ b/dom/base/nsScreen.cpp
+@@ -75,6 +75,14 @@
+ }
+ 
+ CSSIntRect nsScreen::GetRect() {
++  if (GetOuter() && nsGlobalWindowOuter::Cast(GetOuter())->IsChromeWindow()) {
++    nsDeviceContext* context = GetDeviceContext();
++    return context ? CSSIntRect::FromAppUnitsRounded(context->GetRect())
++                   : CSSIntRect{};
++  }
++  if (nsGlobalWindowInner::UseCloakfoxLetterboxing(GetDocumentIfCurrent())) {
++    return GetTopWindowInnerRectForRFP();
++  }
+   // Check for per-context screen dimensions first
+   if (nsPIDOMWindowOuter* outer = GetOuter()) {
+     if (nsPIDOMWindowInner* inner = outer->GetCurrentInnerWindow()) {
+@@ -127,6 +135,14 @@
+ }
+ 
+ CSSIntRect nsScreen::GetAvailRect() {
++  if (GetOuter() && nsGlobalWindowOuter::Cast(GetOuter())->IsChromeWindow()) {
++    nsDeviceContext* context = GetDeviceContext();
++    return context ? CSSIntRect::FromAppUnitsRounded(context->GetClientRect())
++                   : CSSIntRect{};
++  }
++  if (nsGlobalWindowInner::UseCloakfoxLetterboxing(GetDocumentIfCurrent())) {
++    return GetTopWindowInnerRectForRFP();
++  }
+   // Check for per-context screen avail dimensions first
+   if (nsPIDOMWindowOuter* outer = GetOuter()) {
+     if (nsPIDOMWindowInner* inner = outer->GetCurrentInnerWindow()) {
+diff --git a/layout/base/nsPresContext.cpp b/layout/base/nsPresContext.cpp
+--- a/layout/base/nsPresContext.cpp
++++ b/layout/base/nsPresContext.cpp
+@@ -330,6 +330,8 @@
+ }
+ 
+ static const char* gExactCallbackPrefs[] = {
++    "cloakfox.enabled",
++    "privacy.resistFingerprinting.letterboxing",
+     "dom.meta-viewport.enabled",
+     "image.animation_mode",
+     "intl.accept_languages",
+@@ -536,6 +538,17 @@
+   }
+ 
+   nsDependentCString prefName(aPrefName);
++  if (prefName.EqualsLiteral("cloakfox.enabled") ||
++      prefName.EqualsLiteral("privacy.resistFingerprinting.letterboxing")) {
++    // Refresh protected geometry and cached iframe CSS even when the viewport
++    // already fits a bucket and toggling protection causes no resize.
++    UpdateInnerSizeSpoofedForRFP();
++    MediaFeatureValuesChanged(
++        {MediaFeatureChangeReason::SystemMetricsChange |
++         MediaFeatureChangeReason::ResolutionChange},
++        MediaFeatureChangePropagation::JustThisDocument);
++    return;
++  }
+   if (prefName.EqualsLiteral("layout.css.dpi") ||
+       prefName.EqualsLiteral("layout.css.devPixelsPerPx")) {
+     int32_t oldAppUnitsPerDevPixel = mDeviceContext->AppUnitsPerDevPixel();
+@@ -1446,7 +1459,8 @@
+ }
+ 
+ void nsPresContext::UpdateInnerSizeSpoofedForRFP() {
+-  if (!mDocument->ShouldResistFingerprinting(RFPTarget::WindowOuterSize) ||
++  if ((!mDocument->ShouldResistFingerprinting(RFPTarget::WindowOuterSize) &&
++       !nsGlobalWindowInner::UseCloakfoxLetterboxing(mDocument)) ||
+       !mDocument->GetBrowsingContext() ||
+       !mDocument->GetBrowsingContext()->IsTop()) {
+     return;
+diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
+--- a/layout/style/nsMediaFeatures.cpp
++++ b/layout/style/nsMediaFeatures.cpp
+@@ -61,6 +61,14 @@
+ 
+ // A helper for three features below.
+ static nsSize GetDeviceSize(const Document& aDocument) {
++  if (aDocument.IsInChromeDocShell()) {
++    nsPresContext* pc = aDocument.GetPresContext();
++    return pc ? pc->DeviceContext()->GetRect().Size() : nsSize{};
++  }
++  if (nsGlobalWindowInner::UseCloakfoxLetterboxing(&aDocument)) {
++    return CSSPixel::ToAppUnits(
++        aDocument.GetBrowsingContext()->TopInnerSizeSpoofedForRFP());
++  }
+   if (aDocument.ShouldResistFingerprinting(RFPTarget::CSSDeviceSize)) {
+     return GetSize(aDocument);
+   }
+@@ -204,11 +212,17 @@
+ }
+ 
+ float Gecko_MediaFeatures_GetResolution(const Document* aDocument) {
++  if (nsGlobalWindowInner::UseCloakfoxLetterboxing(aDocument)) {
++    nsPresContext* pc = aDocument->GetPresContext();
++    return pc ? float(nsRFPService::GetDevicePixelRatioAtZoom(pc->GetFullZoom()))
++              : 1.0f;
++  }
+   // Cloakfox: content-only resolution override. Reports a fixed DPPX
+   // that matches the spoofed devicePixelRatio, hiding the real monitor DPI.
+-  if (auto value = MaskConfig::GetDouble("mediaFeature:resolution");
+-      value.has_value()) {
+-    return static_cast<float>(value.value());
++  if (!aDocument->IsInChromeDocShell()) {
++    if (auto value = MaskConfig::GetDouble("mediaFeature:resolution")) {
++      return static_cast<float>(value.value());
++    }
+   }
+   // We're returning resolution in terms of device pixels per css pixel, since
+   // that is the preferred unit for media queries of resolution. This avoids
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -18009,6 +18009,12 @@
+   mirror: always
+   do_not_use_directly: true
+ 
++# Cloakfox uses Firefox's content-only letterboxing without enabling global RFP.
++- name: privacy.resistFingerprinting.letterboxing
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
+ # privacy.fingerprintingProtection enables a set of fingerprinting protections
+ # designed to minimize breakage while maximizing protection.
+ - name: privacy.fingerprintingProtection
+diff --git a/toolkit/components/resistfingerprinting/RFPHelper.sys.mjs b/toolkit/components/resistfingerprinting/RFPHelper.sys.mjs
+--- a/toolkit/components/resistfingerprinting/RFPHelper.sys.mjs
++++ b/toolkit/components/resistfingerprinting/RFPHelper.sys.mjs
+@@ -10,6 +10,7 @@
+ const kTopicHttpOnModifyRequest = "http-on-modify-request";
+ 
+ const kPrefLetterboxing = "privacy.resistFingerprinting.letterboxing";
++const kPrefCloakfoxEnabled = "cloakfox.enabled";
+ const kPrefLetterboxingDimensions =
+   "privacy.resistFingerprinting.letterboxing.dimensions";
+ const kPrefLetterboxingTesting =
+@@ -55,6 +56,7 @@
+     // Add unconditional observers
+     Services.prefs.addObserver(kPrefResistFingerprinting, this);
+     Services.prefs.addObserver(kPrefLetterboxing, this);
++    Services.prefs.addObserver(kPrefCloakfoxEnabled, this);
+     XPCOMUtils.defineLazyPreferenceGetter(
+       this,
+       "_letterboxingDimensions",
+@@ -84,6 +86,7 @@
+     // Remove unconditional observers
+     Services.prefs.removeObserver(kPrefResistFingerprinting, this);
+     Services.prefs.removeObserver(kPrefLetterboxing, this);
++    Services.prefs.removeObserver(kPrefCloakfoxEnabled, this);
+     // Remove the RFP observers, swallowing exceptions if they weren't present
+     this._removeLanguagePrefObservers();
+   }
+@@ -133,6 +136,7 @@
+         this._handleSpoofEnglishChanged();
+         break;
+       case kPrefLetterboxing:
++      case kPrefCloakfoxEnabled:
+         this._handleLetterboxingPrefChanged();
+         break;
+       default:
+@@ -292,7 +296,10 @@
+   }
+ 
+   _handleLetterboxingPrefChanged() {
+-    if (Services.prefs.getBoolPref(kPrefLetterboxing, false)) {
++    if (
++      Services.prefs.getBoolPref(kPrefLetterboxing, false) &&
++      Services.prefs.getBoolPref(kPrefCloakfoxEnabled, true)
++    ) {
+       if (!this._letterboxingPrefObserversAdded) {
+         Services.ww.registerNotification(this);
+         this._letterboxingPrefObserversAdded = true;

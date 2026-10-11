@@ -1,0 +1,93 @@
+--- a/toolkit/components/cleardata/ClearDataService.sys.mjs
++++ b/toolkit/components/cleardata/ClearDataService.sys.mjs
+@@ -2497,17 +2497,37 @@
+   },
+ 
+   deleteDataFromOriginAttributesPattern(aPattern, aCallback) {
++    return this.deleteDataFromOriginAttributesPatternWithFlags(
++      aPattern,
++      Ci.nsIClearDataService.CLEAR_ALL,
++      aCallback
++    );
++  },
++
++  deleteDataFromOriginAttributesPatternWithFlags(aPattern, aFlags, aCallback) {
+     if (!aPattern) {
+       return Cr.NS_ERROR_INVALID_ARG;
+     }
+ 
+     let patternString = JSON.stringify(aPattern);
+-    // XXXtt remove clear-origin-attributes-data entirely
+-    Services.obs.notifyObservers(
+-      null,
+-      "clear-origin-attributes-data",
+-      patternString
+-    );
++    // This legacy notification has unflagged observers for auth, push,
++    // reports, DOM storage and session restore. Emit it only when all those
++    // categories were requested; a narrow clear must not delete unrelated data.
++    // PermissionManager no longer observes this notification. Permissions are
++    // controlled solely by the selected cleaners below.
++    const legacyFlags =
++      Ci.nsIClearDataService.CLEAR_AUTH_CACHE |
++      Ci.nsIClearDataService.CLEAR_DOM_QUOTA |
++      Ci.nsIClearDataService.CLEAR_DOM_PUSH_NOTIFICATIONS |
++      Ci.nsIClearDataService.CLEAR_REPORTS |
++      Ci.nsIClearDataService.CLEAR_HISTORY;
++    if ((aFlags & legacyFlags) === legacyFlags) {
++      Services.obs.notifyObservers(
++        null,
++        "clear-origin-attributes-data",
++        patternString
++      );
++    }
+ 
+     if (!aCallback) {
+       aCallback = {
+@@ -2515,7 +2535,7 @@
+       };
+     }
+     return this._deleteInternal(
+-      Ci.nsIClearDataService.CLEAR_ALL,
++      aFlags,
+       aCallback,
+       aCleaner => {
+         if (aCleaner.deleteByOriginAttributes) {
+--- a/toolkit/components/cleardata/nsIClearDataService.idl
++++ b/toolkit/components/cleardata/nsIClearDataService.idl
+@@ -13,7 +13,7 @@
+  * Provides methods for cleaning data from a nsIPrincipal and/or from a time
+  * range.
+  */
+-[scriptable, uuid(6ef3ef16-a502-4576-9fb4-919f1c40bf61)]
++[scriptable, uuid(0d8f7fda-eb60-46e4-9d5a-0a1c4eea9ea5)]
+ interface nsIClearDataService : nsISupports
+ {
+   /**
+@@ -148,6 +148,26 @@
+                                              [optional] in nsIClearDataCallback aCallback);
+ 
+   /**
++   * Clear only selected cleaners for an origin-attributes pattern. Cleaners
++   * without origin-attributes support are skipped, never broadened to a site
++   * or global clear. A zero flags mask performs no deletion.
++   *
++   * The legacy origin-attributes notification additionally clears auth cache,
++   * push subscriptions, reporting state, DOM storage and session restore. It
++   * is emitted only if AUTH_CACHE, DOM_QUOTA, DOM_PUSH_NOTIFICATIONS, REPORTS
++   * and HISTORY are all requested. Requesting a subset does not use that
++   * legacy fallback; only cleaners supporting origin attributes are run.
++   *
++   * Callers can exclude permission categories to preserve shared permissions
++   * whose original container cannot be determined. The callback reports the
++   * failure flags of the selected cleaners, as for the legacy entry point.
++   */
++  void deleteDataFromOriginAttributesPatternWithFlags(
++    in jsval aOriginAttributesPattern,
++    in uint32_t aFlags,
++    [optional] in nsIClearDataCallback aCallback);
++
++  /**
+    * This is a helper function to clear storageAccessAPI permissions
+    * in a way that will not result in users getting logged out by
+    * cookie purging. To that end we only clear permissions for principals

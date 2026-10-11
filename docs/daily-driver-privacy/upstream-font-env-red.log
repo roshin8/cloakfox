@@ -1,0 +1,24 @@
+.F..
+======================================================================
+FAIL: test_font_filter_uses_owner_container_and_exempts_chrome (__main__.UpstreamHardening.test_font_filter_uses_owner_container_and_exempts_chrome)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 103, in test_font_filter_uses_owner_container_and_exempts_chrome
+            cpp(r"""
+            ~~~^^^^^
+    #include <cassert>
+    ^^^^^^^^^^^^^^^^^^
+    ...<54 lines>...
+    }
+    ^
+    """)
+    ^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 37, in cpp
+    raise AssertionError(result.stderr)
+AssertionError: Assertion failed: (!gfxPlatformFontList::MaskedFontListBlocks(&page, "Avenir")), function main, file test.cpp, line 77.
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.352s
+
+FAILED (failures=1)

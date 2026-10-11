@@ -1,3 +1,5 @@
+import { applyRegion } from "resource:///modules/CloakfoxRegions.sys.mjs";
+import { applyPrivacyPolicy } from "resource:///modules/CloakfoxPrivacyPolicy.sys.mjs";
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -152,7 +154,7 @@ export function readOverrides(ucid) {
  * values are spread last so they win. Returns a new object.
  */
 export function applyOverrides(ucid, baseObj) {
-  return { ...baseObj, ...readOverrides(ucid) };
+  return applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...readOverrides(ucid) }));
 }
 
 /**

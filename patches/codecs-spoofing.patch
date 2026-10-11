@@ -1,15 +1,15 @@
---- a/b/dom/media/mediaelement/HTMLMediaElement.cpp	2026-04-18 07:10:12
-+++ b/dom/media/mediaelement/HTMLMediaElement.cpp	2026-04-18 07:10:39
-@@ -10,6 +10,8 @@
+diff --git a/dom/media/mediaelement/HTMLMediaElement.cpp b/dom/media/mediaelement/HTMLMediaElement.cpp
+--- a/dom/media/mediaelement/HTMLMediaElement.cpp
++++ b/dom/media/mediaelement/HTMLMediaElement.cpp
+@@ -8,6 +8,7 @@
  #include <cmath>
  #include <limits>
  #include <type_traits>
-+
 +#include "MaskConfig.hpp"
- #include <unordered_map>
  
  #include "AudioDeviceInfo.h"
-@@ -5364,6 +5366,35 @@
+ #include "AudioStreamTrack.h"
+@@ -5794,6 +5795,35 @@
  }
  
  void HTMLMediaElement::CanPlayType(const nsAString& aType, nsAString& aResult) {
@@ -45,11 +45,14 @@
    DecoderDoctorDiagnostics diagnostics;
    CanPlayStatus canPlay = GetCanPlay(aType, &diagnostics);
    diagnostics.StoreFormatDiagnostics(OwnerDoc(), aType, canPlay != CANPLAY_NO,
---- a/b/dom/media/mediaelement/moz.build	2026-04-18 00:00:00
-+++ b/dom/media/mediaelement/moz.build	2026-04-18 00:00:00
-@@ -33,4 +33,5 @@
+diff --git a/dom/media/mediaelement/moz.build b/dom/media/mediaelement/moz.build
+--- a/dom/media/mediaelement/moz.build
++++ b/dom/media/mediaelement/moz.build
+@@ -29,6 +29,7 @@
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
  LOCAL_INCLUDES += [
 +    "/cloakcfg",
      "/dom/base",
      "/dom/media",
-     "/netwerk/base",
+     "/third_party/abseil-cpp",

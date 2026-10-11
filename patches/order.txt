@@ -57,6 +57,7 @@ webgl-spoofing.patch
 webgl-readback-noise.patch
 websocket-spoofing.patch
 webrtc-ip-spoofing.patch
+cloakfox-webrtc-network-policy.patch
 window-name-spoofing.patch
 
 # LibreWolf patches (discovered automatically from librewolf/ subdir)
@@ -79,3 +80,17 @@ cpp-first-worker-spoofers.patch
 # Build/packaging fixes (independent)
 cloakfox-optional-assets-car.patch
 worker-container-identity.patch
+
+# Content-only letterboxing supersedes legacy Camoufox physical sizing.
+cloakfox-letterboxing.patch
+
+cloakfox-container-forget.patch
+
+cloakfox-scoped-data-clear.patch
+cloakfox-strict-proxy-guard.patch
+site-fingerprint-isolation.patch
+
+# Camoufox fixes adapted after container/site isolation.
+cloakfox-upstream-hardening.patch
+cloakfox-region-policy-proxy.patch
+cloakfox-privacy-completion.patch

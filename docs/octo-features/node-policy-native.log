@@ -1,0 +1,20 @@
+✔ fresh cfg derives Firefox major from 155.0.1 (4.427375ms)
+✔ fresh cfg derives Firefox major from 156.0a1 (1.359ms)
+✔ fresh cfg derives Firefox major from 157.0b3 (1.497625ms)
+✔ fresh cfg derives Firefox major from 155.2.0esr (1.142083ms)
+✔ startup migrates legacy identity only and keeps seeds and unrelated cfg (1.893ms)
+✔ explicit identity overrides remain pinned while other generated fields migrate (1.162542ms)
+✔ unrecognized direct cfg identity is preserved (1.088209ms)
+✔ explicit Firefox-shaped UA and header overrides remain on their chosen version (1.114ms)
+✔ font-key upgrade also migrates identity without losing existing values (1.623125ms)
+✔ corrupt cfg rebuilds from persisted seeds with current identity (1.393791ms)
+✔ divergent navigator and HTTP overrides each retain the explicit choice (1.050417ms)
+✔ production native policy gates geometry separately, schemeful site, expiry and malformed data (992.736708ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1074.832375

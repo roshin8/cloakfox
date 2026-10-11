@@ -1,0 +1,120 @@
+✔ fresh cfg derives Firefox major from 155.0.1 (6.533167ms)
+✔ fresh cfg derives Firefox major from 156.0a1 (1.441833ms)
+✔ fresh cfg derives Firefox major from 157.0b3 (3.453625ms)
+✔ fresh cfg derives Firefox major from 155.2.0esr (3.386291ms)
+✖ startup migrates legacy identity only and keeps seeds and unrelated cfg (6.105083ms)
+✔ explicit identity overrides remain pinned while other generated fields migrate (1.343125ms)
+✖ unrecognized direct cfg identity is preserved (1.313208ms)
+✖ explicit Firefox-shaped UA and header overrides remain on their chosen version (1.2975ms)
+✔ font-key upgrade also migrates identity without losing existing values (1.723625ms)
+✔ corrupt cfg rebuilds from persisted seeds with current identity (1.268042ms)
+✔ divergent navigator and HTTP overrides each retain the explicit choice (1.065167ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 8
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 149.206542
+
+✖ failing tests:
+
+test at tests/fingerprint/test_persona_version.mjs:56:1
+✖ startup migrates legacy identity only and keeps seeds and unrelated cfg (6.105083ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      'canvas:seed': 123,
+      'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=',
+      'fonts:spacing_seed': 42,
+      'headers.User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0',
+      'navigator.appVersion': '5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  +   'navigator.language': 'en-US',
+      'navigator.userAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0',
+      'screen.width': 1440,
+      custom: 'retain',
+      fonts: [
+        'Arial'
+  
+      at TestContext.<anonymous> (file:///Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_persona_version.mjs:58:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { 'navigator.userAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0', 'headers.User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0', 'navigator.appVersion': '5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0', fonts: [ 'Arial' ], 'fonts:spacing_seed': 42, 'canvas:seed': 123, 'screen.width': 1440, custom: 'retain', 'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=', 'navigator.language': 'en-US' },
+    expected: { 'navigator.userAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0', 'headers.User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0', 'navigator.appVersion': '5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0', fonts: [ 'Arial' ], 'fonts:spacing_seed': 42, 'canvas:seed': 123, 'screen.width': 1440, custom: 'retain', 'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_persona_version.mjs:73:1
+✖ unrecognized direct cfg identity is preserved (1.313208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      'canvas:seed': 123,
+      'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=',
+      'fonts:spacing_seed': 42,
+      'headers.User-Agent': 'Custom HTTP',
+      'navigator.appVersion': 'Custom app',
+  +   'navigator.language': 'en-US',
+      'navigator.userAgent': 'Custom browser',
+      'screen.width': 1440,
+      custom: 'retain',
+      fonts: [
+        'Arial'
+  
+      at TestContext.<anonymous> (file:///Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_persona_version.mjs:75:45)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { 'navigator.userAgent': 'Custom browser', 'headers.User-Agent': 'Custom HTTP', 'navigator.appVersion': 'Custom app', fonts: [ 'Arial' ], 'fonts:spacing_seed': 42, 'canvas:seed': 123, 'screen.width': 1440, custom: 'retain', 'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=', 'navigator.language': 'en-US' },
+    expected: { 'navigator.userAgent': 'Custom browser', 'headers.User-Agent': 'Custom HTTP', 'navigator.appVersion': 'Custom app', fonts: [ 'Arial' ], 'fonts:spacing_seed': 42, 'canvas:seed': 123, 'screen.width': 1440, custom: 'retain', 'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_persona_version.mjs:77:1
+✖ explicit Firefox-shaped UA and header overrides remain on their chosen version (1.2975ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      'canvas:seed': 123,
+      'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=',
+      'fonts:spacing_seed': 42,
+      'headers.User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0',
+      'navigator.appVersion': '5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0',
+  +   'navigator.language': 'en-US',
+      'navigator.userAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0',
+      'screen.width': 1440,
+      custom: 'retain',
+      fonts: [
+        'Arial'
+  
+      at TestContext.<anonymous> (file:///Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_persona_version.mjs:82:21)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { 'navigator.userAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0', 'headers.User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0', 'navigator.appVersion': '5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0', fonts: [ 'Arial' ], 'fonts:spacing_seed': 42, 'canvas:seed': 123, 'screen.width': 1440, custom: 'retain', 'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=', 'navigator.language': 'en-US' },
+    expected: { 'navigator.userAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0', 'headers.User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0', 'navigator.appVersion': '5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0', fonts: [ 'Arial' ], 'fonts:spacing_seed': 42, 'canvas:seed': 123, 'screen.width': 1440, custom: 'retain', 'fingerprint:secret': 'ExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExM=' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

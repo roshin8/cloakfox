@@ -1,0 +1,24 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+real local IP(s): ['192.168.0.50']
+
+=== WebRTC ICE candidates (cloakfox.enabled=true) ===
+{
+  "ipv4": [
+    "73.45.247.143",
+    "0.0.0.0"
+  ],
+  "mdns": [
+    "9ece21e0-adee-496a-a57c-ef1c409d6e20.local",
+    "f21f3a4f-b05f-4e29-85e5-a77daff796f2.local"
+  ],
+  "done": true,
+  "err": null,
+  "synced_ipv4": "73.45.247.143"
+}
+
+Analysis:
+  mDNS-obfuscated host candidates: ['9ece21e0-adee-496a-a57c-ef1c409d6e20.local', 'f21f3a4f-b05f-4e29-85e5-a77daff796f2.local']
+  IPv4 candidates: ['0.0.0.0', '73.45.247.143']
+  WebRTC public IP == HTTP-visible IP (73.45.247.143) — actor applied setWebRTCIPv4
+
+PASS: the machine's real local IP did NOT leak via WebRTC ICE candidates.

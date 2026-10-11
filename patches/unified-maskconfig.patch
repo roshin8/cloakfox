@@ -95,11 +95,12 @@
  /* static */ bool
 --- a/b/dom/base/ScreenDimensionManager.cpp	2026-04-17 18:44:43
 +++ b/dom/base/ScreenDimensionManager.cpp	2026-04-17 21:24:23
-@@ -6,6 +6,7 @@
+@@ -6,6 +6,8 @@
  
  #include "ScreenDimensionManager.h"
  #include "RoverfoxStorageManager.h"
 +#include "MaskConfig.hpp"
++#include "nsPIDOMWindowInlines.h"
  #include "nsGlobalWindowInner.h"
  #include "xpcpublic.h"
  #include "mozilla/dom/BrowsingContext.h"
@@ -154,10 +155,11 @@
  /* static */ nsString
 --- a/b/dom/base/WebGLParamsManager.cpp	2026-04-17 18:44:43
 +++ b/dom/base/WebGLParamsManager.cpp	2026-04-17 21:24:35
-@@ -1,5 +1,6 @@
+@@ -1,5 +1,7 @@
  /* Cloakfox: Per-context WebGL parameter manager */
  #include "WebGLParamsManager.h"
 +#include "MaskConfig.hpp"
++#include "nsPIDOMWindowInlines.h"
  
  #include "mozilla/dom/BrowsingContext.h"
  #include "nsGlobalWindowInner.h"

@@ -1,0 +1,29 @@
+✔ production font seed lookup uses prepared owner identity on style threads and observes changes (457.798916ms)
+✔ production SeedSync emits one numeric invalidation for unsynced cfg changes without observer recursion (1.310292ms)
+✔ standalone controlled feature is spoofed to the pin (1.054708ms)
+✔ ORACLE (unsatisfiable term): pin ∧ native-false = false (0.150958ms)
+✔ ORACLE (satisfiable term): must NOT leak the real controlled value (0.088834ms)
+✔ uncontrolled clauses honor their real native value (0.119667ms)
+✔ pure uncontrolled queries defer (undefined) (0.056916ms)
+✔ all-controlled conjunction ANDs correctly (0.051584ms)
+✔ comma list is OR across queries (0.049167ms)
+✔ not inverts a controlled query (0.052917ms)
+✔ media type prefix is honored (0.064917ms)
+✔ color-gamut is a min-feature (p3 matches srgb and p3) (0.103625ms)
+✔ bare boolean-context feature has no controlled feature → defer (0.500125ms)
+✔ or-combined queries defer (not parsed) (0.065375ms)
+✔ without nativeEval, a mixed query defers rather than guess (0.053667ms)
+✔ pointer and hover queries defer to native digitizer/RDM capabilities (0.074958ms)
+✔ default protection never contacts IP-echo services, including network changes (3.980333ms)
+✔ lookup requires its separate opt-in and master protection (1.647417ms)
+✔ disabling lookup while requests are pending cannot republish stale IPs (1.301167ms)
+✔ opt-out aborts active requests and starts no fallback service after failures (0.946042ms)
+✔ superseded refresh cannot start fallback requests after a newer generation begins (0.878125ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 545.726

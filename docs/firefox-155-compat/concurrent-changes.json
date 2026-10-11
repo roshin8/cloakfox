@@ -1,0 +1,18 @@
+{
+  "files_changed_in_original_after_snapshot": [
+    "patches/cloakfox-letterboxing.patch",
+    "tests/fingerprint/README.md",
+    "tests/fingerprint/probe_letterboxing.py"
+  ],
+  "note": "These post-snapshot changes were reconciled into the Firefox155 worktree; the original checkout was not edited.",
+  "reconciled_original_sha256": {
+    "patches/cloakfox-letterboxing.patch": "645b71082fa0e6d6abe46767fc54b685477b4d9e526a082d09ed70ab74e684a2",
+    "tests/fingerprint/README.md": "8e58c47e8c329db8b387d170e710927c10994f847de3db85153aaf371b9a5f9f",
+    "tests/fingerprint/probe_letterboxing.py": "7ce8dbe330fbce2aa0439bdbee40414ecd1fdaf55325a6baed6b99d3cae088a3"
+  },
+  "resolution": {
+    "patches/cloakfox-letterboxing.patch": "Adapted newer chrome geometry guards, shared orientation helpers and preference invalidation to Firefox155; retained existing port resize invalidation.",
+    "tests/fingerprint/probe_letterboxing.py": "Copied expanded probe; strengthened new container-tab wait to require destination URL as well as readyState.",
+    "tests/fingerprint/README.md": "Preserved multiple-container coverage and Firefox155 compatibility documentation."
+  }
+}

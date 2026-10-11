@@ -1,0 +1,21 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+  default:
+    platform             window=Win32
+                         worker=Win32  ok
+    userAgent            window=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) 
+                         worker=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0)   ok
+    appVersion           window=5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20
+                         worker=5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20  ok
+    hardwareConcurrency  window=8
+                         worker=8  ok
+  container 2:
+    platform             window=Linux x86_64
+                         worker=Linux x86_64  ok
+    userAgent            window=Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/2010
+                         worker=Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/2010  ok
+    appVersion           window=5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Fir
+                         worker=5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Fir  ok
+    hardwareConcurrency  window=2
+                         worker=2  ok
+
+PASS — workers report the same identity as their own window, in the default and in a named container

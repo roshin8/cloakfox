@@ -1,13 +1,12 @@
 """Assemble Cloakfox's bundled font pack from openly-licensed, metric-compatible
 substitutes, renamed to the target family names personas claim.
 
-Downloads the open source fonts (Google Fonts OFL/Apache + Microsoft Selawik
-MIT), renames each to its target family via the name-table rewrite in
+Downloads the open source fonts (Google Fonts and Microsoft Selawik under SIL OFL), renames each to its target family via the name-table rewrite in
 rename-font.py, and writes bundle/fonts/<os>/<Target>.ttf. macOS has no
 fontconfig aliasing, so the name must be baked into the file.
 
-Licenses: Arimo/Tinos/Cousine (Apache-2.0), Carlito/Caladea/Gelasio/Comic
-Neue/Anton (SIL OFL), Selawik (MIT). All redistributable.
+Licenses of the currently shipped bytes: SIL OFL 1.1, except DejaVu
+(Bitstream Vera/Arev). Inspect embedded licenses when updating upstream files.
 
 Usage: python scripts/build-font-pack.py
 """

@@ -18,7 +18,7 @@ const mod = await import(
 );
 const { pinsForOS, evaluateMedia } = mod._test;
 
-const mac = pinsForOS("macos"); // prefers-color-scheme: light, color-gamut: p3
+const mac = {...pinsForOS("macos"), "prefers-color-scheme":"light"}; // prefers-color-scheme: light, color-gamut: p3
 const linux = pinsForOS("linux"); // color-gamut: srgb
 
 // Model a real host that is in DARK mode with a normal desktop viewport, so a
@@ -70,8 +70,8 @@ test("ORACLE (satisfiable term): must NOT leak the real controlled value", () =>
 test("uncontrolled clauses honor their real native value", () => {
   assert.equal(ev("(prefers-color-scheme: light) and (min-width: 100px)"), true);
   assert.equal(ev("(prefers-color-scheme: light) and (max-width: 100px)"), false);
-  assert.equal(ev("(pointer: fine) and (orientation: portrait)"), false);
-  assert.equal(ev("(pointer: fine) and (orientation: landscape)"), true);
+  assert.equal(ev("(prefers-color-scheme: light) and (orientation: portrait)"), false);
+  assert.equal(ev("(prefers-color-scheme: light) and (orientation: landscape)"), true);
 });
 
 test("pure uncontrolled queries defer (undefined)", () => {
@@ -82,8 +82,8 @@ test("pure uncontrolled queries defer (undefined)", () => {
 });
 
 test("all-controlled conjunction ANDs correctly", () => {
-  assert.equal(ev("(pointer: fine) and (hover: hover)"), true);
-  assert.equal(ev("(pointer: coarse) and (hover: hover)"), false);
+  assert.equal(ev("(prefers-color-scheme: light) and (forced-colors: none)"), true);
+  assert.equal(ev("(prefers-color-scheme: dark) and (forced-colors: none)"), false);
 });
 
 test("comma list is OR across queries", () => {
@@ -122,4 +122,23 @@ test("without nativeEval, a mixed query defers rather than guess", () => {
     evaluateMedia("(prefers-color-scheme: dark) and (min-width: 100px)", mac, null),
     undefined
   );
+});
+
+
+test("pointer and hover queries defer to native digitizer/RDM capabilities", () => {
+  for (const query of ["(pointer: fine)", "(any-pointer: coarse)",
+                       "(hover: hover)", "(any-hover: hover)"]) {
+    assert.equal(ev(query), undefined);
+  }
+  for (const hasTouch of [false, true]) {
+    assert.equal(evaluateMedia("(prefers-color-scheme: light) and (any-pointer: coarse)",
+      mac, atom => { assert.equal(atom, "(any-pointer: coarse)"); return hasTouch; }), hasTouch);
+  }
+});
+
+test("website color scheme is not a persona pin", () => {
+  for (const os of ["macos", "linux", "windows"]) {
+    assert.equal(pinsForOS(os)["prefers-color-scheme"], undefined);
+    assert.equal(evaluateMedia("(prefers-color-scheme: dark)", pinsForOS(os), () => true), undefined);
+  }
 });

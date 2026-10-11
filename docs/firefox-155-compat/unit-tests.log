@@ -1,0 +1,91 @@
+
+tests/fingerprint/test_h3_guard.mjs
+✔ no UA yields a non-Firefox H3 profile (the chimera guard holds) (0.71375ms)
+✔ H2 profile still tracks the UA (the guard is H3-only) (0.068042ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 84.174292
+
+tests/fingerprint/test_mediaquery_logic.mjs
+✔ standalone controlled feature is spoofed to the pin (1.089917ms)
+✔ ORACLE (unsatisfiable term): pin ∧ native-false = false (0.149875ms)
+✔ ORACLE (satisfiable term): must NOT leak the real controlled value (0.091042ms)
+✔ uncontrolled clauses honor their real native value (0.116084ms)
+✔ pure uncontrolled queries defer (undefined) (0.057291ms)
+✔ all-controlled conjunction ANDs correctly (0.056459ms)
+✔ comma list is OR across queries (0.04725ms)
+✔ not inverts a controlled query (0.052542ms)
+✔ media type prefix is honored (0.060125ms)
+✔ color-gamut is a min-feature (p3 matches srgb and p3) (0.108042ms)
+✔ bare boolean-context feature has no controlled feature → defer (0.0535ms)
+✔ or-combined queries defer (not parsed) (0.419083ms)
+✔ without nativeEval, a mixed query defers rather than guess (0.042959ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88.764875
+
+tests/fingerprint/test_seedsync_fonts.mjs
+✔ #7 each OS resolves its OWN persona generic from the union (0.8105ms)
+✔ #7 every union family is kept in the C++ global whitelist (0.118125ms)
+✔ #7 union has no duplicate families within a slot (0.079667ms)
+✔ #8 rebuild when cfg is absent (0.063583ms)
+✔ #8 rebuild when cfg predates the font keys (0.07725ms)
+✔ #8 corrupt cfg triggers rebuild (0.103958ms)
+✔ #8 valid-but-non-object JSON rebuilds instead of throwing (0.119625ms)
+✔ #8 up-to-date cfg is left alone (no clobber) (0.054625ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 91.445542
+Probe did not complete (no completion sentinel) — the inline script threw before finishing. Treating as failure.
+Partial payload: {}
+Probe did not complete (no completion sentinel) — the inline script threw before finishing. Treating as failure.
+Partial payload: {"userAgent": "Cloakfox/1.0", "platform": "Linux x86_64"}
+Signal                                   Value                                    Verdict
+------------------------------------------------------------------------------------------
+platform                                 Win32                                    spoofed
+userAgent                                Mozilla/5.0 Firefox                      spoofed
+
+Heuristics: 2/2 spoofed
+Raw JSON: {
+  "userAgent": "Mozilla/5.0 Firefox",
+  "platform": "Win32"
+}
+Signal                                   Value                                    Verdict
+------------------------------------------------------------------------------------------
+platform                                 Win32                                    spoofed
+userAgent                                Cloakfox/1.0                             UNSPOOFED
+
+Heuristics: 1/2 spoofed
+Raw JSON: {
+  "userAgent": "Cloakfox/1.0",
+  "platform": "Win32"
+}
+Signal                                   Value                                    Verdict
+------------------------------------------------------------------------------------------
+navigator.gpu                            object                                   ?
+window.name                                                                       ?
+
+Heuristics: 0/0 spoofed
+Raw JSON: {
+  "window.name": "",
+  "navigator.gpu": "object"
+}
+No heuristics evaluated — cannot judge; treating as failure.
+Probe payload was not valid JSON — treating as failure.
+Probe payload was not an object — treating as failure.
+PASS — incomplete/empty/garbage payloads score as failure (2); complete runs score 0/1 correctly

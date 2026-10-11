@@ -1,0 +1,202 @@
+{
+  "date": "2026-09-08",
+  "branch": "codex/firefox-155-compat",
+  "engine": "155.0.1",
+  "platform": "macOS arm64",
+  "nativeBuild": {
+    "exit": 0,
+    "log": "build-3.log"
+  },
+  "patchStack": {
+    "count": 83,
+    "sourceFilesCompared": 198,
+    "mismatches": [],
+    "results": "../firefox-155-compat/privacy-completion-stack-3/results.json",
+    "followupPatchSHA256": "16bb72183e313c5e0286266aafe9f24c39a99405a6ffc1ba1ca50eeb1f8c9b5c"
+  },
+  "nodeTests": {
+    "passed": 183,
+    "failed": 0,
+    "skipped": 0,
+    "log": "node-tests.log"
+  },
+  "releasePythonTests": {
+    "passed": 28,
+    "log": "release-tests.log"
+  },
+  "networkPythonTests": {
+    "passed": 4,
+    "log": "network-unit-tests.log"
+  },
+  "cleanCheckoutNativeSourceTests": {
+    "passed": 3,
+    "skipped": 0,
+    "log": "clean-native-source-tests.log"
+  },
+  "probes": [
+    {
+      "probe": "tracking_protection",
+      "exit": 0,
+      "seconds": 6.7,
+      "log": "final-probes/probe-tracking_protection.log"
+    },
+    {
+      "probe": "worker_lifecycle",
+      "exit": 0,
+      "seconds": 19.9,
+      "log": "final-probes/probe-worker_lifecycle.log"
+    },
+    {
+      "probe": "identity_forget",
+      "exit": 0,
+      "seconds": 6.4,
+      "log": "final-probes/probe-identity_forget.log"
+    },
+    {
+      "probe": "daily_settings_ui",
+      "exit": 0,
+      "seconds": 2.9,
+      "log": "final-probes/probe-daily_settings_ui.log"
+    },
+    {
+      "probe": "daily_defaults",
+      "exit": 0,
+      "seconds": 3.8,
+      "log": "final-regressions/probe-daily_defaults.log"
+    },
+    {
+      "probe": "persona_version",
+      "exit": 0,
+      "seconds": 4.2,
+      "log": "final-regressions/probe-persona_version.log"
+    },
+    {
+      "probe": "bundled_blocker",
+      "exit": 0,
+      "seconds": 5.6,
+      "log": "final-regressions/probe-bundled_blocker.log"
+    },
+    {
+      "probe": "network_policy",
+      "exit": 0,
+      "seconds": 2.9,
+      "log": "final-regressions/probe-network_policy.log"
+    },
+    {
+      "probe": "native_webrtc_policy",
+      "exit": 0,
+      "seconds": 6.4,
+      "log": "final-regressions/probe-native_webrtc_policy.log"
+    },
+    {
+      "probe": "shared_permissions",
+      "exit": 0,
+      "seconds": 2.3,
+      "log": "final-regressions/probe-shared_permissions.log"
+    },
+    {
+      "probe": "site_isolation",
+      "exit": 0,
+      "seconds": 4.1,
+      "log": "final-regressions/probe-site_isolation.log"
+    },
+    {
+      "probe": "container_workflows",
+      "exit": 0,
+      "seconds": 19.1,
+      "log": "final-regressions/probe-container_workflows.log"
+    },
+    {
+      "probe": "upstream_hardening",
+      "exit": 0,
+      "seconds": 13.2,
+      "log": "final-regressions/probe-upstream_hardening.log"
+    },
+    {
+      "probe": "regions",
+      "exit": 0,
+      "seconds": 5.3,
+      "log": "final-regressions/probe-regions.log"
+    },
+    {
+      "probe": "privacy_inspector",
+      "exit": 0,
+      "seconds": 7.6,
+      "log": "final-regressions/probe-privacy_inspector.log"
+    },
+    {
+      "probe": "proxy_manager",
+      "exit": 0,
+      "seconds": 3.8,
+      "log": "final-regressions/probe-proxy_manager.log"
+    },
+    {
+      "probe": "templates",
+      "exit": 0,
+      "seconds": 7.2,
+      "log": "final-regressions/probe-templates.log"
+    },
+    {
+      "probe": "permissions_workspaces",
+      "exit": 0,
+      "seconds": 11.5,
+      "log": "final-regressions/probe-permissions_workspaces.log"
+    },
+    {
+      "probe": "dns_network",
+      "exit": 0,
+      "seconds": 3.2,
+      "log": "final-regressions/probe-dns_network.log"
+    },
+    {
+      "probe": "network_transports",
+      "exit": 0,
+      "seconds": 5.5,
+      "log": "final-regressions/probe-network_transports.log"
+    },
+    {
+      "probe": "host_personas",
+      "exit": 0,
+      "seconds": 4.2,
+      "log": "final-regressions/probe-host_personas.log"
+    },
+    {
+      "probe": "network_quic",
+      "exit": 0,
+      "seconds": 7.0,
+      "log": "final-regressions/probe-network_quic.log"
+    }
+  ],
+  "artifacts": {
+    "cloakfox": {
+      "sha256": "729714ee4779a712843e96794e16261cf4324da394857e18e630cbb4d83445de",
+      "bytes": 89312
+    },
+    "XUL": {
+      "sha256": "9cdc37f43f1be4eea2589a6118398a3473e7d1645dc3ca24ef0b6048a19f6348",
+      "bytes": 220313088
+    }
+  },
+  "review": {
+    "independent": true,
+    "actionableDefects": 0,
+    "testsRunByReviewer": false
+  },
+  "productionActivation": {
+    "ready": false,
+    "requires": [
+      "Owner MAR trust keys and signing database",
+      "Owner HTTPS update hosting and platform signing/notarization",
+      "Working Safe Browsing provider key and verified list downloads",
+      "Signed MAR install, tamper/wrong-key/rollback/interrupted-update acceptance tests"
+    ],
+    "windows": "Owner Authenticode integration not activated or tested"
+  },
+  "additionalPythonNativeTests": {
+    "passed": 3,
+    "logs": [
+      "worker-cache-tests.log",
+      "canvas-policy-tests.log"
+    ]
+  }
+}

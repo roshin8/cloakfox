@@ -1,0 +1,103 @@
+ 0:00.21 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.21 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.29 Clobber not needed.
+ 0:00.35 /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/browser/components/cloakfox/moz.build
+ 0:00.35 Build configuration changed. Regenerating backend.
+ 0:00.35 /Users/zeus/.mozbuild/srcdirs/firefox-src-2b50123a5247/_virtualenvs/build/bin/python /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Finished reading 2436 moz.build files in 1.19s
+Read 58 gyp files in parallel contributing 0.11s to total wall time
+Processed into 18788 build config descriptors in 0.84s
+RecursiveMake backend executed in 1.53s
+  5268 total backend files; 0 created; 1 updated; 5267 unchanged; 0 deleted; 16 -> 1982 Makefile
+FasterMake backend executed in 0.14s
+  77 total backend files; 0 created; 2 updated; 75 unchanged; 0 deleted
+Clangd backend executed in 0.82s
+  1252 total backend files; 0 created; 1 updated; 1251 unchanged; 0 deleted
+Total wall time: 4.75s; CPU time: 4.25s; Efficiency: 89%; Untracked: 0.23s
+ 0:05.77 W Adding make options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:05.77 /usr/bin/make -f client.mk -j8 -s
+ 0:06.59 Elapsed: 0.18s; From dist/bin: Kept 3299 existing; Added/updated 6; Removed 0 files and 0 directories.
+ 0:06.93 ./buildid.h.stub
+ 0:06.93 ./source-repo.h.stub
+ 0:07.06 ./application.ini.stub
+ 0:07.17 ./application.ini.h.stub
+ 0:07.72 ./buildid.h.stub
+ 0:07.72 ./source-repo.h.stub
+ 0:08.13 dom/canvas
+ 0:08.33 dom/bindings
+ 0:08.38 dom/l10n
+ 0:08.40 dom/html
+ 0:08.82 dom/media/mediaelement
+ 0:12.85 dom/media/webaudio
+ 0:16.45 dom/payments
+ 0:16.82 dom/svg
+ 0:16.86 dom/webbrowserpersist
+ 0:21.45 dom/workers
+ 0:22.33 editor/spellchecker
+ 0:22.34 editor/libeditor
+ 0:24.57 gfx/thebes
+ 0:24.91 intl/components
+ 0:26.16 intl/l10n
+ 0:26.27 intl/locale
+ 0:26.65 js/src/builtin/intl
+ 0:30.43 js/src/builtin
+ 0:31.14 js/src/builtin/temporal
+ 0:34.75 js/src/util
+ 0:34.79 js/src/jit
+ 0:34.84 js/src/vm
+ 0:36.99 layout/build
+ 0:37.01 layout/base
+ 0:37.13 layout/forms
+ 0:38.53 layout/generic
+ 0:40.84 netwerk/protocol/http
+ 0:43.36 netwerk/streamconv/converters
+ 0:45.95 toolkit/components/formautofill
+ 0:46.03 toolkit/components/places
+ 0:46.10 toolkit/components/resistfingerprinting
+ 0:46.11 toolkit/components/satchel
+ 0:46.16 toolkit/components/sessionstore
+ 0:46.23 toolkit/components/typeaheadfind
+ 0:46.46 toolkit/library/buildid.cpp.stub
+ 0:47.36 widget
+ 0:50.25 browser/app/Info.plist.stub
+ 0:50.47 layout/style
+ 0:50.49 netwerk/base
+ 0:50.56 dom/base
+ 0:50.59 security/manager/ssl
+ 0:56.87 toolkit/library/buildid.cpp.stub
+ 0:57.03 toolkit/library
+ 1:03.17 browser/app
+ 1:03.43 js/src/build/libjs_static.a
+ 1:03.81 browser/app/cloakfox
+ 1:14.33 toolkit/library/build/XUL
+ 1:17.32 ./dependentlibs.list.stub
+ 1:17.34 ./built_in_addons.json.stub
+ 1:17.50 ./buildid.h.stub
+ 1:17.50 ./source-repo.h.stub
+ 1:18.19 ./application.ini.stub
+ 1:18.37 ./application.ini.h.stub
+ 1:21.17 ./buildid.h.stub
+ 1:21.17 ./source-repo.h.stub
+ 1:21.31 ./application.ini.stub
+ 1:21.42 ./application.ini.h.stub
+ 1:21.53 browser/app/Info.plist.stub
+ 1:25.22 W 0 compiler warnings present.
+ 1:25.24 W Overall system resources - Wall time: 85s; CPU: 75%; Read bytes: 2127806464; Write bytes: 932356096; Read time: 13601; Write time: 432
+ 1:25.24 W Swap in/out (MB): 2694.71875/3.046875
+ 1:25.24 To view a profile of the build, run |mach resource-usage|.
+ 1:25.24 Your build was successful!
+ 1:25.24 To take your build for a test drive, run: |mach run|
+ 1:25.24 For more information on what to do now, see https://firefox-source-docs.mozilla.org/setup/contributing_code.html
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260908_005557.json

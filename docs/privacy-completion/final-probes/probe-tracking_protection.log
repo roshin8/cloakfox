@@ -1,0 +1,138 @@
+Native query readiness (no init wait): {"configured": "utm_source utm_medium utm_campaign utm_term utm_content utm_id fbclid gclid dclid msclkid mc_eid", "immediateResult": "http://target-tracking.test/landing?state=keep&code=keep", "immediateStripCount": 3, "nativeList": "utm_term gclid fbclid utm_source msclkid dclid utm_campaign utm_content utm_id mc_eid utm_medium", "thirdParty": true}
+{
+  "readiness": {
+    "configured": "utm_source utm_medium utm_campaign utm_term utm_content utm_id fbclid gclid dclid msclkid mc_eid",
+    "immediateResult": "http://target-tracking.test/landing?state=keep&code=keep",
+    "immediateStripCount": 3,
+    "nativeList": "utm_term gclid fbclid utm_source msclkid dclid utm_campaign utm_content utm_id mc_eid utm_medium",
+    "thirdParty": true
+  },
+  "navigation": [
+    {
+      "case": "strip",
+      "trackingRemoved": true,
+      "oauthStateCodeAndRedirectPreserved": true
+    },
+    {
+      "case": "exception",
+      "trackingRemoved": false,
+      "oauthStateCodeAndRedirectPreserved": true
+    },
+    {
+      "case": "re-enabled",
+      "trackingRemoved": true,
+      "oauthStateCodeAndRedirectPreserved": true
+    }
+  ],
+  "bounce": {
+    "afterPurge": {
+      "a": 6,
+      "activations": {
+        "6": [
+          "activation-fixture.test"
+        ],
+        "7": []
+      },
+      "b": 7,
+      "candidates": {
+        "6": [],
+        "7": []
+      },
+      "cookies": {
+        "6": {
+          "activation-fixture.test": true,
+          "bounce-fixture.test": true,
+          "unrelated-fixture.test": false
+        },
+        "7": {
+          "activation-fixture.test": false,
+          "bounce-fixture.test": false,
+          "unrelated-fixture.test": false
+        }
+      },
+      "mode": 1,
+      "permissions": [
+        {
+          "attributes": {
+            "firstPartyDomain": "",
+            "geckoViewSessionContextId": "",
+            "partitionKey": "",
+            "privateBrowsingId": 0,
+            "userContextId": 0
+          },
+          "capability": 1,
+          "expireTime": 1788887943426,
+          "expireType": 2,
+          "origin": "https://bounce-fixture.test",
+          "type": "cloakfox-bounce:6:0"
+        }
+      ]
+    },
+    "beforePurge": {
+      "a": 6,
+      "activations": {
+        "6": [
+          "activation-fixture.test"
+        ],
+        "7": []
+      },
+      "b": 7,
+      "candidates": {
+        "6": [
+          "unrelated-fixture.test",
+          "bounce-fixture.test"
+        ],
+        "7": [
+          "unrelated-fixture.test",
+          "bounce-fixture.test",
+          "activation-fixture.test"
+        ]
+      },
+      "cookies": {
+        "6": {
+          "activation-fixture.test": true,
+          "bounce-fixture.test": true,
+          "unrelated-fixture.test": true
+        },
+        "7": {
+          "activation-fixture.test": true,
+          "bounce-fixture.test": true,
+          "unrelated-fixture.test": true
+        }
+      },
+      "mode": 1,
+      "permissions": [
+        {
+          "attributes": {
+            "firstPartyDomain": "",
+            "geckoViewSessionContextId": "",
+            "partitionKey": "",
+            "privateBrowsingId": 0,
+            "userContextId": 0
+          },
+          "capability": 1,
+          "expireTime": 1788887943426,
+          "expireType": 2,
+          "origin": "https://bounce-fixture.test",
+          "type": "cloakfox-bounce:6:0"
+        }
+      ]
+    },
+    "broadPermissionsUntouched": true,
+    "deletedIdentityScopesCleared": true,
+    "exceptionRemovalEffective": true,
+    "firstPurgeReportedHosts": [
+      "unrelated-fixture.test",
+      "unrelated-fixture.test",
+      "bounce-fixture.test",
+      "activation-fixture.test"
+    ],
+    "nativePurge": true,
+    "selectedContainerException": true,
+    "sharedPermissionsScoped": true,
+    "sharingTogglePreservesScope": true,
+    "unrelatedDomainPurged": true,
+    "userActivationProtected": true
+  }
+}
+PASS: real query stripping preserves OAuth fields; native bounce purge respects narrow container exceptions and activation

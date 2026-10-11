@@ -1,0 +1,150 @@
+diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp b/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
+--- a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
++++ b/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
+@@ -422,8 +422,80 @@
+   mJsConfiguration.mPeerIdentityProvided = false;
+ }
+ 
++// Network policy is independent of the fingerprint-spoofing master switch.
++// Values other than the explicitly supported normal/relay modes fail closed.
++static int32_t ResolveCloakfoxWebRTCMode(int32_t aNetworkMode,
++                                       int32_t aWebRTCMode,
++                                       int32_t aEffectiveMode = 0) {
++  if (aNetworkMode != 0 || aWebRTCMode < 0 || aWebRTCMode > 1 ||
++      aEffectiveMode < 0 || aEffectiveMode > 1) {
++    return 2;
++  }
++  return aWebRTCMode == 1 || aEffectiveMode == 1 ? 1 : 0;
++}
++
++int32_t PeerConnectionImpl::CloakfoxWebRTCMode() const {
++  if (mCloakfoxPolicyPrefix.IsEmpty()) {
++    return 2;
++  }
++  auto readMode = [this](const char* aSuffix) {
++    nsAutoCString pref(mCloakfoxPolicyPrefix);
++    pref.Append(aSuffix);
++    // Absence inherits the normal default; a configured value of the wrong
++    // type is an invalid policy and must not silently become normal mode.
++    if (Preferences::GetType(pref.get()) == nsIPrefBranch::PREF_INVALID) {
++      return int32_t(0);
++    }
++    return Preferences::GetInt(pref.get(), 2);
++  };
++  // Parent computes this numeric mirror from typed raw prefs. Dynamic strings
++  // are sanitized out of content preference IPC, so raw malformed string values
++  // alone would appear absent here. Neither mirror nor raw prefs may relax the
++  // other: combine them using the most restrictive effective policy.
++  return ResolveCloakfoxWebRTCMode(readMode("network_mode"),
++                                 readMode("webrtc_mode"),
++                                 readMode("effective_webrtc_mode"));
++}
++
++void PeerConnectionImpl::UnregisterCloakfoxPolicyObserver() {
++  if (mCloakfoxPolicyObserverRegistered) {
++    Preferences::UnregisterPrefixCallback(CloakfoxPolicyChanged,
++                                          mCloakfoxPolicyPrefix, this);
++    mCloakfoxPolicyObserverRegistered = false;
++  }
++}
++
++void PeerConnectionImpl::CloakfoxPolicyChanged(const char* aPref, void* aClosure) {
++  MOZ_ASSERT(NS_IsMainThread());
++  RefPtr<PeerConnectionImpl> pc = static_cast<PeerConnectionImpl*>(aClosure);
++  nsAutoCString networkPref(pc->mCloakfoxPolicyPrefix);
++  networkPref.AppendLiteral("network_mode");
++  nsAutoCString proxyPref(pc->mCloakfoxPolicyPrefix);
++  proxyPref.AppendLiteral("proxy_url");
++  nsAutoCString rtcPref(pc->mCloakfoxPolicyPrefix);
++  rtcPref.AppendLiteral("webrtc_mode");
++  nsAutoCString epochPref(pc->mCloakfoxPolicyPrefix);
++  epochPref.AppendLiteral("network_epoch");
++  nsAutoCString effectivePref(pc->mCloakfoxPolicyPrefix);
++  effectivePref.AppendLiteral("effective_webrtc_mode");
++  if (!networkPref.Equals(aPref) && !proxyPref.Equals(aPref) &&
++      !rtcPref.Equals(aPref) && !epochPref.Equals(aPref) &&
++      !effectivePref.Equals(aPref)) {
++    return;
++  }
++  if (!pc->IsClosed()) {
++    // Normal Close waits for final stats and RTCP BYE before removing ICE.
++    // A route/policy change must request transport removal immediately.
++    if (pc->mTransportHandler) {
++      pc->mTransportHandler->RemoveTransportsExcept(std::set<std::string>());
++    }
++    pc->Close();
++  }
++}
++
+ PeerConnectionImpl::~PeerConnectionImpl() {
+   MOZ_ASSERT(NS_IsMainThread());
++  UnregisterCloakfoxPolicyObserver();
+ 
+   MOZ_ASSERT(!mTransportHandler,
+              "PeerConnection should either be closed, or not initted in the "
+@@ -448,6 +520,23 @@
+   MOZ_ASSERT(NS_IsMainThread());
+ 
+   mPCObserver = &aObserver;
++
++  // Resolve from the responsible document, before starting STS/ICE transport.
++  mWindow = aWindow;
++  NS_ENSURE_STATE(mWindow);
++  Document* document = mWindow->GetExtantDoc();
++  BrowsingContext* bc = document ? document->GetBrowsingContext() : nullptr;
++  NS_ENSURE_STATE(bc);
++  mCloakfoxPolicyPrefix.AssignLiteral("cloakfox.container.");
++  mCloakfoxPolicyPrefix.AppendInt(bc->OriginAttributesRef().mUserContextId);
++  mCloakfoxPolicyPrefix.Append('.');
++  if (CloakfoxWebRTCMode() == 2) {
++    return NS_ERROR_DOM_SECURITY_ERR;
++  }
++  res = Preferences::RegisterPrefixCallback(CloakfoxPolicyChanged,
++                                             mCloakfoxPolicyPrefix, this);
++  NS_ENSURE_SUCCESS(res, res);
++  mCloakfoxPolicyObserverRegistered = true;
+ 
+   // Find the STS thread
+ 
+@@ -2457,6 +2546,7 @@
+ 
+ NS_IMETHODIMP
+ PeerConnectionImpl::Close() {
++  UnregisterCloakfoxPolicyObserver();
+   CSFLogDebug(LOGTAG, "%s: for %s", __FUNCTION__, mHandle.c_str());
+   PC_AUTO_ENTER_API_CALL_NO_CHECK();
+ 
+@@ -2660,8 +2750,16 @@
+ 
+ nsresult PeerConnectionImpl::SetConfiguration(
+     const RTCConfiguration& aConfiguration) {
++  const int32_t policy = CloakfoxWebRTCMode();
++  if (IsClosed() || policy == 2) {
++    return NS_ERROR_DOM_SECURITY_ERR;
++  }
++  // Always constrain the native transport, including later JS calls that
++  // request "all" through setConfiguration. Never rely on candidate rewriting.
++  const auto icePolicy = policy == 1 ? dom::RTCIceTransportPolicy::Relay
++                                    : aConfiguration.mIceTransportPolicy;
+   nsresult rv = mTransportHandler->SetIceConfig(
+-      aConfiguration.mIceServers, aConfiguration.mIceTransportPolicy);
++      aConfiguration.mIceServers, icePolicy);
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return rv;
+   }
+diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.h b/dom/media/webrtc/jsapi/PeerConnectionImpl.h
+--- a/dom/media/webrtc/jsapi/PeerConnectionImpl.h
++++ b/dom/media/webrtc/jsapi/PeerConnectionImpl.h
+@@ -603,6 +603,12 @@
+       nsTHashMap<nsCStringHashKey, RefPtr<dom::RTCDtlsTransport>>;
+ 
+  private:
++  int32_t CloakfoxWebRTCMode() const;
++  static void CloakfoxPolicyChanged(const char* aPref, void* aClosure);
++  void UnregisterCloakfoxPolicyObserver();
++  nsCString mCloakfoxPolicyPrefix;
++  bool mCloakfoxPolicyObserverRegistered = false;
++
+   void ParseIceServers(const nsTArray<dom::RTCIceServer>& aIceServers,
+                        ErrorResult& aRv);
+ 

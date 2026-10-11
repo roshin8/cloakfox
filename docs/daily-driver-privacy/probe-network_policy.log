@@ -1,0 +1,9 @@
+routing startup {'filters': True}
+proxied {'body': 'origin-ok', 'proxy': None, 'status': 0, 'ucid': 2}
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_network_policy.py", line 102, in <module>
+    if __name__ == '__main__': main()
+                               ^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_network_policy.py", line 85, in main
+    assert tunnels, 'Configured proxy never received CONNECT'
+AssertionError: Configured proxy never received CONNECT

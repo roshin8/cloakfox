@@ -1,0 +1,5 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+  ctx 0 (overlay incl Menlo/Monaco/Tahoma): ['Arial', 'Geneva', 'Georgia', 'Impact', 'Menlo', 'Monaco', 'Tahoma', 'Verdana']
+  ctx 1 (overlay excl them)               : ['Georgia', 'Verdana']
+
+PASS — each container narrows to its own overlay 'fonts' set; ctx 1 hides fonts ctx 0 shows despite sharing the process whitelist

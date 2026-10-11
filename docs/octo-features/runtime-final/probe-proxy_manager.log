@@ -1,0 +1,8 @@
+proxy preflight 1 {'credentialPresent': True, 'keyMatches': True, 'revisionMatches': True, 'stage': 'proxy-created', 'type': 'http'}
+proxy request 1 {'body': 'authenticated-route-ok', 'proxy': '127.0.0.1', 'status': 0, 'ucid': 1} http-attempt-count 1 socks-attempt-count 0
+proxy preflight 2 {'credentialPresent': True, 'keyMatches': True, 'revisionMatches': True, 'stage': 'proxy-created', 'type': 'http'}
+proxy request 2 {'body': 'authenticated-route-ok', 'proxy': '127.0.0.1', 'status': 0, 'ucid': 2} http-attempt-count 2 socks-attempt-count 0
+proxy preflight 3 {'credentialPresent': True, 'keyMatches': True, 'revisionMatches': True, 'stage': 'proxy-created', 'type': 'socks'}
+proxy request 3 {'body': 'authenticated-route-ok', 'proxy': '127.0.0.1', 'status': 0, 'ucid': 3} http-attempt-count 2 socks-attempt-count 1
+{"originRequests": ["/container-1", "/container-2", "/container-3", "/first-still-works"], "httpAttempts": 4, "socksAttempts": 3}
+PASS: named HTTP/SOCKS auth, 407 no retry, DNS via SOCKS, connection isolation, no direct fallback, redaction

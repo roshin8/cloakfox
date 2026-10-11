@@ -1,0 +1,479 @@
+ 0:00.32 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.32 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.43 Clobber not needed.
+ 0:00.48 W Adding make options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:00.48 /usr/bin/make -f client.mk -j8 -s
+ 0:01.82 ./buildid.h.stub
+ 0:01.82 ./source-repo.h.stub
+ 0:01.98 ./application.ini.stub
+ 0:02.09 ./application.ini.h.stub
+ 0:02.67 ./buildid.h.stub
+ 0:02.67 ./source-repo.h.stub
+ 0:02.85 ./application.ini.stub
+ 0:03.50 ./application.ini.h.stub
+ 0:04.66 layout/base
+ 0:04.73 layout/tables
+ 0:04.75 layout/xul/tree
+ 0:04.75 layout/xul
+ 0:07.66 toolkit/components/formautofill
+ 0:07.86 toolkit/components/resistfingerprinting
+ 0:08.08 toolkit/library/buildid.cpp.stub
+ 0:08.79 widget
+ 0:13.32 browser/app/Info.plist.stub
+ 0:13.84 layout/style
+ 0:13.94 dom/base
+ 0:14.32 toolkit/library/buildid.cpp.stub
+ 0:14.49 toolkit/library
+ 0:15.92 browser/app
+ 0:18.24 browser/app/cloakfox
+ 0:24.09 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/layout/style/Unified_cpp_layout_style5.cpp:56:
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/nsMediaFeatures.cpp:483:18: error: no viable overloaded '|='
+ 0:24.09 E   483 |     capabilities |= PointerCapabilities::Coarse;
+ 0:24.09 E       |     ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/ServoTypes.h:102:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'PointerCapabilities &' for 1st argument
+ 0:24.09 E   102 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(PointerCapabilities)
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/ds/nsCharSeparatedTokenizer.h:22:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsTokenizerFlags &' for 1st argument
+ 0:24.09 E    22 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsTokenizerFlags)
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/2d/Types.h:1334:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'SideBits &' for 1st argument
+ 0:24.09 E  1334 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(SideBits)
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/ServoTypes.h:57:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'ServoTraversalFlags &' for 1st argument
+ 0:24.09 E    57 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(ServoTraversalFlags)
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/ServoTypes.h:80:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'UpdateAnimationsTasks &' for 1st argument
+ 0:24.09 E    80 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(UpdateAnimationsTasks)
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dist/include/nsIEventTarget.h:176:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsIEventTarget::DispatchFlags &' for 1st argument
+ 0:24.09 E   176 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsIEventTarget::DispatchFlags)
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dist/include/nsIEventTarget.h:177:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsIEventTarget::FeatureFlags &' for 1st argument
+ 0:24.09 E   177 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsIEventTarget::FeatureFlags)
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/nsIWidget.h:2485:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsIWidget::NativeModifiers &' for 1st argument
+ 0:24.09 E  2485 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsIWidget::NativeModifiers)
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/base/nsINode.h:254:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'NodeSelectorFlags &' for 1st argument
+ 0:24.09 E   254 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(NodeSelectorFlags);
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/resistfingerprinting/nsRFPService.h:212:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'CanvasFeatureUsage &' for 1st argument
+ 0:24.09 E   212 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(CanvasFeatureUsage);
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.09 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.09 E       |                ^              ~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/resistfingerprinting/nsRFPService.h:313:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'CanvasUsageSource &' for 1st argument
+ 0:24.09 E   313 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(CanvasUsageSource);
+ 0:24.09 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.09 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.09 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/CSSEnabledState.h:32:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'CSSEnabledState &' for 1st argument
+ 0:24.10 E    32 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(CSSEnabledState)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/PseudoStyleType.h:44:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'PseudoStyleTypeFlags &' for 1st argument
+ 0:24.10 E    44 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(PseudoStyleTypeFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/nsChangeHint.h:277:22: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsChangeHint &' for 1st argument
+ 0:24.10 E   277 | inline nsChangeHint& operator|=(nsChangeHint& aLeft, nsChangeHint aRight) {
+ 0:24.10 E       |                      ^          ~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/BuiltInStyleSheets.h:26:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'BuiltInStyleSheetFlags &' for 1st argument
+ 0:24.10 E    26 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(BuiltInStyleSheetFlags);
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/CSSPropFlags.h:58:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'CSSPropFlags &' for 1st argument
+ 0:24.10 E    58 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(CSSPropFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/thebes/gfxTypes.h:123:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'FontMatchType::Kind &' for 1st argument
+ 0:24.10 E   123 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(FontMatchType::Kind)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/generic/ReflowOutput.h:39:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'OverflowAreaUnionFlags &' for 1st argument
+ 0:24.10 E    39 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(OverflowAreaUnionFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/generic/nsFrameState.h:38:25: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsFrameState &' for 1st argument
+ 0:24.10 E    38 | constexpr nsFrameState& operator|=(nsFrameState& aLeft, nsFrameState aRight) {
+ 0:24.10 E       |                         ^          ~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/PresShellForwards.h:31:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'CaptureFlags &' for 1st argument
+ 0:24.10 E    31 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(CaptureFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/PresShellForwards.h:40:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'ResizeReflowOptions &' for 1st argument
+ 0:24.10 E    40 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(ResizeReflowOptions)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/PresShellForwards.h:152:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'ScrollFlags &' for 1st argument
+ 0:24.10 E   152 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(ScrollFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/PresShellForwards.h:169:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'RenderDocumentFlags &' for 1st argument
+ 0:24.10 E   169 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(RenderDocumentFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/PresShellForwards.h:178:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'RenderImageFlags &' for 1st argument
+ 0:24.10 E   178 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(RenderImageFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/PresShellForwards.h:195:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'PaintFlags &' for 1st argument
+ 0:24.10 E   195 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(PaintFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/PresShellForwards.h:207:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'PaintInternalFlags &' for 1st argument
+ 0:24.10 E   207 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(PaintInternalFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/PresShellForwards.h:218:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'RenderingStateFlags &' for 1st argument
+ 0:24.10 E   218 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(RenderingStateFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/generic/nsIFrame.h:670:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'LayoutFrameClassFlags &' for 1st argument
+ 0:24.10 E   670 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(LayoutFrameClassFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/generic/nsIFrame.h:5809:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsIFrame::ReflowChildFlags &' for 1st argument
+ 0:24.10 E  5809 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsIFrame::ReflowChildFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/StyleSheet.h:101:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'StyleSheetState &' for 1st argument
+ 0:24.10 E   101 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(StyleSheetState)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/thebes/gfxPlatform.h:1054:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'gfxPlatform::GlobalReflowFlags &' for 1st argument
+ 0:24.10 E  1054 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(gfxPlatform::GlobalReflowFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/thebes/gfxFontEntry.h:846:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'gfxFontEntry::RangeFlags &' for 1st argument
+ 0:24.10 E   846 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(gfxFontEntry::RangeFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/thebes/gfxFontEntry.h:847:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'gfxFontEntry::SpaceFeatures &' for 1st argument
+ 0:24.10 E   847 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(gfxFontEntry::SpaceFeatures)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/thebes/DrawMode.h:24:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'DrawMode &' for 1st argument
+ 0:24.10 E    24 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(DrawMode)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/thebes/gfxFont.h:717:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'gfxFontShaper::RoundingFlags &' for 1st argument
+ 0:24.10 E   717 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(gfxFontShaper::RoundingFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/thebes/gfxPlatformFontList.h:1138:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'gfxPlatformFontList::FindFamiliesFlags &' for 1st argument
+ 0:24.10 E  1138 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(gfxPlatformFontList::FindFamiliesFlags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/generic/nsTextFrameUtils.h:157:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsTextFrameUtils::Flags &' for 1st argument
+ 0:24.10 E   157 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsTextFrameUtils::Flags)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/ScrollTypes.h:72:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'ScrollSnapFlags &' for 1st argument
+ 0:24.10 E    72 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(ScrollSnapFlags);
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.10 E       |                ^              ~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/generic/AnonymousContentKey.h:49:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'AnonymousContentKey &' for 1st argument
+ 0:24.10 E    49 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(AnonymousContentKey)
+ 0:24.10 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.10 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.10 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.10 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.10 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/ServoElementSnapshot.h:36:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'ServoElementSnapshotFlags &' for 1st argument
+ 0:24.11 E    36 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(ServoElementSnapshotFlags)
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/ServoStyleSet.h:90:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'StylistState &' for 1st argument
+ 0:24.11 E    90 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(StylistState)
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/ServoStyleSet.h:102:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'OriginFlags &' for 1st argument
+ 0:24.11 E   102 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(OriginFlags)
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/widget/LookAndFeel.h:599:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'LookAndFeel::PointingDeviceKinds &' for 1st argument
+ 0:24.11 E   599 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(LookAndFeel::PointingDeviceKinds);
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/nsLayoutUtils.h:130:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'DrawStringFlags &' for 1st argument
+ 0:24.11 E   130 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(DrawStringFlags)
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/nsLayoutUtils.h:3319:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsLayoutUtils::PaintFrameFlags &' for 1st argument
+ 0:24.11 E  3319 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsLayoutUtils::PaintFrameFlags)
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/nsLayoutUtils.h:3320:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsLayoutUtils::GetPopupFrameForPointFlags &' for 1st argument
+ 0:24.11 E  3320 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsLayoutUtils::GetPopupFrameForPointFlags)
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/base/nsLayoutUtils.h:3321:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'nsLayoutUtils::CompareTreePositionFlags &' for 1st argument
+ 0:24.11 E  3321 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsLayoutUtils::CompareTreePositionFlags)
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/layout/style/nsFontFaceUtils.cpp:34:1: note: candidate function not viable: no known conversion from 'mozilla::CastableTypedEnumResult<PointerCapabilities>' to 'FontUsageKind &' for 1st argument
+ 0:24.11 E    34 | MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(FontUsageKind);
+ 0:24.11 E       | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:123:3: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS'
+ 0:24.11 E   123 |   MOZ_MAKE_ENUM_CLASS_BINOP_IMPL(Name, |)                                     \
+ 0:24.11 E       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:116:16: note: expanded from macro 'MOZ_MAKE_ENUM_CLASS_BINOP_IMPL'
+ 0:24.11 E   116 |   inline Name& operator Op##=(Name & a, Name b) { return a = a Op b; }
+ 0:24.11 E       |                ^              ~~~~~~~~
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:94:1: note: candidate template ignored: could not match 'CastableTypedEnumResult<E>' against 'mozilla::PointerCapabilities'
+ 0:24.11 E    94 | MOZ_CASTABLETYPEDENUMRESULT_COMPOUND_ASSIGN_OP(|=)
+ 0:24.11 E       | ^
+ 0:24.11 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mfbt/TypedEnumBits.h:89:6: note: expanded from macro 'MOZ_CASTABLETYPEDENUMRESULT_COMPOUND_ASSIGN_OP'
+ 0:24.11 E    89 |   E& operator Op(E & aR1, const CastableTypedEnumResult<E>& aR2) { \
+ 0:24.11 E       |      ^
+ 0:27.14 E 1 error generated.
+ 0:27.16 E make[4]: *** [Unified_cpp_layout_style5.o] Error 1
+ 0:27.16 E make[4]: *** Waiting for unfinished jobs....
+ 0:28.34 E make[3]: *** [layout/style/target-objects] Error 2
+ 0:28.34 E make[3]: *** Waiting for unfinished jobs....
+ 0:37.13 E make[2]: *** [compile] Error 2
+ 0:37.13 E make[1]: *** [default] Error 2
+ 0:37.13 E make: *** [build] Error 2
+ 0:37.23 W 0 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260907_232801.json

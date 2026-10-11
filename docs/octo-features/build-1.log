@@ -1,0 +1,46 @@
+ 0:00.30 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.30 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.41 Clobber not needed.
+ 0:00.73 W Adding make options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:00.73 /usr/bin/make -f client.mk -j8 -s
+ 0:02.09 ./buildid.h.stub
+ 0:02.09 ./source-repo.h.stub
+ 0:02.27 ./application.ini.stub
+ 0:02.39 ./application.ini.h.stub
+ 0:02.98 ./buildid.h.stub
+ 0:02.98 ./source-repo.h.stub
+ 0:02.99 accessible/html
+ 0:02.99 accessible/generic
+ 0:03.00 accessible/base
+ 0:03.54 ./application.ini.stub
+ 0:03.74 ./application.ini.h.stub
+ 0:03.76 dom/canvas
+ 0:04.01 dom/events
+ 0:04.02 dom/bindings
+ 0:09.95 dom/geolocation
+ 0:13.09 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings29.cpp:301:
+ 0:13.09 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dom/bindings/WindowBinding.cpp:88:
+ 0:13.09 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/base/TimezoneManager.h:5:10: fatal error: 'MaskConfig.hpp' file not found
+ 0:13.09 E     5 | #include "MaskConfig.hpp"
+ 0:13.09 E       |          ^~~~~~~~~~~~~~~~
+ 0:13.29 dom/html/input
+ 0:13.55 E 1 error generated.
+ 0:13.58 E make[4]: *** [UnifiedBindings29.o] Error 1
+ 0:13.58 E make[3]: *** [dom/bindings/target-objects] Error 2
+ 0:13.58 E make[3]: *** Waiting for unfinished jobs....
+ 0:22.01 E make[2]: *** [compile] Error 2
+ 0:22.01 E make[1]: *** [default] Error 2
+ 0:22.02 E make: *** [build] Error 2
+ 0:22.12 W 0 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260908_005224.json

@@ -1,0 +1,65 @@
+FFF
+======================================================================
+FAIL: test_configured_voices_never_start_native_backend (__main__.UpstreamHardening.test_configured_voices_never_start_native_backend)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 76, in test_configured_voices_never_start_native_backend
+            cpp(r"""
+            ~~~^^^^^
+    #include <cassert>
+    ^^^^^^^^^^^^^^^^^^
+    ...<18 lines>...
+    }
+    ^
+    """)
+    ^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 37, in cpp
+    raise AssertionError(result.stderr)
+AssertionError: Assertion failed: (blocked() == (configured || flag.value_or(false))), function main, file test.cpp, line 19.
+
+
+======================================================================
+FAIL: test_glyph_noise_preserves_shaping_offsets_in_both_directions (__main__.UpstreamHardening.test_glyph_noise_preserves_shaping_offsets_in_both_directions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 44, in test_glyph_noise_preserves_shaping_offsets_in_both_directions
+            cpp(r"""
+            ~~~^^^^^
+    #include <cassert>
+    ^^^^^^^^^^^^^^^^^^
+    ...<24 lines>...
+    }
+    ^
+    """.replace("#include <cassert>", "#include <cassert>\n#include <initializer_list>"))
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 37, in cpp
+    raise AssertionError(result.stderr)
+AssertionError: Assertion failed: (p.x_offset == 17 && p.y_offset == -31), function main, file test.cpp, line 45.
+
+
+======================================================================
+FAIL: test_sessionstore_ignores_untracked_windows_and_marks_tracked_ones (__main__.UpstreamHardening.test_sessionstore_ignores_untracked_windows_and_marks_tracked_ones)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 110, in test_sessionstore_ignores_untracked_windows_and_marks_tracked_ones
+    self.assertEqual(result.returncode, 0, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : file:///Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/[eval1]:5
+    this._windows[aWindow.__SSi]._maybeDontRestoreTabs = true;
+                                                       ^
+
+TypeError: Cannot set properties of undefined (setting '_maybeDontRestoreTabs')
+    at Object.maybeDontRestoreTabs (file:///Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/[eval1]:5:56)
+    at file:///Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/[eval1]:7:7
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:246:26)
+    at async ModuleLoader.executeModuleJob (node:internal/modules/esm/loader:243:20)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v25.9.0
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.996s
+
+FAILED (failures=3)

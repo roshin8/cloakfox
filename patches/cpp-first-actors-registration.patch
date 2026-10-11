@@ -15,10 +15,13 @@ when Cloakfox is disabled.
 
 --- a/toolkit/modules/ActorManagerParent.sys.mjs
 +++ b/toolkit/modules/ActorManagerParent.sys.mjs
-@@ -90,6 +90,212 @@
+@@ -90,6 +90,227 @@
   * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
   */
  let JSWINDOWACTORS = {
++  // Cloakfox actors run only in content and have empty parent classes,
++  // with no parent-side message handlers. Opt them into Firefox 155
++  // web/file processes explicitly; the default now rejects these processes.
 +  // Cloakfox: pin fingerprinting-relevant CSS media features so
 +  // window.matchMedia reports persona-coherent, host-independent values
 +  // (prefers-color-scheme, pointer/hover, forced-colors, color-gamut,
@@ -34,6 +37,7 @@ when Cloakfox is disabled.
 +      events: { DOMDocElementInserted: { capture: true } },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: persona-OS-coherent speechSynthesis.getVoices(). The real
@@ -50,6 +54,7 @@ when Cloakfox is disabled.
 +      events: { DOMDocElementInserted: { capture: true } },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: per-container keyboard-cadence spoofing. Wraps
@@ -68,6 +73,7 @@ when Cloakfox is disabled.
 +      },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: small navigator-property fakes (webdriver=false,
@@ -83,6 +89,7 @@ when Cloakfox is disabled.
 +      events: { DOMDocElementInserted: { capture: true } },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: navigator.requestMIDIAccess always rejects. MIDI device
@@ -95,6 +102,7 @@ when Cloakfox is disabled.
 +      events: { DOMDocElementInserted: { capture: true } },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: hide WebGPU (navigator.gpu = undefined). GPU adapter
@@ -107,6 +115,7 @@ when Cloakfox is disabled.
 +      events: { DOMDocElementInserted: { capture: true } },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: navigator.getGamepads stub. Returns a 4-slot array of
@@ -123,6 +132,7 @@ when Cloakfox is disabled.
 +      },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: per-container window.history.length fake. Fingerprint
@@ -140,6 +150,7 @@ when Cloakfox is disabled.
 +      },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: per-container event-loop timing jitter. Wraps
@@ -157,6 +168,7 @@ when Cloakfox is disabled.
 +      },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: per-container timezone spoof. Calls window.setTimezone
@@ -178,6 +190,7 @@ when Cloakfox is disabled.
 +      },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: WebRTC public-IP spoof. Calls window.setWebRTCIPv4
@@ -199,6 +212,7 @@ when Cloakfox is disabled.
 +      },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
 +  // Cloakfox: per-container Math fingerprint spoofing. See
@@ -223,6 +237,7 @@ when Cloakfox is disabled.
 +      },
 +    },
 +    allFrames: true,
++    safeForUntrustedWebProcess: true,
 +    matches: ["http://*/*", "https://*/*", "file:///*"],
 +  },
    AboutCertViewer: {

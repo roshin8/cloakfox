@@ -13,8 +13,9 @@ Both paths now run the same CanvasFingerprintManager noise as the 2D context,
 keyed on the same canvas:seed so a container's surfaces stay mutually
 consistent:
   * ClientWebGLContext::GetImageBuffer  — toDataURL / toBlob
-  * ClientWebGLContext::DoReadPixels    — gl.readPixels (both the in-process
-                                          and the IPC path)
+  * ClientWebGLContext::DoReadPixels    — gl.readPixels (IPC in Firefox 155)
+  * CanvasUtils extraction policy     — configured Cloakfox noise supersedes
+                                         Firefox's session-keyed randomization
 
 readPixels noise is deliberately limited to 8-bit RGBA: float/integer formats
 are used for GPU compute readback, where perturbing values corrupts results
@@ -28,6 +29,8 @@ Checks (host-independent):
                 Randomize path re-randomises per call and would fail this).
   3. NOT BROKEN — a real shader still compiles, links and draws, and the
                 readback is only subtly perturbed, not corrupted.
+  4. NATIVE FALLBACK — disabled Cloakfox and enabled-but-unconfigured contexts
+                retain Firefox 155's session-keyed canvas export randomization.
 
 Exit codes: 0 pass · 1 regressed · 2 couldn't run.
 
@@ -38,10 +41,13 @@ Run:
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import sys
 import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import time
 from pathlib import Path
 
@@ -89,22 +95,42 @@ x.font = '14px Arial'; x.fillStyle = '#069'; x.fillText('cfx 0123', 2, 20);
 const u2 = c2.toDataURL();
 let h3 = 0; for (let i = 0; i < u2.length; i++) h3 = (h3 * 31 + u2.charCodeAt(i)) >>> 0;
 
+async function blobHash(canvas) {
+  const blob = await new Promise(resolve => canvas.toBlob(resolve));
+  if (!blob) throw new Error('canvas.toBlob returned null');
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let h = 0; for (const b of bytes) h = (h * 31 + b) >>> 0;
+  return h.toString(16);
+}
 return JSON.stringify({linked, corner,
   readPixels: h1.toString(16), webglDataURL: h2.toString(16),
-  canvas2d: h3.toString(16), glerror: gl.getError()});
+  canvas2d: h3.toString(16), glerror: gl.getError(),
+  webglBlob: await blobHash(c), canvas2dBlob: await blobHash(c2)});
 """
 
 
-def run(bin_path: str, seed: int) -> dict:
+def run(bin_path: str, seed: int, *, site_url: str, enabled: bool = True,
+        configured: bool = True) -> dict:
     with tempfile.TemporaryDirectory() as t:
         prof = os.path.join(t, "p")
         Path(prof).mkdir()
-        cfg = json.dumps({"canvas:seed": seed, "navigator.platform": "Win32",
-                          "fonts": ["Arial", "Verdana", "Georgia"],
-                          "fonts:spacing_seed": 0x5EED})
-        Path(prof, "user.js").write_text(
-            'user_pref("cloakfox.enabled", true);\n'
-            f'user_pref("cloakfox.s.cloak_cfg_0", {json.dumps(cfg)});\n')
+        # Noise now includes the full master secret and top-level site. Pin the
+        # complete identity across profiles, varying only canvas:seed below.
+        master = base64.b64encode(bytes(range(32))).decode()
+        cfg = {"fingerprint:secret": master,
+               "navigator.platform": "Win32",
+               "fonts": ["Arial", "Verdana", "Georgia"],
+               "fonts:spacing_seed": 0x5EED}
+        if configured:
+            cfg["canvas:seed"] = seed
+        # Keep a valid font configuration so SeedSync does not generate a new
+        # persona (and canvas seed) for the unconfigured-canvas control.
+        prefs = f'user_pref("cloakfox.enabled", {str(enabled).lower()});\n'
+        for vector in ("math_seed", "keyboard_seed", "timing_seed"):
+            prefs += f'user_pref("cloakfox.container.0.{vector}", {json.dumps(master)});\n'
+        prefs += 'user_pref("dom.security.https_only_mode", false);\n'
+        prefs += f'user_pref("cloakfox.s.cloak_cfg_0", {json.dumps(json.dumps(cfg))});\n'
+        Path(prof, "user.js").write_text(prefs)
         opts = Options()
         opts.binary_location = bin_path
         opts.add_argument("--headless")
@@ -114,27 +140,32 @@ def run(bin_path: str, seed: int) -> dict:
                               service=Service(service_args=["--allow-system-access"], log_output=str(Path(prof) / "g.log")))
         try:
             d.set_page_load_timeout(30)
-            d.get("https://example.com/")
+            d.get(site_url)
             time.sleep(1.3)
-            d.get("https://example.com/?w=1")
+            d.get(site_url + "?w=1")
             time.sleep(1.3)
-            return json.loads(d.execute_script(PROBE))
+            d.set_script_timeout(30)
+            return json.loads(d.execute_async_script(
+                "const done = arguments[arguments.length - 1];"
+                "(async () => {" + PROBE + "})().then(done, "
+                "e => done(JSON.stringify({err: String(e)})));")
+            )
         finally:
             d.quit()
 
 
-def main(bin_path: str) -> int:
-    a = run(bin_path, 111111)
-    b = run(bin_path, 999999)
-    a2 = run(bin_path, 111111)      # repeat of A — must reproduce exactly
-    base = run(bin_path, 0)         # seed 0 = noise disabled -> true baseline
+def check_runs(bin_path: str, site_url: str) -> int:
+    a = run(bin_path, 111111, site_url=site_url)
+    b = run(bin_path, 999999, site_url=site_url)
+    a2 = run(bin_path, 111111, site_url=site_url)      # repeat of A — must reproduce exactly
+    base = run(bin_path, 0, site_url=site_url)         # seed 0 = noise disabled -> true baseline
 
     if a.get("err") or b.get("err"):
         print(f"could not create a WebGL context: {a.get('err') or b.get('err')}")
         return 2
 
     print(f"  {'SIGNAL':<16}{'seedA':<12}{'seedB':<12}{'seedA again'}")
-    for k in ("readPixels", "webglDataURL", "canvas2d"):
+    for k in ("readPixels", "webglDataURL", "webglBlob", "canvas2d", "canvas2dBlob"):
         print(f"    {k:<14}{a[k]:<12}{b[k]:<12}{a2[k]}")
     print(f"  corner pixel: noised={a['corner']} baseline={base['corner']}")
     print(f"  linked={a['linked']} glerror={a['glerror']}")
@@ -152,8 +183,12 @@ def main(bin_path: str) -> int:
         fails.append("2D canvas hash identical across seeds — the seed never "
                      "reached the content process, so this run proves nothing")
 
+    for k in ("webglBlob", "canvas2dBlob"):
+        if a[k] == b[k]:
+            fails.append(f"{k} identical across different configured seeds")
+
     # 2. deterministic
-    for k in ("readPixels", "webglDataURL", "canvas2d"):
+    for k in ("readPixels", "webglDataURL", "webglBlob", "canvas2d", "canvas2dBlob"):
         if a[k] != a2[k]:
             fails.append(f"{k} changed between two runs of the SAME seed "
                          f"({a[k]} vs {a2[k]}) — noise must be deterministic per "
@@ -178,14 +213,52 @@ def main(bin_path: str) -> int:
         fails.append("noised readPixels equals the seed-0 baseline — noise did "
                      "not apply at all")
 
+    # 4. Native fallback stays session-randomized for both bypass cases.
+    for label, options in (
+        ("disabled", {"enabled": False}),
+        ("unconfigured", {"configured": False}),
+    ):
+        native = [run(bin_path, 111111, site_url=site_url, **options) for _ in range(2)]
+        if any(result.get("err") for result in native):
+            fails.append(f"{label} native canvas probe could not run: {native}")
+            continue
+        for k in ("webglDataURL", "webglBlob", "canvas2d", "canvas2dBlob"):
+            if native[0][k] == native[1][k]:
+                fails.append(f"{label} {k} lost native session randomization")
+        print(f"  native {label}: {native[0]['webglDataURL']} / "
+              f"{native[1]['webglDataURL']}")
+
     if fails:
         print("FAIL — WebGL readback noise regressed:")
         for f in fails:
             print(f"  - {f}")
         return 1
-    print("PASS — readPixels and WebGL toDataURL are noised per canvas:seed, "
-          "deterministic per container, and rendering is intact")
+    print("PASS — seeded readPixels/toDataURL/toBlob are deterministic, "
+          "rendering is intact, and disabled/unconfigured native policy remains")
     return 0
+
+
+def main(bin_path: str) -> int:
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            payload = b"<!doctype html><meta charset=utf-8><title>WebGL probe</title>"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *args):
+            pass
+
+    # One server/origin spans all fresh profiles, including native controls.
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        return check_runs(bin_path, f"http://127.0.0.1:{server.server_port}/")
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 if __name__ == "__main__":

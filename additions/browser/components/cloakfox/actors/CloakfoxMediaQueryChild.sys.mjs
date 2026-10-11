@@ -31,17 +31,14 @@
  */
 
 // Desktop-plausible pins. color-gamut is OS-derived (macOS panels are wide-gamut).
+// Pointer/hover are native: C++ handles persona touch counts and RDM overrides.
 function pinsForOS(os) {
   return {
-    "prefers-color-scheme": "light",
+    // Leave color scheme native so CSS and matchMedia follow Website appearance.
     "prefers-reduced-motion": "no-preference",
     "prefers-contrast": "no-preference",
     "forced-colors": "none",
     "inverted-colors": "none",
-    "pointer": "fine",
-    "any-pointer": "fine",
-    "hover": "hover",
-    "any-hover": "hover",
     "color-gamut": os === "macos" ? "p3" : "srgb",
     "dynamic-range": "standard",
     "update": "fast",

@@ -1,8 +1,7 @@
 diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
-index 274cdebc2e..b0183ecc6a 100644
 --- a/dom/geolocation/Geolocation.cpp
 +++ b/dom/geolocation/Geolocation.cpp
-@@ -34,6 +34,7 @@
+@@ -37,6 +37,7 @@
  #include "nsServiceManagerUtils.h"
  #include "nsThreadUtils.h"
  #include "nsXULAppAPI.h"
@@ -10,9 +9,9 @@ index 274cdebc2e..b0183ecc6a 100644
  
  class nsIPrincipal;
  
-@@ -1267,6 +1268,12 @@ void Geolocation::NotifyAllowedRequest(nsGeolocationRequest* aRequest) {
- 
- bool Geolocation::RegisterRequestWithPrompt(nsGeolocationRequest* request) {
+@@ -1146,6 +1147,12 @@
+ /* static */ bool Geolocation::RegisterRequestWithPrompt(
+     nsGeolocationRequest* request) {
    nsIEventTarget* target = GetMainThreadSerialEventTarget();
 +  if (MaskConfig::GetDouble("geolocation:latitude") &&
 +      MaskConfig::GetDouble("geolocation:longitude")) {
@@ -24,18 +23,17 @@ index 274cdebc2e..b0183ecc6a 100644
    if (pr == ContentPermissionRequestBase::PromptResult::Granted) {
      request->RequestDelayedTask(target,
 diff --git a/dom/geolocation/GeolocationPosition.cpp b/dom/geolocation/GeolocationPosition.cpp
-index 19ca685251..a286a4a784 100644
 --- a/dom/geolocation/GeolocationPosition.cpp
 +++ b/dom/geolocation/GeolocationPosition.cpp
-@@ -9,6 +9,7 @@
- 
+@@ -7,6 +7,7 @@
  #include "mozilla/FloatingPoint.h"
+ #include "mozilla/dom/GeolocationCoordinates.h"
  #include "mozilla/dom/GeolocationPositionBinding.h"
 +#include "MaskConfig.hpp"
  
  using mozilla::EqualOrBothNaN;
  
-@@ -62,13 +63,19 @@ NS_IMPL_RELEASE(nsGeoPositionCoords)
+@@ -58,13 +59,19 @@
  
  NS_IMETHODIMP
  nsGeoPositionCoords::GetLatitude(double* aLatitude) {
@@ -57,7 +55,7 @@ index 19ca685251..a286a4a784 100644
    return NS_OK;
  }
  
-@@ -80,7 +87,10 @@ nsGeoPositionCoords::GetAltitude(double* aAltitude) {
+@@ -76,7 +83,10 @@
  
  NS_IMETHODIMP
  nsGeoPositionCoords::GetAccuracy(double* aAccuracy) {
@@ -70,11 +68,9 @@ index 19ca685251..a286a4a784 100644
  }
  
 diff --git a/dom/geolocation/moz.build b/dom/geolocation/moz.build
-index 2d6b6b5fab..0c7ed74c6d 100644
 --- a/dom/geolocation/moz.build
 +++ b/dom/geolocation/moz.build
-@@ -84,4 +84,7 @@ elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
- BROWSER_CHROME_MANIFESTS += ["test/browser/browser.toml"]
+@@ -73,3 +73,6 @@
  MOCHITEST_CHROME_MANIFESTS += ["test/chrome/chrome.toml"]
  MOCHITEST_MANIFESTS += ["test/mochitest/mochitest.toml"]
  XPCSHELL_TESTS_MANIFESTS += ["test/unit/xpcshell.toml"]
@@ -82,12 +78,11 @@ index 2d6b6b5fab..0c7ed74c6d 100644
 +# Cloakfox: include path for MaskConfig.hpp
 +LOCAL_INCLUDES += ["/cloakcfg"]
 diff --git a/dom/system/NetworkGeolocationProvider.sys.mjs b/dom/system/NetworkGeolocationProvider.sys.mjs
-index 7edc62b4a6..19b77aa6b6 100644
 --- a/dom/system/NetworkGeolocationProvider.sys.mjs
 +++ b/dom/system/NetworkGeolocationProvider.sys.mjs
-@@ -442,17 +442,53 @@ NetworkGeolocationProvider.prototype = {
-     let url = Services.urlFormatter.formatURLPref("geo.provider.network.url");
-     LOG("Sending request");
+@@ -399,17 +399,53 @@
+       `Sending IP-address-based geolocation request${logStr} to network service: ${url}`
+     );
  
 +    // Use CLOAK_CONFIG geolocation if configured
 +    let DEFAULT_DEG = -180;
@@ -103,8 +98,8 @@ index 7edc62b4a6..19b77aa6b6 100644
 +
      let result;
      try {
--      result = await this.makeRequest(url, wifiData);
--      LOG(
+-      result = await this.fetchLocation(url, wifiData);
+-      lazy.log.info(
 -        `geo provider reported: ${result.location.lng}:${result.location.lat}`
 -      );
 -      let newLocation = new NetworkGeoPositionObject(
@@ -134,9 +129,9 @@ index 7edc62b4a6..19b77aa6b6 100644
 +        );
 +      } else {
 +        // No CLOAK_CONFIG override, use real geolocation
-+        result = await this.makeRequest(url, wifiData);
++        result = await this.fetchLocation(url, wifiData);
 +
-+        LOG(
++        lazy.log.info(
 +          `geo provider reported: ${result.location.lng}:${result.location.lat}`
 +        );
 +        newLocation = new NetworkGeoPositionObject(
@@ -148,4 +143,3 @@ index 7edc62b4a6..19b77aa6b6 100644
  
        if (this.listener) {
          this.listener.update(newLocation);
-

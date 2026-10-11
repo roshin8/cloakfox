@@ -1,0 +1,28 @@
+{"completedBeforeWorkspaceFixtures": {"exactRevocation": true, "nativeProfileAPIs": true, "privateIsolation": true, "staleConsentRejected": true, "nativeTimedExpiry": true, "nativeWorkspaceCreation": true, "nativeSessionExpiry": true}}
+{"stage": "workspace-A-initial", "actual": {"cookie": true, "login": true, "history": true, "addon": true, "marker": "A"}, "expected": {"cookie": true, "login": true, "history": true, "addon": true, "marker": "A"}, "diagnostics": {"addon": {"appDisabled": false, "id": "workspace-isolation@cloakfox.test", "isActive": true, "isCompatible": true, "pendingOperations": 0, "signedState": 0, "softDisabled": false, "temporarilyInstalled": false, "userDisabled": false}, "historyEnabled": true, "loginCount": 1, "loginOrigins": ["https://workspace-fixture.example"], "privateAutostart": false, "profile": "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-permissions-workspaces-h0cu9zzy/app-data/Profiles/8mrt5tir.Isolated workspace A", "safeMode": false, "sanitizeOnShutdown": false, "signaturesRequired": false}}
+{"stage": "workspace-B-empty", "actual": {"cookie": false, "login": false, "history": false, "addon": false, "marker": ""}, "expected": {"cookie": false, "login": false, "history": false, "addon": false, "marker": ""}, "diagnostics": {"addon": null, "historyEnabled": true, "loginCount": 0, "loginOrigins": [], "privateAutostart": false, "profile": "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-permissions-workspaces-h0cu9zzy/app-data/Profiles/3lpiivff.Isolated workspace B", "safeMode": false, "sanitizeOnShutdown": false, "signaturesRequired": false}}
+{"stage": "workspace-A-restart", "actual": {"cookie": true, "login": true, "history": true, "addon": true, "marker": "A"}, "expected": {"cookie": true, "login": true, "history": true, "addon": true, "marker": "A"}, "diagnostics": {"addon": {"appDisabled": false, "id": "workspace-isolation@cloakfox.test", "isActive": true, "isCompatible": true, "pendingOperations": 0, "signedState": 0, "softDisabled": false, "temporarilyInstalled": false, "userDisabled": false}, "historyEnabled": true, "loginCount": 1, "loginOrigins": ["https://workspace-fixture.example"], "privateAutostart": false, "profile": "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-permissions-workspaces-h0cu9zzy/app-data/Profiles/8mrt5tir.Isolated workspace A", "safeMode": false, "sanitizeOnShutdown": false, "signaturesRequired": false}}
+{
+  "exactRevocation": true,
+  "nativeProfileAPIs": true,
+  "privateIsolation": true,
+  "staleConsentRejected": true,
+  "nativeTimedExpiry": true,
+  "nativeWorkspaceCreation": true,
+  "nativeSessionExpiry": true,
+  "independentProfileStorage": [
+    "cookies",
+    "passwords",
+    "history",
+    "extensions",
+    "settings"
+  ],
+  "profileStorageSurvivesRestart": true,
+  "nativeChildLauncher": {
+    "exactExecutableAndProfileCommand": true,
+    "nativeProfileLockObserved": true,
+    "ownedChildTerminated": true
+  },
+  "nativeChildLauncherExercised": true
+}
+PASS: native permissions expiry, isolated workspace catalog/data, and actual native profile launcher

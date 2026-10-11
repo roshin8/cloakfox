@@ -1,0 +1,699 @@
+diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
+--- a/dom/base/AbstractRange.cpp
++++ b/dom/base/AbstractRange.cpp
+@@ -985,7 +985,7 @@
+   // Cloakfox: same sub-pixel noise pattern as Element::GetBoundingClientRect.
+   // Range-based text measurements are a separate code path used for font
+   // fingerprinting via document.createRange().
+-  if (auto seed = CloakfoxSiteSeed::ForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value();
+     auto n = [&s]() {
+       s = s * 1664525u + 1013904223u;
+@@ -1054,7 +1054,7 @@
+       aFlushLayout);
+   // Cloakfox: noise each rect in the list. CreepJS uses Range.getClientRects
+   // against rendered text to probe per-character metrics.
+-  if (auto seed = CloakfoxSiteSeed::ForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value();
+     auto n = [&s]() {
+       s = s * 1664525u + 1013904223u;
+diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
+--- a/dom/base/Element.cpp
++++ b/dom/base/Element.cpp
+@@ -1227,7 +1227,7 @@
+   // Layout-based fingerprints (e.g. font rendering detection) measure
+   // getBoundingClientRect across elements; we add deterministic per-context
+   // jitter so every container sees a different value.
+-  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value();
+     auto n = [&s]() {
+       s = s * 1664525u + 1013904223u;
+@@ -1257,7 +1257,7 @@
+ 
+   // Cloakfox: same sub-pixel noise as getBoundingClientRect, applied to
+   // every rect in the list. CreepJS measures per-rect for multi-line text.
+-  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value();
+     auto n = [&s]() {
+       s = s * 1664525u + 1013904223u;
+@@ -6827,7 +6827,7 @@
+   // Cloakfox: add integer jitter (±1px) to offset measurements. Covers
+   // Element.offsetWidth/Height/Left/Top, which CreepJS and fingerprint.com
+   // use for font detection via span.offsetWidth comparison.
+-  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value() ^ static_cast<uint32_t>(aRect.width * 31 +
+                                                        aRect.height * 17);
+     s = s * 1664525u + 1013904223u;
+diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
+--- a/dom/base/Navigator.cpp
++++ b/dom/base/Navigator.cpp
+@@ -484,6 +484,16 @@
+ void Navigator::GetLanguages(nsTArray<nsString>& aLanguages) {
+   BrowsingContext* bc = mWindow ? mWindow->GetBrowsingContext() : nullptr;
+   if (bc) {
++    const auto raw = CloakConfigOverlay_Get(
++        bc->OriginAttributesRef().mUserContextId);
++    if (!raw.empty() && nlohmann::json::accept(raw)) {
++      const auto cfg = nlohmann::json::parse(raw);
++      if (cfg.contains("locale:all") && cfg["locale:all"].is_string()) {
++        nsAutoCString languages(cfg["locale:all"].get<std::string>().c_str());
++        GetAcceptLanguages(aLanguages, &languages);
++        return;
++      }
++    }
+     const nsCString& languageOverride = bc->Top()->GetLanguageOverride();
+ 
+     if (!languageOverride.IsEmpty()) {
+diff --git a/dom/base/TimezoneManager.cpp b/dom/base/TimezoneManager.cpp
+--- a/dom/base/TimezoneManager.cpp
++++ b/dom/base/TimezoneManager.cpp
+@@ -1,4 +1,5 @@
+ #include "TimezoneManager.h"
++#include "MaskConfig.hpp"
+ #include "nsPIDOMWindowInlines.h"
+ #include "RoverfoxStorageManager.h"
+ #include "nsGlobalWindowInner.h"
+@@ -9,6 +10,23 @@
+ 
+ namespace mozilla {
+ namespace dom {
++
++/* static */ bool TimezoneManager::GetTimezone(uint32_t userContextId, nsAString& outTimezone) {
++    // The container overlay is authoritative even after the one-shot setter
++    // was disabled. Never reuse another container's stored fallback.
++    const auto raw = CloakConfigOverlay_Get(userContextId);
++    if (!raw.empty() && nlohmann::json::accept(raw)) {
++      const auto cfg = nlohmann::json::parse(raw);
++      if (cfg.contains("timezone") && cfg["timezone"].is_string()) {
++        outTimezone.Assign(NS_ConvertUTF8toUTF16(
++            cfg["timezone"].get<std::string>().c_str()));
++        return true;
++      }
++    }
++    nsAutoString key;
++    key.AppendPrintf("timezone_%u", userContextId);
++    return RoverfoxStorageManager::GetString(key, outTimezone);
++  }
+ 
+ /* static */ nsString
+ TimezoneManager::DisabledKeyForUserContext(uint32_t userContextId) {
+diff --git a/dom/base/TimezoneManager.h b/dom/base/TimezoneManager.h
+--- a/dom/base/TimezoneManager.h
++++ b/dom/base/TimezoneManager.h
+@@ -31,11 +31,7 @@
+     DisableFunction(userContextId);
+   }
+ 
+-  static bool GetTimezone(uint32_t userContextId, nsAString& outTimezone) {
+-    nsAutoString key;
+-    key.AppendPrintf("timezone_%u", userContextId);
+-    return RoverfoxStorageManager::GetString(key, outTimezone);
+-  }
++  static bool GetTimezone(uint32_t userContextId, nsAString& outTimezone);
+ 
+   static void DisableFunction(uint32_t userContextId);
+   static bool IsFunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj);
+diff --git a/dom/base/nsGlobalWindowOuter.cpp b/dom/base/nsGlobalWindowOuter.cpp
+--- a/dom/base/nsGlobalWindowOuter.cpp
++++ b/dom/base/nsGlobalWindowOuter.cpp
+@@ -2071,6 +2071,24 @@
+       aDocument->GetBrowsingContext()->Top()->GetLanguageOverride(),
+       aDocument->GetBrowsingContext()->Top()->GetTimezoneOverride());
+ 
++  // Region defaults are scoped to this principal and realm. Explicit Intl
++  // locale arguments retain normal ICU parsing and behavior.
++  if (!principal->IsSystemPrincipal()) {
++    const auto raw = CloakConfigOverlay_Get(
++        principal->OriginAttributesRef().mUserContextId);
++    if (!raw.empty() && nlohmann::json::accept(raw)) {
++      const auto cfg = nlohmann::json::parse(raw);
++      if (cfg.contains("timezone") && cfg["timezone"].is_string()) {
++        options.behaviors().setTimeZoneOverride(
++            cfg["timezone"].get<std::string>().c_str());
++      }
++      if (cfg.contains("locale:default") && cfg["locale:default"].is_string()) {
++        options.behaviors().setLocaleOverride(
++            cfg["locale:default"].get<std::string>().c_str());
++      }
++    }
++  }
++
+   // Determine if we need the Components object.
+   bool needComponents = principal->IsSystemPrincipal();
+   uint32_t flags = needComponents ? 0 : xpc::OMIT_COMPONENTS_OBJECT;
+diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderingContext2D.cpp
+--- a/dom/canvas/CanvasRenderingContext2D.cpp
++++ b/dom/canvas/CanvasRenderingContext2D.cpp
+@@ -5325,7 +5325,7 @@
+         processor.mBoundingBox.YMost() + baselineAnchor;
+     // Cloakfox: add deterministic sub-pixel noise to text metrics using
+     // canvas:seed so measureText is not a reliable font fingerprint.
+-    if (auto seed = std::optional<uint32_t>(CloakfoxSiteSeed::Configured(
++    if (auto seed = std::optional<uint32_t>(CloakfoxSiteSeed::Geometry(
+         PrincipalOrNull() ? PrincipalOrNull()->OriginAttributesRef().mUserContextId : 0,
+         "canvas:seed", GetCookieJarSettings())); seed.value_or(0)) {
+       uint32_t s = seed.value();
+diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
+--- a/dom/geolocation/Geolocation.cpp
++++ b/dom/geolocation/Geolocation.cpp
+@@ -38,6 +38,8 @@
+ #include "nsThreadUtils.h"
+ #include "nsXULAppAPI.h"
+ #include "MaskConfig.hpp"
++#include <cmath>
++#include "mozilla/FloatingPoint.h"
+ 
+ class nsIPrincipal;
+ 
+@@ -87,6 +89,7 @@
+   bool WantsHighAccuracy() {
+     return !mShutdown && mOptions && mOptions->mEnableHighAccuracy;
+   }
++  bool PrepareSyntheticPosition();
+   void SetTimeoutTimer();
+   void StopTimeoutTimer();
+   MOZ_CAN_RUN_SCRIPT
+@@ -141,6 +144,7 @@
+   UniquePtr<PositionOptions> mOptions;
+ 
+   RefPtr<Geolocation> mLocator;
++  RefPtr<nsGeoPosition> mSyntheticPosition;
+ 
+   int32_t mWatchId;
+   bool mShutdown;
+@@ -375,11 +379,54 @@
+   cancelRequestOnError.release();
+ }
+ 
++// Prepare only the configured snapshot. This grants no permission and does
++// not touch a device/provider. Callers must still use the normal site prompt.
++bool nsGeolocationRequest::PrepareSyntheticPosition() {
++  if (mSyntheticPosition) return true;
++  if (nsIPrincipal* principal = GetPrincipal()) {
++    const auto raw = CloakConfigOverlay_Get(
++        principal->OriginAttributesRef().mUserContextId);
++    if (!raw.empty() && nlohmann::json::accept(raw)) {
++      const auto cfg = nlohmann::json::parse(raw);
++      if (cfg.contains("geolocation:latitude") &&
++          cfg.contains("geolocation:longitude") &&
++          cfg.contains("geolocation:accuracy") &&
++          cfg["geolocation:latitude"].is_number() &&
++          cfg["geolocation:longitude"].is_number() &&
++          cfg["geolocation:accuracy"].is_number()) {
++        const double lat = cfg["geolocation:latitude"].get<double>();
++        const double lon = cfg["geolocation:longitude"].get<double>();
++        const double accuracy = cfg["geolocation:accuracy"].get<double>();
++        if (std::isfinite(lat) && std::abs(lat) <= 90 &&
++            std::isfinite(lon) && std::abs(lon) <= 180 &&
++            std::isfinite(accuracy) && accuracy >= 1000) {
++          RefPtr<nsGeoPosition> position = new nsGeoPosition(
++              lat, lon, UnspecifiedNaN<double>(), accuracy,
++              UnspecifiedNaN<double>(), UnspecifiedNaN<double>(),
++              UnspecifiedNaN<double>(), PR_Now() / PR_USEC_PER_MSEC);
++          mSyntheticPosition = position;
++          return true;
++        }
++      }
++    }
++  }
++
++  return false;
++}
++
+ NS_IMETHODIMP
+ nsGeolocationRequest::Allow(JS::Handle<JS::Value> aChoices) {
+   MOZ_ASSERT(aChoices.isUndefined());
+ 
+   if (mLocator->ClearPendingRequest(this)) {
++    return NS_OK;
++  }
++
++  // Site permission has been granted before Allow is entered. Synthetic
++  // positions need no OS device or network provider.
++  if (PrepareSyntheticPosition()) {
++    if (mIsWatchPositionRequest) mLocator->NotifyAllowedRequest(this);
++    Update(mSyntheticPosition);
+     return NS_OK;
+   }
+ 
+@@ -520,6 +567,9 @@
+ }
+ 
+ void nsGeolocationRequest::SendLocation(nsIDOMGeoPosition* aPosition) {
++  // A different request may start the real provider while this watch exists.
++  // Never expose that provider's position through a synthetic request.
++  if (mSyntheticPosition) aPosition = mSyntheticPosition;
+   if (mShutdown) {
+     // Ignore SendLocationEvents issued before we were cleared.
+     return;
+@@ -1147,12 +1197,6 @@
+ /* static */ bool Geolocation::RegisterRequestWithPrompt(
+     nsGeolocationRequest* request) {
+   nsIEventTarget* target = GetMainThreadSerialEventTarget();
+-  if (MaskConfig::GetDouble("geolocation:latitude") &&
+-      MaskConfig::GetDouble("geolocation:longitude")) {
+-    request->RequestDelayedTask(target,
+-                                nsGeolocationRequest::DelayedTaskType::Allow);
+-    return true;
+-  }
+   ContentPermissionRequestBase::PromptResult pr = request->CheckPromptPrefs();
+   if (pr == ContentPermissionRequestBase::PromptResult::Granted) {
+     request->RequestDelayedTask(target,
+@@ -1183,6 +1227,15 @@
+ }
+ 
+ void Geolocation::RequestIfPermitted(nsGeolocationRequest* request) {
++  // A manual synthetic position needs site permission, not OS device
++  // permission. Otherwise GetIgnoreAllowSitePermission would force an extra
++  // OS-warning prompt even when the site already has permission. Unknown and
++  // denied site permissions still follow the unmodified normal prompt path.
++  if (request->PrepareSyntheticPosition()) {
++    RegisterRequestWithPrompt(request);
++    return;
++  }
++
+   auto getPermission = [request = RefPtr{request}](auto aPermission) {
+     switch (aPermission) {
+       case geolocation::SystemGeolocationPermissionBehavior::
+diff --git a/dom/geolocation/GeolocationPosition.cpp b/dom/geolocation/GeolocationPosition.cpp
+--- a/dom/geolocation/GeolocationPosition.cpp
++++ b/dom/geolocation/GeolocationPosition.cpp
+@@ -7,7 +7,6 @@
+ #include "mozilla/FloatingPoint.h"
+ #include "mozilla/dom/GeolocationCoordinates.h"
+ #include "mozilla/dom/GeolocationPositionBinding.h"
+-#include "MaskConfig.hpp"
+ 
+ using mozilla::EqualOrBothNaN;
+ 
+@@ -59,19 +58,13 @@
+ 
+ NS_IMETHODIMP
+ nsGeoPositionCoords::GetLatitude(double* aLatitude) {
+-  if (auto value = MaskConfig::GetDouble("geolocation:latitude"))
+-    *aLatitude = value.value();
+-  else
+-    *aLatitude = mLat;
++  *aLatitude = mLat;
+   return NS_OK;
+ }
+ 
+ NS_IMETHODIMP
+ nsGeoPositionCoords::GetLongitude(double* aLongitude) {
+-  if (auto value = MaskConfig::GetDouble("geolocation:longitude"))
+-    *aLongitude = value.value();
+-  else
+-    *aLongitude = mLong;
++  *aLongitude = mLong;
+   return NS_OK;
+ }
+ 
+@@ -83,10 +76,7 @@
+ 
+ NS_IMETHODIMP
+ nsGeoPositionCoords::GetAccuracy(double* aAccuracy) {
+-  if (auto value = MaskConfig::GetDouble("geolocation:accuracy"))
+-    *aAccuracy = value.value();
+-  else
+-    *aAccuracy = mHError;
++  *aAccuracy = mHError;
+   return NS_OK;
+ }
+ 
+diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
+--- a/dom/svg/SVGGraphicsElement.cpp
++++ b/dom/svg/SVGGraphicsElement.cpp
+@@ -45,7 +45,7 @@
+ 
+ // Cloakfox: sub-pixel noise on a gfx::Rect for SVG bbox spoofing.
+ static gfx::Rect CloakNoiseRect(Document* aDoc, gfx::Rect aRect) {
+-  auto seed = CloakfoxSiteSeed::ForDocument(aDoc, "canvas:seed");
++  auto seed = CloakfoxSiteSeed::GeometryForDocument(aDoc, "canvas:seed");
+   if (!seed || seed.value() == 0) return aRect;
+   uint32_t s = seed.value();
+   auto n = [&s]() {
+@@ -136,7 +136,7 @@
+ // Cloakfox: noise the 6 components of a 2D affine matrix. Applied to
+ // getCTM / getScreenCTM so SVG transform fingerprints differ per container.
+ static gfx::Matrix CloakNoiseMatrix(Document* aDoc, gfx::Matrix m) {
+-  auto seed = CloakfoxSiteSeed::ForDocument(aDoc, "canvas:seed");
++  auto seed = CloakfoxSiteSeed::GeometryForDocument(aDoc, "canvas:seed");
+   if (!seed || seed.value() == 0) return m;
+   uint32_t s = seed.value();
+   auto n = [&s]() {
+diff --git a/dom/svg/SVGTextContentElement.cpp b/dom/svg/SVGTextContentElement.cpp
+--- a/dom/svg/SVGTextContentElement.cpp
++++ b/dom/svg/SVGTextContentElement.cpp
+@@ -119,7 +119,7 @@
+   SVGTextFrame* textFrame = GetSVGTextFrame();
+   float length = textFrame ? textFrame->GetComputedTextLength(this) : 0.0f;
+   // Cloakfox: sub-pixel noise to defeat SVG text-based font fingerprinting.
+-  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value() ^ static_cast<uint32_t>(length * 1000);
+     s = s * 1664525u + 1013904223u;
+     length += (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+diff --git a/dom/system/NetworkGeolocationProvider.sys.mjs b/dom/system/NetworkGeolocationProvider.sys.mjs
+--- a/dom/system/NetworkGeolocationProvider.sys.mjs
++++ b/dom/system/NetworkGeolocationProvider.sys.mjs
+@@ -399,53 +399,17 @@
+       `Sending IP-address-based geolocation request${logStr} to network service: ${url}`
+     );
+ 
+-    // Use CLOAK_CONFIG geolocation if configured
+-    let DEFAULT_DEG = -180;
+-
+-    let latitude = ChromeUtils.camouGetDouble("geolocation:latitude", DEFAULT_DEG);
+-    let longitude = ChromeUtils.camouGetDouble("geolocation:longitude", DEFAULT_DEG);
+-    let accuracy = ChromeUtils.camouGetDouble("geolocation:accuracy", 0);
+-
+-    let countDecimalPlaces = (num) => {
+-      if (Math.floor(num) === num) return 0;
+-      return num.toString().split(".")[1].length || 0;
+-    }
+-
+     let result;
+     try {
+-      let newLocation;
+-      if (latitude != DEFAULT_DEG && longitude != DEFAULT_DEG) {
+-        // Use the latitude and longitude from CLOAK_CONFIG
+-        ChromeUtils.camouDebug(
+-          `Use Cloakfox geo: ${latitude}:${longitude} accuracy:${accuracy}`
+-        );
+-        // If accuracy is not set, calculate it using decimal precision
+-        if (!accuracy) {
+-          let latPrecision = countDecimalPlaces(latitude);
+-          let lonPrecision = countDecimalPlaces(longitude);
+-          let precision = Math.min(latPrecision, lonPrecision);
+-
+-          // Estimate accuracy in meters
+-          accuracy = (111320 * Math.cos(latitude * Math.PI / 180)) / Math.pow(10, precision);
+-        }
+-        newLocation = new NetworkGeoPositionObject(
+-          latitude,
+-          longitude,
+-          accuracy
+-        );
+-      } else {
+-        // No CLOAK_CONFIG override, use real geolocation
+-        result = await this.fetchLocation(url, wifiData);
+-
+-        lazy.log.info(
+-          `geo provider reported: ${result.location.lng}:${result.location.lat}`
+-        );
+-        newLocation = new NetworkGeoPositionObject(
+-          result.location.lat,
+-          result.location.lng,
+-          accuracy || result.accuracy
+-        );
+-      }
++      result = await this.fetchLocation(url, wifiData);
++      lazy.log.info(
++        `geo provider reported: ${result.location.lng}:${result.location.lat}`
++      );
++      let newLocation = new NetworkGeoPositionObject(
++        result.location.lat,
++        result.location.lng,
++        result.accuracy
++      );
+ 
+       if (this.listener) {
+         this.listener.update(newLocation);
+diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
+--- a/dom/workers/WorkerNavigator.cpp
++++ b/dom/workers/WorkerNavigator.cpp
+@@ -74,6 +74,23 @@
+   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+   if (workerPrivate && !workerPrivate->GetLanguageOverride().IsEmpty()) {
+     properties.mLanguages = workerPrivate->GetLanguageOverride().Clone();
++  }
++
++  if (workerPrivate) {
++    const auto raw = CloakConfigOverlay_Get(
++        workerPrivate->GetOriginAttributes().mUserContextId);
++    if (!raw.empty() && nlohmann::json::accept(raw)) {
++      const auto cfg = nlohmann::json::parse(raw);
++      if (cfg.contains("navigator.languages") && cfg["navigator.languages"].is_array()) {
++        properties.mLanguages.Clear();
++        for (const auto& language : cfg["navigator.languages"]) {
++          if (language.is_string()) {
++            properties.mLanguages.AppendElement(
++                NS_ConvertUTF8toUTF16(language.get<std::string>().c_str()));
++          }
++        }
++      }
++    }
+   }
+ 
+   RefPtr<WorkerNavigator> navigator = new WorkerNavigator(properties, aOnLine);
+diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -3019,6 +3019,17 @@
+           ShouldResistFingerprinting(RFPTarget::JSMathFdlibm),
+           ShouldResistFingerprinting(RFPTarget::JSLocale), languageOverride,
+           timezoneOverride);
++      if (!UsesSystemPrincipal()) {
++        const auto raw = CloakConfigOverlay_Get(
++            GetOriginAttributes().mUserContextId);
++        if (!raw.empty() && nlohmann::json::accept(raw)) {
++          const auto cfg = nlohmann::json::parse(raw);
++          if (cfg.contains("locale:default") && cfg["locale:default"].is_string()) {
++            contentRealmOptions.behaviors().setLocaleOverride(
++                cfg["locale:default"].get<std::string>().c_str());
++          }
++        }
++      }
+       // Check if it's a privileged addon executing in order to allow access
+       // to SharedArrayBuffer
+       if (mLoadInfo.mPrincipal) {
+diff --git a/netwerk/base/nsProtocolProxyService.cpp b/netwerk/base/nsProtocolProxyService.cpp
+--- a/netwerk/base/nsProtocolProxyService.cpp
++++ b/netwerk/base/nsProtocolProxyService.cpp
+@@ -158,6 +158,24 @@
+                                ? 0 : Preferences::GetInt(pref.get(), 2);
+       nsAutoCString expected("cloakfox-container:");
+       expected.AppendInt(ucid);
++      nsAutoCString bindingPref("cloakfox.container.");
++      bindingPref.AppendInt(ucid);
++      bindingPref.AppendLiteral(".proxy_ref");
++      nsAutoCString reference;
++      Preferences::GetCString(bindingPref.get(), reference);
++      if (!reference.IsEmpty()) {
++        nsAutoCString revisionPref("cloakfox.container.");
++        revisionPref.AppendInt(ucid);
++        revisionPref.AppendLiteral(".proxy_revision");
++        nsAutoCString revision;
++        Preferences::GetCString(revisionPref.get(), revision);
++        expected.AssignLiteral("cloakfox-managed:");
++        expected.AppendInt(ucid);
++        expected.Append(':');
++        expected.Append(reference);
++        expected.Append(':');
++        expected.Append(revision);
++      }
+       nsAutoCString isolation;
+       if (aProxyInfo) aProxyInfo->GetConnectionIsolationKey(isolation);
+       if (mode != 0 && (mode != 1 || !aProxyInfo || !isolation.Equals(expected))) {
+diff --git a/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp b/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
+--- a/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
++++ b/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
+@@ -138,6 +138,14 @@
+   nsAutoCString challenges;
+   mProxyAuth = (httpStatus == 407);
+ 
++  // Named Cloakfox proxies supply their own preemptive Basic credentials.
++  // Never negotiate a different identity from the browser-wide proxy cache or
++  // prompt after rejection (including a proxy configured without credentials).
++  if (mProxyAuth && mProxyInfo &&
++      mProxyInfo->ConnectionIsolationKey().Find("cloakfox-managed:") == 0) {
++    return NS_ERROR_PROXY_AUTHENTICATION_FAILED;
++  }
++
+   rv = PrepareForAuthentication(mProxyAuth);
+   if (NS_FAILED(rv)) return rv;
+ 
+@@ -1581,6 +1589,20 @@
+   if (header == nsHttp::Proxy_Authorization) {
+     continuationState = &mProxyAuthContinuationState;
+ 
++    if (mProxyInfo &&
++        mProxyInfo->ConnectionIsolationKey().Find("cloakfox-managed:") == 0) {
++      // This route is scoped by container + catalog identity + revision at the
++      // connection layer. Do not allow the global proxy auth cache to override
++      // its credentials. SetProxyCredentials is a proxy header, not an origin
++      // Authorization header, and is consumed by the CONNECT tunnel.
++      const auto& credentials = mProxyInfo->ProxyAuthorizationHeader();
++      if (!credentials.IsEmpty()) {
++        rv = mAuthChannel->SetProxyCredentials(credentials);
++        MOZ_ASSERT(NS_SUCCEEDED(rv));
++      }
++      return;
++    }
++
+     if (mProxyInfo) {
+       nsAutoCString type;
+       mProxyInfo->GetType(type);
+diff --git a/intl/components/src/Locale.cpp b/intl/components/src/Locale.cpp
+--- a/intl/components/src/Locale.cpp
++++ b/intl/components/src/Locale.cpp
+@@ -27,48 +27,13 @@
+ using namespace intl::LanguageTagLimits;
+ 
+ 
+-// Helper methods for header file
+-
+-const char* Locale::GetCamouLanguage() {
+-  if (auto lang = MaskConfig::GetString("locale:language"))
+-    return lang.value().c_str();
+-  return nullptr;
+-}
+-
+-const char* Locale::GetCamouRegion() {
+-  if (auto region = MaskConfig::GetString("locale:region"))
+-    return region.value().c_str();
+-  return nullptr;
+-}
+-
+-const char* Locale::GetCamouScript() {
+-  if (auto script = MaskConfig::GetString("locale:script"))
+-    return script.value().c_str();
+-  return nullptr;
+-}
+-
+-// Publicly exposed methods
+-
+-const char* Locale::GetCamouLocale() {
+-  static std::string locale;
+-
+-  if (auto lang = MaskConfig::GetString("locale:language"))
+-    if (auto region = MaskConfig::GetString("locale:region"))
+-      locale = (lang.value() + "-" + region.value());
+-  if (auto value = MaskConfig::GetString("navigator.language"))
+-    locale = value.value();
+-  if (locale.empty())
+-    return nullptr;
+-  return locale.c_str();
+-}
+-
+-const char* Locale::GetDefaultLocale() {
+-  // In Cloakfox, GetDefaultLocale is defined outside the header
+-  // to access MaskConfig.
+-  if (auto value = GetCamouLocale())
+-    return value;
+-  return uloc_getDefault();
+-}
++// Region defaults live on individual JS realms. ICU and OS defaults must
++// remain process-neutral, and explicit locale subtags must never be rewritten.
++const char* Locale::GetCamouLanguage() { return nullptr; }
++const char* Locale::GetCamouRegion() { return nullptr; }
++const char* Locale::GetCamouScript() { return nullptr; }
++const char* Locale::GetCamouLocale() { return nullptr; }
++const char* Locale::GetDefaultLocale() { return uloc_getDefault(); }
+ 
+ template <typename CharT>
+ bool IsStructurallyValidLanguageTag(Span<const CharT> aLanguage) {
+diff --git a/intl/components/src/Locale.h b/intl/components/src/Locale.h
+--- a/intl/components/src/Locale.h
++++ b/intl/components/src/Locale.h
+@@ -208,11 +208,8 @@
+ 
+  private:
+   LanguageSubtag mLanguage = {};
+-  mutable LanguageSubtag mCamouLanguage = {};
+   ScriptSubtag mScript = {};
+-  mutable ScriptSubtag mCamouScript = {};
+   RegionSubtag mRegion = {};
+-  mutable RegionSubtag mCamouRegion = {};
+ 
+   VariantsVector mVariants;
+   ExtensionsVector mExtensions;
+@@ -341,28 +338,10 @@
+     }
+   };
+ 
+-  const LanguageSubtag& Language() const {
+-    if (const char* lang = GetCamouLanguage()) {
+-      mCamouLanguage.Set(mozilla::Span<const char>(lang, strlen(lang)));
+-      return mCamouLanguage;
+-    }
+-    return mLanguage;
+-  }
+-  const ScriptSubtag& Script() const {
+-    if (const char* script = GetCamouScript()) {
+-      mCamouScript.Set(mozilla::Span<const char>(script, strlen(script)));
+-      return mCamouScript;
+-    }
+-    return mScript;
+-  }
+-  const RegionSubtag& Region() const {
+-    if (const char* region = GetCamouRegion()) {
+-      mCamouRegion.Set(mozilla::Span<const char>(region, strlen(region)));
+-      return mCamouRegion;
+-    }
+-    return mRegion;
+-  }
+-  
++  const LanguageSubtag& Language() const { return mLanguage; }
++  const ScriptSubtag& Script() const { return mScript; }
++  const RegionSubtag& Region() const { return mRegion; }
++
+   auto Variants() const { return SubtagEnumeration(mVariants); }
+   auto Extensions() const { return SubtagEnumeration(mExtensions); }
+   Maybe<Span<const char>> PrivateUse() const {
+diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/HttpBaseChannel.cpp
+--- a/netwerk/protocol/http/HttpBaseChannel.cpp
++++ b/netwerk/protocol/http/HttpBaseChannel.cpp
+@@ -9,6 +9,7 @@
+ #include <utility>
+ 
+ #include "HttpBaseChannel.h"
++#include "MaskConfig.hpp"
+ #include "HttpLog.h"
+ #include "LoadInfo.h"
+ #include "ReferrerInfo.h"
+@@ -400,9 +401,23 @@
+     mLoadInfo->GetAssociatedBrowsingContext(getter_AddRefs(browsingContext));
+   }
+ 
+-  const nsCString& languageOverride =
++  nsAutoCString languageOverride(
+       browsingContext ? browsingContext->Top()->GetLanguageOverride()
+-                      : EmptyCString();
++                      : EmptyCString());
++  // HTTP headers are initialized outside any reliable JS realm. Read this
++  // channel's exact container, including ID zero, rather than a process-wide
++  // Accept-Language cache or the ambient-context MaskConfig getter. Worker
++  // requests have origin attributes even when there is no browsing context.
++  const auto regionRaw = CloakConfigOverlay_Get(
++      mLoadInfo->GetOriginAttributes().mUserContextId);
++  if (!regionRaw.empty() && nlohmann::json::accept(regionRaw)) {
++    const auto cfg = nlohmann::json::parse(regionRaw);
++    if (cfg.contains("headers.Accept-Language") &&
++        cfg["headers.Accept-Language"].is_string()) {
++      languageOverride.Assign(
++          cfg["headers.Accept-Language"].get<std::string>().c_str());
++    }
++  }
+ 
+   rv = gHttpHandler->AddStandardRequestHeaders(
+       &mRequestHead, aURI, isHTTPS, contentPolicyType,
+diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsHttpHandler.cpp
+--- a/netwerk/protocol/http/nsHttpHandler.cpp
++++ b/netwerk/protocol/http/nsHttpHandler.cpp
+@@ -2117,10 +2117,6 @@
+   }
+ 
+   MOZ_ASSERT(NS_IsMainThread());
+-  if (auto value = MaskConfig::GetString("headers.Accept-Language")) {
+-    mAcceptLanguages.Assign(nsCString(value.value().c_str()));
+-    return NS_OK;
+-  }
+ 
+   mAcceptLanguagesIsDirty = false;
+ 

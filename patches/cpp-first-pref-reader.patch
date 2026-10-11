@@ -1,6 +1,6 @@
 --- a/dom/base/RoverfoxStorageManager.cpp
 +++ b/dom/base/RoverfoxStorageManager.cpp
-@@ -26,6 +26,37 @@
+@@ -26,6 +26,53 @@
    return nsCString(prefName);
  }
  
@@ -17,22 +17,38 @@
 +RoverfoxStorageManager::TryGetCppFirstPref(const nsAString& key,
 +                                            nsACString& outValue) {
 +  nsCString prefName = MakeCppFirstPrefName(key);
-+  nsAutoCString v;
-+  if (NS_SUCCEEDED(Preferences::GetCString(prefName.get(), v)) && !v.IsEmpty()) {
-+    outValue = v;
-+    return true;
++  // Worker construction warms this namespace on the main thread. Workers
++  // must read that snapshot without accessing Preferences or synchronous IPC.
++  if (!NS_IsMainThread()) {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    if (auto entry = GetLocalCache().Lookup(prefName)) {
++      outValue = entry.Data();
++      return true;
++    }
++    return false;
 +  }
-+  if (!XRE_IsParentProcess() && NS_IsMainThread()) {
++
++  nsAutoCString v;
++  Preferences::GetCString(prefName.get(), v);
++  if (v.IsEmpty() && !XRE_IsParentProcess() && NS_IsMainThread()) {
 +    ContentChild* cc = ContentChild::GetSingleton();
 +    if (cc) {
 +      cc->SendRoverfoxStorageGet(prefName, &v);
-+      if (!v.IsEmpty()) {
-+        outValue = v;
-+        return true;
-+      }
 +    }
 +  }
-+  return false;
++  // Refresh on every main-thread lookup rather than reusing a stale snapshot.
++  // GetString returns early for cpp-first values, before its legacy cache path.
++  {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    if (v.IsEmpty()) {
++      GetLocalCache().Remove(prefName);
++    } else {
++      GetLocalCache().InsertOrUpdate(prefName, nsCString(v));
++    }
++  }
++  if (v.IsEmpty()) return false;
++  outValue = v;
++  return true;
 +}
 +
  /* static */ void

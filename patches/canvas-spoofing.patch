@@ -3,9 +3,10 @@ new file mode 100644
 index 0000000000..abcdef1234
 --- /dev/null
 +++ b/dom/base/CanvasFingerprintManager.cpp
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,82 @@
 +/* Cloakfox: Per-context canvas fingerprint manager */
 +#include "CanvasFingerprintManager.h"
++#include "nsPIDOMWindowInlines.h"
 +
 +#include <algorithm>
 +#include "MaskConfig.hpp"
@@ -227,7 +228,7 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
 +        }
 +      }
 +    } else if (mOffscreenCanvas) {
-+      if (nsIGlobalObject* global = mOffscreenCanvas->GetOwnerGlobal()) {
++      if (nsIGlobalObject* global = mOffscreenCanvas->GetRelevantGlobal()) {
 +        nsCOMPtr<nsPIDOMWindowInner> win = do_QueryInterface(global);
 +        if (win) {
 +          if (BrowsingContext* bc = win->GetBrowsingContext()) {
@@ -261,7 +262,7 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
 +        }
 +      }
 +    } else if (mOffscreenCanvas) {
-+      if (nsIGlobalObject* global = mOffscreenCanvas->GetOwnerGlobal()) {
++      if (nsIGlobalObject* global = mOffscreenCanvas->GetRelevantGlobal()) {
 +        nsCOMPtr<nsPIDOMWindowInner> win = do_QueryInterface(global);
 +        if (win) {
 +          if (BrowsingContext* bc = win->GetBrowsingContext()) {
@@ -317,3 +318,95 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
  // Used to assign marks to appear on the scrollbar when
  // finding on a page.
  partial interface Window {
+
+diff --git a/dom/canvas/CanvasUtils.cpp b/dom/canvas/CanvasUtils.cpp
+--- a/dom/canvas/CanvasUtils.cpp
++++ b/dom/canvas/CanvasUtils.cpp
+@@ -1,21 +1,24 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "CanvasUtils.h"
++
++#include "MaskConfig.hpp"
+ 
+ #include <stdlib.h>
+ 
+ #include "WebGL2Context.h"
+ #include "jsapi.h"
+ #include "mozIThirdPartyUtil.h"
+ #include "mozilla/BasePrincipal.h"
+ #include "mozilla/Services.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_gfx.h"
+ #include "mozilla/StaticPrefs_privacy.h"
+ #include "mozilla/StaticPrefs_webgl.h"
+ #include "mozilla/dom/BrowserChild.h"
+ #include "mozilla/dom/ContentList.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/HTMLCanvasElement.h"
+ #include "mozilla/dom/OffscreenCanvas.h"
+@@ -365,26 +368,41 @@
+   };
+ 
+   return IsImageExtractionAllowed_impl(
+       canvasImageExtractionPrompt, canvasExtractionBeforeUserInputIsBlocked,
+       canvasExtractionFromThirdPartiesIsBlocked, aCx, aPrincipal,
+       getIsThirdPartyWindow, reportToConsole, prompt);
+ }
+ 
++// Configured Cloakfox noise replaces Firefox's session-keyed randomization.
++// Keep permission/placeholder checks first, and leave unconfigured or disabled
++// contexts on Firefox's native policy. A configured zero intentionally disables
++// noise rather than requesting Firefox's randomization.
++static bool UseCloakfoxCanvasNoise(nsIPrincipal* aPrincipal) {
++  return StaticPrefs::cloakfox_enabled() && aPrincipal &&
++         MaskConfig::GetUint32("canvas:seed",
++                              aPrincipal->OriginAttributesRef().mUserContextId)
++             .has_value();
++}
++
+ ImageExtraction ImageExtractionResult(dom::HTMLCanvasElement* aCanvasElement,
+                                       JSContext* aCx,
+                                       nsIPrincipal* aPrincipal) {
+   if (IsUnrestrictedPrincipal(aPrincipal)) {
+     return ImageExtraction::Unrestricted;
+   }
+ 
+   nsCOMPtr<dom::Document> ownerDoc = aCanvasElement->OwnerDoc();
+   if (!IsImageExtractionAllowed(ownerDoc, aCx, aPrincipal)) {
+     return ImageExtraction::Placeholder;
++  }
++
++  if (UseCloakfoxCanvasNoise(aPrincipal)) {
++    return ImageExtraction::Unrestricted;
+   }
+ 
+   if (ownerDoc->ShouldResistFingerprinting(
+           RFPTarget::EfficientCanvasRandomization) &&
+       GetCanvasExtractDataPermission(aPrincipal) !=
+           nsIPermissionManager::ALLOW_ACTION) {
+     return ImageExtraction::EfficientRandomize;
+   }
+@@ -539,16 +557,20 @@
+                                       JSContext* aCx,
+                                       nsIPrincipal* aPrincipal) {
+   if (IsUnrestrictedPrincipal(aPrincipal)) {
+     return ImageExtraction::Unrestricted;
+   }
+ 
+   if (!IsImageExtractionAllowed(aOffscreenCanvas, aCx, aPrincipal)) {
+     return ImageExtraction::Placeholder;
++  }
++
++  if (UseCloakfoxCanvasNoise(aPrincipal)) {
++    return ImageExtraction::Unrestricted;
+   }
+ 
+   if (GetCanvasExtractDataPermission(aPrincipal) ==
+       nsIPermissionManager::ALLOW_ACTION) {
+     return ImageExtraction::Unrestricted;
+   }
+ 
+   if (aOffscreenCanvas->ShouldResistFingerprinting(

@@ -1,35 +1,40 @@
---- a/b/dom/quota/StorageManager.cpp	2026-04-18 02:37:38
-+++ b/dom/quota/StorageManager.cpp	2026-04-18 02:38:09
-@@ -10,6 +10,7 @@
+diff --git a/dom/quota/StorageManager.cpp b/dom/quota/StorageManager.cpp
+--- a/dom/quota/StorageManager.cpp
++++ b/dom/quota/StorageManager.cpp
+@@ -7,6 +7,7 @@
+ #include <cstdint>
  #include <cstdlib>
- #include <utility>
  
 +#include "MaskConfig.hpp"
  #include "ErrorList.h"
  #include "MainThreadUtils.h"
  #include "fs/FileSystemRequestHandler.h"
-@@ -778,6 +779,14 @@
- 
+@@ -767,8 +768,16 @@
  already_AddRefed<Promise> StorageManager::Persisted(ErrorResult& aRv) {
-   MOZ_ASSERT(mOwner);
-+
+   MOZ_ASSERT(mGlobal);
+ 
+-  return ExecuteOpOnMainOrWorkerThread(mGlobal,
+-                                       RequestResolver::Type::Persisted, aRv);
 +  // Cloakfox: always return false when persisted-status spoofing is enabled
 +  if (MaskConfig::GetBool("storage:persisted:disabled").value_or(false)) {
-+    RefPtr<Promise> promise = Promise::Create(mOwner, aRv);
++    RefPtr<Promise> promise = Promise::Create(mGlobal, aRv);
 +    if (aRv.Failed()) return nullptr;
 +    promise->MaybeResolve(false);
 +    return promise.forget();
 +  }
++
++  return ExecuteOpOnMainOrWorkerThread(mGlobal, RequestResolver::Type::Persisted,
++                                       aRv);
+ }
  
-   return ExecuteOpOnMainOrWorkerThread(mOwner, RequestResolver::Type::Persisted,
-                                        aRv);
-@@ -793,6 +802,18 @@
+ already_AddRefed<Promise> StorageManager::Persist(ErrorResult& aRv) {
+@@ -781,6 +790,18 @@
  already_AddRefed<Promise> StorageManager::Estimate(ErrorResult& aRv) {
-   MOZ_ASSERT(mOwner);
+   MOZ_ASSERT(mGlobal);
  
 +  // Cloakfox: return spoofed estimate values if configured
 +  if (auto quota = MaskConfig::GetUint64("storage:quota")) {
-+    RefPtr<Promise> promise = Promise::Create(mOwner, aRv);
++    RefPtr<Promise> promise = Promise::Create(mGlobal, aRv);
 +    if (aRv.Failed()) return nullptr;
 +    StorageEstimate estimate;
 +    estimate.mQuota.Construct(quota.value());
@@ -39,12 +44,14 @@
 +    return promise.forget();
 +  }
 +
-   return ExecuteOpOnMainOrWorkerThread(mOwner, RequestResolver::Type::Estimate,
+   return ExecuteOpOnMainOrWorkerThread(mGlobal, RequestResolver::Type::Estimate,
                                         aRv);
  }
---- a/b/dom/quota/moz.build	2026-04-18 00:00:00
-+++ b/dom/quota/moz.build	2026-04-18 00:00:00
-@@ -193,4 +193,5 @@
+diff --git a/dom/quota/moz.build b/dom/quota/moz.build
+--- a/dom/quota/moz.build
++++ b/dom/quota/moz.build
+@@ -195,5 +195,6 @@
+ 
  LOCAL_INCLUDES += [
      "/caps",
 +    "/cloakcfg",

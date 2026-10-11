@@ -1,0 +1,460 @@
+ 0:00.21 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.21 W All warnings will still be dumped to /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.29 Clobber not needed.
+ 0:00.34 W Adding make options from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:00.34 /usr/bin/make -f client.mk -j8 -s
+ 0:00.93 ./buildid.h.stub
+ 0:00.93 ./source-repo.h.stub
+ 0:00.93 ./buildconfig.rs.stub
+ 0:00.93 ./cbindgen-metadata.json.stub
+ 0:00.93 ./selfhosted.out.h.stub
+ 0:00.93 ./GeckoTraceEvents.h.stub
+ 0:00.94 config
+ 0:01.02 config/nsinstall_real
+ 0:01.08 ./application.ini.stub
+ 0:01.20 ./application.ini.h.stub
+ 0:06.04 build/pure_virtual
+ 0:06.04 memory/mozalloc
+ 0:06.04 memory/build
+ 0:06.05 mfbt
+ 0:06.05 mozglue/baseprofiler
+ 0:06.05 mozglue/misc
+ 0:06.08 ./buildid.h.stub
+ 0:06.08 ./source-repo.h.stub
+ 0:06.10 third_party/fmt
+ 0:06.40 ./application.ini.stub
+ 0:06.57 ./application.ini.h.stub
+ 0:06.79 xpcom/glue/standalone
+ 0:07.07 config/external/mozinference/libmozinference.dylib.symbols.stub
+ 0:07.48 dom/media/fake-cdm
+ 0:07.56 third_party/llama.cpp
+ 0:07.84 dom/media/gmp-plugin-openh264
+ 0:08.15 ipc/app/plugin-container.Info.plist.stub
+ 0:08.15 ipc/app/media-plugin-helper.Info.plist.stub
+ 0:08.16 ipc/app/gpu-helper.Info.plist.stub
+ 0:08.33 security/libnss3.dylib.symbols.stub
+ 0:08.55 config/external/nspr/ds
+ 0:08.71 config/external/nspr/libc
+ 0:08.89 W 1 warning generated.
+ 0:09.11 config/external/nspr/pr
+ 0:09.11 security/nss/lib/base
+ 0:09.23 W 1 warning generated.
+ 0:09.36 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr0.c:11:
+ 0:09.36 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr0.c:29:
+ 0:09.37 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr0.c:74:
+ 0:09.39 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr0.c:137:
+ 0:09.40 security/nss/lib/certdb
+ 0:09.55    Compiling mozbuild v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/mozbuild)
+ 0:09.67    Compiling bindgen v0.72.0 (https://github.com/glandium/rust-bindgen?rev=5274da5a06411accb266c10819b989ac25a81b7d#5274da5a)
+ 0:09.68 W 10 warnings generated.
+ 0:09.71 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr1.c:65:
+ 0:09.76 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:2:
+ 0:09.78 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:38:
+ 0:09.79 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:47:
+ 0:09.80 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:65:
+ 0:09.81 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:74:
+ 0:09.95 W 2 warnings generated.
+ 0:09.99    Compiling nserror v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/nserror)
+ 0:10.10    Compiling xpcom_macros v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/xpcom/xpcom_macros)
+ 0:10.13 security/nss/lib/certhigh
+ 0:10.15    Compiling static_prefs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/modules/libpref/init/static_prefs)
+ 0:10.22    Compiling nss_build_common v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/rc_crypto/nss/nss_build_common)
+ 0:10.28 W 48 warnings generated.
+ 0:10.33 security/nss/lib/cryptohi
+ 0:10.38    Compiling nss_sys v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/rc_crypto/nss/nss_sys)
+ 0:10.56    Compiling cubeb-core v0.34.1
+ 0:10.80 security/nss/lib/dev
+ 0:11.05    Compiling glslopt v0.1.14
+ 0:11.05 security/nss/lib/nss
+ 0:11.09    Compiling nss-as v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/rc_crypto/nss)
+ 0:11.35 security/nss/lib/pk11wrap
+ 0:11.49    Compiling rc_crypto v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/rc_crypto)
+ 0:11.54    Compiling swgl v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/swgl)
+ 0:11.82    Compiling bindgen v0.69.999 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/build/rust/bindgen)
+ 0:11.89    Compiling jwcrypto v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/support/jwcrypto)
+ 0:12.85    Compiling xpcom v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/xpcom)
+ 0:13.19    Compiling cubeb v0.34.1
+ 0:13.28    Compiling mozglue-static v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozglue/static/rust)
+ 0:13.39    Compiling audioipc2 v0.6.0 (https://github.com/mozilla/audioipc?rev=88fe860#88fe8606)
+ 0:14.08 security/nss/lib/pkcs12
+ 0:14.17 W warning: mozglue-static@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:14.17    Compiling cubeb-backend v0.34.1
+ 0:14.28    Compiling logins v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/logins)
+ 0:14.36    Compiling autofill v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/autofill)
+ 0:14.54 security/nss/lib/pkcs7
+ 0:15.16 security/nss/lib/pki
+ 0:16.12    Compiling init_rust_components v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/init_rust_components)
+ 0:16.57    Compiling encoding_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/encoding_glue)
+ 0:16.67    Compiling moz_task v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/xpcom/rust/moz_task)
+ 0:16.72    Compiling storage_variant v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/storage/variant)
+ 0:16.87    Compiling kvstore v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/kvstore)
+ 0:17.00    Compiling fluent-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/fluent-ffi)
+ 0:17.11 W 2 warnings generated.
+ 0:18.00    Compiling l10nregistry-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/l10nregistry-ffi)
+ 0:19.94    Compiling storage v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/storage/rust)
+ 0:20.11    Compiling mozurl v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/mozurl)
+ 0:20.34    Compiling urlpattern_glue v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/urlpattern_glue)
+ 0:20.88    Compiling bookmark_sync v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/places/bookmark_sync)
+ 0:20.93    Compiling localization-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/intl/l10n/rust/localization-ffi)
+ 0:21.32    Compiling cert_storage v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/cert_storage)
+ 0:21.67    Compiling cascade_bloom_filter v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/cascade_bloom_filter)
+ 0:21.81    Compiling sitecategories v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/sitecategories)
+ 0:22.38    Compiling processtools v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/processtools)
+ 0:22.42    Compiling uritemplate_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/uritemplate_glue)
+ 0:22.50    Compiling content_classifier_engine v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/content-classifier/content_classifier_engine)
+ 0:22.61    Compiling crypto_hash v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/crypto_hash)
+ 0:22.64    Compiling http_sfv v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/http-sfv)
+ 0:22.81    Compiling abridged_certs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/abridged_certs)
+ 0:22.84    Compiling binary_http v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/binary_http)
+ 0:22.96    Compiling jsrust_shared v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/js/src/rust/shared)
+ 0:23.03    Compiling rsdparsa_capi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/media/webrtc/sdp/rsdparsa_capi)
+ 0:23.19    Compiling buildid_reader_ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/buildid_reader/ffi)
+ 0:23.27    Compiling qwac-trust-anchors v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/qwac_trust_anchors)
+ 0:23.33    Compiling pdf-trust-anchors v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/pdf_trust_anchors)
+ 0:23.49    Compiling mime-guess-ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/fs/parent/rust/mime-guess-ffi)
+ 0:23.57    Compiling audioipc2-client v0.6.0 (https://github.com/mozilla/audioipc?rev=88fe860#88fe8606)
+ 0:23.61    Compiling audioipc2-server v0.6.0 (https://github.com/mozilla/audioipc?rev=88fe860#88fe8606)
+ 0:23.65    Compiling idna_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/idna_glue)
+ 0:23.93    Compiling netwerk_helper v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/base/rust-helper)
+ 0:24.05    Compiling moz_asserts v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/mozglue/static/rust/moz_asserts)
+ 0:24.93    Compiling pkcs11-bindings v0.1.7
+ 0:25.15 security/nss/lib/smime
+ 0:25.16    Compiling gecko-profiler v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/tools/profiler/rust-api)
+ 0:25.27 security/nss/lib/ssl
+ 0:25.79    Compiling nss-rs v0.13.4 (https://github.com/mozilla/nss-rs#da11b438)
+ 0:26.05    Compiling ohttp v0.7.2 (https://github.com/martinthomson/ohttp?rev=600931b5a1e947776cbaad931ed78f1e89005352#600931b5)
+ 0:27.06 security/nss/lib/util
+ 0:28.36    Compiling firefox-on-glean v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean/api)
+ 0:29.12    Compiling viaduct v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/viaduct)
+ 0:29.52    Compiling coreaudio-sys v0.2.18
+ 0:29.91 third_party/sqlite3/ext
+ 0:30.08    Compiling remote_settings v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/remote_settings)
+ 0:31.40    Compiling neqo-transport v0.30.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 0:31.63 W 1 warning generated.
+ 0:32.47 W 9 warnings generated.
+ 0:32.50 third_party/sqlite3/src
+ 0:32.51    Compiling style v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/components/style)
+ 0:35.42    Compiling neqo-qpack v0.30.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 0:36.95    Compiling mls-rs-crypto-nss v0.2.1 (https://github.com/mozilla/mls-platform-api?rev=2a2e344019bfc76b7e566ee6e0549cf668d90127#2a2e3440)
+ 0:37.41    Compiling context_id v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/context_id)
+ 0:37.46    Compiling webrender v0.62.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/webrender)
+ 0:38.19    Compiling rsclientcerts v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/rsclientcerts)
+ 0:38.52    Compiling trust-anchors v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/trust_anchors)
+ 0:39.22    Compiling ads-client v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/ads-client)
+ 0:39.63    Compiling mls-platform-api v0.2.0 (https://github.com/mozilla/mls-platform-api?rev=2a2e344019bfc76b7e566ee6e0549cf668d90127#2a2e3440)
+ 0:40.81    Compiling coreaudio-sys-utils v0.1.0 (https://github.com/mozilla/cubeb-coreaudio-rs?rev=840f69c1b3f95accd582555e10abcef8ee67514b#840f69c1)
+ 0:41.00    Compiling neqo-http3 v0.30.1 (https://github.com/mozilla/neqo?tag=v0.30.1#e2a2a745)
+ 0:41.94 W 4 warnings generated.
+ 0:41.97 toolkit/library/build/XUL.symbols.stub
+ 0:42.14 accessible/aom
+ 0:42.22    Compiling search v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/search)
+ 0:44.83 accessible/base
+ 0:44.89    Compiling relevancy v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/relevancy)
+ 0:45.05    Compiling suggest v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/third_party/application-services/components/suggest)
+ 0:45.16    Compiling lockstore_rs v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/lockstore/lockstore_rs)
+ 0:47.69    Compiling wr_glyph_rasterizer v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wr/wr_glyph_rasterizer)
+ 0:48.49    Compiling authenticator v0.6.0 (https://github.com/mozilla/authenticator-rs?tag=v0.6.0#86caf8b8)
+ 0:49.29    Compiling lockstore_ffi v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/lockstore/lockstore_ffi)
+ 0:49.60    Compiling fog_control v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean)
+ 0:49.60    Compiling data_storage v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/data_storage)
+ 0:50.57    Compiling authrs_bridge v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/webauthn/authrs_bridge)
+ 0:50.76    Compiling neqo_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/socket/neqo_glue)
+ 0:53.15    Compiling wgpu_bindings v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/wgpu_bindings)
+ 0:56.59    Compiling gkrust-uniffi-components v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/uniffi-bindgen-gecko-js/components)
+ 0:57.06    Compiling jog v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/glean/bindings/jog)
+ 1:00.38    Compiling gecko-trace v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/components/gecko-trace)
+ 1:01.19    Compiling happy_eyeballs_glue v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/happy_eyeballs_glue)
+ 1:01.63    Compiling cubeb-coreaudio v0.1.0 (https://github.com/mozilla/cubeb-coreaudio-rs?rev=840f69c1b3f95accd582555e10abcef8ee67514b#840f69c1)
+ 1:02.57    Compiling mls_gk v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/mls/mls_gk)
+ 1:03.26    Compiling ipcclientcerts v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/ipcclientcerts)
+ 1:03.29    Compiling osclientcerts v0.1.4 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/security/manager/ssl/osclientcerts)
+ 1:04.05    Compiling viaduct-necko v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/services/application-services/components/viaduct-necko)
+ 1:04.10    Compiling geckoservo v0.0.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/servo/ports/geckolib)
+ 1:04.30    Compiling oblivious_http v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/netwerk/protocol/http/oblivious_http)
+ 1:04.41    Compiling mdns_service v0.1.1 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/media/webrtc/transport/mdns_service)
+ 1:04.56 accessible/basetypes
+ 1:05.19 accessible/generic
+ 1:05.41 accessible/html
+ 1:06.68 accessible/ipc
+ 1:07.15 accessible/mac/MacSelectorMap.mm.stub
+ 1:07.33 accessible/xpcom
+ 1:10.17 accessible/xul
+ 1:13.37 browser/components/about
+ 1:14.69 browser/components/migration
+ 1:16.03 browser/components/shell
+ 1:17.63 caps
+ 1:18.08 chrome
+ 1:18.25 config/external/gkcodecs/libgkcodecs.dylib.symbols.stub
+ 1:18.45 media/libaom
+ 1:18.63 W 1 warning generated.
+ 1:20.59 media/libogg
+ 1:20.80 media/libopus
+ 1:21.13 W 1 warning generated.
+ 1:24.54 media/libvorbis
+ 1:24.75 W 1 warning generated.
+ 1:25.13 media/libvpx
+ 1:25.79 config/external/icu/common
+ 1:26.36 config/external/icu/data/icu_data.o
+ 1:26.48 config/external/icu/i18n
+ 1:26.77 W 2 warnings generated.
+ 1:27.34 W 2 warnings generated.
+ 1:27.42 W 2 warnings generated.
+ 1:27.85 W 2 warnings generated.
+ 1:28.38 W 2 warnings generated.
+ 1:28.94 W 2 warnings generated.
+ 1:29.87 W 2 warnings generated.
+ 1:30.35 W 2 warnings generated.
+ 1:30.81 media/libsoundtouch/src
+ 1:31.05 W 2 warnings generated.
+ 1:31.14 W 2 warnings generated.
+ 1:31.39 W 2 warnings generated.
+ 1:31.49 W 3 warnings generated.
+ 1:31.71 W 2 warnings generated.
+ 1:32.02 W 2 warnings generated.
+ 1:32.62 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/media/libsoundtouch/src/Unified_cpp_libsoundtouch_src0.cpp:47:
+ 1:32.66 W 2 warnings generated.
+ 1:32.88 W 1 warning generated.
+ 1:33.04 config/external/rlbox
+ 1:33.38 W 2 warnings generated.
+ 1:33.41 devtools/platform
+ 1:33.65 W 2 warnings generated.
+ 1:34.06 W 2 warnings generated.
+ 1:34.89 W 2 warnings generated.
+ 1:34.95 W 2 warnings generated.
+ 1:35.23 W 2 warnings generated.
+ 1:35.52 W 2 warnings generated.
+ 1:35.93 W 2 warnings generated.
+ 1:36.08 devtools/shared/heapsnapshot
+ 1:36.90 W 2 warnings generated.
+ 1:37.19 W 2 warnings generated.
+ 1:37.45 W 2 warnings generated.
+ 1:37.63 W 2 warnings generated.
+ 1:37.72 W 2 warnings generated.
+ 1:37.90 docshell/base
+ 1:37.99 W 2 warnings generated.
+ 1:38.19 W 2 warnings generated.
+ 1:38.26 W 2 warnings generated.
+ 1:38.49 W 2 warnings generated.
+ 1:38.52 W 2 warnings generated.
+ 1:38.78 W 2 warnings generated.
+ 1:38.79 W 2 warnings generated.
+ 1:39.29 W 2 warnings generated.
+ 1:39.29 W 2 warnings generated.
+ 1:39.63 W 2 warnings generated.
+ 1:40.09 W 2 warnings generated.
+ 1:40.90 W 2 warnings generated.
+ 1:41.48 W 2 warnings generated.
+ 1:43.23 W 2 warnings generated.
+ 1:43.68 W 2 warnings generated.
+ 1:43.98 W 2 warnings generated.
+ 1:44.89 W 2 warnings generated.
+ 1:45.11 W 2 warnings generated.
+ 1:45.60 W 2 warnings generated.
+ 1:47.15 W 2 warnings generated.
+ 1:47.59 W 2 warnings generated.
+ 1:47.89 W 2 warnings generated.
+ 1:47.94 W 2 warnings generated.
+ 1:48.93 W 2 warnings generated.
+ 1:50.15 W 2 warnings generated.
+ 1:50.53 W 2 warnings generated.
+ 1:51.34 W 2 warnings generated.
+ 1:52.28 W 2 warnings generated.
+ 1:52.68 W 2 warnings generated.
+ 1:52.77 W 2 warnings generated.
+ 1:53.01 W 2 warnings generated.
+ 1:54.11 W 2 warnings generated.
+ 1:54.82 W 2 warnings generated.
+ 1:54.86 docshell/build
+ 1:56.17 W 2 warnings generated.
+ 1:56.62 W 2 warnings generated.
+ 1:56.65 docshell/shistory
+ 1:56.82 W 2 warnings generated.
+ 1:56.85 dom/abort
+ 1:57.17 W 2 warnings generated.
+ 1:57.32 W 2 warnings generated.
+ 1:57.35 dom/animation
+ 1:58.02 W 2 warnings generated.
+ 1:58.45 W 2 warnings generated.
+ 1:59.43 W 2 warnings generated.
+ 1:59.78 W 2 warnings generated.
+ 2:00.30 W 2 warnings generated.
+ 2:01.33 W 2 warnings generated.
+ 2:01.67 W 2 warnings generated.
+ 2:01.97 dom/audiochannel
+ 2:02.19 dom/base/UseCounterMetrics.cpp.stub
+ 2:02.28 W 3 warnings generated.
+ 2:02.42 dom/battery
+ 2:02.55 W 2 warnings generated.
+ 2:03.45 W 2 warnings generated.
+ 2:03.83 W 2 warnings generated.
+ 2:04.18 dom/bindings
+ 2:04.51 dom/broadcastchannel
+ 2:04.63 W 2 warnings generated.
+ 2:04.74 W 2 warnings generated.
+ 2:04.91 dom/cache
+ 2:04.93 W 2 warnings generated.
+ 2:05.38 W 2 warnings generated.
+ 2:05.75 dom/canvas
+ 2:06.26 W 2 warnings generated.
+ 2:06.96 W 2 warnings generated.
+ 2:10.88 W 2 warnings generated.
+ 2:11.17 W 2 warnings generated.
+ 2:12.23 W 2 warnings generated.
+ 2:12.25 dom/clients/api
+ 2:16.07 dom/clients/manager
+ 2:18.27 dom/closewatcher
+ 2:21.79 dom/commandhandler
+ 2:23.34 dom/compression
+ 2:24.65 dom/console
+ 2:25.31 dom/cookiestore
+ 2:25.53 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:38:
+ 2:25.53 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:2317:55: error: no member named 'GetOwnerGlobal' in 'mozilla::dom::OffscreenCanvas'
+ 2:25.53 E  2317 |       if (nsIGlobalObject* global = mOffscreenCanvas->GetOwnerGlobal()) {
+ 2:25.53 E       |                                     ~~~~~~~~~~~~~~~~~~^
+ 2:25.59 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:6815:55: error: no member named 'GetOwnerGlobal' in 'mozilla::dom::OffscreenCanvas'
+ 2:25.59 E  6815 |       if (nsIGlobalObject* global = mOffscreenCanvas->GetOwnerGlobal()) {
+ 2:25.59 E       |                                     ~~~~~~~~~~~~~~~~~~^
+ 2:26.31 dom/credentialmanagement/digital
+ 2:26.71 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:65:
+ 2:26.71 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/canvas/ClientWebGLContext.cpp:807:53: error: no member named 'GetOwnerGlobal' in 'mozilla::dom::OffscreenCanvas'
+ 2:26.71 E   807 |     if (nsIGlobalObject* global = mOffscreenCanvas->GetOwnerGlobal()) {
+ 2:26.71 E       |                                   ~~~~~~~~~~~~~~~~~~^
+ 2:27.13 W In file included from /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:119:
+ 2:27.13 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/canvas/OffscreenCanvas.cpp:660:62: error: use of undeclared identifier 'GetOwnerGlobal'; did you mean 'GetEntryGlobal'?
+ 2:27.13 E   660 |     if (nsCOMPtr<nsPIDOMWindowInner> win = do_QueryInterface(GetOwnerGlobal())) {
+ 2:27.13 E       |                                                              ^~~~~~~~~~~~~~
+ 2:27.13 E       |                                                              GetEntryGlobal
+ 2:27.13 E /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/dom/script/ScriptSettings.h:82:18: note: 'GetEntryGlobal' declared here
+ 2:27.13 E    82 | nsIGlobalObject* GetEntryGlobal();
+ 2:27.13 E       |                  ^
+ 2:28.97 E 4 errors generated.
+ 2:28.99 E make[4]: *** [Unified_cpp_dom_canvas0.o] Error 1
+ 2:28.99 E make[4]: *** Waiting for unfinished jobs....
+ 2:29.03 dom/credentialmanagement/identity
+ 2:30.32 dom/credentialmanagement
+ 2:31.37 E make[3]: *** [dom/canvas/target-objects] Error 2
+ 2:31.37 E make[3]: *** Waiting for unfinished jobs....
+ 2:41.42    Compiling webrender_bindings v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/gfx/webrender_bindings)
+ 2:43.99    Compiling gkrust-shared v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/rust/shared)
+ 3:48.55    Compiling gkrust v0.1.0 (/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/toolkit/library/rust)
+Process Process-1:
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/process.py", line 320, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozsystemmonitor/mozsystemmonitor/resourcemonitor.py", line 309, in _collect
+    while not _poll(pipe, poll_interval=sleep_interval):
+              ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozsystemmonitor/mozsystemmonitor/resourcemonitor.py", line 238, in _poll
+    return pipe.poll(poll_interval)
+           ~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 264, in poll
+    return self._poll(timeout)
+           ~~~~~~~~~~^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 458, in _poll
+    r = wait([self], timeout)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/connection.py", line 1187, in wait
+    ready = selector.select(timeout)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/lib/python3.14/selectors.py", line 398, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt
+ 3:55.81 E make[4]: *** [force-cargo-library-build] Interrupt: 2
+ 3:55.81 E make[3]: *** [toolkit/library/rust/target-objects] Interrupt: 2
+ 3:55.81 E make[2]: *** [compile] Interrupt: 2
+ 3:55.81 E make[1]: *** [default] Interrupt: 2
+ 3:55.81 E make: *** [build] Interrupt: 2
+Streaming resource usage profile to: /Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20260906_002445.json
+Error running mach:
+
+    mach build
+
+The error occurred in code that was called by the mach command. This is either
+a bug in the called code itself or in the way that mach is calling it.
+You can invoke ``./mach busted`` to check if this issue is already on file. If it
+isn't, please use ``./mach busted file build`` to report it. If ``./mach busted`` is
+misbehaving, you can also inspect the dependencies of bug 1543241.
+
+If filing a bug, please include the full output of mach, including this error
+message.
+
+The details of the failure are as follows:
+
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/main.py", line 416, in _run
+    return Registrar._run_command_handler(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        handler,
+        ^^^^^^^^
+    ...<4 lines>...
+        **vars(args.command_args),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/registrar.py", line 124, in _run_command_handler
+    result = fn(instance, **kwargs)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/build_commands.py", line 351, in build
+    return driver.build(
+           ~~~~~~~~~~~~^
+        command_context.metrics,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+        allow_subdirectory_build=allow_subdirectory_build,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 1261, in build
+    status = self._build(
+        monitor,
+    ...<9 lines>...
+        allow_subdirectory_build,
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 1558, in _build
+    status = self._run_client_mk(
+        line_handler=output.on_stdout_line,
+    ...<5 lines>...
+        append_env=client_mk_env,
+    )
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/controller/building.py", line 2055, in _run_client_mk
+    return self._run_make(
+           ~~~~~~~~~~~~~~^
+        srcdir=True,
+        ^^^^^^^^^^^^
+    ...<11 lines>...
+        append_env=append_env,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/base.py", line 934, in _run_make
+    return fn(**params)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mozbuild/mozbuild/base.py", line 937, in _run_command_in_srcdir
+    return self.run_process(cwd=self.topsrcdir, **args)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/python/mach/mach/mixin/process.py", line 196, in run_process
+    status = p.kill(sig=sig)
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 926, in kill
+    self.proc.kill(sig=sig, timeout=timeout)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 251, in kill
+    self.send_signal(sig)
+    ~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 248, in send_signal
+    send_sig(sig or signal.SIGKILL)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/firefox-src/testing/mozbase/mozprocess/mozprocess/processhandler.py", line 232, in send_sig
+    os.kill(pid, sig)
+    ~~~~~~~^^^^^^^^^^
+ProcessLookupError: [Errno 3] No such process

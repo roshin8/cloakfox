@@ -1,0 +1,132 @@
+{"prefs": {"network.http.altsvc.enabled": true, "network.http.http3.disable_when_third_party_roots_found": false, "network.http.http3.enable": true, "network.http.http3.force-use-alt-svc-mapping-for-testing": false}}
+{"positive": {"body": "local-http3-ok", "protocol": "h3", "proxy": null, "security": {"errorCode": 0, "errorCodeString": "", "negotiatedNPN": "h3", "protocolVersion": 4, "securityState": 2}, "status": 0, "ucid": 1}, "endpoints": [{"datagrams": 9, "alpn": ["h3"], "requests": ["/positive"], "handshakes": [{"alpn": "h3", "earlyDataAccepted": false, "sessionResumed": false}], "terminations": []}, {"datagrams": 0, "alpn": [], "requests": [], "handshakes": [], "terminations": []}, {"datagrams": 0, "alpn": [], "requests": [], "handshakes": [], "terminations": []}]}
+{
+  "positive": {
+    "body": "local-http3-ok",
+    "protocol": "h3",
+    "proxy": null,
+    "security": {
+      "errorCode": 0,
+      "errorCodeString": "",
+      "negotiatedNPN": "h3",
+      "protocolVersion": 4,
+      "securityState": 2
+    },
+    "status": 0,
+    "ucid": 1
+  },
+  "blocked": {
+    "request": {
+      "body": "",
+      "protocol": "",
+      "proxy": null,
+      "security": null,
+      "status": 2152398920,
+      "ucid": 2
+    },
+    "datagramsBeforeControl": 0,
+    "endpointControl": {
+      "body": "local-http3-ok",
+      "protocol": "h3",
+      "proxy": null,
+      "security": {
+        "errorCode": 0,
+        "errorCodeString": "",
+        "negotiatedNPN": "h3",
+        "protocolVersion": 4,
+        "securityState": 2
+      },
+      "status": 0,
+      "ucid": 1
+    },
+    "observationSeconds": 2
+  },
+  "requiredProxy": {
+    "request": {
+      "body": "",
+      "protocol": "",
+      "proxy": "127.0.0.1",
+      "security": {
+        "errorCode": 0,
+        "errorCodeString": "",
+        "securityState": 0
+      },
+      "status": 2152398920,
+      "ucid": 3
+    },
+    "datagramsBeforeControl": 0,
+    "endpointControl": {
+      "body": "local-http3-ok",
+      "protocol": "h3",
+      "proxy": null,
+      "security": {
+        "errorCode": 0,
+        "errorCodeString": "",
+        "negotiatedNPN": "h3",
+        "protocolVersion": 4,
+        "securityState": 2
+      },
+      "status": 0,
+      "ucid": 1
+    },
+    "observationSeconds": 2
+  },
+  "endpoints": [
+    {
+      "datagrams": 13,
+      "alpn": [
+        "h3"
+      ],
+      "requests": [
+        "/positive",
+        "/blocked-endpoint-control",
+        "/requiredProxy-endpoint-control"
+      ],
+      "handshakes": [
+        {
+          "alpn": "h3",
+          "earlyDataAccepted": false,
+          "sessionResumed": false
+        }
+      ],
+      "terminations": []
+    },
+    {
+      "datagrams": 9,
+      "alpn": [
+        "h3"
+      ],
+      "requests": [],
+      "handshakes": [
+        {
+          "alpn": "h3",
+          "earlyDataAccepted": false,
+          "sessionResumed": false
+        }
+      ],
+      "terminations": [
+        {
+          "errorCode": 256,
+          "frameType": null,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "datagrams": 5,
+      "alpn": [
+        "h3"
+      ],
+      "requests": [],
+      "handshakes": [
+        {
+          "alpn": "h3",
+          "earlyDataAccepted": false,
+          "sessionResumed": false
+        }
+      ],
+      "terminations": []
+    }
+  ]
+}
+PASS: real negotiated HTTP/3 controls; blocked and required-proxy routes emitted no UDP to independent live endpoints

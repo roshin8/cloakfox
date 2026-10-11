@@ -1,0 +1,24 @@
+F
+======================================================================
+FAIL: test_generic_and_emoji_results_are_owned_by_the_requesting_provider (__main__.UpstreamHardening.test_generic_and_emoji_results_are_owned_by_the_requesting_provider)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 172, in test_generic_and_emoji_results_are_owned_by_the_requesting_provider
+            cpp(r"""
+            ~~~^^^^^
+    #include <cassert>
+    ^^^^^^^^^^^^^^^^^^
+    ...<35 lines>...
+    }
+    ^
+    """)
+    ^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/test_upstream_hardening.py", line 38, in cpp
+    raise AssertionError(result.stderr)
+AssertionError: Assertion failed: (first(a) == 1 && first(b) == 2), function main, file test.cpp, line 58.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.449s
+
+FAILED (failures=1)

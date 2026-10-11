@@ -1,0 +1,10 @@
+Native query readiness (no init wait): {"configured": "utm_source utm_medium utm_campaign utm_term utm_content utm_id fbclid gclid dclid msclkid mc_eid", "immediateResult": "http://target-tracking.test/landing?state=keep&code=keep", "immediateStripCount": 3, "nativeList": "utm_term gclid fbclid utm_source msclkid dclid utm_campaign utm_content utm_id mc_eid utm_medium", "thirdParty": true}
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_tracking_protection.py", line 182, in <module>
+    main()
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_tracking_protection.py", line 132, in main
+    results['bounce'] = async_chrome(driver, """
+                        ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_tracking_protection.py", line 61, in async_chrome
+    assert not isinstance(result, dict) or 'error' not in result, result
+AssertionError: {'error': 'Bounce exception was not container-scoped', 'stack': '@[System Principal]:34:68\n'}

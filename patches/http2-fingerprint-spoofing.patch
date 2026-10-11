@@ -1,14 +1,82 @@
+diff --git a/netwerk/protocol/http/Http2Compression.cpp b/netwerk/protocol/http/Http2Compression.cpp
+--- a/netwerk/protocol/http/Http2Compression.cpp
++++ b/netwerk/protocol/http/Http2Compression.cpp
+@@ -14,6 +14,8 @@
+ #include "Http2Compression.h"
+ #include "Http2HuffmanIncoming.h"
+ #include "Http2HuffmanOutgoing.h"
++#include "mozilla/Preferences.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPtr.h"
+ #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
+ #include "nsCharSeparatedTokenizer.h"
+@@ -1056,11 +1058,36 @@
+   }
+ 
+   // colon headers first
++  // Cloakfox: HPACK pseudo-header order is an Akamai h2 fingerprint input.
++  // Firefox: m,p,a,s. Chrome: m,a,s,p. Safari: m,s,p,a. Toggled via pref.
++  nsAutoCString h2Profile(mH2Profile);
++  // Master switch: only consult the global fingerprint pref when cloakfox is
++  // enabled. SendHello sets mH2Profile empty when disabled, so without this
++  // gate a lingering network.http.http2.fingerprint_profile pref would still
++  // reorder the pseudo-headers here — a half-spoofed H2 fingerprint (Firefox
++  // SETTINGS + Chrome header order) that matches no real browser, while the
++  // kill-switch claims to be off.
++  if (h2Profile.IsEmpty() && StaticPrefs::cloakfox_enabled()) {
++    Preferences::GetCString("network.http.http2.fingerprint_profile", h2Profile);
++  }
++  bool chromeH2 = h2Profile.EqualsLiteral("chrome");
++  bool safariH2 = h2Profile.EqualsLiteral("safari");
++
+   if (!simpleConnectForm) {
+     ProcessHeader(nvPair(":method"_ns, method), false, false);
+-    ProcessHeader(nvPair(":path"_ns, path), true, false);
+-    ProcessHeader(nvPair(":authority"_ns, host), false, false);
+-    ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
++    if (chromeH2) {
++      ProcessHeader(nvPair(":authority"_ns, host), false, false);
++      ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
++      ProcessHeader(nvPair(":path"_ns, path), true, false);
++    } else if (safariH2) {
++      ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
++      ProcessHeader(nvPair(":path"_ns, path), true, false);
++      ProcessHeader(nvPair(":authority"_ns, host), false, false);
++    } else {
++      ProcessHeader(nvPair(":path"_ns, path), true, false);
++      ProcessHeader(nvPair(":authority"_ns, host), false, false);
++      ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
++    }
+     if (isWebsocket) {
+       ProcessHeader(nvPair(":protocol"_ns, protocol), false, false);
+     }
+diff --git a/netwerk/protocol/http/Http2Compression.h b/netwerk/protocol/http/Http2Compression.h
+--- a/netwerk/protocol/http/Http2Compression.h
++++ b/netwerk/protocol/http/Http2Compression.h
+@@ -168,6 +168,11 @@
+   }  // -1 on not found
+ 
+   void SetMaxBufferSize(uint32_t maxBufferSize);
++  // Cloakfox: HTTP/2 fingerprint profile for this connection's HPACK
++  // pseudo-header ordering, set per-container by Http2Session::SendHello.
++  // Empty => EncodeHeaderBlock falls back to the global pref.
++  void SetH2Profile(const nsACString& aProfile) { mH2Profile = aProfile; }
++  nsCString mH2Profile;
+ 
+  private:
+   enum outputCode {
+diff --git a/netwerk/protocol/http/Http2Session.cpp b/netwerk/protocol/http/Http2Session.cpp
 --- a/netwerk/protocol/http/Http2Session.cpp
 +++ b/netwerk/protocol/http/Http2Session.cpp
-@@ -30,6 +30,7 @@
+@@ -27,6 +27,7 @@
  #include "mozilla/Preferences.h"
  #include "mozilla/Sprintf.h"
  #include "mozilla/StaticPrefs_network.h"
 +#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/glean/NetwerkMetrics.h"
  #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
  #include "nsHttp.h"
- #include "nsHttpConnection.h"
-@@ -1068,15 +1068,50 @@
+@@ -1089,15 +1090,50 @@
    // 4th entry is bytes 27 to 32
    // 5th entry is bytes 33 to 38
  
@@ -66,7 +134,7 @@
  
    // We don't support HTTP/2 Push. Set SETTINGS_TYPE_ENABLE_PUSH to 0
    NetworkEndian::writeUint16(packet + kFrameHeaderBytes + (6 * numberOfEntries),
-@@ -1087,11 +1117,14 @@
+@@ -1108,11 +1144,14 @@
    // We might also want to set the SETTINGS_TYPE_MAX_CONCURRENT to 0
    // to indicate that we don't support any incoming push streams,
    // but some websites panic when we do that, so we don't by default.
@@ -83,7 +151,7 @@
      numberOfEntries++;
    }
    mWaitingForSettingsAck = true;
-@@ -1101,23 +1134,36 @@
+@@ -1122,23 +1161,36 @@
    NetworkEndian::writeUint16(packet + kFrameHeaderBytes + (6 * numberOfEntries),
                               SETTINGS_TYPE_INITIAL_WINDOW);
    NetworkEndian::writeUint32(
@@ -129,7 +197,7 @@
        StaticPrefs::network_http_http2_send_NO_RFC7540_PRI()) {
      NetworkEndian::writeUint16(
          packet + kFrameHeaderBytes + (6 * numberOfEntries),
-@@ -1138,7 +1184,14 @@
+@@ -1159,7 +1211,14 @@
  
    // now bump the local session window from 64KB
    uint32_t sessionWindowBump = mInitialRwin - kDefaultRwin;
@@ -145,68 +213,3 @@
      // send a window update for the session (Stream 0) for something large
      mLocalSessionWindow = mInitialRwin;
  
---- a/netwerk/protocol/http/Http2Compression.cpp	2025-12-17 10:38:50
-+++ b/netwerk/protocol/http/Http2Compression.cpp	2026-04-18 23:11:42
-@@ -16,6 +16,8 @@
- #include "Http2Compression.h"
- #include "Http2HuffmanIncoming.h"
- #include "Http2HuffmanOutgoing.h"
-+#include "mozilla/Preferences.h"
-+#include "mozilla/StaticPrefs_cloakfox.h"
- #include "mozilla/StaticPtr.h"
- #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
- #include "nsCharSeparatedTokenizer.h"
-@@ -1051,11 +1052,36 @@
-   }
-
-   // colon headers first
-+  // Cloakfox: HPACK pseudo-header order is an Akamai h2 fingerprint input.
-+  // Firefox: m,p,a,s. Chrome: m,a,s,p. Safari: m,s,p,a. Toggled via pref.
-+  nsAutoCString h2Profile(mH2Profile);
-+  // Master switch: only consult the global fingerprint pref when cloakfox is
-+  // enabled. SendHello sets mH2Profile empty when disabled, so without this
-+  // gate a lingering network.http.http2.fingerprint_profile pref would still
-+  // reorder the pseudo-headers here — a half-spoofed H2 fingerprint (Firefox
-+  // SETTINGS + Chrome header order) that matches no real browser, while the
-+  // kill-switch claims to be off.
-+  if (h2Profile.IsEmpty() && StaticPrefs::cloakfox_enabled()) {
-+    Preferences::GetCString("network.http.http2.fingerprint_profile", h2Profile);
-+  }
-+  bool chromeH2 = h2Profile.EqualsLiteral("chrome");
-+  bool safariH2 = h2Profile.EqualsLiteral("safari");
-+
-   if (!simpleConnectForm) {
-     ProcessHeader(nvPair(":method"_ns, method), false, false);
--    ProcessHeader(nvPair(":path"_ns, path), true, false);
--    ProcessHeader(nvPair(":authority"_ns, host), false, false);
--    ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
-+    if (chromeH2) {
-+      ProcessHeader(nvPair(":authority"_ns, host), false, false);
-+      ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
-+      ProcessHeader(nvPair(":path"_ns, path), true, false);
-+    } else if (safariH2) {
-+      ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
-+      ProcessHeader(nvPair(":path"_ns, path), true, false);
-+      ProcessHeader(nvPair(":authority"_ns, host), false, false);
-+    } else {
-+      ProcessHeader(nvPair(":path"_ns, path), true, false);
-+      ProcessHeader(nvPair(":authority"_ns, host), false, false);
-+      ProcessHeader(nvPair(":scheme"_ns, scheme), false, false);
-+    }
-     if (isWebsocket) {
-       ProcessHeader(nvPair(":protocol"_ns, protocol), false, false);
-     }
---- a/netwerk/protocol/http/Http2Compression.h	2025-12-17 10:38:50
-+++ b/netwerk/protocol/http/Http2Compression.h	2026-04-18 23:11:42
-@@ -169,6 +169,11 @@
-   }  // -1 on not found
- 
-   void SetMaxBufferSize(uint32_t maxBufferSize);
-+  // Cloakfox: HTTP/2 fingerprint profile for this connection's HPACK
-+  // pseudo-header ordering, set per-container by Http2Session::SendHello.
-+  // Empty => EncodeHeaderBlock falls back to the global pref.
-+  void SetH2Profile(const nsACString& aProfile) { mH2Profile = aProfile; }
-+  nsCString mH2Profile;
- 
-  private:
-   enum outputCode {

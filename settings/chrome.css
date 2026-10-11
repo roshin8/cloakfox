@@ -10,26 +10,10 @@
   padding-inline: 0 !important;
   max-height: 30px !important;
 }
-.tab-context-line {
-  display: none !important;
-}
-*/ .tab-background {
+.tab-background {
   /* border-block: 2px solid var(--identity-icon-color,transparent) !important; */
   border-radius: 0px !important;
   max-height: 30px !important;
-}
-
-/* Disable tab dragging and use it for window movement */
-#TabsToolbar {
-  -moz-window-dragging: drag !important;
-}
-
-.tabbrowser-tab {
-  -moz-window-dragging: inherit !important;
-}
-
-.tab-content {
-  pointer-events: none !important;
 }
 
 /* Tab and url height */
@@ -97,12 +81,6 @@
   }
 }
 
-/* Deactivating close, minimize and maximize buttons */
-.tab-close-button,
-#TabsToolbar .toolbarbutton-1 {
-  display: none !important;
-}
-
 /* Context menu */
 menupopup,
 panel {
@@ -159,15 +137,8 @@ panel {
 }
 
 /* Cleanup menu bar */
-#tracking-protection-icon-container,
-#tab-notification-deck,
-#star-button-box,
 #urlbar-go-button,
-#unified-extensions-button,
-.customize-context-pinToToolbar,
-#PersonalToolbar,
 toolbar#nav-bar > .titlebar-buttonbox-container,
-toolbar#nav-bar > .titlebar-spacer,
-#appMenu-library-remotetabs-button {
+toolbar#nav-bar > .titlebar-spacer {
   display: none !important;
 }

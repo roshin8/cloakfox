@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_privacy_inspector.py", line 51, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_privacy_inspector.py", line 45, in main
+    WebDriverWait(d,15).until(lambda driver:driver.execute_script("return !!document.getElementById('cfx-inspect-run');"))
+  File "/Users/zeus/Documents/cloakfox/tests/.cpp-first-venv/lib/python3.12/site-packages/selenium/webdriver/support/wait.py", line 121, in until
+    raise TimeoutException(message, screen, stacktrace)
+selenium.common.exceptions.TimeoutException: Message: 
+

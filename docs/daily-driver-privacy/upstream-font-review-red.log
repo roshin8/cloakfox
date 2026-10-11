@@ -1,0 +1,51 @@
+{"touch": 0, "chrome": {"anyCoarse": false, "caption": "-apple-system", "cssCoarse": false, "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "function", "setWebRTCIPv4": "function", "setWebRTCIPv6": "function"}, "touch": 0, "touchEvent": "undefined", "touchInterface": "undefined"}, "content": {"anyCoarse": false, "caption": "Segoe UI", "cssCoarse": false, "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "undefined", "setWebRTCIPv4": "undefined", "setWebRTCIPv6": "undefined"}, "touch": 0, "touchEvent": "undefined", "touchInterface": "undefined"}}
+{"privileged": {"fonts": {"Arial": ["Arial"], "Avenir": ["Times New Roman"], "system-ui": ["Segoe UI"]}, "v4": "function", "v6": "function"}}
+{"other_container": {"anyCoarse": true, "caption": "Helvetica", "cssCoarse": true, "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "undefined", "setWebRTCIPv4": "undefined", "setWebRTCIPv6": "undefined"}, "touch": 5, "touchEvent": "function", "touchInterface": "function"}}
+{"restricted_container": {"fonts": {"Arial": ["Arial"], "Avenir": ["Academy Engraved LET"], "system-ui": ["Academy Engraved LET"]}, "v4": "function", "v6": "function"}}
+{"touch": 5, "chrome": {"anyCoarse": false, "caption": "-apple-system", "cssCoarse": false, "fine": true, "hover": true, "legacy": true, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "function", "setWebRTCIPv4": "function", "setWebRTCIPv6": "function"}, "touch": 5, "touchEvent": "function", "touchInterface": "function"}, "content": {"anyCoarse": true, "caption": "Segoe UI", "cssCoarse": true, "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "undefined", "setWebRTCIPv4": "undefined", "setWebRTCIPv6": "undefined"}, "touch": 5, "touchEvent": "function", "touchInterface": "function"}}
+{"privileged": {"fonts": {"Arial": ["Arial"], "Avenir": ["Times New Roman"], "system-ui": ["Segoe UI"]}, "v4": "function", "v6": "function"}}
+{"other_container": {"anyCoarse": false, "caption": "Helvetica", "cssCoarse": false, "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "undefined", "setWebRTCIPv4": "undefined", "setWebRTCIPv6": "undefined"}, "touch": 0, "touchEvent": "undefined", "touchInterface": "undefined"}}
+{"restricted_container": {"fonts": {"Arial": ["Arial"], "Avenir": ["Academy Engraved LET"], "system-ui": ["Academy Engraved LET"]}, "v4": "function", "v6": "function"}}
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_upstream_hardening.py", line 184, in <module>
+    main()
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_upstream_hardening.py", line 178, in main
+    assert not errors, json.dumps(errors, indent=2)
+AssertionError: [
+  [
+    "restrictive font fallback",
+    {
+      "fonts": {
+        "Arial": [
+          "Arial"
+        ],
+        "Avenir": [
+          "Academy Engraved LET"
+        ],
+        "system-ui": [
+          "Academy Engraved LET"
+        ]
+      },
+      "v4": "function",
+      "v6": "function"
+    }
+  ],
+  [
+    "restrictive font fallback",
+    {
+      "fonts": {
+        "Arial": [
+          "Arial"
+        ],
+        "Avenir": [
+          "Academy Engraved LET"
+        ],
+        "system-ui": [
+          "Academy Engraved LET"
+        ]
+      },
+      "v4": "function",
+      "v6": "function"
+    }
+  ]
+]

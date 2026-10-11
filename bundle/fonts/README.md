@@ -1,83 +1,54 @@
 # Cloakfox bundled fonts
 
-These are **openly-licensed, metric-compatible substitute fonts**, renamed to
-the target family names that personas claim. They are activated at runtime by
-Firefox's native bundled-font support (`MOZ_BUNDLED_FONTS`, enabled via
-`--enable-bundled-fonts`) from `App.app/Contents/Resources/fonts/`, letting a
-persona present its OS's fonts on any host — e.g. a Windows persona rendering
-`Segoe UI` on macOS.
+The pack contains 31 redistributable open font files. Some are renamed
+substitutes for CSS family names; they are **not authentic proprietary OS
+fonts**. Firefox loads them through native bundled-font support. The files live
+in `macos/` for historical reasons and the build currently stages this pack on
+all platforms.
 
-**Cloakfox does not bundle proprietary OS fonts.** Only redistributable open
-fonts are used; the presented family name is set in the name table because
-macOS has no fontconfig aliasing. Rebuild with `python scripts/build-font-pack.py`.
+`font-manifest.json` records SHA-256 hashes, embedded copyright notices, actual
+family names and license files for the shipped bytes. `FONT-NOTICES.txt` and
+`licenses/*.txt` ship alongside the fonts. Verify with
+`python3 scripts/audit-font-pack.py --check`; regenerate the manifest after an
+intentional font update with `uv run --with fonttools python scripts/audit-font-pack.py`.
 
-## Substitutes and licenses
+## Substitutes
 
-| Target family(s) presented                | Open source font | License    |
-|-------------------------------------------|------------------|------------|
-| Arial, Helvetica, Helvetica Neue, Trebuchet MS | Arimo       | Apache-2.0 |
-| Times New Roman, Times                    | Tinos            | Apache-2.0 |
-| Courier New, Courier, Consolas, Menlo, Monaco | Cousine      | Apache-2.0 |
-| Georgia                                   | Gelasio          | SIL OFL 1.1|
-| Calibri                                   | Carlito          | SIL OFL 1.1|
-| Cambria                                   | Caladea          | SIL OFL 1.1|
-| Segoe UI                                  | Selawik          | MIT        |
-| Comic Sans MS                             | Comic Neue       | SIL OFL 1.1|
-| Impact                                    | Anton            | SIL OFL 1.1|
-| Verdana, Tahoma                           | DejaVu Sans      | Bitstream* |
-| DejaVu Sans / Serif / Sans Mono (Linux)   | DejaVu (as-is)   | Bitstream* |
+| CSS family aliases | Underlying open font |
+| --- | --- |
+| Arial, Helvetica, Helvetica Neue, Trebuchet MS | Arimo |
+| Times New Roman, Times | Tinos |
+| Courier New, Courier, Consolas, Menlo, Monaco | Cousine |
+| Georgia / Calibri / Cambria | Gelasio / Carlito / Caladea |
+| Segoe UI / Comic Sans MS / Impact | Selawik / Comic Neue / Anton |
+| Verdana, Tahoma | DejaVu Sans |
+| DejaVu Sans, Serif, Sans Mono | Original DejaVu families |
+| Noto families | Original Noto families, including eight script-specific faces |
 
-Arimo, Tinos, and Cousine are from Google's croscore project; Carlito, Caladea,
-Gelasio, Comic Neue, and Anton are from Google Fonts; Selawik is from Microsoft;
-DejaVu is from the DejaVu Fonts project. \* DejaVu uses the free Bitstream Vera /
-Arev permissive license. The DejaVu faces keep their own names (Linux personas
-legitimately claim them); other faces are renamed to the target family. Full
-license texts ship with each upstream project; the target family names (Arial,
-Segoe UI, etc.) are trademarks of their respective owners and are used here only
-as substitution aliases, not as claims of authenticity.
+The shipped Arimo, Tinos, Cousine and Selawik files identify **SIL OFL 1.1** in
+their embedded license metadata, as do the other non-DejaVu faces. Earlier
+Apache/MIT labels in this directory were incorrect for these particular bytes.
+DejaVu uses Bitstream Vera/Arev permissions; the full embedded notices are
+included. Renaming preserves the source copyright and license metadata.
 
-## Coverage notes
+## Rendering and privacy limits
 
-- Verdana, Tahoma, Consolas, Menlo, Monaco have no exact open metric match; the
-  closest open face is used and residual metric drift is absorbed per-container
-  by the anti-font-fingerprinting spacing seed.
-- Non-Latin script coverage: a curated **Noto** subset (SIL OFL, kept under
-  real names) — Arabic, Hebrew, Thai, Devanagari, Bengali, Georgian, Armenian,
-  and CJK via Noto Sans SC (Simplified Chinese). Extend in
-  `scripts/build-font-pack.py` (`NOTO`) for more scripts / JP+KR+TC if needed.
-- Currently only `bundle/fonts/macos/` is populated; `windows/` and `linux/`
-  packs (same substitutes) are a mechanical follow-up.
+Bundling reduces dependence on installed fonts for these covered families.
+It does not make all allowlisted OS fonts available. Several aliases are
+approximate: DejaVu Sans is not Verdana or Tahoma, Cousine is not Menlo or
+Consolas, and Arimo is not Trebuchet MS. Matching a few advance widths does not
+establish matching glyph outlines, kerning, hinting, shaping or font versions.
+Native rasterization remains CoreText, DirectWrite or FreeType according to
+the actual host. Canvas noise and spacing noise do **not** establish that
+foreign-OS rendering is indistinguishable from the claimed OS.
 
-## Cross-OS metric identity — investigated, not a gap (2026-08-07)
+New identities can use host-constrained personas: the complete Bayesian tuple
+is sampled conditional on the host OS, keeping native rendering and the
+claimed OS aligned. Existing legacy identities remain unchanged until the
+user explicitly changes appearance/mode. This reduces cross-OS contradictions;
+it is not full cross-OS font independence or a guarantee of indistinguishability.
 
-An open question was whether the pack needs PER-OS variants so a Windows
-persona's "Arial" measures differently from a macOS persona's, the way real
-machines do. Investigated and measured; the answer is no, for two reasons.
-
-**1. The substitutes are already metrically exact.** Advance widths (/1000em)
-read straight out of the shipped files match the proprietary originals:
-
-| family          | shipped | canonical original |
-|-----------------|---------|--------------------|
-| Arial           | A 667 · M 833 · i 222 · w 722 · 0 556 | identical |
-| Times New Roman | A 722 · M 889 · i 278 · w 722 · 0 500 | identical |
-| Courier New     | 600 (monospace)                        | identical |
-
-**2. Advance widths do not vary by OS.** Arial on Windows and Arial on macOS
-are the same Monotype design with the same metrics — that is precisely why
-metric-compatible substitution works at all. There is no per-OS advance-width
-signature to reproduce, so shipping different substitutes per OS would make us
-*less* accurate, not more.
-
-What genuinely differs between OSes for the same font is RASTERISATION —
-hinting, subpixel AA, DirectWrite vs CoreText. That shows up in canvas-rendered
-text rather than in `getBoundingClientRect()` advances, and it is already
-covered by the per-container canvas noise plus the font-spacing seed.
-
-Measured for completeness: across 10 generated personas, Arial widths spanned
-186.15–187.80px with full overlap between Windows, macOS and Linux personas —
-i.e. the observable spread is per-container seed noise, which is the intended
-design (identical for a given persona on every machine, different between
-containers). A change to fold the persona OS into the spacing seed was
-prototyped and REVERTED: it only re-randomised within the same range and
-created no OS-correlated signal, so it added complexity for no benefit.
+Rebuilding the pack with `scripts/build-font-pack.py` fetches upstream sources.
+Those URLs are not immutable; review resulting bytes, embedded metadata and
+license changes before accepting a new manifest. No fonts were downloaded or
+replaced when this manifest was introduced.

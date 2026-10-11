@@ -1,0 +1,10 @@
+{"prefs": {"network.http.altsvc.enabled": true, "network.http.http3.enable": true, "network.http.http3.force-use-alt-svc-mapping-for-testing": false}}
+{"positive": {"body": "", "protocol": "", "proxy": null, "security": {"errorCode": 0, "errorCodeString": "", "securityState": 0}, "status": 2152398861, "ucid": 1}, "endpoints": [{"datagrams": 10, "alpn": ["h3", "h3"], "requests": [], "handshakes": [], "terminations": []}, {"datagrams": 0, "alpn": [], "requests": [], "handshakes": [], "terminations": []}, {"datagrams": 0, "alpn": [], "requests": [], "handshakes": [], "terminations": []}]}
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_network_quic.py", line 81, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_network_quic.py", line 59, in main
+    assert positive['status']==0 and positive['body']=='local-http3-ok' and positive['protocol']=='h3',(positive,fixtures.observed)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ({'body': '', 'protocol': '', 'proxy': None, 'security': {'errorCode': 0, 'errorCodeString': '', 'securityState': 0}, 'status': 2152398861, 'ucid': 1}, [{'datagrams': 10, 'alpn': ['h3', 'h3'], 'requests': [], 'handshakes': [], 'terminations': [{'errorCode': 12, 'frameType': 0, 'reason': ''}, {'errorCode': 12, 'frameType': 0, 'reason': ''}]}, {'datagrams': 0, 'alpn': [], 'requests': [], 'handshakes': [], 'terminations': []}, {'datagrams': 0, 'alpn': [], 'requests': [], 'handshakes': [], 'terminations': []}])

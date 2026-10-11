@@ -1,3 +1,5 @@
+import { measureWindow } from "resource:///modules/CloakfoxMeasurements.sys.mjs";
+import { actorSiteSeed, siteSeedForWindow } from "resource:///modules/CloakfoxSiteSeed.sys.mjs";
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -63,6 +65,11 @@ function setNativeIdentity(exportedFn, name, length) {
 }
 
 export class CloakfoxMathChild extends JSWindowActorChild {
+  async receiveMessage(message) {
+    if (message.name === "Cloakfox:Inspect") return measureWindow(this.contentWindow);
+    return undefined;
+  }
+
   handleEvent(event) {
     // DOMDocElementInserted fires when <html> is inserted — before any
     // page <script> runs but after the inner window global exists.
@@ -90,9 +97,12 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     // keeps a live snapshot.
     const seeds = Services.cpmm.sharedData.get("cloakfox-seeds") || {};
     const ucid = win.docShell?.browsingContext?.originAttributes?.userContextId ?? 0;
-    const seedB64 = seeds[`cloakfox.container.${ucid}.math_seed`] || "";
+    const seedB64 = actorSiteSeed(win, seeds, "actor:math",
+      seeds[`cloakfox.container.${ucid}.math_seed`] || "");
     if (!seedB64) return;  // No seed => no spoofing for this container.
 
+    const trigSeed = siteSeedForWindow(win, seeds, "math:trig_seed");
+    if (!trigSeed) return;
     const prng = makePRNG(b64ToBytes(seedB64));
     const piOffset = (prng() - 0.5) * NOISE_MAG_CONST;
     const eOffset  = (prng() - 0.5) * NOISE_MAG_CONST;
@@ -186,11 +196,6 @@ export class CloakfoxMathChild extends JSWindowActorChild {
     // signal since real Math is spec-pure. We keep the master prng()
     // alive only for one-time initialization (constants); the trig
     // wrap uses input-deterministic hashing exclusively.
-    const trigSeedBytes = b64ToBytes(seedB64).slice(28, 32);
-    const trigSeed = (trigSeedBytes[0] << 24 |
-                      trigSeedBytes[1] << 16 |
-                      trigSeedBytes[2] <<  8 |
-                      trigSeedBytes[3]) >>> 0;
     const _ab  = new ArrayBuffer(8);
     const _f64 = new Float64Array(_ab);
     const _u32 = new Uint32Array(_ab);

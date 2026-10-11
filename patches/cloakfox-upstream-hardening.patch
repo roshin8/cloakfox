@@ -1,0 +1,679 @@
+Cloakfox: Camoufox September 2026 fixes adapted to Firefox 155 and per-container fonts.
+Upstream: daijro/camoufox eb5dc3bc5b917d1e6c71d9cacfecdddb55fbfc4a
+
+--- a/browser/components/sessionstore/SessionStore.sys.mjs
++++ b/browser/components/sessionstore/SessionStore.sys.mjs
+@@ -4952,7 +4952,11 @@
+ 
+   maybeDontRestoreTabs(aWindow) {
+     // Don't restore the tabs if we restore the session at startup
+-    this._windows[aWindow.__SSi]._maybeDontRestoreTabs = true;
++    const winData = aWindow.__SSi && this._windows[aWindow.__SSi];
++    if (!winData) {
++      return;
++    }
++    winData._maybeDontRestoreTabs = true;
+   },
+ 
+   isLastRestorableWindow() {
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -8018,13 +8018,7 @@
+ 
+   WebRTCIPManager::SetIPv4(userContextId, ipv4);
+ 
+-  // Self-destruct: set to undefined first to bust IC/shape caches on ARM64.
+-  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
+-    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
+-    if (global) {
+-      JS_DeleteProperty(cx, global, "setWebRTCIPv4");
+-    }
+-  }
++
+ }
+ 
+ void nsGlobalWindowInner::SetWebRTCIPv6(const nsAString& ipv6, ErrorResult& aRv) {
+@@ -8035,13 +8029,7 @@
+ 
+   WebRTCIPManager::SetIPv6(userContextId, ipv6);
+ 
+-  // Self-destruct: set to undefined first to bust IC/shape caches on ARM64.
+-  if (JSContext* cx = nsContentUtils::GetCurrentJSContext()) {
+-    JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
+-    if (global) {
+-      JS_DeleteProperty(cx, global, "setWebRTCIPv6");
+-    }
+-  }
++
+ }
+ 
+ 
+--- a/dom/events/TouchEvent.cpp
++++ b/dom/events/TouchEvent.cpp
+@@ -3,6 +3,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "mozilla/dom/TouchEvent.h"
++#include "MaskConfig.hpp"
+ 
+ #include "gfxPlatform.h"
+ #include "mozilla/BasePrincipal.h"
+@@ -211,10 +212,12 @@
+ bool TouchEvent::PrefEnabled(nsIDocShell* aDocShell) {
+   MOZ_DIAGNOSTIC_ASSERT(NS_IsMainThread());
+ 
++  uint32_t context = 0;
+   auto touchEventsOverride = mozilla::dom::TouchEventsOverride::None;
+   if (aDocShell) {
+     if (BrowsingContext* bc = aDocShell->GetBrowsingContext()) {
+       touchEventsOverride = bc->TouchEventsOverride();
++      context = bc->OriginAttributesRef().mUserContextId;
+     }
+   }
+ 
+@@ -224,6 +227,9 @@
+   } else if (touchEventsOverride ==
+              mozilla::dom::TouchEventsOverride::Disabled) {
+     enabled = false;
++  } else if (auto touchPoints = MaskConfig::GetUint32("navigator:maxTouchPoints", context)) {
++    // Desktop digitizers expose Touch/TouchEvent, without legacy ontouch* APIs.
++    enabled = touchPoints.value() > 0;
+   } else if (nsContentUtils::ShouldResistFingerprinting(
+                  aDocShell, RFPTarget::PointerEvents)) {
+ #ifdef MOZ_WIDGET_COCOA
+--- a/dom/events/moz.build
++++ b/dom/events/moz.build
+@@ -190,3 +190,5 @@
+     "/layout/xul",
+     "/layout/xul/tree/",
+ ]
++
++LOCAL_INCLUDES += ["/cloakcfg"]
+--- a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
++++ b/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
+@@ -317,7 +317,10 @@
+     return NS_ERROR_NOT_AVAILABLE;
+   }
+ 
+-  if (MaskConfig::GetBool("voices:blockIfNotDefined")) return NS_OK;
++  // A configured voice list, including an empty/malformed one, must not
++  // silently gain native host voices. Honor an explicit false when no list exists.
++  if (MaskConfig::GetBool("voices:blockIfNotDefined").value_or(false) ||
++      MaskConfig::GetJson().contains("voices")) return NS_OK;
+ 
+   return AddVoiceImpl(aService, aUri, aName, aLang, aLocalService,
+                       aQueuesUtterances);
+--- a/dom/webidl/Window.webidl
++++ b/dom/webidl/Window.webidl
+@@ -995,12 +995,12 @@
+ 
+ // WebRTC IP interfaces for privacy-preserving IP spoofing
+ partial interface Window {
+-  [Throws, Func="mozilla::dom::WebRTCIPManager::IsIPv4FunctionEnabledForWebIDL"]
++  [ChromeOnly, Throws]
+   undefined setWebRTCIPv4(DOMString ipv4);
+ };
+ 
+ partial interface Window {
+-  [Throws, Func="mozilla::dom::WebRTCIPManager::IsIPv6FunctionEnabledForWebIDL"]
++  [ChromeOnly, Throws]
+   undefined setWebRTCIPv6(DOMString ipv6);
+ };
+ 
+--- a/gfx/thebes/gfxHarfBuzzShaper.cpp
++++ b/gfx/thebes/gfxHarfBuzzShaper.cpp
+@@ -1503,18 +1503,13 @@
+     hb_glyph_position_t* glyphPositions =
+         hb_buffer_get_glyph_positions(mBuffer, &glyphCount);
+ 
+-    hb_position_t cumulativeOffset = 0;
+-
+-    // Apply custom letter spacing
++    // Perturb advances only: shaping offsets position combining marks.
+     for (uint32_t i = 0; i < glyphCount; ++i) {
+       if (aVertical) {
+         glyphPositions[i].y_advance -= spacing;
+-        glyphPositions[i].y_offset -= cumulativeOffset;
+       } else {
+         glyphPositions[i].x_advance += spacing;
+-        glyphPositions[i].x_offset += cumulativeOffset;
+-      }
+-      cumulativeOffset += spacing;
++      }
+     }
+   }
+ 
+--- a/gfx/thebes/gfxMacPlatformFontList.mm
++++ b/gfx/thebes/gfxMacPlatformFontList.mm
+@@ -18,8 +18,6 @@
+ 
+ #include "harfbuzz/hb.h"
+ 
+-// Cloakfox: implemented in gfxPlatformFontList.cpp (see comment at use site).
+-extern const char* CloakfoxSystemFontName();
+ 
+ #include "AppleUtils.h"
+ #include "MainThreadUtils.h"
+@@ -397,18 +395,7 @@
+   }
+   NS_ASSERTION(font, "system font not set");
+ 
+-  // Cloakfox: spoof the CSS2 system-font keyword resolution (font: caption |
+-  // icon | menu | message-box | small-caption | status-bar) to match the
+-  // persona's claimed OS. The Mac build otherwise always reports
+-  // "-apple-system" here, which CreepJS's GeckoFonts map attributes to macOS —
+-  // leaking the real host through getComputedStyle().fontFamily even when
+-  // navigator.platform says Win32. Sibling of the system-ui hook in
+-  // gfxPlatformFontList::GetSystemUIFontFamilies.
+-  //
+-  // The lookup lives in gfxPlatformFontList.cpp: MaskConfig.hpp pulls in
+-  // nlohmann/json, which needs exceptions — disabled for Objective-C++ in this
+-  // directory — so we call across to plain C++ instead of including it here.
+-  aSystemFontName.AssignASCII(CloakfoxSystemFontName());
++  aSystemFontName.AssignASCII("-apple-system");
+ 
+   NSFontSymbolicTraits traits = font.fontDescriptor.symbolicTraits;
+   aFontStyle.style = (traits & NSFontItalicTrait) ? FontSlantStyle::ITALIC
+--- a/gfx/thebes/gfxPlatformFontList.cpp
++++ b/gfx/thebes/gfxPlatformFontList.cpp
+@@ -4,6 +4,7 @@
+ 
+ #include "gfxPlatformFontList.h"
+ #include "MaskConfig.hpp"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ 
+ #include "FontVisibilityProvider.h"
+ #include "GeckoProfiler.h"
+@@ -322,53 +323,9 @@
+ 
+   mFontPrefs = MakeUnique<FontPrefs>();
+ 
+-  // Hijack the kFontSystemWhitelistPref pref
+-  if (std::vector<std::string> fontValues = MaskConfig::GetStringList("fonts");
+-      !fontValues.empty()) {
+-    std::string fontValuesJoined =
+-        std::accumulate(fontValues.begin(), fontValues.end(), std::string(),
+-                        [](const std::string& acc, const std::string& s) {
+-                          return acc.empty() ? s : acc + "," + s;
+-                        });
+-    // Cloakfox: also whitelist the bundled CSS-generic families for EVERY OS,
+-    // so ApplyWhitelist() keeps them in mFontFamilies even though this global
+-    // whitelist is built from ucid-0's persona (one OS). Cross-OS containers
+-    // resolve their own generic through the font.name-list union
+-    // (CloakfoxSeedSync.applyGenericFontPrefs); without the family present here
+-    // ApplyWhitelist would have deleted it and every non-ucid-0 container's
+-    // serif/sans/mono would collapse to last-resort. This does NOT leak the
+-    // extra families: per-container FontListManager filtering in
+-    // FindAndAddFamilies hides any family not in a container's own persona
+-    // list, and every content font-presence path (text rendering, matchMedia,
+-    // document.fonts, local()) is filtered or fails closed. All 9 are shipped
+-    // by the bundled font pack, so a face always exists to render.
+-    fontValuesJoined += ",Times,Times New Roman,DejaVu Serif,Helvetica,Arial,"
+-                        "DejaVu Sans,Menlo,Consolas,DejaVu Sans Mono";
+-    Preferences::SetCString(kFontSystemWhitelistPref, fontValuesJoined.data());
+-  } else if (Preferences::GetBool("cloakfox.enabled", true)) {
+-    // Cloakfox: no per-container font list yet — e.g. the FIRST launch of a
+-    // fresh profile, before the default persona's cloak_cfg_0 pref is written.
+-    // gfxPlatformFontList is constructed this early in startup, so without a
+-    // fallback the first session would expose the REAL host system fonts and
+-    // leak the true OS. Pin a conservative cross-platform web-safe allowlist
+-    // until the persona list takes over from the next launch onward.
+-    Preferences::SetCString(
+-        kFontSystemWhitelistPref,
+-        "Arial,Arial Black,Comic Sans MS,Courier New,Georgia,Impact,"
+-        "Times New Roman,Trebuchet MS,Verdana,Tahoma,Courier,Helvetica,"
+-        // Bundled CSS-generic families (see the persona branch above) so the
+-        // first-launch generics resolve before the persona list takes over.
+-        "Times,DejaVu Serif,DejaVu Sans,Menlo,Consolas,DejaVu Sans Mono");
+-  } else {
+-    // Cloakfox DISABLED with no per-container list: clear any whitelist a
+-    // previous ENABLED session persisted to prefs.js as a User pref. Both
+-    // branches above call Preferences::SetCString, which flushes to prefs.js;
+-    // if we don't clear it here, GetPrefsFontList below re-activates
+-    // mFontFamilyWhitelistActive from the stale value, so toggling
+-    // cloakfox.enabled=false wouldn't restore the real font list after a
+-    // restart — the kill-switch would silently keep filtering fonts.
+-    Preferences::ClearUser(kFontSystemWhitelistPref);
+-  }
++  // Retire the persisted whitelist written by earlier Cloakfox builds. It
++  // removed native UI fonts from the shared list before any document lookup.
++  Preferences::ClearUser(kFontSystemWhitelistPref);
+   gfxFontUtils::GetPrefsFontList(kFontSystemWhitelistPref, mEnabledFontsList);
+   mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty();
+ 
+@@ -1279,6 +1236,54 @@
+   }
+ }
+ 
++// A content allowlist must never prune the process-wide font list: the
++// browser UI and other containers share it. Providers carry a stable container
++// snapshot during parallel styling; worker paths retain their scoped context.
++/* static */
++bool gfxPlatformFontList::MaskedFontListAppliesTo(FontVisibilityProvider* provider) {
++  return StaticPrefs::cloakfox_enabled() && provider && !provider->IsChrome();
++}
++
++/* static */
++bool gfxPlatformFontList::MaskedFontListBlocks(FontVisibilityProvider* provider,
++                                               const nsACString& family) {
++  if (!MaskedFontListAppliesTo(provider)) return false;
++  uint32_t context = mozilla::dom::FontListManager::GetCurrentContext();
++  if (auto identity = provider->GetCloakfoxFontIdentity()) {
++    context = uint32_t(identity.value() >> 32);
++  }
++  nsAutoCString key(family);
++  ToLowerCase(key);
++  if (mozilla::dom::FontListManager::HasFontList(context)) {
++    return !mozilla::dom::FontListManager::IsFontAllowed(context, key);
++  }
++  // Preserve the supported environment-config fallback when a container has
++  // no font list of its own. Overlay lists still take precedence above.
++  const auto& environment = MaskConfig::GetJson();
++  if (environment.contains("fonts") && environment["fonts"].is_array()) {
++    bool hasNames = false;
++    for (const auto& name : environment["fonts"]) {
++      if (!name.is_string()) continue;
++      hasNames = true;
++      nsAutoCString allowed(name.get<std::string>().c_str());
++      ToLowerCase(allowed);
++      if (key.Equals(allowed)) return false;
++    }
++    if (hasNames) return true;
++  }
++  // Fresh profiles can render before their first persona is ready. Keep the
++  // previous conservative startup set, now restricted to content lookups.
++  static const char* const startupFonts[] = {
++    "arial", "arial black", "comic sans ms", "courier new", "georgia", "impact",
++    "times new roman", "trebuchet ms", "verdana", "tahoma", "courier", "helvetica",
++    "times", "dejavu serif", "dejavu sans", "menlo", "consolas", "dejavu sans mono"
++  };
++  for (const char* name : startupFonts) {
++    if (key.EqualsASCII(name)) return false;
++  }
++  return true;
++}
++
+ already_AddRefed<gfxFont> gfxPlatformFontList::SystemFindFontForChar(
+     FontVisibilityProvider* aFontVisibilityProvider, uint32_t aCh,
+     uint32_t aNextCh, Script aRunScript, FontPresentation aPresentation,
+@@ -1294,7 +1299,7 @@
+   // encoding errors: just use cached family from last time U+FFFD was seen.
+   // This helps speed up pages with lots of encoding errors, binary-as-text,
+   // etc.
+-  if (aCh == 0xFFFD) {
++  if (aCh == 0xFFFD && !MaskedFontListAppliesTo(aFontVisibilityProvider)) {
+     gfxFontEntry* fontEntry = nullptr;
+     auto& fallbackFamily = mReplacementCharFallbackFamily[level];
+     if (fallbackFamily.mShared) {
+@@ -1369,12 +1374,14 @@
+ 
+   // no match? add to set of non-matching codepoints
+   if (!font) {
+-    mCodepointsWithNoFonts[level].set(aCh);
++    if (!MaskedFontListAppliesTo(aFontVisibilityProvider)) {
++      mCodepointsWithNoFonts[level].set(aCh);
++    }
+   } else {
+     *aVisibility = fallbackFamily.mShared
+                        ? fallbackFamily.mShared->Visibility()
+                        : fallbackFamily.mUnshared->Visibility();
+-    if (aCh == 0xFFFD) {
++    if (aCh == 0xFFFD && !MaskedFontListAppliesTo(aFontVisibilityProvider)) {
+       mReplacementCharFallbackFamily[level] = fallbackFamily;
+     }
+   }
+@@ -1428,6 +1435,7 @@
+ 
+   if (SharedFontList()) {
+     for (const auto name : defaultFallbacks) {
++      if (MaskedFontListBlocks(aFontVisibilityProvider, nsDependentCString(name))) continue;
+       fontlist::Family* family =
+           FindSharedFamily(aFontVisibilityProvider, nsDependentCString(name));
+       if (!family || !IsVisibleToCSS(*family, level)) {
+@@ -1445,6 +1453,7 @@
+     }
+   } else {
+     for (const auto name : defaultFallbacks) {
++      if (MaskedFontListBlocks(aFontVisibilityProvider, nsDependentCString(name))) continue;
+       gfxFontFamily* fallback =
+           FindFamilyByCanonicalName(nsDependentCString(name));
+       if (!fallback || !IsVisibleToCSS(*fallback, level)) {
+@@ -1477,6 +1486,7 @@
+     const gfxFontStyle* aMatchStyle, uint32_t& aCmapCount,
+     FontFamily& aMatchedFamily) {
+   bool useCmaps = IsFontFamilyWhitelistActive() ||
++                  MaskedFontListAppliesTo(aFontVisibilityProvider) ||
+                   gfxPlatform::GetPlatform()->UseCmapsDuringSystemFallback();
+   FontVisibility level = aFontVisibilityProvider
+                              ? aFontVisibilityProvider->GetFontVisibility()
+@@ -1523,7 +1533,8 @@
+     if (families) {
+       for (uint32_t i = 0; i < SharedFontList()->NumFamilies(); i++) {
+         fontlist::Family& family = families[i];
+-        if (!IsVisibleToCSS(family, level)) {
++        if (!IsVisibleToCSS(family, level) ||
++            MaskedFontListBlocks(aFontVisibilityProvider, family.Key().AsString(SharedFontList()))) {
+           continue;
+         }
+         if (!family.IsFullyInitialized() &&
+@@ -1549,7 +1560,8 @@
+     // iterate over all font families to find a font that support the
+     // character
+     for (const RefPtr<gfxFontFamily>& family : mFontFamilies.Values()) {
+-      if (!IsVisibleToCSS(*family, level)) {
++      if (!IsVisibleToCSS(*family, level) ||
++          MaskedFontListBlocks(aFontVisibilityProvider, family->Name())) {
+         continue;
+       }
+       // evaluate all fonts in this family for a match
+@@ -1807,19 +1819,7 @@
+   nsAutoCString key;
+   GenerateFontListKey(aFamily, key);
+ 
+-  // Per-context font list filtering. Applies to every container including the
+-  // default (ctx 0): each narrows to its own persona's cloak_cfg "fonts" list,
+-  // so containers no longer share the default persona's font set. HasFontList
+-  // returns false when a container has no list (e.g. cloakfox disabled), in
+-  // which case enumeration falls through to the process-global whitelist.
+-  {
+-    uint32_t ctx = mozilla::dom::FontListManager::GetCurrentContext();
+-    if (mozilla::dom::FontListManager::HasFontList(ctx)) {
+-      if (!mozilla::dom::FontListManager::IsFontAllowed(ctx, key)) {
+-        return false;
+-      }
+-    }
+-  }
++  if (MaskedFontListBlocks(aFontVisibilityProvider, key)) return false;
+ 
+   bool allowHidden = bool(aFlags & FindFamiliesFlags::eSearchHiddenFamilies);
+   FontVisibility visibilityLevel =
+@@ -2324,8 +2324,8 @@
+ // Also called from gfxMacPlatformFontList.mm (CSS2 system-font keywords). That
+ // file can't include MaskConfig.hpp because nlohmann/json needs exceptions,
+ // which are disabled for Objective-C++ in this directory — hence this helper.
+-static const char* CloakfoxPersonaUIFont() {
+-  auto platform = MaskConfig::GetString("navigator.platform");
++static const char* CloakfoxPersonaUIFont(uint32_t context) {
++  auto platform = MaskConfig::GetString("navigator.platform", context);
+   if (!platform) {
+     return nullptr;
+   }
+@@ -2350,11 +2350,9 @@
+   return nullptr;
+ }
+ 
+-// Cloakfox: exported for gfxMacPlatformFontList.mm. Falls back to the Mac
+-// default so the call site stays a single unconditional assignment.
+-const char* CloakfoxSystemFontName() {
+-  const char* name = CloakfoxPersonaUIFont();
+-  return name ? name : "-apple-system";
++// Shared persona lookup for document-aware CSS2 and system-ui resolution.
++const char* CloakfoxSystemFontName(uint32_t context) {
++  return StaticPrefs::cloakfox_enabled() ? CloakfoxPersonaUIFont(context) : nullptr;
+ }
+ 
+ static void GetSystemUIFontFamilies(
+@@ -2364,9 +2362,15 @@
+   // Otherwise getComputedStyle() on `font-family: system-ui` reports the REAL
+   // host's UI font (SF/Helvetica on macOS, Segoe UI on Windows, Cantarell/
+   // DejaVu on Linux), contradicting navigator.platform.
+-  if (const char* personaFont = CloakfoxPersonaUIFont()) {
+-    aFamilies.AppendElement()->AssignASCII(personaFont);
+-    return;
++  if (aFontVisibilityProvider && !aFontVisibilityProvider->IsChrome()) {
++    uint32_t context = mozilla::dom::FontListManager::GetCurrentContext();
++    if (auto identity = aFontVisibilityProvider->GetCloakfoxFontIdentity()) {
++      context = uint32_t(identity.value() >> 32);
++    }
++    if (const char* personaFont = CloakfoxSystemFontName(context)) {
++      aFamilies.AppendElement()->AssignASCII(personaFont);
++      return;
++    }
+   }
+ 
+   // TODO: On macOS, use CTCreateUIFontForLanguage or such thing (though the
+@@ -2479,10 +2483,25 @@
+   }
+ }
+ 
+-gfxPlatformFontList::PrefFontList*
++gfxPlatformFontList::PrefFontList
+ gfxPlatformFontList::GetPrefFontsLangGroupLocked(
+     FontVisibilityProvider* aFontVisibilityProvider,
+     StyleGenericFontFamily aGenericType, eFontPrefLang aPrefLang) {
++  // The shared caches are keyed only by language/generic. A masked document
++  // must resolve its own list: another container (or chrome) may have warmed
++  // those caches with a different allowlist/system-ui family. Return an owned
++  // list so concurrent style resolution never observes another owner's result.
++  if (MaskedFontListAppliesTo(aFontVisibilityProvider)) {
++    PrefFontList resolved;
++    if (aGenericType == StyleGenericFontFamily::MozEmoji ||
++        aPrefLang == eFontPrefLang_Emoji) {
++      ResolveEmojiFontNames(aFontVisibilityProvider, &resolved);
++    } else {
++      ResolveGenericFontNames(aFontVisibilityProvider, aGenericType, aPrefLang,
++                             &resolved);
++    }
++    return resolved;
++  }
+   if (aGenericType == StyleGenericFontFamily::MozEmoji ||
+       aPrefLang == eFontPrefLang_Emoji) {
+     // Emoji font has no lang
+@@ -2492,7 +2511,7 @@
+       ResolveEmojiFontNames(aFontVisibilityProvider, prefFonts);
+       mEmojiPrefFont.reset(prefFonts);
+     }
+-    return prefFonts;
++    return prefFonts->Clone();
+   }
+ 
+   auto index = static_cast<size_t>(aGenericType);
+@@ -2503,7 +2522,7 @@
+                             prefFonts);
+     mLangGroupPrefFonts[aPrefLang][index].reset(prefFonts);
+   }
+-  return prefFonts;
++  return prefFonts->Clone();
+ }
+ 
+ void gfxPlatformFontList::AddGenericFonts(
+@@ -2528,12 +2547,12 @@
+   eFontPrefLang prefLang = GetFontPrefLangFor(langGroup);
+ 
+   // lookup pref fonts
+-  PrefFontList* prefFonts = GetPrefFontsLangGroupLocked(aFontVisibilityProvider,
++  PrefFontList prefFonts = GetPrefFontsLangGroupLocked(aFontVisibilityProvider,
+                                                         aGenericType, prefLang);
+ 
+-  if (!prefFonts->IsEmpty()) {
+-    aFamilyList.SetCapacity(aFamilyList.Length() + prefFonts->Length());
+-    for (auto& f : *prefFonts) {
++  if (!prefFonts.IsEmpty()) {
++    aFamilyList.SetCapacity(aFamilyList.Length() + prefFonts.Length());
++    for (auto& f : prefFonts) {
+       aFamilyList.AppendElement(FamilyAndGeneric(f, aGenericType));
+     }
+   }
+@@ -2800,17 +2819,30 @@
+   FontFamily family =
+       GetDefaultFontForPlatform(aFontVisibilityProvider, aStyle);
+   if (!family.IsNull()) {
+-    return family;
+-  }
+-  // Something has gone wrong and we were unable to retrieve a default font
+-  // from the platform. (Likely the whitelist has blocked all potential
+-  // default fonts.) As a last resort, we return the first font in our list.
++    const nsCString name = family.mShared
++        ? family.mShared->Key().AsString(SharedFontList())
++        : family.mUnshared->Name();
++    if (!MaskedFontListBlocks(aFontVisibilityProvider, name)) return family;
++  }
++  // Choose an allowed fallback, never the first unrestricted host family.
+   if (SharedFontList()) {
+-    MOZ_RELEASE_ASSERT(SharedFontList()->NumFamilies() > 0);
+-    return FontFamily(SharedFontList()->Families());
+-  }
+-  MOZ_RELEASE_ASSERT(mFontFamilies.Count() > 0);
+-  return FontFamily(mFontFamilies.ConstIter().Data());
++    auto* list = SharedFontList();
++    for (uint32_t i = 0; i < list->NumFamilies(); ++i) {
++      auto* candidate = &list->Families()[i];
++      if (!MaskedFontListBlocks(aFontVisibilityProvider, candidate->Key().AsString(list))) {
++        return FontFamily(candidate);
++      }
++    }
++  } else {
++    for (const auto& candidate : mFontFamilies.Values()) {
++      if (!MaskedFontListBlocks(aFontVisibilityProvider, candidate->Name())) {
++        return FontFamily(candidate);
++      }
++    }
++  }
++  // Invalid masks may name no installed font. Layout still requires metrics;
++  // use the fixed bundled Arial family instead of an arbitrary host font.
++  return FindFamily(nullptr, "Arial"_ns);
+ }
+ 
+ void gfxPlatformFontList::GetFontFamilyNames(
+--- a/gfx/thebes/gfxPlatformFontList.h
++++ b/gfx/thebes/gfxPlatformFontList.h
+@@ -598,14 +598,14 @@
+     return mFontPrefs->EmojiHasUserValue();
+   }
+ 
+-  PrefFontList* GetPrefFontsLangGroup(
++  PrefFontList GetPrefFontsLangGroup(
+       FontVisibilityProvider* aFontVisibilityProvider,
+       mozilla::StyleGenericFontFamily aGenericType, eFontPrefLang aPrefLang) {
+     AutoLock lock(mLock);
+     return GetPrefFontsLangGroupLocked(aFontVisibilityProvider, aGenericType,
+                                        aPrefLang);
+   }
+-  PrefFontList* GetPrefFontsLangGroupLocked(
++  PrefFontList GetPrefFontsLangGroupLocked(
+       FontVisibilityProvider* aFontVisibilityProvider,
+       mozilla::StyleGenericFontFamily aGenericType, eFontPrefLang aPrefLang)
+       MOZ_REQUIRES(mLock);
+@@ -648,6 +648,10 @@
+   bool IsFontFamilyWhitelistActive() const {
+     return mFontFamilyWhitelistActive;
+   };
++
++  static bool MaskedFontListAppliesTo(FontVisibilityProvider* provider);
++  static bool MaskedFontListBlocks(FontVisibilityProvider* provider,
++                                   const nsACString& family);
+ 
+   static void FontWhitelistPrefChanged(const char* aPref, void* aClosure);
+ 
+--- a/gfx/thebes/gfxTextRun.cpp
++++ b/gfx/thebes/gfxTextRun.cpp
+@@ -2227,7 +2227,7 @@
+     if (face) {
+       fe = pfl->GetOrCreateFontEntry(face, fam);
+     }
+-  } else {
++  } else if (family.mUnshared) {
+     fe = family.mUnshared->FindFontForStyle(mStyle);
+   }
+   if (fe) {
+@@ -2253,6 +2253,7 @@
+       fontlist::Family* families = list->Families();
+       for (uint32_t i = 0; i < numFonts; ++i) {
+         fontlist::Family* fam = &families[i];
++        if (pfl->MaskedFontListBlocks(mFontVisibilityProvider, fam->Key().AsString(list))) continue;
+         if (!fam->IsInitialized()) {
+           (void)pfl->InitializeFamily(fam);
+         }
+@@ -2274,6 +2275,7 @@
+       pfl->GetFontFamilyList(familyList);
+       numFonts = familyList.Length();
+       for (uint32_t i = 0; i < numFonts; ++i) {
++        if (pfl->MaskedFontListBlocks(mFontVisibilityProvider, familyList[i]->Name())) continue;
+         gfxFontEntry* fe = familyList[i]->FindFontForStyle(mStyle, true);
+         if (fe) {
+           mDefaultFont = fe->FindOrMakeFont(&mStyle);
+@@ -2288,7 +2290,8 @@
+   if (!mDefaultFont) {
+     // We must have failed to find anything usable in our font-family list,
+     // or it's badly broken. One more last-ditch effort to make a font:
+-    if (gfxFontEntry* fe = pfl->GetDefaultFontEntry()) {
++    if (gfxFontEntry* fe = pfl->GetDefaultFontEntry();
++        fe && !pfl->MaskedFontListBlocks(mFontVisibilityProvider, fe->FamilyName())) {
+       if (RefPtr<gfxFont> f = fe->FindOrMakeFont(&mStyle)) {
+         return f.forget();
+       }
+@@ -4065,16 +4068,15 @@
+         mFallbackGeneric != StyleGenericFontFamily::None
+             ? mFallbackGeneric
+             : pfl->GetDefaultGeneric(currentLang);
+-    gfxPlatformFontList::PrefFontList* families = pfl->GetPrefFontsLangGroup(
++    gfxPlatformFontList::PrefFontList families = pfl->GetPrefFontsLangGroup(
+         mFontVisibilityProvider, generic, currentLang);
+-    NS_ASSERTION(families, "no pref font families found");
+ 
+     // find the first pref font that includes the character
+     uint32_t j, numPrefs;
+-    numPrefs = families->Length();
++    numPrefs = families.Length();
+     for (j = 0; j < numPrefs; j++) {
+       // look up the appropriate face
+-      FontFamily family = (*families)[j];
++      FontFamily family = families[j];
+       if (family.IsNull()) {
+         continue;
+       }
+--- a/gfx/thebes/gfxUserFontSet.cpp
++++ b/gfx/thebes/gfxUserFontSet.cpp
+@@ -463,7 +463,8 @@
+       pfl->AddUserFontSet(fontSet);
+       // Don't look up local fonts if the font whitelist is being used.
+       RefPtr<gfxFontEntry> fe;
+-      if (!pfl->IsFontFamilyWhitelistActive()) {
++      if (!pfl->IsFontFamilyWhitelistActive() &&
++          !gfxPlatformFontList::MaskedFontListAppliesTo(fontSet->GetFontVisibilityProvider())) {
+         fe = gfxPlatform::GetPlatform()->LookupLocalFont(
+             fontSet->GetFontVisibilityProvider(), currSrc.mLocalName, Weight(),
+             Width(), SlantStyle());
+--- a/layout/base/nsLayoutUtils.cpp
++++ b/layout/base/nsLayoutUtils.cpp
+@@ -3,6 +3,9 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "nsLayoutUtils.h"
++
++// Persona lookup lives in C++ gfx code; never applied to chrome documents.
++extern const char* CloakfoxSystemFontName(uint32_t context);
+ 
+ #include <algorithm>
+ #include <limits>
+@@ -9906,6 +9909,12 @@
+   } else if (!LookAndFeel::GetFont(aFontID, systemFontName, fontStyle)) {
+     return;
+   }
++  if (!nsContentUtils::IsChromeDoc(aDocument)) {
++    if (const char* personaFont = CloakfoxSystemFontName(
++            aDocument->NodePrincipal()->OriginAttributesRef().mUserContextId)) {
++      systemFontName.AssignASCII(personaFont);
++    }
++  }
+   systemFontName.Trim("\"'");
+   NS_ConvertUTF16toUTF8 nameu8(systemFontName);
+   Servo_FontFamily_ForSystemFont(&nameu8, &aSystemFont->family);
+--- a/layout/style/nsMediaFeatures.cpp
++++ b/layout/style/nsMediaFeatures.cpp
+@@ -476,7 +476,14 @@
+ #ifdef ANDROID
+       return PointerCapabilities::Coarse;
+ #endif
+-  return PointerCapabilities::Fine | PointerCapabilities::Hover;
++  PointerCapabilities capabilities = PointerCapabilities::Fine | PointerCapabilities::Hover;
++  if (!nsContentUtils::IsChromeDoc(aDocument) &&
++      aID == LookAndFeel::IntID::AllPointerCapabilities &&
++      MaskConfig::GetUint32("navigator:maxTouchPoints",
++          aDocument->NodePrincipal()->OriginAttributesRef().mUserContextId).value_or(0) > 0) {
++    capabilities |= PointerCapabilities::Coarse;
++  }
++  return capabilities;
+ }
+ 
+ PointerCapabilities Gecko_MediaFeatures_PrimaryPointerCapabilities(

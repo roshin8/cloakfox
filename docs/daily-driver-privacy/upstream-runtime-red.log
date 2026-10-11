@@ -1,0 +1,178 @@
+{"touch": 0, "chrome": {"anyCoarse": false, "caption": "Segoe UI", "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "function", "setWebRTCIPv4": "function", "setWebRTCIPv6": "function"}, "touch": 0, "touchEvent": "undefined", "touchInterface": "undefined"}, "content": {"anyCoarse": false, "caption": "Segoe UI", "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "undefined", "setWebRTCIPv4": "function", "setWebRTCIPv6": "function"}, "touch": 0, "touchEvent": "undefined", "touchInterface": "undefined"}}
+{"touch": 5, "chrome": {"anyCoarse": false, "caption": "Segoe UI", "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "function", "setWebRTCIPv4": "function", "setWebRTCIPv6": "function"}, "touch": 5, "touchEvent": "undefined", "touchInterface": "undefined"}, "content": {"anyCoarse": false, "caption": "Segoe UI", "fine": true, "hover": true, "legacy": false, "setters": {"setCloakConfig": "undefined", "setFontList": "undefined", "setSpeechVoices": "undefined", "setTimezone": "undefined", "setWebRTCIPv4": "function", "setWebRTCIPv6": "function"}, "touch": 5, "touchEvent": "undefined", "touchInterface": "undefined"}}
+Traceback (most recent call last):
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_upstream_hardening.py", line 77, in <module>
+    main()
+  File "/Users/zeus/Documents/cloakfox/.worktrees/firefox-155-compat/tests/fingerprint/probe_upstream_hardening.py", line 72, in main
+    assert not errors, json.dumps(errors, indent=2)
+AssertionError: [
+  [
+    "chrome persona font leak",
+    0,
+    {
+      "anyCoarse": false,
+      "caption": "Segoe UI",
+      "fine": true,
+      "hover": true,
+      "legacy": false,
+      "setters": {
+        "setCloakConfig": "undefined",
+        "setFontList": "undefined",
+        "setSpeechVoices": "undefined",
+        "setTimezone": "function",
+        "setWebRTCIPv4": "function",
+        "setWebRTCIPv6": "function"
+      },
+      "touch": 0,
+      "touchEvent": "undefined",
+      "touchInterface": "undefined"
+    }
+  ],
+  [
+    "page setter",
+    "setWebRTCIPv4",
+    "function"
+  ],
+  [
+    "page setter",
+    "setWebRTCIPv6",
+    "function"
+  ],
+  [
+    "iframe setters",
+    {
+      "anyCoarse": false,
+      "caption": "Segoe UI",
+      "fine": true,
+      "hover": true,
+      "legacy": false,
+      "setters": {
+        "setCloakConfig": "undefined",
+        "setFontList": "undefined",
+        "setSpeechVoices": "undefined",
+        "setTimezone": "undefined",
+        "setWebRTCIPv4": "function",
+        "setWebRTCIPv6": "function"
+      },
+      "touch": 0,
+      "touchEvent": "undefined",
+      "touchInterface": "undefined"
+    }
+  ],
+  [
+    "chrome persona font leak",
+    5,
+    {
+      "anyCoarse": false,
+      "caption": "Segoe UI",
+      "fine": true,
+      "hover": true,
+      "legacy": false,
+      "setters": {
+        "setCloakConfig": "undefined",
+        "setFontList": "undefined",
+        "setSpeechVoices": "undefined",
+        "setTimezone": "function",
+        "setWebRTCIPv4": "function",
+        "setWebRTCIPv6": "function"
+      },
+      "touch": 5,
+      "touchEvent": "undefined",
+      "touchInterface": "undefined"
+    }
+  ],
+  [
+    "page setter",
+    "setWebRTCIPv4",
+    "function"
+  ],
+  [
+    "page setter",
+    "setWebRTCIPv6",
+    "function"
+  ],
+  [
+    "coarse pointer",
+    {
+      "anyCoarse": false,
+      "caption": "Segoe UI",
+      "fine": true,
+      "hover": true,
+      "legacy": false,
+      "setters": {
+        "setCloakConfig": "undefined",
+        "setFontList": "undefined",
+        "setSpeechVoices": "undefined",
+        "setTimezone": "undefined",
+        "setWebRTCIPv4": "function",
+        "setWebRTCIPv6": "function"
+      },
+      "touch": 5,
+      "touchEvent": "undefined",
+      "touchInterface": "undefined"
+    }
+  ],
+  [
+    "touchEvent",
+    {
+      "anyCoarse": false,
+      "caption": "Segoe UI",
+      "fine": true,
+      "hover": true,
+      "legacy": false,
+      "setters": {
+        "setCloakConfig": "undefined",
+        "setFontList": "undefined",
+        "setSpeechVoices": "undefined",
+        "setTimezone": "undefined",
+        "setWebRTCIPv4": "function",
+        "setWebRTCIPv6": "function"
+      },
+      "touch": 5,
+      "touchEvent": "undefined",
+      "touchInterface": "undefined"
+    }
+  ],
+  [
+    "touchInterface",
+    {
+      "anyCoarse": false,
+      "caption": "Segoe UI",
+      "fine": true,
+      "hover": true,
+      "legacy": false,
+      "setters": {
+        "setCloakConfig": "undefined",
+        "setFontList": "undefined",
+        "setSpeechVoices": "undefined",
+        "setTimezone": "undefined",
+        "setWebRTCIPv4": "function",
+        "setWebRTCIPv6": "function"
+      },
+      "touch": 5,
+      "touchEvent": "undefined",
+      "touchInterface": "undefined"
+    }
+  ],
+  [
+    "iframe setters",
+    {
+      "anyCoarse": false,
+      "caption": "Segoe UI",
+      "fine": true,
+      "hover": true,
+      "legacy": false,
+      "setters": {
+        "setCloakConfig": "undefined",
+        "setFontList": "undefined",
+        "setSpeechVoices": "undefined",
+        "setTimezone": "undefined",
+        "setWebRTCIPv4": "function",
+        "setWebRTCIPv6": "function"
+      },
+      "touch": 5,
+      "touchEvent": "undefined",
+      "touchInterface": "undefined"
+    }
+  ]
+]
