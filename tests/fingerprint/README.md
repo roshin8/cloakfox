@@ -437,3 +437,22 @@ host persona mode and isolated profile workspaces. Install
 The workspace probe isolates app-data directories and cleans up only its owned
 native test child. See `docs/privacy-completion/README.md` for evidence and exact
 coverage limits. The identity workflow probe exercises encrypted v2 and v1 import.
+
+### Chrome network reference
+
+`probe_chrome_network_baseline.py` measures the installed Chrome release against
+local TLS/H2 and QUIC/H3 servers, using three disposable profiles per protocol.
+Install `tests/network/requirements-wire.txt` first. Run:
+
+```sh
+CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  CHROME_WIRE_REPORT=/tmp/chrome-network-reference.json \
+  python tests/fingerprint/probe_chrome_network_baseline.py
+```
+
+Chrome trusts only the temporary fixture leaf's SPKI; the system keychain and
+existing profiles are untouched. The artifact preserves cipher/group/signature
+order, TLS extension IDs, QUIC transport parameters and H2/H3 SETTINGS. TLS
+extension and QUIC parameter order can vary across fresh connections. GREASE,
+extension payloads, resumption, 0-RTT and packet scheduling are not compared.
+This is a reference capture, **not a claim that Cloakfox matches Chrome**.
