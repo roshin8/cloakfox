@@ -369,42 +369,10 @@ export function migratePersonaVersion(keys) {
   return out;
 }
 
-// Derive the HTTP/2 + HTTP/3 fingerprint profile that keeps the wire
-// transport coherent with the persona's browser family. h3 int mapping
-// matches settings/cloakfox.cfg and the test harness: firefox=0, chrome=1,
-// safari=2. Order matters — Chrome UAs also contain "Safari/", and Firefox
-// UAs contain "Gecko", so test firefox → chrome → safari and default to
-// firefox (the coherent choice for this fork's Firefox-based engine).
-// Whether a non-Firefox HTTP/3 profile may be selected.
-//
-// http3-fingerprint-spoofing.patch reshapes the H3 SETTINGS frame inside
-// neqo-http3, but the QUIC TRANSPORT parameters (neqo-transport: the
-// initial_max_* values, active_connection_id_limit and their ordering, which
-// feed JA4-QUIC) are untouched, and the TLS ClientHello (JA3/JA4) comes from
-// NSS. So claiming Chrome or Safari at the H3 layer ships Chrome SETTINGS with
-// Firefox transport params and a Firefox ClientHello — a layered chimera that
-// is MORE identifiable than not spoofing, the same failure mode as an unseeded
-// timer jitter or a JS-only DNT header.
-//
-// This does not bite in the default configuration: Cloakfox personas vary OS
-// and hardware but always carry a Firefox UA (the engine really is Gecko), so
-// this function always takes the firefox branch. The guard exists so a manual
-// UA override cannot silently produce the chimera. Flip it only alongside real
-// neqo-transport + TLS spoofing.
-const CROSS_ENGINE_H3 = false;
-
-export function deriveHttpProfile(ua) {
-  const s = (ua || "").toLowerCase();
-  if (s.includes("firefox/") || s.includes("gecko/")) {
-    return { h2: "firefox", h3: 0 };
-  }
-  if (s.includes("chrome/") || s.includes("chromium/") ||
-      s.includes("edg/") || s.includes("opr/")) {
-    return { h2: "chrome", h3: CROSS_ENGINE_H3 ? 1 : 0 };
-  }
-  if (s.includes("safari/") && s.includes("version/")) {
-    return { h2: "safari", h3: CROSS_ENGINE_H3 ? 2 : 0 };
-  }
+// Network profiles follow the actual engine, independent of cosmetic UA fields.
+export function deriveHttpProfile(_ua) {
+  // The wire protocol comes from Gecko/NSS/neqo. UA overrides do not change
+  // the engine: keep H2 and H3 in the same Firefox cohort as the ClientHello.
   return { h2: "firefox", h3: 0 };
 }
 
@@ -578,6 +546,12 @@ function bfToCloakKeys(fp, prng) {
   // editable so power users can flip them off via per-field override.
   keys["codecs:spoof"]              = true;
   keys["mediaCapabilities:spoof"]   = true;
+  // Cap the real inventory and normalize labels; exact device selection still
+  // resolves to the physical capture backend, never a synthetic replacement.
+  keys["mediaDevices:enabled"] = true;
+  keys["mediaDevices:micros"] = 1;
+  keys["mediaDevices:webcams"] = 1;
+  keys["mediaDevices:speakers"] = 1;
   keys["mediaFeature:invertedColors"]             = false;
   keys["mediaFeature:prefersReducedMotion"]       = false;
   keys["mediaFeature:prefersReducedTransparency"] = false;

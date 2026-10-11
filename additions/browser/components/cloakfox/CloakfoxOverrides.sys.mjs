@@ -98,6 +98,10 @@ export const KEY_TYPES = {
   "webrtc:ipv6": "string",
 
   // ── media ──
+  "mediaDevices:enabled": "bool",
+  "mediaDevices:micros": "int",
+  "mediaDevices:webcams": "int",
+  "mediaDevices:speakers": "int",
   "codecs:spoof":                              "bool",
   "mediaCapabilities:spoof":                   "bool",
   "mediaFeature:resolution":                   "int",
@@ -171,6 +175,14 @@ export function setOverride(ucid, key, value) {
     return;
   }
   const type = KEY_TYPES[key];
+  if (["mediaDevices:micros", "mediaDevices:webcams", "mediaDevices:speakers"].includes(key)) {
+    const count = Number(value);
+    if (!Number.isInteger(count) || count < 0 || count > 64) {
+      throw new Error("Media-device limits must be between 0 and 64");
+    }
+    Services.prefs.setIntPref(fullName, count);
+    return;
+  }
   if (type === "int") {
     Services.prefs.setIntPref(fullName, parseInt(value, 10));
   } else if (type === "bool") {

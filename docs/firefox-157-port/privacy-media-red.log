@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_privacy_media_hdr.py", line 104, in <module>
+    if __name__=='__main__': main()
+                             ~~~~^^
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_privacy_media_hdr.py", line 76, in main
+    assert denied == [], ('Permissions-Policy leaked media devices', denied)
+           ^^^^^^^^^^^^
+AssertionError: ('Permissions-Policy leaked media devices', [{'deviceId': '', 'groupId': '', 'kind': 'audioinput', 'label': ''}, {'deviceId': '', 'groupId': '', 'kind': 'videoinput', 'label': ''}, {'deviceId': '', 'groupId': '', 'kind': 'videoinput', 'label': ''}, {'deviceId': '', 'groupId': '', 'kind': 'audioinput', 'label': ''}, {'deviceId': '', 'groupId': '', 'kind': 'audioinput', 'label': ''}])

@@ -8,9 +8,12 @@ with Files("**"):
     BUG_COMPONENT = ("Core", "DOM: UI Events & Focus Handling")
 
 EXPORTS += [
+    "CloakfoxTiming.h",
     "MaskConfig.hpp",
     "MouseTrajectories.hpp",
 ]
+
+UNIFIED_SOURCES += ["CloakfoxTiming.cpp"]
 
 LOCAL_INCLUDES += [
     "/cloakcfg",

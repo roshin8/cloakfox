@@ -1,0 +1,25 @@
+$ mkdir -p lw
+Staged reviewed uBlock Origin 1.74.0 (4617614 bytes): lw/ublock-origin/uBlock0@raymondhill.net.xpi
+Staged @testpilot-containers 8.3.8
+Staged {c607c8df-14a7-4f28-894f-29e8722976af} 1.9.2
+$ cp -v /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/cloakfox.cfg lw/cloakfox.cfg
+/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/cloakfox.cfg -> lw/cloakfox.cfg
+$ cp -v /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/policies.json lw/
+/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/policies.json -> lw/policies.json
+$ cp -v /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/local-settings.js lw/
+/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/local-settings.js -> lw/local-settings.js
+$ cp -v /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/chrome.css lw/
+/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/chrome.css -> lw/chrome.css
+$ cp -v /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/properties.json lw/
+/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/settings/properties.json -> lw/properties.json
+$ touch lw/moz.build
+$ cp -v '/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/patches/librewolf/pack_vs.py' build/vs/
+/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/patches/librewolf/pack_vs.py -> build/vs/pack_vs.py
+$ cp -r '/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/additions/'* .
+$ python3 '/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/scripts/audit-font-pack.py' --check
+Verified 31 fonts and 6 license files
+$ cp '/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/bundle/fonts/macos/'*.ttf browser/fonts/
+$ cp '/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/bundle/fonts/licenses/'*.txt browser/fonts/
+$ cp '/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/bundle/fonts/FONT-NOTICES.txt' '/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/bundle/fonts/font-manifest.json' browser/fonts/
+Staged 31 bundled fonts into browser/fonts/
+Additions and settings copied successfully.

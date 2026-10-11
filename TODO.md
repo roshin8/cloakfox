@@ -8,6 +8,9 @@ completed audits, not claims that every related feature is implemented.
 
 ## Current work
 
+- [x] **Implemented on Firefox 157:** Native window/worker Performance Timeline presentation, real-backed media caps and generic labels, HDR masking and Settings controls. Timing mode changes apply on page reload/worker restart.
+- [x] **Measured on Firefox 157:** Local TLS/H2/QUIC/H3 structural parity against stock Firefox; automatic network profiles follow the actual engine. WebSocket proxy/refusal/reconnect routes tested. [Evidence](docs/firefox-157-port/privacy-followup-verification.md).
+
 - [ ] **In progress:** Finish TestDome owner-based screen geometry and Settings controls (in progress).
 - [ ] **Not implemented:** Implement the native screen-details API and configurable screen count.
 - [ ] **Not implemented:** Complete screen-management permission and Permissions Policy handling.
@@ -26,8 +29,8 @@ completed audits, not claims that every related feature is implemented.
 
 Source: [pending privacy plan](.worktrees/firefox-155-compat/docs/superpowers/plans/2026-09-09-pending-privacy-signals.md)
 and [completion report](.worktrees/firefox-155-compat/docs/privacy-completion/README.md).
-This work belongs to `codex/firefox-155-compat`, not the active Firefox 146
-checkout. Its unchecked plan boxes do not by themselves establish status; the labels below
+Historical work belongs to `codex/firefox-155-compat`. The active development
+branch is `codex/firefox-157-port`; completed 157 follow-ups are labeled below. Its unchecked plan boxes do not by themselves establish status; the labels below
 reflect current source and recorded acceptance evidence.
 
 - [ ] **Partial:** Finish persisted generated-persona schema/provenance migration and standardized OS font inventories. Heuristic migration exists; versioning and removal of seed-random optional font membership remain.
@@ -36,9 +39,9 @@ reflect current source and recorded acceptance evidence.
   cover proxy changes, cache expiry, lookup errors and a scoped continue-once action.
 - [ ] **Not implemented:** Compare and normalize WebRTC SDP/capabilities against stock Firefox;
   address-leak controls alone do not verify SDP coherence.
-- [ ] **Not implemented:** Capture repeatable TLS ClientHello baselines against stock Firefox.
-- [ ] **Partial:** Capture QUIC transport parameters and handshake baselines at the wire.
-- [ ] **Not implemented:** Verify WebSocket handshakes, proxy/DNS routing, refusal and reconnect behavior.
+- [x] **Verified on 157:** Repeatable local TLS ClientHello baseline against stock Firefox, including certificate rejection controls.
+- [x] **Verified on 157:** QUIC handshake/transport parameters and H3 SETTINGS captured locally; native randomized extension order retained.
+- [x] **Verified on 157:** Local ws/wss handshakes, proxy routing, blocked/dead-proxy refusal and reconnect. Existing DNS route controls retained.
 - [ ] **Partial:** Make persona application atomic across tabs, frames, workers and caches;
   prove no mixed configuration revisions survive.
 - [ ] **Not implemented:** Decide and implement the Firefox 155 plan’s removal of optional Math-constant noise. Default constants are already exact; the optional path remains.
@@ -79,9 +82,8 @@ Development signing and local fixture tests do not complete these tasks.
 - [ ] **Partial:** Verify comprehensive bundled-font packaging/runtime on Windows and Linux. macOS pack/rendering is done; separate OS directories are optional if one pack passes parity checks.
 - [ ] **Optional:** Extend Noto coverage for additional scripts / Japanese, Korean and
   Traditional Chinese if those languages become supported targets.
-- [ ] **Pending integration:** Integrate the timing worktree’s implemented native Performance Timeline coverage. The active patch stack does not include it; SAB mitigation remains separately deferred.
-- [ ] **Not verified:** Measure HTTP/3 SETTINGS emission on the wire; preference plumbing and Rust
-  unit tests do not replace that observation.
+- [x] **Integrated on 157:** Native Performance Timeline coverage with exact owner/site keys; all three worker kinds covered. SAB mitigation remains separately deferred.
+- [x] **Verified on 157:** HTTP/3 SETTINGS measured on local wire fixtures and compared with stock Firefox.
 - [ ] **Deferred:** Keep TLS fingerprint modification as a separate deferred NSS project;
   baseline measurement is tracked above and does not authorize implementation.
 

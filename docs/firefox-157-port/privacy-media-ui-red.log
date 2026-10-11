@@ -1,0 +1,39 @@
+✔ fresh cfg derives Firefox major from 155.0.1 (6.265541ms)
+✔ fresh cfg derives Firefox major from 156.0a1 (1.73225ms)
+✔ fresh cfg derives Firefox major from 157.0b3 (1.277667ms)
+✔ fresh cfg derives Firefox major from 155.2.0esr (1.252791ms)
+✔ startup migrates legacy identity only and keeps seeds and unrelated cfg (2.239ms)
+✔ explicit identity overrides remain pinned while other generated fields migrate (1.400416ms)
+✔ unrecognized direct cfg identity is preserved (1.42625ms)
+✔ explicit Firefox-shaped UA and header overrides remain on their chosen version (1.488625ms)
+✔ font-key upgrade also migrates identity without losing existing values (1.399917ms)
+✔ startup repairs a saved macOS identity carrying Linux fonts (1.466042ms)
+✔ corrupt cfg rebuilds from persisted seeds with current identity (1.398292ms)
+✔ divergent navigator and HTTP overrides each retain the explicit choice (1.191ms)
+✔ first master seed selects mixed OS mode; existing seeded identity remains legacy (2.684ms)
+✔ host mode flows through generated keys, pinned keys, preview labels and summary (3.385083ms)
+✔ saved 146 OS/hardware filters survive the port and invalid strings keep the legacy path (0.850208ms)
+✔ timing keys vary by launch salt and seed, and preserve explicit media choices (1.657375ms)
+✖ media exposure caps are editable without inventing devices or changing the identity (1.379667ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 122.242375
+
+✖ failing tests:
+
+test at tests/fingerprint/test_persona_version.mjs:191:1
+✖ media exposure caps are editable without inventing devices or changing the identity (1.379667ms)
+  Error: Unknown cloak_cfg key: mediaDevices:micros
+      at Object.setOverride (CloakfoxOverrides:164:11)
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/test_persona_version.mjs:193:13)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)

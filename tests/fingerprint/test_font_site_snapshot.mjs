@@ -54,7 +54,7 @@ test('production SeedSync emits one numeric invalidation for unsynced cfg change
  const source=readFileSync(new URL('../../additions/browser/components/cloakfox/CloakfoxSeedSync.sys.mjs',import.meta.url),'utf8');
  const block=source.slice(source.indexOf('const observer = {'),source.indexOf('// Containers created AFTER startup'));
  const prefs=new Map();let publishes=0,ctx;
- ctx=vm.createContext({publish(){publishes++;},Services:{prefs:{getIntPref:(key,fallback)=>prefs.get(key)??fallback,
+ ctx=vm.createContext({publish(){publishes++;},Services:{prefs:{getStringPref:(key,fallback)=>prefs.get(key)??fallback,getIntPref:(key,fallback)=>prefs.get(key)??fallback,
   setIntPref(key,value){prefs.set(key,value);ctx.observer.observe(null,'nsPref:changed',key);}}}});
  vm.runInContext(block+'\nthis.observer=observer;',ctx);
  ctx.observer.observe(null,'nsPref:changed','cloakfox.s.cloak_cfg_3');

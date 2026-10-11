@@ -64,6 +64,46 @@ function randomSeedB64() {
   return btoa(s);
 }
 
+const SESSION_TIMING_SALT = randomSeedB64();
+
+export function deriveTimingSessionKey(seedB64, saltB64) {
+  const seed = atob(seedB64);
+  const salt = atob(saltB64);
+  if (seed.length !== 32 || salt.length !== 32) {
+    throw new TypeError("timing seed and session salt must be 32 bytes");
+  }
+  let hi = 0x9e3779b9;
+  let lo = 0x85ebca6b;
+  for (let i = 0; i < 32; i++) {
+    hi = Math.imul(hi ^ seed.charCodeAt(i), 16777619) >>> 0;
+    lo = Math.imul(lo ^ salt.charCodeAt(i), 2246822507) >>> 0;
+    hi = (hi ^ (lo >>> 13)) >>> 0;
+    lo = (lo ^ (hi >>> 15)) >>> 0;
+  }
+  return { hi: hi || 1, lo: lo || 1 };
+}
+
+export function mergeSessionTimingKey(cfgJson, key) {
+  let cfg = {};
+  try {
+    const parsed = JSON.parse(cfgJson || "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) cfg = parsed;
+  } catch (_e) {}
+  return JSON.stringify({
+    ...cfg,
+    "timing:session_key_hi": key.hi >>> 0,
+    "timing:session_key_lo": key.lo >>> 0,
+  });
+}
+
+function withSessionTiming(config, ucid) {
+  if (!config["fingerprint:secret"]) return config;
+  const seed = Services.prefs.getStringPref(`cloakfox.container.${ucid}.timing_seed`, "");
+  if (!seed) return config;
+  return JSON.parse(mergeSessionTimingKey(JSON.stringify(config),
+    deriveTimingSessionKey(seed, SESSION_TIMING_SALT)));
+}
+
 // Derive a uint32 from the seed at offset i*4. Mirrors content/settings.js
 // — keeping the derivation identical means the about:cloakfox UI's
 // "regenerate" button and our auto-generation produce the same shape of
@@ -114,7 +154,7 @@ function buildCloakCfg(seedB64, ucid = null) {
     "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   };
-  return JSON.stringify(ucid !== null ? applyOverrides(ucid, base) : base);
+  return JSON.stringify(ucid !== null ? withSessionTiming(applyOverrides(ucid, base), ucid) : base);
 }
 
 // Explicit settings edits rebuild the same identity; they never rotate its seed.
@@ -223,7 +263,11 @@ function ensureContainerSeeds(ucid) {
           parsed["fingerprint:secret"] = Services.prefs.getStringPref(
             `cloakfox.container.${ucid}.math_seed`, "");
         }
-        const migrated = JSON.stringify(applyOverrides(ucid, migratePersonaVersion(parsed)));
+        if (!("mediaDevices:enabled" in parsed)) {
+          parsed["mediaDevices:enabled"] = true;
+        }
+        writeHttpProfilePrefs(ucid, parsed["navigator.userAgent"] || "");
+        const migrated = JSON.stringify(withSessionTiming(applyOverrides(ucid, migratePersonaVersion(parsed)), ucid));
         if (migrated !== current) {
           Services.prefs.setStringPref(cfgPref, migrated);
         }
@@ -342,6 +386,20 @@ function publish() {
 const observer = {
   observe(_subject, topic, data) {
     if (topic !== "nsPref:changed" || data === "cloakfox.font_identity_epoch") return;
+    if (data?.startsWith("cloakfox.s.cloak_cfg_")) {
+      const raw = Services.prefs.getStringPref(data, "");
+      try {
+        const cfg = JSON.parse(raw);
+        if (cfg && typeof cfg === "object" && !Array.isArray(cfg)) {
+          const ucid = Number(data.slice("cloakfox.s.cloak_cfg_".length));
+          const updated = JSON.stringify(withSessionTiming(cfg, ucid));
+          if (updated !== raw) {
+            Services.prefs.setStringPref(data, updated);
+            return; // The nested notification publishes the final snapshot.
+          }
+        }
+      } catch (_e) { /* cleared or invalid overlays keep the native fallback */ }
+    }
     // Re-snapshot. Cheaper than diffing — pref count is small.
     publish();
     if (data?.startsWith("cloakfox.s.cloak_cfg_")) {

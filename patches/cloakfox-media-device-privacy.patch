@@ -1,0 +1,128 @@
+diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
+--- a/dom/media/MediaDevices.cpp
++++ b/dom/media/MediaDevices.cpp
+@@ -29,6 +29,7 @@
+ #include "nsPIDOMWindowInlines.h"
+ #include "nsQueryObject.h"
+ #include "MaskConfig.hpp"
++#include "CloakfoxSiteSeed.hpp"
+ 
+ namespace mozilla::dom {
+ 
+@@ -344,54 +345,30 @@
+     exposed->AppendElement(device);
+   }
+ 
+-  // Replaces the RFP-based device count spoofing with one that controls the
+-  // number of devices exposed.
+-
+-  if (!MaskConfig::GetBool("mediaDevices:enabled")) {
++  // Retain Firefox's permission filtering and physical device backing.
++  // A configured count is an exposure cap, never a fabricated device inventory.
++  const auto cfg = CloakfoxSiteSeed::ExactConfig(
++      doc->NodePrincipal()->OriginAttributesRef().mUserContextId);
++  const auto flag = cfg.find("mediaDevices:enabled");
++  if (flag == cfg.end() || !flag->is_boolean()) return exposed;
++  if (!flag->get<bool>()) {
++    exposed->Clear();
+     return exposed;
+   }
+-
+-  uint32_t numMics = MaskConfig::GetUint32("mediaDevices:micros").value_or(3);
+-  uint32_t numWebcams =
+-      MaskConfig::GetUint32("mediaDevices:webcams").value_or(1);
+-  uint32_t numSpeakers =
+-      MaskConfig::GetUint32("mediaDevices:speakers").value_or(1);
+-
+-  // Clear existing devices. We'll add our own
+-  exposed->Clear();
+-
+-  // We haven't seen at least one of each kind of device.
+-  // Audioinput, Videoinput, Audiooutput.
+-  // Insert fake devices.
+-  RefPtr fakeEngine = new MediaEngineFake();
+-  RefPtr fakeDevices = new MediaDeviceSetRefCnt();
+-  // The order in which we insert the fake devices is important.
+-  // Microphone is inserted first, then camera, then speaker
+-
+-  // Insert fake microphones
+-  for (uint32_t i = 0; i < numMics; ++i) {
+-    fakeEngine->EnumerateDevices(MediaSourceEnum::Microphone,
+-                                 MediaSinkEnum::Other, fakeDevices);
+-    exposed->InsertElementAt(0, fakeDevices->LastElement());
+-  }
+-  // Insert fake cameras
+-  for (uint32_t i = 0; i < numWebcams; ++i) {
+-    fakeEngine->EnumerateDevices(MediaSourceEnum::Camera, MediaSinkEnum::Other,
+-                                 fakeDevices);
+-    exposed->InsertElementAt(1, fakeDevices->LastElement());
+-  }
+-  // Insert fake speakers (this is only accessed if the site has permission)
+-  if (mCanExposeMicrophoneInfo) {
+-    for (uint32_t i = 0; i < numSpeakers; ++i) {
+-      RefPtr info = new AudioDeviceInfo(
+-          nullptr, u""_ns, u""_ns, u""_ns, CUBEB_DEVICE_TYPE_OUTPUT,
+-          CUBEB_DEVICE_STATE_ENABLED, CUBEB_DEVICE_PREF_ALL,
+-          CUBEB_DEVICE_FMT_ALL, CUBEB_DEVICE_FMT_S16NE, 2, 44100, 44100, 44100,
+-          128, 128);
+-      exposed->AppendElement(
+-          new MediaDevice(new MediaEngineFake(), info, u""_ns));
+-    }
+-  }
++  auto cap = [&cfg](const char* key) -> uint32_t {
++    const auto value = cfg.find(key);
++    return value != cfg.end() && value->is_number_unsigned()
++        ? uint32_t(std::min(value->get<uint64_t>(), uint64_t(64))) : 1;
++  };
++  const uint32_t limits[] = {cap("mediaDevices:micros"),
++                            cap("mediaDevices:webcams"),
++                            cap("mediaDevices:speakers")};
++  uint32_t counts[] = {0, 0, 0};
++  exposed->RemoveElementsBy([&](const auto& device) {
++    const size_t kind = device->mKind == MediaDeviceKind::Audioinput ? 0 :
++                        device->mKind == MediaDeviceKind::Videoinput ? 1 : 2;
++    return counts[kind]++ >= limits[kind];
++  });
+ 
+   return exposed;
+ }
+diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
+--- a/dom/media/MediaManager.cpp
++++ b/dom/media/MediaManager.cpp
+@@ -3,6 +3,7 @@
+  * You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "MediaManager.h"
++#include "CloakfoxSiteSeed.hpp"
+ 
+ #include "AudioCaptureTrack.h"
+ #include "AudioDeviceInfo.h"
+@@ -3408,13 +3409,17 @@
+   }
+   bool resistFingerprinting =
+       aWindow->AsGlobal()->ShouldResistFingerprinting(RFPTarget::MediaDevices);
++  const auto cfg = CloakfoxSiteSeed::ExactConfig(
++      principal->OriginAttributesRef().mUserContextId);
++  const auto flag = cfg.find("mediaDevices:enabled");
++  const bool maskLabels = flag != cfg.end() && flag->is_boolean();
+   bool persist =
+       IsActivelyCapturingOrHasAPermission(windowId) && !resistFingerprinting;
+   return media::GetPrincipalKey(principalInfo, persist)
+       ->Then(
+           GetMainThreadSerialEventTarget(), __func__,
+           [rawDevices = std::move(aDevices), windowId,
+-           resistFingerprinting](const nsCString& aOriginKey) {
++           resistFingerprinting, maskLabels](const nsCString& aOriginKey) {
+             MOZ_ASSERT(!aOriginKey.IsEmpty());
+             RefPtr anonymized = new LocalMediaDeviceSetRefCnt();
+             for (const RefPtr<MediaDevice>& device : *rawDevices) {
+@@ -3423,6 +3428,9 @@
+                 name = u"AirPods"_ns;
+               }
+ 
++              if (maskLabels) {
++                nsRFPService::GetMediaDeviceName(name, device->mKind);
++              }
+               nsString id = device->mRawID;
+               if (resistFingerprinting) {
+                 nsRFPService::GetMediaDeviceName(name, device->mKind);

@@ -1,0 +1,75 @@
+{"scheme": "ws", "result": {"message": "local-route-probe", "protocol": "local-echo"}, "accepts": 1, "requests": [{"path": "/direct-0", "origin": "http://ws-fixture.test", "protocol": "local-echo"}]}
+{"scheme": "ws", "result": {"message": "local-route-probe", "protocol": "local-echo"}, "accepts": 2, "requests": [{"path": "/direct-0", "origin": "http://ws-fixture.test", "protocol": "local-echo"}, {"path": "/direct-1", "origin": "http://ws-fixture.test", "protocol": "local-echo"}]}
+{"scheme": "wss", "result": {"message": "local-route-probe", "protocol": "local-echo"}, "accepts": 1, "requests": [{"path": "/direct-0", "origin": "http://ws-fixture.test", "protocol": "local-echo"}]}
+{"scheme": "wss", "result": {"message": "local-route-probe", "protocol": "local-echo"}, "accepts": 2, "requests": [{"path": "/direct-0", "origin": "http://ws-fixture.test", "protocol": "local-echo"}, {"path": "/direct-1", "origin": "http://ws-fixture.test", "protocol": "local-echo"}]}
+{
+  "ws": {
+    "requests": [
+      {
+        "path": "/direct-0",
+        "origin": "http://ws-fixture.test",
+        "protocol": "local-echo"
+      },
+      {
+        "path": "/direct-1",
+        "origin": "http://ws-fixture.test",
+        "protocol": "local-echo"
+      },
+      {
+        "path": "/proxied",
+        "origin": "http://ws-fixture.test",
+        "protocol": "local-echo"
+      }
+    ]
+  },
+  "wss": {
+    "requests": [
+      {
+        "path": "/direct-0",
+        "origin": "http://ws-fixture.test",
+        "protocol": "local-echo"
+      },
+      {
+        "path": "/direct-1",
+        "origin": "http://ws-fixture.test",
+        "protocol": "local-echo"
+      },
+      {
+        "path": "/proxied",
+        "origin": "http://ws-fixture.test",
+        "protocol": "local-echo"
+      }
+    ]
+  },
+  "2": {
+    "rejected": {
+      "status": 2152398935
+    },
+    "acceptsBeforeControl": 0,
+    "control": {
+      "message": "local-route-probe",
+      "protocol": "local-echo"
+    }
+  },
+  "3": {
+    "rejected": {
+      "status": 2152398935
+    },
+    "acceptsBeforeControl": 0,
+    "control": {
+      "message": "local-route-probe",
+      "protocol": "local-echo"
+    }
+  },
+  "proxy": [
+    {
+      "method": "CONNECT",
+      "target": "ws-fixture.test:49599"
+    },
+    {
+      "method": "CONNECT",
+      "target": "ws-fixture.test:49600"
+    }
+  ]
+}
+PASS: ws/wss handshake, real echo, reconnect, proxy routing and fail-closed routes

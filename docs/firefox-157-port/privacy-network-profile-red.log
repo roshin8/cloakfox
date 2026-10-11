@@ -1,0 +1,35 @@
+✔ no UA yields a non-Firefox H3 profile (the chimera guard holds) (0.733042ms)
+✖ H2 uses the actual Firefox engine for every identity (0.921917ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 96.751625
+
+✖ failing tests:
+
+test at tests/fingerprint/test_h3_guard.mjs:83:1
+✖ H2 uses the actual Firefox engine for every identity (0.921917ms)
+  AssertionError [ERR_ASSERTION]: Chrome
+  + actual - expected
+
+  + 'chrome'
+  - 'firefox'
+
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/test_h3_guard.mjs:85:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'chrome',
+    expected: 'firefox',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

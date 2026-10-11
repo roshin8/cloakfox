@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_privacy_media_hdr.py", line 112, in <module>
+    if __name__=='__main__': main()
+                             ~~~~^^
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_privacy_media_hdr.py", line 85, in main
+    assert set(strict_labels)=={'Internal Microphone','Internal Camera'},('Disabled enumeration leaked track labels',strict_labels)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('Disabled enumeration leaked track labels', ['Default Audio Device', 'Default Video Device'])

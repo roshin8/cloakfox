@@ -45,3 +45,21 @@ Storage cleanup reclaimed 25.3 GB from rebuildable artifacts, redownloadable arc
 - Stack now 107 patches; selective pristine replay has no offset/fuzz/native drift. Node 218 passed; Python 17 passed (16 opt-in cases skipped). Local native/site/container and generation-checkbox probes pass.
 - Final development DMG rebuilt and verified directly from a read-only mount. Native build UUID matches the packaged library; resource inventory, native regressions, speech controls and generation checkbox pass. Fresh code review found no issues.
 - Hashes, limitations and logs: `upstream-followup-verification.md`, `upstream-followup-packaged-check.json`, `artifacts.json`.
+
+
+## Timing, media, HDR and network follow-ups — 2026-10-11
+
+- Native timing coverage integrated into 157, including container timing and all
+  worker kinds. Per-global immutable mode prevents mixed lazy fields/backward
+  clocks; reload/restart applies options. Public entry ordering remains correct.
+- Real-backed media caps/generic labels preserve permissions and exact selection;
+  Settings controls, owner IDs and origin/container isolation pass. HDR content
+  masking preserves option/master/compatibility/site exception controls.
+- Automatic transport profiles follow the actual Firefox engine. Stock local
+  TLS/H2/QUIC/H3 structural parity, certificate rejection and local WebSocket,
+  DNS, speculative/IPv6 and UDP route protections verified without NSS changes.
+- Native build and 110-patch pristine replay pass. Node 220 passed; Python 19
+  passed/16 opt-in skipped. Eight development privacy and six network probes
+  pass; eleven probes pass directly from the rebuilt read-only-mounted DMG.
+- All accepted final review findings fixed. Current artifact hashes, limits and
+  detailed evidence: `privacy-followup-verification.md`, `artifacts.json`.

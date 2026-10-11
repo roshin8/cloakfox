@@ -76,6 +76,8 @@ def main():
                     assert fixtures.observed[index]['datagrams']>0,fixtures.observed[index]
                     evidence[label]={'request':result,'datagramsBeforeControl':count,'endpointControl':control,'observationSeconds':2}
                 evidence['endpoints']=fixtures.observed
+                if __import__('os').environ.get('QUIC_REPORT'):
+                    Path(__import__('os').environ['QUIC_REPORT']).write_text(json.dumps(evidence,indent=2))
                 print(json.dumps(evidence,indent=2))
                 print('PASS: real negotiated HTTP/3 controls; blocked and required-proxy routes emitted no UDP to independent live endpoints')
             finally:

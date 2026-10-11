@@ -13,7 +13,7 @@ A hard fork of Camoufox, rebased onto Firefox 157.0.1 with C++ engine patches, t
 ## Architecture
 
 Three layers:
-1. **C++ Engine** — Camoufox + LibreWolf patches (107 active) applied to Firefox 157.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
+1. **C++ Engine** — Camoufox + LibreWolf patches (110 active) applied to Firefox 157.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
 2. **Cloakfox Shield Extension** — Stripped ContainerShield. Popup UI plus a parent-process pref/persona bridge (`experiment-apis/cloakfox.js`). NO content or inject scripts — see "Spoofer Architecture (cpp-first)" below.
 3. **Config** — `policies.json` + `cloakfox.cfg` restore daily-driver features (search, bookmarks, passwords) while keeping privacy hardened.
 
@@ -30,7 +30,7 @@ make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 
 ## Repo Structure
 
-- `patches/` — Flat directory of all C++ engine patches (107 active, ordered by `patches/order.txt`)
+- `patches/` — Flat directory of all C++ engine patches (110 active, ordered by `patches/order.txt`)
 - `patches/order.txt` — Explicit apply order; overrides alphabetical default
 - `settings/` — policies.json, cloakfox.cfg, local-settings.js
 - `additions/cloakcfg/` — MaskConfig.hpp, MouseTrajectories.hpp, json.hpp (copied into firefox-src)
@@ -53,7 +53,10 @@ extension code (that pre-pivot design was removed):
 - **JSWindowActors** (`additions/browser/components/cloakfox/actors/`) — 10
   chrome-principal `*Child`/`*Parent` pairs for the "must-stay-JS" vectors C++
   can't reach: Math, Keyboard, Timing, Gamepad, Midi, FeatureDetect,
-  TabHistory, Timezone, WebGPU, WebRTC. Each `*Child` patches page objects via
+  TabHistory, Timezone, WebGPU, WebRTC. Timing actors cover callback scheduling;
+  native Performance clocks/timeline entries use one immutable per-global
+  presentation mode. Reload pages/restart workers to apply timing or master
+  switch changes to those clocks. Each `*Child` patches page objects via
   `Cu.exportFunction` on `DOMDocElementInserted`, gated on `cloakfox.enabled`.
   Patch spoofs on the PROTOTYPE with native descriptor flags, never the
   instance — an own property leaks the tamper via `Object.keys()`.

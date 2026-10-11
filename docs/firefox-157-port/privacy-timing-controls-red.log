@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_privacy_timing_controls.py", line 61, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_privacy_timing_controls.py", line 48, in main
+    assert result['end']%1 != 0 and result['first']%1 != 0, ('Delayed getter changed presentation mode',result)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('Delayed getter changed presentation mode', {'duration': 0.8947918492977465, 'end': 202, 'first': 196, 'fractional': False, 'monotonic': True, 'paint': 196.52823304770624, 'start': 201.10520815070225})

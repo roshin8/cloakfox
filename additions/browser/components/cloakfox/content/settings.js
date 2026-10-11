@@ -229,6 +229,10 @@ const GROUPS = {
     ["WebRTC IPv6 override", "webrtc:ipv6"],
   ],
   "grp-media": [
+    ["Expose media devices with generic labels", "mediaDevices:enabled"],
+    ["Maximum exposed microphones", "mediaDevices:micros"],
+    ["Maximum exposed cameras", "mediaDevices:webcams"],
+    ["Maximum exposed speakers", "mediaDevices:speakers"],
     ["codecs:spoof",                              "codecs:spoof"],
     ["mediaCapabilities:spoof",                   "mediaCapabilities:spoof"],
     ["mediaFeature:resolution",                   "mediaFeature:resolution"],
@@ -420,6 +424,9 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     if (input.tagName === "INPUT") {
       input.type = (KEY_TYPES[key] === "int" || KEY_TYPES[key] === "float") ? "number" : "text";
       if (KEY_TYPES[key] === "float") input.step = "any";
+      if (["mediaDevices:micros", "mediaDevices:webcams", "mediaDevices:speakers"].includes(key)) {
+        input.min = "0"; input.max = "64"; input.step = "1";
+      }
     } else {
       input.rows = Math.min(6, Math.max(2, Math.ceil(initialValue.length / 60)));
     }
@@ -430,6 +437,10 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     let committed = false;
     function commit() {
       if (committed) return;
+      if (["mediaDevices:micros", "mediaDevices:webcams", "mediaDevices:speakers"].includes(key) && !input.checkValidity()) {
+        input.reportValidity();
+        return;
+      }
       committed = true;
       if (input.value !== initialValue) {
         setOverride(ucid, key, input.value);

@@ -37,7 +37,7 @@ function harness(version = '155.0.1', hostOS = 'WINNT', sampler = () => ({ userA
 // New region/policy metadata is validated by its own suite; this regression
 // verifies every pre-existing config field remains byte-for-byte intact.
 function legacyProjection(cfg) {
-  for (const key of ['timezone','privacy:policy','locale:default','locale:all','navigator.languages','navigator.language']) delete cfg[key];
+  for (const key of ['timing:session_key_hi','timing:session_key_lo','mediaDevices:enabled','timezone','privacy:policy','locale:default','locale:all','navigator.languages','navigator.language']) delete cfg[key];
   return cfg;
 }
 function setExisting(h, cfg) {
@@ -169,4 +169,33 @@ test('saved 146 OS/hardware filters survive the port and invalid strings keep th
   h.prefs.set('cloakfox.container.7.persona_hardware', 'invalid');
   h.context.fillPersonaKeys(seed, 7);
   assert.equal(h.filters.length, 1);
+});
+
+test('timing keys vary by launch salt and seed, and preserve explicit media choices', () => {
+  const h=harness();
+  const a=h.context.deriveTimingSessionKey(seed, seed);
+  const other=Buffer.alloc(32, 27).toString('base64');
+  assert.notDeepEqual(h.context.deriveTimingSessionKey(seed,other), a);
+  assert.notDeepEqual(h.context.deriveTimingSessionKey(other,seed), a);
+  const before={...legacy(),'mediaDevices:enabled':false};
+  setExisting(h,before);h.start();
+  const cfg=h.cfg();
+  assert.equal(cfg['mediaDevices:enabled'],false);
+  assert.ok(cfg['timing:session_key_hi']>0);
+  assert.ok(cfg['timing:session_key_lo']>0);
+  h.context.refreshContainerConfig(7);
+  assert.equal(h.cfg()['timing:session_key_hi'],cfg['timing:session_key_hi']);
+  assert.equal(h.cfg()['timing:session_key_lo'],cfg['timing:session_key_lo']);
+});
+
+test('media exposure caps are editable without inventing devices or changing the identity', () => {
+  const h=harness();h.start();
+  h.context.setOverride(7,'mediaDevices:micros',2);
+  h.context.refreshContainerConfig(7);
+  assert.equal(h.cfg()['mediaDevices:micros'],2);
+  assert.throws(()=>h.context.setOverride(7,'mediaDevices:micros',-1));
+  assert.throws(()=>h.context.setOverride(7,'mediaDevices:webcams',65));
+  h.context.clearOverride(7,'mediaDevices:micros');
+  h.context.refreshContainerConfig(7);
+  assert.equal(h.cfg()['mediaDevices:micros'],1);
 });

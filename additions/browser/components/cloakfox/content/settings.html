@@ -290,7 +290,7 @@
         <span class="card-icon" data-color="red" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><rect x="3" y="3" width="10" height="10" rx="2"/></svg></span>
         <div>
           <h2>Optional hardening</h2>
-          <p class="card-help">Each toggle trades compatibility for stealth. Off by default unless you flip it on.</p>
+          <p class="card-help">These controls may affect compatibility. Protections enabled by default are noted below.</p>
         </div>
       </header>
       <div class="flag-grid">
@@ -311,6 +311,10 @@
           <span><strong>Disable EME (DRM)</strong><small>Breaks Netflix, Spotify Web Player, Disney+, Prime Video.</small></span>
         </label>
         <label class="flag-row">
+          <input type="checkbox" data-pref="cloakfox.opt.hdr_masking">
+          <span><strong>Hide display HDR capability</strong><small>On by default. Reports standard video dynamic range; HDR playback and capture remain available. Geometry exceptions restore native reporting.</small></span>
+        </label>
+        <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.mediadevices_disabled">
           <span><strong>Disable mediaDevices</strong><small>navigator.mediaDevices.enumerateDevices returns empty. Breaks WebRTC / Meet / Zoom / Discord.</small></span>
         </label>
@@ -328,7 +332,7 @@
         </label>
         <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.timer_high_precision_jitter">
-          <span><strong>Hide timer-precision quantization</strong><small>On by default. performance.now() returns fractional ms via deterministic jitter, hiding Firefox's 1ms quantization.</small></span>
+          <span><strong>Hide timer-precision quantization</strong><small>On by default. Native clocks and enabled timeline entries share deterministic fractional presentation after Firefox precision reduction. Reload pages and restart workers after changing this option or the master privacy switch.</small></span>
         </label>
         <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.timer_quantization_off">

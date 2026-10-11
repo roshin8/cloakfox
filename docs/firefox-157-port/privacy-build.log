@@ -1,0 +1,166 @@
+cd firefox-src && ./mach build
+ 0:00.24 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.24 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.33 Clobber not needed.
+ 0:00.35 /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/moz.build
+ 0:00.35 Build configuration changed. Regenerating backend.
+ 0:00.35 /Users/zeus/.mozbuild/srcdirs/firefox-src-0ec3038e6805/_virtualenvs/build/bin/python /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Finished reading 2444 moz.build files in 1.70s
+Read 58 gyp files in parallel contributing 0.00s to total wall time
+Processed into 18872 build config descriptors in 0.92s
+RecursiveMake backend executed in 1.54s
+  5289 total backend files; 3 created; 8 updated; 5278 unchanged; 0 deleted; 16 -> 1991 Makefile
+FasterMake backend executed in 0.10s
+  83 total backend files; 0 created; 0 updated; 83 unchanged; 0 deleted
+Clangd backend executed in 0.78s
+  1255 total backend files; 0 created; 3 updated; 1252 unchanged; 0 deleted
+Total wall time: 5.18s; CPU time: 4.42s; Efficiency: 85%; Untracked: 0.14s
+ 0:06.26 W Adding make options from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:06.26 /usr/bin/make -f client.mk -j8 -s
+ 0:07.03 Elapsed: 0.18s; From dist/include: Kept 8442 existing; Added/updated 3; Removed 0 files and 0 directories.
+ 0:07.32 ./buildid.h.stub
+ 0:07.33 ./source-repo.h.stub
+ 0:07.33 ./stl.sentinel.stub
+ 0:07.33 ./ffi.h.stub
+ 0:07.33 ./cbindgen-metadata.json.stub
+ 0:07.33 ./PrefsGenerated.h.stub
+ 0:07.33 ./StaticPrefListAll.h.stub
+ 0:07.33 ./angle_commit.h.stub
+ 0:07.34 ./ANGLEShaderProgramVersion.h.stub
+ 0:07.48 ./registered_field_trials.h.stub
+ 0:07.48 ./metrics_yamls.cached.stub
+ 0:07.48 ./pings_yamls.cached.stub
+ 0:07.53 ./application.ini.stub
+ 0:07.68 ./application.ini.h.stub
+ 0:07.82 ./GleanPings.h.stub
+ 0:09.45 ./GleanMetrics.h.stub
+ 0:09.45 ./GleanJSMetricsLookup.cpp.stub
+ 0:09.45 ./metrics.rs.stub
+ 0:09.45 ./factory.rs.stub
+ 0:11.09 toolkit/library/rust/libgkrust.a
+ 0:11.11 toolkit/library/build/XUL.symbols.stub
+ 0:11.15 accessible/base
+ 0:11.16 accessible/generic
+ 0:11.16 accessible/html
+ 0:11.16 accessible/ipc
+ 0:11.18 ./buildid.h.stub
+ 0:11.18 ./source-repo.h.stub
+ 0:11.18 accessible/xpcom
+ 0:11.43 ./application.ini.stub
+ 0:11.58 ./application.ini.h.stub
+ 0:12.31 accessible/xul
+ 0:14.94    Compiling style v0.0.1 (/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/servo/components/style)
+ 0:16.65 browser/components/about
+ 0:17.12 browser/components/shell
+ 0:18.31 caps
+ 0:18.37 chrome
+ 0:19.85 W 10 warnings generated.
+ 0:19.86 cloakcfg
+ 0:20.28 devtools/shared/heapsnapshot
+ 0:20.34 docshell/base
+ 0:20.87 docshell/shistory
+ 0:23.89 dom/animation
+ 0:24.72 dom/audiochannel
+ 0:25.04 dom/battery
+ 0:26.92 dom/broadcastchannel
+ 0:27.11 dom/bindings
+ 0:28.30 dom/cache
+ 0:28.38 dom/canvas
+ 0:32.93 dom/clients/api
+ 0:33.21 dom/clients/manager
+ 0:39.60 dom/console
+ 0:43.72 dom/cookiestore
+ 0:44.36 dom/credentialmanagement/digital
+ 0:48.36 dom/credentialmanagement/identity
+ 0:50.85    Compiling geckoservo v0.0.1 (/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/servo/ports/geckolib)
+ 0:53.65 dom/credentialmanagement
+ 0:55.76    Compiling gkrust-shared v0.1.0 (/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/toolkit/library/rust/shared)
+ 1:00.74 dom/documentpip
+ 1:12.23 dom/events
+ 1:14.39 dom/fetch
+ 1:17.16 dom/file/ipc
+ 1:22.74 dom/file
+ 1:24.50 dom/file/uri
+ 1:31.85 dom/filesystem
+ 1:37.88 dom/fs/child
+ 1:38.12 dom/fs/parent/datamodel
+ 1:38.66 dom/fs/parent
+ 1:38.87 dom/gamepad
+ 1:39.57 dom/geolocation
+ 1:40.72    Compiling gkrust v0.1.0 (/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/toolkit/library/rust)
+ 1:41.38 dom/html/input
+ 1:44.58 dom/html
+ 1:44.81 dom/indexedDB
+ 1:46.22 dom/ipc/jsactor
+ 1:48.43 W In file included from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/geolocation/Unified_mm_dom_geolocation0.mm:2:
+ 1:48.43 W /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/dom/geolocation/GeolocationSystemMac.mm:130:10: warning: @available does not guard availability here; use if (@available) instead [-Wunsupported-availability-guard]
+ 1:48.43 W   130 |     if (!@available(macOS 15.0, *)) {
+ 1:48.43 W       |          ^
+ 1:49.52 W 1 warning generated.
+ 1:49.70 dom/ipc
+ 1:59.51 dom/jsurl
+ 2:04.87 dom/l10n
+ 2:08.10 dom/localstorage
+ 2:08.61 dom/locks
+ 2:10.76 dom/mathml
+ 2:12.31 dom/media/autoplay
+ 2:14.16 dom/media/doctor
+ 2:14.71 dom/media/eme
+ 2:14.89 dom/media/gmp
+ 2:16.93 dom/media/imagecapture
+ 2:18.02 dom/media/ipc
+ 2:21.86 dom/media/mediacapabilities
+ 2:22.95 dom/media/mediacontrol
+ 2:23.11 dom/media/mediaelement
+ 2:24.22 dom/media/mediasession
+ 2:25.28 dom/media/mediasource
+ 2:27.61 dom/media/systemservices
+ 2:27.63 dom/media
+ 2:28.82 dom/media/utils
+ 2:33.90 dom/media/webaudio
+ 2:40.08 dom/media/webrtc/jsapi
+ 2:41.67 dom/media/webrtc
+ 2:42.55 dom/media/webrtc/transportbridge
+ 2:44.29 dom/media/webspeech/recognition
+ 2:46.87 W In file included from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/Unified_cpp_dom_media_webrtc0.cpp:38:
+ 2:46.87 W In file included from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/Unified_cpp_dom_media_webrtc0.cpp:38:
+ 2:46.96 W In file included from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi1.cpp:29:
+ 2:46.97 W In file included from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi1.cpp:29:
+ 2:49.62 W In file included from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:92:
+ 2:49.63 dom/media/webspeech/synth
+ 2:49.67 W In file included from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:110:
+ 2:51.46 dom/media/webvtt
+ 2:54.55 dom/messagechannel
+ 2:54.62 W 2 warnings generated.
+ 2:54.69 dom/midi
+ 2:55.34 dom/navigation
+ 2:57.34 W 2 warnings generated.
+ 2:57.41 dom/network
+ 2:57.84 dom/notification
+ 3:00.19 dom/onnx
+ 3:00.40 W 2 warnings generated.
+ 3:00.50 dom/payments
+ 3:00.63 dom/performance
+ 3:01.23 dom/permission
+ 3:01.58 dom/power
+ 3:03.81 W In file included from /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/performance/Unified_cpp_dom_performance0.cpp:20:
+ 3:03.81 E /Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/firefox-src/dom/performance/Performance.cpp:6:10: fatal error: 'CloakfoxSiteSeed.hpp' file not found
+ 3:03.81 E     6 | #include "CloakfoxSiteSeed.hpp"
+ 3:03.81 E       |          ^~~~~~~~~~~~~~~~~~~~~~
+ 3:04.23 E 1 error generated.
+ 3:04.24 E make[5]: *** [Unified_cpp_dom_performance0.o] Error 1
+ 3:04.24 E make[4]: *** [dom/performance/target-objects] Error 2
+ 3:04.24 E make[4]: *** Waiting for unfinished jobs....
+make: *** [build] Terminated: 15

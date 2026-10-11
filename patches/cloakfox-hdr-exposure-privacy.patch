@@ -1,0 +1,42 @@
+diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
+--- a/layout/style/nsMediaFeatures.cpp
++++ b/layout/style/nsMediaFeatures.cpp
+@@ -6,6 +6,8 @@
+ 
+ #include "PreferenceSheet.h"
+ #include "MaskConfig.hpp"
++#include "CloakfoxSiteSeed.hpp"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/GeckoBindings.h"
+ #include "mozilla/LookAndFeel.h"
+ #include "mozilla/RelativeLuminanceUtils.h"
+@@ -429,6 +431,13 @@
+ 
+ StyleDynamicRange Gecko_MediaFeatures_VideoDynamicRange(
+     const Document* aDocument) {
++  if (StaticPrefs::cloakfox_enabled() && StaticPrefs::cloakfox_opt_hdr_masking() &&
++      !aDocument->NodePrincipal()->IsSystemPrincipal()) {
++    const auto cfg = CloakfoxSiteSeed::ExactConfig(
++        aDocument->NodePrincipal()->OriginAttributesRef().mUserContextId);
++    if (CloakfoxSiteSeed::PolicyAllows(cfg, "geometry", const_cast<Document*>(aDocument)->CookieJarSettings()))
++      return StyleDynamicRange::Standard;
++  }
+   if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSVideoDynamicRange)) {
+     return StyleDynamicRange::Standard;
+   }
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2422,6 +2422,12 @@
+   value: false
+   mirror: always
+ 
++# Normalize display HDR exposure without changing the compositor/capture pipeline.
++- name: cloakfox.opt.hdr_masking
++  type: RelaxedAtomicBool
++  value: true
++  mirror: always
++
+ # Present reduced performance timestamps with keyed sub-millisecond detail.
+ # Atomic because worker Performance objects read it off the main thread.
+ - name: cloakfox.opt.timer_high_precision_jitter

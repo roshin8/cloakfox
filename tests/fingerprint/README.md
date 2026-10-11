@@ -20,8 +20,35 @@ The tabs and toolbar retain Firefox's normal flexible sizing. Disabling
 `privacy.resistFingerprinting.letterboxing` restores legacy persona geometry,
 but never restores the physical browser-window size hijack.
 
-Two tools for validating the H2/H3 transport-fingerprint patches land as
-designed and match the browser they claim to mimic.
+## Firefox 157 local privacy follow-ups
+
+Install the local fixture dependencies from `tests/network/requirements-wire.txt`.
+With `CLOAKFOX_BIN` and optional `FIREFOX_BIN` pointing to the current/stock apps:
+
+- `probe_performance_timeline.py`, `probe_worker_timeline.py` and
+  `probe_privacy_timing_controls.py`: native timeline/observer coherence, explicit
+  marks, all worker kinds, stable delayed getters and reload controls. These
+  fixtures explicitly enable resource timing; its product default remains off.
+- `probe_privacy_media_hdr.py` and `probe_privacy_settings_ownership.py`: fake
+  hardware only, native permission gating, actual backing selection, generic
+  labels, device-ID origin/container isolation, HDR/CSS controls and live UI.
+- `probe_network_wire.py`, `probe_quic_wire.py`: real loopback TLS ClientHello,
+  H2 SETTINGS/window updates/pseudo-header order, QUIC parameters/H3 SETTINGS
+  and stock Firefox structural parity. TLS randomness/GREASE is not a fixed
+  fingerprint; QUIC TLS extension order remains randomized.
+- `probe_websocket_routes.py`: ws/wss upgrades/echo/reconnect, live proxy routes,
+  blocked/dead-required-proxy refusal and positive endpoint controls.
+
+Timing presentation mode is captured when a Performance global is created.
+Reload pages and restart workers after changing its option or the master switch.
+Native permission checks, native media group-ID rotation and TLS validation stay
+intact. Physical capture delivery and Windows/Linux runtime are separate tests.
+
+## Historical manual transport shaping tests
+
+The following tests exercise explicit experimental transport overrides. Automatic
+profiles in 157 always follow its actual Firefox engine, regardless of UA text.
+They do not imply a Chrome TLS implementation or replace the local wire tests.
 
 ## 1. `test_h2_profile.py` — automated shape check
 

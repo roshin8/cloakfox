@@ -8,6 +8,31 @@ from aioquic.h3.connection import H3_ALPN, H3Connection
 from aioquic.h3.events import HeadersReceived
 from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import ProtocolNegotiated, HandshakeCompleted, ConnectionTerminated
+from aioquic.buffer import Buffer
+
+
+def transport_structure(data):
+    """Retain parameter order/integers, excluding GREASE and connection IDs."""
+    buffer = Buffer(data=data)
+    result = []
+    numeric = {1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 32}
+    while not buffer.eof():
+        kind = buffer.pull_uint_var(); size = buffer.pull_uint_var()
+        value = buffer.pull_bytes(size)
+        if kind % 31 == 27:  # RFC 9000 reserved GREASE parameters.
+            continue
+        if kind in numeric:
+            parsed = Buffer(data=value).pull_uint_var()
+        elif kind == 17:
+            assert size % 4 == 0
+            versions = [int.from_bytes(value[i:i+4], 'big') for i in range(0,size,4)]
+            parsed = [v for v in versions if v & 0x0f0f0f0f != 0x0a0a0a0a]
+        elif kind in (0, 2, 13, 15, 16):
+            parsed = {'opaqueLength': size}
+        else:
+            parsed = {'length': size}
+        result.append([kind, parsed])
+    return result
 
 
 class HTTP3(QuicConnectionProtocol):
@@ -15,6 +40,23 @@ class HTTP3(QuicConnectionProtocol):
         super().__init__(*args, **kwargs)
         self.http = None
         self.observed = observed
+        parse = self._quic._parse_transport_parameters
+        def capture_parameters(data, from_session_ticket=False):
+            if not from_session_ticket:
+                self.observed.setdefault('transportParameters', []).append(transport_structure(data))
+            return parse(data, from_session_ticket=from_session_ticket)
+        self._quic._parse_transport_parameters = capture_parameters
+        initialize = self._quic._initialize
+        def capture_initialize(*args, **kwargs):
+            initialize(*args, **kwargs)
+            hello = self._quic.tls._server_handle_hello
+            def capture_hello(input_buf, *buffers):
+                from tls_hello import client_hello
+                structural = client_hello(input_buf.data_slice(input_buf.tell(), input_buf.capacity))
+                self.observed.setdefault('clientHellos', []).append(structural)
+                return hello(input_buf, *buffers)
+            self._quic.tls._server_handle_hello = capture_hello
+        self._quic._initialize = capture_initialize
 
     def quic_event_received(self, event):
         if isinstance(event, HandshakeCompleted):
@@ -35,6 +77,10 @@ class HTTP3(QuicConnectionProtocol):
                     self.http.send_headers(message.stream_id, [(b':status', b'200'), (b'content-length', str(len(body)).encode())])
                     self.http.send_data(message.stream_id, body, end_stream=True)
                     self.transmit()
+            if self.http.received_settings is not None:
+                # RFC 9114 reserves 0x1f*N + 0x21 for H3 SETTINGS GREASE.
+                self.observed['settings'] = [[k, v] for k, v in self.http.received_settings.items()
+                                            if k < 33 or (k-33) % 31 != 0]
 
 
 class H3Fixtures:

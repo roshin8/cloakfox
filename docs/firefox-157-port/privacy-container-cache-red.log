@@ -1,0 +1,61 @@
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_______ test_container_timing_getters_share_the_performance_presentation _______
+
+    def test_container_timing_getters_share_the_performance_presentation():
+        source=(SRC/'dom/performance/PerformanceContainerTiming.cpp').read_text()
+        methods='\n'.join(block(source,'DOMHighResTimeStamp PerformanceContainerTiming::'+name) for name in ('FirstRenderTime','RawStartTime','StartTime'))
+>       cpp('''
+    #include <cassert>
+    #include <optional>
+    using DOMHighResTimeStamp=double;
+    struct Performance {
+      bool enabled=true;
+      double GetReducedTimePrecisionDOMHighRes(double raw) const { return raw; }
+      double PresentTimestamp(double reduced) const { return reduced+(enabled?.25:0); }
+    };
+    struct PerformanceContainerTiming {
+      Performance* mPerformance;
+      double mFirstRenderTime=1,mPaintTime=2;
+      mutable std::optional<double> mCachedFirstRenderTime,mCachedStartTime;
+      double FirstRenderTime() const;
+      double StartTime() const;
+      double RawStartTime() const;
+    };
+    '''+methods+'''
+    int main() {
+      Performance p;PerformanceContainerTiming timing{&p};
+      assert(timing.FirstRenderTime()==1.25);
+      assert(timing.StartTime()==2.25);
+      p.enabled=false;
+      assert(timing.FirstRenderTime()==1.25);
+      assert(timing.StartTime()==2.25);
+      PerformanceContainerTiming native{&p};
+      assert(native.FirstRenderTime()==1);
+      assert(native.StartTime()==2);
+    }
+    ''')
+
+tests/fingerprint/test_timing_native.py:34:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+code = '\n#include <cassert>\n#include <optional>\nusing DOMHighResTimeStamp=double;\nstruct Performance {\n  bool enabled=tr... PerformanceContainerTiming native{&p};\n  assert(native.FirstRenderTime()==1);\n  assert(native.StartTime()==2);\n}\n'
+
+    def cpp(code):
+        compiler = shutil.which("clang++") or shutil.which("g++")
+        if not compiler:
+            raise RuntimeError("C++ compiler required")
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "test.cpp"
+            source.write_text("#include <initializer_list>\n" + code.replace("CLOAKFOX_JSON_HEADER", str(ROOT / "additions/cloakcfg/json.hpp")))
+            binary = Path(tmp) / "test"
+            subprocess.run([compiler, "-std=c++17", str(source), "-o", str(binary)], check=True)
+            result = subprocess.run([str(binary)], capture_output=True, text=True)
+            if result.returncode:
+>               raise AssertionError(result.stderr)
+E               AssertionError: Assertion failed: (timing.FirstRenderTime()==1.25), function main, file test.cpp, line 34.
+
+tests/fingerprint/test_upstream_hardening.py:38: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_timing_native.py::test_container_timing_getters_share_the_performance_presentation
+1 failed, 1 passed in 0.97s
