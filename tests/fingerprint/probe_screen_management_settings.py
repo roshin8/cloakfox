@@ -2,7 +2,7 @@
 import json
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from screen_management_fixture import ScreenManagementFixture
+from screen_management_fixture import ScreenManagementFixture, CHROME
 
 def main():
     with ScreenManagementFixture() as f:
@@ -32,7 +32,7 @@ def main():
             f.set_screen_count(value); d.refresh()
             expected=str(value) if isinstance(value,int) and 1<=value<=8 else '1'
             assert d.find_element(By.ID,'cfx-screen-count').get_attribute('value')==expected
-        for malformed in ['{bad', '{}', '[7]']:
+        for malformed in ['{bad', '{}', '[7]',123,True]:
             f.pref('cloakfox.compat.screen_management.origins',malformed);d.refresh()
             assert 'Could not read' in d.find_element(By.ID,'cfx-screen-origins-status').text
         f.set_screen_count(3);f.set_origins([f.origin]);d=f.restart();d.get('about:cloakfox')
@@ -40,6 +40,9 @@ def main():
         assert d.find_element(By.ID,'cfx-screen-origins').get_attribute('value')==f.origin
         defaults=f.chrome("return [Services.prefs.getDefaultBranch('').getBoolPref('cloakfox.compat.screen_management'),Services.prefs.getDefaultBranch('').getIntPref('cloakfox.compat.screen_management.screen_count'),Services.prefs.getDefaultBranch('').getStringPref('cloakfox.compat.screen_management.origins')]")
         assert defaults == [False,1,'["https://app.testdome.com"]'],defaults
+        f.set_config(0,{'navigator.userAgent':CHROME});f.open()
+        result=f.driver.execute_async_script('const done=arguments[0];firstNativeResult.then(done)')
+        assert result=={'count':3,'frozen':True},result
         print('SCREEN MANAGEMENT SETTINGS PASS')
 
 if __name__=='__main__': main()

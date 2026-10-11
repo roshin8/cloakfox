@@ -653,6 +653,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const originsEditor = document.getElementById("cfx-screen-origins");
   const originsStatus = document.getElementById("cfx-screen-origins-status");
   try {
+    if (Services.prefs.getPrefType(screenOriginsPref) !== Services.prefs.PREF_STRING) {
+      throw new Error("Expected saved origins to be a string.");
+    }
     const saved = JSON.parse(Services.prefs.getStringPref(screenOriginsPref, "[]"));
     if (!Array.isArray(saved) || saved.some(value => typeof value !== "string")) {
       throw new Error("Expected a JSON array of origins.");

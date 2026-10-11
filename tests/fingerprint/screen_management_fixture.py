@@ -22,7 +22,10 @@ details: typeof ScreenDetails, extended: 'isExtended' in screen, ua:navigator.us
 window.presentation = () => ({width:screen.width,height:screen.height,left:screen.left,top:screen.top,
 availWidth:screen.availWidth,availHeight:screen.availHeight,availLeft:screen.availLeft,availTop:screen.availTop,
 depth:screen.colorDepth,pixelDepth:screen.pixelDepth,dpr:devicePixelRatio,
-orientation:screen.orientation.type,angle:screen.orientation.angle});</script>'''
+orientation:screen.orientation.type,angle:screen.orientation.angle});
+window.firstNativeResult = typeof getScreenDetails === 'function' ?
+  getScreenDetails().then(d=>({count:d.screens.length,frozen:Object.isFrozen(d.screens)}),e=>({error:e.name})) : Promise.resolve({absent:true});
+window.addEventListener('pageshow',e=>{if(parent!==window)parent.postMessage({fixturePageshow:true,persisted:e.persisted},'*')});</script>'''
 
 class ScreenManagementFixture:
     def __init__(self, binary=None, headful=False):
@@ -30,7 +33,12 @@ class ScreenManagementFixture:
         self.headful = headful
         self.servers = []
         self.driver = None
-        self.routes = {'/': (PAGE, {}), '/worker.js': ('postMessage({method:typeof getScreenDetails,details:typeof ScreenDetails});', {})}
+        capability='({method:typeof getScreenDetails,details:typeof ScreenDetails,detailed:typeof ScreenDetailed})'
+        self.routes = {'/': (PAGE, {}), '/worker.js': ('postMessage'+capability+';', {}),
+            '/shared.js': ('onconnect=e=>{const p=e.ports[0];p.postMessage'+capability+';};', {}),
+            '/service.js': ('oninstall=()=>skipWaiting();onactivate=e=>e.waitUntil(clients.claim());onmessage=e=>e.ports[0].postMessage'+capability+';', {}),
+            '/child.html': (PAGE+'<script>parent.postMessage({probe:1,type:typeof getScreenDetails},"*")</script>', {})}
+
         self.requests = []
         self.report_path = Path(os.environ.get('REPORT_DIR') or tempfile.mkdtemp(prefix='cloakfox-screen-reports-'))
         self.report_path.mkdir(parents=True, exist_ok=True)
@@ -104,6 +112,11 @@ class ScreenManagementFixture:
     def chrome(self,script,*args):
         self.driver.set_context('chrome')
         try: return self.driver.execute_script(script,*args)
+        finally: self.driver.set_context('content')
+
+    def chrome_async(self,script,*args):
+        self.driver.set_context('chrome')
+        try: return self.driver.execute_async_script(script,*args)
         finally: self.driver.set_context('content')
 
     def pref(self,name,value):

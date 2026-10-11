@@ -68,6 +68,9 @@ def main():
         value=read();assert (value['left'],value['width'],value['dpr'])==(0,1920,1),value
         f.pref('privacy.resistFingerprinting.letterboxing',True); d.refresh()
         value=read(); assert (value['width'],value['height'])==(value['availWidth'],value['availHeight']),value
+        d.set_window_rect(width=400,height=1000);d.refresh()
+        portrait=read();assert portrait['height']>portrait['width'] and portrait['angle']==90,portrait
+        rows.append(portrait)
         (f.report_path/'presentation.json').write_text(json.dumps(rows,indent=2))
         print('SCREEN PRESENTATION PASS')
 
