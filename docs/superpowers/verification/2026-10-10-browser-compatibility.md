@@ -241,6 +241,51 @@ The redacted local control report is
 `/tmp/cloakfox-cf-native-20261010/native-user-config-chrome-appversion/redacted-result.json`.
 The user's restored, passing Firefox profile was not changed by this control.
 
+## Broader native API-access audit
+
+Two fresh disposable native profiles used the fixed engine, privacy enabled,
+matching Chrome 120 navigator UA/appVersion, and no WebDriver. A diagnostic-only
+JSWindowActor attached SpiderMonkey's `Debugger.onNativeCall` to Cloudflare
+challenge window globals. A local fixture verified ordinary getter and method
+capture first. Hooks returned `undefined` to preserve the original calls/results;
+no page API was replaced. The observer recorded names/counts, excluding script
+text, private URLs, cookies, tokens and return values. It also recorded identifier
+arguments for descriptor/property checks, which include challenge-internal keys.
+
+The corrected-appVersion sessions accessed Firefox getters including
+`InstallTrigger`, `fullScreen`, `mozInnerScreenX/Y`, Mozilla fullscreen properties,
+`Screen.mozOrientation`, and `navigator.oscpu/buildID`. Chromium-related
+observations included the `navigator.userAgentData` getter and an actual native
+`NavigatorUAData.getHighEntropyValues()` call, plus property-descriptor checks
+for `deviceMemory` and `connection` and reads/checks of `vendor`. Cloakfox already
+implements native UAData for Chromium identities; this call does not imply that
+a Chromium engine was loaded. WebKit-prefixed animation/transition event getters
+were also accessed, but Firefox supports these compatibility names.
+
+Other observed families included Window/Document/Navigator/Screen enumeration,
+Canvas/OffscreenCanvas, WebGL, offline audio, FontFace, Intl, CSS/layout, WebRTC,
+permissions/storage, timing/input, crypto, XHR and worker construction/messages.
+The aggregate contained 1,682 distinct native signatures with no observer-hook
+errors. Signatures include built-ins, receiver classes, setters, wrappers and
+descriptor-key variants, so this is not a count of distinct web APIs. Calls to
+`WEBGL_lose_context.loseContext()` were also observed; context-loss warnings
+alone do not establish a crash or rejection cause.
+
+Coverage is limited to executed window-global paths. Plain/absent property reads
+and `in`/`typeof` checks can bypass the native hook; worker-thread internals and
+unexecuted branches are not covered. No explicit `window.chrome` getter/call or
+`chrome` descriptor-key check was observed, which does not establish absence of
+a plain check. A descriptor inspection proves a check, not API availability or
+use. Debugging changes timing/JIT behavior and periodic flushing can miss final
+events around frame destruction; these runs do not establish a clean pass/fail
+comparison or Cloudflare's server-side rejection rule.
+
+The complete locally saved observed inventory is
+`/tmp/cloakfox-cf-api-audit-20261010/redacted-api-inventory.json`, with a readable
+summary at `/tmp/cloakfox-cf-api-audit-20261010/report.md`. The diagnostic-only
+app modifications were removed after capture. The installed app, DMG and user's
+restored Firefox profile were not modified by this audit.
+
 ## Native screen-management delivery — 2026-10-10
 
 Implemented the separate native screen-management plan on this branch. The

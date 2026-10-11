@@ -4,6 +4,8 @@ Living tracker of what's outstanding after the test-suite pass that landed on
 `unified-maskconfig` 2026-04-19. Ordered by priority. Keep this file under
 revision control so we don't lose context between sessions.
 
+Short list of current tasks and future work: [TODO.md](TODO.md).
+
 ## 2026-10-10 — pre-push verification
 
 Rechecked the installed signed application against the current module, actor,
