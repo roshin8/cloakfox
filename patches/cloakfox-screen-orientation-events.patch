@@ -1,0 +1,20 @@
+diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
+--- a/dom/base/ScreenOrientation.cpp
++++ b/dom/base/ScreenOrientation.cpp
+@@ -959,8 +959,14 @@
+             doc->ClearOrientationPendingPromise();
+           }
+         }
+-        DebugOnly<nsresult> rv = self->DispatchTrustedEvent(u"change"_ns);
+-        NS_WARNING_ASSERTION(NS_SUCCEEDED(rv), "DispatchTrustedEvent failed");
++        // Ancestor traversal can queue this event even when this screen's
++        // MaybeChanged was suppressed. Recheck the receiving screen at dispatch
++        // time, including eligibility changes while the runnable was queued.
++        // Pending orientation promises must still complete for virtual screens.
++        if (!self->mScreen->GetVirtualPresentation()) {
++          DebugOnly<nsresult> rv = self->DispatchTrustedEvent(u"change"_ns);
++          NS_WARNING_ASSERTION(NS_SUCCEEDED(rv), "DispatchTrustedEvent failed");
++        }
+         if (pendingPromise) {
+           pendingPromise->MaybeResolveWithUndefined();
+         }

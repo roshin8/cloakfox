@@ -115,6 +115,40 @@ def run_policy(f):
     print('WINDOW MANAGEMENT POLICY PASS',flush=True)
 
 
+
+def run_ancestor_orientation(f):
+    """Exercise Gecko's ancestor traversal with a trusted DevTools override."""
+    d=f.open(host='other.testdome.invalid')
+    assert d.execute_script('return typeof getScreenDetails')=='undefined'
+    d.execute_script("window.rootOrientationEvents=[];screen.orientation.addEventListener('change',e=>{if(e.isTrusted)rootOrientationEvents.push(screen.orientation.type)})")
+    d.execute_async_script("""const [url,done]=arguments;const frame=document.createElement('iframe');
+      frame.id='virtual-child';frame.allow='window-management *';frame.src=url;
+      frame.onload=()=>done(true);document.body.append(frame);""",f.origin+'/')
+    d.switch_to.frame(d.find_element('id','virtual-child'))
+    before=d.execute_async_script("""const done=arguments[0];getScreenDetails().then(details=>{
+      window.orientationEvents=[];window.orientationTargets=[screen.orientation,...details.screens.map(s=>s.orientation)];
+      for(const [i,target] of orientationTargets.entries())target.addEventListener('change',e=>{if(e.isTrusted)orientationEvents.push(i)});
+      done(orientationTargets.map(s=>[s.type,s.angle]));
+    },e=>done({error:e.name}));""")
+    assert isinstance(before,list),before
+    d.switch_to.default_content()
+    try:
+        # This existing privileged Gecko API dispatches through the ancestor's
+        # DispatchChangeEventToChildren, rather than synthesizing DOM events.
+        f.chrome("gBrowser.selectedBrowser.browsingContext.setOrientationOverride('portrait-primary',90)")
+        from selenium.webdriver.support.ui import WebDriverWait
+        WebDriverWait(d,10).until(lambda d:d.execute_script('return rootOrientationEvents.length')>0)
+        root=d.execute_script('return rootOrientationEvents')
+        d.switch_to.frame(d.find_element('id','virtual-child'))
+        value=d.execute_script('return {events:orientationEvents,values:orientationTargets.map(s=>[s.type,s.angle])}')
+        assert value=={'events':[],'values':before},value
+        print('ANCESTOR ORIENTATION PASS',root,value,flush=True)
+    finally:
+        d.switch_to.default_content()
+        f.chrome('gBrowser.selectedBrowser.browsingContext.resetOrientationOverride()')
+        f.open()
+
+
 def main():
     reports=[]
     with ScreenManagementFixture() as f:
@@ -124,6 +158,7 @@ def main():
             assert actual==(['function','function','function',True] if expected else ['undefined','undefined','undefined',False]),actual
         def collect():
             value=d.execute_async_script(COLLECT);assert 'error' not in value,value;reports.append(value);return value
+        run_ancestor_orientation(f)
         support(True)  # First red: missing native bindings in the pre-change build.
         f.routes['/late']=(PAGE.replace("typeof getScreenDetails === 'function' ?", "false ?"),{})
         f.set_screen_count(1);d=f.open('/late');f.set_screen_count(3)
