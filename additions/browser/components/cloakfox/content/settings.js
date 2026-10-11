@@ -642,6 +642,54 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const screenCountPref = "cloakfox.compat.screen_management.screen_count";
+  const screenOriginsPref = "cloakfox.compat.screen_management.origins";
+  const countSelect = document.getElementById("cfx-screen-count");
+  const savedCount = Services.prefs.getIntPref(screenCountPref, 1);
+  countSelect.value = String(savedCount >= 1 && savedCount <= 8 ? savedCount : 1);
+  countSelect.addEventListener("change", () => {
+    Services.prefs.setIntPref(screenCountPref, Number(countSelect.value));
+  });
+  const originsEditor = document.getElementById("cfx-screen-origins");
+  const originsStatus = document.getElementById("cfx-screen-origins-status");
+  try {
+    const saved = JSON.parse(Services.prefs.getStringPref(screenOriginsPref, "[]"));
+    if (!Array.isArray(saved) || saved.some(value => typeof value !== "string")) {
+      throw new Error("Expected a JSON array of origins.");
+    }
+    originsEditor.value = saved.join("\n");
+  } catch (error) {
+    originsStatus.textContent = `Could not read saved origins: ${error.message}`;
+  }
+  document.getElementById("cfx-screen-origins-save").addEventListener("click", () => {
+    try {
+      const origins = [];
+      for (const [index, line] of originsEditor.value.split(/\r?\n/).entries()) {
+        const value = line.trim();
+        if (!value) continue;
+        let url;
+        try { url = new URL(value); }
+        catch { throw new Error(`Line ${index + 1}: enter a complete HTTPS origin.`); }
+        if (url.protocol !== "https:" || url.username || url.password ||
+            url.pathname !== "/" || url.search || url.hash ||
+            !url.hostname || url.hostname.includes("*")) {
+          throw new Error(`Line ${index + 1}: use an exact HTTPS origin without a path or wildcard.`);
+        }
+        if (!origins.includes(url.origin)) origins.push(url.origin);
+      }
+      Services.prefs.setStringPref(screenOriginsPref, JSON.stringify(origins));
+      originsEditor.value = origins.join("\n");
+      originsStatus.textContent = "Saved. Reload affected pages to update API availability.";
+    } catch (error) {
+      originsStatus.textContent = error.message;
+    }
+  });
+  document.getElementById("cfx-screen-origins-reset").addEventListener("click", () => {
+    Services.prefs.setStringPref(screenOriginsPref, '["https://app.testdome.com"]');
+    originsEditor.value = "https://app.testdome.com";
+    originsStatus.textContent = "Origins reset. Reload affected pages to update API availability.";
+  });
+
   // Opt-in flag toggles auto-bind via data-pref.
   for (const el of document.querySelectorAll("input[data-pref]")) {
     const pref = el.dataset.pref;

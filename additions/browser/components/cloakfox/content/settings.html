@@ -187,6 +187,33 @@
       <div class="spoof-grid" id="grp-seeds"></div>
     </section>
 
+    <section class="card" id="sec-screen-management">
+      <header class="card-header">
+        <span class="card-icon" data-color="slate">▣</span>
+        <div><h2>Screen API compatibility</h2>
+          <p class="card-help">Requires a desktop Chromium identity. Capture still uses normal permissions and the sharing chooser. Reload affected pages after changing these controls.</p>
+        </div>
+      </header>
+      <label class="flag-row">
+        <input id="cfx-screen-management" type="checkbox" data-pref="cloakfox.compat.screen_management">
+        <span><strong>Virtual screen-management API</strong><small>Listed sites receive the selected number of virtual screens, using your Display persona. Extra screens repeat that geometry horizontally.</small></span>
+      </label>
+      <p><label for="cfx-screen-count">Virtual screen count</label>
+        <select id="cfx-screen-count">
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+        </select>
+      </p>
+      <label for="cfx-screen-origins">Allowed HTTPS origins — one per line</label>
+      <textarea id="cfx-screen-origins" rows="4" spellcheck="false" style="display:block;box-sizing:border-box;width:100%;margin:10px 0"></textarea>
+      <div class="actions">
+        <button id="cfx-screen-origins-save" type="button">Save origins</button>
+        <button id="cfx-screen-origins-reset" type="button">Reset origins</button>
+      </div>
+      <p class="card-help">Use exact HTTPS origins, including any nondefault port. Paths and wildcards are excluded. An empty list disables access for all sites. Reset restores the initial TestDome entry.</p>
+      <p id="cfx-screen-origins-status" class="card-help" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="card" id="sec-hardening">
       <header class="card-header">
         <span class="card-icon" data-color="red">⚠</span>

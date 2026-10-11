@@ -1,0 +1,496 @@
+diff --git a/dom/base/CloakfoxScreenPresentation.cpp b/dom/base/CloakfoxScreenPresentation.cpp
+--- /dev/null
++++ b/dom/base/CloakfoxScreenPresentation.cpp
+@@ -0,0 +1,197 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++#include "CloakfoxScreenPresentation.h"
++
++#include <cmath>
++#include <limits>
++
++#include "MaskConfig.hpp"
++#include "NavigatorManager.h"
++#include "mozilla/BasePrincipal.h"
++#include "mozilla/Preferences.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
++#include "mozilla/dom/BrowsingContext.h"
++#include "mozilla/dom/Document.h"
++#include "mozilla/dom/DocumentInlines.h"
++#include "mozilla/dom/Navigator.h"
++#include "mozilla/dom/NavigatorUAData.h"
++#include "nsContentUtils.h"
++#include "nsGlobalWindowInner.h"
++#include "nsIPrincipal.h"
++#include "nsIURI.h"
++#include "nsNetUtil.h"
++#include "nsPresContext.h"
++#include "nsRFPService.h"
++#include "nsThreadUtils.h"
++#include "xpcpublic.h"
++namespace mozilla::dom {
++using Json = nlohmann::json;
++static uint32_t Container(nsPIDOMWindowInner* aWindow) {
++  return aWindow->GetBrowsingContext()->OriginAttributesRef().mUserContextId;
++}
++static Json Overlay(nsPIDOMWindowInner* aWindow) {
++  auto json =
++      Json::parse(CloakConfigOverlay_Get(Container(aWindow)), nullptr, false);
++  return json.is_object() ? std::move(json) : Json::object();
++}
++Maybe<nsString> CloakfoxScreenAccess::ReadUserAgent(
++    nsPIDOMWindowInner* aWindow) {
++  if (!NS_IsMainThread() || !aWindow || !aWindow->GetBrowsingContext())
++    return Nothing();
++  nsString ua;
++  if (NavigatorManager::GetUserAgent(Container(aWindow), ua)) return Some(ua);
++  auto cfg = Overlay(aWindow);
++  auto at = cfg.find("navigator.userAgent");
++  if (at != cfg.end() && at->is_string()) {
++    ua.Assign(NS_ConvertUTF8toUTF16(at->get<std::string>().c_str()));
++    return Some(ua);
++  }
++  if (NS_FAILED(Navigator::GetUserAgent(aWindow, aWindow->GetExtantDoc(),
++                                        Nothing(), ua)))
++    return Nothing();
++  return Some(ua);
++}
++bool CloakfoxScreenAccess::IsOriginAllowed(const nsACString& aOrigin) {
++  nsAutoCString saved;
++  Preferences::GetCString("cloakfox.compat.screen_management.origins", saved);
++  auto origins = Json::parse(std::string(saved.BeginReading(), saved.Length()),
++                             nullptr, false);
++  if (!origins.is_array()) return false;
++  for (const auto& entry : origins) {
++    if (!entry.is_string()) continue;
++    const std::string value = entry.get<std::string>();
++    if (value.find('*') != std::string::npos ||
++        value.find('\0') != std::string::npos)
++      continue;
++    nsCOMPtr<nsIURI> uri;
++    if (NS_FAILED(NS_NewURI(getter_AddRefs(uri),
++                            nsDependentCString(value.c_str()))) ||
++        !uri->SchemeIs("https"))
++      continue;
++    nsAutoCString credentials, path, host;
++    if (NS_FAILED(uri->GetUserPass(credentials)) || !credentials.IsEmpty() ||
++        NS_FAILED(uri->GetPathQueryRef(path)) || !path.EqualsLiteral("/") ||
++        NS_FAILED(uri->GetHost(host)) || host.IsEmpty())
++      continue;
++    nsCOMPtr<nsIPrincipal> principal =
++        BasePrincipal::CreateContentPrincipal(uri, {});
++    nsAutoCString origin;
++    if (principal && NS_SUCCEEDED(principal->GetOriginNoSuffix(origin)) &&
++        origin.Equals(aOrigin))
++      return true;
++  }
++  return false;
++}
++bool CloakfoxScreenAccess::IsEligible(nsPIDOMWindowInner* aWindow) {
++  if (!NS_IsMainThread() || !aWindow || nsGlobalWindowInner::Cast(aWindow)->IsChromeWindow() ||
++      !StaticPrefs::cloakfox_enabled() ||
++      !Preferences::GetBool("cloakfox.compat.screen_management", false) ||
++      !aWindow->GetBrowsingContext() ||
++      !nsGlobalWindowInner::Cast(aWindow)->IsSecureContext())
++    return false;
++  Document* doc = aWindow->GetExtantDoc();
++  nsIPrincipal* principal = doc ? doc->NodePrincipal() : nullptr;
++  nsAutoCString origin;
++  nsCOMPtr<nsIURI> uri = principal ? principal->GetURI() : nullptr;
++  if (!principal || !BasePrincipal::Cast(principal)->IsContentPrincipal() || !uri ||
++      !uri->SchemeIs("https") ||
++      NS_FAILED(principal->GetOriginNoSuffix(origin)) ||
++      !IsOriginAllowed(origin))
++    return false;
++  auto ua = ReadUserAgent(aWindow);
++  return ua && NavigatorUAData::IsDesktopChromiumIdentity(*ua);
++}
++bool CloakfoxScreenAccess::IsEnabled(JSContext*, JSObject* aGlobal) {
++  return NS_IsMainThread() && IsEligible(xpc::WindowOrNull(aGlobal));
++}
++static Maybe<int32_t> Integer(const Json& aCfg, const char* aKey) {
++  auto at = aCfg.find(aKey);
++  if (at == aCfg.end() || !at->is_number()) return Nothing();
++  const double value = at->get<double>();
++  if (!std::isfinite(value) || std::trunc(value) != value ||
++      value < INT32_MIN || value > INT32_MAX)
++    return Nothing();
++  return Some(static_cast<int32_t>(value));
++}
++static int32_t Positive(const Json& aCfg, const char* aKey, int32_t aDefault) {
++  auto value = Integer(aCfg, aKey);
++  return value && *value > 0 ? *value : aDefault;
++}
++Maybe<CloakfoxScreenPresentation> CloakfoxScreenPresentation::Read(
++    nsPIDOMWindowInner* aWindow, uint32_t aScreenIndex) {
++  if (!aWindow || !aWindow->IsFullyActive() ||
++      !CloakfoxScreenAccess::IsEligible(aWindow))
++    return Nothing();
++  auto* win = nsGlobalWindowInner::Cast(aWindow);
++  CloakfoxScreenPresentation result;
++  result.mScreenCount = win->GetCloakfoxVirtualScreenCount();
++  result.mScreenIndex = aScreenIndex;
++  if (aScreenIndex >= result.mScreenCount) return Nothing();
++  const auto cfg = Overlay(aWindow);
++  result.mDepth = Positive(cfg, "screen.colorDepth",
++                           Positive(cfg, "screen.pixelDepth", 24));
++  if (nsGlobalWindowInner::UseCloakfoxLetterboxing(aWindow->GetExtantDoc())) {
++    CSSIntSize size =
++        aWindow->GetBrowsingContext()->Top()->GetTopInnerSizeForRFP();
++    if (size.width > 0 && size.height > 0)
++      result.mRect = {0, 0, size.width, size.height};
++    result.mAvailRect = result.mRect;
++    if (auto* pc = aWindow->GetExtantDoc()->GetPresContext())
++      result.mDevicePixelRatio =
++          nsRFPService::GetDevicePixelRatioAtZoom(pc->GetFullZoom());
++    result.mOrientation = nsRFPService::ViewportSizeToOrientationType(
++        result.mRect.Width(), result.mRect.Height());
++  } else {
++    result.mRect = {Integer(cfg, "screen.left").valueOr(0),
++                    Integer(cfg, "screen.top").valueOr(0),
++                    Positive(cfg, "screen.width", 1920),
++                    Positive(cfg, "screen.height", 1080)};
++    int32_t left = Integer(cfg, "screen.availLeft").valueOr(result.mRect.x);
++    int32_t top = Integer(cfg, "screen.availTop").valueOr(result.mRect.y);
++    int32_t width = Positive(cfg, "screen.availWidth", result.mRect.Width());
++    int32_t height = Positive(cfg, "screen.availHeight", result.mRect.Height());
++    if (left < result.mRect.x || top < result.mRect.y ||
++        int64_t(left) + width >
++            int64_t(result.mRect.x) + result.mRect.Width() ||
++        int64_t(top) + height >
++            int64_t(result.mRect.y) + result.mRect.Height()) {
++      result.mAvailRect = result.mRect;
++    } else
++      result.mAvailRect = {left, top, width, height};
++    auto dpr = cfg.find("window.devicePixelRatio");
++    if (dpr != cfg.end() && dpr->is_number()) {
++      double value = dpr->get<double>();
++      if (std::isfinite(value) && value > 0) result.mDevicePixelRatio = value;
++    }
++    auto type = cfg.find("screen:orientation:type");
++    if (type != cfg.end() && type->is_string()) {
++      if (*type == "landscape-secondary")
++        result.mOrientation = OrientationType::Landscape_secondary;
++      else if (*type == "portrait-primary")
++        result.mOrientation = OrientationType::Portrait_primary;
++      else if (*type == "portrait-secondary")
++        result.mOrientation = OrientationType::Portrait_secondary;
++    }
++    result.mAngle =
++        result.mOrientation == OrientationType::Landscape_secondary ||
++                result.mOrientation == OrientationType::Portrait_secondary
++            ? 180
++            : 0;
++  }
++  // Validate the entire topology, not only this index, before narrowing.
++  if (int64_t(result.mRect.x) +
++              int64_t(result.mRect.Width()) * result.mScreenCount >
++          INT32_MAX ||
++      int64_t(result.mRect.y) + result.mRect.Height() > INT32_MAX) {
++    const uint32_t count = result.mScreenCount;
++    result = CloakfoxScreenPresentation{};
++    result.mScreenCount = count;
++    result.mScreenIndex = aScreenIndex;
++  }
++  const int64_t shift = int64_t(aScreenIndex) * result.mRect.Width();
++  result.mRect.x = int32_t(int64_t(result.mRect.x) + shift);
++  result.mAvailRect.x = int32_t(int64_t(result.mAvailRect.x) + shift);
++  return Some(result);
++}
++}  // namespace mozilla::dom
+diff --git a/dom/base/CloakfoxScreenPresentation.h b/dom/base/CloakfoxScreenPresentation.h
+--- /dev/null
++++ b/dom/base/CloakfoxScreenPresentation.h
+@@ -0,0 +1,32 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++#ifndef mozilla_dom_CloakfoxScreenPresentation_h
++#define mozilla_dom_CloakfoxScreenPresentation_h
++#include "Units.h"
++#include "mozilla/Maybe.h"
++#include "mozilla/dom/ScreenOrientationBinding.h"
++#include "nsString.h"
++class nsPIDOMWindowInner;
++namespace mozilla::dom {
++struct CloakfoxScreenPresentation {
++  CSSIntRect mRect{0, 0, 1920, 1080};
++  CSSIntRect mAvailRect{0, 0, 1920, 1080};
++  int32_t mDepth = 24;
++  double mDevicePixelRatio = 1.0;
++  OrientationType mOrientation = OrientationType::Landscape_primary;
++  uint16_t mAngle = 0;
++  uint32_t mScreenCount = 1;
++  uint32_t mScreenIndex = 0;
++  static Maybe<CloakfoxScreenPresentation> Read(nsPIDOMWindowInner* aWindow,
++                                                uint32_t aScreenIndex = 0);
++};
++class CloakfoxScreenAccess final {
++ public:
++  static bool IsEligible(nsPIDOMWindowInner* aWindow);
++  static bool IsEnabled(JSContext* aCx, JSObject* aGlobal);
++  static Maybe<nsString> ReadUserAgent(nsPIDOMWindowInner* aWindow);
++  static bool IsOriginAllowed(const nsACString& aOrigin);
++};
++}  // namespace mozilla::dom
++#endif
+diff --git a/dom/base/NavigatorUAData.cpp b/dom/base/NavigatorUAData.cpp
+--- a/dom/base/NavigatorUAData.cpp
++++ b/dom/base/NavigatorUAData.cpp
+@@ -57,6 +57,12 @@
+          aUA.find("iPad") == std::string::npos &&
+          (!ProductVersion(aUA, "Chrome").empty() ||
+           !ProductVersion(aUA, "Chromium").empty());
++}
++
++bool NavigatorUAData::IsDesktopChromiumIdentity(const nsAString& aUserAgent) {
++  const std::string ua = NS_ConvertUTF16toUTF8(aUserAgent).get();
++  return IsChromiumUA(ua) && ua.find("Android") == std::string::npos &&
++         ua.find("Mobile") == std::string::npos;
+ }
+ 
+ bool NavigatorUAData::IsEnabled(JSContext* aCx, JSObject* aGlobal) {
+diff --git a/dom/base/NavigatorUAData.h b/dom/base/NavigatorUAData.h
+--- a/dom/base/NavigatorUAData.h
++++ b/dom/base/NavigatorUAData.h
+@@ -20,6 +20,7 @@
+   nsIGlobalObject* GetParentObject() const { return mGlobal; }
+   JSObject* WrapObject(JSContext* aCx,
+                        JS::Handle<JSObject*> aGivenProto) override;
++  static bool IsDesktopChromiumIdentity(const nsAString& aUserAgent);
+   static bool IsEnabled(JSContext* aCx, JSObject* aGlobal);
+   void GetBrands(JSContext* aCx, JS::MutableHandle<JSObject*> aResult,
+                  ErrorResult& aRv) const;
+diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
+--- a/dom/base/ScreenOrientation.cpp
++++ b/dom/base/ScreenOrientation.cpp
+@@ -686,6 +686,9 @@
+ }
+ 
+ OrientationType ScreenOrientation::DeviceType(CallerType aCallerType) const {
++  if (aCallerType == CallerType::NonSystem) {
++    if (auto* value = mScreen->GetVirtualPresentation()) return value->mOrientation;
++  }
+   if ((aCallerType == CallerType::NonSystem &&
+        nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) ||
+       nsContentUtils::ShouldResistFingerprinting(
+@@ -702,6 +705,9 @@
+ }
+ 
+ uint16_t ScreenOrientation::DeviceAngle(CallerType aCallerType) const {
++  if (aCallerType == CallerType::NonSystem) {
++    if (auto* value = mScreen->GetVirtualPresentation()) return value->mAngle;
++  }
+   if ((aCallerType == CallerType::NonSystem &&
+        nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) ||
+       nsContentUtils::ShouldResistFingerprinting(
+@@ -719,6 +725,9 @@
+ 
+ OrientationType ScreenOrientation::GetType(CallerType aCallerType,
+                                            ErrorResult& aRv) const {
++  if (aCallerType == CallerType::NonSystem) {
++    if (auto* value = mScreen->GetVirtualPresentation()) return value->mOrientation;
++  }
+   if (aCallerType == CallerType::NonSystem &&
+       nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) {
+     return DeviceType(aCallerType);
+@@ -749,6 +758,9 @@
+ 
+ uint16_t ScreenOrientation::GetAngle(CallerType aCallerType,
+                                      ErrorResult& aRv) const {
++  if (aCallerType == CallerType::NonSystem) {
++    if (auto* value = mScreen->GetVirtualPresentation()) return value->mAngle;
++  }
+   if (aCallerType == CallerType::NonSystem &&
+       nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) {
+     return DeviceAngle(aCallerType);
+@@ -802,6 +814,7 @@
+ }
+ 
+ void ScreenOrientation::MaybeChanged() {
++  if (mScreen->GetVirtualPresentation()) return;
+   Document* doc = GetResponsibleDocument();
+   if (!doc || doc->ShouldResistFingerprinting(RFPTarget::ScreenOrientation)) {
+     return;
+diff --git a/dom/base/moz.build b/dom/base/moz.build
+--- a/dom/base/moz.build
++++ b/dom/base/moz.build
+@@ -162,6 +162,7 @@
+     "ChromeMessageSender.h",
+     "ChromeNodeList.h",
+     "ChromeUtils.h",
++    "CloakfoxScreenPresentation.h",
+     "Comment.h",
+     "ContentFrameMessageManager.h",
+     "ContentProcessMessageManager.h",
+@@ -557,7 +558,7 @@
+ 
+ # NavigatorManager compiled separately to avoid unified build scope issues
+ # (includes RoverfoxStorageManager.h which can affect compilation units)
+-SOURCES += ["NavigatorManager.cpp", "NavigatorUAData.cpp"]
++SOURCES += ["CloakfoxScreenPresentation.cpp", "NavigatorManager.cpp", "NavigatorUAData.cpp"]
+ 
+ # CanvasFingerprintManager compiled separately to avoid unified build scope issues
+ # (includes RoverfoxStorageManager.h which can affect compilation units)
+diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -959,6 +959,8 @@
+       mObservingRefresh(false),
+       mIteratingDocumentFlushedResolvers(false),
+       mCanSkipCCGeneration(0) {
++  const int32_t count = mozilla::Preferences::GetInt("cloakfox.compat.screen_management.screen_count", 1);
++  mCloakfoxVirtualScreenCount = count >= 1 && count <= 8 ? uint32_t(count) : 1;
+   mIsInnerWindow = true;
+ 
+   AssertIsOnMainThread();
+@@ -3627,6 +3629,9 @@
+ double nsGlobalWindowInner::GetDevicePixelRatio(CallerType aCallerType,
+                                                 ErrorResult& aError) {
+   ENSURE_ACTIVE_DOCUMENT(aError, 0.0);
++  if (aCallerType == CallerType::NonSystem) {
++    if (auto value = CloakfoxScreenPresentation::Read(this)) return value->mDevicePixelRatio;
++  }
+   if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
+     if (auto value = MaskConfig::GetDouble("window.devicePixelRatio")) {
+       return value.value();
+diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
+--- a/dom/base/nsGlobalWindowInner.h
++++ b/dom/base/nsGlobalWindowInner.h
+@@ -816,6 +816,8 @@
+       const nsACString& aQuery, mozilla::dom::CallerType aCallerType,
+       mozilla::ErrorResult& aError);
+   nsScreen* Screen();
++  uint32_t GetCloakfoxVirtualScreenCount() const { return mCloakfoxVirtualScreenCount; }
++
+   bool HasScreen() const { return !!mScreen; }
+   void MoveTo(int32_t aXPos, int32_t aYPos,
+               mozilla::dom::CallerType aCallerType,
+@@ -1434,6 +1436,7 @@
+                     mozilla::dom::Gamepad>
+       mGamepads;
+ 
++  uint32_t mCloakfoxVirtualScreenCount = 1;
+   RefPtr<nsScreen> mScreen;
+ 
+   RefPtr<mozilla::dom::BarProp> mMenubar;
+diff --git a/dom/base/nsScreen.cpp b/dom/base/nsScreen.cpp
+--- a/dom/base/nsScreen.cpp
++++ b/dom/base/nsScreen.cpp
+@@ -26,11 +26,22 @@
+ using namespace mozilla;
+ using namespace mozilla::dom;
+ 
+-nsScreen::nsScreen(nsPIDOMWindowInner* aWindow)
++nsScreen::nsScreen(nsPIDOMWindowInner* aWindow, uint32_t aScreenIndex)
+     : DOMEventTargetHelper(aWindow),
++      mVirtualScreenIndex(aScreenIndex),
++      mVirtualPresentation(CloakfoxScreenPresentation::Read(aWindow, aScreenIndex)),
+       mScreenOrientation(new ScreenOrientation(aWindow, this)) {}
+ 
+ nsScreen::~nsScreen() = default;
++
++const CloakfoxScreenPresentation* nsScreen::GetVirtualPresentation() const {
++  nsPIDOMWindowInner* owner = GetOwnerWindow();
++  if (owner && owner->IsFullyActive() && !CloakfoxScreenAccess::IsEligible(owner)) return nullptr;
++  if (auto value = CloakfoxScreenPresentation::Read(owner, mVirtualScreenIndex)) {
++    mVirtualPresentation = std::move(value);
++  }
++  return mVirtualPresentation ? mVirtualPresentation.ptr() : nullptr;
++}
+ 
+ // QueryInterface implementation for nsScreen
+ NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(nsScreen)
+@@ -43,6 +54,7 @@
+                                    mScreenOrientation)
+ 
+ int32_t nsScreen::PixelDepth() {
++  if (auto* value = GetVirtualPresentation()) return value->mDepth;
+   if (auto value = MaskConfig::GetUint32("screen.colorDepth"))
+     return value.value();
+   if (auto value = MaskConfig::GetUint32("screen.pixelDepth"))
+@@ -70,6 +82,7 @@
+ }
+ 
+ CSSIntRect nsScreen::GetRect() {
++  if (auto* value = GetVirtualPresentation()) return value->mRect;
+   if (GetOwnerWindow() && GetOwnerWindow()->IsChromeWindow()) {
+     nsDeviceContext* context = GetDeviceContext();
+     return context ? CSSIntRect::FromAppUnitsRounded(context->GetRect())
+@@ -124,6 +137,7 @@
+ }
+ 
+ CSSIntRect nsScreen::GetAvailRect() {
++  if (auto* value = GetVirtualPresentation()) return value->mAvailRect;
+   if (GetOwnerWindow() && GetOwnerWindow()->IsChromeWindow()) {
+     nsDeviceContext* context = GetDeviceContext();
+     return context ? CSSIntRect::FromAppUnitsRounded(context->GetClientRect())
+@@ -201,6 +215,7 @@
+ }
+ 
+ uint16_t nsScreen::GetOrientationAngle() const {
++  if (auto* value = GetVirtualPresentation()) return value->mAngle;
+   nsDeviceContext* context = GetDeviceContext();
+   if (context) {
+     return context->GetScreenOrientationAngle();
+@@ -211,6 +226,15 @@
+ }
+ 
+ hal::ScreenOrientation nsScreen::GetOrientationType() const {
++  if (auto* value = GetVirtualPresentation()) {
++    switch (value->mOrientation) {
++      case OrientationType::Landscape_primary: return hal::ScreenOrientation::LandscapePrimary;
++      case OrientationType::Landscape_secondary: return hal::ScreenOrientation::LandscapeSecondary;
++      case OrientationType::Portrait_primary: return hal::ScreenOrientation::PortraitPrimary;
++      case OrientationType::Portrait_secondary: return hal::ScreenOrientation::PortraitSecondary;
++      default: break;
++    }
++  }
+   nsDeviceContext* context = GetDeviceContext();
+   if (context) {
+     return context->GetScreenOrientationType();
+diff --git a/dom/base/nsScreen.h b/dom/base/nsScreen.h
+--- a/dom/base/nsScreen.h
++++ b/dom/base/nsScreen.h
+@@ -7,6 +7,7 @@
+ #define nsScreen_h___
+ 
+ #include "Units.h"
++#include "mozilla/dom/CloakfoxScreenPresentation.h"
+ #include "mozilla/DOMEventTargetHelper.h"
+ #include "mozilla/StaticPrefs_media.h"
+ #include "mozilla/dom/ScreenBinding.h"
+@@ -22,7 +23,8 @@
+ // Script "screen" object
+ class nsScreen : public mozilla::DOMEventTargetHelper {
+  public:
+-  explicit nsScreen(nsPIDOMWindowInner* aWindow);
++  explicit nsScreen(nsPIDOMWindowInner* aWindow, uint32_t aScreenIndex = 0);
++  const mozilla::dom::CloakfoxScreenPresentation* GetVirtualPresentation() const;
+ 
+   NS_DECL_ISUPPORTS_INHERITED
+   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(nsScreen,
+@@ -85,6 +87,7 @@
+   }
+ 
+  protected:
++  virtual ~nsScreen();
+   nsDeviceContext* GetDeviceContext() const;
+   mozilla::CSSIntRect GetRect();
+   mozilla::CSSIntRect GetAvailRect();
+@@ -92,12 +95,12 @@
+   bool IsFullscreen() const;
+ 
+  private:
+-  virtual ~nsScreen();
+-
+   bool ShouldResistFingerprinting(mozilla::RFPTarget aTarget) const;
+ 
+   mozilla::dom::Document* TopContentDocumentInRDMPane() const;
+ 
++  const uint32_t mVirtualScreenIndex;
++  mutable mozilla::Maybe<mozilla::dom::CloakfoxScreenPresentation> mVirtualPresentation;
+   RefPtr<mozilla::dom::ScreenOrientation> mScreenOrientation;
+ };
+ 
