@@ -240,3 +240,95 @@ used any particular one.
 The redacted local control report is
 `/tmp/cloakfox-cf-native-20261010/native-user-config-chrome-appversion/redacted-result.json`.
 The user's restored, passing Firefox profile was not changed by this control.
+
+## Native screen-management delivery — 2026-10-10
+
+Implemented the separate native screen-management plan on this branch. The
+feature is off by default and requires the privacy master, explicit feature
+toggle, an owning desktop Chrome/Chromium/Edge identity, and an exact HTTPS
+origin in the editable list. Count is configurable from 1–8 and snapshotted
+when each inner window is created. Native bindings, frozen object identity,
+owner/container presentation, live invocation checks, inactive-frame rejection,
+virtual permission snapshots, and modern/legacy/iframe denial are implemented.
+The helper and WebIDL use native Gecko objects; no missing-API page shim was added.
+
+### Test evidence
+
+- **RED → GREEN:** the original native build lacked all four screen surfaces;
+  first-script API and Settings/presentation tests now pass. Additional RED
+  regressions caught a wrong-typed saved-origin value, portrait letterbox angle,
+  and Window-method initialization before document attachment. The fixes pass.
+- **Permission RED → GREEN:** Task 2 rejected the permission name with TypeError
+  and resolved a call despite modern empty-list denial. Task 3 passes exact
+  empty-list parsing, spacing/dictionaries, malformed/lookalike/nonempty
+  controls, inherited and iframe/legacy denial, workers denied, live gate
+  changes, query snapshots and permission privacy enabled.
+- **Final dev build:** Settings, presentation, API/policy, media permission,
+  UA Client Hints (67 checks), worker identity, navigator coherence (four
+  containers), and WebGPU null-safety pass. Logs are
+  `/tmp/cloakfox-screen-task3-*.log`,
+  `/tmp/cloakfox-screen-dev-navigator_coherence.log`, and
+  `/tmp/cloakfox-screen-dev-webgpu_null_safety.log`.
+- **Synthetic recording:** the deliberately empty-output guard fails. The real
+  headful fixture selects the observed no-preference VP8 fallback, using both
+  VideoEncoder and MediaRecorder capability checks. Dev output is 4,490 screen
+  bytes and 7,742 webcam/audio bytes; mounted output is 4,331 and 6,404 bytes.
+  All four blobs have EBML `[26,69,223,163]`; sources and AudioContexts are
+  stopped/closed. Reports: `/tmp/cloakfox-screen-dev-recording/recording.json`
+  and `/tmp/cloakfox-screen-mounted-testdome_recording/recording.json`.
+- **Mounted payload:** Settings, presentation, API/policy, synthetic recording
+  and WebGPU null-safety pass on the read-only DMG application, with disposable
+  profiles. Logs: `/tmp/cloakfox-screen-mounted-*.log`.
+- **Reproducibility:** all 95 ordered patches apply to fresh Firefox 146.0.1
+  source. Before the audit script's cleanup, a test-only shell hook retained
+  the 30 files touched by these three patches; every SHA-256 matches the
+  compiled checkout. Reports: `/tmp/cloakfox-screen-patch-audit.log` and
+  `/tmp/cloakfox-screen-verification/patch-input-comparison.json`.
+
+### Signed artifact
+
+`./mach build` and `./mach package` succeeded. The intermediate packaged app
+had a stale resource signature; a separate staging copy was ad-hoc signed.
+Both staging and the read-only mounted app pass `codesign --verify --deep
+--strict`. This is local signing, not notarization. Mounted executable and XUL
+hashes match signed staging. The installed app, real profiles, and previous
+DMGs were preserved.
+
+Artifact: `cloakfox-146.0.1-beta.25-browser-compat-20261010.dmg`.
+BuildID: `20261010204436`.
+
+| Payload | SHA-256 |
+| --- | --- |
+| Final DMG | `2b696369c94b0f437dd63a7399e5c4ae513e6893fddb8f0e58ed90f38fbf438e` |
+| Mounted executable | `7f598d42d7107ae0b5533faa10c11c5e791855385ef0cbf80e422530bdb36d4a` |
+| Mounted XUL | `261e45fc39bdc24409ab2273eefb9f709859897228f3b1277f6bd14d9aeb1335` |
+
+### Read-only live result and limits
+
+The supplied TestDome start-test link was checked in the mounted payload. A
+privileged, test-profile-only document observer recorded the native surfaces
+before page scripts: Chromium had getScreenDetails/ScreenDetails/ScreenDetailed
+and isExtended; Firefox had none. The Chromium page reached **Detect Screens**
+without the getScreenDetails compatibility warning. Its query was granted and
+the API returned one frozen virtual screen. The Firefox control queried denied
+and displayed the missing API/browser recommendation.
+
+No Detect Screens, Next, device-sharing, or Start the Test control was clicked;
+no assessment began and no real device capture was approved. Local APIs and
+synthetic encoding are verified. Physical webcam/screen capture, remote media
+delivery and full assessment support remain unverified. The unrelated live
+Cloudflare outcome remains the independently documented result above.
+
+Local evidence: `/tmp/cloakfox-screen-live/result.json`, `chromium.png` and
+`firefox.png`. Invitation URLs/candidate data are not committed.
+
+### Implementation rulings and costs
+
+- Ruling: Keep existing feature branch/native checkout instead of a fresh worktree — the approved plan explicitly preserves this patched source/build cache; no main/master work or user-profile changes. Cost if wrong: source isolation is weaker; snapshots/ordered patches and explicit staging preserve unrelated changes.
+- Task 1: Ruling: local 443/80 sockets are denied by macOS for this process — fixture uses ephemeral loopback TLS/HTTP ports and explicitly lists its canonical TLS origin; production default remains tested in Settings. Cost: local navigation cannot directly exercise the production default-port route.
+- Task 1: Ruling: macOS standalone dist/bin executable fails XPCOM loading — native probes use the same build's dist/Cloakfox.app after ad-hoc signing. Cost: app packaging paths also influence the dev probe; final mounted-payload probes still validate distribution independently.
+- Task 2: Ruling: spec's no-own-getScreenDetails expectation contradicts native Gecko Window binding placement (baseline alert/requestAnimationFrame are own properties; Window.prototype.alert is undefined). Preserve generated native placement and compare it with alert, rather than altering the binding generator or adding a JS shim. Cost: shallow own-property checks cannot distinguish this native API from a shim; native descriptors/receivers/brands/function text supply the other checks.
+- Task 2: Ruling: Gecko denies unknown policy features (DefaultAllowListFeature returns eNone), so the planned Task 2 invocation check cannot pass before Task 3's feature registration. Move only window-management/eSelf registration into Task 2; keep native permission integration and modern header parsing in Task 3. Cost: legacy/iframe policy support lands one commit earlier; final scope and denial behavior are unchanged.
+- Task 2: Ruling: IMPL_EVENT_HANDLER requires global static atoms absent for these two events. Use EventTarget's existing string/dynamic-atom GetEventHandler and native atom SetEventHandler overloads for the two generated WebIDL accessors, preserving listener semantics without adding unrelated global HTML event names. Cost: a small atom lookup on handler access instead of a static atom pointer.
+- Task 2: Ruling: native ScreenDetails name collides with existing DOMTypes IPDL transport class — map WebIDL ScreenDetails to CloakfoxScreenDetails in Bindings.conf; mark Screen concrete after adding its derived interface so the existing nsScreen wrapper remains generated. Cost: a small explicit binding mapping replaces the plan’s default class mapping; public API names/brands stay unchanged.
+- Task 3: Ruling: existing Gecko iframe allow changes affect the next document, not the already loaded document (Task 2 baseline resolved before/after assignment, denied after navigation). Preserve that document-policy lifetime; test changing allow then navigating, while new queries still recheck the current document’s policy/gates. Cost: changing allow alone cannot revoke this loaded document until navigation/reload.

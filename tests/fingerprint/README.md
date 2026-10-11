@@ -745,3 +745,57 @@ profile only. It checks repeated failovers on two fresh loads, ID-dependent
 video rendering, zero capture-start calls, unchanged readiness and opt-out.
 It uses no real camera, screen or meeting. Live remote delivery requires an
 actual peer and is separate from this application-state regression.
+
+## Native virtual screen-management compatibility
+
+`about:cloakfox` → **Screen API compatibility** groups the feature checkbox,
+virtual screen count, and exact HTTPS origin list. The feature is off by default.
+Choose a count from 1–8 (default 1); edit one origin per line and click **Save
+origins**. Empty saves `[]`; **Reset origins** restores
+`https://app.testdome.com`. Invalid drafts leave the saved list intact. Malformed
+saved values display an error. Reload affected pages after changing these controls.
+
+The native API requires all four gates: `cloakfox.enabled=true`,
+`cloakfox.compat.screen_management=true`, the owning container's desktop
+Chrome/Chromium/Edge identity, and its exact HTTPS principal origin in
+`cloakfox.compat.screen_management.origins`. Firefox, mixed/malformed/mobile
+identities, unlisted origins, HTTP and opaque frames have no added Window API.
+Workers have no screen API and their `window-management` permission is denied.
+A Chromium UA string selects these compatibility surfaces; it does not change
+Gecko into the Chromium engine.
+
+`getScreenDetails()` returns the same native `ScreenDetails` object and frozen
+screen sequence for that inner window. Count is snapshotted when the inner
+window is created: even changing it before the first API call needs a reload.
+The primary display uses the owning container's Display persona (including its
+available rectangle, depth, DPR and orientation). Additional displays repeat
+that geometry horizontally with generic labels. Ordinary `screen` and window
+DPR agree with the primary. Invalid topology/coordinate overflow falls back as
+one coherent topology. Physical monitor changes do not alter this virtual list.
+
+Fresh calls recheck the live gates and current document policy. The virtual
+`window-management` permission is granted only to eligible, active, allowed
+Windows; queried statuses are snapshots. Existing iframe/legacy policy denial
+and exact modern `Permissions-Policy: window-management=()` are respected,
+including inherited denial. Other modern allowlist syntax is not implemented.
+Native Gecko applies a changed iframe `allow` attribute on its next navigation.
+Camera, microphone, and actual screen capture retain Firefox permissions and
+the standard sharing chooser.
+
+```bash
+export CLOAKFOX_BIN="/path/to/Cloakfox.app/Contents/MacOS/cloakfox"
+python3 tests/fingerprint/probe_screen_management_settings.py
+python3 tests/fingerprint/probe_screen_presentation.py
+python3 tests/fingerprint/probe_screen_management.py
+python3 tests/fingerprint/probe_testdome_recording.py
+```
+
+The first three probes use isolated local TLS fixtures and disposable profiles.
+The recording probe is headful and uses canvas frames plus oscillator audio,
+not camera/microphone/screen devices. It checks TestDome's observed public codec
+order, jointly checks native `VideoEncoder` and `MediaRecorder` support, and
+records the VP8/WebM fallback with Opus audio. Empty output and invalid EBML
+headers fail; timeouts record progress, and sources/timers are cleaned up.
+`--empty-output` deliberately exits unsuccessfully to verify that guard.
+Set `REPORT_DIR` to retain JSON/native logs. These checks establish local APIs
+and encoding, not physical capture, remote delivery or full assessment support.
