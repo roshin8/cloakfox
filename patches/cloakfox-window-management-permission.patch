@@ -1,0 +1,184 @@
+diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
+--- a/dom/base/Document.cpp
++++ b/dom/base/Document.cpp
+@@ -4291,11 +4291,6 @@
+     InitFeaturePolicy(AsVariant(Nothing{}));
+   }
+ 
+-  // We don't want to parse the http Feature-Policy header if this pref is off.
+-  if (!StaticPrefs::dom_security_featurePolicy_header_enabled()) {
+-    return NS_OK;
+-  }
+-
+   nsCOMPtr<nsIHttpChannel> httpChannel;
+   nsresult rv = GetHttpChannelHelper(aChannel, getter_AddRefs(httpChannel));
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+@@ -4308,10 +4303,18 @@
+ 
+   // query the policy from the header
+   nsAutoCString value;
+-  rv = httpChannel->GetResponseHeader("Feature-Policy"_ns, value);
++  if (StaticPrefs::dom_security_featurePolicy_header_enabled()) {
++    rv = httpChannel->GetResponseHeader("Feature-Policy"_ns, value);
++    if (NS_SUCCEEDED(rv)) {
++      mFeaturePolicy->SetDeclaredPolicy(this, NS_ConvertUTF8toUTF16(value),
++                                        NodePrincipal(), nullptr);
++    }
++  }
++  // The modern bounded denial is independent of the legacy-header pref.
++  value.Truncate();
++  rv = httpChannel->GetResponseHeader("Permissions-Policy"_ns, value);
+   if (NS_SUCCEEDED(rv)) {
+-    mFeaturePolicy->SetDeclaredPolicy(this, NS_ConvertUTF8toUTF16(value),
+-                                      NodePrincipal(), nullptr);
++    FeaturePolicyUtils::ApplyWindowManagementDenial(this, value);
+   }
+ 
+   return NS_OK;
+diff --git a/dom/permission/PermissionStatus.cpp b/dom/permission/PermissionStatus.cpp
+--- a/dom/permission/PermissionStatus.cpp
++++ b/dom/permission/PermissionStatus.cpp
+@@ -13,6 +13,9 @@
+ #include "mozilla/Permission.h"
+ #include "mozilla/Services.h"
+ #include "nsGlobalWindowInner.h"
++#include "mozilla/dom/CloakfoxScreenPresentation.h"
++#include "mozilla/dom/FeaturePolicyUtils.h"
++#include "nsThreadUtils.h"
+ #include "nsIPermissionManager.h"
+ 
+ namespace mozilla::dom {
+@@ -28,6 +31,21 @@
+ // https://w3c.github.io/permissions/#onchange-attribute and
+ // https://w3c.github.io/permissions/#query-method
+ RefPtr<PermissionStatus::SimplePromise> PermissionStatus::Init() {
++  // This virtual grant never reaches the permission manager or an OS prompt.
++  // Workers cannot inherit it, and existing queried statuses remain snapshots.
++  if (mName == PermissionName::Window_management) {
++    mState = PermissionState::Denied;
++    if (NS_IsMainThread()) {
++      nsPIDOMWindowInner* window = GetOwnerWindow();
++      if (window && window->IsFullyActive() &&
++          CloakfoxScreenAccess::IsEligible(window) &&
++          FeaturePolicyUtils::IsFeatureAllowed(window->GetExtantDoc(),
++                                              u"window-management"_ns)) {
++        mState = PermissionState::Granted;
++      }
++    }
++    return SimplePromise::CreateAndResolve(NS_OK, __func__);
++  }
+   mSink = CreateSink();
+   MOZ_ASSERT(mSink);
+ 
+diff --git a/dom/permission/PermissionUtils.cpp b/dom/permission/PermissionUtils.cpp
+--- a/dom/permission/PermissionUtils.cpp
++++ b/dom/permission/PermissionUtils.cpp
+@@ -24,7 +24,8 @@
+     "storage-access"_ns,
+     "screen-wake-lock"_ns,
+     "camera"_ns,
+-    "microphone"_ns
++    "microphone"_ns,
++    "window-management"_ns
+     // clang-format on
+ };
+ 
+diff --git a/dom/permission/Permissions.cpp b/dom/permission/Permissions.cpp
+--- a/dom/permission/Permissions.cpp
++++ b/dom/permission/Permissions.cpp
+@@ -86,6 +86,7 @@
+     case PermissionName::Push:
+     case PermissionName::Persistent_storage:
+     case PermissionName::Screen_wake_lock:
++    case PermissionName::Window_management:
+       return new PermissionStatus(aGlobal, rootDesc.mName);
+     case PermissionName::Camera:
+       if (!StaticPrefs::permissions_media_query_enabled()) {
+diff --git a/dom/security/featurepolicy/FeaturePolicy.cpp b/dom/security/featurepolicy/FeaturePolicy.cpp
+--- a/dom/security/featurepolicy/FeaturePolicy.cpp
++++ b/dom/security/featurepolicy/FeaturePolicy.cpp
+@@ -96,6 +96,10 @@
+   InheritPolicy(featurePolicy);
+ }
+ 
++void FeaturePolicy::DenyFeatureByHeader(const nsAString& aName) {
++  if (!HasInheritedDeniedFeature(aName)) SetInheritedDeniedFeature(aName);
++}
++
+ void FeaturePolicy::SetInheritedDeniedFeature(const nsAString& aFeatureName) {
+   MOZ_ASSERT(!HasInheritedDeniedFeature(aFeatureName));
+   mInheritedDeniedFeatureNames.AppendElement(aFeatureName);
+diff --git a/dom/security/featurepolicy/FeaturePolicy.h b/dom/security/featurepolicy/FeaturePolicy.h
+--- a/dom/security/featurepolicy/FeaturePolicy.h
++++ b/dom/security/featurepolicy/FeaturePolicy.h
+@@ -171,6 +171,8 @@
+ 
+   FeaturePolicyInfo ToFeaturePolicyInfo() const;
+ 
++  void DenyFeatureByHeader(const nsAString& aName);
++
+  private:
+   ~FeaturePolicy() = default;
+ 
+diff --git a/dom/security/featurepolicy/FeaturePolicyUtils.cpp b/dom/security/featurepolicy/FeaturePolicyUtils.cpp
+--- a/dom/security/featurepolicy/FeaturePolicyUtils.cpp
++++ b/dom/security/featurepolicy/FeaturePolicyUtils.cpp
+@@ -13,6 +13,8 @@
+ #include "mozilla/dom/FeaturePolicyViolationReportBody.h"
+ #include "mozilla/dom/PermissionMessageUtils.h"
+ #include "mozilla/dom/ReportingUtils.h"
++#include "mozilla/net/SFVService.h"
++#include "nsIStructuredFieldValues.h"
+ #include "nsContentUtils.h"
+ #include "nsIOService.h"
+ #include "nsJSUtils.h"
+@@ -179,6 +181,22 @@
+ }
+ 
+ /* static */
++void FeaturePolicyUtils::ApplyWindowManagementDenial(
++    Document* aDocument, const nsACString& aHeader) {
++  nsCOMPtr<nsISFVService> service = mozilla::net::GetSFVService();
++  nsCOMPtr<nsISFVDictionary> dictionary;
++  if (!service || NS_FAILED(service->ParseDictionary(aHeader, getter_AddRefs(dictionary)))) return;
++  nsCOMPtr<nsISFVItemOrInnerList> entry;
++  if (NS_FAILED(dictionary->Get("window-management"_ns, getter_AddRefs(entry)))) return;
++  nsCOMPtr<nsISFVInnerList> list = do_QueryInterface(entry);
++  if (!list) return;
++  nsTArray<RefPtr<nsISFVItem>> items;
++  if (NS_SUCCEEDED(list->GetItems(items)) && items.IsEmpty()) {
++    aDocument->FeaturePolicy()->DenyFeatureByHeader(u"window-management"_ns);
++  }
++}
++
++/* static */
+ bool FeaturePolicyUtils::IsFeatureAllowed(Document* aDocument,
+                                           const nsAString& aFeatureName) {
+   MOZ_ASSERT(aDocument);
+diff --git a/dom/security/featurepolicy/FeaturePolicyUtils.h b/dom/security/featurepolicy/FeaturePolicyUtils.h
+--- a/dom/security/featurepolicy/FeaturePolicyUtils.h
++++ b/dom/security/featurepolicy/FeaturePolicyUtils.h
+@@ -41,6 +41,10 @@
+   // Use this method everywhere you need to check feature-policy directives.
+   static bool IsFeatureAllowed(Document* aDocument,
+                                const nsAString& aFeatureName);
++
++  // Apply only an exact modern empty-list window-management denial.
++  static void ApplyWindowManagementDenial(Document* aDocument,
++                                          const nsACString& aHeader);
+ 
+   // Returns true if aFeatureName is a known feature policy name.
+   static bool IsSupportedFeature(const nsAString& aFeatureName);
+diff --git a/dom/webidl/Permissions.webidl b/dom/webidl/Permissions.webidl
+--- a/dom/webidl/Permissions.webidl
++++ b/dom/webidl/Permissions.webidl
+@@ -16,7 +16,8 @@
+   "storage-access", // Defined in https://privacycg.github.io/storage-access/#permissions-integration
+   "screen-wake-lock", // Defined in https://w3c.github.io/screen-wake-lock/
+   "camera",    // Defined in https://www.w3.org/TR/mediacapture-streams/#permissions-integration
+-  "microphone" // Defined in https://www.w3.org/TR/mediacapture-streams/#permissions-integration
++  "microphone", // Defined in https://www.w3.org/TR/mediacapture-streams/#permissions-integration
++  "window-management"
+ };
+ 
+ [GenerateInit]

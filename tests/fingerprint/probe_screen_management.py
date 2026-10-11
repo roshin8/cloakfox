@@ -39,6 +39,82 @@ COLLECT = '''const done=arguments[0];
 })().then(done,e=>done({error:e.name,message:e.message}));'''
 
 
+QUERY = """const done=arguments[0];(async()=>{
+ const status=await navigator.permissions.query({name:'window-management'});
+ let result='absent';if(typeof getScreenDetails==='function'){try{await getScreenDetails();result='resolved'}catch(e){result=e.name}}
+ return {state:status.state,result};
+})().then(done,e=>done({error:e.name,message:e.message}));"""
+
+
+def run_policy(f):
+    d=f.driver
+    def query(state='granted',result='resolved'):
+        value=d.execute_async_script(QUERY)
+        assert value=={'state':state,'result':result},value
+        return value
+    f.set_config(0,{'navigator.userAgent':CHROME,'permissions:spoof':True})
+    f.set_master(True);f.set_feature(True);f.set_origins([f.origin]);d=f.open()
+    query()
+    cases=[('modern',{'Permissions-Policy':'window-management=()'},True),
+      ('spaced',{'Permissions-Policy':' window-management=() '},True),
+      ('dictionary',{'Permissions-Policy':'camera=(self), window-management=(), microphone=()'},True),
+      ('unrelated',{'Permissions-Policy':'camera=()'},False),
+      ('nonempty',{'Permissions-Policy':'window-management=(self)'},False),
+      ('malformed',{'Permissions-Policy':'window-management=('},False),
+      ('lookalike',{'Permissions-Policy':'x-window-management=()'},False),
+      ('boolean',{'Permissions-Policy':'window-management=?0'},False),
+      ('legacy',{'Feature-Policy':"window-management 'none'"},True)]
+    f.pref('dom.security.featurePolicy.header.enabled',True)
+    for name,headers,denied in cases:
+        f.routes['/policy-'+name]=(PAGE,headers);d=f.open('/policy-'+name)
+        query('denied' if denied else 'granted','NotAllowedError' if denied else 'resolved')
+        if denied:
+            result=d.execute_async_script("""const done=arguments[0],frame=document.createElement('iframe');frame.allow='window-management *';frame.src='/';
+              frame.onload=async()=>{const win=frame.contentWindow;const state=(await win.navigator.permissions.query({name:'window-management'})).state;
+                let result;try{await win.getScreenDetails();result='resolved'}catch(e){result=e.name}frame.remove();done({state,result})};document.body.append(frame);""")
+            assert result=={'state':'denied','result':'NotAllowedError'},result
+    f.pref('dom.security.featurePolicy.header.enabled',False);d=f.open('/policy-modern');query('denied','NotAllowedError')
+    d=f.open('/policy-legacy');query()
+    f.pref('dom.security.featurePolicy.header.enabled',True);d=f.open()
+    dynamic=d.execute_async_script("""const done=arguments[0],frame=document.createElement('iframe');frame.src='/';
+      frame.onload=async()=>{try{const win=frame.contentWindow;const before=(await win.navigator.permissions.query({name:'window-management'})).state;
+       frame.allow="window-management 'none'";
+       const afterAssignment=(await win.navigator.permissions.query({name:'window-management'})).state;
+       frame.onload=async()=>{try{const owner=frame.contentWindow;
+         const after=(await owner.navigator.permissions.query({name:'window-management'})).state;
+         let result;try{await owner.getScreenDetails();result='resolved'}catch(e){result=e.name}done({before,afterAssignment,after,result});
+       }catch(e){done({error:e.name,message:e.message})}finally{frame.remove()}};
+       frame.src='/?updated-container-policy';
+      }catch(e){frame.remove();done({error:e.name,message:e.message})}};document.body.append(frame);""")
+    assert dynamic=={'before':'granted','afterAssignment':'granted','after':'denied','result':'NotAllowedError'},dynamic
+    d.execute_script("window.permissionSnapshot=null")
+    snapshot=d.execute_async_script("const done=arguments[0];navigator.permissions.query({name:'window-management'}).then(s=>{window.permissionSnapshot=s;done(s.state)})")
+    assert snapshot=='granted'
+    for disable,restore in [(lambda:f.set_master(False),lambda:f.set_master(True)),
+      (lambda:f.set_feature(False),lambda:f.set_feature(True)),
+      (lambda:f.set_origins([]),lambda:f.set_origins([f.origin])),
+      (lambda:f.set_config(0,{'navigator.userAgent':FIREFOX}),lambda:f.set_config(0,{'navigator.userAgent':CHROME}))]:
+        disable();query('denied','NotAllowedError')
+        assert d.execute_script('return permissionSnapshot.state')=='granted','query-time snapshot mutated'
+        d.refresh();query('denied','absent');restore();d.refresh();query()
+        d.execute_async_script("const done=arguments[0];navigator.permissions.query({name:'window-management'}).then(s=>{window.permissionSnapshot=s;done(s.state)})")
+    d=f.open(host='other.testdome.invalid');query('denied','absent');d=f.open()
+    query_code="navigator.permissions.query({name:'window-management'}).then(s=>s.state,e=>e.name)"
+    f.routes['/permission-worker.js']=(f'{query_code}.then(state=>postMessage(state));',{})
+    f.routes['/permission-shared.js']=(f'onconnect=e=>{{const p=e.ports[0];{query_code}.then(state=>p.postMessage(state));}};',{})
+    f.routes['/permission-service.js']=(f'oninstall=()=>skipWaiting();onactivate=e=>e.waitUntil(clients.claim());onmessage=e=>{{{query_code}.then(state=>e.ports[0].postMessage(state));}};',{})
+    worker=d.execute_async_script("const done=arguments[0],w=new Worker('/permission-worker.js');w.onmessage=e=>{w.terminate();done(e.data)}")
+    assert worker=='denied',worker
+    shared=d.execute_async_script("const done=arguments[0],w=new SharedWorker('/permission-shared.js');w.port.onmessage=e=>{w.port.close();done(e.data)};w.port.start()")
+    assert shared=='denied',shared
+    service=d.execute_async_script("""const done=arguments[0];(async()=>{const registration=await navigator.serviceWorker.register('/permission-service.js');
+      await navigator.serviceWorker.ready;const channel=new MessageChannel();
+      const state=await new Promise(resolve=>{channel.port1.onmessage=e=>resolve(e.data);registration.active.postMessage({},[channel.port2])});
+      channel.port1.close();await registration.unregister();return state})().then(done,e=>done({error:e.name,message:e.message}));""")
+    assert service=='denied',service
+    print('WINDOW MANAGEMENT POLICY PASS',flush=True)
+
+
 def main():
     reports=[]
     with ScreenManagementFixture() as f:
@@ -164,6 +240,7 @@ def main():
           }finally{tabs.forEach(tab=>gBrowser.removeTab(tab))}})().then(done,e=>done({error:e.name,message:e.message}));""",f.origin)
         assert borrowed=={'rejected':'NotAllowedError','count':3,'firefoxMethod':'undefined'},borrowed
 
+        run_policy(f)
         (f.report_path/'management.json').write_text(json.dumps(reports,indent=2))
         print('SCREEN MANAGEMENT PASS')
 
