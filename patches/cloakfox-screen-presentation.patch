@@ -206,7 +206,7 @@ diff --git a/dom/base/CloakfoxScreenPresentation.cpp b/dom/base/CloakfoxScreenPr
 +                           Positive(cfg, "screen.pixelDepth", 24));
 +  if (nsGlobalWindowInner::UseCloakfoxLetterboxing(aWindow->GetExtantDoc())) {
 +    CSSIntSize size =
-+        aWindow->GetBrowsingContext()->Top()->GetTopInnerSizeForRFP();
++        aWindow->GetBrowsingContext()->TopInnerSizeSpoofedForRFP();
 +    if (size.width > 0 && size.height > 0)
 +      result.mRect = {0, 0, size.width, size.height};
 +    result.mAvailRect = result.mRect;

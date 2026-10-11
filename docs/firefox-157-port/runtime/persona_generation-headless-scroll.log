@@ -1,0 +1,37 @@
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_persona_generation.py", line 57, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_persona_generation.py", line 51, in main
+    choose('cfx-container-select','2');choose('cfx-persona-filter','Linux')
+                                       ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_persona_generation.py", line 18, in choose
+    if id == 'cfx-persona-filter': Select(el).select_by_visible_text(value)
+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/private/tmp/cloakfox157-tests-venv/lib/python3.14/site-packages/selenium/webdriver/support/select.py", line 123, in select_by_visible_text
+    self._set_selected(opt)
+    ~~~~~~~~~~~~~~~~~~^^^^^
+  File "/private/tmp/cloakfox157-tests-venv/lib/python3.14/site-packages/selenium/webdriver/support/select.py", line 229, in _set_selected
+    option.click()
+    ~~~~~~~~~~~~^^
+  File "/private/tmp/cloakfox157-tests-venv/lib/python3.14/site-packages/selenium/webdriver/remote/webelement.py", line 112, in click
+    self._execute(Command.CLICK_ELEMENT)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/cloakfox157-tests-venv/lib/python3.14/site-packages/selenium/webdriver/remote/webelement.py", line 504, in _execute
+    return self._parent.execute(command, params)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/private/tmp/cloakfox157-tests-venv/lib/python3.14/site-packages/selenium/webdriver/remote/webdriver.py", line 506, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/private/tmp/cloakfox157-tests-venv/lib/python3.14/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.ElementNotInteractableException: Message: Element <option> could not be scrolled into view; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception
+Stacktrace:
+RemoteError@chrome://remote/content/shared/RemoteError.sys.mjs:8:8
+WebDriverError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:169:5
+ElementNotInteractableError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:338:5
+webdriverClickElement@chrome://remote/content/marionette/interaction.sys.mjs:165:11
+interaction.clickElement@chrome://remote/content/marionette/interaction.sys.mjs:134:11
+clickElement@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:338:29
+receiveMessage@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:210:31
+

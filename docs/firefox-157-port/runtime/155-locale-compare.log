@@ -1,0 +1,26 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+PASS off: explicit de retains its language, region and script
+PASS off: explicit fr retains its language, region and script
+PASS off: explicit ja retains its language, region and script
+PASS off: explicit zh-TW retains its language, region and script
+PASS off: explicit ar retains its language, region and script
+PASS off: explicit en-GB retains its language, region and script
+PASS on: explicit de retains its language, region and script
+PASS on: explicit fr retains its language, region and script
+PASS on: explicit ja retains its language, region and script
+PASS on: explicit zh-TW retains its language, region and script
+PASS on: explicit ar retains its language, region and script
+PASS on: explicit en-GB retains its language, region and script
+FAIL configured native default locale remains supported
+PASS default locale changes preserve explicit tags
+PASS removing native default override clears stale value
+FAIL native default override can be restored
+PASS master off clears the previous native default override
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_locale_tags.py", line 114, in <module>
+    main()
+    ~~~~^^
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/fingerprint/probe_locale_tags.py", line 105, in main
+    assert all(item["pass"] for item in checks), "Locale regression; see result.json"
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Locale regression; see result.json

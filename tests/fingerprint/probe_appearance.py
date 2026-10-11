@@ -178,13 +178,13 @@ def main():
 
         driver = launch(binary)
         try:
-            driver.get("about:cloakfox")
+            driver.get("about:cloakfox#sec-appearance")
             toggles = driver.find_elements(By.CSS_SELECTOR, f'input[data-pref="{PREF}"]')
             assert len(toggles) == 1, "Firefox appearance setting is missing"
             assert not toggles[0].is_selected(), "Appearance should default off"
             assert chrome(driver, "return Services.strings.createBundle('chrome://branding/locale/brand.properties').GetStringFromName('brandShortName')") == "Cloakfox"
             original_extension = extension_branding(driver, "Cloakfox")
-            driver.get("about:cloakfox")
+            driver.get("about:cloakfox#sec-appearance")
             toggles = driver.find_elements(By.CSS_SELECTOR, f'input[data-pref="{PREF}"]')
             chrome(driver, "Services.prefs.setStringPref('cloakfox.appearance.probe','profile preserved');")
             driver.execute_script("arguments[0].click()", toggles[0])
@@ -242,16 +242,16 @@ def main():
               return new Localization(['branding/brand.ftl','browser/menubar.ftl']).formatMessages([{id:'menu-about'}]);
             """)
             assert any(a["value"] == "About Firefox" for a in messages[0]["attributes"]), messages
-            driver.get("about:cloakfox")
+            driver.get("about:cloakfox#sec-appearance")
             assert driver.title == "Firefox", driver.title
             assert driver.find_element(By.CSS_SELECTOR, ".brand-name").text == "Firefox"
-            assert driver.find_element(By.ID, "cfx-appearance-status").text.startswith("Active: Firefox")
+            WebDriverWait(driver, 10).until(lambda d: d.find_element(By.ID, "cfx-appearance-status").text.startswith("Active: Firefox"))
             toggle = driver.find_element(By.CSS_SELECTOR, f'input[data-pref="{PREF}"]')
             assert toggle.is_selected()
             chrome(driver, "Services.prefs.setBoolPref('cloakfox.enabled',false);")
             assert chrome(driver, "return Services.strings.createBundle('chrome://branding/locale/brand.properties').GetStringFromName('brandShortName')") == "Firefox", "Appearance is independent of privacy master switch"
             extension_branding(driver, "Firefox")
-            driver.get("about:cloakfox")
+            driver.get("about:cloakfox#sec-appearance")
             toggle = driver.find_element(By.CSS_SELECTOR, f'input[data-pref="{PREF}"]')
             driver.execute_script("arguments[0].click()", toggle)
             restored = prepare(driver, False)
@@ -265,9 +265,9 @@ def main():
 
         driver = launch(restored["executable"])
         try:
-            driver.get("about:cloakfox")
+            driver.get("about:cloakfox#sec-appearance")
             assert driver.title == "Cloakfox"
-            assert driver.find_element(By.ID, "cfx-appearance-status").text.startswith("Active: Cloakfox")
+            WebDriverWait(driver, 10).until(lambda d: d.find_element(By.ID, "cfx-appearance-status").text.startswith("Active: Cloakfox"))
             assert chrome(driver, "return Services.prefs.getStringPref('cloakfox.appearance.probe')") == "profile preserved"
             assert extension_branding(driver, "Cloakfox")["popup"] == original_extension["popup"], "Extension origin changed on restoration"
         finally:

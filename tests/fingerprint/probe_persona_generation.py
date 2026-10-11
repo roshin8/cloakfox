@@ -13,15 +13,17 @@ def main():
         def cfg(id=0):
             return f.chrome('return JSON.parse(Services.prefs.getStringPref("cloakfox.s.cloak_cfg_"+arguments[0]))',id)
         def choose(id,value):
-            el=d.find_element(By.ID,id)
-            d.execute_script('arguments[0].scrollIntoView({block:"center"})',el)
-            Select(el).select_by_value(value)
+            # Exercise the real change handler; headless spoofed geometry can
+            # make WebDriver's native option hit testing fail after a container switch.
+            assert d.execute_script("const s=document.getElementById(arguments[0]);return [...s.options].some(o=>o.value===arguments[1]);",id,value)
+            d.execute_script("const s=document.getElementById(arguments[0]);s.value=arguments[1];s.dispatchEvent(new Event('change',{bubbles:true}));",id,value)
         def generate():
-            el=d.find_element(By.ID,'cfx-regenerate')
-            d.execute_script('arguments[0].scrollIntoView({block:"center"})',el);el.click()
-            assert 'New persona saved' in d.find_element(By.ID,'cfx-generation-status').text
+            el=d.find_element(By.ID,'cfx-generate-new')
+            d.execute_script('arguments[0].click()',el)
+            WebDriverWait(d,15).until(lambda d: not d.find_element(By.ID,'cfx-generate-new').get_attribute('aria-busy'))
+            assert 'Generated and applied' in d.find_element(By.ID,'cfx-identity-status').text
         load();before=cfg()
-        choose('cfx-persona-os','windows');choose('cfx-persona-hardware','nvidia')
+        choose('cfx-persona-filter','Windows');choose('cfx-persona-hardware','nvidia')
         assert cfg()==before, 'Choosing filters applied them before generation'
         f.chrome('ChromeUtils.importESModule("resource:///modules/CloakfoxOverrides.sys.mjs").setOverride(0,"navigator.hardwareConcurrency",41)')
         generate();first=cfg()
@@ -35,19 +37,21 @@ def main():
         assert 'Windows' in second['navigator.userAgent'] and second['navigator.hardwareConcurrency']==41
         d=f.restart();load()
         assert cfg()==second, 'Restart changed generated persona'
-        assert Select(d.find_element(By.ID,'cfx-persona-os')).first_selected_option.get_attribute('value')=='windows'
+        assert Select(d.find_element(By.ID,'cfx-persona-filter')).first_selected_option.get_attribute('value')=='Windows'
         assert Select(d.find_element(By.ID,'cfx-persona-hardware')).first_selected_option.get_attribute('value')=='nvidia'
-        choose('cfx-persona-os','macos');choose('cfx-persona-hardware','apple')
-        clear=d.find_element(By.ID,'cfx-generation-clear-overrides')
+        choose('cfx-persona-filter','macOS');choose('cfx-persona-hardware','apple')
+        clear=d.find_element(By.ID,'cfx-clear-overrides')
         d.execute_script('arguments[0].scrollIntoView({block:"center"})',clear);clear.click()
+        # Clearing overrides refreshes the saved controls; stage the intended filters again.
+        choose('cfx-persona-filter','macOS');choose('cfx-persona-hardware','apple')
         generate();mac=cfg()
         assert mac['navigator.platform']=='MacIntel' and 'Apple' in mac['webGl:renderer']
         assert not f.chrome('return Services.prefs.prefHasUserValue("cloakfox.container.0.override.navigator.hardwareConcurrency")')
         assert mac['navigator.hardwareConcurrency']!=41
-        choose('cfx-container-select','2');choose('cfx-persona-os','linux')
+        choose('cfx-container-select','2');choose('cfx-persona-filter','Linux')
         generate();assert 'Linux' in cfg(2)['navigator.userAgent']
         assert cfg()==mac, 'Generation changed another container'
         choose('cfx-container-select','0')
-        assert Select(d.find_element(By.ID,'cfx-persona-os')).first_selected_option.get_attribute('value')=='macos'
+        assert Select(d.find_element(By.ID,'cfx-persona-filter')).first_selected_option.get_attribute('value')=='macOS'
         print('PERSONA GENERATION PASS: staged filters, OS/GPU matches, fresh seeds, override retention/clearing, restart stability, container isolation')
 if __name__=='__main__':main()

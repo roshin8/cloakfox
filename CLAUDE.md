@@ -30,7 +30,7 @@ make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 
 ## Repo Structure
 
-- `patches/` — Flat directory of all C++ engine patches (68 top-level + 7 in `patches/librewolf/`)
+- `patches/` — Flat directory of all C++ engine patches (102 active, ordered by `patches/order.txt`)
 - `patches/order.txt` — Explicit apply order; overrides alphabetical default
 - `settings/` — policies.json, cloakfox.cfg, local-settings.js
 - `additions/cloakcfg/` — MaskConfig.hpp, MouseTrajectories.hpp, json.hpp (copied into firefox-src)

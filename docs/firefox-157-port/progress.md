@@ -1,33 +1,35 @@
 # Firefox 157 port progress
 
-- Branch: codex/firefox-157-port; isolated managed worktree.
-- 155 dirty-source snapshot: be1ce21cd5, 3,086 hashed files. No profiles copied.
-- 146 reconciliation captured 109 files; current UI and live Math reconciliation still unfinished. 155 letterboxing patch retained because most conflicts were version adaptation.
-- Source archive: official 157.0.1 SHA-512 manifest matched.
-- First combined stack: 104 patches; 84 apply, 20 fail. Failures are recorded in initial-stack/results.json and per-patch logs. This is the red integration baseline; build has not started.
-- Baseline Node attempt was invalid: native-source-dependent tests ran before source staging/patching. Do not count it as a product regression or pass.
-- Storage cleanup authorized by user: reclaimed 25.3 GB, kept source work, profiles and current 146/155 builds. Ledger: storage-cleanup.json.
+Branch: `codex/firefox-157-port`, isolated managed worktree. Existing 146 and 155 checkouts and profiles remain untouched.
 
-Next: repair patch application against fresh 157 pre-patch snapshots, reconcile Settings/Math without dropping 155 privacy behavior, run source/unit tests, configure/build and verify runtime.
+## Current state
 
-- Superseded 146 worker-config-cache patch archived outside patch stack: 155 privacy completion already implements main-thread authoritative reads, mutex-protected worker snapshots, and stale-value eviction; retaining the older replacement would regress live observers. Active stack now 103 patches.
-- Superseded locale-tag patch archived: 155 native realm locale implementation already preserves parsed subtags and process-neutral ICU defaults, eliminating the obsolete global pointer override. Active stack now 102 patches.
+- Official Firefox 157.0.1 archive matches Mozilla’s SHA-512 manifest.
+- Reconciled 155 source and 109 newer 146 files; source hashes and conflict resolutions are in `146-reconciliation.json`.
+- All 102 active patches pass an independent pristine-target replay with zero hash drift against the build tree (`check-results.json`, `check.log`). Two superseded 146 patches are archived outside patch discovery.
+- Configure passes with Mozilla clang and existing cbindgen 0.29.4 (`local-build.mozconfig`).
+- Current Node suite: 218/218 pass. Python native/source harnesses: 11/11 pass.
+- Captured 155 baseline: 193 Node tests and 10 Python tests pass. The initial baseline attempt before native source staging was invalid and is not counted.
+- Native worker and window Math cache site derivation. The native regression covers 10,000 repeated calls, regeneration, removal, site and container transitions.
+- Settings retain the 155 sidebar, profile previews and modular privacy/network/workspace controls, with current 146 presets, appearance and hardware-family sampling reconciled. Runtime verification passes (19 selected live probes plus 6 checks on the mounted DMG).
+- Native macOS arm64 build and packaging pass. Ownership calls use `GetRelevantGlobal`; the removed viewport accessor uses `TopInnerSizeSpoofedForRFP`. All corrections are recorded in owning patches.
 
-## Current verification
+## Build evidence and staging correction
 
-- Active 102-patch stack applies after repairing the HTTP/3 checksum hunk and screen-construction adaptation during pristine-target replay. Final one-shot clean replay remains required after compile repairs.
-- Configure passes using existing Mozilla clang and cbindgen 0.29.4 (local-build.mozconfig).
-- Node: 216/216 pass before the extra site-HMAC cache assertion; rerun pending.
-- Python source harness: 10/10 pass, including private-field session-store adaptation.
-- Settings reconciled additively: retain 155 sidebar, preview identities and modular privacy/network/workspace controls; restore 146 presets, application appearance, hardware-family sampling and native screen compatibility settings. Live UI verification remains pending.
-- Native compile began. Restored 560 legitimate Cargo.toml.orig files removed during source staging. 303 manifest entries are absent from the official archive and require distinction from altered files if Cargo requests them. Full existing-file checksum scan finds upstream vendoring changes; no checks disabled.
-- Native worker Math preserves 155 per-site derivation and live updates, but repeated derivation cost still requires caching before runtime acceptance.
+The first combined stack had 104 patches: 84 passed and 20 failed (`initial-stack/`). Those failures were repaired against pristine 157 targets. The source staging cleanup also removed legitimate vendored `.orig` files; 560 were restored directly from the official archive. Some vendor manifests name files absent from Mozilla’s archive, but Cargo compilation now succeeds. No checksum checks were disabled.
 
-Next: resolve compile errors, preserve worker Math performance, final fresh replay, live disposable-profile regression probes and app/DMG packaging.
+The second build’s output is preserved in `build-attempt-2.log`; `build.log` records the current attempt. A WIP commit preserves the reconciled patch stack: `8c5e4528d0`. The captured 155 input is `be1ce21cd5` with 3,086 hashed files.
 
-- Independent pristine-target replay: all 102 patches passed; no skipped/rejected hunks; zero hash drift against the active tree. Evidence: check-results.json and check.log.
-- Current Node suite: 217/217 pass. Python source/cache harnesses: 11/11 pass.
-- Worker/window Math now cache site derivation; native cache regression covers 10,000 repeated calls plus regeneration, removal, site and container transitions.
-- First compile exposed EventTarget GetOwnerGlobal removal; owning patches now use GetRelevantGlobal. Rebuild pending Rust compilation finishing.
+## Completed verification and artifact
 
-- Captured 155 baseline rerun: 193 Node tests and 10 Python native/source tests pass. Current 157 suite adds 24 Node cases and the worker-site-cache native regression.
+- 19 selected disposable-profile live probes pass; 6 packaged-app probes pass from the read-only mounted DMG. Latest results and initial failed attempts are retained separately.
+- Native appearance startup selection passes all 7 xpcshell cases. Appearance switching preserves the source app, extension origin and profile.
+- Production runtime fixes: two SessionStore module URLs and the appearance adapter’s stale popup badge selector. A new unit test demonstrated the badge failure before the fix.
+- Three restored 146 probes needed current 155 contracts: fresh-generation UI controls, process-neutral OS locale, and full-secret/site-bound container noise. The old locale/container expectations also failed against the retained 155 binary; these were test fixture repairs, not new engine policy changes.
+- Independent review found no verified important regression in the reviewed areas (`review.md`).
+- DMG: `cloakfox-157.0.1-beta.25.en-US.mac.dmg`, macOS arm64, approximately117 MB. Hashes and bundle metadata are in `artifacts.json`; final source hashes are in `final-input-hashes.json`.
+
+This is a development package. It launches in the recorded local probes; it is not a notarized release. Strict bundle signature verification reports the development bundle lacks a resource seal (`package-signature.log`). No release signing, update distribution, real Cloudflare challenge or external assessment validation was performed. Newly audited upstream improvements remain separate future work. Existing provider-key readiness remains false in both loose and packaged startup checks.
+
+
+Storage cleanup reclaimed 25.3 GB from rebuildable artifacts, redownloadable archives and browser caches; source work, profiles and current builds were preserved (`storage-cleanup.json`).

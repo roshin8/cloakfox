@@ -147,7 +147,7 @@ function brandText(entry, text) {
   }
   text = text.replaceAll("Cloakfox", "Firefox");
   if (entry.includes(ADDON_PATH) && entry.endsWith("/popup.html")) {
-    text = text.replace('<span class="brand-mark">⬢</span>',
+    text = text.replace(/<span class="brand-mark"(?: [^>]*)?>[\s\S]*?<\/span>/,
                         '<img class="brand-mark" src="../icons/icon-48.png" alt="">');
   } else if (entry.includes(ADDON_PATH) && entry.endsWith("/popup.css")) {
     text += "\n.brand-mark { background: transparent; border-radius: 0; object-fit: contain; }\n";

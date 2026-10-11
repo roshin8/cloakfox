@@ -37,6 +37,9 @@ Run:
 
 from __future__ import annotations
 
+import base64
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 import sys
@@ -56,12 +59,15 @@ from selenium.webdriver.firefox.service import Service
 # (navigator.userAgent, read via MaskConfig::GetString with no explicit
 # ucid -> the GetContextOverlay auto-resolve).
 UCID_A, UCID_B = 1, 2
+MASTER = base64.b64encode(bytes(range(32))).decode()
 CFG_A = {
+    "fingerprint:secret": MASTER,
     "canvas:seed": 11111,
     "audio:seed": 11111,
     "navigator.userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0",
 }
 CFG_B = {
+    "fingerprint:secret": MASTER,
     "canvas:seed": 99999,
     "audio:seed": 99999,
     "navigator.userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0",
@@ -193,9 +199,19 @@ def main() -> None:
         sys.exit("CLOAKFOX_BIN not set or binary missing")
 
     with tempfile.TemporaryDirectory() as tmp:
-        probe_html = os.path.join(tmp, "probe.html")
-        Path(probe_html).write_text(PROBE_HTML)
-        probe_url = f"file://{probe_html}"
+        # The 155 site-bound policy requires an HTTP(S) partition key and a
+        # complete secret. A file URL plus only the legacy numeric seed is an
+        # intentionally unconfigured context and cannot test container noise.
+        class Page(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                self.wfile.write(PROBE_HTML.encode())
+            def log_message(self, *_args): pass
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Page)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        probe_url = f"http://127.0.0.1:{server.server_port}/"
 
         prof = os.path.join(tmp, "profile")
         _profile(prof)
@@ -214,6 +230,8 @@ def main() -> None:
             res_b = _read_probe_in_container(driver, probe_url, UCID_B)
         finally:
             driver.quit()
+            server.shutdown()
+            server.server_close()
 
     print(f"=== container {UCID_A} (cloak_cfg_{UCID_A}) ===")
     print(json.dumps(res_a, indent=2))

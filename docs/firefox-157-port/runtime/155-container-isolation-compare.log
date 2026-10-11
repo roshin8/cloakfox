@@ -1,0 +1,20 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (155.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 155.*, so it is advised to delete the driver in PATH and retry
+=== container 1 (cloak_cfg_1) ===
+{
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0",
+  "canvas_hash": "67a1afa3",
+  "audio_sum": "106.28748364"
+}
+
+=== container 2 (cloak_cfg_2) ===
+{
+  "ua": "Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0",
+  "canvas_hash": "67a1afa3",
+  "audio_sum": "106.28748364"
+}
+
+OK  ua: c1='Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0' != c2='Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0' (per-container ✓)
+
+FAIL:
+  - canvas_hash: IDENTICAL across two non-default containers ('67a1afa3') — the manager getter is not isolating per container
+  - audio_sum: IDENTICAL across two non-default containers ('106.28748364') — the manager getter is not isolating per container

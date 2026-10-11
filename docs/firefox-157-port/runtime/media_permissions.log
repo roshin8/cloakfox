@@ -1,0 +1,18 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (157.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 157.*, so it is advised to delete the driver in PATH and retry
+PASS regression runs with permission privacy enabled
+PASS camera: actual grant is visible
+PASS camera: revocation updates an existing status and fires change
+PASS camera: regrant updates an existing status and fires change
+PASS camera: removal fires a prompt change on the existing status
+PASS camera: ungranted access is not reported as granted
+PASS camera: native Always Ask reporting is retained
+PASS microphone: actual grant is visible
+PASS microphone: revocation updates an existing status and fires change
+PASS microphone: regrant updates an existing status and fires change
+PASS microphone: removal fires a prompt change on the existing status
+PASS microphone: ungranted access is not reported as granted
+PASS microphone: native Always Ask reporting is retained
+PASS notification privacy retained for action 1
+PASS notification privacy retained for action 2
+PASS master off restores native notification state
+PASS master off keeps native camera state

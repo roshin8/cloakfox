@@ -425,7 +425,7 @@ async function flushIdentities() {
 }
 async function clearOrphanTemporary(id) {
   if (hasTabs(id)) throw new Error('An orphan temporary container still has tabs; close them to finish cleanup');
-  const { SessionStore } = ChromeUtils.importESModule('resource:///modules/sessionstore/SessionStore.sys.mjs');
+  const { SessionStore } = ChromeUtils.importESModule('moz-src:///browser/components/sessionstore/SessionStore.sys.mjs');
   SessionStore.assertContainerForgetReady();
   await SessionStore.forgetContainerRestoreData(id);
   const failed = await new Promise(resolve => Services.clearData.deleteDataFromOriginAttributesPattern(

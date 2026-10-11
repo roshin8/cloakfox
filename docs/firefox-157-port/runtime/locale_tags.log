@@ -1,0 +1,19 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (157.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 157.*, so it is advised to delete the driver in PATH and retry
+PASS off: explicit de retains its language, region and script
+PASS off: explicit fr retains its language, region and script
+PASS off: explicit ja retains its language, region and script
+PASS off: explicit zh-TW retains its language, region and script
+PASS off: explicit ar retains its language, region and script
+PASS off: explicit en-GB retains its language, region and script
+PASS on: explicit de retains its language, region and script
+PASS on: explicit fr retains its language, region and script
+PASS on: explicit ja retains its language, region and script
+PASS on: explicit zh-TW retains its language, region and script
+PASS on: explicit ar retains its language, region and script
+PASS on: explicit en-GB retains its language, region and script
+PASS container locale does not replace the process OS locale
+PASS default locale changes preserve explicit tags
+PASS removing native default override clears stale value
+PASS restoring a container override preserves the process OS locale
+PASS master off clears the previous native default override
+17 checks passed; benchmark off/on milliseconds: 0.00/0.00

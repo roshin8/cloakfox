@@ -94,7 +94,7 @@ async function harness(t) {
   });
   const code = await fs.readFile(new URL("../../additions/browser/components/cloakfox/CloakfoxAppearance.sys.mjs", import.meta.url), "utf8");
   vm.runInContext(code.replace(/^import .*;\n/gm, "").replace(/^export /gm, "") +
-    "\nrun = platformRun; globalThis.api = {prepareAppearance, getAppearance, revealAppearance};", context);
+    "\nrun = platformRun; globalThis.api = {prepareAppearance, getAppearance, revealAppearance, brandText};", context);
   return { api: context.api, source, profile, local, put, signSource: () => sign(source),
     setActive(value) { active = value; }, setFailSign(value) { failSign = value; },
     failInstall() { failInstall = true; }, get copies() { return copies; }, get revealed() { return revealed; } };
@@ -144,4 +144,16 @@ test("an active app cannot be replaced; a damaged inactive copy is rebuilt", asy
   assert.equal(h.copies, 1);
   h.setActive(h.source); await h.api.prepareAppearance(true); assert.equal(h.copies, 2);
   assert.equal(await fs.readFile(path.join(a.app, "Contents/Resources/payload"), "utf8"), "original");
+});
+
+
+test("Firefox appearance replaces the current SVG popup badge without losing controls", async t => {
+  const {api} = await harness(t);
+  const popup = await fs.readFile(new URL("../../additions/browser/extensions/cloakfox-shield/popup/popup.html", import.meta.url), "utf8");
+  const branded = api.brandText("browser/features/builtin-addons/cloakfox-shield/popup/popup.html", popup);
+  assert.match(branded, /<img class="brand-mark" src="\.\.\/icons\/icon-48\.png" alt="">/);
+  assert.doesNotMatch(branded, /<span class="brand-mark"/);
+  assert.match(branded, /id="cfx-open-settings"/);
+  assert.match(branded, /id="cfx-popup-regen"/);
+  assert.match(branded, /<span class="brand-name">Firefox<\/span>/);
 });

@@ -1,0 +1,20 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (157.0.1.25); currently, geckodriver 0.37.1 is recommended for firefox 157.*, so it is advised to delete the driver in PATH and retry
+=== container 1 (cloak_cfg_1) ===
+{
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:157.0) Gecko/20100101 Firefox/157.0",
+  "canvas_hash": "fd30b443",
+  "audio_sum": "106.22001440"
+}
+
+=== container 2 (cloak_cfg_2) ===
+{
+  "ua": "Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0",
+  "canvas_hash": "f8e6b8bd",
+  "audio_sum": "106.26530952"
+}
+
+OK  canvas_hash: c1='fd30b443' != c2='f8e6b8bd' (per-container ✓)
+OK  audio_sum: c1='106.22001440' != c2='106.26530952' (per-container ✓)
+OK  ua: c1='Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:157.0) Gecko/20100101 Firefox/157.0' != c2='Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0' (per-container ✓)
+
+PASS: non-default container reads its own cloak_cfg_<ucid>

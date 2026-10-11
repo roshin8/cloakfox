@@ -121,7 +121,7 @@ def main():
                 driver.set_context("chrome")
                 before = driver.execute_script("""
                   const { SessionStore, _LastSession } = ChromeUtils.importESModule(
-                    'resource:///modules/sessionstore/SessionStore.sys.mjs');
+                    'moz-src:///browser/components/sessionstore/SessionStore.sys.mjs');
                   const record = userContextId => ({ userContextId, entries: [{ url: 'https://restore.example/' }] });
                   _LastSession.setState({ windows: [{ tabs: [record(arguments[0]), record(arguments[1])], selected: 2 }] });
                   SessionStore.savedGroups.push({ id: 'forget-probe-group', name: 'Probe mixed group',
@@ -148,7 +148,7 @@ def main():
                   const { ContextualIdentityService: cis } = ChromeUtils.importESModule(
                     'moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs');
                   const { SessionStore, _LastSession } = ChromeUtils.importESModule(
-                    'resource:///modules/sessionstore/SessionStore.sys.mjs');
+                    'moz-src:///browser/components/sessionstore/SessionStore.sys.mjs');
                   const restored = _LastSession.getState().windows.flatMap(win => win.tabs);
                   const group = SessionStore.savedGroups.find(group => group.id === 'forget-probe-group');
                   const restorePruned = restored.length === 1 && restored[0].userContextId === arguments[1] &&

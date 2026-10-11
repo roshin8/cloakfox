@@ -184,7 +184,7 @@ export function assertContainerCookiesCleared(id, cookies) {
 function nativeDependencies() {
   const { ContextualIdentityService } = ChromeUtils.importESModule(
     'moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs');
-  const { SessionStore } = ChromeUtils.importESModule('resource:///modules/sessionstore/SessionStore.sys.mjs');
+  const { SessionStore } = ChromeUtils.importESModule('moz-src:///browser/components/sessionstore/SessionStore.sys.mjs');
   return {
     exists: id => id === 0 || !!ContextualIdentityService.getPublicIdentityFromId(id),
     preflight: () => SessionStore.assertContainerForgetReady(),

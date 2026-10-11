@@ -2,7 +2,9 @@
 
 The inherited locale patch replaced low-level tag components on every read,
 including Firefox Settings' translation/language initialization. This probe
-catches that corruption, checks native default changes/master toggling, and
+catches explicit tag corruption and checks that container overrides leave the
+process-wide OS/ICU locale unchanged. `probe_regions.py` checks page/worker
+default locale changes and isolation. This probe also
 records the cost of repeated maximize operations without a timing-only gate.
 """
 import json
@@ -86,7 +88,7 @@ def main():
         observations["french"] = french
         native_french = system_locale()
         observations["nativeFrench"] = native_french
-        check(native_french == "fr-FR", "configured native default locale remains supported", native_french)
+        check(native_french == observations["nativeBaseline"], "container locale does not replace the process OS locale", native_french)
         check(french["result"][2]["max"] == "ja-Jpan-JP", "default locale changes preserve explicit tags", french)
         chrome("""
             const key='cloakfox.s.cloak_cfg_0',cfg=JSON.parse(Services.prefs.getStringPref(key));
@@ -96,7 +98,7 @@ def main():
         removed = system_locale()
         check(removed == observations["nativeBaseline"], "removing native default override clears stale value", removed)
         configure(True, "fr", "FR")
-        check(system_locale() == "fr-FR", "native default override can be restored", system_locale())
+        check(system_locale() == observations["nativeBaseline"], "restoring a container override preserves the process OS locale", system_locale())
         configure(False)
         restored = measure()
         observations["restored"] = restored
