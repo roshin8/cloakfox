@@ -6,7 +6,7 @@ The archive matches its official index SHA1 and pinned SHA256 in `engines/chromi
 
 ## Implemented and measured
 
-- Standalone C++/Cocoa Chromium companion with Chrome-style Views controls and sandbox-enabled helpers.
+- Standalone C++/Cocoa Chromium companion with native Views navigation controls and sandbox-enabled helpers.
 - Private parent-process pipe control; no listening port or web-to-host binding. Strict schema/field validation, increasing request IDs and launch-option whitelist.
 - Separate persistent request contexts for containers 1 and 2; memory-only private context 3. Private contexts discarded after the last private window closes.
 - Owned directory checks, symlink rejection, exclusive profile-root locking and immutable native/test keychain mode.
@@ -22,7 +22,7 @@ Evidence: `cef-isolation.json`, `cef-transport.json`, `cef-protocol-checks.txt`,
 `cef-cpp-checks.txt`. The transport evidence contains public protocol structure;
 it excludes private keys, TLS randoms, traffic keys, cookies and user credentials.
 
-Verification passed: one C++ boundary test, seven native protocol/lifecycle tests,
+Verification passed: one C++ boundary test, two extraction-recovery tests, seven native protocol/lifecycle tests,
 the storage/sandbox/permissions runtime probe and the TCP/QUIC runtime probe.
 The existing Node suite passed 234 tests; Python passed 19 with 16 historical
 skips. The compiled bundle's manifest/helper checks are in `cef-build-artifact.json`.
@@ -56,3 +56,19 @@ No Gecko product/source/settings files changed. The existing native owner/profil
 proxy and refusal runtime probe passed before prototype work. The Firefox DMG
 SHA256 remains `1024cfb8e4b3b4e947b9e1266cab977d12f9623c6de53280fd6a35946234def2`.
 The other agent's changes in the older checkout were not modified.
+
+## Review and UI follow-up
+
+Independent review found no confirmed critical/important issue in the initial
+prototype and one minor incomplete-extraction recovery issue. Extraction now
+stages the SDK and publishes it only after success; an existing unmarked tree is
+preserved as `.incomplete`. Both failure and recovery paths passed local archive tests.
+
+The initial visual check found missing toolbar attachment. Attaching CEF's Chrome
+location bar then exposed a reproducible close-time native crash. The companion
+now uses its own native Views text field and navigation buttons, without a Chrome
+profile menu. Native protocol/lifecycle and isolation probes pass after this change.
+AppKit crash-state restoration is suppressed through process-local registered
+defaults because session restoration belongs to the controller; no global macOS
+preference is changed. The Mac became locked during UI work, so final address-field
+appearance, keyboard navigation and accessibility interaction remain unverified.

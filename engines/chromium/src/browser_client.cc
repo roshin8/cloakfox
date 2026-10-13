@@ -9,11 +9,16 @@
 #include <thread>
 #include "include/base/cef_callback.h"
 #include "include/cef_devtools_message_observer.h"
+#include "include/cef_display_handler.h"
+#include "include/cef_id_mappers.h"
 #include "include/cef_parser.h"
 #include "include/cef_request_context_handler.h"
 #include "include/cef_task.h"
 #include "include/cef_version.h"
 #include "include/views/cef_browser_view.h"
+#include "include/views/cef_box_layout.h"
+#include "include/views/cef_label_button.h"
+#include "include/views/cef_textfield.h"
 #include "include/views/cef_window.h"
 #include "include/wrapper/cef_closure_task.h"
 #include "include/wrapper/cef_helpers.h"
@@ -39,18 +44,63 @@ void error(int id, const std::string& reason) {
   auto data = reply(id, false); data->SetString("error", reason); emit(data);
 }
 
-class WindowDelegate : public CefWindowDelegate {
+class WindowDelegate : public CefWindowDelegate, public CefButtonDelegate,
+                       public CefTextfieldDelegate {
  public:
+  using CefWindowDelegate::OnKeyEvent;
   explicit WindowDelegate(CefRefPtr<CefBrowserView> view) : view_(view) {}
   void OnWindowCreated(CefRefPtr<CefWindow> window) override {
-    window->AddChildView(view_); window->Show();
+    CefBoxLayoutSettings vertical;
+    vertical.horizontal = false;
+    auto layout = window->SetToBoxLayout(vertical);
+    window->AddChildView(view_);
+    layout->SetFlexForView(view_, 1);
+    auto location = CefTextfield::CreateTextfield(this);
+    location->SetID(4);
+    location->SetPlaceholderText("HTTP(S) address");
+    location->SetAccessibleName("Address");
+    {
+      auto toolbar = CefPanel::CreatePanel(nullptr);
+      CefBoxLayoutSettings horizontal;
+      horizontal.horizontal = true;
+      auto row = toolbar->SetToBoxLayout(horizontal);
+      int id = 1;
+      for (const auto label : {"Back", "Forward", "Reload"}) {
+        auto button = CefLabelButton::CreateLabelButton(this, label);
+        button->SetID(id++); toolbar->AddChildView(button);
+      }
+      toolbar->AddChildView(location);
+      row->SetFlexForView(location, 1);
+      window->AddChildViewAt(toolbar, 0);
+      window->Layout();
+    }
+    window->Show();
+  }
+  bool OnKeyEvent(CefRefPtr<CefTextfield> field, const CefKeyEvent& event) override {
+    if (event.type != KEYEVENT_RAWKEYDOWN || event.windows_key_code != 13) return false;
+    auto browser = view_ ? view_->GetBrowser() : nullptr;
+    const auto url = field->GetText().ToString();
+    if (browser && navigable(url)) browser->GetMainFrame()->LoadURL(url);
+    return true;
+  }
+  void OnButtonPressed(CefRefPtr<CefButton> button) override {
+    auto browser = view_ ? view_->GetBrowser() : nullptr;
+    if (!browser) return;
+    if (button->GetID() == 1) browser->GoBack();
+    else if (button->GetID() == 2) browser->GoForward();
+    else if (button->GetID() == 3) browser->Reload();
   }
   void OnWindowDestroyed(CefRefPtr<CefWindow>) override { view_ = nullptr; }
   bool CanClose(CefRefPtr<CefWindow>) override {
-    auto browser = view_->GetBrowser();
+    auto browser = view_ ? view_->GetBrowser() : nullptr;
     return !browser || browser->GetHost()->TryCloseBrowser();
   }
-  CefSize GetPreferredSize(CefRefPtr<CefView>) override { return CefSize(1000, 720); }
+  CefSize GetPreferredSize(CefRefPtr<CefView> view) override {
+    // This delegate also serves navigation buttons. Only the window gets
+    // window dimensions; buttons must retain their native preferred size.
+    if (view->AsTextfield()) return CefSize(600, 32);
+    return view->AsButton() ? CefSize() : CefSize(1000, 720);
+  }
   cef_runtime_style_t GetWindowRuntimeStyle() override { return CEF_RUNTIME_STYLE_CHROME; }
  private:
   CefRefPtr<CefBrowserView> view_;
@@ -60,7 +110,7 @@ class ViewDelegate : public CefBrowserViewDelegate {
  public:
   cef_runtime_style_t GetBrowserRuntimeStyle() override { return CEF_RUNTIME_STYLE_CHROME; }
   ChromeToolbarType GetChromeToolbarType(CefRefPtr<CefBrowserView>) override {
-    return CEF_CTT_NORMAL;
+    return CEF_CTT_NONE;
   }
   bool OnPopupBrowserViewCreated(CefRefPtr<CefBrowserView>,
       CefRefPtr<CefBrowserView> popup, bool) override {
@@ -81,8 +131,8 @@ class ContextHandler : public CefRequestContextHandler {
   const std::string key_;
   IMPLEMENT_REFCOUNTING(ContextHandler);
 };
-class Client : public CefClient, public CefLifeSpanHandler,
-               public CefRequestHandler, public CefPermissionHandler,
+class Client : public CefClient, public CefLifeSpanHandler, public CefCommandHandler,
+               public CefRequestHandler, public CefPermissionHandler, public CefDisplayHandler,
                public CefDevToolsMessageObserver {
  public:
   Client(Companion* owner, int requestId, std::string container, bool isPrivate)
@@ -91,6 +141,27 @@ class Client : public CefClient, public CefLifeSpanHandler,
   CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
   CefRefPtr<CefRequestHandler> GetRequestHandler() override { return this; }
   CefRefPtr<CefPermissionHandler> GetPermissionHandler() override { return this; }
+  CefRefPtr<CefCommandHandler> GetCommandHandler() override { return this; }
+  CefRefPtr<CefDisplayHandler> GetDisplayHandler() override { return this; }
+  void OnAddressChange(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+                       const CefString& url) override {
+    if (!frame->IsMain()) return;
+    auto view = CefBrowserView::GetForBrowser(browser);
+    auto window = view ? view->GetWindow() : nullptr;
+    auto field = window ? window->GetViewForID(4) : nullptr;
+    if (field && field->AsTextfield()) field->AsTextfield()->SetText(url);
+  }
+  bool OnChromeCommand(CefRefPtr<CefBrowser>, int command,
+                       cef_window_open_disposition_t disposition) override {
+    // Profile, incognito, new-window/tab and browser-management actions must
+    // come from our controller, never bypass its container ownership checks.
+    for (const auto name : {"IDC_BACK", "IDC_FORWARD", "IDC_RELOAD", "IDC_STOP",
+         "IDC_RELOAD_BYPASSING_CACHE", "IDC_FOCUS_LOCATION", "IDC_CLOSE_WINDOW", "IDC_CLOSE_TAB"})
+      if (command == cef_id_for_command_id_name(name)) return false;
+    if (command == cef_id_for_command_id_name("IDC_OPEN_CURRENT_URL") &&
+        disposition == CEF_WOD_CURRENT_TAB) return false;
+    return true;
+  }
   void OnAfterCreated(CefRefPtr<CefBrowser> browser) override;
   void OnBeforeClose(CefRefPtr<CefBrowser> browser) override;
   void OnRenderProcessTerminated(CefRefPtr<CefBrowser> browser,

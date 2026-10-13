@@ -40,6 +40,12 @@ int main(int argc, char* argv[]) {
   if (!loader.LoadInMain()) return 1;
   CefMainArgs args(argc, argv);
   @autoreleasepool {
+    // The controller owns session restoration. Suppress AppKit's unrelated
+    // crash-recovery modal using process-local defaults, not system settings.
+    [[NSUserDefaults standardUserDefaults] registerDefaults:@{
+      @"ApplePersistenceIgnoreState": @YES,
+      @"NSQuitAlwaysKeepsWindows": @NO
+    }];
     [CloakfoxApplication sharedApplication];
     if (![NSApp isKindOfClass:[CloakfoxApplication class]]) return 1;
     auto command = CefCommandLine::CreateCommandLine();

@@ -4,7 +4,29 @@ import hashlib
 import json
 from pathlib import Path
 import tarfile
+import tempfile
 import urllib.request
+
+
+def extract_atomic(archive, destination, digest):
+    marker = destination / '.cloakfox-extraction-sha256'
+    if marker.is_file() and marker.read_text() == digest:
+        return
+    # Extract on the same filesystem; only publish a fully extracted tree.
+    # Preserve a pre-existing incomplete SDK for diagnosis rather than deleting it.
+    with tempfile.TemporaryDirectory(prefix='.cef-extract-', dir=destination.parent) as staging:
+        with tarfile.open(archive) as bundle:
+            bundle.extractall(staging, filter='data')
+        ready = Path(staging) / destination.name
+        if not ready.is_dir():
+            raise ValueError('CEF archive lacks its expected SDK directory')
+        (ready / marker.name).write_text(digest)
+        if destination.exists():
+            backup = destination.with_name(destination.name + '.incomplete')
+            if backup.exists():
+                raise ValueError(f'Preserved incomplete SDK already exists: {backup}')
+            destination.rename(backup)
+        ready.rename(destination)
 
 
 def main():
@@ -29,9 +51,7 @@ def main():
     if archive != final:
         archive.rename(final)
     destination = cache / lock['archive'].removesuffix('.tar.bz2')
-    if not destination.exists():
-        with tarfile.open(final) as bundle:
-            bundle.extractall(cache, filter='data')
+    extract_atomic(final, destination, actual)
     print(destination)
 
 

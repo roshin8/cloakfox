@@ -1,7 +1,7 @@
 # Chromium companion prototype
 
 Development-only macOS arm64 CEF companion on branch `codex/dual-engine-prototype`.
-It uses real Chromium with Chrome-style browser controls, not Gecko with a Chrome UA.
+It uses real Chromium with a native Views address field and Back/Forward/Reload controls.
 It is **not integrated into Cloakfox's tab bar and has no native fingerprint privacy patches**.
 The existing Gecko browser and DMG are unchanged.
 

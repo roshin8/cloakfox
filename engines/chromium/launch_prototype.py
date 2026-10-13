@@ -58,7 +58,7 @@ def main():
             process.wait()
             reader.join(timeout=2)
             if rejected or process.returncode:
-                raise SystemExit('Companion exited with an error')
+                raise SystemExit(f'Companion exited with code {process.returncode}; rejected requests: {len(rejected)}')
         except KeyboardInterrupt:
             process.stdin.close()
             process.wait(timeout=20)
