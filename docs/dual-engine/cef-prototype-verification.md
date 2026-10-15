@@ -72,3 +72,26 @@ AppKit crash-state restoration is suppressed through process-local registered
 defaults because session restoration belongs to the controller; no global macOS
 preference is changed. The Mac became locked during UI work, so final address-field
 appearance, keyboard navigation and accessibility interaction remain unverified.
+
+## Follow-up — 2026-10-15
+
+The Mac is now available. A fresh native UI check against an owned loopback
+fixture verified visible address entry and typed navigation, Back, Forward,
+Reload (new server response) and window close. The preview launcher exited 0.
+The native address field appears in the accessibility tree. Page-content
+accessibility and keyboard shortcuts remain unverified.
+
+Two new native popup characterization tests passed. Persistent popups share
+only the opener's container storage, including after the opener closes. Private
+popups share the opener's private context while any private window remains;
+after the last private popup closes, reopening starts with empty storage.
+A persistent window using the same numeric container ID retains separate data.
+No production runtime code or binary changed in this follow-up.
+
+Fresh verification: 11 Python engine tests and one C++ boundary test passed.
+Earlier broader Gecko/network evidence above remains dated 2026-10-13 and was
+not rerun for this test/documentation change. Current read-only source preflight
+reports are `cef-source-preflight-internal-20261015.json` and
+`cef-source-preflight-external-20261015.json`: macOS SDK 27.0, full Xcode absent,
+internal free space below the 128 GiB budget, external ExFAT volume with capacity.
+The native source patch and later integration milestones remain blocked/pending.

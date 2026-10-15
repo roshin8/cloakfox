@@ -45,12 +45,12 @@ Proposed new files:
 - `engines/chromium/README.md`: pinned versions, build instructions and known limitations.
 - `tests/engines/`: owned runtime fixtures and isolation/identity tests.
 
-- [ ] Record current Gecko baseline: working build, package, settings and representative isolation tests.
+- [x] Record current Gecko baseline: working build, package, settings and representative isolation tests.
 - [ ] Select and pin a supported CEF/Chromium release and matching build tools. Record exact versions and source revisions; preserve upstream licenses.
 - [ ] Run an unmodified CEF sample on macOS arm64. Check sandbox, GPU/WebGL, WebGPU, audio/video permissions, downloads, popups and process crash recovery.
-- [ ] Build a minimal companion window with address entry, back/forward/reload and two selectable container contexts.
-- [ ] Give each container a separate request context and cache path under a dedicated prototype data root. Reject malformed IDs, path traversal and concurrent ownership of a profile directory.
-- [ ] Use a local fixture to write cookies, localStorage, IndexedDB, cache and a service worker in container A. Verify B cannot read them; restart and repeat. Check private contexts do not persist data.
+- [x] Build a minimal companion window with address entry, back/forward/reload and two selectable container contexts.
+- [x] Give each container a separate request context and cache path under a dedicated prototype data root. Reject malformed IDs, path traversal and concurrent ownership of a profile directory.
+- [x] Use a local fixture to write cookies, localStorage, IndexedDB, cache and a service worker in container A. Verify B cannot read them; restart and repeat. Check private contexts do not persist data.
 - [ ] Inspect TLS/H2/H3 through owned server fixtures. Record actual Chromium behavior without routing requests through Gecko or modifying transport to resemble another engine.
 - [ ] Build CEF from pinned source and implement one small native canvas privacy patch. Derive deterministic output from container and schemeful site; test reload stability, site/container separation and the disabled setting. Include workers/OffscreenCanvas where the chosen path applies.
 - [ ] Inventory every existing Cloakfox protection and setting against Chromium implementation points. For each, record native hook, missing capability, worker coverage and test required.
@@ -137,3 +137,16 @@ TCP/QUIC pre-certificate wire observations and crash recovery are proven. Native
 privacy patches, full H2/H3 acceptance and remaining browser-feature checks are
 open. Source-build prerequisites (full Xcode and sufficient APFS build storage)
 block the required canvas patch; later milestones have not begun.
+
+### Follow-up verification — 2026-10-15
+
+Native UI verified against an owned loopback fixture: typed address navigation,
+Back, Forward, Reload and close all worked; the launcher exited successfully.
+Popup runtime tests confirm persistent container inheritance and private context
+lifetime through opener/popup closure. These tests exercise existing behavior;
+no Chromium runtime code changed in this follow-up. Page accessibility, downloads,
+keyboard shortcuts and the source-native patch remain open.
+
+The source preflight is still blocked: full Xcode absent, internal free capacity
+below the 128 GiB build budget, external disk ExFAT. See the dated preflight
+reports and `../../dual-engine/cef-prototype-verification.md`.

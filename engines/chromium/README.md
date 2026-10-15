@@ -78,7 +78,7 @@ permission management and downloads have not been validated for release.
 
 ```sh
 export CLOAKFOX_CHROMIUM_BIN="$PWD/engines/chromium/build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium"
-python3 -m unittest discover -s tests/engines -p 'test_protocol_security.py' -v
+python3 -m unittest discover -s tests/engines -p 'test_*.py' -v
 python3 tests/engines/probe_cef_isolation.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report /tmp/cef-isolation.json
 # Use a Python environment with tests/network/requirements-wire.txt installed:
 python3 tests/engines/probe_cef_transport.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report /tmp/cef-transport.json
@@ -87,7 +87,7 @@ python3 tests/engines/probe_cef_transport.py --binary "$CLOAKFOX_CHROMIUM_BIN" -
 The probes use disposable profiles and owned loopback servers. They check real
 persistent/private storage, restart behavior, private-window closure, macOS
 renderer sandbox enforcement, permission denial, invalid inputs, replay rejection
-and intentional renderer crash recovery.
+intentional renderer crash recovery and popup context inheritance/lifetime.
 
 The transport probe observes TCP and QUIC ClientHello/transport parameters and
 rejects the untrusted fixture certificate. Its explicit `--test-quic-port=N`
