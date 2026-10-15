@@ -32,6 +32,22 @@ Cloakfox CLT preparer, `gclient runhooks`, then CEF
 Git worktree need `GIT_CEILING_DIRECTORIES` at the archive workspace parent to
 keep tarball patch commands from discovering the unrelated repository.
 
+## Pinned CEF runtime repair
+
+After the matching CEF patcher, apply
+`engines/chromium/patches/macos-cef-rng-seed.patch` from the Chromium source root
+using `git apply --check` followed by `git apply`. The expected before/after input
+SHA256 values are in `engines/chromium/cef-runtime-patches.json`; verify them
+against the two source files before applying, and against the fixed hashes after.
+
+The pinned CEF `base_rand_util_lazy_seed.patch` moves metrics RNG seeding onto
+first use. On macOS this can occur inside PartitionAlloc lock sampling; BoringSSL's
+first per-thread RNG allocation re-enters the allocator. The local patch uses
+macOS `getentropy` to fill the 128-bit seed on the stack, preserving lazy
+construction and the all-zero retry. Allocator checks, sandboxing and lock
+metrics stay enabled. The source-built startup tests reproduce the original
+failure; passing runtime evidence is required before calling the repair verified.
+
 ## GN and compile
 
 Generate `Release_GN_arm64` arguments through CEF's `tools/gn_args.py`, retaining
@@ -77,7 +93,10 @@ Successful GN generation is not a linked framework. A complete result requires
 the framework, a separate native companion built using that framework and its
 generated headers, matching framework SHA256 values, and passing runtime probes.
 Use the matching binary SDK's CMake templates only; replace its framework,
-headers and wrapper sources with the source-build outputs. Preserve the old SDK
+headers and wrapper sources with the source-build outputs, then honor CEF's
+`tools/distrib/transfer.cfg`. Its `net_error_list.h` mapping replaces the
+source-tree include shim with the standalone Chromium header. Keep the
+SDK-only `README-TRANSFER.txt` documentation template. Preserve the old SDK
 and app for comparison. The source-built companion must pass the protocol,
 container/popup/private storage, sandbox, permission, crash recovery and native
 transport probes documented in `engines/chromium/README.md`. The graphics probe
@@ -86,3 +105,12 @@ compiles WebGL2 shaders, draws a triangle and verifies red pixel readback.
 Native fingerprint protection and integration into Cloakfox's shared UI remain
 separate roadmap work. Consult the recorded build status before treating this
 baseline as complete.
+
+## Recorded result — 2026-10-15
+
+The framework, sandbox and source-linked companion now compile and pass the
+native tests. See [recorded provenance and results](cef-source-build-20261015.json)
+and [verification scope](cef-prototype-verification.md#full-source-baseline--2026-10-15).
+The companion opts out of Chromium's compiled field-trial testing cohorts so
+non-official builds use normal feature defaults and the packaged CEF helper set.
+The macOS RNG repair is validated by startup and browser runtime tests.

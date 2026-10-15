@@ -1,0 +1,162 @@
+{
+  "verifiedAtUtc": "2026-10-15T22:23:28.806283+00:00",
+  "status": {
+    "status": "source-build-and-runtime-passed",
+    "chromiumTag": "154.0.8037.98",
+    "chromiumExpectedCommit": "b859317bf11f6be47f9b7799ec690a0a42a1fb33",
+    "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+    "depotToolsCommit": "97ed77526c27c08ad80437625ffde66dcbdd3b9c",
+    "volume": "/Volumes/CloakfoxChromiumBuild",
+    "image": "/Volumes/Untitled/CloakfoxChromiumBuild.sparsebundle",
+    "target": "cef:cef_framework",
+    "sandboxRequired": true,
+    "fullBuildPassed": true,
+    "runtimeTestsPassed": true,
+    "sourceMethod": "official-source-tarball",
+    "gitTransferFailure": "Connection reset by peer after about 1.1 GiB; early EOF",
+    "archiveUrl": "https://commondatastorage.googleapis.com/chromium-browser-official/chromium-154.0.8037.98.tar.xz",
+    "sourceRoot": "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/.cef-prototype/full-source/chromium/src",
+    "outputRoot": "/Volumes/CloakfoxChromiumBuild/source-build/out/Release_GN_arm64",
+    "archiveUncompressedBytes": 24598384640,
+    "sourceArchive": {
+      "url": "https://commondatastorage.googleapis.com/chromium-browser-official/chromium-154.0.8037.98.tar.xz",
+      "size": 4174095736,
+      "md5": "4ae9e4fac387d9d17b7db0c65b2c0712",
+      "sha256": "5fb963ddd71716cb21ddce52a035869e383b6f2b5dbdabe285a7ff64d0c43707",
+      "generation": "1791095666375242"
+    },
+    "cefPatches": {
+      "total": 116,
+      "applied": 115,
+      "skipped": 1,
+      "failed": 0
+    },
+    "cltPatchHashVerified": true,
+    "cefVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+    "gnPassed": true,
+    "gnTargetCount": 34454,
+    "runtimeMetalShaderCompilation": true,
+    "buildAdapterCommit": "1718267f90",
+    "localVerificationBeforeSourceRuntime": {
+      "cltUnitTests": 8,
+      "engineTestsWithExistingBinary": 19,
+      "ctest": 1,
+      "isolatedGnAndMetal": "passed"
+    },
+    "objectHeaderAudit": {
+      "checked": 38517,
+      "missing": 0,
+      "headerCounts": {
+        "cffaedfe": 36437,
+        "213c7468": 1805,
+        "213c6172": 274,
+        "22469dc0": 1
+      },
+      "suspect": [
+        {
+          "path": "obj/skia/skia_core_and_effects/SkPathUtils.o",
+          "size": 2360,
+          "header": "22469dc0ac103450"
+        }
+      ],
+      "seconds": 63.112229108810425
+    },
+    "cachedObjectRepairPassed": true,
+    "sourceBinary": "/Volumes/CloakfoxChromiumBuild/source-build/source-companion-build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium",
+    "sourceRuntimeFix": "macos-cef-rng-seed.patch",
+    "priorBaselineFrameworkLinked": true,
+    "fieldTrialTestingConfigDisabled": true,
+    "frameworkSha256": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+    "graphics": {
+      "error": 0,
+      "pixel": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)"
+    }
+  },
+  "gnArgs": {
+    "alternate_cdm_storage_id_key": "968b476909da4373b08903c28e859454",
+    "blink_symbol_level": 0,
+    "clang_use_chrome_plugins": false,
+    "enable_background_mode": false,
+    "enable_cdm_host_verification": true,
+    "enable_cdm_storage_id": true,
+    "enable_downgrade_processing": false,
+    "enable_precompiled_headers": false,
+    "enable_resource_allowlist_generation": false,
+    "enable_rlz": true,
+    "enable_widevine": true,
+    "forbid_non_component_debug_builds": false,
+    "is_component_build": false,
+    "is_debug": false,
+    "is_official_build": false,
+    "mac_use_command_line_tools": true,
+    "optimize_webui": true,
+    "symbol_level": 0,
+    "target_cpu": "arm64",
+    "use_remoteexec": false,
+    "use_siso": false,
+    "use_system_xcode": true,
+    "use_thin_lto": false,
+    "v8_symbol_level": 0,
+    "angle_precompile_internal_metal_shaders": false
+  },
+  "runtimePatch": {
+    "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+    "chromiumVersion": "154.0.8037.98",
+    "patch": "patches/macos-cef-rng-seed.patch",
+    "applyAfter": "CEF tools/patcher.py, including base_rand_util_lazy_seed.patch",
+    "purpose": "Avoid allocating while lazily seeding the metrics RNG on macOS allocator-critical paths",
+    "inputs": [
+      {
+        "path": "base/rand_util.cc",
+        "cefPatchedSha256": "6deecfdc0ed53814208482e1ad6e9c760793d827024196718dcb30011353be25",
+        "fixedSha256": "924ab0566c842259f429ffff8cffe8e2b590cabbe8e480bd367b2d83731a7ff7"
+      },
+      {
+        "path": "base/rand_util.h",
+        "cefPatchedSha256": "2625488068eb5897ceee2d735b082fb93b561b50724703a9b13a55d81119cdd5",
+        "fixedSha256": "107baf2832e7d3cad0bd0b732cfee365d0376b1a4374eb35b48af73d409516b1"
+      }
+    ]
+  },
+  "frameworkProvenance": {
+    "sourceFrameworkSha256": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+    "sdkFrameworkSha256": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+    "embeddedFrameworkSha256": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+    "purpose": "development verification, not an official CEF distribution",
+    "sourceRoot": "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/.cef-prototype/full-source/chromium/src",
+    "outputRoot": "/Volumes/CloakfoxChromiumBuild/source-build/out/Release_GN_arm64",
+    "sdk": "/Volumes/CloakfoxChromiumBuild/source-build/source-built-sdk",
+    "templateSource": "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/.cef-prototype/cef_binary_154.0.34+g14c5a08+chromium-154.0.8037.98_macosarm64",
+    "distributionTransfers": [
+      {
+        "source": "../net/base/net_error_list.h",
+        "target": "include/base/internal/cef_net_error_list.h",
+        "sha256": "8647b49488fbd0856ff03056c459ddfd115a89533637ddb8037637e9c7def243"
+      }
+    ]
+  },
+  "sourceHeaderWrapperFiles": 696,
+  "clientSha256": "52bbc4dc1058c8a4be5872966157d85cc0a62ad4b5f7f742db3c425d611c2172",
+  "preservedOriginalSdkClientSha256": "7884625a6d9931a39409939668bcf1ae03d86ce81e1b4fd3ae97d0e16344cb3a",
+  "tests": {
+    "pythonEngineTests": 19,
+    "ctest": 1,
+    "isolation": "passed",
+    "webglShaderDrawReadback": "passed",
+    "tlsQuicClientHelloAndUntrustedCertRejection": "passed",
+    "authenticatedHttp2Http3SettingsVerified": false
+  },
+  "limitations": [
+    "Chromium privacy protections not ported",
+    "Shared Gecko/Chromium UI not implemented",
+    "Development prototype uses test keychain",
+    "Full Xcode targets requiring ibtool or actool unsupported",
+    "Authenticated H2/H3 SETTINGS and ticket/connection isolation not verified"
+  ]
+}

@@ -102,9 +102,10 @@ python3 engines/chromium/source_preflight.py --build-root "$PWD"
 python3 engines/chromium/source_preflight.py --build-root /Volumes/Untitled
 ```
 
-Current internal APFS storage has insufficient free space for the 128 GiB
-development budget. The external USB volume has space but is ExFAT. Full Xcode
-is absent from the active developer directory. No drive is reformatted and no
+The standard preflight reports insufficient internal APFS space for its 128 GiB
+development budget, external ExFAT storage and no full Xcode. A source baseline
+now builds using the experimental CLT path and an external APFS disk image; see
+[the source-build record](../../docs/dual-engine/cef-source-build.md). No drive is reformatted and no
 global toolchain selection is changed by these scripts.
 
 A dedicated APFS disk image backed by the external disk can address the
@@ -112,13 +113,12 @@ filesystem/storage requirement without reformatting it. Full Xcode and its
 matching macOS SDK must also be available before starting the supported source
 build. See [Chromium's Mac build requirements](https://chromium.googlesource.com/chromium/src/+/main/docs/mac_build_instructions.md).
 
-After the prerequisites pass, pin CEF source commit `14c5a08` and its matching
-Chromium revision from CEF's `CHROMIUM_BUILD_COMPATIBILITY.txt`, build an
-unmodified source baseline, then implement/test deterministic native canvas
-readback protection for container plus schemeful-site ownership, including
-workers and OffscreenCanvas. Do not claim source patch maintainability or privacy
-parity from this binary-only prototype. The native-patch gate remains open before
-proceeding to Gecko launcher integration and a shared shell.
+The pinned source baseline now compiles and passes the native runtime probes.
+It includes build compatibility adaptations and a macOS CEF RNG startup repair.
+The next source milestone is deterministic native canvas readback protection for
+container plus schemeful-site ownership, including workers and OffscreenCanvas.
+The native privacy gate remains open before Gecko launcher integration and a
+shared shell.
 
 CEF is a viable embedding candidate based on the measured prototype so far;
 it is not yet selected as Cloakfox's final architecture. See the roadmap and
@@ -164,8 +164,11 @@ Measured on this machine: the real patched GN configuration works in an isolated
 fixture, rejects official builds, leaves default Xcode behavior intact, and its
 returned compiler/SDK paths compile and run Cocoa/Metal code. The fixture supplies
 minimal surrounding GN imports; it is **not the complete Chromium build graph**.
-A full CEF framework build, browser runtime, target-specific resource requirements
-and privacy patches remain unverified. The normal `source_preflight.py` still
+The complete CEF framework and source-built companion now pass native runtime
+checks: see [verification](../../docs/dual-engine/cef-prototype-verification.md)
+and [source-build evidence](../../docs/dual-engine/cef-source-build-20261015.json).
+Targets requiring unavailable resource compilers and native privacy patches
+remain outside this verified baseline. The normal `source_preflight.py` still
 reports standard Xcode prerequisites and storage budget; it is not a validator
 for this experimental mode.
 
@@ -183,3 +186,11 @@ by `THIRD_PARTY_LICENSES/Chromium-LICENSE.txt`.
 
 The pinned ANGLE fixture and build patch are covered by
 `THIRD_PARTY_LICENSES/ANGLE-LICENSE.txt`.
+
+The companion disables Chromium's compiled-in field-trial testing configuration.
+Non-official source builds otherwise enable experimental test cohorts, including
+Aperitif helpers absent from the pinned CEF distribution. Normal feature defaults
+preserve the existing supported helper set, GPU rendering and sandbox enforcement.
+Apply the pinned macOS runtime repair described in
+[the source-build instructions](../../docs/dual-engine/cef-source-build.md)
+after CEF's upstream patches and before building the framework.

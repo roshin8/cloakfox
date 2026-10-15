@@ -207,6 +207,9 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
       command->AppendSwitch("no-first-run");
       command->AppendSwitch("disable-background-networking");
       command->AppendSwitch("disable-component-update");
+      // Non-official Chromium embeds experimental field-trial test cohorts.
+      // Use stable feature defaults, matching official CEF distributions.
+      command->AppendSwitch("disable-field-trial-config");
       if (testKeychain_) command->AppendSwitch("use-mock-keychain");
       if (testQuicPort_) {
         command->AppendSwitch("enable-quic");

@@ -128,3 +128,48 @@ not enforce mac_sdk_min and silently ignored mac_sdk_path overrides. Both were
 reproduced as successful GN generations that should have failed, then repaired.
 The final GN probe now verifies rejection of too-old SDKs and unsupported custom
 SDK paths as well as official-build rejection and normal CLT configuration.
+
+## Full source baseline — 2026-10-15
+
+The pinned Chromium 154.0.8037.98 / CEF 154.0.34 framework and native sandbox
+library now build from source with Apple CLT 27.0 and macOS SDK 27.0. The source
+is internal and output is on an external APFS sparsebundle; no Xcode sign-in,
+installation, global developer-directory change or drive reformat was used.
+This is an experimental non-official build, rather than upstream Xcode support.
+
+Build adaptations use Chromium's build-local SDK aliases and ANGLE's existing
+runtime Metal shader compilation. The pinned CEF lazy-seed patch exposed an
+allocator-critical first-use RNG allocation; the local macOS repair seeds its
+128-bit state through getentropy without allocating. The source companion also
+disables Chromium's development field-trial test cohorts, which requested
+Aperitif helpers not shipped by the pinned CEF distribution. Normal feature
+defaults, allocator checks and sandbox enforcement remain enabled.
+
+The source-linked app passes 19 engine tests and one C++ test. Native probes
+verify persistent/private storage and popup lifetime, restart isolation, malformed
+input/replay rejection, renderer crash recovery, denied media/location access,
+and actual macOS renderer seatbelt enforcement. WebGL2 shaders compile, draw a
+triangle and read back [255, 0, 0, 255] through ANGLE Metal on Apple M2 Pro.
+WebGPU API availability is observed; WebGPU workloads are not verified here.
+Owned TCP/QUIC fixtures observe native ClientHellos and reject untrusted
+certificates. Authenticated HTTP/2 and HTTP/3 SETTINGS, session tickets and
+connection isolation remain unverified.
+
+Fresh SHA256 verification matches the source output, packaged SDK and embedded
+app framework: `544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056`.
+The original binary-SDK companion remains unchanged. One cached object with an
+invalid Mach-O header was preserved and rebuilt after a header audit of 38,517
+outputs found exactly one invalid header; its origin is not established.
+
+Evidence: [build/provenance](cef-source-build-20261015.json),
+[isolation and graphics](cef-source-isolation-20261015.json),
+[transport](cef-source-transport-20261015.json),
+[engine tests](source-companion-units-20261015.txt),
+[C++ test](source-companion-ctest-20261015.txt).
+[Build instructions](cef-source-build.md) include the source archive pin and
+standalone SDK transfer requirements. The tested app is
+`/Volumes/CloakfoxChromiumBuild/source-build/source-companion-build/Release/CloakfoxChromium.app`.
+
+Native Chromium privacy protections and the shared Gecko/Chromium UI remain
+pending. This result completes the source-build baseline, not milestone 1's
+native canvas privacy gate or privacy parity.

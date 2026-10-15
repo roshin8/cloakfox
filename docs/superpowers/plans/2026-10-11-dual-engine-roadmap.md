@@ -52,7 +52,8 @@ Proposed new files:
 - [x] Give each container a separate request context and cache path under a dedicated prototype data root. Reject malformed IDs, path traversal and concurrent ownership of a profile directory.
 - [x] Use a local fixture to write cookies, localStorage, IndexedDB, cache and a service worker in container A. Verify B cannot read them; restart and repeat. Check private contexts do not persist data.
 - [ ] Inspect TLS/H2/H3 through owned server fixtures. Record actual Chromium behavior without routing requests through Gecko or modifying transport to resemble another engine.
-- [ ] Build CEF from pinned source and implement one small native canvas privacy patch. Derive deterministic output from container and schemeful site; test reload stability, site/container separation and the disabled setting. Include workers/OffscreenCanvas where the chosen path applies.
+- [x] Build the pinned CEF source framework and test its companion on macOS arm64. Experimental CLT baseline, sandbox, storage/isolation, rendering and native transport probes pass; see the 2026-10-15 source-build verification.
+- [ ] Implement one small native canvas privacy patch. Derive deterministic output from container and schemeful site; test reload stability, site/container separation and the disabled setting. Include workers/OffscreenCanvas where the chosen path applies.
 - [ ] Inventory every existing Cloakfox protection and setting against Chromium implementation points. For each, record native hook, missing capability, worker coverage and test required.
 - [ ] Write a findings report with measured build/update cost and browser feature gaps.
 
@@ -150,3 +151,11 @@ keyboard shortcuts and the source-native patch remain open.
 The source preflight is still blocked: full Xcode absent, internal free capacity
 below the 128 GiB build budget, external disk ExFAT. See the dated preflight
 reports and `../../dual-engine/cef-prototype-verification.md`.
+
+### Source baseline completed — 2026-10-15
+
+Experimental CLT source build and source-linked companion now pass. Evidence and
+limitations are recorded in `../../dual-engine/cef-prototype-verification.md`
+and `../../dual-engine/cef-source-build-20261015.json`. The source prerequisite is
+resolved for this custom macOS framework target. Native canvas protection,
+privacy parity and shared-shell integration remain pending.
