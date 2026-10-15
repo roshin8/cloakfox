@@ -2,33 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* Cloakfox: pin fingerprinting-relevant CSS media features so window.matchMedia
- * reports persona-coherent, host-independent values instead of leaking the real
- * device/OS (pointer/hover, forced-colors, color-gamut …). Color scheme follows
- * Firefox's native Website appearance preferences, including live changes.
- *
- * Implemented by overriding the INHERITED MediaQueryList.prototype.matches
- * getter (native flags, native identity) — no own-property tell.
- *
- * Correctness model — the query result is computed, not first-clause-guessed
- * and not all-or-nothing deferred:
- *   - Each CONTROLLED atomic condition (a feature we pin) uses our pinned truth.
- *   - Each UNCONTROLLED atomic condition (min-width, orientation, resolution,
- *     ranges, nested groups…) is evaluated NATIVELY via `nativeEval` — a fresh
- *     native MediaQueryList read — so its real value is honored.
- *   - Those are combined under the real boolean structure (and / comma-OR / not
- *     / media type). We only override when the query actually references a
- *     controlled feature; otherwise we defer to native.
- *
- * This is what keeps the answer consistent with reality and free of the
- * "impossible result" oracle in BOTH directions, e.g. on a fine-pointer persona:
- *   "(pointer: coarse)"                       -> false  (pinned)
- *   "(pointer: coarse) and (min-width: 100px)" -> false  (pin ∧ native)
- *   "(pointer: fine) and (min-width: 9e9px)"   -> false (pin ∧ native)
- * A naive whole-query deferral would expose the host's coarse pointer for the
- * middle case. Note: this covers
- * the JS matchMedia API only, not CSS @media in stylesheets (that needs C++).
- */
+/* MediaQueryList is authoritative in native Gecko. The parser below remains
+ * test-only legacy coverage; production does not patch page objects. */
 
 // Desktop-plausible pins. color-gamut is OS-derived (macOS panels are wide-gamut).
 // Pointer/hover are native: C++ handles persona touch counts and RDM overrides.
@@ -136,75 +111,12 @@ function evaluateMedia(media, pins, nativeEval) {
   return sawControlled ? anyTrue : undefined;
 }
 
-function osFromPlatform(platform) {
-  if (/win/i.test(platform)) return "windows";
-  if (/mac/i.test(platform)) return "macos";
-  return "linux";
-}
-
-// Native accessor reports name "get matches" length 0; match it (Xray-waived).
-function setGetterIdentity(getterFn) {
-  const waived = Cu.waiveXrays(getterFn);
-  try {
-    Object.defineProperty(waived, "name", {
-      value: "get matches", writable: false, enumerable: false, configurable: true,
-    });
-    Object.defineProperty(waived, "length", {
-      value: 0, writable: false, enumerable: false, configurable: true,
-    });
-  } catch (_e) { /* best effort */ }
-  return getterFn;
-}
-
+// Native nsMediaFeatures now resolves these features from the owning document.
+// Do not replace MediaQueryList.matches: doing so makes JS disagree with CSS,
+// change events, range/boolean syntax and explicit per-container preferences.
+// Keep the actor registration inert for compatibility with existing builds.
 export class CloakfoxMediaQueryChild extends JSWindowActorChild {
-  handleEvent(event) {
-    if (event.type !== "DOMDocElementInserted") return;
-    try { this.#install(); } catch (_e) { /* never leak chrome:// */ }
-  }
-
-  #install() {
-    const win = this.contentWindow;
-    if (!win) return;
-    if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
-
-    const pageWin = win.wrappedJSObject;
-    const proto = pageWin.MediaQueryList?.prototype;
-    if (!proto) return;
-    const desc = Object.getOwnPropertyDescriptor(proto, "matches");
-    const origGetter = desc?.get;
-    if (!origGetter) return;
-    // Capture the NATIVE matchMedia now, before any page script runs, so our
-    // native evaluation of uncontrolled conditions can't be observed or spoofed
-    // by a page that later redefines window.matchMedia.
-    const origMatchMedia =
-      typeof pageWin.matchMedia === "function" ? pageWin.matchMedia : null;
-
-    const pins = pinsForOS(osFromPlatform(win.navigator.platform || ""));
-
-    const newGetter = Cu.exportFunction(function () {
-      try {
-        // Evaluate an uncontrolled atomic condition natively, bypassing our
-        // patched prototype getter (no recursion, no page-override exposure).
-        const nativeEval = origMatchMedia
-          ? (atom) => {
-              try { return !!origGetter.call(origMatchMedia.call(pageWin, atom)); }
-              catch (_e) { return false; }
-            }
-          : null;
-        const spoof = evaluateMedia(this.media, pins, nativeEval);
-        if (spoof !== undefined) return spoof;
-      } catch (_e) { /* fall through to native */ }
-      return origGetter.call(this);
-    }, pageWin, { functionName: "matches", allowConstruct: false });
-    setGetterIdentity(newGetter);
-
-    try {
-      // Native MediaQueryList.prototype.matches is {enumerable:true, configurable:true}.
-      Object.defineProperty(proto, "matches", {
-        get: newGetter, enumerable: true, configurable: true,
-      });
-    } catch (_e) { /* non-configurable on some builds — best effort */ }
-  }
+  handleEvent(_event) {}
 }
 
 // Test-only exports. ChromeUtils.importESModule consumers read the class and

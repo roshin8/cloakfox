@@ -31,6 +31,7 @@ HERE = Path(__file__).resolve().parent
 # regression tests, with the reason they are skipped by default.
 SKIP = {
     "probe_font_spike.py": "phase-0 spike, needs a hand-staged test font",
+    "probe_fingerprint_libraries.py": "opt-in upstream library audit; run scripts/setup-fingerprint-libraries.py first",
     "run_all.py": "this driver",
 }
 

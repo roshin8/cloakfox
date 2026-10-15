@@ -151,3 +151,14 @@ test("website color scheme is not a persona pin", () => {
     assert.equal(evaluateMedia("(prefers-color-scheme: dark)", pinsForOS(os), () => true), undefined);
   }
 });
+
+// Once the native engine enforces own-document media policy, production must
+// leave MediaQueryList native. Legacy parser tests above remain useful coverage
+// if a compatibility consumer uses the exported pure helpers.
+test("production actor defers every query and change event to native Gecko", () => {
+  const actor = new mod.CloakfoxMediaQueryChild();
+  actor.contentWindow = new Proxy({}, {
+    get() { throw new Error("Native media policy must not inspect or patch page objects"); },
+  });
+  assert.doesNotThrow(() => actor.handleEvent({ type: "DOMDocElementInserted" }));
+});

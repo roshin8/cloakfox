@@ -566,3 +566,14 @@ The virtual screen permission snapshot uses both effective-state fields, and
 hover retention handles 157's pointer-first boundary dispatch. Modern
 Permissions-Policy denial remains enforced; the retired Feature-Policy header
 follows native 157 behavior.
+
+## Pinned CreepJS and FingerprintJS audit
+
+Run `python3 scripts/setup-fingerprint-libraries.py`, then explicitly run
+`probe_fingerprint_libraries.py` with `CLOAKFOX_BIN` and `REPORT_DIR`. It uses
+upstream CreepJS and npm FingerprintJS, with exact revision/checksum checks and
+three headful samples per case. The fixtures stay in ignored directories; npm
+lifecycle scripts are disabled. See `libraries/upstreams.json` and
+`docs/fingerprint-repairs/library-validation.md`. This optional audit is excluded
+from `run_all.py` until explicitly invoked; no library detector warnings are
+suppressed or treated as proof of undetectability.

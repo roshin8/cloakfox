@@ -1,0 +1,368 @@
+{
+  "date": "2026-10-15",
+  "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+  "version": "158.0-beta.26",
+  "runtimeBuildID": "20261014202151",
+  "installedBrowserOmniSHA256": "5d71b5dee64aa4516de12a0a10370611fae19dee2e5988ba3e17e30c99f73f0b",
+  "method": "Headful Selenium/geckodriver, installed browser only, disposable profiles; generated Windows Firefox and Windows Chrome identities; same-container reloads; protection-off fresh-process control; page-owned-script local reproductions. No BrowserOS/Chrome/stock Firefox runtime results used.",
+  "findings": [
+    {
+      "priority": 1,
+      "signal": "AudioWorklet raw graph samples",
+      "classification": "confirmed noise bypass",
+      "evidence": {
+        "protectedRawHashes": [
+          "908fe7997a9e94c5d3105d5466558b1895623213ee7bf1789295f11923cc7df6",
+          "908fe7997a9e94c5d3105d5466558b1895623213ee7bf1789295f11923cc7df6"
+        ],
+        "protectedBufferHashes": [
+          "474a9e0d4abd18ee310192deebccc0c12a1663c5fba4d56056b78fdfc021f759",
+          "38cddcbe434d1909ea22ff28bb16582668650cd5528fa074dbbf5acadb8787ab"
+        ],
+        "freshUnprotectedHash": "908fe7997a9e94c5d3105d5466558b1895623213ee7bf1789295f11923cc7df6",
+        "samples": 44100
+      },
+      "implication": "Sites can read seed-independent offline audio samples despite randomized AudioBuffer reads; additional cross-device testing is needed to quantify uniqueness.",
+      "source": "firefox-src/dom/media/webaudio/AudioWorkletNode.cpp:524"
+    },
+    {
+      "priority": 2,
+      "signal": "CSS color depth",
+      "classification": "confirmed physical-display signal and persona inconsistency",
+      "evidence": {
+        "configuredScreenDepth": 24,
+        "reportedScreenDepth": 24,
+        "cssColor10": true,
+        "cssColor8": false,
+        "freshNativeDepth": 30
+      },
+      "implication": "CSS media queries expose physical bits per color component rather than the configured Screen depth.",
+      "source": "firefox-src/layout/style/nsMediaFeatures.cpp:194"
+    },
+    {
+      "priority": 2,
+      "signal": "CSS color gamut ownership and matchMedia",
+      "classification": "confirmed inconsistency under differing container settings",
+      "evidence": {
+        "defaultContainerGamut": 2,
+        "otherContainerGamut": 0,
+        "otherContainerCssP3": "yes",
+        "otherContainerMatchMediaP3": false
+      },
+      "implication": "Stylesheets can consume default-container media configuration; JS also pins gamut by OS instead of the native configured value.",
+      "sources": [
+        "firefox-src/layout/style/nsMediaFeatures.cpp:169",
+        "additions/browser/components/cloakfox/actors/CloakfoxMediaQueryChild.sys.mjs:35"
+      ]
+    },
+    {
+      "priority": 2,
+      "signal": "Chrome UA Client Hints HTTP headers",
+      "classification": "confirmed JavaScript/header inconsistency",
+      "evidence": {
+        "javascriptBrands": [
+          "Chromium 155",
+          "Google Chrome 155"
+        ],
+        "javascriptPlatform": "Windows",
+        "httpUserAgent": "Chrome/155.0.0.0",
+        "Sec-CH-UA": "not received",
+        "Sec-CH-UA-Platform": "not received",
+        "Sec-CH-UA-Mobile": "not received"
+      },
+      "implication": "Chrome-like UAData is not accompanied by baseline Chromium Client Hint headers. This is a consistency tell, not real OS disclosure.",
+      "site": "https://browserleaks.com/client-hints"
+    },
+    {
+      "priority": 2,
+      "signal": "WebCodecs hardware support queries",
+      "classification": "native capability surface remains exposed",
+      "evidence": {
+        "sameAsFreshUnprotectedControl": true,
+        "encoderResults": [
+          {
+            "codec": "av01.0.08M.08",
+            "hardwareAcceleration": "prefer-hardware",
+            "height": 480,
+            "supported": false,
+            "width": 640
+          },
+          {
+            "codec": "av01.0.08M.08",
+            "hardwareAcceleration": "prefer-software",
+            "height": 480,
+            "supported": true,
+            "width": 640
+          },
+          {
+            "codec": "vp09.00.10.08",
+            "hardwareAcceleration": "prefer-hardware",
+            "height": 480,
+            "supported": false,
+            "width": 640
+          },
+          {
+            "codec": "vp09.00.10.08",
+            "hardwareAcceleration": "prefer-software",
+            "height": 480,
+            "supported": true,
+            "width": 640
+          },
+          {
+            "codec": "avc1.42001e",
+            "hardwareAcceleration": "prefer-hardware",
+            "height": 480,
+            "supported": true,
+            "width": 640
+          },
+          {
+            "codec": "avc1.42001e",
+            "hardwareAcceleration": "prefer-software",
+            "height": 480,
+            "supported": true,
+            "width": 640
+          }
+        ]
+      },
+      "implication": "Queries retain platform/codec/hardware implementation behavior rather than persona values. Equality here does not establish device uniqueness or a precise model leak.",
+      "source": "firefox-src/dom/media/webcodecs/VideoEncoder.cpp:346"
+    }
+  ],
+  "workingObserved": [
+    "Page-owned timezone and worker timezone report configured UTC. WebDriver sandbox Intl reported host timezone; excluded as a website leak.",
+    "Navigator UA/appVersion/platform/CPU and tested worker values reflect persona.",
+    "WebGL renderer reflects persona; CreepJS worker renderer agrees.",
+    "Ordinary canvas/audio readbacks change between containers and remain stable on reload.",
+    "BrowserLeaks WebRTC test reports No Leak; no raw local/public ICE address observed.",
+    "Chrome155 experimental network option changes actual TLS and HTTP/2 fingerprint."
+  ],
+  "limits": [
+    "Chrome identity remains Gecko: CreepJS chromium=false, native Firefox APIs, empty navigator.vendor. This does not reveal actual host OS and cannot be solved solely by changing UA text.",
+    "Default network profile stays Firefox unless experimental follow-identity mode is enabled; enabled profile reports known adapter gaps, not full Chrome equivalence.",
+    "Letterboxing intentionally controls geometry rather than applying saved persona dimensions; physical DPR can remain visible.",
+    "Camera/microphone track capabilities after real permission were not tested; no physical capture permission granted.",
+    "No result proves every signal is spoofed; uniqueness/anti-bot scores are not privacy guarantees.",
+    "BrowserLeaks /audio returned404. Its fonts page did produce metrics despite the harness readiness selector timing out.",
+    "EFF reached results but numerical/protection verdicts were missing; Privacy.net basic-info worked but full analyzer did not complete; OpenWPM compressor returned data but later sections remained Working."
+  ],
+  "sites": [
+    {
+      "case": "default",
+      "url": "https://browserleaks.com/javascript",
+      "title": "JavaScript Browser Information - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://browserleaks.com/canvas",
+      "title": "Canvas Fingerprinting - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://browserleaks.com/webgl",
+      "title": "WebGL Browser Report - WebGL Fingerprinting - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://browserleaks.com/fonts",
+      "title": "Font Fingerprinting - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://browserleaks.com/audio",
+      "title": "404 Not Found",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://browserleaks.com/webrtc",
+      "title": "WebRTC Leak Test - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://browserleaks.com/client-hints",
+      "title": "Client Hints - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://browserleaks.com/tls",
+      "title": "TLS Client Test - TLS Fingerprinting - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://abrahamjuliot.github.io/creepjs/",
+      "title": "CreepJS",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://fingerprint.com/demo/",
+      "title": "Demo | See Fingerprint in Action",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://amiunique.org/fingerprint",
+      "title": "My Fingerprint- Am I Unique ?",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://coveryourtracks.eff.org/",
+      "title": "Cover Your Tracks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "default",
+      "url": "https://tls.peet.ws/api/all",
+      "title": "",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-firefox",
+      "url": "https://browserleaks.com/javascript",
+      "title": "JavaScript Browser Information - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-firefox",
+      "url": "https://browserleaks.com/webgl",
+      "title": "WebGL Browser Report - WebGL Fingerprinting - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-firefox",
+      "url": "https://browserleaks.com/client-hints",
+      "title": "Client Hints - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-firefox",
+      "url": "https://abrahamjuliot.github.io/creepjs/",
+      "title": "CreepJS",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-firefox",
+      "url": "https://tls.peet.ws/api/all",
+      "title": "",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-chrome",
+      "url": "https://browserleaks.com/javascript",
+      "title": "JavaScript Browser Information - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-chrome",
+      "url": "https://browserleaks.com/webgl",
+      "title": "WebGL Browser Report - WebGL Fingerprinting - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-chrome",
+      "url": "https://browserleaks.com/client-hints",
+      "title": "Client Hints - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-chrome",
+      "url": "https://abrahamjuliot.github.io/creepjs/",
+      "title": "CreepJS",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "windows-chrome",
+      "url": "https://tls.peet.ws/api/all",
+      "title": "",
+      "error": null,
+      "blocked": false
+    },
+    {
+      "case": "native-control",
+      "url": "https://browserleaks.com/javascript",
+      "title": "JavaScript Browser Information - BrowserLeaks",
+      "error": null,
+      "blocked": false
+    }
+  ],
+  "additionalSites": {
+    "eff-complete": {
+      "url": "https://coveryourtracks.eff.org/",
+      "error": "Message: Element <input id=\"real\" type=\"checkbox\"> could not be scrolled into view; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception\nStacktrace:\nRem"
+    },
+    "amiunique-complete": {
+      "url": "https://amiunique.org/fingerprint",
+      "title": "My Fingerprint- Am I Unique ?",
+      "bodyLength": 4600
+    },
+    "fingerprint-complete": {
+      "url": "https://fingerprint.com/demo/",
+      "title": "Demo | See Fingerprint in Action",
+      "bodyLength": 12811
+    },
+    "fingerprintjs-oss": {
+      "url": "https://fingerprintjs.github.io/fingerprintjs/",
+      "title": "FingerprintJS Demo",
+      "bodyLength": 20775
+    },
+    "audio-openwpm": {
+      "url": "https://audiofingerprint.openwpm.com/",
+      "title": "AudioContext Fingerprint Test Page",
+      "bodyLength": 1198
+    },
+    "sannysoft": {
+      "url": "https://bot.sannysoft.com/",
+      "title": "Antibot",
+      "bodyLength": 11481
+    },
+    "deviceinfo": {
+      "url": "https://www.deviceinfo.me/",
+      "title": "Device Info - Web browser security, privacy, and troubleshooting tool.",
+      "bodyLength": 7903
+    },
+    "privacy-net": {
+      "url": "https://privacy.net/analyzer/",
+      "title": "Privacy Test & Analyzer: See what information websites know about you",
+      "bodyLength": 1246
+    },
+    "browserleaks-fonts-complete": {
+      "url": "https://browserleaks.com/fonts",
+      "resultTimeout": true,
+      "title": "Font Fingerprinting - BrowserLeaks",
+      "bodyLength": 4003
+    }
+  },
+  "rawEvidenceDirectory": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/installed-site-audit",
+  "profilesAndUserSettingsModified": false,
+  "productionCodeChangedByAudit": false
+}

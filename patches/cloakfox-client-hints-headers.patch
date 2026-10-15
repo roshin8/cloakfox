@@ -1,0 +1,1023 @@
+diff --git a/netwerk/protocol/http/CloakfoxClientHints.h b/netwerk/protocol/http/CloakfoxClientHints.h
+new file mode 100644
+--- /dev/null
++++ b/netwerk/protocol/http/CloakfoxClientHints.h
+@@ -0,0 +1,79 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++#ifndef mozilla_net_CloakfoxClientHints_h
++#define mozilla_net_CloakfoxClientHints_h
++
++#include <string>
++
++namespace mozilla::net::cloakfoxhints {
++// Shared, realm-independent identity parsing. Never interpolate arbitrary UA
++// bytes into structured fields: only fixed brands/platforms and numeric tokens.
++inline std::string ProductVersion(const std::string& aUA,
++                                  const std::string& aProduct) {
++  size_t at = aUA.find(aProduct + "/");
++  if (at == std::string::npos || (at && aUA[at - 1] != ' ')) return "";
++  at += aProduct.size() + 1;
++  size_t end = aUA.find(' ', at);
++  std::string version = aUA.substr(at, end - at);
++  bool digit = false;
++  for (char c : version) {
++    if (c >= '0' && c <= '9') {
++      digit = true;
++    } else if (c == '.' && digit) {
++      digit = false;
++    } else {
++      return "";
++    }
++  }
++  return digit ? version : "";
++}
++
++inline bool IsChromiumUA(const std::string& aUA) {
++  // Reject controls before parsing, including NUL (not a C-string terminator).
++  for (unsigned char c : aUA) {
++    if (c < 0x20 || c == 0x7f) return false;
++  }
++  return aUA.find("Firefox/") == std::string::npos &&
++         aUA.find("iPhone") == std::string::npos &&
++         aUA.find("iPad") == std::string::npos &&
++         (!ProductVersion(aUA, "Chrome").empty() ||
++          !ProductVersion(aUA, "Chromium").empty());
++}
++
++struct LowEntropy {
++  std::string brands;
++  std::string mobile;
++  std::string platform;
++  explicit LowEntropy(const std::string& aUA) {
++    if (!IsChromiumUA(aUA)) return;
++    std::string chromium = ProductVersion(aUA, "Chrome");
++    const bool chrome = !chromium.empty();
++    if (!chrome) chromium = ProductVersion(aUA, "Chromium");
++    std::string edge = ProductVersion(aUA, "Edg");
++    if (edge.empty()) edge = ProductVersion(aUA, "EdgA");
++    brands = "\"Not_A Brand\";v=\"99\", \"Chromium\";v=\"" +
++             chromium.substr(0, chromium.find('.')) + "\"";
++    if (chrome || !edge.empty()) {
++      const std::string& browser = edge.empty() ? chromium : edge;
++      brands += std::string(", \"") +
++                (edge.empty() ? "Google Chrome" : "Microsoft Edge") +
++                "\";v=\"" + browser.substr(0, browser.find('.')) + "\"";
++    }
++    mobile = aUA.find("Mobile") == std::string::npos ? "?0" : "?1";
++    const char* platformName = "";
++    if (aUA.find("Android") != std::string::npos)
++      platformName = "Android";
++    else if (aUA.find("Windows") != std::string::npos)
++      platformName = "Windows";
++    else if (aUA.find("Macintosh") != std::string::npos)
++      platformName = "macOS";
++    else if (aUA.find("CrOS") != std::string::npos)
++      platformName = "Chrome OS";
++    else if (aUA.find("Linux") != std::string::npos)
++      platformName = "Linux";
++    platform = std::string("\"") + platformName + "\"";
++  }
++};
++}  // namespace mozilla::net::cloakfoxhints
++#endif
+diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
+--- a/dom/base/Document.cpp
++++ b/dom/base/Document.cpp
+@@ -273,16 +273,17 @@
+ #include "mozilla/dom/UserActivation.h"
+ #include "mozilla/dom/ViewTransition.h"
+ #include "mozilla/dom/WakeLockJS.h"
+ #include "mozilla/dom/WakeLockSentinel.h"
+ #include "mozilla/dom/WebIdentityHandler.h"
+ #include "mozilla/dom/WindowBinding.h"
+ #include "mozilla/dom/WindowContext.h"
+ #include "mozilla/dom/WindowGlobalChild.h"
++#include "mozilla/dom/ClientSource.h"
+ #include "mozilla/dom/WindowProxyHolder.h"
+ #include "mozilla/dom/WorkerDocumentListener.h"
+ #include "mozilla/dom/XPathEvaluator.h"
+ #include "mozilla/dom/XPathExpression.h"
+ #include "mozilla/dom/XULBroadcastManager.h"
+ #include "mozilla/dom/XULPersist.h"
+ #include "mozilla/dom/fragmentdirectives_ffi_generated.h"
+ #include "mozilla/dom/nsCSPContext.h"
+@@ -4313,16 +4314,49 @@
+     return NS_OK;
+   }
+ 
+   mForceLoadAtTop = NS_GetForceLoadAtTopFromHeader(docPolicyString);
+ 
+   return NS_OK;
+ }
+ 
++// Publish policy for channel documents and the initial empty about:blank path.
++// Existing native policy objects retain their sharing; only metadata is owned.
++static void PublishCloakfoxClientHintsPolicy(Document* aDocument) {
++  RefPtr<PolicyContainer> container =
++      PolicyContainer::Cast(aDocument->GetPolicyContainer());
++  nsTArray<nsString> allowed;
++  aDocument->PermissionsPolicy()->AllowedFeatures(allowed);
++  uint8_t denied = container ? container->GetCloakfoxClientHintsDenied() : 0;
++  const char16_t* names[] = {u"ch-ua", u"ch-ua-mobile", u"ch-ua-platform"};
++  for (uint8_t i = 0; i < 3; ++i) {
++    if (!allowed.Contains(nsDependentString(names[i]))) denied |= 1 << i;
++  }
++  if (!container && !denied) return;
++  if (!container || denied != container->GetCloakfoxClientHintsDenied()) {
++    if (container)
++      container = container->CloneContainerForClientHints();
++    else
++      container = new PolicyContainer();
++    container->SetCloakfoxClientHintsDenied(denied);
++    aDocument->SetPolicyContainer(container);
++  }
++  // nsDocShell initializes an initial empty document's policy after Embed(),
++  // when its client may already exist. Refresh that client's IPC snapshot too.
++  if (nsPIDOMWindowInner* inner = aDocument->GetInnerWindow()) {
++    if (ClientSource* client = inner->GetClientSource()) {
++      client->SetPolicyContainer(container);
++      if (auto* child = aDocument->GetWindowGlobalChild()) {
++        child->SendSetClientInfo(client->Info().ToIPC());
++      }
++    }
++  }
++}
++
+ void Document::InitPermissionsPolicy(
+     const Variant<Nothing, PermissionsPolicyInfo, Element*>&
+         aContainerPermissionsPolicy) {
+   RefPtr<dom::PermissionsPolicy> permissionsPolicy = PermissionsPolicy();
+ 
+   permissionsPolicy->ResetDeclaredPolicy();
+ 
+   permissionsPolicy->SetDefaultOrigin(NodePrincipal());
+@@ -4340,16 +4374,17 @@
+         // exists.
+         if (RefPtr<dom::PermissionsPolicy> containerPermissionsPolicy =
+                 GetPermissionsPolicyFromElement(aContainer)) {
+           permissionsPolicy->InheritPolicy(containerPermissionsPolicy);
+           permissionsPolicy->SetSrcOrigin(
+               containerPermissionsPolicy->GetSrcOrigin());
+         }
+       });
++  PublishCloakfoxClientHintsPolicy(this);
+ }
+ 
+ Element* GetEmbedderElementFrom(BrowsingContext* aBrowsingContext) {
+   if (!aBrowsingContext) {
+     return nullptr;
+   }
+   if (!aBrowsingContext->IsContentSubframe()) {
+     return nullptr;
+@@ -4370,30 +4405,31 @@
+   }
+ 
+   nsCOMPtr<nsIHttpChannel> httpChannel;
+   nsresult rv = GetHttpChannelHelper(aChannel, getter_AddRefs(httpChannel));
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return rv;
+   }
+ 
+-  if (!httpChannel) {
+-    return NS_OK;
+-  }
+-
+-  // query the policy from the header
+-  nsAutoCString value;
+-  rv = httpChannel->GetResponseHeader("Permissions-Policy"_ns, value);
+-  if (NS_SUCCEEDED(rv)) {
+-    if (StaticPrefs::dom_security_permissionsPolicy_header_enabled()) {
+-      PermissionsPolicy()->SetDeclaredHeaderPolicy(
+-          this, NS_ConvertUTF8toUTF16(value), NodePrincipal());
+-    }
+-    PermissionsPolicyUtils::ApplyWindowManagementDenial(this, value);
+-  }
++  if (httpChannel) {
++    // Non-HTTP documents still publish inherited/iframe policy below.
++    nsAutoCString value;
++    rv = httpChannel->GetResponseHeader("Permissions-Policy"_ns, value);
++    if (NS_SUCCEEDED(rv)) {
++      if (StaticPrefs::dom_security_permissionsPolicy_header_enabled()) {
++        PermissionsPolicy()->SetDeclaredHeaderPolicy(
++            this, NS_ConvertUTF8toUTF16(value), NodePrincipal());
++      }
++      PermissionsPolicyUtils::ApplyWindowManagementDenial(this, value);
++      PermissionsPolicyUtils::ApplyClientHintsDenial(this, value);
++    }
++  }
++
++  PublishCloakfoxClientHintsPolicy(this);
+ 
+   return NS_OK;
+ }
+ 
+ void Document::EnsureNotEnteringAndExitFullscreen() {
+   Document::ClearPendingFullscreenRequests(this);
+   if (GetFullscreenElement()) {
+     Document::AsyncExitFullscreen(this);
+diff --git a/dom/security/PolicyContainer.cpp b/dom/security/PolicyContainer.cpp
+--- a/dom/security/PolicyContainer.cpp
++++ b/dom/security/PolicyContainer.cpp
+@@ -14,17 +14,17 @@
+ #include "nsIObjectOutputStream.h"
+ 
+ using namespace mozilla;
+ using namespace mozilla::dom;
+ 
+ PolicyContainer::PolicyContainer() = default;
+ PolicyContainer::~PolicyContainer() = default;
+ 
+-constexpr static uint32_t kPolicyContainerSerializationVersion = 2;
++constexpr static uint32_t kPolicyContainerSerializationVersion = 3;
+ 
+ NS_IMETHODIMP
+ PolicyContainer::Read(nsIObjectInputStream* aStream) {
+   uint32_t version = 0;
+   MOZ_TRY(aStream->Read32(&version));
+ 
+   if (version < 1 || version > kPolicyContainerSerializationVersion) {
+     return NS_ERROR_FAILURE;
+@@ -63,16 +63,23 @@
+   mIntegrityPolicy = do_QueryInterface(integrityPolicy);
+ 
+   if (version >= 2) {
+     uint16_t ipAS = 0;
+     MOZ_TRY(aStream->Read16(&ipAS));
+     mIPAddressSpace = static_cast<nsILoadInfo::IPAddressSpace>(ipAS);
+   }
+ 
++  mCloakfoxClientHintsDenied = 0;
++  if (version >= 3) {
++    uint8_t denied = 0;
++    MOZ_TRY(aStream->Read8(&denied));
++    SetCloakfoxClientHintsDenied(denied);
++  }
++
+   return NS_OK;
+ }
+ 
+ NS_IMETHODIMP
+ PolicyContainer::Write(nsIObjectOutputStream* aStream) {
+   MOZ_TRY(aStream->Write32(kPolicyContainerSerializationVersion));
+ 
+   MOZ_TRY(NS_WriteOptionalCompoundObject(
+@@ -82,23 +89,25 @@
+                                          NS_GET_IID(nsIIntegrityPolicy), true));
+ 
+   // TODO(Bug 2017654): (De)Serialize the WAICT state as part of the
+   // Policy-Container
+ 
+   // TODO(Bug 2073404): Support ConnectionAllowlists
+ 
+   MOZ_TRY(aStream->Write16(static_cast<uint16_t>(mIPAddressSpace)));
++  MOZ_TRY(aStream->Write8(mCloakfoxClientHintsDenied));
+ 
+   return NS_OK;
+ }
+ 
+ void PolicyContainer::ToArgs(const PolicyContainer* aPolicy,
+                              mozilla::ipc::PolicyContainerArgs& aArgs) {
+   if (!aPolicy) {
++    aArgs.cloakfoxClientHintsDenied() = 0;
+     return;
+   }
+ 
+   if (aPolicy->mCSP) {
+     mozilla::ipc::CSPInfo cspInfo;
+     mozilla::ipc::CSPToCSPInfo(aPolicy->mCSP, &cspInfo);
+     aArgs.csp() = Some(cspInfo);
+   }
+@@ -112,16 +121,17 @@
+ 
+   if (aPolicy->mConnectionAllowlists) {
+     mozilla::ipc::ConnectionAllowlistsArgs connectionAllowlistsArgs;
+     aPolicy->mConnectionAllowlists->ToArgs(connectionAllowlistsArgs);
+     aArgs.connectionAllowlists() = Some(std::move(connectionAllowlistsArgs));
+   }
+ 
+   aArgs.ipAddressSpace() = aPolicy->mIPAddressSpace;
++  aArgs.cloakfoxClientHintsDenied() = aPolicy->mCloakfoxClientHintsDenied;
+ }
+ 
+ void PolicyContainer::FromArgs(const mozilla::ipc::PolicyContainerArgs& aArgs,
+                                mozilla::dom::Document* aRequestingDocument,
+                                PolicyContainer** aPolicy) {
+   RefPtr<PolicyContainer> policy = new PolicyContainer();
+ 
+   if (aArgs.csp().isSome()) {
+@@ -139,18 +149,31 @@
+ 
+   if (aArgs.connectionAllowlists().isSome()) {
+     RefPtr<ConnectionAllowlists> connectionAllowlists =
+         ConnectionAllowlists::FromArgs(*aArgs.connectionAllowlists());
+     policy->SetConnectionAllowlists(connectionAllowlists);
+   }
+ 
+   policy->SetIPAddressSpace(aArgs.ipAddressSpace());
++  policy->SetCloakfoxClientHintsDenied(aArgs.cloakfoxClientHintsDenied());
+ 
+   policy.forget(aPolicy);
++}
++
++already_AddRefed<PolicyContainer>
++PolicyContainer::CloneContainerForClientHints() const {
++  RefPtr<PolicyContainer> copy = new PolicyContainer();
++  copy->mCSP = mCSP;
++  copy->mIntegrityPolicy = mIntegrityPolicy;
++  copy->mIntegrityPolicyWAICT = mIntegrityPolicyWAICT;
++  copy->mConnectionAllowlists = mConnectionAllowlists;
++  copy->mIPAddressSpace = mIPAddressSpace;
++  copy->mCloakfoxClientHintsDenied = mCloakfoxClientHintsDenied;
++  return copy.forget();
+ }
+ 
+ void PolicyContainer::InitFromOther(PolicyContainer* aOther) {
+   if (!aOther) {
+     return;
+   }
+ 
+   if (aOther->mCSP) {
+@@ -165,16 +188,17 @@
+     integrityPolicy->InitFromOther(
+         IntegrityPolicy::Cast(aOther->mIntegrityPolicy));
+     mIntegrityPolicy = integrityPolicy;
+   }
+ 
+   // TODO(Bug 2073404): Support ConnectionAllowlists
+ 
+   mIPAddressSpace = aOther->mIPAddressSpace;
++  mCloakfoxClientHintsDenied = aOther->mCloakfoxClientHintsDenied;
+ }
+ 
+ NS_IMETHODIMP PolicyContainer::InitFromCSP(nsIContentSecurityPolicy* aCSP) {
+   SetCSP(aCSP);
+ 
+   return NS_OK;
+ }
+ 
+@@ -197,17 +221,19 @@
+   if (!IntegrityPolicy::Equals(
+           IntegrityPolicy::Cast(aContainer->mIntegrityPolicy),
+           IntegrityPolicy::Cast(aOtherContainer->mIntegrityPolicy))) {
+     return false;
+   }
+ 
+   // TODO(Bug 2073404): Support ConnectionAllowlists
+ 
+-  if (aContainer->mIPAddressSpace != aOtherContainer->mIPAddressSpace) {
++  if (aContainer->mIPAddressSpace != aOtherContainer->mIPAddressSpace ||
++      aContainer->mCloakfoxClientHintsDenied !=
++          aOtherContainer->mCloakfoxClientHintsDenied) {
+     return false;
+   }
+ 
+   // TODO(Bug 2017654): Handle equality for WAICT.
+ 
+   return true;
+ }
+ 
+diff --git a/dom/security/PolicyContainer.h b/dom/security/PolicyContainer.h
+--- a/dom/security/PolicyContainer.h
++++ b/dom/security/PolicyContainer.h
+@@ -89,20 +89,34 @@
+   // == IP Address Space ==
+   // Stored per
+   // https://wicg.github.io/local-network-access/#integration-with-html to allow
+   // worker contexts (which have no browsing context) to perform Local Network
+   // Access checks against their parent document's address space.
+   nsILoadInfo::IPAddressSpace GetIPAddressSpace() const;
+   void SetIPAddressSpace(nsILoadInfo::IPAddressSpace aIPAddressSpace);
+ 
++  // Owning document's denied low entropy HTTP Client Hints. This immutable
++  // snapshot travels with the client, including workers without a Window.
++  uint8_t GetCloakfoxClientHintsDenied() const {
++    return mCloakfoxClientHintsDenied;
++  }
++  void SetCloakfoxClientHintsDenied(uint8_t aDenied) {
++    mCloakfoxClientHintsDenied = aDenied & 7;
++  }
++  // Copy the container metadata while retaining native policy-object sharing.
++  // Inherited containers may alias a parent; a child's new denial must not
++  // mutate that parent's mask or lose policy types InitFromOther omits.
++  already_AddRefed<PolicyContainer> CloneContainerForClientHints() const;
++
+  private:
+   nsCOMPtr<nsIContentSecurityPolicy> mCSP;
+   nsCOMPtr<nsIIntegrityPolicy> mIntegrityPolicy;
+   RefPtr<mozilla::dom::IntegrityPolicyWAICT> mIntegrityPolicyWAICT;
+   RefPtr<mozilla::dom::ConnectionAllowlists> mConnectionAllowlists;
+   nsILoadInfo::IPAddressSpace mIPAddressSpace = nsILoadInfo::Unknown;
++  uint8_t mCloakfoxClientHintsDenied = 0;
+ 
+  protected:
+   virtual ~PolicyContainer();
+ };
+ 
+ #endif /* PolicyContainer_h_ */
+diff --git a/dom/security/permissionspolicy/PermissionsPolicyUtils.cpp b/dom/security/permissionspolicy/PermissionsPolicyUtils.cpp
+--- a/dom/security/permissionspolicy/PermissionsPolicyUtils.cpp
++++ b/dom/security/permissionspolicy/PermissionsPolicyUtils.cpp
+@@ -25,16 +25,19 @@
+   PermissionsPolicyUtils::PermissionsPolicyValue mDefaultAllowList;
+ };
+ 
+ /*
+  * IMPORTANT: Do not change this list without review from a DOM peer _AND_ a
+  * DOM Security peer!
+  */
+ static FeatureMap sSupportedFeatures[] = {
++    {"ch-ua", PermissionsPolicyUtils::PermissionsPolicyValue::eAll},
++    {"ch-ua-mobile", PermissionsPolicyUtils::PermissionsPolicyValue::eAll},
++    {"ch-ua-platform", PermissionsPolicyUtils::PermissionsPolicyValue::eAll},
+     {"camera", PermissionsPolicyUtils::PermissionsPolicyValue::eSelf},
+     {"geolocation", PermissionsPolicyUtils::PermissionsPolicyValue::eSelf},
+     {"microphone", PermissionsPolicyUtils::PermissionsPolicyValue::eSelf},
+     {"on-device-speech-recognition",
+      PermissionsPolicyUtils::PermissionsPolicyValue::eSelf},
+     {"digital-credentials-create",
+      PermissionsPolicyUtils::PermissionsPolicyValue::eSelf},
+     {"digital-credentials-get",
+@@ -227,16 +230,39 @@
+     return true;
+   }
+ 
+   ReportViolation(aDocument, aFeatureName);
+   return false;
+ }
+ 
+ /* static */
++void PermissionsPolicyUtils::ApplyClientHintsDenial(Document* aDocument,
++                                                    const nsACString& aHeader) {
++  nsCOMPtr<nsISFVService> service = mozilla::net::GetSFVService();
++  nsCOMPtr<nsISFVDictionary> dictionary;
++  if (!service ||
++      NS_FAILED(service->ParseDictionary(aHeader, getter_AddRefs(dictionary))))
++    return;
++  for (const char* name : {"ch-ua", "ch-ua-mobile", "ch-ua-platform"}) {
++    nsCOMPtr<nsISFVItemOrInnerList> entry;
++    if (NS_FAILED(
++            dictionary->Get(nsDependentCString(name), getter_AddRefs(entry))))
++      continue;
++    nsCOMPtr<nsISFVInnerList> list = do_QueryInterface(entry);
++    if (!list) continue;
++    nsTArray<RefPtr<nsISFVItem>> items;
++    if (NS_SUCCEEDED(list->GetItems(items)) && items.IsEmpty()) {
++      aDocument->PermissionsPolicy()->DenyFeatureByHeader(
++          NS_ConvertASCIItoUTF16(name));
++    }
++  }
++}
++
++/* static */
+ void PermissionsPolicyUtils::ReportViolation(Document* aDocument,
+                                              const nsAString& aFeatureName) {
+   MOZ_ASSERT(aDocument);
+ 
+   nsCOMPtr<nsIURI> uri = aDocument->GetDocumentURI();
+   if (NS_WARN_IF(!uri)) {
+     return;
+   }
+diff --git a/dom/security/permissionspolicy/PermissionsPolicyUtils.h b/dom/security/permissionspolicy/PermissionsPolicyUtils.h
+--- a/dom/security/permissionspolicy/PermissionsPolicyUtils.h
++++ b/dom/security/permissionspolicy/PermissionsPolicyUtils.h
+@@ -38,16 +38,21 @@
+   // This method returns true if aFeatureName is allowed for aDocument.
+   // Use this method everywhere you need to check permissions-policy directives.
+   static bool IsFeatureAllowed(Document* aDocument,
+                                const nsAString& aFeatureName);
+ 
+   // Apply only an exact modern empty-list window-management denial.
+   static void ApplyWindowManagementDenial(Document* aDocument,
+                                           const nsACString& aHeader);
++
++  // Recognize explicit empty-list denials for native baseline request hints,
++  // independently of Gecko's general Permissions-Policy header pref.
++  static void ApplyClientHintsDenial(Document* aDocument,
++                                     const nsACString& aHeader);
+ 
+   // Returns true if aFeatureName is a known permissions policy name.
+   static bool IsSupportedFeature(const nsAString& aFeatureName);
+ 
+   // Returns true if aFeatureName is a experimental permissions policy name.
+   static bool IsExperimentalFeature(const nsAString& aFeatureName);
+ 
+   // Runs aCallback for each known permissions policy, with the feature name as
+diff --git a/dom/workers/WorkerLoadInfo.h b/dom/workers/WorkerLoadInfo.h
+--- a/dom/workers/WorkerLoadInfo.h
++++ b/dom/workers/WorkerLoadInfo.h
+@@ -70,16 +70,17 @@
+   nsCOMPtr<nsPIDOMWindowInner> mWindow;
+   nsCOMPtr<nsIContentSecurityPolicy> mCSP;
+   UniquePtr<OffThreadCSPContext> mCSPContext;
+ 
+   // IP address space inherited from the parent document's policy container.
+   // Stored as uint16_t to avoid including nsILoadInfo.h in this header.
+   // Maps to nsILoadInfo::IPAddressSpace enum values.
+   uint16_t mIPAddressSpace = 0;  // nsILoadInfo::Unknown
++  uint8_t mCloakfoxClientHintsDenied = 0;
+ 
+   nsCOMPtr<nsIChannel> mChannel;
+   nsCOMPtr<nsILoadGroup> mLoadGroup;
+ 
+   class InterfaceRequestor final : public nsIInterfaceRequestor {
+     NS_DECL_ISUPPORTS
+ 
+    public:
+diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -1540,16 +1540,18 @@
+   mozilla::ipc::PolicyContainerArgs policyContainerArgs;
+ 
+   if (mLoadInfo.mCSPContext) {
+     policyContainerArgs.csp() = Some(mLoadInfo.mCSPContext->CSPInfo());
+   }
+ 
+   policyContainerArgs.ipAddressSpace() =
+       static_cast<nsILoadInfo::IPAddressSpace>(mLoadInfo.mIPAddressSpace);
++  policyContainerArgs.cloakfoxClientHintsDenied() =
++      mLoadInfo.mCloakfoxClientHintsDenied;
+   // TODO(Bug 2017654): Check if integrity policy args need to be propagated
+   // to workers as well. Currently not set explicitly here.
+ 
+   clientSource.SetPolicyContainerArgs(policyContainerArgs);
+ }
+ 
+ void WorkerPrivate::UpdateReferrerInfoFromHeader(
+     const nsACString& aReferrerPolicyHeaderValue) {
+@@ -3520,16 +3522,18 @@
+     loadInfo.mShouldResistFingerprinting = aParent->ShouldResistFingerprinting(
+         RFPTarget::IsAlwaysEnabledForPrecompute);
+     loadInfo.mOverriddenFingerprintingSettings =
+         aParent->GetOverriddenFingerprintingSettings();
+     loadInfo.mParentController = aParent->GlobalScope()->GetController();
+     loadInfo.mWatchedByDevTools = aParent->IsWatchedByDevTools();
+     loadInfo.mIsOn3PCBExceptionList = aParent->IsOn3PCBExceptionList();
+     loadInfo.mIPAddressSpace = aParent->mLoadInfo.mIPAddressSpace;
++    loadInfo.mCloakfoxClientHintsDenied =
++        aParent->mLoadInfo.mCloakfoxClientHintsDenied;
+     loadInfo.mTimezoneOverride = aParent->TimezoneOverride();
+   } else {
+     AssertIsOnMainThread();
+ 
+     // Make sure that the IndexedDatabaseManager is set up
+     IndexedDatabaseManager* idm = IndexedDatabaseManager::GetOrCreate();
+     if (idm) {
+       (void)NS_WARN_IF(NS_FAILED(idm->EnsureLocale()));
+@@ -3674,16 +3678,19 @@
+       }
+ 
+       // Inherit the document's IP address space for Local Network Access
+       // checks in workers.
+       if (document->GetPolicyContainer()) {
+         loadInfo.mIPAddressSpace = static_cast<uint16_t>(
+             PolicyContainer::Cast(document->GetPolicyContainer())
+                 ->GetIPAddressSpace());
++        loadInfo.mCloakfoxClientHintsDenied =
++            PolicyContainer::Cast(document->GetPolicyContainer())
++                ->GetCloakfoxClientHintsDenied();
+       }
+       loadInfo.mStorageAccess = StorageAllowedForWindow(globalWindow);
+       loadInfo.mUseRegularPrincipal = document->UseRegularPrincipal();
+       loadInfo.mUsingStorageAccess = document->UsingStorageAccess();
+       loadInfo.mSerialAllowed =
+           PermissionsPolicyUtils::IsFeatureAllowed(document, u"serial"_ns);
+       loadInfo.mShouldResistFingerprinting =
+           document->ShouldResistFingerprinting(
+diff --git a/dom/workers/remoteworkers/RemoteWorkerChild.cpp b/dom/workers/remoteworkers/RemoteWorkerChild.cpp
+--- a/dom/workers/remoteworkers/RemoteWorkerChild.cpp
++++ b/dom/workers/remoteworkers/RemoteWorkerChild.cpp
+@@ -393,16 +393,18 @@
+   // Extract IP address space from clientInfo for all worker types
+   // (shared and service workers) for Local Network Access checks.
+   if (clientInfo.isSome()) {
+     Maybe<mozilla::ipc::PolicyContainerArgs> policyContainerArgs =
+         clientInfo.ref().GetPolicyContainerArgs();
+     if (policyContainerArgs.isSome()) {
+       info.mIPAddressSpace =
+           static_cast<uint16_t>(policyContainerArgs->ipAddressSpace());
++      info.mCloakfoxClientHintsDenied =
++          policyContainerArgs->cloakfoxClientHintsDenied();
+     }
+   }
+ 
+   nsresult rv = info.SetPrincipalsAndCSPOnMainThread(
+       info.mPrincipal, info.mPartitionedPrincipal, info.mLoadGroup, info.mCSP);
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return rv;
+   }
+diff --git a/ipc/glue/PBackgroundSharedTypes.ipdlh b/ipc/glue/PBackgroundSharedTypes.ipdlh
+--- a/ipc/glue/PBackgroundSharedTypes.ipdlh
++++ b/ipc/glue/PBackgroundSharedTypes.ipdlh
+@@ -108,16 +108,17 @@
+ };
+ 
+ [Comparable] struct PolicyContainerArgs
+ {
+   CSPInfo? csp;
+   IntegrityPolicyArgs? integrityPolicy;
+   ConnectionAllowlistsArgs? connectionAllowlists;
+   IPAddressSpace ipAddressSpace;
++  uint8_t cloakfoxClientHintsDenied;
+ };
+ 
+ [Comparable] struct WebTransportHash {
+   nsCString algorithm;
+   uint8_t[] value;
+ };
+ 
+ } // namespace ipc
+diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/HttpBaseChannel.cpp
+--- a/netwerk/protocol/http/HttpBaseChannel.cpp
++++ b/netwerk/protocol/http/HttpBaseChannel.cpp
+@@ -5,16 +5,19 @@
+ // HttpLog.h should generally be included first
+ #include "mozilla/net/HttpBaseChannel.h"
+ 
+ #include <algorithm>
+ #include <utility>
+ 
+ #include "HttpBaseChannel.h"
+ #include "MaskConfig.hpp"
++#include "CloakfoxClientHints.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
++#include "mozilla/dom/WindowContext.h"
+ #include "HttpLog.h"
+ #include "LoadInfo.h"
+ #include "ReferrerInfo.h"
+ #include "mozIRemoteLazyInputStream.h"
+ #include "mozIThirdPartyUtil.h"
+ #include "mozilla/AntiTrackingUtils.h"
+ #include "mozilla/BasePrincipal.h"
+ #include "mozilla/BinarySearch.h"
+@@ -170,38 +173,48 @@
+     }
+   };
+ 
+   size_t unused;
+   return BinarySearchIf(blackList, 0, std::size(blackList),
+                         HttpAtomComparator(aHeader), &unused);
+ }
+ 
++static uint8_t CloakfoxHintBit(const nsACString& aName) {
++  if (aName.LowerCaseEqualsLiteral("sec-ch-ua")) return 1;
++  if (aName.LowerCaseEqualsLiteral("sec-ch-ua-mobile")) return 2;
++  if (aName.LowerCaseEqualsLiteral("sec-ch-ua-platform")) return 4;
++  return 0;
++}
++
+ class AddHeadersToChannelVisitor final : public nsIHttpHeaderVisitor {
+  public:
+   NS_DECL_ISUPPORTS
+ 
+-  explicit AddHeadersToChannelVisitor(nsIHttpChannel* aChannel)
+-      : mChannel(aChannel) {}
++  explicit AddHeadersToChannelVisitor(nsIHttpChannel* aChannel,
++                                     uint8_t aSkipHints = 0)
++      : mChannel(aChannel), mSkipHints(aSkipHints) {}
+ 
+   NS_IMETHOD VisitHeader(const nsACString& aHeader,
+                          const nsACString& aValue) override {
+     nsHttpAtom atom = nsHttp::ResolveAtom(aHeader);
+-    if (!IsHeaderBlacklistedForRedirectCopy(atom)) {
++    if (!IsHeaderBlacklistedForRedirectCopy(atom) &&
++        !(CloakfoxHintBit(aHeader) & mSkipHints)) {
+       DebugOnly<nsresult> rv =
+           mChannel->SetRequestHeader(aHeader, aValue, false);
+       MOZ_ASSERT(NS_SUCCEEDED(rv));
+     }
+     return NS_OK;
+   }
+ 
+  private:
+   ~AddHeadersToChannelVisitor() = default;
+ 
+   nsCOMPtr<nsIHttpChannel> mChannel;
++  uint8_t mSkipHints;
+ };
+ 
+ NS_IMPL_ISUPPORTS(AddHeadersToChannelVisitor, nsIHttpHeaderVisitor)
+ 
+ static OpaqueResponseFilterFetch ConfiguredFilterFetchResponseBehaviour() {
+   uint32_t pref = StaticPrefs::
+       browser_opaqueResponseBlocking_filterFetchResponse_DoNotUseDirectly();
+   if (NS_WARN_IF(pref >
+@@ -322,16 +335,77 @@
+     mFirstPartyClassificationFlags |= aClassificationFlags;
+   }
+ }
+ 
+ static bool isSecureOrTrustworthyURL(nsIURI* aURI) {
+   return aURI->SchemeIs("https") ||
+          (StaticPrefs::network_http_encoding_trustworthy_is_https() &&
+           nsMixedContentBlocker::IsPotentiallyTrustworthyLoopbackURL(aURI));
++}
++
++void HttpBaseChannel::UpdateCloakfoxClientHints() {
++  // Channel origin attributes resolved the request UA; no ambient JS caller,
++  // config cache or extension warmup is involved. Parse the *actual* UA after
++  // docshell and observer overrides, rather than rereading navigator config.
++  nsAutoCString ua;
++  (void)mRequestHead.GetHeader(nsHttp::User_Agent, ua);
++  const auto type = mLoadInfo->GetExternalContentPolicyType();
++  nsCOMPtr<nsIPrincipal> loading;
++  mLoadInfo->GetLoadingPrincipal(getter_AddRefs(loading));
++  nsIPrincipal* triggering = mLoadInfo->TriggeringPrincipal();
++  const bool document = type == ExtContentPolicy::TYPE_DOCUMENT;
++  RefPtr<dom::BrowsingContext> bc;
++  mLoadInfo->GetBrowsingContext(getter_AddRefs(bc));
++  if (!bc) mLoadInfo->GetAssociatedBrowsingContext(getter_AddRefs(bc));
++  const bool content =
++      (!loading || !loading->IsSystemPrincipal()) &&
++      (document ? bc && bc->IsContent()
++                : triggering && !triggering->IsSystemPrincipal() &&
++                      triggering->GetIsOriginPotentiallyTrustworthy());
++  dom::WindowContext* context = bc ? (type == ExtContentPolicy::TYPE_SUBDOCUMENT
++                                          ? bc->GetParentWindowContext()
++                                          : bc->GetCurrentWindowContext())
++                                   : nullptr;
++  // Existing documents include ancestor trust in their secure-context bit.
++  // Workers without a browsing context retain the principal trust gate above.
++  const bool secureCaller =
++      document || !context || context->GetIsSecureContext();
++  // Default low entropy hints only. Accept-CH persistence, high entropy and
++  // Permissions-Policy delegation need a separate native implementation.
++  const bool eligible =
++      StaticPrefs::cloakfox_enabled() && content && secureCaller &&
++      type != ExtContentPolicy::TYPE_WEBSOCKET &&
++      (mURI->SchemeIs("https") ||
++       (mURI->SchemeIs("http") &&
++        nsMixedContentBlocker::IsPotentiallyTrustworthyLoopbackURL(mURI))) &&
++      !nsContentUtils::ShouldResistFingerprinting(this,
++                                                  RFPTarget::HttpUserAgent);
++  const cloakfoxhints::LowEntropy hints(
++      eligible ? std::string(ua.BeginReading(), ua.Length()) : std::string());
++  const char* names[] = {"Sec-CH-UA", "Sec-CH-UA-Mobile", "Sec-CH-UA-Platform"};
++  const std::string* values[] = {&hints.brands, &hints.mobile, &hints.platform};
++  uint8_t denied = 0;
++  if (!document) {
++    nsCOMPtr<nsIPolicyContainer> policy = mLoadInfo->GetPolicyContainer();
++    if (policy) {
++      denied = PolicyContainer::Cast(policy)->GetCloakfoxClientHintsDenied();
++    }
++  }
++  for (uint8_t i = 0; i < 3; ++i) {
++    if (mCloakfoxClientHintsModified & (1 << i)) continue;
++    // Internal redirect copies explicitly skip these synthesized defaults;
++    // each new channel evaluates its own identity and trust eligibility.
++    nsresult rv = mRequestHead.SetHeader(
++        nsDependentCString(names[i]),
++        nsDependentCString((denied & (1 << i)) ? "" : values[i]->c_str()),
++        false, nsHttpHeaderArray::eVarietyRequestEnforceDefault);
++    MOZ_ASSERT(NS_SUCCEEDED(rv));
++    (void)rv;
++  }
+ }
+ 
+ nsresult HttpBaseChannel::Init(nsIURI* aURI, uint32_t aCaps,
+                                nsProxyInfo* aProxyInfo,
+                                uint32_t aProxyResolveFlags, nsIURI* aProxyURI,
+                                uint64_t aChannelId, nsILoadInfo* aLoadInfo) {
+   LOG1(("HttpBaseChannel::Init [this=%p]\n", this));
+ 
+@@ -2094,16 +2168,17 @@
+   // Verify header names are valid HTTP tokens and header values are reasonably
+   // close to whats allowed in RFC 2616.
+   if (!nsHttp::IsValidToken(flatHeader) ||
+       !nsHttp::IsReasonableHeaderValue(flatValue)) {
+     return NS_ERROR_INVALID_ARG;
+   }
+ 
+   // Mark that the User-Agent header has been modified.
++  mCloakfoxClientHintsModified |= CloakfoxHintBit(aHeader);
+   if (nsHttp::ResolveAtom(aHeader) == nsHttp::User_Agent) {
+     StoreIsUserAgentHeaderModified(true);
+   }
+ 
+   return mRequestHead.SetHeader(aHeader, flatValue, aMerge, aVariety);
+ }
+ 
+ NS_IMETHODIMP
+@@ -2132,16 +2207,17 @@
+ 
+   // Verify header names are valid HTTP tokens and header values are reasonably
+   // close to whats allowed in RFC 2616.
+   if (!nsHttp::IsValidToken(flatHeader)) {
+     return NS_ERROR_INVALID_ARG;
+   }
+ 
+   // Mark that the User-Agent header has been modified.
++  mCloakfoxClientHintsModified |= CloakfoxHintBit(aHeader);
+   if (nsHttp::ResolveAtom(aHeader) == nsHttp::User_Agent) {
+     StoreIsUserAgentHeaderModified(true);
+   }
+ 
+   return mRequestHead.SetEmptyHeader(aHeader);
+ }
+ 
+ NS_IMETHODIMP
+@@ -5405,16 +5481,17 @@
+     // Such as nsHttpChannel and InterceptedChannel.
+     // Even thought InterceptedChannel itself doesn't require these information,
+     // it may still be necessary for the following redirections.
+     // E.g. nsHttpChannel -> InterceptedChannel -> nsHttpChannel
+     RefPtr<HttpBaseChannel> realChannel;
+     CallQueryInterface(newChannel, realChannel.StartAssignment());
+     if (realChannel) {
+       realChannel->SetTopWindowURI(mTopWindowURI);
++      realChannel->mCloakfoxClientHintsModified = mCloakfoxClientHintsModified;
+ 
+       realChannel->StoreTaintedOriginFlag(
+           ShouldTaintReplacementChannelOrigin(newChannel, redirectFlags));
+     }
+ 
+     // update the DocumentURI indicator since we are being redirected.
+     // if this was a top-level document channel, then the new channel
+     // should have its mDocumentURI point to newURI; otherwise, we
+@@ -5475,17 +5552,18 @@
+       (void)cacheInfoChan->SetForceValidateCacheContent(true);
+     }
+   }
+ 
+   if (redirectFlags & (nsIChannelEventSink::REDIRECT_INTERNAL |
+                        nsIChannelEventSink::REDIRECT_STS_UPGRADE)) {
+     // Copy non-origin related headers to the new channel.
+     nsCOMPtr<nsIHttpHeaderVisitor> visitor =
+-        new AddHeadersToChannelVisitor(httpChannel);
++        new AddHeadersToChannelVisitor(httpChannel,
++                                      ~mCloakfoxClientHintsModified);
+     rv = mRequestHead.VisitHeaders(visitor);
+     MOZ_ASSERT(NS_SUCCEEDED(rv));
+   }
+ 
+   // we need to strip Authentication headers for cross-origin requests
+   // Ref: https://fetch.spec.whatwg.org/#http-redirect-fetch
+   nsAutoCString authHeader;
+   if (NS_SUCCEEDED(
+diff --git a/netwerk/protocol/http/HttpBaseChannel.h b/netwerk/protocol/http/HttpBaseChannel.h
+--- a/netwerk/protocol/http/HttpBaseChannel.h
++++ b/netwerk/protocol/http/HttpBaseChannel.h
+@@ -126,16 +126,20 @@
+   NS_IMETHOD GetStatus(nsresult* aStatus) override;
+   NS_IMETHOD GetLoadGroup(nsILoadGroup** aLoadGroup) override;
+   NS_IMETHOD SetLoadGroup(nsILoadGroup* aLoadGroup) override;
+   NS_IMETHOD GetLoadFlags(nsLoadFlags* aLoadFlags) override;
+   NS_IMETHOD SetLoadFlags(nsLoadFlags aLoadFlags) override;
+   NS_IMETHOD GetTRRMode(nsIRequest::TRRMode* aTRRMode) override;
+   NS_IMETHOD SetTRRMode(nsIRequest::TRRMode aTRRMode) override;
+   NS_IMETHOD SetDocshellUserAgentOverride();
++
++  // Native baseline hints follow the final request UA. Explicit public header
++  // setters (including removal) take precedence independently for each hint.
++  void UpdateCloakfoxClientHints();
+ 
+   // nsIChannel
+   NS_IMETHOD GetOriginalURI(nsIURI** aOriginalURI) override;
+   NS_IMETHOD SetOriginalURI(nsIURI* aOriginalURI) override;
+   NS_IMETHOD GetURI(nsIURI** aURI) override;
+   NS_IMETHOD GetOwner(nsISupports** aOwner) override;
+   NS_IMETHOD SetOwner(nsISupports* aOwner) override;
+   NS_IMETHOD GetLoadInfo(nsILoadInfo** aLoadInfo) override;
+@@ -802,16 +806,17 @@
+   nsCString mMatchedFullHash;
+ 
+   nsTArray<nsCString> mMatchedTrackingLists;
+   nsTArray<nsCString> mMatchedTrackingFullHashes;
+ 
+   nsCOMPtr<nsISupports> mOwner;
+ 
+   nsHttpRequestHead mRequestHead;
++  uint8_t mCloakfoxClientHintsModified = 0;
+   // Upload throttling.
+   nsCOMPtr<nsIInputChannelThrottleQueue> mThrottleQueue;
+   nsCOMPtr<nsIInputStream> mUploadStream;
+   UniquePtr<nsHttpResponseHead> mResponseHead;
+   UniquePtr<nsHttpHeaderArray> mResponseTrailers;
+   RefPtr<nsHttpConnectionInfo> mConnectionInfo;
+   nsCOMPtr<nsIProxyInfo> mProxyInfo;
+   nsCOMPtr<nsITransportSecurityInfo> mSecurityInfo;
+diff --git a/netwerk/protocol/http/moz.build b/netwerk/protocol/http/moz.build
+--- a/netwerk/protocol/http/moz.build
++++ b/netwerk/protocol/http/moz.build
+@@ -51,16 +51,17 @@
+     "AltSvcTransactionParent.h",
+     "BackgroundChannelRegistrar.h",
+     "BackgroundDataBridgeChild.h",
+     "BackgroundDataBridgeParent.h",
+     "CacheControlParser.h",
+     "CacheEntryWriteHandleChild.h",
+     "CacheEntryWriteHandleParent.h",
+     "ClassOfService.h",
++    "CloakfoxClientHints.h",
+     "EarlyHintPreloader.h",
+     "EarlyHintRegistrar.h",
+     "EarlyHintsService.h",
+     "HttpAuthUtils.h",
+     "HttpBackgroundChannelChild.h",
+     "HttpBackgroundChannelParent.h",
+     "HttpBaseChannel.h",
+     "HttpChannelChild.h",
+@@ -254,9 +255,9 @@
+ 
+ XPCOM_MANIFESTS += [
+     "components.conf",
+ ]
+ 
+ include("/tools/fuzzing/libfuzzer-config.mozbuild")
+ 
+ # DOM Mask
+-LOCAL_INCLUDES += ["/cloakcfg"]
+\ No newline at end of file
++LOCAL_INCLUDES += ["/cloakcfg"]
+diff --git a/netwerk/protocol/http/nsHttpChannel.cpp b/netwerk/protocol/http/nsHttpChannel.cpp
+--- a/netwerk/protocol/http/nsHttpChannel.cpp
++++ b/netwerk/protocol/http/nsHttpChannel.cpp
+@@ -892,16 +892,20 @@
+   if (!value.IsEmpty()) {
+     SetRequestHeader("Priority"_ns, value, false);
+   }
+ }
+ 
+ nsresult nsHttpChannel::OnBeforeConnect() {
+   nsresult rv = NS_OK;
+ 
++  // Suspended webRequest observers have completed; respect their final UA,
++  // explicit hint values and explicit removals before constructing transport.
++  UpdateCloakfoxClientHints();
++
+   // Check if request was cancelled during suspend AFTER on-modify-request
+   if (mCanceled) {
+     return mStatus;
+   }
+ 
+   // Check to see if we should redirect this channel elsewhere by
+   // nsIHttpChannel.redirectTo API request
+   if (mAPIRedirectTo) {
+@@ -1879,16 +1883,19 @@
+ 
+ nsresult nsHttpChannel::SetupChannelForTransaction() {
+   LOG((
+       "nsHttpChannel::SetupChannelForTransaction [this=%p, cos=%lu, inc=%d "
+       "prio=%d]\n",
+       this, mClassOfService.Flags(), mClassOfService.Incremental(), mPriority));
+ 
+   NS_ENSURE_TRUE(!mTransaction, NS_ERROR_ALREADY_INITIALIZED);
++
++  // This also covers auth retries and asynchronous before-connect observers.
++  UpdateCloakfoxClientHints();
+ 
+   nsresult rv;
+ 
+   if (StaticPrefs::network_http_priority_header_enabled()) {
+     SetPriorityHeader();
+   }
+ 
+   StoreUsedNetwork(1);
+@@ -7946,16 +7953,17 @@
+     // represents both user cookies and cookies from cookieService
+     mUserSetCookieHeader = std::move(cookieHeader);
+   }
+ 
+   // Set user agent override, do so before OnOpeningRequest notification
+   // since we want to allow consumers of that notification change or remove
+   // the User-Agent request header.
+   HttpBaseChannel::SetDocshellUserAgentOverride();
++  UpdateCloakfoxClientHints();
+ 
+   // After we notify any observers (on-opening-request, loadGroup, etc) we
+   // must return NS_OK and return any errors asynchronously via
+   // OnStart/OnStopRequest.  Observers may add a reference to the channel
+   // and expect to get OnStopRequest so they know when to drop the reference,
+   // etc.
+ 
+   // notify "http-on-opening-request" observers, but not if this is a redirect
+diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsHttpHandler.cpp
+--- a/netwerk/protocol/http/nsHttpHandler.cpp
++++ b/netwerk/protocol/http/nsHttpHandler.cpp
+@@ -767,20 +767,22 @@
+     return value->get<std::string>();
+   }
+   return std::nullopt;
+ }
+ 
+ nsCString nsHttpHandler::UserAgentForContainer(bool aShouldResistFingerprinting,
+                                               uint32_t aUserContextId) {
+   if (auto value = CloakfoxRequestHeader("headers.User-Agent", aUserContextId)) {
+-    return nsCString(value->c_str());
++    nsCString ua(value->data(), value->size());
++    if (nsHttp::IsReasonableHeaderValue(ua)) return ua;
+   }
+   if (auto value = CloakfoxRequestHeader("navigator.userAgent", aUserContextId)) {
+-    return nsCString(value->c_str());
++    nsCString ua(value->data(), value->size());
++    if (nsHttp::IsReasonableHeaderValue(ua)) return ua;
+   }
+   return nsCString(UserAgent(aShouldResistFingerprinting));
+ }
+ 
+ nsresult nsHttpHandler::AddStandardRequestHeaders(
+     nsHttpRequestHead* request, nsIURI* aURI, bool aIsHTTPS,
+     ExtContentPolicyType aContentPolicyType, bool aShouldResistFingerprinting,
+     const nsCString& aLanguageOverride, uint32_t aUserContextId) {

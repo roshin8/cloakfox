@@ -1,0 +1,250 @@
+diff --git a/dom/media/webaudio/AudioWorkletNode.cpp b/dom/media/webaudio/AudioWorkletNode.cpp
+index 2ce03b433c84fd9889c7748c8b92661657dd4ec5..9204b4f9aac5bec63604895e0b902b2f64785c65 100644
+--- a/dom/media/webaudio/AudioWorkletNode.cpp
++++ b/dom/media/webaudio/AudioWorkletNode.cpp
+@@ -1,13 +1,19 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+ 
+ #include "AudioWorkletNode.h"
++
++#include <cmath>
++#include <limits>
++
++#include "CloakfoxSiteSeed.hpp"
++#include "nsGlobalWindowInner.h"
+ 
+ #include "AudioDestinationNode.h"
+ #include "AudioNodeEngine.h"
+ #include "AudioParam.h"
+ #include "AudioParamMap.h"
+ #include "AudioWorklet.h"
+ #include "AudioWorkletImpl.h"
+ #include "PlayingRefChangeHandler.h"
+@@ -55,20 +61,22 @@
+   nsString mMessage;
+ };
+ 
+ class WorkletNodeEngine final : public AudioNodeEngine {
+  public:
+   WorkletNodeEngine(AudioWorkletNode* aNode,
+                     AudioDestinationNode* aDestinationNode,
+                     nsTArray<NamedAudioParamTimeline>&& aParamTimelines,
+-                    const Optional<Sequence<uint32_t>>& aOutputChannelCount)
++                    const Optional<Sequence<uint32_t>>& aOutputChannelCount,
++                    uint32_t aAudioPrivacySeed)
+       : AudioNodeEngine(aNode),
+         mDestination(aDestinationNode->Track()),
+-        mParamTimelines(std::move(aParamTimelines)) {
++        mParamTimelines(std::move(aParamTimelines)),
++        mAudioPrivacySeed(aAudioPrivacySeed) {
+     if (aOutputChannelCount.WasPassed()) {
+       mOutputChannelCount = aOutputChannelCount.Value();
+     }
+   }
+ 
+   MOZ_CAN_RUN_SCRIPT
+   void ConstructProcessor(AudioWorkletImpl* aWorkletImpl,
+                           const nsAString& aName,
+@@ -147,16 +155,51 @@
+     // This is equivalent to setting [[callable process]] to false.
+     mProcessor.reset();
+   }
+ 
+   nsCString mProcessorName;
+   RefPtr<AudioNodeTrack> mDestination;
+   nsTArray<uint32_t> mOutputChannelCount;
+   nsTArray<NamedAudioParamTimeline> mParamTimelines;
++  // Immutable own-document/container/site policy snapshot, captured on the main
++  // thread. No config access, hashing, IPC, or allocation on the audio thread.
++  const uint32_t mAudioPrivacySeed;
++  uint64_t mInputFrames = 0;
++
++  void ProtectInputCopy(float* aData, size_t aPort, size_t aChannel) const {
++    if (!mAudioPrivacySeed) {
++      return;
++    }
++    uint32_t state = mAudioPrivacySeed ^ uint32_t(mInputFrames) ^
++                     uint32_t(mInputFrames >> 32) ^
++                     (uint32_t(aPort) * 0x9e3779b9u) ^
++                     (uint32_t(aChannel) * 0x85ebca6bu);
++    for (size_t i = 0; i < WEBAUDIO_BLOCK_SIZE; ++i) {
++      state = state * 1664525u + 1013904223u;
++      const float sample = aData[i];
++      // Preserve exact silence (including signed zero), subnormals and
++      // exceptional values. Avoid overflow, underflow and clipping: worklet
++      // inputs are not restricted to [-1, 1].
++      if (!std::isfinite(sample) ||
++          std::abs(sample) < std::numeric_limits<float>::min()) {
++        continue;
++      }
++      // At most one ppm of attenuation on the JS-exposed copy only. The
++      // stronger AudioBuffer extraction noise would compound audibly in DSP
++      // chains. This remains deterministic but is not a cryptographic defense
++      // against averaging or deliberate sample quantization.
++      const double factor = 1.0 - (0.1 + 0.9 * (double(state) / UINT32_MAX)) * 1e-6;
++      const float transformed = float(double(sample) * factor);
++      if (std::abs(transformed) >= std::numeric_limits<float>::min()) {
++        aData[i] = transformed;
++      }
++    }
++  }
++
+   // The AudioWorkletGlobalScope-associated objects referenced from
+   // WorkletNodeEngine are typically kept alive as long as the
+   // AudioWorkletNode in the main-thread global.  The objects must be released
+   // on the rendering thread, which usually happens simply because
+   // AudioWorkletNode is such that the last AudioNodeTrack reference is
+   // released by the MTG.  That occurs on the rendering thread except during
+   // process shutdown, in which case NotifyForcedShutdown() is called on the
+   // rendering thread.
+@@ -534,16 +577,17 @@
+     const auto& channelData = input.ChannelData<float>();
+     const auto& float32Arrays = mInputs.mPorts[i].mFloat32Arrays;
+     JS::AutoCheckCannotGC nogc;
+     for (size_t c = 0; c < channelCount; ++c) {
+       bool isShared;
+       float* dest = JS_GetFloat32ArrayData(float32Arrays[c], &isShared, nogc);
+       MOZ_ASSERT(!isShared);  // Was created as unshared
+       AudioBlockCopyChannelWithScale(channelData[c], volume, dest);
++      ProtectInputCopy(dest, i, c);
+     }
+   }
+ 
+   TrackTime tick = mDestination->GraphTimeToTrackTime(aFrom);
+   // Compute and copy parameter values to JS objects.
+   for (size_t i = 0; i < mParamTimelines.Length(); ++i) {
+     const auto& float32Arrays = mParameters.mFloat32Arrays[i];
+     size_t length = JS_GetTypedArrayLength(float32Arrays);
+@@ -557,22 +601,39 @@
+     }
+     JS::AutoCheckCannotGC nogc;
+     bool isShared;
+     float* dest = JS_GetFloat32ArrayData(float32Arrays, &isShared, nogc);
+     MOZ_ASSERT(!isShared);  // Was created as unshared
+ 
+     size_t frames =
+         mParamTimelines[i].mTimeline.HasSimpleValue() ? 1 : WEBAUDIO_BLOCK_SIZE;
+-    mParamTimelines[i].mTimeline.GetValuesAtTime(tick, dest, frames);
++    auto& timeline = mParamTimelines[i].mTimeline;
++    if (mAudioPrivacySeed && timeline.Track() &&
++        !timeline.Track()->LastChunks()[0].IsNull()) {
++      // Connected AudioNodes can expose raw DSP through a-rate AudioParams,
++      // even with no normal input port. Protect that graph contribution before
++      // mixing, leaving intrinsic defaults/constants/automation exactly native.
++      MOZ_ASSERT(frames == WEBAUDIO_BLOCK_SIZE);
++      float graphInput[WEBAUDIO_BLOCK_SIZE];
++      timeline.GetValuesAtTime(tick, dest, frames, graphInput);
++      ProtectInputCopy(graphInput, SIZE_MAX, i);
++      for (size_t frame = 0; frame < frames; ++frame) {
++        dest[frame] += graphInput[frame];
++      }
++    } else {
++      timeline.GetValuesAtTime(tick, dest, frames);
++    }
+     // https://bugzilla.mozilla.org/show_bug.cgi?id=1616599
+     if (frames == 1) {
+       std::fill_n(dest + 1, WEBAUDIO_BLOCK_SIZE - 1, dest[0]);
+     }
+   }
++
++  mInputFrames += WEBAUDIO_BLOCK_SIZE;
+ 
+   if (!CallProcess(aTrack, cx, process)) {
+     // An exception occurred.
+     /**
+      * https://webaudio.github.io/web-audio-api/#dom-audioworkletnode-onprocessorerror
+      * Note that once an exception is thrown, the processor will output silence
+      * throughout its lifetime.
+      */
+@@ -792,19 +853,24 @@
+    * node name to parameter descriptor map.
+    */
+   nsTArray<NamedAudioParamTimeline> paramTimelines;
+   audioWorkletNode->InitializeParameters(&paramTimelines, aRv);
+   if (NS_WARN_IF(aRv.Failed())) {
+     return nullptr;
+   }
+ 
++  // Resolve the owning document before crossing to the graph thread. Do not
++  // infer a caller/container from the AudioWorklet global (it has no window).
++  nsGlobalWindowInner* owner = aAudioContext.GetOwnerWindow();
++  const uint32_t audioPrivacySeed = CloakfoxSiteSeed::ForDocument(
++      owner ? owner->GetExtantDoc() : nullptr, "audio:seed").value_or(0);
+   auto engine = new WorkletNodeEngine(
+       audioWorkletNode, aAudioContext.Destination(), std::move(paramTimelines),
+-      aOptions.mOutputChannelCount);
++      aOptions.mOutputChannelCount, audioPrivacySeed);
+   audioWorkletNode->mTrack = AudioNodeTrack::Create(
+       &aAudioContext, engine, AudioNodeTrack::NO_TRACK_FLAGS,
+       aAudioContext.Graph());
+ 
+   audioWorkletNode->SendParameterData(aOptions.mParameterData);
+ 
+   /**
+    * 12. Queue a control message to invoke the constructor of the
+diff --git a/dom/media/webaudio/AudioParamTimeline.h b/dom/media/webaudio/AudioParamTimeline.h
+index efe8e87246e8f32dced22edcd396293cb71f9048..70d5fc5a2d54a73a4e81abe57e1d04aa009559f6 100644
+--- a/dom/media/webaudio/AudioParamTimeline.h
++++ b/dom/media/webaudio/AudioParamTimeline.h
+@@ -66,17 +66,21 @@
+   }
+ 
+   // Get the values of the AudioParam at time aTime + (0 to aSize).
+   // aBuffer must have the correct aSize.
+   // aSize here is an offset to aTime if we try to get the value in ticks,
+   // otherwise it should always be zero.  aSize is meant to be used when
+   // getting the value of an a-rate AudioParam for each tick inside an
+   // AudioNodeEngine implementation.
+-  void GetValuesAtTime(int64_t aTime, float* aBuffer, const size_t aSize);
++  // If aAudioNodeInput is supplied, return intrinsic automation in aBuffer
++  // and the graph contribution separately instead of mixing. This lets the
++  // worklet protect only graph samples at its JS readback boundary.
++  void GetValuesAtTime(int64_t aTime, float* aBuffer, const size_t aSize,
++                       float* aAudioNodeInput = nullptr);
+   void GetValuesAtTime(double aTime, float* aBuffer,
+                        const size_t aSize) = delete;
+ 
+   virtual size_t SizeOfExcludingThis(MallocSizeOf aMallocSizeOf) const {
+     return mTrack ? mTrack->SizeOfIncludingThis(aMallocSizeOf) : 0;
+   }
+ 
+   virtual size_t SizeOfIncludingThis(MallocSizeOf aMallocSizeOf) const {
+@@ -112,26 +116,32 @@
+   MOZ_ASSERT(aTime % WEBAUDIO_BLOCK_SIZE == 0);
+ 
+   // Mix the value of the AudioParam itself with that of the AudioNode inputs.
+   return BaseClass::GetValueAtTime(aTime) +
+          (mTrack ? AudioNodeInputValue(0) : 0.0f);
+ }
+ 
+ inline void AudioParamTimeline::GetValuesAtTime(int64_t aTime, float* aBuffer,
+-                                                const size_t aSize) {
++                                                const size_t aSize,
++                                                float* aAudioNodeInput) {
+   MOZ_ASSERT(aBuffer);
+   MOZ_ASSERT(aSize <= WEBAUDIO_BLOCK_SIZE);
+   MOZ_ASSERT(aSize == 1 || !HasSimpleValue());
+ 
+   // Mix the value of the AudioParam itself with that of the AudioNode inputs.
+   BaseClass::GetValuesAtTime(aTime, aBuffer, aSize);
+-  if (mTrack) {
+-    uint32_t blockOffset = aTime % WEBAUDIO_BLOCK_SIZE;
+-    MOZ_ASSERT(blockOffset + aSize <= WEBAUDIO_BLOCK_SIZE);
++  uint32_t blockOffset = aTime % WEBAUDIO_BLOCK_SIZE;
++  MOZ_ASSERT((!mTrack && !aAudioNodeInput) ||
++             blockOffset + aSize <= WEBAUDIO_BLOCK_SIZE);
++  if (aAudioNodeInput) {
++    for (size_t i = 0; i < aSize; ++i) {
++      aAudioNodeInput[i] = mTrack ? AudioNodeInputValue(blockOffset + i) : 0.0f;
++    }
++  } else if (mTrack) {
+     for (size_t i = 0; i < aSize; ++i) {
+       aBuffer[i] += AudioNodeInputValue(blockOffset + i);
+     }
+   }
+ }
+ 
+ }  // namespace mozilla::dom
+ 

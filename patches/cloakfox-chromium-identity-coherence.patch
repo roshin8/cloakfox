@@ -1,0 +1,119 @@
+diff --git a/dom/base/NavigatorUAData.cpp b/dom/base/NavigatorUAData.cpp
+--- a/dom/base/NavigatorUAData.cpp
++++ b/dom/base/NavigatorUAData.cpp
+@@ -10,59 +10,32 @@
+ #include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/dom/Navigator.h"
+ #include "mozilla/dom/Promise.h"
+ #include "mozilla/dom/ToJSValue.h"
+ #include "mozilla/dom/WorkerCommon.h"
+ #include "mozilla/dom/WorkerNavigator.h"
+ #include "mozilla/dom/WorkerPrivate.h"
+ #include "mozilla/dom/WorkerScope.h"
++#include "mozilla/net/CloakfoxClientHints.h"
+ #include "nsGlobalWindowInner.h"
+ #include "nsThreadUtils.h"
+ #include "xpcpublic.h"
+ 
+ namespace mozilla::dom {
+ NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(NavigatorUAData, mGlobal)
+ NS_IMPL_CYCLE_COLLECTING_ADDREF(NavigatorUAData)
+ NS_IMPL_CYCLE_COLLECTING_RELEASE(NavigatorUAData)
+ NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(NavigatorUAData)
+   NS_WRAPPERCACHE_INTERFACE_MAP_ENTRY
+   NS_INTERFACE_MAP_ENTRY(nsISupports)
+ NS_INTERFACE_MAP_END
+ 
+-// Parse complete numeric product tokens, not arbitrary Chrome substrings.
+-static std::string ProductVersion(const std::string& aUA,
+-                                  const std::string& aProduct) {
+-  size_t at = aUA.find(aProduct + "/");
+-  if (at == std::string::npos || (at && aUA[at - 1] != ' ')) return "";
+-  at += aProduct.size() + 1;
+-  size_t end = aUA.find(' ', at);
+-  std::string version = aUA.substr(at, end - at);
+-  bool digit = false;
+-  for (char c : version) {
+-    if (c >= '0' && c <= '9') {
+-      digit = true;
+-    } else if (c == '.' && digit) {
+-      digit = false;
+-    } else {
+-      return "";
+-    }
+-  }
+-  return digit ? version : "";
+-}
+-
+-static bool IsChromiumUA(const std::string& aUA) {
+-  // iOS Chrome/Edge use WebKit and do not provide this API. Also avoid
+-  // interpreting a Firefox UA with an appended Chrome token as Chrome.
+-  return aUA.find("Firefox/") == std::string::npos &&
+-         aUA.find("iPhone") == std::string::npos &&
+-         aUA.find("iPad") == std::string::npos &&
+-         (!ProductVersion(aUA, "Chrome").empty() ||
+-          !ProductVersion(aUA, "Chromium").empty());
+-}
++using mozilla::net::cloakfoxhints::IsChromiumUA;
++using mozilla::net::cloakfoxhints::ProductVersion;
+ 
+ bool NavigatorUAData::IsDesktopChromiumIdentity(const nsAString& aUserAgent) {
+   const std::string ua = NS_ConvertUTF16toUTF8(aUserAgent).get();
+   return IsChromiumUA(ua) && ua.find("Android") == std::string::npos &&
+          ua.find("Mobile") == std::string::npos;
+ }
+ 
+ bool NavigatorUAData::IsEnabled(JSContext* aCx, JSObject* aGlobal) {
+diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
+--- a/dom/base/Navigator.cpp
++++ b/dom/base/Navigator.cpp
+@@ -1,15 +1,16 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ // Needs to be first.
+ #include "Navigator.h"
+ #include "mozilla/dom/NavigatorUAData.h"
++#include "mozilla/net/CloakfoxClientHints.h"
+ // Cloakfox: per-context + global navigator spoofing
+ #include "NavigatorManager.h"
+ #include "MaskConfig.hpp"
+ #include "nsJSUtils.h"
+ 
+ #include "Geolocation.h"
+ #include "base/basictypes.h"
+ #include "mozilla/Components.h"
+@@ -660,17 +661,31 @@
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     aRv.Throw(rv);
+     return;
+   }
+ 
+   CopyASCIItoUTF16(oscpu, aOSCPU);
+ }
+ 
+-void Navigator::GetVendor(nsAString& aVendor) { aVendor.Truncate(); }
++void Navigator::GetVendor(nsAString& aVendor) {
++  aVendor.Truncate();
++  if (!StaticPrefs::cloakfox_enabled() || !mWindow ||
++      !mWindow->GetExtantDoc() ||
++      mWindow->GetExtantDoc()->NodePrincipal()->IsSystemPrincipal()) {
++    return;
++  }
++  nsAutoCString ua;
++  IgnoredErrorResult rv;
++  GetUserAgent(ua, CallerType::NonSystem, rv);
++  if (!rv.Failed() && mozilla::net::cloakfoxhints::IsChromiumUA(
++                          std::string(ua.BeginReading(), ua.Length()))) {
++    aVendor.AssignLiteral("Google Inc.");
++  }
++}
+ 
+ void Navigator::GetVendorSub(nsAString& aVendorSub) { aVendorSub.Truncate(); }
+ 
+ void Navigator::GetProduct(nsAString& aProduct) {
+   aProduct.AssignLiteral("Gecko");
+ }
+ 
+ void Navigator::GetProductSub(nsAString& aProductSub) {

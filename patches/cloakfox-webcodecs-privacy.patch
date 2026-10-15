@@ -1,0 +1,97 @@
+diff --git a/dom/media/webcodecs/WebCodecsUtils.cpp b/dom/media/webcodecs/WebCodecsUtils.cpp
+--- a/dom/media/webcodecs/WebCodecsUtils.cpp
++++ b/dom/media/webcodecs/WebCodecsUtils.cpp
+@@ -1,31 +1,34 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "WebCodecsUtils.h"
+ 
++#include "CloakfoxSiteSeed.hpp"
+ #include "DecoderTypes.h"
+ #include "EncoderTypes.h"
+ #include "PlatformEncoderModule.h"
+ #include "VideoUtils.h"
+ #include "js/experimental/TypedData.h"
+ #include "mozilla/Assertions.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_dom.h"
+ #include "mozilla/StaticPrefs_media.h"
+ #include "mozilla/ToString.h"
+ #include "mozilla/dom/EncoderTypes.h"
+ #include "mozilla/dom/ImageBitmapBinding.h"
+ #include "mozilla/dom/UnionTypes.h"
+ #include "mozilla/dom/VideoColorSpaceBinding.h"
+ #include "mozilla/dom/VideoFrameBinding.h"
+ #include "mozilla/gfx/Types.h"
+ #include "nsDebug.h"
+ #include "nsIGlobalObject.h"
++#include "nsIPrincipal.h"
+ #include "nsString.h"
+ 
+ extern mozilla::LazyLogModule gWebCodecsLog;
+ 
+ #ifdef LOG_INTERNAL
+ #  undef LOG_INTERNAL
+ #endif  // LOG_INTERNAL
+ #define LOG_INTERNAL(level, msg, ...) \
+@@ -670,23 +673,36 @@
+     case AudioSampleFormat::S32_planar:
+     case AudioSampleFormat::F32_planar:
+       return sizeof(float);
+   }
+   MOZ_ASSERT_UNREACHABLE("Invalid enum value");
+   return 0;
+ }
+ 
++// Use the immutable owning global's origin attributes, including in workers.
++// Preference normalization must apply to configure() as well as support queries.
++static bool CloakfoxNormalizeHardwarePreference(nsIGlobalObject* aGlobal) {
++  if (!aGlobal || !StaticPrefs::cloakfox_enabled()) return false;
++  auto* principal = aGlobal->PrincipalOrNull();
++  if (!principal || principal->IsSystemPrincipal()) return false;
++  const auto config = CloakfoxSiteSeed::ExactConfig(
++      principal->OriginAttributesRef().mUserContextId);
++  const auto value = config.find("mediaCapabilities:spoof");
++  return value != config.end() && value->is_boolean() && value->get<bool>();
++}
++
+ template <typename T>
+ void ApplyResistFingerprintingImpl(const RefPtr<T>& aConfig,
+                                    nsIGlobalObject* aGlobal) {
+   // When resisting fingerprinting, don't reveal information about the host
+   // hardware.
+   if (nsContentUtils::ShouldResistFingerprinting(
+-          aGlobal, RFPTarget::MediaCapabilities)) {
++          aGlobal, RFPTarget::MediaCapabilities) ||
++      CloakfoxNormalizeHardwarePreference(aGlobal)) {
+     if (aConfig->mHardwareAcceleration != HardwareAcceleration::No_preference) {
+       LOGW(
+           "Resist fingerprinting (MediaCapabilities) enabled, overriding "
+           "hardware preference");
+       aConfig->mHardwareAcceleration = HardwareAcceleration::No_preference;
+     }
+   }
+ }
+diff --git a/dom/media/webcodecs/moz.build b/dom/media/webcodecs/moz.build
+--- a/dom/media/webcodecs/moz.build
++++ b/dom/media/webcodecs/moz.build
+@@ -8,16 +8,17 @@
+ MOCHITEST_MANIFESTS += ["test/mochitest.toml"]
+ CRASHTEST_MANIFESTS += ["crashtests/crashtests.list"]
+ 
+ TEST_DIRS += ["gtest"]
+ 
+ # For mozilla/layers/ImageBridgeChild.h
+ LOCAL_INCLUDES += [
+     "!/ipc/ipdl/_ipdlheaders",
++    "/cloakcfg",
+     "/ipc/chromium/src/",
+ ]
+ 
+ EXPORTS.mozilla += [
+     "DecoderAgent.h",
+ ]
+ 
+ EXPORTS.mozilla.dom += [

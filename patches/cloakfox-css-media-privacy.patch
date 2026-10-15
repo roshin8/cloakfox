@@ -1,0 +1,385 @@
+diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
+--- a/layout/style/nsMediaFeatures.cpp
++++ b/layout/style/nsMediaFeatures.cpp
+@@ -1,15 +1,16 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /* the features that media queries can test */
+ 
+ #include "PreferenceSheet.h"
++#include <cmath>
+ #include "MaskConfig.hpp"
+ #include "CloakfoxSiteSeed.hpp"
+ #include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/GeckoBindings.h"
+ #include "mozilla/LookAndFeel.h"
+ #include "mozilla/RelativeLuminanceUtils.h"
+ #include "mozilla/StaticPrefs_browser.h"
+ #include "mozilla/StaticPrefs_gfx.h"
+@@ -21,27 +22,56 @@
+ #include "mozilla/dom/ScreenBinding.h"
+ #include "mozilla/gfx/gfxVars.h"
+ #include "nsCSSProps.h"
+ #include "nsCSSValue.h"
+ #include "nsContentUtils.h"
+ #include "nsDeviceContext.h"
+ #include "nsGlobalWindowOuter.h"
+ #include "nsGlobalWindowInner.h"
+-#include "mozilla/dom/ScreenDimensionManager.h"
+ #include "nsIBaseWindow.h"
+ #include "nsIDocShell.h"
+ #include "nsIPrintSettings.h"
+ #include "nsIWidget.h"
+ #include "nsPresContext.h"
+ #include "nsStyleConsts.h"
+ 
+ using namespace mozilla;
+ using mozilla::dom::DisplayMode;
+ using mozilla::dom::Document;
++
++// Layout evaluation often has no JS caller (or a caller in another container).
++// Never use MaskConfig's ambient-container getters here, including for ucid 0.
++static std::optional<nlohmann::json> CloakfoxMediaConfig(const Document* aDoc) {
++  if (!StaticPrefs::cloakfox_enabled() || aDoc->IsInChromeDocShell() ||
++      aDoc->NodePrincipal()->IsSystemPrincipal()) {
++    return std::nullopt;
++  }
++  auto cfg = MaskConfig::GetJson();
++  if (!cfg.is_object()) cfg = nlohmann::json::object();
++  cfg.update(CloakfoxSiteSeed::ExactConfig(
++      aDoc->NodePrincipal()->OriginAttributesRef().mUserContextId));
++  return cfg;
++}
++
++static int32_t CloakfoxMediaInt(const nlohmann::json& aConfig,
++                                const char* aKey, int32_t aDefault,
++                                int32_t aMin, int32_t aMax) {
++  auto at = aConfig.find(aKey);
++  if (at == aConfig.end() || !at->is_number()) return aDefault;
++  const double value = at->get<double>();
++  if (!std::isfinite(value) || std::trunc(value) != value ||
++      value < aMin || value > aMax) return aDefault;
++  return static_cast<int32_t>(value);
++}
++
++static bool CloakfoxMediaBool(const nlohmann::json& aConfig, const char* aKey) {
++  auto at = aConfig.find(aKey);
++  return at != aConfig.end() && at->is_boolean() && at->get<bool>();
++}
+ 
+ // A helper for four features below
+ static nsSize GetSize(const Document& aDocument) {
+   nsPresContext* pc = aDocument.GetPresContext();
+ 
+   // Per spec, return a 0x0 viewport if we're not being rendered. See:
+   //
+   //  * https://github.com/w3c/csswg-drafts/issues/571
+@@ -70,26 +100,20 @@
+   if (nsGlobalWindowInner::UseCloakfoxLetterboxing(&aDocument)) {
+     return CSSPixel::ToAppUnits(
+         aDocument.GetBrowsingContext()->TopInnerSizeSpoofedForRFP());
+   }
+   if (aDocument.ShouldResistFingerprinting(RFPTarget::CSSDeviceSize)) {
+     return GetSize(aDocument);
+   }
+ 
+-  // Cloakfox: per-context screen dimensions for CSS device-width/height queries
+-  if (nsPIDOMWindowInner* inner = aDocument.GetInnerWindow()) {
+-    nsGlobalWindowInner* win = nsGlobalWindowInner::Cast(inner);
+-    if (win) {
+-      uint32_t ucid = mozilla::dom::ScreenDimensionManager::GetUserContextIdFromWindow(win);
+-      int32_t w = 0, h = 0;
+-      if (mozilla::dom::ScreenDimensionManager::GetDimensions(ucid, &w, &h)) {
+-        return CSSPixel::ToAppUnits(CSSIntSize(w, h));
+-      }
+-    }
++  if (auto cfg = CloakfoxMediaConfig(&aDocument)) {
++    int32_t w = CloakfoxMediaInt(*cfg, "screen.width", 0, 1, INT32_MAX);
++    int32_t h = CloakfoxMediaInt(*cfg, "screen.height", 0, 1, INT32_MAX);
++    if (w && h) return CSSPixel::ToAppUnits(CSSIntSize(w, h));
+   }
+ 
+   // Media queries in documents should use an override set with WebDriver BiDi
+   // if it exists.
+   if (dom::BrowsingContext* bc = aDocument.GetBrowsingContext()) {
+     Maybe<CSSIntSize> screenSize = bc->GetScreenAreaOverride();
+     if (screenSize.isSome()) {
+       return CSSPixel::ToAppUnits(screenSize.value());
+@@ -162,20 +186,18 @@
+     return 0;
+   }
+   bool color = true;
+   ps->GetPrintInColor(&color);
+   return color ? 0 : kDefaultMonochromeBpp;
+ }
+ 
+ StyleColorGamut Gecko_MediaFeatures_ColorGamut(const Document* aDocument) {
+-  // Cloakfox: content-only color gamut spoof — srgb (0), p3 (1), rec2020 (2)
+-  if (auto value = MaskConfig::GetInt32("mediaFeature:colorGamut");
+-      value.has_value()) {
+-    switch (value.value()) {
++  if (auto cfg = CloakfoxMediaConfig(aDocument)) {
++    switch (CloakfoxMediaInt(*cfg, "mediaFeature:colorGamut", 0, 0, 2)) {
+       case 1: return StyleColorGamut::P3;
+       case 2: return StyleColorGamut::Rec2020;
+       default: return StyleColorGamut::Srgb;
+     }
+   }
+   auto* dx = GetDeviceContextFor(aDocument);
+   if (!dx || aDocument->ShouldResistFingerprinting(RFPTarget::CSSColorInfo)) {
+     return StyleColorGamut::Srgb;
+@@ -196,17 +218,22 @@
+     // If we're a monochrome device, then the color depth is zero.
+     return 0;
+   }
+ 
+   // Use depth of 24 when resisting fingerprinting, or when we're not being
+   // rendered.
+   int32_t depth = 24;
+ 
+-  if (!aDocument->ShouldResistFingerprinting(RFPTarget::CSSColorInfo)) {
++  if (auto cfg = CloakfoxMediaConfig(aDocument)) {
++    // Screen.colorDepth and pixelDepth expose this same total RGB depth.
++    const int32_t pixelDepth = CloakfoxMediaInt(*cfg, "screen.pixelDepth", 24,
++                                               1, INT32_MAX);
++    depth = CloakfoxMediaInt(*cfg, "screen.colorDepth", pixelDepth, 1, INT32_MAX);
++  } else if (!aDocument->ShouldResistFingerprinting(RFPTarget::CSSColorInfo)) {
+     if (nsDeviceContext* dx = GetDeviceContextFor(aDocument)) {
+       depth = dx->GetDepth();
+     }
+   }
+ 
+   // The spec says to use bits *per color component*, so divide by 3,
+   // and round down, since the spec says to use the smallest when the
+   // color components differ.
+@@ -214,22 +241,24 @@
+ }
+ 
+ float Gecko_MediaFeatures_GetResolution(const Document* aDocument) {
+   if (nsGlobalWindowInner::UseCloakfoxLetterboxing(aDocument)) {
+     nsPresContext* pc = aDocument->GetPresContext();
+     return pc ? float(nsRFPService::GetDevicePixelRatioAtZoom(pc->GetFullZoom()))
+               : 1.0f;
+   }
+-  // Cloakfox: content-only resolution override. Reports a fixed DPPX
+-  // that matches the spoofed devicePixelRatio, hiding the real monitor DPI.
+-  if (!aDocument->IsInChromeDocShell()) {
+-    if (auto value = MaskConfig::GetDouble("mediaFeature:resolution")) {
+-      return static_cast<float>(value.value());
+-    }
++  if (auto cfg = CloakfoxMediaConfig(aDocument)) {
++    auto value = cfg->find("mediaFeature:resolution");
++    if (value != cfg->end() && value->is_number()) {
++      const double dppx = value->get<double>();
++      if (std::isfinite(dppx) && dppx > 0 && dppx <= 100)
++        return static_cast<float>(dppx);
++    }
++    return 1.0f;
+   }
+   // We're returning resolution in terms of device pixels per css pixel, since
+   // that is the preferred unit for media queries of resolution. This avoids
+   // introducing precision error from conversion to and from less-used
+   // physical units like inches.
+   nsPresContext* pc = aDocument->GetPresContext();
+   if (!pc) {
+     return 1.;
+@@ -307,20 +336,18 @@
+ #  error "Unknown platform?"
+ #endif
+     default:
+       return false;
+   }
+ }
+ 
+ bool Gecko_MediaFeatures_PrefersReducedMotion(const Document* aDocument) {
+-  // Cloakfox: content-only override. Browser UI keeps real OS value.
+-  if (auto value = MaskConfig::GetBool("mediaFeature:prefersReducedMotion");
+-      value.has_value()) {
+-    return value.value();
++  if (auto cfg = CloakfoxMediaConfig(aDocument)) {
++    return CloakfoxMediaBool(*cfg, "mediaFeature:prefersReducedMotion");
+   }
+   if (aDocument->ShouldResistFingerprinting(
+           RFPTarget::CSSPrefersReducedMotion)) {
+     return false;
+   }
+ 
+   // Check for DevTools override first
+   if (dom::BrowsingContext* bc = aDocument->GetBrowsingContext()) {
+@@ -334,20 +361,18 @@
+         break;
+     }
+   }
+ 
+   return LookAndFeel::GetInt(LookAndFeel::IntID::PrefersReducedMotion, 0) == 1;
+ }
+ 
+ bool Gecko_MediaFeatures_PrefersReducedTransparency(const Document* aDocument) {
+-  if (auto value =
+-          MaskConfig::GetBool("mediaFeature:prefersReducedTransparency");
+-      value.has_value()) {
+-    return value.value();
++  if (auto cfg = CloakfoxMediaConfig(aDocument)) {
++    return CloakfoxMediaBool(*cfg, "mediaFeature:prefersReducedTransparency");
+   }
+   if (aDocument->ShouldResistFingerprinting(
+           RFPTarget::CSSPrefersReducedTransparency)) {
+     return false;
+   }
+   return LookAndFeel::GetInt(LookAndFeel::IntID::PrefersReducedTransparency,
+                              0) == 1;
+ }
+@@ -365,20 +390,18 @@
+   return widget && widget->IsMacTitlebarDirectionRTL();
+ }
+ 
+ // Neither Linux, Windows, nor Mac have a way to indicate that low contrast is
+ // preferred so we use the presence of an accessibility theme or forced colors
+ // as a signal.
+ StylePrefersContrast Gecko_MediaFeatures_PrefersContrast(
+     const Document* aDocument) {
+-  // Cloakfox: content-only override — 0=no-pref, 1=less, 2=more, 3=custom
+-  if (auto value = MaskConfig::GetInt32("mediaFeature:prefersContrast");
+-      value.has_value()) {
+-    switch (value.value()) {
++  if (auto cfg = CloakfoxMediaConfig(aDocument)) {
++    switch (CloakfoxMediaInt(*cfg, "mediaFeature:prefersContrast", 0, 0, 3)) {
+       case 1: return StylePrefersContrast::Less;
+       case 2: return StylePrefersContrast::More;
+       case 3: return StylePrefersContrast::Custom;
+       default: return StylePrefersContrast::NoPreference;
+     }
+   }
+   if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSPrefersContrast)) {
+     return StylePrefersContrast::NoPreference;
+@@ -397,19 +420,18 @@
+   // https://www.w3.org/TR/WCAG21/#contrast-enhanced
+   if (ratio >= 7.0f) {
+     return StylePrefersContrast::More;
+   }
+   return StylePrefersContrast::Custom;
+ }
+ 
+ bool Gecko_MediaFeatures_InvertedColors(const Document* aDocument) {
+-  if (auto value = MaskConfig::GetBool("mediaFeature:invertedColors");
+-      value.has_value()) {
+-    return value.value();
++  if (auto cfg = CloakfoxMediaConfig(aDocument)) {
++    return CloakfoxMediaBool(*cfg, "mediaFeature:invertedColors");
+   }
+   if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSInvertedColors)) {
+     return false;
+   }
+   return LookAndFeel::GetInt(LookAndFeel::IntID::InvertedColors, 0) == 1;
+ }
+ 
+ StyleScripting Gecko_MediaFeatures_Scripting(const Document* aDocument) {
+@@ -475,29 +497,35 @@
+   if (dom::BrowsingContext* bc = aDocument->GetBrowsingContext()) {
+     // The touch-events-override happens only for the Responsive Design Mode so
+     // that we don't need to care about ResistFingerprinting.
+     if (bc->TouchEventsOverride() == dom::TouchEventsOverride::Enabled) {
+       return PointerCapabilities::Coarse;
+     }
+   }
+ 
+-  // The default value for Desktop is mouse-type pointer, and for Android
+-  // a coarse pointer.
++  if (auto cfg = CloakfoxMediaConfig(aDocument)) {
++    PointerCapabilities capabilities =
++        PointerCapabilities::Fine | PointerCapabilities::Hover;
++    if (aID == LookAndFeel::IntID::AllPointerCapabilities &&
++        CloakfoxMediaInt(*cfg, "navigator:maxTouchPoints", 0, 0, INT32_MAX) > 0) {
++      capabilities |= PointerCapabilities::Coarse;
++    }
++    return capabilities;
++  }
++  const PointerCapabilities fallback =
+ #ifdef ANDROID
+-      return PointerCapabilities::Coarse;
++      PointerCapabilities::Coarse;
++#else
++      PointerCapabilities::Fine | PointerCapabilities::Hover;
+ #endif
+-  PointerCapabilities capabilities = PointerCapabilities::Fine | PointerCapabilities::Hover;
+-  if (!nsContentUtils::IsChromeDoc(aDocument) &&
+-      aID == LookAndFeel::IntID::AllPointerCapabilities &&
+-      MaskConfig::GetUint32("navigator:maxTouchPoints",
+-          aDocument->NodePrincipal()->OriginAttributesRef().mUserContextId).value_or(0) > 0) {
+-    capabilities |= PointerCapabilities::Coarse;
+-  }
+-  return capabilities;
++  if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSPointerCapabilities))
++    return fallback;
++  return static_cast<PointerCapabilities>(
++      LookAndFeel::GetInt(aID, static_cast<int32_t>(fallback)));
+ }
+ 
+ PointerCapabilities Gecko_MediaFeatures_PrimaryPointerCapabilities(
+     const Document* aDocument) {
+   return GetPointerCapabilities(aDocument,
+                                 LookAndFeel::IntID::PrimaryPointerCapabilities);
+ }
+ 
+diff --git a/dom/base/nsScreen.cpp b/dom/base/nsScreen.cpp
+--- a/dom/base/nsScreen.cpp
++++ b/dom/base/nsScreen.cpp
+@@ -1,15 +1,18 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "nsScreen.h"
+ 
+ #include "MaskConfig.hpp"
++#include "CloakfoxSiteSeed.hpp"
++#include "mozilla/StaticPrefs_cloakfox.h"
++#include <cmath>
+ 
+ #include "mozilla/GeckoBindings.h"
+ #include "mozilla/dom/BrowsingContextBinding.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/DocumentInlines.h"
+ #include "mozilla/widget/ScreenManager.h"
+ #include "nsCOMPtr.h"
+ #include "ScreenDimensionManager.h"
+@@ -64,20 +67,33 @@
+ 
+ bool nsScreen::IsExtended() const {
+   const auto* value = GetVirtualPresentation();
+   return value && value->mScreenCount > 1;
+ }
+ 
+ int32_t nsScreen::PixelDepth() {
+   if (auto* value = GetVirtualPresentation()) return value->mDepth;
+-  if (auto value = MaskConfig::GetUint32("screen.colorDepth"))
+-    return value.value();
+-  if (auto value = MaskConfig::GetUint32("screen.pixelDepth"))
+-    return value.value();
++  const auto* doc = GetDocumentIfCurrent();
++  if (doc && StaticPrefs::cloakfox_enabled() && !doc->IsInChromeDocShell() &&
++      !doc->NodePrincipal()->IsSystemPrincipal()) {
++    auto cfg = MaskConfig::GetJson();
++    if (!cfg.is_object()) cfg = nlohmann::json::object();
++    cfg.update(CloakfoxSiteSeed::ExactConfig(
++        doc->NodePrincipal()->OriginAttributesRef().mUserContextId));
++    // Keep both Screen depth getters and CSS color bits on the owning policy.
++    for (const char* key : {"screen.colorDepth", "screen.pixelDepth"}) {
++      auto at = cfg.find(key);
++      if (at == cfg.end() || !at->is_number()) continue;
++      const double depth = at->get<double>();
++      if (std::isfinite(depth) && std::trunc(depth) == depth &&
++          depth > 0 && depth <= INT32_MAX) return static_cast<int32_t>(depth);
++    }
++    return 24;
++  }
+   // Return 24 to prevent fingerprinting.
+   if (ShouldResistFingerprinting(RFPTarget::ScreenPixelDepth)) {
+     return 24;
+   }
+   nsDeviceContext* context = GetDeviceContext();
+   if (NS_WARN_IF(!context)) {
+     return 24;
+   }
