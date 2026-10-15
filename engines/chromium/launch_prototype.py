@@ -37,7 +37,10 @@ def main():
             ready = json.loads(first)
             if ready.get('event') != 'ready':
                 raise SystemExit('Unexpected startup response: ' + first)
-            print('Development prototype: Chromium ' + ready['chromiumVersion'] + '; fingerprint protection not implemented.', flush=True)
+            protection = ('partial native canvas protection; privacy parity incomplete'
+                          if ready.get('canvasReadbackVersion') == 1
+                          else 'fingerprint protection not implemented')
+            print('Development prototype: Chromium ' + ready['chromiumVersion'] + '; ' + protection + '.', flush=True)
             for request_id, container in enumerate(args.container or ['1'], start=1):
                 process.stdin.write(json.dumps({'version': 1, 'id': request_id, 'command': 'open', 'container': container, 'url': args.url}) + '\n')
             process.stdin.flush()

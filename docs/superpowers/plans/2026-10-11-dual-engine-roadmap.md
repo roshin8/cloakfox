@@ -53,7 +53,7 @@ Proposed new files:
 - [x] Use a local fixture to write cookies, localStorage, IndexedDB, cache and a service worker in container A. Verify B cannot read them; restart and repeat. Check private contexts do not persist data.
 - [ ] Inspect TLS/H2/H3 through owned server fixtures. Record actual Chromium behavior without routing requests through Gecko or modifying transport to resemble another engine.
 - [x] Build the pinned CEF source framework and test its companion on macOS arm64. Experimental CLT baseline, sandbox, storage/isolation, rendering and native transport probes pass; see the 2026-10-15 source-build verification.
-- [ ] Implement one small native canvas privacy patch. Derive deterministic output from container and schemeful site; test reload stability, site/container separation and the disabled setting. Include workers/OffscreenCanvas where the chosen path applies.
+- [x] Implement one small native canvas privacy patch. Derive deterministic output from container and schemeful site; test reload stability, site/container separation and the disabled setting. Include workers/OffscreenCanvas where the chosen path applies.
 - [ ] Inventory every existing Cloakfox protection and setting against Chromium implementation points. For each, record native hook, missing capability, worker coverage and test required.
 - [ ] Write a findings report with measured build/update cost and browser feature gaps.
 
@@ -159,3 +159,14 @@ limitations are recorded in `../../dual-engine/cef-prototype-verification.md`
 and `../../dual-engine/cef-source-build-20261015.json`. The source prerequisite is
 resolved for this custom macOS framework target. Native canvas protection,
 privacy parity and shared-shell integration remain pending.
+
+### First native canvas increment — 2026-10-15
+
+The source-built companion now passes a partial native Canvas2D readback/export
+patch, with per-container/site output, persistent/private lifecycle and explicit
+disable policy. All 32 engine tests (13 canvas tests), CTest, isolation/sandbox,
+Metal/WebGL rendering and pre-certificate transport probes pass. See
+`../../dual-engine/cef-canvas-privacy-20261015.json`. Shared/service workers, other
+pixel formats, raw WebGL/WebGPU, broader privacy groups and the shared settings UI
+remain open. This checks the small native patch experiment, not privacy parity or
+the whole feasibility milestone.

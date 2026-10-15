@@ -1,0 +1,266 @@
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -3,6 +3,10 @@
+ // be found in the LICENSE file.
+ 
+ #include "cef/libcef/browser/prefs/browser_prefs.h"
++
++#include <array>
++#include "base/rand_util.h"
++#include "base/strings/string_number_conversions.h"
+ 
+ #include "cef/libcef/browser/browser_context.h"
+ #include "cef/libcef/browser/context.h"
+@@ -48,6 +52,9 @@
+ }
+ 
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
++  registry->RegisterIntegerPref("cloakfox.canvas_readback_version", 1);
++  registry->RegisterBooleanPref("cloakfox.canvas_enabled", true);
++  registry->RegisterStringPref("cloakfox.canvas_key", "");
+   registry->RegisterBooleanPref(cef::prefs::kEnableStorageNotificationService,
+                                 true);
+ 
+@@ -75,6 +82,12 @@
+ 
+ void SetInitialProfilePrefs(Profile* profile) {
+   auto* prefs = profile->GetPrefs();
++  // Off-the-record contexts must never inherit a persistent parent's key.
++  if (profile->IsOffTheRecord() || prefs->GetString("cloakfox.canvas_key").empty()) {
++    std::array<uint8_t, 32> key;
++    base::RandBytes(key);
++    prefs->SetString("cloakfox.canvas_key", base::HexEncode(key));
++  }
+ 
+   // Language preferences.
+   const std::string& accept_language_list =
+--- a/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
++++ b/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
+@@ -34,6 +34,7 @@
+ #include "chrome/common/chrome_paths.h"
+ #include "chrome/common/chrome_switches.h"
+ #include "components/performance_manager/embedder/performance_manager_registry.h"
++#include "components/prefs/pref_service.h"
+ #include "content/public/browser/client_certificate_delegate.h"
+ #include "content/public/browser/navigation_throttle.h"
+ #include "content/public/browser/render_process_host.h"
+@@ -204,6 +205,19 @@
+     int child_process_id) {
+   ChromeContentBrowserClient::AppendExtraCommandLineSwitches(command_line,
+                                                              child_process_id);
++
++  // A RenderProcessHost belongs to one BrowserContext. Bind all its document
++  // and worker readbacks to that context, never to a global browser seed.
++  if (command_line->GetSwitchValueASCII(switches::kProcessType) ==
++      switches::kRendererProcess) {
++    auto* host = content::RenderProcessHost::FromID(child_process_id);
++    auto* profile = host ? Profile::FromBrowserContext(host->GetBrowserContext())
++                         : nullptr;
++    if (profile && profile->GetPrefs()->GetBoolean("cloakfox.canvas_enabled")) {
++      command_line->AppendSwitchASCII(
++          "cloakfox-canvas-key", profile->GetPrefs()->GetString("cloakfox.canvas_key"));
++    }
++  }
+ 
+   // Necessary to populate DIR_USER_DATA in sub-processes.
+   // See resource_util.cc GetUserDataPath.
+--- a/third_party/blink/renderer/core/canvas_interventions/build.gni
++++ b/third_party/blink/renderer/core/canvas_interventions/build.gni
+@@ -3,6 +3,8 @@
+ # found in the LICENSE file.
+ 
+ blink_core_sources_canvas_interventions = [
++  "cloakfox_canvas.cc",
++  "cloakfox_canvas.h",
+   "noise_hash.cc",
+   "noise_hash.h",
+   "noise_helper.cc",
+--- /dev/null
++++ b/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h
+@@ -0,0 +1,16 @@
++// Copyright 2026 Cloakfox contributors. BSD-3-Clause.
++#ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CANVAS_INTERVENTIONS_CLOAKFOX_CANVAS_H_
++#define THIRD_PARTY_BLINK_RENDERER_CORE_CANVAS_INTERVENTIONS_CLOAKFOX_CANVAS_H_
++#include "base/memory/scoped_refptr.h"
++#include "third_party/blink/renderer/core/core_export.h"
++#include "third_party/skia/include/core/SkPixmap.h"
++namespace blink {
++class ExecutionContext;
++class StaticBitmapImage;
++// Only modifies caller-owned readback memory; never the canvas surface.
++CORE_EXPORT void CloakfoxCanvasReadback(ExecutionContext*, const SkPixmap&,
++                                       int source_x, int source_y);
++CORE_EXPORT scoped_refptr<StaticBitmapImage> CloakfoxCanvasExport(
++    ExecutionContext*, scoped_refptr<StaticBitmapImage>);
++}  // namespace blink
++#endif
+--- /dev/null
++++ b/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.cc
+@@ -0,0 +1,109 @@
++// Copyright 2026 Cloakfox contributors. BSD-3-Clause.
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
++
++#include <array>
++#include <optional>
++#include <string>
++#include "base/command_line.h"
++#include "base/containers/span.h"
++#include "crypto/hmac.h"
++#include "third_party/blink/renderer/core/execution_context/execution_context.h"
++#include "third_party/blink/renderer/core/frame/local_dom_window.h"
++#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
++#include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
++#include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
++#include "third_party/blink/renderer/platform/network/blink_schemeful_site.h"
++#include "third_party/blink/renderer/platform/weborigin/security_origin.h"
++#include "third_party/skia/include/core/SkColorSpace.h"
++#include "third_party/skia/include/core/SkData.h"
++#include "third_party/skia/include/core/SkImage.h"
++
++namespace blink {
++namespace {
++using Key = std::array<uint8_t, 32>;
++std::optional<Key> SiteKey(ExecutionContext* context) {
++  const auto key = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++      "cloakfox-canvas-key");
++  if (key.size() != 64 || !context)
++    return std::nullopt;
++  std::optional<BlinkSchemefulSite> owner_site;
++  if (auto* window = DynamicTo<LocalDOMWindow>(context)) {
++    // Browser-provided committed storage identity survives frame detachment.
++    // Force the accessor's partitioned view without changing storage policy.
++    owner_site = window->GetStorageKey()
++                     .CopyWithForceEnabledThirdPartyStoragePartitioning()
++                     .GetTopLevelSite();
++  } else if (auto* worker = DynamicTo<WorkerGlobalScope>(context)) {
++    const auto* origin = worker->top_level_frame_security_origin();
++    if (origin && !origin->IsOpaque())
++      owner_site = BlinkSchemefulSite(scoped_refptr<const SecurityOrigin>(origin));
++  }
++  // Shared/service worker ownership and opaque origins require separate
++  // browser-provided partition identity plumbing; do not collapse to "null".
++  if (!owner_site || owner_site->IsOpaque())
++    return std::nullopt;
++  const auto site = std::string("cloakfox-canvas-v1:") + owner_site->Serialize().Utf8();
++  return crypto::hmac::SignSha256(base::as_byte_span(key), base::as_byte_span(site));
++}
++void Transform(const Key& key, const SkPixmap& pixels, int sx, int sy) {
++  // Preserve other formats and color spaces until those paths are validated.
++  if (pixels.colorType() != kRGBA_8888_SkColorType ||
++      (pixels.colorSpace() && !pixels.colorSpace()->isSRGB()))
++    return;
++  for (int y = 0; y < pixels.height(); ++y) {
++    for (int x = 0; x < pixels.width(); ++x) {
++      auto* p = static_cast<uint8_t*>(pixels.writable_addr(x, y));
++      // Preserve alpha, blank pixels and premultiplication rounding behavior.
++      if (p[3] != 255)
++        continue;
++      const int64_t ax = static_cast<int64_t>(sx) + x;
++      const int64_t ay = static_cast<int64_t>(sy) + y;
++      if (ax < 0 || ay < 0)
++        continue;
++      std::array<uint8_t, 19> input{};
++      for (int i = 0; i < 8; ++i) {
++        input[i] = static_cast<uint64_t>(ax) >> (i * 8);
++        input[8 + i] = static_cast<uint64_t>(ay) >> (i * 8);
++      }
++      for (int c = 0; c < 3; ++c)
++        input[16 + c] = p[c] & 0xfe;
++      const auto bits = crypto::hmac::SignSha256(key, input);
++      for (int c = 0; c < 3; ++c)
++        p[c] = (p[c] & 0xfe) | (bits[c] & 1);
++    }
++  }
++}
++}  // namespace
++
++void CloakfoxCanvasReadback(ExecutionContext* context, const SkPixmap& pixels,
++                            int sx, int sy) {
++  if (const auto key = SiteKey(context))
++    Transform(*key, pixels, sx, sy);
++}
++
++scoped_refptr<StaticBitmapImage> CloakfoxCanvasExport(
++    ExecutionContext* context, scoped_refptr<StaticBitmapImage> image) {
++  const auto key = SiteKey(context);
++  if (!key || !image)
++    return image;
++  const auto paint = image->PaintImageForCurrentFrame();
++  const auto original_info = paint.GetSkImageInfo();
++  if (original_info.colorType() != kRGBA_8888_SkColorType &&
++      original_info.colorType() != kBGRA_8888_SkColorType)
++    return image;
++  if (original_info.colorSpace() && !original_info.colorSpace()->isSRGB())
++    return image;
++  const auto info = original_info.makeColorType(kRGBA_8888_SkColorType)
++                       .makeAlphaType(kUnpremul_SkAlphaType);
++  const auto size = info.computeMinByteSize();
++  if (SkImageInfo::ByteSizeOverflowed(size))
++    return nullptr;
++  auto data = SkData::MakeUninitialized(size);
++  SkPixmap pixels(info, data->writable_data(), info.minRowBytes());
++  if (!paint.readPixels(info, pixels.writable_addr(), pixels.rowBytes(), 0, 0))
++    return nullptr;
++  Transform(*key, pixels, 0, 0);
++  return UnacceleratedStaticBitmapImage::Create(
++      SkImages::RasterFromData(info, std::move(data), pixels.rowBytes()));
++}
++}  // namespace blink
+--- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
++++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+@@ -51,6 +51,7 @@
+ #include "third_party/blink/renderer/core/html/canvas/canvas_font_cache.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_performance_monitor.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_host.h"
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
+@@ -518,6 +519,7 @@
+     }
+   }
+ 
++  CloakfoxCanvasReadback(GetTopExecutionContext(), image_data->GetSkPixmap(), sx, sy);
+   return image_data;
+ }
+ 
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+@@ -26,6 +26,7 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
+ 
+ #include <math.h>
+ 
+@@ -1415,7 +1416,8 @@
+   ImageEncodingMimeType encoding_mime_type =
+       ImageEncoderUtils::ToEncodingMimeType(mime_type);
+ 
+-  scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(source_buffer);
++  scoped_refptr<StaticBitmapImage> image_bitmap =
++      CloakfoxCanvasExport(GetExecutionContext(), Snapshot(source_buffer));
+   if (image_bitmap) {
+     std::unique_ptr<ImageDataBuffer> data_buffer =
+         ImageDataBuffer::Create(image_bitmap);
+--- a/third_party/blink/renderer/core/html/canvas/canvas_async_blob_creator.cc
++++ b/third_party/blink/renderer/core/html/canvas/canvas_async_blob_creator.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/core/html/canvas/canvas_async_blob_creator.h"
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
+ 
+ #include "base/location.h"
+ #include "base/metrics/histogram_functions.h"
+@@ -176,7 +177,8 @@
+   // We use pixmap to access the image pixels. Make the image unaccelerated if
+   // necessary. May return nullptr if GPU context lost or readback buffer
+   // allocation failed.
+-  image_ = image->MakeUnaccelerated();
++  auto protected_image = CloakfoxCanvasExport(context, image);
++  image_ = protected_image ? protected_image->MakeUnaccelerated() : nullptr;
+ 
+   if (image_) {
+     skia_image_ = image_->PaintImageForCurrentFrame().GetSwSkImage();

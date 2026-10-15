@@ -225,6 +225,10 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     ready->SetString("chromiumVersion", std::to_string(CHROME_VERSION_MAJOR) + "." +
         std::to_string(CHROME_VERSION_MINOR) + "." + std::to_string(CHROME_VERSION_BUILD) + "." +
         std::to_string(CHROME_VERSION_PATCH));
+    auto global_context = CefRequestContext::GetGlobalContext();
+    auto capability = global_context->GetPreference("cloakfox.canvas_readback_version");
+    canvasVersion_ = capability && capability->GetType() == VTYPE_INT ? capability->GetInt() : 0;
+    ready->SetInt("canvasReadbackVersion", canvasVersion_);
     ready->SetBool("privacyPatched", false); ready->SetBool("probeEnabled", probe_);
     ready->SetBool("testKeychain", testKeychain_);
     ready->SetBool("testQuicRoute", testQuicPort_ != 0);
@@ -247,6 +251,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     auto data = reply(requestId, true); data->SetString("event", "opened");
     data->SetInt("browser", browser->GetIdentifier());
     data->SetString("container", container); data->SetBool("private", isPrivate);
+    data->SetBool("canvasEnabled", canvasVersion_ > 0 && contexts_.at(key).canvasEnabled);
     if (requestId == 0) data->Remove("id");
     emit(data);
     if (closing_) browser->GetHost()->CloseBrowser(true);
@@ -284,6 +289,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
   struct ContextEntry {
     CefRefPtr<CefRequestContext> context;
     bool ready = false;
+    bool canvasEnabled = true;
     int creating = 0;
     std::vector<OpenRequest> pending;
   };
@@ -302,6 +308,16 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     if (closing_ || !contexts_.count(key)) return;
     auto& entry = contexts_.at(key);
     entry.context = context;
+    if (canvasVersion_ > 0) {
+      auto enabled = CefValue::Create(); enabled->SetBool(entry.canvasEnabled);
+      CefString failure;
+      if (!context->SetPreference("cloakfox.canvas_enabled", enabled, failure)) {
+        for (const auto& request : entry.pending)
+          error(request.id, "Cannot configure native canvas policy: " + failure.ToString());
+        contexts_.erase(key);
+        return;
+      }
+    }
     entry.ready = true;
     auto pending = std::move(entry.pending);
     for (const auto& request : pending) openWindow(context, request);
@@ -320,7 +336,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     if (closing_) { error(id, "Companion is closing"); return; }
     const auto command = data->GetString("command").ToString();
     const std::map<std::string, std::vector<std::string>> fields{
-      {"open", {"version", "id", "command", "container", "url", "private"}},
+      {"open", {"version", "id", "command", "container", "url", "private", "privacy"}},
       {"quit", {"version", "id", "command"}},
       {"close", {"version", "id", "command", "browser"}},
       {"navigate", {"version", "id", "command", "browser", "url"}},
@@ -341,6 +357,17 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
           (data->HasKey("private") && data->GetType("private") != VTYPE_BOOL)) {
         error(id, "Invalid open request"); return;
       }
+      bool canvasEnabled = true;
+      const bool explicitPolicy = data->HasKey("privacy");
+      if (explicitPolicy) {
+        auto policy = data->GetType("privacy") == VTYPE_DICTIONARY
+                          ? data->GetDictionary("privacy") : nullptr;
+        if (!canvasVersion_ || !policy || policy->GetSize() != 1 ||
+            policy->GetType("canvas") != VTYPE_BOOL) {
+          error(id, "Unsupported privacy policy"); return;
+        }
+        canvasEnabled = policy->GetBool("canvas");
+      }
       const auto container = data->GetString("container").ToString();
       const auto url = data->GetString("url").ToString();
       if (!navigable(url)) {
@@ -353,7 +380,11 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
           throw std::runtime_error("Invalid container ID");
         const auto key = std::string(isPrivate ? "private:" : "persistent:") + container;
         auto& entry = contexts_[key];
+        if (entry.context && explicitPolicy && entry.canvasEnabled != canvasEnabled) {
+          error(id, "Canvas policy conflicts with live container context"); return;
+        }
         if (!entry.context) {
+          entry.canvasEnabled = canvasEnabled;
           CefRequestContextSettings settings;
           if (!isPrivate) CefString(&settings.cache_path) = paths_->cachePath(container);
           entry.context = CefRequestContext::CreateContext(settings, new ContextHandler(this, key));
@@ -388,6 +419,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
   const bool probe_;
   const bool testKeychain_;
   const int testQuicPort_;
+  int canvasVersion_ = 0;
   int lastId_ = 0;
   bool closing_ = false;
   int creatingWindows_ = 0;

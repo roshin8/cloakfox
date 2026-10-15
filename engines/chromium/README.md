@@ -194,3 +194,32 @@ preserve the existing supported helper set, GPU rendering and sandbox enforcemen
 Apply the pinned macOS runtime repair described in
 [the source-build instructions](../../docs/dual-engine/cef-source-build.md)
 after CEF's upstream patches and before building the framework.
+
+### Experimental native canvas patch
+
+After applying the pinned upstream CEF patches and macOS RNG repair:
+
+```sh
+python3 engines/chromium/apply_canvas_patch.py --source-root /absolute/path/to/chromium/src
+```
+
+The preparer verifies every pinned input before changing anything; `--check`
+verifies the final source hashes. Build the framework and relink the companion.
+The companion detects the native `canvasReadbackVersion` preference; a binary SDK
+without the patch continues reporting zero and rejects canvas policy requests.
+`privacyPatched` remains false because complete privacy parity is not implemented.
+
+An `open` request can include `"privacy":{"canvas":false}` to disable this
+experimental transform for its context. The default is enabled with the patched
+framework. An omitted policy inherits an existing context's setting; an explicit
+conflicting setting is rejected. Close all windows in a private context, or
+restart the companion for a persistent context, before changing it. This is a
+controller setting; the shared Gecko settings UI is not integrated yet.
+
+The first increment changes fully opaque pixels in sRGB/RGBA8 readback and image exports in
+pages and dedicated workers, using a persistent container secret plus schemeful
+site. It is **partial protection**: nonopaque pixels, non-sRGB/float16 readback,
+shared/service workers, opaque origins and raw WebGL/WebGPU remain uncovered.
+The RGB low-bit transform reduces precision and is deterministic/idempotent for
+the same site and coordinates. It does not establish resistance to all canvas
+fingerprinting or guarantee a website's verification outcome.

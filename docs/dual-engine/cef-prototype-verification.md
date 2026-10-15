@@ -1,5 +1,9 @@
 # CEF companion prototype verification — 2026-10-13
 
+Latest source-built canvas increment: [runtime evidence](cef-canvas-privacy-20261015.json)
+and [coverage/limitations](cef-canvas-privacy.md). The original binary SDK baseline
+below is preserved; the new source-built companion has partial native canvas protection.
+
 Branch: `codex/dual-engine-prototype`, based on Firefox 157 commit `24c23d478e`.
 CEF: `154.0.34+g14c5a08+chromium-154.0.8037.98`, stable macOS arm64 distribution.
 The archive matches its official index SHA1 and pinned SHA256 in `engines/chromium/cef-lock.json`.
