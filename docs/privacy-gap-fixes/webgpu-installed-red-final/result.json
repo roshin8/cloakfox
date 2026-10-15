@@ -1,0 +1,59 @@
+{
+  "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+  "checks": [
+    {
+      "pass": true,
+      "name": "masterTrue: same-owner canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterTrue: same-owner worker canvas/device configures"
+    },
+    {
+      "pass": false,
+      "name": "masterTrue: cross-site canvas/device rejected"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: same-owner canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: same-owner worker canvas/device configures"
+    },
+    {
+      "pass": false,
+      "name": "masterFalse: cross-site canvas/device native behavior retained"
+    }
+  ],
+  "cases": [
+    {
+      "master": true,
+      "sameOwner": {
+        "configured": true
+      },
+      "worker": {
+        "configured": true
+      },
+      "crossSite": {
+        "cloneError": true
+      }
+    },
+    {
+      "master": false,
+      "sameOwner": {
+        "configured": true
+      },
+      "worker": {
+        "configured": true
+      },
+      "crossSite": {
+        "cloneError": true
+      }
+    }
+  ],
+  "runtime": {
+    "buildID": "20261015174757",
+    "version": "158.0-beta.26"
+  }
+}

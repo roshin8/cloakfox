@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_ip_conflicts.py", line 113, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_ip_conflicts.py", line 40, in main
+    route(id,1,s.server_port);value=check(id);assert value.get('ipv4')=='192.0.2.1' and value.get('ipv6')=='2001:db8::1',value
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'error': None, 'errors': None, 'ip': '2001:db8::1', 'ipv4': None, 'ipv6': None}

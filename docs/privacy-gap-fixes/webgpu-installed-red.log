@@ -1,0 +1,13 @@
+PASS masterTrue: same-owner canvas/device configures
+PASS masterTrue: same-owner worker canvas/device configures
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_webgpu_canvas_owner.py", line 48, in <module>
+    if __name__=='__main__':raise SystemExit(main())
+                                             ^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_webgpu_canvas_owner.py", line 42, in main
+    d.switch_to.window(child);result=WebDriverWait(d,25).until(lambda x:x.execute_script('return window.transferResult'))
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/support/wait.py", line 121, in until
+    raise TimeoutException(message, screen, stacktrace)
+selenium.common.exceptions.TimeoutException: Message: 
+

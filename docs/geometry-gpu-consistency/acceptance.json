@@ -1,0 +1,127 @@
+{
+  "scope": "installed macOS arm64 only",
+  "install": {
+    "installed": "/Applications/Cloakfox.app",
+    "candidate": "/tmp/Cloakfox-geometry-consistency.app",
+    "backup": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-before-geometry-consistency-20261015-161123.app",
+    "applicationIniBuildID": "20261015160955",
+    "version": "158.0-beta.26",
+    "xulSHA256": "0dd811a063e878eb03d8d19a5510fe09ab77de33f56732985bf9749cf11a7b56",
+    "signatureVerified": true,
+    "profilesModified": false,
+    "scope": "macOS arm64 only"
+  },
+  "runtimeBuildID": "20261015160908",
+  "coreCorpusChecks": 940,
+  "additionalSVGChecks": 29,
+  "additionalGPUProfileChecks": 42,
+  "probes": [
+    {
+      "probe": "probe_canvas_canonical_gpu",
+      "checks": 103,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_canonical_gpu/result.json"
+    },
+    {
+      "probe": "probe_canvas_canonical_fonts",
+      "checks": 96,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/final-independent/probe_canvas_canonical_fonts/result.json"
+    },
+    {
+      "probe": "probe_canvas_canonical_images",
+      "checks": 15,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_canonical_images/result.json"
+    },
+    {
+      "probe": "probe_canvas_canonical_raw_video",
+      "checks": 58,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_canonical_raw_video/result.json"
+    },
+    {
+      "probe": "probe_canvas_canonical_capture",
+      "checks": 4,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_canonical_capture/result.json"
+    },
+    {
+      "probe": "probe_canvas_capture_fallback",
+      "checks": 32,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_capture_fallback/result.json"
+    },
+    {
+      "probe": "probe_canvas_unseeded_guards",
+      "checks": 5,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_unseeded_guards/result.json"
+    },
+    {
+      "probe": "probe_canvas_owner_transfer",
+      "checks": 4,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_owner_transfer/result.json"
+    },
+    {
+      "probe": "probe_canvas_canonical_adversarial",
+      "checks": 14,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_canonical_adversarial/result.json"
+    },
+    {
+      "probe": "probe_canvas_canonical_text",
+      "checks": 17,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_canonical_text/result.json"
+    },
+    {
+      "probe": "probe_canvas_pixel_transfers",
+      "checks": 11,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_pixel_transfers/result.json"
+    },
+    {
+      "probe": "probe_canvas_consistency",
+      "checks": 581,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/installed/probe_canvas_consistency/result.json"
+    },
+    {
+      "probe": "probe_canvas_canonical_svg_golden",
+      "checks": 29,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/final-independent/probe_canvas_canonical_svg_golden/result.json"
+    },
+    {
+      "probe": "gpu_profiles",
+      "checks": 42,
+      "failures": 0,
+      "report": "docs/geometry-gpu-consistency/gpu-profile-installed/result.json"
+    }
+  ],
+  "libraries": {
+    "checks": 448,
+    "executions": 48,
+    "failures": 0
+  },
+  "geometryModes": [
+    "canonical off",
+    "canonical on"
+  ],
+  "unitTests": {
+    "nodePassed": 261,
+    "pythonPassed": 115,
+    "pythonSkipped": 14
+  },
+  "patchReplay": {
+    "patches": 144,
+    "pristineTargets": 408,
+    "drift": []
+  },
+  "signatureVerified": true,
+  "gpuManifestFilesVerified": 82,
+  "fontTestCorrection": "Original 100-check font report retained; its two SVG-vs-Canvas equality failures are pre-existing and reproduce in the previous build. Revised 96-check font corpus plus 29 exact SVG golden checks replace that overstrict assertion. See svg-bidi-diagnosis/README.md.",
+  "remainingWarnings": "See detector-observations.json; known rotate dimensions and generic GPU/capability allowlist warnings remain."
+}

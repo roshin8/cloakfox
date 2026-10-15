@@ -24,6 +24,7 @@ class BackendProfile(unittest.TestCase):
         end = source.index('  // End Cloakfox standardized backend cohort.', start)
         branch = source[start:end]
         harness = r'''
+#include "CloakfoxGPUProfileCore.hpp"
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -35,7 +36,7 @@ template<class T> bool RestrictCap(T* cap, T target) {
 }
 struct Context {
  bool gl2=true;
- struct { bool cloakfoxBackendProfile=true; } mOptions;
+ struct { bool cloakfoxBackendProfile=true; uint32_t cloakfoxPersonaProfile=0; } mOptions;
  struct Caps {
   uint32_t maxTexUnits=80,maxVertexAttribs=32,maxColorDrawBuffers=8,
    maxTex2dSize=16384,maxTexCubeSize=16384,maxTex3dSize=2048,
@@ -53,6 +54,13 @@ struct Context {
  }
 };
 int main(){
+ for(unsigned family=1;family<=4;family++)for(unsigned variant=0;variant<256;variant++){
+  Context c;c.mOptions.cloakfoxPersonaProfile=(family<<8)|variant;assert(c.apply());
+  auto p=CloakfoxGPUProfile::Decode(c.mOptions.cloakfoxPersonaProfile);assert(p);
+  assert(c.limits.maxTex2dSize==p->texture && c.mGLMaxVertexUniformVectors==p->vertexUniforms && c.mGLMaxFragmentUniformVectors==p->fragmentUniforms);
+  Context weak;weak.mOptions=c.mOptions;weak.limits.maxTex2dSize=p->texture-1;assert(!weak.apply());
+ }
+ Context invalid;invalid.mOptions.cloakfoxPersonaProfile=0x500;assert(!invalid.apply());
  Context gl2; assert(gl2.apply());
  assert(gl2.limits.maxTexUnits==32 && gl2.limits.maxVertexAttribs==16);
  assert(gl2.mGLMaxVertexTextureImageUnits==16 && gl2.mGLMaxFragmentTextureImageUnits==16);
@@ -84,7 +92,7 @@ int main(){
             file = pathlib.Path(directory) / 'cohort.cpp'
             file.write_text(harness)
             binary = pathlib.Path(directory) / 'cohort'
-            subprocess.run([compiler, '-std=c++17', str(file), '-o', str(binary)], check=True)
+            subprocess.run([compiler, '-std=c++17', '-I'+str(ROOT/'additions/cloakcfg'), str(file), '-o', str(binary)], check=True)
             subprocess.run([str(binary)], check=True)
 
 
@@ -122,7 +130,7 @@ int main() {
             file = pathlib.Path(directory) / 'precision.cpp'
             file.write_text(harness)
             binary = pathlib.Path(directory) / 'precision'
-            subprocess.run([compiler, '-std=c++17', str(file), '-o', str(binary)], check=True)
+            subprocess.run([compiler, '-std=c++17', '-I'+str(ROOT/'additions/cloakcfg'), str(file), '-o', str(binary)], check=True)
             subprocess.run([str(binary)], check=True)
 
 

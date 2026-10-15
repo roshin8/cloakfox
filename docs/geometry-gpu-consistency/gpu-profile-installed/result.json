@@ -1,0 +1,2993 @@
+{
+  "checks": [
+    {
+      "name": "webgl point/line raster obeys cohort while requested line state stays native",
+      "pass": true
+    },
+    {
+      "name": "webgl2 point/line raster obeys cohort while requested line state stays native",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 supports complete protected baseline",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 generic identity bypasses legacy GPU overrides",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 standardized capabilities bypass legacy scalar tables",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 texture/renderbuffer allocation enforces reported ceiling",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 attribute and texture-unit validation enforce cohort",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 shader compiler rejects excess uniform resources",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 invalid precision enum cannot be manufactured by config",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 conservative extensions retain native support checks",
+      "pass": true
+    },
+    {
+      "name": "WebGL1 mutable GL state remains native",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 supports complete protected baseline",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 generic identity bypasses legacy GPU overrides",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 standardized capabilities bypass legacy scalar tables",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 texture/renderbuffer allocation enforces reported ceiling",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 attribute and texture-unit validation enforce cohort",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 shader compiler rejects excess uniform resources",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 invalid precision enum cannot be manufactured by config",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 conservative extensions retain native support checks",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 mutable GL state remains native",
+      "pass": true
+    },
+    {
+      "name": "profile preserves existing bounded masks for uncontrolled sample capability",
+      "pass": true
+    },
+    {
+      "name": "WebGL2 scalar components agree with normalized shader resources",
+      "pass": true
+    },
+    {
+      "name": "compatible profile preserves strict RGBA8UI denial and unchanged destination",
+      "pass": true
+    },
+    {
+      "name": "compatible profile preserves strict PBO denial and unchanged buffer",
+      "pass": true
+    },
+    {
+      "name": "strict readback leaves protected ordinary RGBA and generic profile available",
+      "pass": true
+    },
+    {
+      "name": "explicit readback compatibility restores exact integer computation data",
+      "pass": true
+    },
+    {
+      "name": "explicit readback compatibility restores exact PBO data",
+      "pass": true
+    },
+    {
+      "name": "readback compatibility retains generic standardized GPU profile",
+      "pass": true
+    },
+    {
+      "name": "window OffscreenCanvas uses owning profile",
+      "pass": true
+    },
+    {
+      "name": "worker OffscreenCanvas uses owning profile",
+      "pass": true
+    },
+    {
+      "name": "both WebGL versions expose the same shared device cohort",
+      "pass": true
+    },
+    {
+      "name": "real second-container window and worker use own policy and legacy parameter tables",
+      "pass": true
+    },
+    {
+      "name": "malformed precision falls through owning block policy and invalid enums stay native in window/worker",
+      "pass": true
+    },
+    {
+      "name": "ownership test uses actual container origin attributes",
+      "pass": true
+    },
+    {
+      "name": "own protected baseline survives site navigation http://127.0.0.1:61647/index.html",
+      "pass": true
+    },
+    {
+      "name": "own protected baseline survives site navigation http://localhost:61647/index.html",
+      "pass": true
+    },
+    {
+      "name": "existing contexts retain frozen profile after toggle",
+      "pass": true
+    },
+    {
+      "name": "loss/restoration retains frozen profile after toggle",
+      "pass": true
+    },
+    {
+      "name": "disabling mode restores saved legacy overrides for new contexts",
+      "pass": true
+    },
+    {
+      "name": "restart preserves opt-in, seeds and manual GPU tables",
+      "pass": true
+    },
+    {
+      "name": "restart retains deterministic baseline",
+      "pass": true
+    },
+    {
+      "name": "master-off new contexts retain native GPU behavior",
+      "pass": true
+    }
+  ],
+  "measurements": {
+    "native": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 80,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_VARYING_VECTORS": 32,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 1024
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_depth_clamp",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context",
+          "WEBGL_provoking_vertex"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "Apple M1, or similar",
+          "Apple",
+          "Apple M1, or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_depth_clamp",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context",
+          "WEBGL_provoking_vertex"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 2048,
+          "MAX_ARRAY_TEXTURE_LAYERS": 2048,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 80,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_DRAW_BUFFERS": 8,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 128,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 4096,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_SAMPLES": 4,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 80,
+          "MAX_VARYING_COMPONENTS": 124,
+          "MAX_VARYING_VECTORS": 32,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 4096,
+          "MAX_VERTEX_UNIFORM_VECTORS": 1024
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "EXT_color_buffer_float",
+          "EXT_depth_clamp",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context",
+          "WEBGL_provoking_vertex"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "Apple M1, or similar",
+          "Apple",
+          "Apple M1, or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "EXT_color_buffer_float",
+          "EXT_depth_clamp",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context",
+          "WEBGL_provoking_vertex"
+        ]
+      }
+    ],
+    "legacy": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_VARYING_VECTORS": 30,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 1024
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+          "Google Inc. (NVIDIA)",
+          "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 0,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 2048,
+          "MAX_ARRAY_TEXTURE_LAYERS": 256,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_DRAW_BUFFERS": 8,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 120,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 4096,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_SAMPLES": 4,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 24,
+          "MAX_VARYING_COMPONENTS": 124,
+          "MAX_VARYING_VECTORS": 30,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 4096,
+          "MAX_VERTEX_UNIFORM_VECTORS": 1024
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "EXT_color_buffer_float",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+          "Google Inc. (NVIDIA)",
+          "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 0,
+        "working": [
+          "EXT_color_buffer_float",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context"
+        ]
+      }
+    ],
+    "profile": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 2048,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 224,
+          "MAX_RENDERBUFFER_SIZE": 2048,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 2048,
+          "MAX_VARYING_VECTORS": 15,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 256
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "OES_element_index_uint",
+          "OES_standard_derivatives",
+          "OES_vertex_array_object",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_depth_texture",
+          "WEBGL_lose_context"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "WebGL",
+          "Mozilla",
+          "WebGL"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "OES_element_index_uint",
+          "OES_standard_derivatives",
+          "OES_vertex_array_object",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_depth_texture",
+          "WEBGL_lose_context"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 256,
+          "MAX_ARRAY_TEXTURE_LAYERS": 256,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 2048,
+          "MAX_DRAW_BUFFERS": 4,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 60,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 896,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 224,
+          "MAX_RENDERBUFFER_SIZE": 2048,
+          "MAX_SAMPLES": 1,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 2048,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 24,
+          "MAX_VARYING_COMPONENTS": 60,
+          "MAX_VARYING_VECTORS": 15,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 1024,
+          "MAX_VERTEX_UNIFORM_VECTORS": 256
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "WEBGL_debug_renderer_info",
+          "WEBGL_lose_context"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "WebGL",
+          "Mozilla",
+          "WebGL"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "WEBGL_debug_renderer_info",
+          "WEBGL_lose_context"
+        ]
+      }
+    ],
+    "raster": [
+      {
+        "error": 0,
+        "kind": "webgl",
+        "lineRows": 1,
+        "lineState": 128,
+        "pointRows": 63
+      },
+      {
+        "error": 0,
+        "kind": "webgl2",
+        "lineRows": 1,
+        "lineState": 128,
+        "pointRows": 63
+      }
+    ],
+    "profileStrictReadback": {
+      "bufferError": 0,
+      "integer": [
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88
+      ],
+      "integerError": 1282,
+      "ordinaryError": 0,
+      "pboData": [
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88,
+        88
+      ],
+      "pboError": 1282,
+      "renderer": "WebGL",
+      "status": 36053,
+      "texture": 2048
+    },
+    "profileCompatibilityReadback": {
+      "bufferError": 0,
+      "integer": [
+        17,
+        123,
+        231,
+        255,
+        17,
+        123,
+        231,
+        255,
+        17,
+        123,
+        231,
+        255,
+        17,
+        123,
+        231,
+        255
+      ],
+      "integerError": 0,
+      "ordinaryError": 0,
+      "pboData": [
+        255,
+        0,
+        255,
+        255,
+        255,
+        0,
+        255,
+        255,
+        255,
+        0,
+        255,
+        255,
+        255,
+        0,
+        255,
+        255
+      ],
+      "pboError": 0,
+      "renderer": "WebGL",
+      "status": 36053,
+      "texture": 2048
+    },
+    "windowOffscreen": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 2048,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 224,
+          "MAX_RENDERBUFFER_SIZE": 2048,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 2048,
+          "MAX_VARYING_VECTORS": 15,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 256
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "OES_element_index_uint",
+          "OES_standard_derivatives",
+          "OES_vertex_array_object",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_depth_texture",
+          "WEBGL_lose_context"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "WebGL",
+          "Mozilla",
+          "WebGL"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "OES_element_index_uint",
+          "OES_standard_derivatives",
+          "OES_vertex_array_object",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_depth_texture",
+          "WEBGL_lose_context"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 256,
+          "MAX_ARRAY_TEXTURE_LAYERS": 256,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 2048,
+          "MAX_DRAW_BUFFERS": 4,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 60,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 896,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 224,
+          "MAX_RENDERBUFFER_SIZE": 2048,
+          "MAX_SAMPLES": 1,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 2048,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 24,
+          "MAX_VARYING_COMPONENTS": 60,
+          "MAX_VARYING_VECTORS": 15,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 1024,
+          "MAX_VERTEX_UNIFORM_VECTORS": 256
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "WEBGL_debug_renderer_info",
+          "WEBGL_lose_context"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "WebGL",
+          "Mozilla",
+          "WebGL"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "WEBGL_debug_renderer_info",
+          "WEBGL_lose_context"
+        ]
+      }
+    ],
+    "worker": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 2048,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 224,
+          "MAX_RENDERBUFFER_SIZE": 2048,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 2048,
+          "MAX_VARYING_VECTORS": 15,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 256
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "OES_element_index_uint",
+          "OES_standard_derivatives",
+          "OES_vertex_array_object",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_depth_texture",
+          "WEBGL_lose_context"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "WebGL",
+          "Mozilla",
+          "WebGL"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "OES_element_index_uint",
+          "OES_standard_derivatives",
+          "OES_vertex_array_object",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_depth_texture",
+          "WEBGL_lose_context"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 256,
+          "MAX_ARRAY_TEXTURE_LAYERS": 256,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 2048,
+          "MAX_DRAW_BUFFERS": 4,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 60,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 896,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 224,
+          "MAX_RENDERBUFFER_SIZE": 2048,
+          "MAX_SAMPLES": 1,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 2048,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 24,
+          "MAX_VARYING_COMPONENTS": 60,
+          "MAX_VARYING_VECTORS": 15,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 1024,
+          "MAX_VERTEX_UNIFORM_VECTORS": 256
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "WEBGL_debug_renderer_info",
+          "WEBGL_lose_context"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "WebGL",
+          "Mozilla",
+          "WebGL"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "WEBGL_debug_renderer_info",
+          "WEBGL_lose_context"
+        ]
+      }
+    ],
+    "otherContainer": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_VARYING_VECTORS": 30,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 19
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "NVIDIA GeForce GTX 980, or similar",
+          "NVIDIA Corporation",
+          "NVIDIA GeForce GTX 980, or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": true,
+        "shaderLog": "",
+        "textureUnitAbove": 0,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 2048,
+          "MAX_ARRAY_TEXTURE_LAYERS": 256,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_DRAW_BUFFERS": 8,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 120,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 4096,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_SAMPLES": 4,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 24,
+          "MAX_VARYING_COMPONENTS": 124,
+          "MAX_VARYING_VECTORS": 30,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 76,
+          "MAX_VERTEX_UNIFORM_VECTORS": 19
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "EXT_color_buffer_float",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "NVIDIA GeForce GTX 980, or similar",
+          "NVIDIA Corporation",
+          "NVIDIA GeForce GTX 980, or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": true,
+        "shaderLog": "",
+        "textureUnitAbove": 0,
+        "working": [
+          "EXT_color_buffer_float",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context"
+        ]
+      }
+    ],
+    "otherContainerWorker": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_VARYING_VECTORS": 30,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 19
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "NVIDIA GeForce GTX 980, or similar",
+          "NVIDIA Corporation",
+          "NVIDIA GeForce GTX 980, or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": true,
+        "shaderLog": "",
+        "textureUnitAbove": 0,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 2048,
+          "MAX_ARRAY_TEXTURE_LAYERS": 256,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_DRAW_BUFFERS": 8,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 120,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 4096,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_SAMPLES": 4,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 24,
+          "MAX_VARYING_COMPONENTS": 124,
+          "MAX_VARYING_VECTORS": 30,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 76,
+          "MAX_VERTEX_UNIFORM_VECTORS": 19
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "EXT_color_buffer_float",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "NVIDIA GeForce GTX 980, or similar",
+          "NVIDIA Corporation",
+          "NVIDIA GeForce GTX 980, or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": true,
+        "shaderLog": "",
+        "textureUnitAbove": 0,
+        "working": [
+          "EXT_color_buffer_float",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context"
+        ]
+      }
+    ],
+    "exactWorkerTableOwnership": {
+      "configuredOwnerVectors": 19,
+      "observedWorkerVectors": [
+        19,
+        19
+      ]
+    },
+    "malformedPrecisionPolicy": {
+      "window": {
+        "blocked": true,
+        "invalid": true,
+        "invalidError": 1280,
+        "valueError": 0
+      },
+      "worker": {
+        "blocked": true,
+        "invalid": true,
+        "invalidError": 1280,
+        "valueError": 0
+      }
+    },
+    "restoration": {
+      "renderer": "WebGL",
+      "texture": 2048
+    },
+    "profileOff": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_VARYING_VECTORS": 30,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 13
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "Unrelated test renderer",
+          "Unrelated test vendor",
+          "Unrelated test renderer"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": true,
+        "shaderLog": "",
+        "textureUnitAbove": 0,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 2048,
+          "MAX_ARRAY_TEXTURE_LAYERS": 256,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_DRAW_BUFFERS": 8,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 120,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 4096,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_SAMPLES": 1,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 24,
+          "MAX_VARYING_COMPONENTS": 124,
+          "MAX_VARYING_VECTORS": 30,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 52,
+          "MAX_VERTEX_UNIFORM_VECTORS": 13
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "EXT_color_buffer_float",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "Unrelated test renderer",
+          "Unrelated test vendor",
+          "Unrelated test renderer"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ],
+          [
+            31,
+            30,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": true,
+        "shaderLog": "",
+        "textureUnitAbove": 0,
+        "working": [
+          "EXT_color_buffer_float",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context"
+        ]
+      }
+    ],
+    "restart": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 2048,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 224,
+          "MAX_RENDERBUFFER_SIZE": 2048,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 2048,
+          "MAX_VARYING_VECTORS": 15,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 256
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "OES_element_index_uint",
+          "OES_standard_derivatives",
+          "OES_vertex_array_object",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_depth_texture",
+          "WEBGL_lose_context"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "WebGL",
+          "Mozilla",
+          "WebGL"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "OES_element_index_uint",
+          "OES_standard_derivatives",
+          "OES_vertex_array_object",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_depth_texture",
+          "WEBGL_lose_context"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 256,
+          "MAX_ARRAY_TEXTURE_LAYERS": 256,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 32,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 2048,
+          "MAX_DRAW_BUFFERS": 4,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 60,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 896,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 224,
+          "MAX_RENDERBUFFER_SIZE": 2048,
+          "MAX_SAMPLES": 1,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 2048,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 24,
+          "MAX_VARYING_COMPONENTS": 60,
+          "MAX_VARYING_VECTORS": 15,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 1024,
+          "MAX_VERTEX_UNIFORM_VECTORS": 256
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "WEBGL_debug_renderer_info",
+          "WEBGL_lose_context"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "WebGL",
+          "Mozilla",
+          "WebGL"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "WEBGL_debug_renderer_info",
+          "WEBGL_lose_context"
+        ]
+      }
+    ],
+    "masterOff": [
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 80,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_VARYING_VECTORS": 32,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_VECTORS": 1024
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_depth_clamp",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context",
+          "WEBGL_provoking_vertex"
+        ],
+        "gl2": false,
+        "identity": [
+          "Mozilla",
+          "Apple M1, or similar",
+          "Apple",
+          "Apple M1, or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "ANGLE_instanced_arrays",
+          "EXT_blend_minmax",
+          "EXT_color_buffer_half_float",
+          "EXT_depth_clamp",
+          "EXT_float_blend",
+          "EXT_frag_depth",
+          "EXT_shader_texture_lod",
+          "EXT_sRGB",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_element_index_uint",
+          "OES_fbo_render_mipmap",
+          "OES_standard_derivatives",
+          "OES_texture_float",
+          "OES_texture_float_linear",
+          "OES_texture_half_float",
+          "OES_texture_half_float_linear",
+          "OES_vertex_array_object",
+          "WEBGL_color_buffer_float",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_depth_texture",
+          "WEBGL_draw_buffers",
+          "WEBGL_lose_context",
+          "WEBGL_provoking_vertex"
+        ]
+      },
+      {
+        "above": 1281,
+        "attribAbove": 1281,
+        "below": 0,
+        "caps": {
+          "MAX_3D_TEXTURE_SIZE": 2048,
+          "MAX_ARRAY_TEXTURE_LAYERS": 2048,
+          "MAX_COMBINED_TEXTURE_IMAGE_UNITS": 80,
+          "MAX_CUBE_MAP_TEXTURE_SIZE": 8192,
+          "MAX_DRAW_BUFFERS": 8,
+          "MAX_FRAGMENT_INPUT_COMPONENTS": 128,
+          "MAX_FRAGMENT_UNIFORM_COMPONENTS": 4096,
+          "MAX_FRAGMENT_UNIFORM_VECTORS": 1024,
+          "MAX_RENDERBUFFER_SIZE": 8192,
+          "MAX_SAMPLES": 4,
+          "MAX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_TEXTURE_SIZE": 8192,
+          "MAX_UNIFORM_BUFFER_BINDINGS": 80,
+          "MAX_VARYING_COMPONENTS": 124,
+          "MAX_VARYING_VECTORS": 32,
+          "MAX_VERTEX_ATTRIBS": 16,
+          "MAX_VERTEX_OUTPUT_COMPONENTS": 64,
+          "MAX_VERTEX_TEXTURE_IMAGE_UNITS": 16,
+          "MAX_VERTEX_UNIFORM_COMPONENTS": 4096,
+          "MAX_VERTEX_UNIFORM_VECTORS": 1024
+        },
+        "color": [
+          0.25,
+          0.5,
+          0.75,
+          1
+        ],
+        "extensions": [
+          "EXT_color_buffer_float",
+          "EXT_depth_clamp",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context",
+          "WEBGL_provoking_vertex"
+        ],
+        "gl2": true,
+        "identity": [
+          "Mozilla",
+          "Apple M1, or similar",
+          "Apple",
+          "Apple M1, or similar"
+        ],
+        "invalidError": 1280,
+        "invalidPrecision": null,
+        "precision": [
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            127,
+            127,
+            23
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ],
+          [
+            24,
+            24,
+            0
+          ]
+        ],
+        "renderbufferAbove": 1281,
+        "shaderAbove": false,
+        "shaderLog": "ERROR: too many uniforms\n",
+        "textureUnitAbove": 1281,
+        "working": [
+          "EXT_color_buffer_float",
+          "EXT_depth_clamp",
+          "EXT_float_blend",
+          "EXT_texture_compression_rgtc",
+          "EXT_texture_filter_anisotropic",
+          "OES_draw_buffers_indexed",
+          "OES_texture_float_linear",
+          "WEBGL_compressed_texture_s3tc",
+          "WEBGL_compressed_texture_s3tc_srgb",
+          "WEBGL_debug_renderer_info",
+          "WEBGL_debug_shaders",
+          "WEBGL_lose_context",
+          "WEBGL_provoking_vertex"
+        ]
+      }
+    ]
+  }
+}

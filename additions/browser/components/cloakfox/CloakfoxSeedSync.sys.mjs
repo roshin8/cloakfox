@@ -155,7 +155,7 @@ function buildCloakCfg(seedB64, ucid = null) {
     "math:trig_seed": u32(seedB64, 4),
     ...fillPersonaKeys(seedB64, ucid),
   };
-  return JSON.stringify(ucid !== null ? withSessionTiming(applyOverrides(ucid, base), ucid) : base);
+  return JSON.stringify(ucid !== null ? withSessionTiming(applyOverrides(ucid, base, undefined, !Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${ucid}`, "")), ucid) : base);
 }
 
 // Explicit settings edits rebuild the same identity; they never rotate its seed.
@@ -412,8 +412,9 @@ function applyGraphicsOptInPolicy() {
     try {
       const cfg = JSON.parse(Services.prefs.getStringPref(pref, ""));
       if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) continue;
-      const updated = applyGraphicsPolicy(cfg);
-      if (cfg["canvas:render_privacy"] === updated["canvas:render_privacy"] &&
+      const updated = applyGraphicsPolicy(cfg, Number(pref.slice("cloakfox.s.cloak_cfg_".length)));
+      if (JSON.stringify(cfg["rendering:gpu_profile"]) === JSON.stringify(updated["rendering:gpu_profile"]) &&
+          cfg["canvas:render_privacy"] === updated["canvas:render_privacy"] &&
           cfg["webGl:backend_profile"] === updated["webGl:backend_profile"] &&
           cfg["canvas:canonical_2d"] === updated["canvas:canonical_2d"] &&
           cfg["canvas:canonical_gpu"] === updated["canvas:canonical_gpu"] &&
@@ -429,7 +430,8 @@ const observer = {
         data?.startsWith("cloakfox.language_identity_epoch.")) return;
     if (data === "cloakfox.opt.webgl_typed_readback_disabled" ||
         data === "cloakfox.experimental.canvas_pipeline") applyStrictGraphicsPolicy();
-    if (data === "cloakfox.opt.canvas_render_privacy" ||
+    if (data === "cloakfox.opt.container_rendering_profiles" ||
+        data === "cloakfox.opt.canvas_render_privacy" ||
         data === "cloakfox.opt.gpu_backend_profiles" ||
         data === "cloakfox.experimental.canvas_pipeline") applyGraphicsOptInPolicy();
     if (data?.startsWith("cloakfox.s.cloak_cfg_")) {

@@ -103,6 +103,9 @@ def test_native_gpu_context_cannot_inherit_canonical_backend_proof():
     webgpu=(ROOT/'dom/webgpu/CanvasContext.cpp').read_text()
     start=webgpu.index('gfx::CanvasPrivacyMetadata CanvasContext::GetCanvasPrivacyMetadata() const')
     webgpu=webgpu[start:webgpu.index('already_AddRefed<gfx::SourceSurface> CanvasContext::GetSurfaceSnapshot',start)]
+    device=(ROOT/'dom/webgpu/Device.cpp').read_text()
+    start=device.index('bool Device::HasCanvasPrivacyOwner(')
+    owner_predicate=device[start:device.index('\n}\n',start)+3]
     harness=r'''
 #include <cassert>
 #include "CanvasPrivacy.h"
@@ -121,8 +124,12 @@ class ClientWebGLContext {public:
 '''+webgl+r'''
 namespace webgpu {
 struct Device {bool mCanonicalGpu=false;uint32_t sources=0;
+ gfx::CanvasPrivacyMetadata mGpuPrivacyPolicy{1,7,123,456,64};
+ bool HasCanvasPrivacyOwner(const gfx::CanvasPrivacyMetadata&)const;
  uint32_t ExternalGpuSourcesFor(const gfx::CanvasPrivacyMetadata&)const{return sources;}
-};struct Configuration{Device*mDevice;};
+};
+'''+owner_predicate+r'''
+struct Configuration{Device*mDevice;};
 class CanvasContext {public:
  gfx::CanvasPrivacyMetadata mGpuPrivacyPolicy{1,7,123,456,64};
  Configuration*mConfiguration=nullptr;

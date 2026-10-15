@@ -1,0 +1,49 @@
+{
+  "installed": {
+    "installed": "/Applications/Cloakfox.app",
+    "candidate": "/tmp/Cloakfox-dual-ip.app",
+    "backup": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-before-dual-ip-20261015-183153.app",
+    "applicationIniBuildID": "20261015182945",
+    "version": "158.0-beta.26",
+    "xulSHA256": "c93c000e988d45f9afb40b98d7028767a540cd621c36b300d384474a73379c72",
+    "signatureVerified": true,
+    "profilesModified": false,
+    "scope": "macOS arm64 only"
+  },
+  "runtime": {
+    "buildID": "20261015182935",
+    "version": "158.0-beta.26"
+  },
+  "liveScenarios": [
+    "two real container proxy routes",
+    "IPv4 and IPv6 displayed",
+    "same-host visit filter",
+    "per-family history/conflicts",
+    "partial conflicting-family failure remains blocked",
+    "blocked route unknown",
+    "explicit continue preserves container",
+    "IPv6 overlap despite IPv4 difference",
+    "IPv4-only and IPv6-only results",
+    "family-validated fallback",
+    "light and dark responsive warning"
+  ],
+  "nodePassed": 295,
+  "pythonPassed": 118,
+  "pythonSkipped": 14,
+  "nativeReplay": {
+    "patches": 144,
+    "pristineTargets": 409,
+    "drift": []
+  },
+  "independentReview": "P2 family-label defect fixed and re-reviewed; no remaining P1/P2",
+  "packageVerification": {
+    "dmg": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-158.0-beta.26-macos-arm64.dmg",
+    "sha256": "abd76fc7cf56510aab804410e6775c876107163de8b33b50d8a4286ca2bce7f5",
+    "matchesInstalledApp": true,
+    "strictSignatureVerified": true,
+    "canonicalResourceHashesVerified": 82,
+    "xulSHA256": "c93c000e988d45f9afb40b98d7028767a540cd621c36b300d384474a73379c72"
+  },
+  "personalProfilesModified": false,
+  "scope": "macOS arm64; controlled TLS proxy fixtures, not real public-IP lookups"
+}

@@ -1,0 +1,927 @@
+{
+  "binary": "/tmp/Cloakfox-privacy-gap-fixes.app/Contents/MacOS/cloakfox",
+  "checks": [
+    {
+      "pass": true,
+      "name": "modeFalse/opaque: legacy readback protection or empty-transparent invariants"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toDataURL/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toDataURL/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toDataURL/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toDataURL/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toDataURL/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/convertToBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/convertToBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toDataURL/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toDataURL/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/toBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/convertToBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/convertToBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/worker/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/worker/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque/worker/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque: repeated serialization stays deterministic"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha: legacy readback protection or empty-transparent invariants"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toDataURL/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toDataURL/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toDataURL/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toDataURL/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toDataURL/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/convertToBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/convertToBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toDataURL/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toDataURL/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/toBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/convertToBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/convertToBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/worker/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/worker/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha/worker/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/low-alpha: repeated serialization stays deterministic"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent: legacy readback protection or empty-transparent invariants"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toDataURL/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toDataURL/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toDataURL/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toDataURL/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toDataURL/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/convertToBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/convertToBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toDataURL/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toDataURL/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/toBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/convertToBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/convertToBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/worker/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/worker/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent/worker/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/transparent: repeated serialization stays deterministic"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8: legacy readback protection or empty-transparent invariants"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toDataURL/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toDataURL/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toDataURL/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toDataURL/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toDataURL/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/convertToBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/convertToBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toDataURL/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toDataURL/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/toBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/convertToBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/convertToBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/worker/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/worker/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8/worker/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeFalse/opaque-x8: repeated serialization stays deterministic"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque: legacy readback protection or empty-transparent invariants"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toDataURL/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toDataURL/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toDataURL/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toDataURL/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toDataURL/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/convertToBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/convertToBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toDataURL/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toDataURL/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/toBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/convertToBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/convertToBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/worker/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/worker/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque/worker/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque: repeated serialization stays deterministic"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha: legacy readback protection or empty-transparent invariants"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toDataURL/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toDataURL/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toDataURL/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toDataURL/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toDataURL/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/convertToBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/convertToBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toDataURL/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toDataURL/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/toBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/convertToBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/convertToBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/worker/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/worker/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha/worker/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/low-alpha: repeated serialization stays deterministic"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent: legacy readback protection or empty-transparent invariants"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toDataURL/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toDataURL/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toDataURL/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toDataURL/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toDataURL/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/convertToBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/convertToBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toDataURL/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toDataURL/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/toBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/convertToBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/convertToBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/worker/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/worker/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent/worker/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/transparent: repeated serialization stays deterministic"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8: legacy readback protection or empty-transparent invariants"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toDataURL/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toDataURL/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toDataURL/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toDataURL/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toDataURL/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/convertToBlob/image/jpeg export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/convertToBlob/image/jpeg same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toDataURL/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toDataURL/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/toBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/convertToBlob/image/webp export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/convertToBlob/image/webp same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/worker/convertToBlob/image/png export succeeds"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/worker/convertToBlob/image/png matches protected typed readback, not native pixels"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8/worker/convertToBlob/image/png same-format routes agree"
+    },
+    {
+      "pass": true,
+      "name": "modeTrue/opaque-x8: repeated serialization stays deterministic"
+    },
+    {
+      "pass": true,
+      "name": "toDataURL: canonical unknown input with zero seed never releases source pixels"
+    },
+    {
+      "pass": true,
+      "name": "toBlob: canonical unknown input with zero seed never releases source pixels"
+    },
+    {
+      "pass": true,
+      "name": "convertToBlob: canonical unknown input with zero seed never releases source pixels"
+    },
+    {
+      "pass": true,
+      "name": "toDataURL: verified same-owner canonical pixels remain exact without double noise"
+    },
+    {
+      "pass": true,
+      "name": "toBlob: verified same-owner canonical pixels remain exact without double noise"
+    },
+    {
+      "pass": true,
+      "name": "convertToBlob: verified same-owner canonical pixels remain exact without double noise"
+    },
+    {
+      "pass": true,
+      "name": "worker/convertToBlob: verified same-owner canonical pixels remain exact without double noise"
+    },
+    {
+      "pass": true,
+      "name": "toDataURL: foreign-owner canonical bitmap receives recipient protection"
+    },
+    {
+      "pass": true,
+      "name": "toBlob: foreign-owner canonical bitmap receives recipient protection"
+    },
+    {
+      "pass": true,
+      "name": "convertToBlob: foreign-owner canonical bitmap receives recipient protection"
+    },
+    {
+      "pass": true,
+      "name": "worker/convertToBlob: foreign-owner canonical bitmap receives recipient protection"
+    }
+  ],
+  "cases": [
+    {
+      "canonical": false,
+      "nativeSHA256": "6034ddb1a48c9dd8d208658bea842b9d11da83a4a737dc681c8a71679471615a",
+      "protectedSHA256": "a2c222677aa430c10a092fe34f5a4d30991fbd5c642b059f3737b62b121d8738"
+    },
+    {
+      "canonical": false,
+      "nativeSHA256": "9989992625b8152eb0ff0b0935af2827fd542af4c59c35f5fbfe2ae1498d5ca4",
+      "protectedSHA256": "c64005f927430927b10dcc078ff71e8ba0ed51981db0a5006a03abeecf1b51d5"
+    },
+    {
+      "canonical": false,
+      "nativeSHA256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+      "protectedSHA256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+    },
+    {
+      "canonical": false,
+      "nativeSHA256": "4c8f8ddff0df3a124f8f372980ba382c9206bb7e45221502da8843b40ef38fb1",
+      "protectedSHA256": "685cd7629bb735829c7d0cd749e5996033f5fe01d483a242023a79d93d395b26"
+    },
+    {
+      "canonical": true,
+      "nativeSHA256": "6034ddb1a48c9dd8d208658bea842b9d11da83a4a737dc681c8a71679471615a",
+      "protectedSHA256": "a2c222677aa430c10a092fe34f5a4d30991fbd5c642b059f3737b62b121d8738"
+    },
+    {
+      "canonical": true,
+      "nativeSHA256": "9989992625b8152eb0ff0b0935af2827fd542af4c59c35f5fbfe2ae1498d5ca4",
+      "protectedSHA256": "c64005f927430927b10dcc078ff71e8ba0ed51981db0a5006a03abeecf1b51d5"
+    },
+    {
+      "canonical": true,
+      "nativeSHA256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+      "protectedSHA256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+    },
+    {
+      "canonical": true,
+      "nativeSHA256": "4c8f8ddff0df3a124f8f372980ba382c9206bb7e45221502da8843b40ef38fb1",
+      "protectedSHA256": "685cd7629bb735829c7d0cd749e5996033f5fe01d483a242023a79d93d395b26"
+    }
+  ],
+  "runtime": {
+    "buildID": "20261015180857",
+    "version": "158.0-beta.26"
+  }
+}

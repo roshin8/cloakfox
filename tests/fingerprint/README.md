@@ -618,3 +618,14 @@ font outlines and author-space paint in HTML/Offscreen/worker contexts),
 `CLOAKFOX_BIN` to the binary under test and `REPORT_DIR` for the text/transfer
 probe output; first-glyph output uses `--report`. These test scoped behavior;
 they do not certify the complete privacy pipeline or cross-host normalization.
+
+## Fingerprint libraries with WebGPU enabled
+
+Set `LIBRARY_WEBGPU_ENABLED=1` for `probe_fingerprint_libraries.py` to enable the
+native API and clear the per-container WebGPU block in its disposable profiles.
+CreepJS must collect adapter info and nonempty limits, stable across reloads;
+FingerprintJS is also rerun but does not probe WebGPU itself. Use the headed
+browser (leave `LIBRARY_HEADLESS` unset), and `CLOAKFOX_TEST_CANVAS_PIPELINE=1`
+to test the canonical backend. Personal profile settings are unchanged.
+
+Container GPU persona enforcement: `probe_container_gpu_profiles.py` tests the installed Mac binary with all four BrowserForge hardware families, identical-persona container pairs, native boundaries, workers, captured/restored contexts and restart persistence. Enable the optional mode in pinned-library audits with `LIBRARY_CONTAINER_GPU_PROFILES=1` together with `CLOAKFOX_TEST_CANVAS_PIPELINE=1`; `LIBRARY_WEBGPU_ENABLED=1` exercises WebGPU. See `docs/container-rendering-profiles/README.md` for truthful detector warnings and support limits.

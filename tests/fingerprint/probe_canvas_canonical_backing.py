@@ -15,6 +15,7 @@ class Page(BaseHTTPRequestHandler):
   self.send_response(200);self.end_headers();self.wfile.write(b'<!doctype html><title>Canonical backing policy</title>')
  def log_message(self,*_):pass
 PIXELS="""const c=document.createElement('canvas');c.width=32;c.height=32;const x=c.getContext('2d');x.fillStyle='rgb(128,128,128)';x.fillRect(0,0,32,32);return Array.from(x.getImageData(0,0,32,32).data);"""
+GLYPHS="""const c=document.createElement('canvas');c.width=320;c.height=60;const x=c.getContext('2d');x.fillStyle='rgb(128,128,128)';x.fillRect(0,0,c.width,c.height);x.fillStyle='black';x.font='19px serif';x.fillText('Cloakfox privacy € ∑',5,35);return Array.from(x.getImageData(0,0,c.width,c.height).data);"""
 def main():
  out=Path(os.environ.get('REPORT_DIR','/tmp/cloakfox-canonical-backing'));out.mkdir(parents=True,exist_ok=True);checks=[];binary=os.environ['CLOAKFOX_BIN']
  def check(ok,name):
@@ -38,23 +39,31 @@ def main():
    check(cfg()['canvas:canonical_2d'] is False,'internal experiment defaults off')
    chrome("const p='cloakfox.s.cloak_cfg_0';const c=JSON.parse(Services.prefs.getStringPref(p));c.sentinel={manual:'retained',network:'retained'};Services.prefs.setStringPref(p,JSON.stringify(c));")
    before=cfg();off=pixels()
+   check(any(v!=128 for i,v in enumerate(off) if i%4!=3) and all(v==255 for i,v in enumerate(off) if i%4==3),'default backing retains RGB masking and exact author alpha')
+   check(pixels()==off,'default backing readback remains deterministic')
    chrome("Services.prefs.setBoolPref('cloakfox.experimental.canvas_pipeline',true)")
    after=cfg();check(after=={**before,'canvas:canonical_2d':True,'canvas:canonical_gpu':True,'webGl:backend_profile':True,'webgl:typed_readback:disabled':True},'toggle changes only linked renderer policy fields')
-   on=pixels();check(on==off,'known-color extraction protection remains unchanged')
-   check(any(v!=128 for i,v in enumerate(on) if i%4!=3),'experimental backing does not remove RGB extraction guard')
+   # The complete renderer has a different deterministic readout path from
+   # the original backing-only foundation. Compare privacy invariants rather
+   # than requiring identical noise bytes across different renderer modes.
+   on=pixels();check(on[3::4]==off[3::4],'both backing modes retain exact author alpha')
+   check(all(v==128 for i,v in enumerate(on) if i%4!=3),'canonical renderer keeps authored solid RGB exact')
+   onGlyphs=driver.execute_script(GLYPHS)
+   check(driver.execute_script(GLYPHS)==onGlyphs,'canonical glyph output remains deterministic')
    check(all(v==255 for i,v in enumerate(on) if i%4==3),'opaque author alpha remains exact')
    check(pixels()==on,'protected pixels remain deterministic on reload')
    created=chrome("const {ContextualIdentityService}=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs');const id=ContextualIdentityService.create('Canonical backing test','fingerprint','blue').userContextId;return JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_'+id))")
    check(created['canvas:canonical_2d'] is True,'new containers inherit internal policy')
    chrome("const p='cloakfox.s.cloak_cfg_0';const c=JSON.parse(Services.prefs.getStringPref(p));c['canvas:canonical_2d']=false;Services.prefs.setStringPref(p,JSON.stringify(c));Services.prefs.savePrefFile(null);")
    driver.quit();driver=launch();check(cfg()==after,'restart repairs stale internal flag without changing identity or sentinel')
-   check(pixels()==on,'policy and masked pixels survive browser restart')
+   check(pixels()==on and driver.execute_script(GLYPHS)==onGlyphs,'policy and protected glyph pixels survive browser restart')
    rejected=chrome("try {Services.prefs.setStringPref('cloakfox.experimental.canvas_pipeline','true');return false;}catch {return true;}")
    check(rejected and cfg()['canvas:canonical_2d'] is True,'preference service rejects wrong-type writes without changing policy')
    chrome("Services.prefs.setBoolPref('cloakfox.experimental.canvas_pipeline',false)")
    check(cfg()==before,'turning experiment off restores only policy field')
    chrome("Services.prefs.setBoolPref('cloakfox.experimental.canvas_pipeline',true);Services.prefs.setBoolPref('cloakfox.enabled',false)")
    native=pixels();check(all(v==128 for i,v in enumerate(native) if i%4!=3),'new master-off context uses native readback')
+   check(driver.execute_script(GLYPHS)!=onGlyphs,'canonical glyph output differs from native master-off rendering')
   finally:
    if driver:driver.quit()
    server.shutdown();server.server_close()

@@ -109,7 +109,7 @@ loadNetwork();
     historyList.replaceChildren();
     for(const record of ipMonitor.ipHistory()){
       const row=document.createElement('div');row.className='ip-record';
-      const heading=document.createElement('strong');heading.textContent=record.ip+' · '+(names.get(record.ucid)||'Deleted container')+' · '+(record.hostname||'Legacy record — not used for warnings');row.append(heading);
+      const heading=document.createElement('strong');heading.textContent=(record.ip.includes(':')?'IPv6: ':'IPv4: ')+record.ip+' · '+(names.get(record.ucid)||'Deleted container')+' · '+(record.hostname||'Legacy record — not used for warnings');row.append(heading);
       const meta=document.createElement('p');meta.textContent=`First: ${new Date(record.firstAccessed).toLocaleString()} · Last: ${new Date(record.lastAccessed).toLocaleString()} · ${record.accessCount} observations`;row.append(meta);
       const owner=document.createElement('select');owner.setAttribute('aria-label','Assign '+record.ip+' to container');for(const item of all)owner.append(new Option(item.name,item.userContextId));owner.value=String(record.ucid);row.append(owner);
       action('Reassign',()=>ipMonitor.reassignIP(record.ip,Number(owner.value),record.ucid,record.hostname??''),row);action('Delete record',()=>ipMonitor.clearIPHistory(record.ip,record.ucid,record.hostname??''),row);action('Allow IP',()=>ipMonitor.setIPException(record.ip,true),row);
@@ -126,8 +126,24 @@ loadNetwork();
     const rows=ipMonitor.ipConflictResults().filter(row=>names.has(row.ucid));
     results.replaceChildren();
     if (!rows.length) {results.textContent='No recent measurements. Check now or enable automatic checks.';return;}
-    for(const row of rows){const line=document.createElement('span');line.style.display='block';
-      line.textContent=`${names.get(row.ucid)}: ${row.ip||'Unknown'} — ${row.error|| (row.conflicts.length ? 'same measured address as '+row.conflicts.map(id=>names.get(id)||`Container ${id}`).join(', ') : 'no match in recent route measurements')}`;results.append(line);}
+    for(const row of rows){
+      const line=document.createElement('span');line.style.display='block';line.style.overflowWrap='anywhere';
+      const title=document.createElement('strong');title.textContent=names.get(row.ucid);line.append(title);
+      const legacy=!('ipv4' in row)&&!('ipv6' in row);
+      const legacyFamily=row.ip?.includes(':')?'ipv6':'ipv4';
+      for(const [family,label] of [['ipv4','IPv4'],['ipv6','IPv6']]){
+        const ip=legacy?(family===legacyFamily?row.ip:''):row[family];
+        const error=row.errors?.[family]||(legacy&&family===legacyFamily?row.error:'');
+        const conflicts=row.matches
+          ? row.matches.filter(match=>match.family===family).flatMap(match=>match.conflicts)
+          : legacy ? (family===legacyFamily?row.conflicts:[])
+          : rows.filter(other=>other.ucid!==row.ucid && row.conflicts.includes(other.ucid) && ip && other[family]===ip).map(other=>other.ucid);
+        const measurement=document.createElement('span');measurement.style.display='block';
+        measurement.textContent=`${label}: ${ip||'Unknown'} — ${error|| (conflicts.length ? 'same measured address as '+[...new Set(conflicts)].map(id=>names.get(id)||`Container ${id}`).join(', ') : ip ? 'no match in recent route measurements' : 'no measurement available')}`;
+        line.append(measurement);
+      }
+      results.append(line);
+    }
   }
   check.addEventListener('click',async()=>{
     check.disabled=true;results.textContent='Checking container routes…';

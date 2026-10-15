@@ -1,0 +1,83 @@
+ 0:00.24 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.24 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.34 Clobber not needed.
+ 0:00.36 /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/browser/components/cloakfox/moz.build
+ 0:00.36 Build configuration changed. Regenerating backend.
+ 0:00.36 /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051/_virtualenvs/build/bin/python /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Finished reading 2453 moz.build files in 1.43s
+Read 58 gyp files in parallel contributing 0.23s to total wall time
+Processed into 19164 build config descriptors in 1.18s
+RecursiveMake backend executed in 1.72s
+  5297 total backend files; 0 created; 1 updated; 5296 unchanged; 0 deleted; 13 -> 1995 Makefile
+FasterMake backend executed in 0.17s
+  89 total backend files; 0 created; 2 updated; 87 unchanged; 0 deleted
+Clangd backend executed in 0.82s
+  1255 total backend files; 0 created; 1 updated; 1254 unchanged; 0 deleted
+Total wall time: 5.71s; CPU time: 4.97s; Efficiency: 87%; Untracked: 0.40s
+ 0:06.86 W Adding make options from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:06.86 /usr/bin/make -f client.mk -j4 -s
+ 0:07.73 Elapsed: 0.24s; From dist/bin: Kept 3471 existing; Added/updated 1; Removed 0 files and 0 directories.
+ 0:08.07 ./buildid.h.stub
+ 0:08.07 ./source-repo.h.stub
+ 0:08.21 ./application.ini.stub
+ 0:08.34 ./application.ini.h.stub
+ 0:08.93 ./buildid.h.stub
+ 0:08.93 ./source-repo.h.stub
+ 0:09.24 dom/canvas
+ 0:10.06 dom/websocket
+ 0:10.12 dom/workers
+ 0:10.27 gfx/gl
+ 0:10.29 gfx/ipc
+ 0:10.53 gfx/layers
+ 0:10.76 gfx/thebes
+ 0:11.20 gfx/vr
+ 0:20.78 gfx/ycbcr
+ 0:30.40 image
+ 0:39.65 modules/libpref
+ 0:40.20 netwerk/protocol/websocket
+ 0:40.24 netwerk/protocol/http
+ 0:51.84 toolkit/library/buildid.cpp.stub
+ 0:52.03 widget
+ 0:52.10 xpcom/threads
+ 0:52.30 browser/app/Info.plist.stub
+ 0:52.58 layout/style
+ 0:52.71 dom/base
+ 0:52.71 netwerk/dns
+ 0:52.99 security/manager/ssl
+ 0:58.70 toolkit/library/buildid.cpp.stub
+ 0:59.07 toolkit/library
+ 1:00.48 browser/app
+ 1:00.83 browser/app/cloakfox
+ 1:24.75 toolkit/library/build/XUL
+ 1:28.20 ./newtab-sources.stamp.stub
+ 1:29.16 ./dependentlibs.list.stub
+ 1:29.22 ./built_in_addons.json.stub
+ 1:29.41 ./buildid.h.stub
+ 1:29.41 ./source-repo.h.stub
+ 1:29.80 ./application.ini.stub
+ 1:30.99 ./application.ini.h.stub
+ 1:34.41 ./buildid.h.stub
+ 1:34.41 ./source-repo.h.stub
+ 1:34.55 ./application.ini.stub
+ 1:34.67 ./application.ini.h.stub
+ 1:34.83 browser/app/Info.plist.stub
+ 1:38.98 W 0 compiler warnings present.
+ 1:39.01 W Overall system resources - Wall time: 99s; CPU: 77%; Read bytes: 13312615936; Write bytes: 4968323584; Read time: 618892; Write time: 10207
+ 1:39.01 W Swap in/out (MB): 4002.421875/0.25
+ 1:39.01 To view a profile of the build, run |mach resource-usage|.
+ 1:39.01 Your build was successful!
+ 1:39.01 To take your build for a test drive, run: |mach run|
+ 1:39.01 For more information on what to do now, see https://firefox-source-docs.mozilla.org/setup/contributing_code.html
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_173634.json

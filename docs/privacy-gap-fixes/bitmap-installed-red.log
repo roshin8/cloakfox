@@ -1,0 +1,52 @@
+PASS modeFalse: legacy source typed readback stays protected
+PASS modeFalse/toDataURL/image/png export succeeds
+FAIL modeFalse/toDataURL/image/png matches protected typed readback, not native pixels
+PASS modeFalse/toDataURL/image/png same-format routes agree
+PASS modeFalse/toBlob/image/png export succeeds
+FAIL modeFalse/toBlob/image/png matches protected typed readback, not native pixels
+PASS modeFalse/toBlob/image/png same-format routes agree
+PASS modeFalse/convertToBlob/image/png export succeeds
+FAIL modeFalse/convertToBlob/image/png matches protected typed readback, not native pixels
+PASS modeFalse/convertToBlob/image/png same-format routes agree
+PASS modeFalse/toDataURL/image/jpeg export succeeds
+PASS modeFalse/toDataURL/image/jpeg same-format routes agree
+PASS modeFalse/toBlob/image/jpeg export succeeds
+PASS modeFalse/toBlob/image/jpeg same-format routes agree
+PASS modeFalse/convertToBlob/image/jpeg export succeeds
+PASS modeFalse/convertToBlob/image/jpeg same-format routes agree
+PASS modeFalse/toDataURL/image/webp export succeeds
+PASS modeFalse/toDataURL/image/webp same-format routes agree
+PASS modeFalse/toBlob/image/webp export succeeds
+PASS modeFalse/toBlob/image/webp same-format routes agree
+PASS modeFalse/convertToBlob/image/webp export succeeds
+PASS modeFalse/convertToBlob/image/webp same-format routes agree
+PASS modeFalse/worker/convertToBlob/image/png export succeeds
+FAIL modeFalse/worker/convertToBlob/image/png matches protected typed readback, not native pixels
+PASS modeFalse/worker/convertToBlob/image/png same-format routes agree
+PASS modeFalse: repeated serialization stays deterministic
+PASS modeTrue: legacy source typed readback stays protected
+PASS modeTrue/toDataURL/image/png export succeeds
+FAIL modeTrue/toDataURL/image/png matches protected typed readback, not native pixels
+PASS modeTrue/toDataURL/image/png same-format routes agree
+PASS modeTrue/toBlob/image/png export succeeds
+FAIL modeTrue/toBlob/image/png matches protected typed readback, not native pixels
+PASS modeTrue/toBlob/image/png same-format routes agree
+PASS modeTrue/convertToBlob/image/png export succeeds
+FAIL modeTrue/convertToBlob/image/png matches protected typed readback, not native pixels
+PASS modeTrue/convertToBlob/image/png same-format routes agree
+PASS modeTrue/toDataURL/image/jpeg export succeeds
+PASS modeTrue/toDataURL/image/jpeg same-format routes agree
+PASS modeTrue/toBlob/image/jpeg export succeeds
+PASS modeTrue/toBlob/image/jpeg same-format routes agree
+PASS modeTrue/convertToBlob/image/jpeg export succeeds
+PASS modeTrue/convertToBlob/image/jpeg same-format routes agree
+PASS modeTrue/toDataURL/image/webp export succeeds
+PASS modeTrue/toDataURL/image/webp same-format routes agree
+PASS modeTrue/toBlob/image/webp export succeeds
+PASS modeTrue/toBlob/image/webp same-format routes agree
+PASS modeTrue/convertToBlob/image/webp export succeeds
+PASS modeTrue/convertToBlob/image/webp same-format routes agree
+PASS modeTrue/worker/convertToBlob/image/png export succeeds
+FAIL modeTrue/worker/convertToBlob/image/png matches protected typed readback, not native pixels
+PASS modeTrue/worker/convertToBlob/image/png same-format routes agree
+PASS modeTrue: repeated serialization stays deterministic

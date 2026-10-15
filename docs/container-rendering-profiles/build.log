@@ -1,0 +1,68 @@
+ 0:00.40 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.40 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.50 Clobber not needed.
+ 0:01.86 W Adding make options from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:01.86 /usr/bin/make -f client.mk -j4 -s
+ 0:04.42 ./buildid.h.stub
+ 0:04.42 ./source-repo.h.stub
+ 0:04.43 ./PrefsGenerated.h.stub
+ 0:04.44 ./StaticPrefListAll.h.stub
+ 0:04.57 ./application.ini.stub
+ 0:04.70 ./application.ini.h.stub
+ 0:05.39 ./buildid.h.stub
+ 0:05.39 ./source-repo.h.stub
+ 0:05.56 ./application.ini.stub
+ 0:05.69 ./application.ini.h.stub
+ 0:06.16 dom/canvas
+ 0:06.43 dom/bindings
+ 0:16.00 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:65:
+ 0:16.00 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLContext.cpp:940:38: error: implicit conversion loses integer precision: 'unsigned int' to 'uint16_t' (aka 'unsigned short') [-Werror,-Wimplicit-int-conversion]
+ 0:16.00 E   940 |     options.cloakfoxPersonaProfile = *mCloakfoxPersonaProfile;
+ 0:16.00 E       |                                    ~ ^~~~~~~~~~~~~~~~~~~~~~~~
+ 0:17.38 dom/events
+ 0:21.32 E 1 error generated.
+ 0:21.36 E make[4]: *** [Unified_cpp_dom_canvas0.o] Error 1
+ 0:21.36 E make[4]: *** Waiting for unfinished jobs....
+ 0:22.26 dom/gamepad
+ 0:24.45 dom/html
+ 0:30.08 dom/ipc
+ 0:33.88 dom/media/platforms/ffmpeg/ffmpeg57
+ 0:33.88 dom/media/platforms/ffmpeg/ffmpeg58
+ 0:34.68 dom/media/platforms/ffmpeg/ffmpeg59
+ 0:39.23 dom/media/platforms/ffmpeg/ffmpeg60
+ 0:39.75 dom/media/platforms/ffmpeg/ffmpeg61
+ 0:40.10 dom/media/platforms/ffmpeg/ffmpeg62
+ 0:41.00 dom/media/platforms/ffmpeg/ffmpeg63
+ 0:42.37 dom/media/platforms/ffmpeg/ffvpx
+ 0:45.41 dom/media/platforms/ffmpeg/libav53
+ 0:45.90 dom/media/platforms/ffmpeg/libav54
+ 0:46.33 dom/media/platforms/ffmpeg/libav55
+ 0:47.07 dom/media/platforms
+ 0:48.64 dom/media/webcodecs
+ 0:50.03 dom/media/webrtc/libwebrtcglue
+ 0:51.60 dom/media/webspeech/synth
+ 0:51.93 dom/performance
+ 0:52.41 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/platforms/Unified_cpp_dom_media_platforms1.cpp:29:
+ 0:52.83 dom/vr
+ 0:56.04 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/libwebrtcglue/Unified_cpp_libwebrtcglue0.cpp:83:
+ 0:56.11 dom/webgpu
+ 0:56.47 E make[3]: *** [dom/canvas/target-objects] Error 2
+ 0:56.47 E make[3]: *** Waiting for unfinished jobs....
+ 0:56.88 W 1 warning generated.
+ 1:03.13 W 1 warning generated.
+ 1:05.68 E make[2]: *** [compile] Error 2
+ 1:05.68 E make[1]: *** [default] Error 2
+ 1:05.68 E make: *** [build] Error 2
+ 1:05.79 W 2 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_173403.json

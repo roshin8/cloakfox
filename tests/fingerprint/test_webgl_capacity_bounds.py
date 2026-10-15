@@ -50,7 +50,7 @@ std::optional<Value> GLParam(GLenum pname, bool gl2) {
 }
 ''' + r'''
 auto CloakfoxWebGLNested(uint32_t,const char* table,const std::string& key) {return MaskConfig::GetNested(table,key);}
-auto CloakfoxGLParam(uint32_t,GLenum pname,bool gl2) {return MaskConfig::GLParam(pname,gl2);}
+auto CloakfoxGLParam(uint32_t,GLenum pname,bool gl2,const nlohmann::json* = nullptr) {return MaskConfig::GLParam(pname,gl2);}
 ''' +functions+r'''
 struct Context {
  bool mIsWebGL2 = true;
@@ -67,7 +67,7 @@ struct Context {
   auto found=backing.find(pname);if(found==backing.end())return {};return found->second;
  }
  void query(GLenum pname) {
-  retval.value.reset();auto data=MaskConfig::GLParam(pname,mIsWebGL2);bool fromTable=true;
+  const nlohmann::json* snapshot=nullptr;retval.value.reset();auto data=MaskConfig::GLParam(pname,mIsWebGL2);bool fromTable=true;
 '''+branch+r'''
  }
 };

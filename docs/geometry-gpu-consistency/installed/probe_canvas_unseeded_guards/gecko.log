@@ -1,0 +1,50 @@
+1792098764973	geckodriver	INFO	Listening on 127.0.0.1:61952
+1792098764984	mozrunner::runner	INFO	Running command: MOZ_CRASHREPORTER="1" MOZ_CRASHREPORTER_NO_REPORT="1" MOZ_CRASHREPORTER_SHUTDOWN="1" "/Applications/Cloakfox ... 0gn/T/cfx-zero-seed-vqfri2vx" "--remote-debugging-port" "61953" "--remote-allow-hosts" "localhost" "-foreground" "-no-remote"
+*** You are running in headless mode.
+1792098765339	Marionette	INFO	Marionette enabled
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+Missing chrome or resource URL: resource:///modules/CustomizableUI.sys.mjs
+1792098765602	Marionette	INFO	Listening on port 61958
+Read port: 61958
+WebDriver BiDi listening on ws://127.0.0.1:61953
+1792098765629	RemoteAgent	WARN	TLS certificate errors will be ignored for this session
+[WARN  rkv::backend::impl_safe::environment] `load_ratio()` is irrelevant for this storage backend.
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+Crash Annotation GraphicsCriticalError: |[0][GFX1-]: RenderCompositorSWGL failed mapping default framebuffer, no dt (t=1.27168) [GFX1-]: RenderCompositorSWGL failed mapping default framebuffer, no dt
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+sandbox_extension_issue_file_to_process failed for /Applications/Cloakfox.app/Contents/MacOS/plugin-container.app: 1 (Operation not permitted)
+console.error: [Exception... "Component returned failure code: 0x80040111 (NS_ERROR_NOT_AVAILABLE) [nsIContentSniffer.getMIMETypeFromContent]"  nsresult: "0x80040111 (NS_ERROR_NOT_AVAILABLE)"  location: "JS frame :: resource:///modules/FaviconLoader.sys.mjs :: onStopRequest :: line 356"  data: no]
+Can't find symbol 'glTextureStorageMem2DEXT'.
+Can't find symbol 'glTextureStorageMem2DMultisampleEXT'.
+Can't find symbol 'glTextureStorageMem3DEXT'.
+Can't find symbol 'glTextureStorageMem3DMultisampleEXT'.
+Can't find symbol 'glNamedBufferStorageMemEXT'.
+JavaScript warning: , line 0: WebGL warning: tex(Sub)Image[23]D: Unverified external image input to canonical GPU.
+JavaScript warning: , line 0: WebGL warning: readPixels: Pixel readback has no available privacy policy.
+JavaScript warning: , line 0: WebGL warning: <GetSurfaceSnapshot>: Pixel readback has no available privacy policy.
+1792098767231	Marionette	INFO	Stopped listening on port 61958
+console.error: "Error in processing browser-idle-startup for QuickSuggest.init"
+console.error: (new Error("SharedDataMap: in shutdown", "resource://nimbus/lib/SharedDataMap.sys.mjs", 247))
+JavaScript error: resource://nimbus/lib/SharedDataMap.sys.mjs, line 247: Error: SharedDataMap: in shutdown
+JavaScript error: resource://gre/modules/PrivateBrowsingUtils.sys.mjs, line 50: TypeError: can't access property "QueryInterface", aWindow.docShell is null
+JavaScript error: resource://gre/modules/UrlClassifierListManager.sys.mjs, line 627: NS_ERROR_NOT_INITIALIZED: Component returned failure code: 0xc1f30001 (NS_ERROR_NOT_INITIALIZED) [nsIUrlClassifierDBService.getTables]
+console.error: services.settings: 
+  Message: StorageError: Storage error: Error: IndexedDB: main/fxmonitor-breaches list() IndexedDB:  execute() The application is shutting down
+  Stack:
+    StorageError@resource://services-settings/RemoteSettingsClient.sys.mjs:136:5
+_adjustedError@resource://services-settings/RemoteSettingsClient.sys.mjs:1003:14
+maybeSync@resource://services-settings/RemoteSettingsClient.sys.mjs:886:38
+observe@resource://gre/modules/AsyncShutdown.sys.mjs:588:17
+
+console.error: services.settings: 
+  Message: StorageError: Storage error: AbortError: IndexedDB: main/ms-action-allowlists list() IndexedDB:  execute() A request was aborted, for example through a call to IDBTransaction.abort.
+  Stack:
+    StorageError@resource://services-settings/RemoteSettingsClient.sys.mjs:136:5
+_adjustedError@resource://services-settings/RemoteSettingsClient.sys.mjs:1003:14
+maybeSync@resource://services-settings/RemoteSettingsClient.sys.mjs:886:38
+

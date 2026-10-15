@@ -117,3 +117,9 @@ final reports. Native integration is `patches/canvas-complete-renderer.patch`;
 `source-patches/` retains independent development/review references. The plan,
 spec and `.superpowers/sdd/2026-10-15-canvas-completion/progress.md` record the
 implementation and the user-approved Mac-only acceptance boundary.
+
+Subsequent installed DOM geometry fixes and regression verification are recorded in [geometry/GPU consistency](../geometry-gpu-consistency/README.md). The build IDs below describe this earlier canvas completion snapshot.
+
+## Subsequent combined review
+
+A later combined source review found a residual bitmaprenderer serialization protection gap and a cross-owner WebGPU canvas/device provenance gap. The original runtime tests did not cover those routes. See [combined review](../privacy-review-2026-10-15.md); both were subsequently fixed; see [fix acceptance](../privacy-gap-fixes/README.md). This earlier acceptance alone was not a privacy all-clear.

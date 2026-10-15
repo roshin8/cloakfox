@@ -1,0 +1,73 @@
+{
+  "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+  "checks": [
+    {
+      "pass": true,
+      "name": "masterTrue: same-owner canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterTrue: same-owner worker canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterTrue: platform refuses cross-process OffscreenCanvas transfer before configure"
+    },
+    {
+      "pass": false,
+      "name": "masterTrue: transferred stale-owner canvas rejected by configure"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: same-owner canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: same-owner worker canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: platform refuses cross-process OffscreenCanvas transfer before configure"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: transferred stale-owner canvas native behavior retained"
+    }
+  ],
+  "cases": [
+    {
+      "master": true,
+      "sameOwner": {
+        "configured": true
+      },
+      "worker": {
+        "configured": true
+      },
+      "crossSite": {
+        "cloneError": true
+      },
+      "rotatedOwner": {
+        "configured": true
+      }
+    },
+    {
+      "master": false,
+      "sameOwner": {
+        "configured": true
+      },
+      "worker": {
+        "configured": true
+      },
+      "crossSite": {
+        "cloneError": true
+      },
+      "rotatedOwner": {
+        "configured": true
+      }
+    }
+  ],
+  "runtime": {
+    "buildID": "20261015174757",
+    "version": "158.0-beta.26"
+  }
+}

@@ -8,6 +8,21 @@ completed audits, not claims that every related feature is implemented.
 
 ## Current work
 
+### Firefox 158 rendering privacy follow-up — 2026-10-15
+
+- [x] **Dual-family IP measurements:** Separate routed IPv4/IPv6 lookups, labelled warning/settings results, per-family same-host conflict history, unavailable-family handling and partial recheck safeguards; see [acceptance](docs/dual-ip/README.md).
+
+- [x] **Implemented and installed on Mac:** Optional canonical software canvas/font/GPU pipeline, protected input provenance and exports, DOM rectangle consistency fixes, and bounded native Apple/Intel/AMD/NVIDIA GPU persona resource enforcement. Container/site identities remain separately owned. [Latest acceptance](docs/container-rendering-profiles/README.md).
+- [ ] **Not implemented:** Replace individually varied GPU limits with a validated catalog of coherent capability profiles compatible with BrowserForge personas. Current real resource enforcement does not reproduce physical GPU drivers or satisfy CreepJS's known-profile recognition tables.
+  - Derive profiles from verified full capability combinations, covering numeric limits/ranges, shader resources/precision, extensions and cross-API consistency. Enforce them in allocation, compilation and device validation; never raise a getter beyond executable backend support.
+  - Preserve independent container/site secrets, records and selection. Ordinary capability values may coincide; do not invent unusual limits solely to make every container's caps unique.
+  - Keep the default-off toggle, canonical software backend, import/provenance checks and precise-readback protections. Unsupported profiles must reject activation/creation rather than expose native host hardware.
+  - Test all four families on the installed Mac, workers, transfers/restoration, restart persistence and identical-persona container/site isolation. Run unchanged CreepJS/FingerprintJS with WebGPU enabled and disabled; retain all warnings and verify actual resource boundaries.
+- [x] **Fixed and tested on installed Mac:** `bitmaprenderer` exports now enforce provenance/owner checks, recipient protection for unknown/foreign pixels, and refusal/blank output when canonical protection has no seed.219actual encoder-route checks pass. [Fix acceptance](docs/privacy-gap-fixes/README.md).
+- [x] **Fixed and tested on installed Mac:** WebGPU configure rejects missing/mismatched canvas/device owners; metadata independently refuses mismatched canonical certification. Actual stale-owner transfer regression fails on the previous installed build and passes on the fixed build; same-owner page/worker and native master-off controls pass. Cross-process cross-site transfer is already refused by Gecko before configure; unit tests separately cover container/site key mismatches.
+- [x] **Fixed and tested on installed Mac:** IP warning page/notification now describe matching lookup measurements and disclose destination/proxy/address-family limitations. The same-host visit filter, routed lookup/recheck and continue workflow remain tested with local proxy fixtures; no additional requests were added.
+- [x] **Combined source review completed:** Three independent reviewers covered today's three commits plus current first-party production changes. The two privacy/provenance gaps and warning-accuracy issue were subsequently fixed and independently re-reviewed; see the fix acceptance above. This is not an all-clear or an exhaustive audit of vendored codecs/rendering libraries. [Coverage, findings and verification limits](docs/privacy-review-2026-10-15.md).
+
 - [x] **Implemented on Firefox 157:** Native window/worker Performance Timeline presentation, real-backed media caps and generic labels, HDR masking and Settings controls. Timing mode changes apply on page reload/worker restart.
 - [x] **Measured on Firefox 157:** Local TLS/H2/QUIC/H3 structural parity against stock Firefox; automatic network profiles follow the actual engine. WebSocket proxy/refusal/reconnect routes tested. [Evidence](docs/firefox-157-port/privacy-followup-verification.md).
 

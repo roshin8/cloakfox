@@ -32,7 +32,7 @@ function persistCloakCfg(ucid, seed, clearOverrides = false) {
   try { ua = JSON.parse(cfg)["navigator.userAgent"] || ""; } catch (_e) {}
   writeHttpProfilePrefs(ucid, ua);
 }
-const { KEY_TYPES, readOverrides, setOverride, clearOverride, clearAllOverrides, applyOverrides } =
+const { KEY_TYPES, readOverrides, setOverride, setOverrides, clearOverride, clearAllOverrides, applyOverrides, setContainerGPUProfilesEnabled } =
   ChromeUtils.importESModule("resource:///modules/CloakfoxOverrides.sys.mjs");
 
 const { ContextualIdentityService } = ChromeUtils.importESModule(
@@ -297,14 +297,19 @@ function makePresetRow(definition, cfg, ucid, overrides, onChange) {
   select.value = ownedKeys.some(key => key in overrides) ? (match || "custom") : "auto";
   select.addEventListener("change", () => {
     if (select.value === "custom") return;
-    if (select.value === "auto") {
-      ownedKeys.forEach(key => clearOverride(ucid, key));
-      Services.prefs.clearUserPref(presetPref);
-    }
-    else {
-      Services.prefs.setStringPref(presetPref, select.value);
-      const item = definition.items.find(p => p.id === select.value);
-      for (const [key, value] of Object.entries(definition.values(item, cfg || {}))) setOverride(ucid, key, value);
+    try {
+      if (select.value === "auto") {
+        setOverrides(ucid, Object.fromEntries(ownedKeys.map(key => [key, null])));
+        Services.prefs.clearUserPref(presetPref);
+      } else {
+        const item = definition.items.find(p => p.id === select.value);
+        setOverrides(ucid, definition.values(item, cfg || {}));
+        Services.prefs.setStringPref(presetPref, select.value);
+      }
+    } catch (error) {
+      select.value = ownedKeys.some(key => key in overrides) ? (match || "custom") : "auto";
+      window.alert(error.message);
+      return;
     }
     onChange();
   });
@@ -873,6 +878,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // Paint the working state before synchronous BrowserForge sampling begins.
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     let succeeded = false;
+    const identityPrefix = `cloakfox.container.${ucid}.`;
+    const savedIdentity = new Map(Services.prefs.getChildList(identityPrefix).filter(name => Services.prefs.prefHasUserValue(name)).map(name => {
+      const type = Services.prefs.getPrefType(name);
+      return [name, {type, value:type === Services.prefs.PREF_BOOL ? Services.prefs.getBoolPref(name) : type === Services.prefs.PREF_INT ? Services.prefs.getIntPref(name) : Services.prefs.getStringPref(name)}];
+    }));
     try {
       if (!["legacy", "windows", "macos", "linux"].includes(mode)) throw new Error("Invalid persona OS mode");
       Services.prefs.setStringPref(personaModePref(ucid), mode);
@@ -906,6 +916,12 @@ document.addEventListener("DOMContentLoaded", () => {
         hero.classList.add("hero-flash");
       }
     } catch (e) {
+      for (const name of Services.prefs.getChildList(identityPrefix)) if (!savedIdentity.has(name)) Services.prefs.clearUserPref(name);
+      for (const [name, saved] of savedIdentity) {
+        if (saved.type === Services.prefs.PREF_BOOL) Services.prefs.setBoolPref(name, saved.value);
+        else if (saved.type === Services.prefs.PREF_INT) Services.prefs.setIntPref(name, saved.value);
+        else Services.prefs.setStringPref(name, saved.value);
+      }
       Cu.reportError("Cloakfox regenerate failed: " + e.message + "\n" + e.stack);
       status.textContent = "Identity change failed: " + e.message;
       status.className = "identity-status identity-error";
@@ -1037,7 +1053,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const pref = el.dataset.pref;
     el.checked = Services.prefs.getBoolPref(pref, false);
     el.addEventListener("change", () => {
-      Services.prefs.setBoolPref(pref, el.checked);
+      try {
+        if (pref === "cloakfox.opt.container_rendering_profiles") setContainerGPUProfilesEnabled(el.checked);
+        else if (pref === "cloakfox.experimental.canvas_pipeline" && !el.checked && Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) throw new Error("Disable container GPU profiles before disabling their canonical backend");
+        else Services.prefs.setBoolPref(pref, el.checked);
+        document.getElementById("cfx-container-gpu-status").textContent = "Reload pages and restart workers to apply GPU policy changes.";
+      } catch (error) {
+        el.checked = Services.prefs.getBoolPref(pref, false);
+        document.getElementById("cfx-container-gpu-status").textContent = error.message;
+      }
       if (pref === "cloakfox.compat.screen_management") updateChromiumCompatibility();
       if (pref === "cloakfox.opt.gpu_backend_profiles") {
         const ucid = parseInt(selectEl.value, 10) || 0;

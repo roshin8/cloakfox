@@ -41,6 +41,165 @@
      "fonts",
      "fxr",
      "locales",
+--- a/dom/base/AbstractRange.cpp
++++ b/dom/base/AbstractRange.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGeometry.hpp"
+ #include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+@@ -958,6 +959,12 @@
+     bool aClampToEdge, bool aFlushLayout) {
+   RefPtr<DOMRect> rect = new DOMRect(ToSupports(mOwner));
+   if (!mIsPositioned) {
++    return rect.forget();
++  }
++
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
++    RefPtr<DOMRectList> rects = GetClientRects(aClampToEdge, aFlushLayout);
++    CloakfoxGeometry::BoundingFromClientRects(rects.get(), rect.get());
+     return rect.forget();
+   }
+ 
+@@ -972,20 +979,6 @@
+   nsRect r = accumulator.mResultRect.IsEmpty() ? accumulator.mFirstRect
+                                                : accumulator.mResultRect;
+   rect->SetLayoutRect(r);
+-  // Cloakfox: same sub-pixel noise pattern as Element::GetBoundingClientRect.
+-  // Range-based text measurements are a separate code path used for font
+-  // fingerprinting via document.createRange().
+-  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
+-    uint32_t s = seed.value();
+-    auto n = [&s]() {
+-      s = s * 1664525u + 1013904223u;
+-      return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+-    };
+-    rect->SetRect(static_cast<float>(rect->X()) + n(),
+-                  static_cast<float>(rect->Y()) + n(),
+-                  static_cast<float>(rect->Width()) + n(),
+-                  static_cast<float>(rect->Height()) + n());
+-  }
+   return rect.forget();
+ }
+ 
+@@ -1042,22 +1035,10 @@
+       endRef.GetContainer(),
+       *endRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets), aClampToEdge,
+       aFlushLayout);
+-  // Cloakfox: noise each rect in the list. CreepJS uses Range.getClientRects
+-  // against rendered text to probe per-character metrics.
+   if (auto seed = CloakfoxSiteSeed::GeometryForDocument(mOwner, "canvas:seed"); seed.value_or(0)) {
+-    uint32_t s = seed.value();
+-    auto n = [&s]() {
+-      s = s * 1664525u + 1013904223u;
+-      return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+-    };
++    const CloakfoxGeometry::Presentation presentation(seed.value());
+     for (uint32_t i = 0; i < rectList->Length(); ++i) {
+-      DOMRect* r = rectList->Item(i);
+-      if (r) {
+-        r->SetRect(static_cast<float>(r->X()) + n(),
+-                   static_cast<float>(r->Y()) + n(),
+-                   static_cast<float>(r->Width()) + n(),
+-                   static_cast<float>(r->Height()) + n());
+-      }
++      presentation.Apply(rectList->Item(i));
+     }
+   }
+   return rectList.forget();
+--- a/dom/base/Element.cpp
++++ b/dom/base/Element.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGeometry.hpp"
+ #include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+@@ -1211,6 +1212,12 @@
+ already_AddRefed<DOMRect> Element::GetBoundingClientRect() {
+   RefPtr<DOMRect> rect = new DOMRect(ToSupports(OwnerDoc()));
+ 
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
++    RefPtr<DOMRectList> rects = GetClientRects();
++    CloakfoxGeometry::BoundingFromClientRects(rects.get(), rect.get());
++    return rect.forget();
++  }
++
+   nsIFrame* frame = GetPrimaryFrame(FlushType::Layout);
+   if (!frame || frame->HasAnyStateBits(NS_FRAME_IS_NONDISPLAY)) {
+     // display:none, perhaps? Return the empty rect
+@@ -1219,21 +1226,6 @@
+ 
+   rect->SetLayoutRect(frame->GetBoundingClientRect());
+ 
+-  // Cloakfox: sub-pixel noise on the returned rect using canvas:seed.
+-  // Layout-based fingerprints (e.g. font rendering detection) measure
+-  // getBoundingClientRect across elements; we add deterministic per-context
+-  // jitter so every container sees a different value.
+-  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+-    uint32_t s = seed.value();
+-    auto n = [&s]() {
+-      s = s * 1664525u + 1013904223u;
+-      return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+-    };
+-    rect->SetRect(static_cast<float>(rect->X()) + n(),
+-                  static_cast<float>(rect->Y()) + n(),
+-                  static_cast<float>(rect->Width()) + n(),
+-                  static_cast<float>(rect->Height()) + n());
+-  }
+   return rect.forget();
+ }
+ 
+@@ -1251,22 +1243,10 @@
+       frame, nsLayoutUtils::GetContainingBlockForClientRect(frame), &builder,
+       nsLayoutUtils::GetAllInFlowRectsFlag::AccountForTransforms);
+ 
+-  // Cloakfox: same sub-pixel noise as getBoundingClientRect, applied to
+-  // every rect in the list. CreepJS measures per-rect for multi-line text.
+   if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+-    uint32_t s = seed.value();
+-    auto n = [&s]() {
+-      s = s * 1664525u + 1013904223u;
+-      return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+-    };
++    const CloakfoxGeometry::Presentation presentation(seed.value());
+     for (uint32_t i = 0; i < rectList->Length(); ++i) {
+-      DOMRect* r = rectList->Item(i);
+-      if (r) {
+-        r->SetRect(static_cast<float>(r->X()) + n(),
+-                   static_cast<float>(r->Y()) + n(),
+-                   static_cast<float>(r->Width()) + n(),
+-                   static_cast<float>(r->Height()) + n());
+-      }
++      presentation.Apply(rectList->Item(i));
+     }
+   }
+   return rectList.forget();
+@@ -7010,10 +6990,10 @@
+ 
+   aRect = CSSIntRect::FromAppUnitsRounded(
+       frame->Style()->EffectiveZoom().Unzoom(rect));
+-  // Cloakfox: add integer jitter (±1px) to offset measurements. Covers
+-  // Element.offsetWidth/Height/Left/Top, which CreepJS and fingerprint.com
+-  // use for font detection via span.offsetWidth comparison.
+-  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
++  // Keep the original integer jitter for nonzero offset measurements. Empty
++  // rectangles and zero dimensions must not acquire phantom position or area.
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed");
++      seed.value_or(0) && (aRect.x || aRect.y || aRect.width || aRect.height)) {
+     uint32_t s = seed.value() ^ static_cast<uint32_t>(aRect.width * 31 +
+                                                        aRect.height * 17);
+     s = s * 1664525u + 1013904223u;
+@@ -7026,8 +7006,8 @@
+     int32_t dh = static_cast<int32_t>(s % 3) - 1;
+     aRect.x += dx;
+     aRect.y += dy;
+-    aRect.width = std::max(0, aRect.width + dw);
+-    aRect.height = std::max(0, aRect.height + dh);
++    if (aRect.width) aRect.width = std::max(0, aRect.width + dw);
++    if (aRect.height) aRect.height = std::max(0, aRect.height + dh);
+   }
+   return parent;
+ }
 --- a/dom/canvas/CanvasRenderingContext2D.cpp
 +++ b/dom/canvas/CanvasRenderingContext2D.cpp
 @@ -5,6 +5,10 @@
@@ -1044,10 +1203,31 @@
  bool CheckWriteOnlySecurity(bool aCORSUsed, nsIPrincipal* aPrincipal,
 --- a/dom/canvas/ClientWebGLContext.cpp
 +++ b/dom/canvas/ClientWebGLContext.cpp
-@@ -924,6 +924,35 @@
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfile.hpp"
+ #include "CloakfoxSiteSeed.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+@@ -924,6 +925,63 @@
            policy->is_boolean() && policy->get<bool>());
      }
      options.cloakfoxBackendProfile = *mCloakfoxBackendProfile;
++    if (mCloakfoxPersonaProfile.isNothing()) {
++      auto* ownerGlobal = mOffscreenCanvas ? mOffscreenCanvas->GetRelevantGlobal() : mCanvasElement ? mCanvasElement->OwnerDoc()->GetScopeObject() : nullptr;
++      uint32_t code = 0;
++      if (CloakfoxGPUProfile::Requested(ownerGlobal)) {
++        const auto profile = CloakfoxGPUProfile::ForGlobal(ownerGlobal);
++        if (!profile) return Err("Invalid or unavailable owning-container GPU profile");
++        code = profile->code;
++        mCloakfoxPersonaRenderer = profile->renderer;
++        mCloakfoxPersonaVendor = profile->vendor;
++        mCloakfoxPersonaConfig = profile->config;
++      }
++      mCloakfoxPersonaProfile = Some(code);
++    }
++    options.cloakfoxPersonaProfile = static_cast<uint16_t>(*mCloakfoxPersonaProfile);
++    if (options.cloakfoxPersonaProfile) options.cloakfoxBackendProfile = true;
++
 +    if (mCloakfoxCanonicalGpu.isNothing()) {
 +      const auto principal = PrincipalOrNull();
 +      const bool content = principal && !principal->IsSystemPrincipal();
@@ -1077,10 +1257,22 @@
 +    // Overwrite caller options, including on restoration. Only the frozen
 +    // authoritative owning-container policy may select the internal backend.
 +    options.cloakfoxCanonicalGpu = *mCloakfoxCanonicalGpu;
++    if (options.cloakfoxPersonaProfile && !options.cloakfoxCanonicalGpu) {
++      return Err("Container GPU persona requires captured canonical backing");
++    }
++    if (options.cloakfoxPersonaProfile && mOffscreenCanvas) {
++      const auto policy = mOffscreenCanvas->CanvasPrivacyPolicy();
++      const auto currentOwner = CloakfoxSiteSeed::OwnerKey(GetUserContextId(), GetCookieJarSettings());
++      if (policy.version != gfx::kCanvasPrivacyVersion || !currentOwner ||
++          policy.userContextId != GetUserContextId() ||
++          policy.ownerHi != (*currentOwner)[0] || policy.ownerLo != (*currentOwner)[1]) {
++        return Err("Transferred canvas GPU profile owner mismatch");
++      }
++    }
      if (StaticPrefs::webgl_disable_fail_if_major_performance_caveat()) {
        options.failIfMajorPerformanceCaveat = false;
      }
-@@ -1223,9 +1252,26 @@
+@@ -1223,9 +1281,26 @@
  
  mozilla::ipc::IProtocol* ClientWebGLContext::SupportsSnapshotExternalCanvas()
      const {
@@ -1107,7 +1299,7 @@
  RefPtr<gfx::SourceSurface> ClientWebGLContext::GetFrontBufferSnapshot(
      const bool requireAlphaPremult) {
    const FuncScope funcScope(*this, "<GetSurfaceSnapshot>");
-@@ -1291,7 +1337,12 @@
+@@ -1291,7 +1366,12 @@
    }
    // GPU pixels retain their producer even after CPU readback. A generic
    // capability profile or platform software GL is not canonical rendering.
@@ -1120,7 +1312,7 @@
  
    return surf;
  }
-@@ -1371,7 +1422,12 @@
+@@ -1371,7 +1451,12 @@
  
    // GPU pixels retain their producer even after CPU readback. A generic
    // capability profile or platform software GL is not canonical rendering.
@@ -1133,19 +1325,19 @@
  
    return surf;
  }
-@@ -1415,6 +1471,11 @@
-   return DoReadPixelsAsync();
- }
+@@ -1413,6 +1498,11 @@
+   });
  
+   return DoReadPixelsAsync();
++}
++
 +static bool CloakfoxRejectUnprotectedCanonicalReadback(
 +    bool canonicalGpu, const gfx::CanvasPrivacyMetadata& policy, uint32_t seed) {
 +  return canonicalGpu && !gfx::CanExtractCanonicalCanvasPixels(policy) && !seed;
-+}
-+
+ }
+ 
  UniquePtr<uint8_t[]> ClientWebGLContext::GetImageBuffer(
-     mozilla::CanvasUtils::ImageExtraction aExtractionBehavior,
-     int32_t* out_format, gfx::IntSize* out_imageSize) {
-@@ -1426,6 +1487,17 @@
+@@ -1426,6 +1516,17 @@
    *out_format = 0;
    *out_imageSize = {};
  
@@ -1163,7 +1355,7 @@
    // Use GetSurfaceSnapshot() to make sure that appropriate y-flip gets applied
    gfxAlphaType any;
    RefPtr<gfx::SourceSurface> snapshot = GetSurfaceSnapshot(&any);
-@@ -1453,9 +1525,8 @@
+@@ -1453,9 +1554,8 @@
    // stay consistent for a container, and is deterministic (unlike Gecko's
    // Randomize path above, which re-randomises per call and would break the
    // same-container-same-fingerprint invariant).
@@ -1175,21 +1367,96 @@
      const auto size = *out_imageSize;
      if (seed && size.width > 0 && size.height > 0) {
        CheckedInt<uint32_t> len =
-@@ -4224,6 +4295,13 @@
-     return;
+@@ -2286,9 +2386,10 @@
+   return std::nullopt;
+ }
+ static std::optional<nlohmann::json> CloakfoxWebGLNested(
+-    uint32_t owner, const std::string& domain, const std::string& key) {
++    uint32_t owner, const std::string& domain, const std::string& key,
++    const nlohmann::json* snapshot = nullptr) {
+   if (!StaticPrefs::cloakfox_enabled()) return std::nullopt;
+-  const auto cfg = CloakfoxSiteSeed::ExactConfig(owner);
++  const auto cfg = snapshot ? *snapshot : CloakfoxSiteSeed::ExactConfig(owner);
+   const auto lookup = [&](const nlohmann::json& source) -> std::optional<nlohmann::json> {
+     const auto table = source.find(domain);
+     if (table == source.end() || !table->is_object()) return std::nullopt;
+@@ -2297,12 +2398,14 @@
+     return *value;
+   };
+   if (const auto value = lookup(cfg)) return value;
++  if (snapshot) return std::nullopt;
+   return lookup(MaskConfig::GetJson());
+ }
+ static decltype(MaskConfig::GLParam(0, false)) CloakfoxGLParam(
+-    uint32_t owner, uint32_t pname, bool gl2) {
++    uint32_t owner, uint32_t pname, bool gl2,
++    const nlohmann::json* snapshot = nullptr) {
+   const auto value = CloakfoxWebGLNested(owner,
+-      gl2 ? "webGl2:parameters" : "webGl:parameters", std::to_string(pname));
++      gl2 ? "webGl2:parameters" : "webGl:parameters", std::to_string(pname), snapshot);
+   if (!value) return std::nullopt;
+   if (value->is_null()) return nullptr;
+   if (value->is_number_integer()) return value->get<int64_t>();
+@@ -2424,12 +2527,12 @@
+     }
+     if (pname == LOCAL_GL_VENDOR ||
+         pname == dom::WEBGL_debug_renderer_info_Binding::UNMASKED_VENDOR_WEBGL) {
+-      retval.set(StringValue(cx, "Mozilla", rv));
++      retval.set(StringValue(cx, mCloakfoxPersonaProfile.valueOr(0) && unmasked ? mCloakfoxPersonaVendor : "Mozilla", rv));
+       return;
+     }
+     if (pname == LOCAL_GL_RENDERER ||
+         pname == dom::WEBGL_debug_renderer_info_Binding::UNMASKED_RENDERER_WEBGL) {
+-      retval.set(StringValue(cx, "WebGL", rv));
++      retval.set(StringValue(cx, mCloakfoxPersonaProfile.valueOr(0) ? mCloakfoxPersonaRenderer : "WebGL", rv));
+       return;
+     }
+   }
+@@ -2532,12 +2635,19 @@
+   std::optional<
+       std::variant<int64_t, bool, double, std::string, std::nullptr_t>>
+       data;
++  // Optional persona policy is immutable for the context, including its
++  // remaining conservative masks. Later edits cannot mix an old GPU identity
++  // with another persona's caps, or consult the ambient default container.
++  const auto capturedConfig = mCloakfoxPersonaProfile.valueOr(0)
++      ? nlohmann::json::parse(mCloakfoxPersonaConfig, nullptr, false)
++      : nlohmann::json();
++  const auto* snapshot = capturedConfig.is_object() ? &capturedConfig : nullptr;
+   // These enums return typed arrays. Scalar masks must never change their
+   // return type or bypass complete-array validation below.
+   if (fromTable && pname != LOCAL_GL_MAX_VIEWPORT_DIMS &&
+       pname != LOCAL_GL_ALIASED_POINT_SIZE_RANGE &&
+       pname != LOCAL_GL_ALIASED_LINE_WIDTH_RANGE) {
+-    data = CloakfoxGLParam(GetUserContextId(), pname, mIsWebGL2);
++    data = CloakfoxGLParam(GetUserContextId(), pname, mIsWebGL2, snapshot);
    }
  
+   // A paired override also constrains a query with no own configured value.
+@@ -2559,7 +2669,7 @@
+       companion = LOCAL_GL_MAX_VARYING_VECTORS; scale = 4; break;
+   }
+   const auto companionMask = fromTable && companion
+-      ? CloakfoxGLParam(GetUserContextId(), companion, mIsWebGL2 || companionIsGL2)
++      ? CloakfoxGLParam(GetUserContextId(), companion, mIsWebGL2 || companionIsGL2, snapshot)
+       : decltype(data){};
+   if (fromTable && (data.has_value() || companionMask.has_value()) &&
+       CloakfoxIsUpperBoundCapacity(pname)) {
+@@ -4221,6 +4331,13 @@
+   }
+ 
+   if (!ValidateNonNegative("srcByteOffset", srcByteOffset)) {
++    return;
++  }
++
 +  if (notLost->info.options.cloakfoxCanonicalGpu &&
 +      !gfx::CanExtractCanonicalCanvasPixels(GetCanvasPrivacyMetadata())) {
 +    EnqueueError(LOCAL_GL_INVALID_OPERATION,
 +                 "GPU buffer readback is disabled for unverified imported pixels.");
-+    return;
-+  }
-+
-   size_t elemSize = SizeOfViewElem(dstData);
-   dstData.ProcessFixedData<true>([&](const Span<uint8_t>& aData) {
-     const auto& destView =
-@@ -5160,6 +5238,11 @@
+     return;
+   }
+ 
+@@ -5160,6 +5277,11 @@
                      data, imageSize.width * 4, imageSize,
                      gfx::SurfaceFormat::R8G8B8A8);
              MOZ_ASSERT(surf);
@@ -1201,7 +1468,7 @@
  
              // -
  
-@@ -5207,6 +5290,38 @@
+@@ -5207,6 +5329,38 @@
      return;
    }
  
@@ -1240,7 +1507,7 @@
    // -
  
    const auto& rawUnpacking = State().mPixelUnpackState;
-@@ -5939,10 +6054,15 @@
+@@ -5939,10 +6093,15 @@
  // unprotected readbacks; explicit compatibility restores exact values. PBOs
  // bypass CPU noise and obey the same policy. Invalid enums retain native errors.
  static bool CloakfoxBlockPixelReadback(GLenum format, GLenum type, bool pbo,
@@ -1260,7 +1527,7 @@
      return false;
    }
    if (!webgl::PackingInfoInfo::For({format, type})) return false;
-@@ -5961,7 +6081,8 @@
+@@ -5961,7 +6120,8 @@
    if (!ValidateNonNegative("height", height)) return;
    if (!ValidateNonNegative("offset", offset)) return;
    if (aCallerType != dom::CallerType::System &&
@@ -1270,7 +1537,7 @@
      EnqueueError(LOCAL_GL_INVALID_OPERATION,
                   "Pixel readback is disabled by browser policy.");
      return;
-@@ -6008,7 +6129,8 @@
+@@ -6008,7 +6168,8 @@
    }
  
    if (aCallerType != dom::CallerType::System &&
@@ -1280,7 +1547,7 @@
      EnqueueError(LOCAL_GL_INVALID_OPERATION,
                   "Pixel readback is disabled by browser policy.");
      return;
-@@ -6113,6 +6235,18 @@
+@@ -6113,6 +6274,18 @@
    if (!notLost) {
      return false;
    }
@@ -1299,7 +1566,7 @@
    const auto& child = notLost->outOfProcess;
    child->FlushPendingCmds();
    webgl::ReadPixelsResultIpc res = {};
-@@ -6154,9 +6288,9 @@
+@@ -6154,9 +6327,9 @@
      Memcpy(&destRow, srcRow);
    }
  
@@ -1312,7 +1579,7 @@
    return true;
  }
  
-@@ -6184,8 +6318,6 @@
+@@ -6184,8 +6357,6 @@
    const auto surfaceFormat = options.alpha ? gfx::SurfaceFormat::B8G8R8A8
                                             : gfx::SurfaceFormat::B8G8R8X8;
  
@@ -1321,7 +1588,7 @@
    CheckedInt<size_t> checkedStride = CheckedInt<size_t>(size.x) * 4;
    CheckedInt<size_t> checkedByteSize = checkedStride * size.y;
    if (!checkedByteSize.isValid()) {
-@@ -6195,9 +6327,18 @@
+@@ -6195,9 +6366,18 @@
  
    // Capture the requesting canvas's identity before dispatch. The IPC reply
    // runs later without the initiating realm, and its overlay may have changed.
@@ -1340,7 +1607,7 @@
    const size_t expectedSize = checkedByteSize.value();
    const auto desc = webgl::ReadPixelsDesc{{0, 0}, size};
  
-@@ -6211,7 +6352,7 @@
+@@ -6211,7 +6391,7 @@
    ipcPromise->Then(
        GetCurrentSerialEventTarget(), __func__,
        [self = RefPtr{this}, promise, child, desc, size, surfaceFormat,
@@ -1349,7 +1616,7 @@
          if (!aReply.byteStride || !aReply.shmem) {
            promise->Reject(NS_ERROR_FAILURE, __func__);
            return;
-@@ -6303,7 +6444,11 @@
+@@ -6303,7 +6483,11 @@
  
          // GPU pixels retain their producer even after CPU readback. A generic
          // capability profile or platform software GL is not canonical rendering.
@@ -1379,11 +1646,13 @@
  
    void SetOpaqueValueFromOpaqueAttr(bool) override {};
    bool GetIsOpaque() override { return !mInitialOptions->alpha; }
-@@ -2467,6 +2469,9 @@
+@@ -2467,6 +2469,11 @@
    Maybe<const WebGLContextOptions> mInitialOptions;
    // Frozen on first creation, including loss/restoration. Reload to change.
    Maybe<bool> mCloakfoxBackendProfile;
 +  Maybe<bool> mCloakfoxCanonicalGpu;
++  Maybe<uint32_t> mCloakfoxPersonaProfile;
++  std::string mCloakfoxPersonaRenderer, mCloakfoxPersonaVendor, mCloakfoxPersonaConfig;
 +  gfx::CanvasPrivacyMetadata mCloakfoxGpuPrivacyPolicy;
 +  mutable uint32_t mCloakfoxGpuImportedSources = 0;
    bool mXRCompatible = false;
@@ -1794,7 +2063,45 @@
     * The mPictureRect is the size of the source image in default, however, if
 --- a/dom/canvas/ImageBitmapRenderingContext.cpp
 +++ b/dom/canvas/ImageBitmapRenderingContext.cpp
-@@ -44,6 +44,7 @@
+@@ -3,6 +3,10 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "ImageBitmapRenderingContext.h"
++#include "CloakfoxSiteSeed.hpp"
++#include "CanvasFingerprintManager.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
++#include "mozilla/gfx/Swizzle.h"
+ #include "mozilla/gfx/CanvasPrivacy.h"
+ 
+ #include "ImageContainer.h"
+@@ -15,6 +19,26 @@
+ 
+ namespace mozilla::dom {
+ 
++// Cloakfox bitmap export policy. Metadata is not itself an extraction grant.
++enum class CloakfoxBitmapExtraction { Native, Canonical, Noise, Refuse };
++static CloakfoxBitmapExtraction CloakfoxBitmapExportPolicy(
++    bool aEnabled, bool aContent, bool aCanonicalRequested,
++    const gfx::CanvasPrivacyMetadata& aSource,
++    const gfx::CanvasPrivacyMetadata& aOwner, uint32_t aFallbackSeed) {
++  if (!aEnabled || !aContent) return CloakfoxBitmapExtraction::Native;
++  const bool sameOwner = aSource.version == gfx::kCanvasPrivacyVersion &&
++      aOwner.version == gfx::kCanvasPrivacyVersion &&
++      (aOwner.ownerHi || aOwner.ownerLo) &&
++      aSource.userContextId == aOwner.userContextId &&
++      aSource.ownerHi == aOwner.ownerHi && aSource.ownerLo == aOwner.ownerLo;
++  if (aCanonicalRequested && gfx::CanImportCanonicalCanvasPixels(aSource) &&
++      (!aSource.version || sameOwner)) return CloakfoxBitmapExtraction::Canonical;
++  if (aFallbackSeed) return CloakfoxBitmapExtraction::Noise;
++  return aCanonicalRequested ? CloakfoxBitmapExtraction::Refuse
++                             : CloakfoxBitmapExtraction::Native;
++}
++// End Cloakfox bitmap export policy.
++
+ ImageBitmapRenderingContext::ImageBitmapRenderingContext()
+     : mWidth(0),
+       mHeight(0),
+@@ -44,6 +68,7 @@
      surface = MatchWithIntrinsicSize();
    } else {
      surface = mImage->GetAsSourceSurface();
@@ -1802,7 +2109,7 @@
    }
    if (!surface) {
      return nullptr;
-@@ -74,7 +75,7 @@
+@@ -74,7 +99,7 @@
    ResetBitmap();
  
    if (aImageBitmap) {
@@ -1811,7 +2118,7 @@
      mImage = aImageBitmap->TransferAsImage();
  
      if (!mImage) {
-@@ -132,6 +133,7 @@
+@@ -132,6 +157,7 @@
  already_AddRefed<gfx::DataSourceSurface>
  ImageBitmapRenderingContext::MatchWithIntrinsicSize() {
    RefPtr<gfx::SourceSurface> surface = mImage->GetAsSourceSurface();
@@ -1819,7 +2126,7 @@
    if (!surface) {
      return nullptr;
    }
-@@ -162,8 +164,7 @@
+@@ -162,8 +188,7 @@
        gfx::IntRect(0, 0, surface->GetSize().width, surface->GetSize().height),
        gfx::IntPoint(0, 0));
  
@@ -1829,7 +2136,7 @@
    gfx::MergeCanvasPixelSources(temp, surface);
    return temp.forget();
  }
-@@ -179,6 +180,7 @@
+@@ -179,6 +204,7 @@
    }
  
    RefPtr<gfx::SourceSurface> surface = mImage->GetAsSourceSurface();
@@ -1837,7 +2144,58 @@
    if (!surface) {
      return nullptr;
    }
-@@ -253,6 +255,7 @@
+@@ -197,6 +223,27 @@
+   *aFormat = imgIEncoder::INPUT_FORMAT_HOSTARGB;
+   *aImageSize = data->GetSize();
+ 
++  const auto principal = PrincipalOrNull();
++  const bool content = principal && !principal->IsSystemPrincipal();
++  const bool enabled = StaticPrefs::cloakfox_enabled();
++  const bool canonicalRequested = content &&
++      ((mOffscreenCanvas && mOffscreenCanvas->CanonicalCanvasBackingPolicy()) ||
++       StaticPrefs::cloakfox_experimental_canvas_pipeline());
++  uint32_t seed = 0;
++  gfx::CanvasPrivacyMetadata owner;
++  if (enabled && content) {
++    const uint32_t id = principal->OriginAttributesRef().mUserContextId;
++    seed = CloakfoxSiteSeed::Derive(id, "canvas:seed", GetCookieJarSettings());
++    if (const auto key = CloakfoxSiteSeed::OwnerKey(id, GetCookieJarSettings())) {
++      owner = {gfx::kCanvasPrivacyVersion, id, (*key)[0], (*key)[1],
++               uint32_t(gfx::CanvasPixelSource::Unknown)};
++    }
++  }
++  const auto extraction = CloakfoxBitmapExportPolicy(
++      enabled, content, canonicalRequested, gfx::GetCanvasPrivacyMetadata(surface),
++      owner, seed);
++  if (extraction == CloakfoxBitmapExtraction::Refuse) return nullptr;
++
+   UniquePtr<uint8_t[]> ret = gfx::SurfaceToPackedBGRA(data);
+ 
+   if (ret) {
+@@ -212,6 +259,22 @@
+           gfx::SurfaceFormat::A8R8G8B8_UINT32);
+     }
+   }
++  if (ret && (extraction == CloakfoxBitmapExtraction::Canonical ||
++              extraction == CloakfoxBitmapExtraction::Noise)) {
++    // Match 2D typed readback: noise straight RGBA, preserving author alpha,
++    // rather than altering premultiplied BGRA and amplifying low-alpha noise.
++    const int32_t stride = data->GetSize().width * 4;
++    if (!gfx::UnpremultiplyData(ret.get(), stride,
++                               gfx::SurfaceFormat::A8R8G8B8_UINT32, ret.get(),
++                               stride, gfx::SurfaceFormat::R8G8B8A8,
++                               data->GetSize())) return nullptr;
++    *aFormat = imgIEncoder::INPUT_FORMAT_RGBA;
++    if (extraction == CloakfoxBitmapExtraction::Noise) {
++      CanvasFingerprintManager::ApplyCanvasNoiseRect(
++          ret.get(), data->GetSize().width, data->GetSize().height, stride,
++          data->GetSize().width, 0, 0, seed);
++    }
++  }
+   return ret;
+ }
+ 
+@@ -253,6 +316,7 @@
    }
  
    RefPtr<gfx::SourceSurface> surface = mImage->GetAsSourceSurface();
@@ -1845,7 +2203,7 @@
    if (!surface) {
      return nullptr;
    }
-@@ -262,8 +265,7 @@
+@@ -262,8 +326,7 @@
      gfx::AddCanvasPixelSource(surface, gfx::CanvasPixelSource::Unknown);
    }
  
@@ -1855,7 +2213,7 @@
    return surface.forget();
  }
  
-@@ -280,7 +282,7 @@
+@@ -280,7 +343,7 @@
    }
  
    mImage = nullptr;
@@ -2057,6 +2415,46 @@
          const bool isFloat = precisionType == LOCAL_GL_LOW_FLOAT ||
                               precisionType == LOCAL_GL_MEDIUM_FLOAT ||
                               precisionType == LOCAL_GL_HIGH_FLOAT;
+--- a/dom/canvas/WebGLContextValidate.cpp
++++ b/dom/canvas/WebGLContextValidate.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -418,18 +419,26 @@
+   // shader translator resources, not only reported getters. Unsupported whole
+   // baselines fail creation; never raise a backend capacity to meet this table.
+   if (mOptions.cloakfoxBackendProfile) {
++    const auto persona = CloakfoxGPUProfile::Decode(mOptions.cloakfoxPersonaProfile);
++    if (mOptions.cloakfoxPersonaProfile && !persona) {
++      *out_failReason = {"FEATURE_FAILURE_CLOAKFOX_GPU_PROFILE", "Invalid bounded persona profile"};
++      return false;
++    }
++    const uint32_t texture = persona ? persona->texture : 2048;
++    const uint32_t vertexUniforms = persona ? persona->vertexUniforms : 256;
++    const uint32_t fragmentUniforms = persona ? persona->fragmentUniforms : 224;
+     const bool gl2 = IsWebGL2();
+     bool ok = true;
+-    ok &= RestrictCap(&limits.maxTex2dSize, uint32_t{2048});
+-    ok &= RestrictCap(&limits.maxTexCubeSize, uint32_t{2048});
+-    ok &= RestrictCap(&mGLMaxRenderbufferSize, uint32_t{2048});
+-    ok &= RestrictCap(&limits.maxViewportDim, uint32_t{4096});
++    ok &= RestrictCap(&limits.maxTex2dSize, texture);
++    ok &= RestrictCap(&limits.maxTexCubeSize, texture);
++    ok &= RestrictCap(&mGLMaxRenderbufferSize, texture);
++    ok &= RestrictCap(&limits.maxViewportDim, persona ? texture : uint32_t{4096});
+     ok &= RestrictCap(&limits.maxVertexAttribs, uint32_t{16u});
+     ok &= RestrictCap(&limits.maxTexUnits, uint32_t{32u});
+     ok &= RestrictCap(&mGLMaxVertexTextureImageUnits, uint32_t{16u});
+     ok &= RestrictCap(&mGLMaxFragmentTextureImageUnits, uint32_t{16u});
+-    ok &= RestrictCap(&mGLMaxVertexUniformVectors, uint32_t{256u});
+-    ok &= RestrictCap(&mGLMaxFragmentUniformVectors, uint32_t{224u});
++    ok &= RestrictCap(&mGLMaxVertexUniformVectors, vertexUniforms);
++    ok &= RestrictCap(&mGLMaxFragmentUniformVectors, fragmentUniforms);
+     ok &= RestrictCap(&mGLMaxVertexOutputVectors, uint32_t{16u});
+     ok &= RestrictCap(&mGLMaxFragmentInputVectors, uint32_t{15u});
+     if (gl2) {
 --- a/dom/canvas/WebGLTypes.h
 +++ b/dom/canvas/WebGLTypes.h
 @@ -364,7 +364,8 @@
@@ -2065,18 +2463,20 @@
    bool cloakfoxBackendProfile = false;
 -  std::array<uint8_t, 3> _cloakfoxPadding = {};
 +  bool cloakfoxCanonicalGpu = false;
-+  std::array<uint8_t, 2> _cloakfoxPadding = {};
++  uint16_t cloakfoxPersonaProfile = 0;
  
    auto MutTiedFields() {
      // clang-format off
-@@ -384,6 +385,7 @@
+@@ -384,7 +385,8 @@
        shouldResistFingerprinting,
        enableDebugRendererInfo,
        cloakfoxBackendProfile,
+-      _cloakfoxPadding);
 +      cloakfoxCanonicalGpu,
-       _cloakfoxPadding);
++      cloakfoxPersonaProfile);
      // clang-format on
    }
+ 
 --- a/dom/canvas/nsICanvasRenderingContextInternal.cpp
 +++ b/dom/canvas/nsICanvasRenderingContextInternal.cpp
 @@ -252,6 +252,7 @@
@@ -2901,30 +3301,68 @@
      case webrtc::VideoCodecType::kVideoCodecVP9:
 --- a/dom/webgpu/Adapter.cpp
 +++ b/dom/webgpu/Adapter.cpp
-@@ -336,7 +336,15 @@
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -321,6 +322,19 @@
+   // > devices created from such adapters.
+   mFeatures->Add(dom::GPUFeatureName::Core_features_and_limits, ignoredRv);
+ 
++  if (const auto code = mParent->PersonaProfile()) {
++    // Adapter and requestDevice validation use the same captured limit object.
++    // All candidate values meet core WebGPU defaults; never raise the backend.
++    const uint64_t bufferCap = (uint64_t{256} + (code & 255)) * 1024 * 1024;
++    auto& limits = *mLimits->mFfi;
++    mPersonaProfileSupported = CloakfoxGPUProfile::Decode(code).has_value() &&
++        IsCanonicalGpu() && limits.max_buffer_size >= bufferCap &&
++        limits.max_storage_buffer_binding_size >= (uint64_t{128} * 1024 * 1024);
++    if (mPersonaProfileSupported) {
++      limits.max_buffer_size = bufferCap;
++      limits.max_storage_buffer_binding_size = uint64_t{128} * 1024 * 1024;
++    }
++  }
+   // We clamp limits to defaults when requestDevice is called, but
+   // we return the actual limits when only requestAdapter is called.
+   // So, we should clamp the limits here too if we should RFP.
+@@ -336,9 +350,17 @@
  const RefPtr<AdapterInfo>& Adapter::Info() const { return mInfo; }
  
  bool Adapter::SupportSharedTextureInSwapChain() const {
 -  return mInfoInner->support_use_shared_texture_in_swap_chain;
 +  return !IsCanonicalGpu() && mInfoInner->support_use_shared_texture_in_swap_chain;
-+}
-+
+ }
+ 
 +bool Adapter::IsCanonicalGpu() const {
 +  return mParent->IsCanonicalGpu() &&
 +         mInfoInner->backend == ffi::WGPUBackend_Vulkan &&
 +         mInfoInner->device_type == ffi::WGPUDeviceType::WGPUDeviceType_Cpu &&
 +         mInfoInner->vendor == 0x1AE0 && mInfoInner->device == 0xC0DE &&
 +         StringBeginsWith(mInfoInner->name, u"SwiftShader Device"_ns);
- }
- 
++}
++
  static std::string_view ToJsKey(const Limit limit) {
+   switch (limit) {
+     case Limit::MaxTextureDimension1D:
 --- a/dom/webgpu/Adapter.h
 +++ b/dom/webgpu/Adapter.h
-@@ -103,6 +103,7 @@
+@@ -96,13 +96,18 @@
+   RefPtr<AdapterInfo> mInfo;
+   const std::shared_ptr<ffi::WGPUAdapterInformation> mInfoInner;
+ 
++  bool mPersonaProfileSupported = true;
++
+  public:
++
+   Adapter(Instance* const aParent, WebGPUChild* const aChild,
+           const std::shared_ptr<ffi::WGPUAdapterInformation>& aInfo);
+   const RefPtr<SupportedFeatures>& Features() const;
    const RefPtr<SupportedLimits>& Limits() const;
    const RefPtr<AdapterInfo>& Info() const;
    bool SupportSharedTextureInSwapChain() const;
 +  bool IsCanonicalGpu() const;
++  bool PersonaProfileSupported() const { return mPersonaProfileSupported; }
    uint64_t MissingFeatures() const;
  
    nsCString LabelOrId() const {
@@ -2957,7 +3395,7 @@
  
  #include "LayerUserData.h"
  #include "Utility.h"
-@@ -122,6 +126,31 @@
+@@ -122,6 +126,37 @@
      return;
    }
  
@@ -2986,10 +3424,16 @@
 +    aRv.ThrowInvalidStateError("This canvas requires the canonical CPU GPU device.");
 +    return;
 +  }
++  if (mCanonicalGpuRequired &&
++      !aConfig.mDevice->HasCanvasPrivacyOwner(mGpuPrivacyPolicy)) {
++    aRv.ThrowInvalidStateError(
++        "The GPU device does not match this canvas's privacy owner.");
++    return;
++  }
    mConfiguration.reset(new dom::GPUCanvasConfiguration(aConfig));
    mRemoteTextureOwnerId = Some(layers::RemoteTextureOwnerId::GetNext());
    mUseSharedTextureInSwapChain =
-@@ -342,6 +371,12 @@
+@@ -342,6 +377,12 @@
    *out_format = 0;
    *out_imageSize = {};
  
@@ -3002,7 +3446,7 @@
    gfxAlphaType any;
    RefPtr<gfx::SourceSurface> snapshot = GetSurfaceSnapshot(&any);
    if (!snapshot) {
-@@ -367,6 +402,12 @@
+@@ -367,6 +408,12 @@
      const char* aMimeType, const nsAString& aEncoderOptions,
      mozilla::CanvasUtils::ImageExtraction aExtractionBehavior,
      const nsACString& aRandomizationKey, nsIInputStream** aStream) {
@@ -3015,7 +3459,7 @@
    gfxAlphaType any;
    RefPtr<gfx::SourceSurface> snapshot = GetSurfaceSnapshot(&any);
    if (!snapshot) {
-@@ -394,6 +435,21 @@
+@@ -394,6 +441,23 @@
    return mConfiguration->mAlphaMode == dom::GPUCanvasAlphaMode::Opaque;
  }
  
@@ -3025,10 +3469,12 @@
 +    metadata.sources |= mConfiguration->mDevice->ExternalGpuSourcesFor(mGpuPrivacyPolicy);
 +  }
 +  metadata.sources |= uint32_t(gfx::CanvasPixelSource::GPU);
-+  if (mConfiguration && mConfiguration->mDevice->mCanonicalGpu) {
++  if (mConfiguration && mConfiguration->mDevice->mCanonicalGpu &&
++      mConfiguration->mDevice->HasCanvasPrivacyOwner(mGpuPrivacyPolicy)) {
 +    metadata.sources |= uint32_t(gfx::CanvasPixelSource::CanonicalGPU);
 +  } else {
-+    // A native device cannot inherit its own producer proof from imports.
++    // Native or differently owned devices cannot inherit producer proof from
++    // imports, including when no imports have been recorded at all.
 +    metadata.sources |= uint32_t(gfx::CanvasPixelSource::Unknown);
 +  }
 +  return gfx::NormalizeCanvasPrivacyMetadata(metadata);
@@ -3037,7 +3483,7 @@
  already_AddRefed<gfx::SourceSurface> CanvasContext::GetSurfaceSnapshot(
      gfxAlphaType* aOutAlphaType) {
    const bool isOpaque = GetIsOpaque();
-@@ -462,6 +518,11 @@
+@@ -462,6 +526,11 @@
      }
    }
  
@@ -3107,7 +3553,7 @@
  Device::Device(Adapter* const aParent, RawId aDeviceId, RawId aQueueId,
                 RefPtr<SupportedFeatures> aFeatures,
                 RefPtr<SupportedLimits> aLimits,
-@@ -70,6 +84,8 @@
+@@ -70,11 +84,79 @@
        mAdapterInfo(std::move(aAdapterInfo)),
        mSupportSharedTextureInSwapChain(
            aParent->SupportSharedTextureInSwapChain()),
@@ -3116,10 +3562,19 @@
        mLost(false),
        mLostPromise(std::move(aLostPromise)),
        mQueue(new class Queue(this, aQueueId)) {
-@@ -77,6 +93,63 @@
+   GetChild()->RegisterDevice(this);
    KeepAliveIfHasListenersFor(nsGkAtoms::onuncapturederror);
- }
- 
++}
++
++bool Device::HasCanvasPrivacyOwner(const gfx::CanvasPrivacyMetadata& aOwner) const {
++  return aOwner.version == gfx::kCanvasPrivacyVersion &&
++         mGpuPrivacyPolicy.version == gfx::kCanvasPrivacyVersion &&
++         (aOwner.ownerHi || aOwner.ownerLo) &&
++         aOwner.userContextId == mGpuPrivacyPolicy.userContextId &&
++         aOwner.ownerHi == mGpuPrivacyPolicy.ownerHi &&
++         aOwner.ownerLo == mGpuPrivacyPolicy.ownerLo;
++}
++
 +bool Device::AcceptExternalGpuInput(gfx::CanvasPrivacyMetadata aSource) {
 +  aSource = gfx::NormalizeCanvasPrivacyMetadata(aSource);
 +  const bool verified = gfx::CanImportCanonicalCanvasPixels(aSource);
@@ -3175,12 +3630,10 @@
 +  return mCanonicalGpu && (aMode & dom::GPUMapMode_Binding::READ) &&
 +         (ExternalGpuSourcesFor(mGpuPrivacyPolicy) &
 +          uint32_t(gfx::CanvasPixelSource::Unknown));
-+}
-+
- Device::~Device() { GetChild()->UnregisterDevice(GetId()); }
+ }
  
- void Device::TrackBuffer(Buffer* aBuffer) { mTrackedBuffers.Insert(aBuffer); }
-@@ -160,6 +233,10 @@
+ Device::~Device() { GetChild()->UnregisterDevice(GetId()); }
+@@ -160,6 +242,10 @@
      return nullptr;
    }
  
@@ -3201,11 +3654,12 @@
  #include "ObjectModel.h"
  #include "mozilla/DOMEventTargetHelper.h"
  #include "mozilla/MozPromise.h"
-@@ -92,7 +93,22 @@
+@@ -92,7 +93,23 @@
    RefPtr<SupportedLimits> mLimits;
    RefPtr<AdapterInfo> mAdapterInfo;
    const bool mSupportSharedTextureInSwapChain;
 +  const bool mCanonicalGpu;
++  bool HasCanvasPrivacyOwner(const gfx::CanvasPrivacyMetadata&) const;
 +  bool AcceptExternalGpuInput(gfx::CanvasPrivacyMetadata);
 +  void RecordExternalGpuSource(gfx::CanvasPrivacyMetadata);
 +  uint32_t ExternalGpuSourcesFor(const gfx::CanvasPrivacyMetadata&) const;
@@ -3305,7 +3759,10 @@
          ipc::Shmem buffer;
 --- a/dom/webgpu/Instance.cpp
 +++ b/dom/webgpu/Instance.cpp
-@@ -3,6 +3,8 @@
+@@ -1,8 +1,11 @@
++#include "CloakfoxGPUProfile.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "Instance.h"
@@ -3314,7 +3771,7 @@
  
  #include <optional>
  #include <string_view>
-@@ -61,6 +63,12 @@
+@@ -61,6 +64,16 @@
  
  Instance::Instance(nsIGlobalObject* aGlobal)
      : mGlobal(aGlobal), mWgslLanguageFeatures(new WGSLLanguageFeatures(this)) {
@@ -3324,10 +3781,23 @@
 +  mCanonicalGpu = principal && !principal->IsSystemPrincipal() &&
 +                  StaticPrefs::cloakfox_enabled() &&
 +                  StaticPrefs::cloakfox_experimental_canvas_pipeline();
++  mPersonaProfileRequired = CloakfoxGPUProfile::Requested(mGlobal);
++  if (mPersonaProfileRequired) {
++    if (const auto profile = CloakfoxGPUProfile::ForGlobal(mGlobal)) mPersonaProfile = profile->code;
++  }
    // Populate `mWgslLanguageFeatures`.
    IgnoredErrorResult rv;
    nsCString wgslFeature;
-@@ -223,7 +231,7 @@
+@@ -125,6 +138,8 @@
+     }
+   };
+ 
++  rejectIf(mPersonaProfileRequired && !mPersonaProfile,
++           "Owning-container GPU profile is invalid or unavailable.");
+   rejectIf(!gfx::gfxVars::AllowWebGPU(), "WebGPU is disabled by blocklist.");
+   rejectIf(!StaticPrefs::dom_webgpu_enabled(),
+            "WebGPU is disabled because the `dom.webgpu.enabled` pref. is set "
+@@ -223,7 +238,7 @@
    }
  
    RawId adapter_id = ffi::wgpu_client_request_adapter(
@@ -3338,19 +3808,22 @@
        PendingRequestAdapterPromise{promise, this, adapter_id});
 --- a/dom/webgpu/Instance.h
 +++ b/dom/webgpu/Instance.h
-@@ -51,6 +51,7 @@
+@@ -51,6 +51,8 @@
   public:
    GPU_DECL_CYCLE_COLLECTION(Instance)
    GPU_DECL_JS_WRAP(Instance)
 +  bool IsCanonicalGpu() const { return mCanonicalGpu; }
++  uint32_t PersonaProfile() const { return mPersonaProfile; }
  
    nsIGlobalObject* GetParentObject() const { return mGlobal; }
  
-@@ -80,6 +81,7 @@
+@@ -80,6 +82,9 @@
    virtual ~Instance() = default;
  
    nsCOMPtr<nsIGlobalObject> mGlobal;
 +  bool mCanonicalGpu = false;
++  bool mPersonaProfileRequired = false;
++  uint32_t mPersonaProfile = 0;
    RefPtr<WGSLLanguageFeatures> mWgslLanguageFeatures;
  
   public:
@@ -3368,6 +3841,22 @@
    RefPtr<gfx::DataSourceSurface> dataSurface = surface->GetDataSurface();
    if (!dataSurface) {
      aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
+--- a/dom/webgpu/ipc/WebGPUChild.cpp
++++ b/dom/webgpu/ipc/WebGPUChild.cpp
+@@ -77,8 +77,11 @@
+   } else {
+     auto info = std::make_shared<WGPUAdapterInformation>(*aAdapterInfo);
+     RefPtr<Adapter> adapter = new Adapter(pending_promise.instance, c, info);
+-    promise::MaybeResolve(std::move(pending_promise.promise),
+-                          std::move(adapter));
++    if (!adapter->PersonaProfileSupported()) {
++      promise::MaybeResolveWithNull(std::move(pending_promise.promise));
++    } else {
++      promise::MaybeResolve(std::move(pending_promise.promise), std::move(adapter));
++    }
+   }
+ }
+ 
 --- a/dom/webgpu/ipc/WebGPUParent.cpp
 +++ b/dom/webgpu/ipc/WebGPUParent.cpp
 @@ -7,6 +7,7 @@
@@ -6443,13 +6932,19 @@
 +    ]
 --- a/modules/libpref/init/StaticPrefList.yaml
 +++ b/modules/libpref/init/StaticPrefList.yaml
-@@ -2424,6 +2424,13 @@
+@@ -2424,6 +2424,19 @@
    value: true
    mirror: always
  
 +# Native renderer routing cannot wait for asynchronous persona publication.
 +# Missing/malformed policy data never selects a host renderer while requested.
 +- name: cloakfox.experimental.canvas_pipeline
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
++# Owner-bound native persona GPU enforcement. Invalid descriptors fail closed.
++- name: cloakfox.opt.container_rendering_profiles
 +  type: RelaxedAtomicBool
 +  value: false
 +  mirror: always

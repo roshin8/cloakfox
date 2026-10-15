@@ -1,0 +1,70 @@
+{
+  "runtimeBuildID": "20261015180857",
+  "installed": {
+    "installed": "/Applications/Cloakfox.app",
+    "candidate": "/tmp/Cloakfox-privacy-gap-fixes.app",
+    "backup": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-before-privacy-gap-fixes-20261015-181503.app",
+    "applicationIniBuildID": "20261015180938",
+    "version": "158.0-beta.26",
+    "xulSHA256": "24c64d65e24851d2dc9678698d405adb7bd00910b7303cdc0d69ebaf3015e8e1",
+    "signatureVerified": true,
+    "profilesModified": false,
+    "scope": "macOS arm64 only"
+  },
+  "checks": {
+    "bitmap-installed": {
+      "passed": 219,
+      "failed": 0
+    },
+    "webgpu-installed": {
+      "passed": 8,
+      "failed": 0
+    },
+    "profiles-installed": {
+      "passed": 331,
+      "failed": 0
+    },
+    "gpu-installed": {
+      "passed": 103,
+      "failed": 0
+    },
+    "encoders-installed": {
+      "passed": 31,
+      "failed": 0
+    },
+    "adversarial-installed": {
+      "passed": 14,
+      "failed": 0
+    },
+    "libraries-enabled": {
+      "passed": 464,
+      "failed": 0
+    },
+    "libraries-disabled": {
+      "passed": 448,
+      "failed": 0
+    }
+  },
+  "ipWorkflow": "passed local TLS proxy fixture; warning/notification/recheck/continue and same-host filter",
+  "unitTests": {
+    "nodePassed": 268,
+    "pythonPassed": 118,
+    "pythonSkipped": 14
+  },
+  "nativeReplay": {
+    "patches": 144,
+    "pristineTargets": 409,
+    "drift": []
+  },
+  "strictSignatureVerified": true,
+  "canonicalResourceHashesVerified": 82,
+  "independentReview": "no remaining concrete P0/P1/P2 in scoped fixes; review.md",
+  "scope": "macOS arm64; disposable local test profiles; personal profiles unchanged",
+  "limitations": [
+    "Cross-site Offscreen transfer blocked by Gecko before configure; actual guard exercised through same-process stale owner transfer",
+    "Foreign bitmap owner tested through key rotation",
+    "Transparent clear does not cover hidden nonzero RGB at alpha zero",
+    "JPEG/WebP validated by route agreement, PNG by protected pixels",
+    "No universal no-leak or physical-GPU-emulation claim"
+  ]
+}

@@ -1,0 +1,220 @@
+{
+  "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+  "xulSHA256": "24c64d65e24851d2dc9678698d405adb7bd00910b7303cdc0d69ebaf3015e8e1",
+  "checks": [
+    {
+      "name": "html: source backing agrees",
+      "pass": true
+    },
+    {
+      "name": "html/toBlob/image/png: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "html/toBlob/image/png: PNG agrees with typed readback",
+      "pass": true
+    },
+    {
+      "name": "html/toBlob/image/png: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "html/toDataURL/image/png: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "html/toDataURL/image/png: PNG agrees with typed readback",
+      "pass": true
+    },
+    {
+      "name": "html/toDataURL/image/png: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "html/toBlob/image/jpeg: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "html/toBlob/image/jpeg: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "html/toDataURL/image/jpeg: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "html/toDataURL/image/jpeg: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "html/toBlob/image/webp: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "html/toBlob/image/webp: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "html/toDataURL/image/webp: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "html/toDataURL/image/webp: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "offscreen: source backing agrees",
+      "pass": true
+    },
+    {
+      "name": "offscreen/convertToBlob/image/png: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "offscreen/convertToBlob/image/png: PNG agrees with typed readback",
+      "pass": true
+    },
+    {
+      "name": "offscreen/convertToBlob/image/png: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "offscreen/convertToBlob/image/jpeg: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "offscreen/convertToBlob/image/jpeg: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "offscreen/convertToBlob/image/webp: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "offscreen/convertToBlob/image/webp: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "worker: source backing agrees",
+      "pass": true
+    },
+    {
+      "name": "worker/convertToBlob/image/png: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "worker/convertToBlob/image/png: PNG agrees with typed readback",
+      "pass": true
+    },
+    {
+      "name": "worker/convertToBlob/image/png: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "worker/convertToBlob/image/jpeg: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "worker/convertToBlob/image/jpeg: decoded pixels agree across export routes",
+      "pass": true
+    },
+    {
+      "name": "worker/convertToBlob/image/webp: requested format and dimensions",
+      "pass": true
+    },
+    {
+      "name": "worker/convertToBlob/image/webp: decoded pixels agree across export routes",
+      "pass": true
+    }
+  ],
+  "exports": [
+    {
+      "realm": "html",
+      "route": "toBlob",
+      "type": "image/png",
+      "encodedSHA256": "c42e2c5af1966b5e85fe0461d399df9788fe5cf0af43462a77589102fc603806",
+      "pixelsSHA256": "a864c84745cdb8ffb671fed7c927eaa5b327d44ee18333f07f282135cdca9003"
+    },
+    {
+      "realm": "html",
+      "route": "toDataURL",
+      "type": "image/png",
+      "encodedSHA256": "c42e2c5af1966b5e85fe0461d399df9788fe5cf0af43462a77589102fc603806",
+      "pixelsSHA256": "a864c84745cdb8ffb671fed7c927eaa5b327d44ee18333f07f282135cdca9003"
+    },
+    {
+      "realm": "html",
+      "route": "toBlob",
+      "type": "image/jpeg",
+      "encodedSHA256": "269c47b5e2361ac3825d51182e4678c944caf336ac512005bcf9aaafd4c38443",
+      "pixelsSHA256": "68a84edb9d486a893fb5d25c0cf1dea58fa091b79303612cab67f2060df43b69"
+    },
+    {
+      "realm": "html",
+      "route": "toDataURL",
+      "type": "image/jpeg",
+      "encodedSHA256": "269c47b5e2361ac3825d51182e4678c944caf336ac512005bcf9aaafd4c38443",
+      "pixelsSHA256": "68a84edb9d486a893fb5d25c0cf1dea58fa091b79303612cab67f2060df43b69"
+    },
+    {
+      "realm": "html",
+      "route": "toBlob",
+      "type": "image/webp",
+      "encodedSHA256": "b731e04f2aef2590f0db398e4f07671edbf0a823072c7c38325689dfe8927d84",
+      "pixelsSHA256": "3c426792590fb229149a41d9d82bf4fc8bfbb05f4ed6a1ec1b24c20d51bdd2ab"
+    },
+    {
+      "realm": "html",
+      "route": "toDataURL",
+      "type": "image/webp",
+      "encodedSHA256": "b731e04f2aef2590f0db398e4f07671edbf0a823072c7c38325689dfe8927d84",
+      "pixelsSHA256": "3c426792590fb229149a41d9d82bf4fc8bfbb05f4ed6a1ec1b24c20d51bdd2ab"
+    },
+    {
+      "realm": "offscreen",
+      "route": "convertToBlob",
+      "type": "image/png",
+      "encodedSHA256": "c42e2c5af1966b5e85fe0461d399df9788fe5cf0af43462a77589102fc603806",
+      "pixelsSHA256": "a864c84745cdb8ffb671fed7c927eaa5b327d44ee18333f07f282135cdca9003"
+    },
+    {
+      "realm": "offscreen",
+      "route": "convertToBlob",
+      "type": "image/jpeg",
+      "encodedSHA256": "269c47b5e2361ac3825d51182e4678c944caf336ac512005bcf9aaafd4c38443",
+      "pixelsSHA256": "68a84edb9d486a893fb5d25c0cf1dea58fa091b79303612cab67f2060df43b69"
+    },
+    {
+      "realm": "offscreen",
+      "route": "convertToBlob",
+      "type": "image/webp",
+      "encodedSHA256": "b731e04f2aef2590f0db398e4f07671edbf0a823072c7c38325689dfe8927d84",
+      "pixelsSHA256": "3c426792590fb229149a41d9d82bf4fc8bfbb05f4ed6a1ec1b24c20d51bdd2ab"
+    },
+    {
+      "realm": "worker",
+      "route": "convertToBlob",
+      "type": "image/png",
+      "encodedSHA256": "c42e2c5af1966b5e85fe0461d399df9788fe5cf0af43462a77589102fc603806",
+      "pixelsSHA256": "a864c84745cdb8ffb671fed7c927eaa5b327d44ee18333f07f282135cdca9003"
+    },
+    {
+      "realm": "worker",
+      "route": "convertToBlob",
+      "type": "image/jpeg",
+      "encodedSHA256": "269c47b5e2361ac3825d51182e4678c944caf336ac512005bcf9aaafd4c38443",
+      "pixelsSHA256": "68a84edb9d486a893fb5d25c0cf1dea58fa091b79303612cab67f2060df43b69"
+    },
+    {
+      "realm": "worker",
+      "route": "convertToBlob",
+      "type": "image/webp",
+      "encodedSHA256": "b731e04f2aef2590f0db398e4f07671edbf0a823072c7c38325689dfe8927d84",
+      "pixelsSHA256": "3c426792590fb229149a41d9d82bf4fc8bfbb05f4ed6a1ec1b24c20d51bdd2ab"
+    }
+  ],
+  "runtime": {
+    "buildID": "20261015180857",
+    "version": "158.0-beta.26"
+  }
+}

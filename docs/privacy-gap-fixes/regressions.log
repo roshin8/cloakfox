@@ -1,0 +1,14 @@
+RUN ip-installed
+RESULT {'name': 'ip-installed', 'probe': 'probe_ip_conflicts.py', 'exit': 0, 'seconds': 5.8}
+RUN profiles-installed
+RESULT {'name': 'profiles-installed', 'probe': 'probe_container_gpu_profiles.py', 'exit': 0, 'seconds': 14.1}
+RUN gpu-installed
+RESULT {'name': 'gpu-installed', 'probe': 'probe_canvas_canonical_gpu.py', 'exit': 0, 'seconds': 5.4}
+RUN encoders-installed
+RESULT {'name': 'encoders-installed', 'probe': 'probe_canvas_canonical_encoders.py', 'exit': 0, 'seconds': 3.4}
+RUN adversarial-installed
+RESULT {'name': 'adversarial-installed', 'probe': 'probe_canvas_canonical_adversarial.py', 'exit': 0, 'seconds': 9.6}
+RUN libraries-enabled
+RESULT {'name': 'libraries-enabled', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 38.9}
+RUN libraries-disabled
+RESULT {'name': 'libraries-disabled', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 38.9}

@@ -1,0 +1,44 @@
+[
+  {
+    "name": "ip-installed",
+    "probe": "probe_ip_conflicts.py",
+    "exit": 0,
+    "seconds": 5.8
+  },
+  {
+    "name": "profiles-installed",
+    "probe": "probe_container_gpu_profiles.py",
+    "exit": 0,
+    "seconds": 14.1
+  },
+  {
+    "name": "gpu-installed",
+    "probe": "probe_canvas_canonical_gpu.py",
+    "exit": 0,
+    "seconds": 5.4
+  },
+  {
+    "name": "encoders-installed",
+    "probe": "probe_canvas_canonical_encoders.py",
+    "exit": 0,
+    "seconds": 3.4
+  },
+  {
+    "name": "adversarial-installed",
+    "probe": "probe_canvas_canonical_adversarial.py",
+    "exit": 0,
+    "seconds": 9.6
+  },
+  {
+    "name": "libraries-enabled",
+    "probe": "probe_fingerprint_libraries.py",
+    "exit": 0,
+    "seconds": 38.9
+  },
+  {
+    "name": "libraries-disabled",
+    "probe": "probe_fingerprint_libraries.py",
+    "exit": 0,
+    "seconds": 38.9
+  }
+]

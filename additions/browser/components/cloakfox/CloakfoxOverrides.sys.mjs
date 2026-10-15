@@ -1,3 +1,4 @@
+import { createGPUProfile } from "resource:///modules/CloakfoxGPUProfiles.sys.mjs";
 import { applyRegion } from "resource:///modules/CloakfoxRegions.sys.mjs";
 import { applyPrivacyPolicy } from "resource:///modules/CloakfoxPrivacyPolicy.sys.mjs";
 /* This Source Code Form is subject to the terms of the Mozilla Public
@@ -156,7 +157,7 @@ export function readOverrides(ucid) {
 // Graphics opt-ins are global policy, not per-field identity overrides. Apply
 // last so stale imported override keys cannot enable or disable a mode.
 // Missing or malformed preferences select the existing protected behavior.
-export function applyGraphicsPolicy(config) {
+export function applyGraphicsPolicy(config, owner = null, allowUnavailable = false) {
   const result = { ...config };
   for (const [name, key] of [
     ["cloakfox.opt.canvas_render_privacy", "canvas:render_privacy"],
@@ -175,7 +176,36 @@ export function applyGraphicsPolicy(config) {
     result["webGl:backend_profile"] = true;
     result["webgl:typed_readback:disabled"] = true;
   }
+  let containerProfiles = false;
+  try { containerProfiles = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false); } catch (_) { /* malformed opt-in stays off */ }
+  if (containerProfiles) {
+    if (!result["canvas:canonical_gpu"]) throw new Error("Container GPU profiles require canonical software rendering");
+    try {
+      result["rendering:gpu_profile"] = createGPUProfile(result, owner);
+      delete result["rendering:gpu_profile:error"];
+    } catch (error) {
+      if (!allowUnavailable) throw error;
+      // A newly created unsupported persona still needs its navigator/font/
+      // network masks. Refuse GPU creation via the absent owned descriptor.
+      delete result["rendering:gpu_profile"];
+      result["rendering:gpu_profile:error"] = error.message;
+    }
+  }
   return result;
+}
+
+export function setContainerGPUProfilesEnabled(enabled) {
+  if (typeof enabled !== "boolean") throw new Error("GPU profile toggle requires a boolean");
+  if (enabled) {
+    if (!Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false)) throw new Error("Enable canonical software rendering first");
+    const prefs = Services.prefs.getChildList("cloakfox.s.cloak_cfg_").filter(p => /^cloakfox\.s\.cloak_cfg_(0|[1-9]\d*)$/.test(p));
+    if (!prefs.length) throw new Error("No container personas are ready");
+    for (const pref of prefs) {
+      const owner = Number(pref.slice("cloakfox.s.cloak_cfg_".length));
+      createGPUProfile(JSON.parse(Services.prefs.getStringPref(pref)), owner);
+    }
+  }
+  Services.prefs.setBoolPref("cloakfox.opt.container_rendering_profiles", enabled === true);
 }
 
 /**
@@ -183,8 +213,8 @@ export function applyGraphicsPolicy(config) {
  * values win over persona fields; global graphics policy is applied last.
  * Returns a new object.
  */
-export function applyOverrides(ucid, baseObj, overrides = readOverrides(ucid)) {
-  return applyGraphicsPolicy(applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides })));
+export function applyOverrides(ucid, baseObj, overrides = readOverrides(ucid), allowUnavailable = false) {
+  return applyGraphicsPolicy(applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides })), ucid, allowUnavailable);
 }
 
 /**
@@ -192,9 +222,35 @@ export function applyOverrides(ucid, baseObj, overrides = readOverrides(ucid)) {
  * catch typos in the UI). Pass undefined / null / "" to clear.
  */
 export function setOverride(ucid, key, value) {
-  if (!(key in KEY_TYPES)) {
-    throw new Error(`Unknown cloak_cfg key: ${key}`);
+  return setOverrides(ucid, { [key]: value });
+}
+
+/** Validate a complete preset/reset before writing any of its fields. */
+export function setOverrides(ucid, changes) {
+  for (const [key, value] of Object.entries(changes)) {
+    if (!(key in KEY_TYPES)) throw new Error(`Unknown cloak_cfg key: ${key}`);
+    if (value === undefined || value === null || value === "") continue;
+    if (["int", "float"].includes(KEY_TYPES[key]) && !Number.isFinite(Number(value))) throw new Error("Invalid numeric override");
+    if (KEY_TYPES[key] === "int" && !Number.isInteger(Number(value))) throw new Error("Invalid integer override");
+    if (["mediaDevices:micros", "mediaDevices:webcams", "mediaDevices:speakers"].includes(key) && (Number(value) < 0 || Number(value) > 64)) throw new Error("Media-device limits must be between 0 and 64");
   }
+  let active = false;
+  try { active = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false); } catch (_) {}
+  if (active) {
+    const current = JSON.parse(Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${ucid}`));
+    const { fillPersonaKeys } = ChromeUtils.importESModule("resource:///modules/CloakfoxPersonas.sys.mjs");
+    const seed = Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`);
+    const overrides = readOverrides(ucid);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === undefined || value === null || value === "") delete overrides[key];
+      else overrides[key] = ["int", "float"].includes(KEY_TYPES[key]) ? Number(value) : value;
+    }
+    applyOverrides(ucid, { ...current, ...fillPersonaKeys(seed, ucid) }, overrides);
+  }
+  for (const [key, value] of Object.entries(changes)) writeOverride(ucid, key, value);
+}
+
+function writeOverride(ucid, key, value) {
   const fullName = overrideBranch(ucid) + key;
   if (value === undefined || value === null || value === "") {
     Services.prefs.clearUserPref(fullName);
@@ -223,13 +279,27 @@ export function setOverride(ucid, key, value) {
 
 /** Clear one override (revert to persona value). */
 export function clearOverride(ucid, key) {
+  validateClearedOverrides(ucid, key);
   Services.prefs.clearUserPref(overrideBranch(ucid) + key);
 }
 
 /** Clear ALL overrides for a container. */
 export function clearAllOverrides(ucid) {
+  validateClearedOverrides(ucid);
   const branch = Services.prefs.getBranch(overrideBranch(ucid));
   for (const child of branch.getChildList("")) {
     Services.prefs.clearUserPref(overrideBranch(ucid) + child);
   }
+}
+
+function validateClearedOverrides(ucid, key = null) {
+  let active = false;
+  try { active = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false); } catch (_) {}
+  if (!active) return;
+  const current = JSON.parse(Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${ucid}`));
+  const { fillPersonaKeys } = ChromeUtils.importESModule("resource:///modules/CloakfoxPersonas.sys.mjs");
+  const seed = Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`);
+  const overrides = key === null ? {} : readOverrides(ucid);
+  if (key !== null) delete overrides[key];
+  applyOverrides(ucid, { ...current, ...fillPersonaKeys(seed, ucid) }, overrides);
 }

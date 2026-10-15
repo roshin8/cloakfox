@@ -1,0 +1,26 @@
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_fingerprint_libraries.py", line 279, in <module>
+    main()
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_fingerprint_libraries.py", line 153, in main
+    chrome('''const m=ChromeUtils.importESModule('resource:///modules/CloakfoxOverrides.sys.mjs');
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_fingerprint_libraries.py", line 130, in chrome
+    return driver.execute_script(script, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 617, in execute_script
+    return self.execute(command, {"script": script, "args": converted_args})["value"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 506, in execute
+    self.error_handler.check_response(response)
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.JavascriptException: Message: Error: GPU profiles require an Apple, Intel, AMD or NVIDIA BrowserForge persona
+Stacktrace:
+createGPUProfile@resource:///modules/CloakfoxGPUProfiles.sys.mjs:18:111
+setContainerGPUProfilesEnabled@resource:///modules/CloakfoxOverrides.sys.mjs:205:23
+@[System Principal]:3:29
+@[System Principal]:8:8
+evaluate.sandbox/promise<@chrome://remote/content/marionette/evaluate.sys.mjs:127:10
+evaluate.sandbox@chrome://remote/content/marionette/evaluate.sys.mjs:103:17
+executeScript@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:358:26
+receiveMessage@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:214:31
+

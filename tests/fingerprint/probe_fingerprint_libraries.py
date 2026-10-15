@@ -62,6 +62,8 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     binary = os.environ.get('CLOAKFOX_BIN', '/Applications/Cloakfox.app/Contents/MacOS/cloakfox')
+    container_profiles = os.environ.get('LIBRARY_CONTAINER_GPU_PROFILES','0') == '1'
+    webgpu_enabled = os.environ.get('LIBRARY_WEBGPU_ENABLED', '0') == '1'
     graphics_modes = {
         'canvas_render_privacy': os.environ.get('LIBRARY_CANVAS_RENDER_PRIVACY', '0') == '1',
         'gpu_backend_profiles': os.environ.get('LIBRARY_GPU_BACKEND_PROFILES', '0') == '1',
@@ -79,7 +81,7 @@ def main():
     assert not subprocess.check_output(['git', '-C', str(CREEP), 'status', '--porcelain', '--untracked-files=normal'], text=True).strip(), 'CreepJS fixture is modified'
     package = json.loads((FP_BUNDLE.parents[1] / 'package.json').read_text())
     assert package['version'] == MANIFEST['fingerprintjs']['version']
-    provenance = {'binary': binary, 'graphicsModes': graphics_modes,
+    provenance = {'binary': binary, 'graphicsModes': graphics_modes, 'webgpuEnabled': webgpu_enabled, 'containerGPUProfiles':container_profiles,
                   'creepjsCommit': commit, 'fingerprintjsVersion': package['version'],
                   'creepjsBundleSHA256': hashlib.sha256((CREEP / 'docs/creep.js').read_bytes()).hexdigest(),
                   'fingerprintjsBundleSHA256': hashlib.sha256(FP_BUNDLE.read_bytes()).hexdigest()}
@@ -112,6 +114,8 @@ def main():
                 options.set_preference('remote.prefs.recommended', False)
                 options.set_preference('cloakfox.enabled', enabled)
                 options.set_preference('privacy.resistFingerprinting', False)
+                if webgpu_enabled:
+                    options.set_preference('dom.webgpu.enabled', True)
                 for name, value in graphics_modes.items():
                     options.set_preference('cloakfox.experimental.canvas_pipeline' if name == 'canonical_2d' else 'cloakfox.opt.' + name, value)
                 driver = webdriver.Firefox(options=options, service=Service(
@@ -145,6 +149,22 @@ def main():
                         definitions = [('default', 0, '127.0.0.1'), ('A', ids[0], '127.0.0.1'),
                                        ('B', ids[1], '127.0.0.1'), ('A-other-site', ids[0], 'localhost'),
                                        ('Chrome', ids[2], '127.0.0.1'), ('Chrome-other-site', ids[2], 'localhost'), ('A-return', ids[0], '127.0.0.1')]
+                    if enabled and container_profiles:
+                        chrome('''const m=ChromeUtils.importESModule('resource:///modules/CloakfoxOverrides.sys.mjs');
+                          const p=ChromeUtils.importESModule('resource:///modules/CloakfoxPersonas.sys.mjs');
+                          for(const key of Services.prefs.getChildList('cloakfox.s.cloak_cfg_')){
+                            const id=Number(key.slice('cloakfox.s.cloak_cfg_'.length)),c=JSON.parse(Services.prefs.getStringPref(key));
+                            if(![0,...arguments[0]].includes(id)){
+                              const n=p.fillPersonaKeys('B'.repeat(43)+'=',id,{os:'windows',hardware:'nvidia'});
+                              for(const [k,v]of Object.entries(c))if(/seed|secret/i.test(k))n[k]=v;
+                              Services.prefs.setStringPref(key,JSON.stringify(n));
+                            }
+                          }
+                          m.setContainerGPUProfilesEnabled(true);
+                          for(const key of Services.prefs.getChildList('cloakfox.s.cloak_cfg_')){
+                            const id=Number(key.slice('cloakfox.s.cloak_cfg_'.length));
+                            Services.prefs.setStringPref(key,JSON.stringify(m.applyGraphicsPolicy(JSON.parse(Services.prefs.getStringPref(key)),id)));
+                          }''',ids)
                     for label, container, host in definitions:
                         before = set(driver.window_handles)
                         chrome('''const w=Services.wm.getMostRecentWindow('navigator:browser');w.gBrowser.selectedTab=w.gBrowser.addTab('about:blank',{userContextId:arguments[0],triggeringPrincipal:Services.scriptSecurityManager.getSystemPrincipal()})''', container)
@@ -152,6 +172,11 @@ def main():
                         driver.switch_to.window(handle)
                         case = {'case': label, 'container': container, 'host': host, 'protected': enabled, 'libraries': {}}
                         cases.append(case)
+                        if enabled and webgpu_enabled:
+                            chrome('''const key='cloakfox.s.cloak_cfg_'+arguments[0];
+                              const cfg=JSON.parse(Services.prefs.getStringPref(key));
+                              cfg['navigator:webgpu:disabled']=false;
+                              Services.prefs.setStringPref(key,JSON.stringify(cfg));''', container)
                         if enabled:
                             case['graphicsModes'] = chrome('''const cfg=JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_'+arguments[0]));
                               return {canvas_render_privacy:cfg['canvas:render_privacy']===true,
@@ -188,6 +213,12 @@ def main():
                                     values = [stable_hash(x.get('value')) for x in entries]
                                     check(len(set(values)) == 1, f'{label}: FingerprintJS {component} reload stability')
                             else:
+                                if webgpu_enabled:
+                                    gpu_values = [x['fingerprint'].get('navigator', {}).get('webgpu') for x in samples]
+                                    check(all(isinstance(g, dict) and len(g.get('adapterInfo', [])) == 4 and g.get('limits') for g in gpu_values),
+                                          f'{label}: CreepJS collects enabled WebGPU adapter and limits')
+                                    check(len({stable_hash(g) for g in gpu_values}) == 1,
+                                          f'{label}: WebGPU adapter and limits reload stability')
                                 for component in ['canvas2d', 'offlineAudioContext', 'cssMedia', 'screen', 'navigator', 'workerScope']:
                                     values = [x['fingerprint'].get(component, {}).get('$hash') for x in samples]
                                     check(all(values), f'{label}: CreepJS {component} collected')
