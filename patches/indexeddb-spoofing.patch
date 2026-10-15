@@ -1,7 +1,10 @@
 diff --git a/dom/indexedDB/IDBFactory.cpp b/dom/indexedDB/IDBFactory.cpp
 --- a/dom/indexedDB/IDBFactory.cpp
 +++ b/dom/indexedDB/IDBFactory.cpp
-@@ -4,6 +4,7 @@
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "IDBFactory.h"
  
@@ -9,7 +12,17 @@ diff --git a/dom/indexedDB/IDBFactory.cpp b/dom/indexedDB/IDBFactory.cpp
  #include "BackgroundChildImpl.h"
  #include "ErrorList.h"
  #include "IDBRequest.h"
-@@ -455,6 +456,14 @@
+ #include "IndexedDBCommon.h"
+ #include "IndexedDatabaseManager.h"
+ #include "ProfilerHelpers.h"
+ #include "ReportInternalError.h"
+ #include "ThreadLocal.h"
+@@ -450,16 +451,24 @@
+ 
+ already_AddRefed<Promise> IDBFactory::Databases(JSContext* const aCx,
+                                                 ErrorResult& aRv) {
+   if (NS_WARN_IF(!GetRelevantGlobal())) {
+     aRv.Throw(NS_ERROR_DOM_INDEXEDDB_UNKNOWN_ERR);
      return nullptr;
    }
  
@@ -24,10 +37,20 @@ diff --git a/dom/indexedDB/IDBFactory.cpp b/dom/indexedDB/IDBFactory.cpp
    RefPtr<Promise> promise = Promise::CreateInfallible(GetRelevantGlobal());
    if (!mAllowed) {
      promise->MaybeRejectWithSecurityError(kAccessError);
+     return promise.forget();
+   }
+ 
+   // Nothing can be done here if we have previously failed to create a
+   // background actor.
 diff --git a/dom/indexedDB/moz.build b/dom/indexedDB/moz.build
 --- a/dom/indexedDB/moz.build
 +++ b/dom/indexedDB/moz.build
-@@ -120,6 +120,7 @@
+@@ -115,16 +115,17 @@
+ FINAL_LIBRARY = "xul"
+ 
+ if CONFIG["CC_TYPE"] in ("clang", "gcc"):
+     # Suppress gcc warning about a comparison being always false due to the
+     # range of the data type
      SOURCES["Key.cpp"].flags += ["-Wno-error=type-limits"]
  
  LOCAL_INCLUDES += [
@@ -35,3 +58,8 @@ diff --git a/dom/indexedDB/moz.build b/dom/indexedDB/moz.build
      "/dom/base",
      "/dom/storage",
      "/ipc/glue",
+     "/third_party/sqlite3/src",
+     "/xpcom/build",
+ ]
+ 
+ XPIDL_SOURCES += [

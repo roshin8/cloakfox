@@ -527,3 +527,42 @@ profiles. The ECH probe serves actual HTTPS DNS records through verified local
 DoH and requires server-side decryption plus client-side accepted-ECH status.
 The H3 fixture withholds ordinary SETTINGS until the first request and requires
 a non-default QPACK capacity update from ALPS before releasing them.
+
+
+### Firefox157 identity-gap regressions
+
+New local, disposable-profile checks: probe_identity_network_gaps,
+probe_websocket_privacy, probe_realm_privacy, probe_language_scopes,
+probe_fontface_loading, probe_graphics_privacy, probe_privacy_enforcement,
+probe_strict_graphics_settings, probe_turn_proxy_privacy and
+probe_turn_proxy_negotiation. They cover own-container headers/masks/worker updates,
+null/system principal scope, actual font loading, zero-alpha WebGL RGB, precise
+readback, device enforcement and authenticated TURN proxy allocation/ICE restart.
+The synthetic IP actor fixture enables lookup only behind a dead loopback proxy;
+it does not deliver identity masks to external services. Supported MASQUE route
+classification is checked by test_turn_proxy_routes; a full MASQUE tunnel is not
+covered. These local tests do not establish live assessment compatibility or
+physical camera/microphone/screen capture.
+
+Run with CLOAKFOX_BIN set to the157 executable and the Python interpreter that
+has Selenium/pytest installed. The Monaco probe also needs MONACO_PROBE_ASSETS,
+as described above. Native/source tests: node --test test_*.mjs and pytest
+--noconftest tests/fingerprint --ignore=tests/fingerprint/reports. Generated
+reports can contain third-party fixture sources, which must not be collected as
+project tests. The suite runner discovers the new probes.
+
+
+The 157 regression fixtures use the current per-container network adapter
+selector, trusted loopback TLS, and independently captured Firefox 157 / Chrome
+155 wire references. Legacy global H2 preferences are not adapter selectors.
+Math expectations use the top-level schemeful-site seed; file URLs without a
+usable site intentionally receive no site noise. Restart comparisons preserve
+all identity fields and separately check per-launch timing-key rotation.
+
+The installed HackerRank recovery registration is exercised on a local HTTPS
+fixture mapped to its matched hostname; it opens no real meeting or camera.
+Firefox 157 requires its child-only actor to opt in to untrusted web processes.
+The virtual screen permission snapshot uses both effective-state fields, and
+hover retention handles 157's pointer-first boundary dispatch. Modern
+Permissions-Policy denial remains enforced; the retired Feature-Policy header
+follows native 157 behavior.

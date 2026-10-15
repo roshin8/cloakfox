@@ -9,6 +9,8 @@ from __future__ import annotations
 import base64
 import json
 import math
+import hashlib
+import hmac
 import struct
 import os
 import tempfile
@@ -161,6 +163,22 @@ class Page(BaseHTTPRequestHandler):
         pass
 
 
+def site_math_seed(config, site="(http,127.0.0.1)"):
+    """Independent oracle for the published157 HMAC protocol (not actor code)."""
+    seed = config.get("math:trig_seed")
+    secret = config.get("fingerprint:secret", "")
+    if not isinstance(seed, int) or not 0 < seed <= 0xffffffff:
+        return 0
+    try:
+        if len(secret) != 44 or len(base64.b64decode(secret, validate=True)) != 32:
+            return 0
+    except (ValueError, TypeError):
+        return 0
+    digest = hmac.new(secret.encode(),
+        f"cloakfox-site-v1\nmath:trig_seed\n{seed}\n{site}".encode(), hashlib.sha256).digest()
+    return int.from_bytes(digest[:4], "big") or 1
+
+
 def expected_samples(observation, seed):
     # Native log/pow are data-integrity requirements, independent of seed.
     native_methods = {"Math.log", "Math.log2", "Math.log10", "Math.log1p", "Math.pow"}
@@ -201,7 +219,7 @@ def main():
                 'user_pref("cloakfox.enabled", false);\n'
                 f'user_pref("cloakfox.container.0.math_seed", "{seed}");\n'
                 f'user_pref("cloakfox.container.2.math_seed", "{base64.b64encode(bytes(range(32,64))).decode()}");\n'
-                f'user_pref("cloakfox.s.cloak_cfg_2", {json.dumps(json.dumps({"math:trig_seed": 0xabcdef01}))});\n')
+                f'user_pref("cloakfox.s.cloak_cfg_2", {json.dumps(json.dumps({"math:trig_seed": 0xabcdef01, "fingerprint:secret": base64.b64encode(bytes(range(32,64))).decode()}))});\n')
             opts = Options(); opts.binary_location = os.environ['CLOAKFOX_BIN']
             opts.add_argument('-headless'); opts.add_argument('-profile'); opts.add_argument(str(profile))
             driver = webdriver.Firefox(options=opts, service=Service(
@@ -234,7 +252,7 @@ def main():
                     if not enabled:
                         set_pref(driver, 'cloakfox.enabled', True)
                         configs0 = chrome(driver, "return JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_0'))")
-                        expected0 = expected_samples(r['page'], configs0['math:trig_seed'])
+                        expected0 = expected_samples(r['page'], site_math_seed(configs0))
                         deadline = time.monotonic()+5
                         while True:
                             fresh = driver.execute_async_script("""
@@ -286,7 +304,7 @@ def main():
                             continue
                         b, m = baseline[realm], masked[realm]
                         check(m['values']['sin'] != b['values']['sin'], f'Math masking exercised ({realm}, container={ucid})', m['values'])
-                        check(m['values']['sampleBits'] == expected_samples(b, configs[0 if ucid == 0 else 1]['math:trig_seed']),
+                        check(m['values']['sampleBits'] == expected_samples(b, site_math_seed(configs[0 if ucid == 0 else 1])),
                               f'Math uses configured seed ({realm}, container={ucid})', m['values']['sampleBits'])
                         check(m['values']['sampleBits'] == masked['page']['values']['sampleBits'],
                               f'Math matches its page ({realm}, container={ucid})', m['values']['samples'])
@@ -310,7 +328,7 @@ def main():
                     config = {**configs[1], 'math:trig_seed':seed}
                     chrome(driver, 'Services.prefs.setStringPref(arguments[0],arguments[1]);',
                            'cloakfox.s.cloak_cfg_2',json.dumps(config))
-                    expected2 = expected_samples(baseline['page'], seed)
+                    expected2 = expected_samples(baseline['page'], site_math_seed(config))
                     deadline=time.monotonic()+5
                     while True:
                         result=driver.execute_async_script("""
@@ -337,7 +355,9 @@ def main():
                               f'other container unaffected by live seed update ({realm},seed={seed})',data['values'])
                     driver.switch_to.window(container_handles[2])
                 # Removal and invalid data must clear an earlier cached seed.
-                for invalid in (None, '{broken', json.dumps({'math:trig_seed': -1})):
+                for invalid in (None, '{broken', json.dumps({'math:trig_seed': -1}),
+                                json.dumps({'math:trig_seed': 0xabcdef01}),
+                                json.dumps({'math:trig_seed': 0xabcdef01, 'fingerprint:secret': 'bad'})):
                     if invalid is None:
                         chrome(driver, "Services.prefs.clearUserPref('cloakfox.s.cloak_cfg_2');")
                     else:
@@ -370,7 +390,7 @@ def main():
                     check(complete, f'all realms report after config refresh (seed={seed})', result and list(result))
                     if complete:
                         for realm, data in result.items():
-                            check(data['values']['sampleBits'] == expected_samples(baseline[realm], seed),
+                            check(data['values']['sampleBits'] == expected_samples(baseline[realm], site_math_seed(config)),
                                   f'new realm honors refreshed config ({realm}, seed={seed})', data['values'])
                 driver.execute_async_script("""
                   const done=arguments[0];

@@ -1,66 +1,10 @@
-diff --git a/dom/webidl/NavigatorUAData.webidl b/dom/webidl/NavigatorUAData.webidl
---- /dev/null
-+++ b/dom/webidl/NavigatorUAData.webidl
-@@ -0,0 +1,44 @@
-+/* This Source Code Form is subject to the terms of the Mozilla Public
-+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
-+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
-+
-+// https://wicg.github.io/ua-client-hints/#interface
-+// Exposed only for an enabled Chromium UA override; Firefox personas retain
-+// Firefox's original surface. Values never come from the host machine.
-+dictionary NavigatorUABrandVersion {
-+  DOMString brand;
-+  DOMString version;
-+};
-+
-+dictionary UALowEntropyJSON {
-+  sequence<NavigatorUABrandVersion> brands;
-+  boolean mobile;
-+  DOMString platform;
-+};
-+
-+dictionary UADataValues : UALowEntropyJSON {
-+  DOMString architecture;
-+  DOMString bitness;
-+  sequence<DOMString> formFactors;
-+  sequence<NavigatorUABrandVersion> fullVersionList;
-+  DOMString model;
-+  DOMString platformVersion;
-+  DOMString uaFullVersion;
-+  boolean wow64;
-+};
-+
-+[Exposed=(Window,Worker), Func="NavigatorUAData::IsEnabled"]
-+interface NavigatorUAData {
-+  // Gecko 146 does not support general FrozenArray in WebIDL. A native
-+  // object getter returns the frozen array, preserving its JS contract.
-+  [Throws] readonly attribute object brands;
-+  readonly attribute boolean mobile;
-+  readonly attribute DOMString platform;
-+  [NewObject, Throws] Promise<UADataValues> getHighEntropyValues(sequence<DOMString> hints);
-+  [Throws] UALowEntropyJSON toJSON();
-+};
-+
-+interface mixin NavigatorUA {
-+  [SecureContext, Func="NavigatorUAData::IsEnabled"]
-+  readonly attribute NavigatorUAData userAgentData;
-+};
-diff --git a/dom/webidl/Navigator.webidl b/dom/webidl/Navigator.webidl
---- a/dom/webidl/Navigator.webidl
-+++ b/dom/webidl/Navigator.webidl
-@@ -32,6 +32,7 @@
-   // objects implementing this interface also implement the interfaces given below
- };
- Navigator includes NavigatorID;
-+Navigator includes NavigatorUA;
- Navigator includes NavigatorLanguage;
- Navigator includes NavigatorOnLine;
- Navigator includes NavigatorContentUtils;
 diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
 --- a/dom/base/Navigator.cpp
 +++ b/dom/base/Navigator.cpp
-@@ -4,6 +4,7 @@
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  // Needs to be first.
  #include "Navigator.h"
@@ -68,26 +12,91 @@ diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
  // Cloakfox: per-context + global navigator spoofing
  #include "NavigatorManager.h"
  #include "MaskConfig.hpp"
-@@ -284,6 +285,15 @@
+ #include "nsJSUtils.h"
+ 
+ #include "Geolocation.h"
+ #include "base/basictypes.h"
+ #include "mozilla/Components.h"
+@@ -280,16 +281,26 @@
+ 
+   mSharePromise = nullptr;
+ 
+   mWakeLock = nullptr;
+ 
    mClipboard = nullptr;
  }
  
 +already_AddRefed<NavigatorUAData> Navigator::UserAgentData() {
-+  nsAutoString ua;
++  nsAutoCString ua;
 +  IgnoredErrorResult rv;
 +  GetUserAgent(ua, CallerType::NonSystem, rv);
 +  nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(mWindow);
-+  RefPtr<NavigatorUAData> data = new NavigatorUAData(global, ua);
++  RefPtr<NavigatorUAData> data =
++      new NavigatorUAData(global, NS_ConvertUTF8toUTF16(ua));
 +  return data.forget();
 +}
 +
- void Navigator::GetUserAgent(nsAString& aUserAgent, CallerType aCallerType,
+ void Navigator::GetUserAgent(nsACString& aUserAgent, CallerType aCallerType,
                               ErrorResult& aRv) const {
    // Cloakfox: per-context user agent
+   if (mWindow) {
+     uint32_t userContextId = 0;
+     if (BrowsingContext* bc = mWindow->GetBrowsingContext()) {
+       userContextId = bc->OriginAttributesRef().mUserContextId;
+     }
+@@ -305,17 +316,17 @@
+   // reported ONE user agent while platform and oscpu came from their own
+   // per-container config. Measured on a real container whose cfg said Windows:
+   //     userAgent = Mozilla/5.0 (X11; Linux x86_64; …)   <- global
+   //     platform  = Win32                                <- cloak_cfg_<ucid>
+   //     oscpu     = Windows NT 10.0; Win64; x64          <- cloak_cfg_<ucid>
+   // The worker path (WorkerNavigator::GetUserAgent) already had this lookup;
+   // only the window path was missing it, which is why the two disagreed.
+   if (auto value = MaskConfig::GetString("navigator.userAgent")) {
+-    aUserAgent.Assign(value.value());
++    aUserAgent.Assign(value.value().c_str());
+     return;
+   }
+   if (nsIDocShell* docshell = mWindow->GetDocShell()) {
+     docshell->GetBrowsingContext()->GetCustomUserAgent(aUserAgent);
+     if (!aUserAgent.IsEmpty()) {
+       return;
+     }
+   }
+@@ -361,21 +372,21 @@
+   // That getter is context-BLIND: it resolves the container via
+   // CloakConfigOverlay_CurrentUserContextId() instead of this window's own
+   // BrowsingContext the way GetUserAgent does. When that missed, appVersion
+   // fell through to Firefox's RFP value — measured as "5.0 (Macintosh)" in
+   // EVERY non-default container while the UA claimed "X11; Ubuntu; Linux
+   // x86_64". That violates appVersion === userAgent.slice(8), which is one
+   // line of JS to check, and leaks the REAL host OS.
+   {
+-    nsAutoString ua;
++    nsAutoCString ua;
+     IgnoredErrorResult uaRv;
+     GetUserAgent(ua, aCallerType, uaRv);
+-    if (!uaRv.Failed() && StringBeginsWith(ua, u"Mozilla/"_ns)) {
+-      aAppVersion.Assign(Substring(ua, 8));
++    if (!uaRv.Failed() && StringBeginsWith(ua, "Mozilla/"_ns)) {
++      CopyUTF8toUTF16(Substring(ua, 8), aAppVersion);
+       return;
+     }
+   }
+ 
+   // Explicit per-container appVersion, if a persona set one.
+   if (auto value = MaskConfig::GetString("navigator.appVersion")) {
+     aAppVersion.Assign(NS_ConvertUTF8toUTF16(value.value()));
+     return;
 diff --git a/dom/base/Navigator.h b/dom/base/Navigator.h
 --- a/dom/base/Navigator.h
 +++ b/dom/base/Navigator.h
-@@ -43,6 +43,7 @@
+@@ -38,16 +38,17 @@
+ class systemMessageCallback;
+ class MediaDevices;
+ struct MediaStreamConstraints;
+ class ArrayBufferOrArrayBufferViewOrBlobOrFormDataOrUSVStringOrURLSearchParams;
+ class ServiceWorkerContainer;
  class CredentialsContainer;
  class Clipboard;
  class LockManager;
@@ -95,56 +104,29 @@ diff --git a/dom/base/Navigator.h b/dom/base/Navigator.h
  class ModelContext;
  class NavigatorLogin;
  class HTMLMediaElement;
-@@ -118,6 +119,7 @@
+ class AudioContext;
+ class WakeLockJS;
+ }  // namespace dom
+ namespace webgpu {
+ class Instance;
+@@ -113,16 +114,17 @@
+   void GetLanguage(nsAString& aLanguage);
+   void GetAppName(nsAString& aAppName) const;
+   void GetAppVersion(nsAString& aAppName, CallerType aCallerType,
+                      ErrorResult& aRv) const;
+   void GetPlatform(nsAString& aPlatform, CallerType aCallerType,
                     ErrorResult& aRv) const;
-   void GetUserAgent(nsAString& aUserAgent, CallerType aCallerType,
+   void GetUserAgent(nsACString& aUserAgent, CallerType aCallerType,
                      ErrorResult& aRv) const;
 +  already_AddRefed<NavigatorUAData> UserAgentData();
    bool OnLine();
    void CheckProtocolHandlerAllowed(const nsAString& aScheme,
                                     nsIURI* aHandlerURI, nsIURI* aDocumentURI,
-diff --git a/dom/webidl/WorkerNavigator.webidl b/dom/webidl/WorkerNavigator.webidl
---- a/dom/webidl/WorkerNavigator.webidl
-+++ b/dom/webidl/WorkerNavigator.webidl
-@@ -8,6 +8,7 @@
- };
- 
- WorkerNavigator includes NavigatorID;
-+WorkerNavigator includes NavigatorUA;
- WorkerNavigator includes NavigatorLanguage;
- WorkerNavigator includes NavigatorOnLine;
- WorkerNavigator includes NavigatorConcurrentHardware;
-diff --git a/dom/webidl/moz.build b/dom/webidl/moz.build
---- a/dom/webidl/moz.build
-+++ b/dom/webidl/moz.build
-@@ -844,6 +844,7 @@
-     "NavigationPreloadManager.webidl",
-     "NavigationTransition.webidl",
-     "Navigator.webidl",
-+    "NavigatorUAData.webidl",
-     "NetErrorInfo.webidl",
-     "NetworkInformation.webidl",
-     "NetworkOptions.webidl",
-diff --git a/dom/base/moz.build b/dom/base/moz.build
---- a/dom/base/moz.build
-+++ b/dom/base/moz.build
-@@ -226,6 +226,7 @@
-     "NameSpaceConstants.h",
-     "Navigator.h",
-     "NavigatorManager.h",
-+    "NavigatorUAData.h",
-     "NodeInfo.h",
-     "NodeInfoInlines.h",
-     "NodeIterator.h",
-@@ -576,7 +577,7 @@
- 
- # NavigatorManager compiled separately to avoid unified build scope issues
- # (includes RoverfoxStorageManager.h which can affect compilation units)
--SOURCES += ["NavigatorManager.cpp"]
-+SOURCES += ["NavigatorManager.cpp", "NavigatorUAData.cpp"]
- 
- # CanvasFingerprintManager compiled separately to avoid unified build scope issues
- # (includes RoverfoxStorageManager.h which can affect compilation units)
+                                    ErrorResult& aRv);
+   void RegisterProtocolHandler(const nsAString& aScheme, const nsAString& aURL,
+                                ErrorResult& aRv);
+   nsMimeTypeArray* GetMimeTypes(ErrorResult& aRv);
+   nsPluginArray* GetPlugins(ErrorResult& aRv);
 diff --git a/dom/base/NavigatorUAData.cpp b/dom/base/NavigatorUAData.cpp
 --- /dev/null
 +++ b/dom/base/NavigatorUAData.cpp
@@ -212,7 +194,7 @@ diff --git a/dom/base/NavigatorUAData.cpp b/dom/base/NavigatorUAData.cpp
 +
 +bool NavigatorUAData::IsEnabled(JSContext* aCx, JSObject* aGlobal) {
 +  if (!StaticPrefs::cloakfox_enabled()) return false;
-+  nsAutoString ua;
++  nsAutoCString ua;
 +  IgnoredErrorResult rv;
 +  if (NS_IsMainThread()) {
 +    nsGlobalWindowInner* win = xpc::WindowOrNull(aGlobal);
@@ -224,7 +206,7 @@ diff --git a/dom/base/NavigatorUAData.cpp b/dom/base/NavigatorUAData.cpp
 +    RefPtr<WorkerNavigator> nav = worker->GlobalScope()->Navigator();
 +    nav->GetUserAgent(ua, CallerType::NonSystem, rv);
 +  }
-+  return !rv.Failed() && IsChromiumUA(NS_ConvertUTF16toUTF8(ua).get());
++  return !rv.Failed() && IsChromiumUA(ua.get());
 +}
 +
 +static void AddBrand(nsTArray<NavigatorUABrandVersion>& aList,
@@ -432,30 +414,163 @@ diff --git a/dom/base/NavigatorUAData.h b/dom/base/NavigatorUAData.h
 +};
 +}  // namespace mozilla::dom
 +#endif
-diff --git a/dom/workers/WorkerNavigator.h b/dom/workers/WorkerNavigator.h
---- a/dom/workers/WorkerNavigator.h
-+++ b/dom/workers/WorkerNavigator.h
-@@ -28,6 +28,7 @@
- }  // namespace webgpu
- namespace dom {
- class StorageManager;
-+class NavigatorUAData;
- class MediaCapabilities;
- class LockManager;
- class Permissions;
-@@ -98,6 +99,8 @@
-   void GetUserAgent(nsString& aUserAgent, CallerType aCallerType,
-                     ErrorResult& aRv) const;
+diff --git a/dom/base/moz.build b/dom/base/moz.build
+--- a/dom/base/moz.build
++++ b/dom/base/moz.build
+@@ -220,16 +220,17 @@
+     "MessageManagerGlobal.h",
+     "MessageSender.h",
+     "MimeType.h",
+     "MozQueryInterface.h",
+     "MutationObservers.h",
+     "NameSpaceConstants.h",
+     "Navigator.h",
+     "NavigatorManager.h",
++    "NavigatorUAData.h",
+     "NodeInfo.h",
+     "NodeInfoInlines.h",
+     "NodeIterator.h",
+     "NodeList.h",
+     "ParentProcessMessageManager.h",
+     "PlacesBookmark.h",
+     "PlacesBookmarkAddition.h",
+     "PlacesBookmarkChanged.h",
+@@ -571,17 +572,17 @@
+     # Because of OS X headers.
+     "nsObjectLoadingContent.cpp",
+     # nsPluginArray.cpp includes npapi.h indirectly, and that includes a lot of system headers
+     "nsPluginArray.cpp",
+ ]
  
-+  already_AddRefed<NavigatorUAData> UserAgentData();
+ # NavigatorManager compiled separately to avoid unified build scope issues
+ # (includes RoverfoxStorageManager.h which can affect compilation units)
+-SOURCES += ["NavigatorManager.cpp"]
++SOURCES += ["NavigatorManager.cpp", "NavigatorUAData.cpp"]
+ 
+ # CanvasFingerprintManager compiled separately to avoid unified build scope issues
+ # (includes RoverfoxStorageManager.h which can affect compilation units)
+ SOURCES += ["CanvasFingerprintManager.cpp"]
+ 
+ EXPORTS.mozilla.dom += [
+     "CanvasFingerprintManager.h",
+ ]
+diff --git a/dom/webidl/Navigator.webidl b/dom/webidl/Navigator.webidl
+--- a/dom/webidl/Navigator.webidl
++++ b/dom/webidl/Navigator.webidl
+@@ -27,16 +27,17 @@
+ 
+ // https://html.spec.whatwg.org/#the-navigator-object
+ [HeaderFile="Navigator.h",
+  Exposed=Window]
+ interface Navigator {
+   // objects implementing this interface also implement the interfaces given below
+ };
+ Navigator includes NavigatorID;
++Navigator includes NavigatorUA;
+ Navigator includes NavigatorLanguage;
+ Navigator includes NavigatorOnLine;
+ Navigator includes NavigatorContentUtils;
+ Navigator includes NavigatorStorageUtils;
+ Navigator includes NavigatorConcurrentHardware;
+ Navigator includes NavigatorStorage;
+ Navigator includes NavigatorAutomationInformation;
+ Navigator includes NavigatorGPU;
+diff --git a/dom/webidl/NavigatorUAData.webidl b/dom/webidl/NavigatorUAData.webidl
+--- /dev/null
++++ b/dom/webidl/NavigatorUAData.webidl
+@@ -0,0 +1,44 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
++ * You can obtain one at http://mozilla.org/MPL/2.0/. */
 +
-   bool OnLine() const { return mOnline; }
++// https://wicg.github.io/ua-client-hints/#interface
++// Exposed only for an enabled Chromium UA override; Firefox personas retain
++// Firefox's original surface. Values never come from the host machine.
++dictionary NavigatorUABrandVersion {
++  DOMString brand;
++  DOMString version;
++};
++
++dictionary UALowEntropyJSON {
++  sequence<NavigatorUABrandVersion> brands;
++  boolean mobile;
++  DOMString platform;
++};
++
++dictionary UADataValues : UALowEntropyJSON {
++  DOMString architecture;
++  DOMString bitness;
++  sequence<DOMString> formFactors;
++  sequence<NavigatorUABrandVersion> fullVersionList;
++  DOMString model;
++  DOMString platformVersion;
++  DOMString uaFullVersion;
++  boolean wow64;
++};
++
++[Exposed=(Window,Worker), Func="NavigatorUAData::IsEnabled"]
++interface NavigatorUAData {
++  // Gecko 146 does not support general FrozenArray in WebIDL. A native
++  // object getter returns the frozen array, preserving its JS contract.
++  [Throws] readonly attribute object brands;
++  readonly attribute boolean mobile;
++  readonly attribute DOMString platform;
++  [NewObject, Throws] Promise<UADataValues> getHighEntropyValues(sequence<DOMString> hints);
++  [Throws] UALowEntropyJSON toJSON();
++};
++
++interface mixin NavigatorUA {
++  [SecureContext, Func="NavigatorUAData::IsEnabled"]
++  readonly attribute NavigatorUAData userAgentData;
++};
+diff --git a/dom/webidl/WorkerNavigator.webidl b/dom/webidl/WorkerNavigator.webidl
+--- a/dom/webidl/WorkerNavigator.webidl
++++ b/dom/webidl/WorkerNavigator.webidl
+@@ -3,16 +3,17 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
-   // Worker thread only!
+ 
+ [Exposed=Worker]
+ interface WorkerNavigator {
+ };
+ 
+ WorkerNavigator includes NavigatorID;
++WorkerNavigator includes NavigatorUA;
+ WorkerNavigator includes NavigatorLanguage;
+ WorkerNavigator includes NavigatorOnLine;
+ WorkerNavigator includes NavigatorConcurrentHardware;
+ WorkerNavigator includes NavigatorStorage;
+ WorkerNavigator includes GlobalPrivacyControl;
+ 
+ // http://wicg.github.io/netinfo/#extensions-to-the-navigator-interface
+ [Exposed=Worker]
+diff --git a/dom/webidl/moz.build b/dom/webidl/moz.build
+--- a/dom/webidl/moz.build
++++ b/dom/webidl/moz.build
+@@ -838,16 +838,17 @@
+     "Navigation.webidl",
+     "NavigationActivation.webidl",
+     "NavigationDestination.webidl",
+     "NavigationHistoryEntry.webidl",
+     "NavigationPrecommitController.webidl",
+     "NavigationPreloadManager.webidl",
+     "NavigationTransition.webidl",
+     "Navigator.webidl",
++    "NavigatorUAData.webidl",
+     "NetErrorInfo.webidl",
+     "NetworkInformation.webidl",
+     "NetworkOptions.webidl",
+     "NodeFilter.webidl",
+     "NodeIterator.webidl",
+     "NodeList.webidl",
+     "NonElementParentNode.webidl",
+     "Notification.webidl",
 diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
 --- a/dom/workers/WorkerNavigator.cpp
 +++ b/dom/workers/WorkerNavigator.cpp
-@@ -3,6 +3,7 @@
+@@ -1,13 +1,14 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "mozilla/dom/WorkerNavigator.h"
@@ -463,19 +578,119 @@ diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
  #include "MaskConfig.hpp"
  #include "mozilla/dom/NavigatorManager.h"
  #include "mozilla/dom/WorkerPrivate.h"
-@@ -291,6 +292,15 @@
+ 
+ #include "ErrorList.h"
+ #include "MainThreadUtils.h"
+ #include "RuntimeService.h"
+ #include "WorkerRunnable.h"
+@@ -181,21 +182,21 @@
+   // was a worker and its OWN window disagreeing inside one container:
+   //
+   //     window  appVersion = 5.0 (Macintosh; Intel Mac OS X 10.15; rv:146.0)…
+   //     worker  appVersion = 5.0 (Macintosh)
+   //
+   // — a self-contradiction one line of JS exposes, plus cross-container
+   // correlation, since container N was reporting container 0's value.
+   {
+-    nsAutoString ua;
++    nsAutoCString ua;
+     IgnoredErrorResult uaRv;
+     GetUserAgent(ua, aCallerType, uaRv);
+-    if (!uaRv.Failed() && StringBeginsWith(ua, u"Mozilla/"_ns)) {
+-      aAppVersion.Assign(Substring(ua, 8));
++    if (!uaRv.Failed() && StringBeginsWith(ua, "Mozilla/"_ns)) {
++      CopyUTF8toUTF16(Substring(ua, 8), aAppVersion);
+       return;
+     }
+   }
+ 
+   if (auto value = MaskConfig::GetString("navigator.appVersion", CloakfoxWorkerUcid()))
+     return aAppVersion.Assign(NS_ConvertUTF8toUTF16(value.value()));
+   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+   MOZ_ASSERT(workerPrivate);
+@@ -286,33 +287,43 @@
+     }
+ 
+     return true;
+   }
+ };
  
  }  // namespace
  
 +already_AddRefed<NavigatorUAData> WorkerNavigator::UserAgentData() {
-+  nsAutoString ua;
++  nsAutoCString ua;
 +  IgnoredErrorResult rv;
 +  GetUserAgent(ua, CallerType::NonSystem, rv);
 +  nsCOMPtr<nsIGlobalObject> global = xpc::NativeGlobal(GetCurrentThreadWorkerGlobal());
-+  RefPtr<NavigatorUAData> data = new NavigatorUAData(global, ua);
++  RefPtr<NavigatorUAData> data =
++      new NavigatorUAData(global, NS_ConvertUTF8toUTF16(ua));
 +  return data.forget();
 +}
 +
- void WorkerNavigator::GetUserAgent(nsString& aUserAgent, CallerType aCallerType,
+ void WorkerNavigator::GetUserAgent(nsCString& aUserAgent,
+                                    CallerType aCallerType,
                                     ErrorResult& aRv) const {
    // Cloakfox: per-context user agent for workers
+   {
+     WorkerPrivate* wp = GetCurrentThreadWorkerPrivate();
+     if (wp) {
+       uint32_t ucid = wp->GetOriginAttributes().mUserContextId;
+       nsAutoString stored;
+       if (mozilla::dom::NavigatorManager::GetUserAgent(ucid, stored)) {
+-        aUserAgent = stored;
++        CopyUTF16toUTF8(stored, aUserAgent);
+         return;
+       }
+     }
+   }
+   if (auto value = MaskConfig::GetString("navigator.userAgent", CloakfoxWorkerUcid()))
+-    return aUserAgent.Assign(NS_ConvertUTF8toUTF16(value.value()));
++    return aUserAgent.Assign(value.value().c_str());
+   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+   MOZ_ASSERT(workerPrivate);
+ 
+   RefPtr<GetUserAgentRunnable> runnable = new GetUserAgentRunnable(
+       workerPrivate, aUserAgent,
+       workerPrivate->ShouldResistFingerprinting(RFPTarget::NavigatorUserAgent));
+ 
+   runnable->Dispatch(workerPrivate, Canceling, aRv);
+diff --git a/dom/workers/WorkerNavigator.h b/dom/workers/WorkerNavigator.h
+--- a/dom/workers/WorkerNavigator.h
++++ b/dom/workers/WorkerNavigator.h
+@@ -23,16 +23,17 @@
+ namespace mozilla {
+ class ErrorResult;
+ 
+ namespace webgpu {
+ class Instance;
+ }  // namespace webgpu
+ namespace dom {
+ class StorageManager;
++class NavigatorUAData;
+ class MediaCapabilities;
+ class LockManager;
+ class Permissions;
+ class ServiceWorkerContainer;
+ class Serial;
+ 
+ namespace network {
+ class Connection;
+@@ -93,16 +94,18 @@
+ 
+   void GetLanguages(nsTArray<nsString>& aLanguages) const {
+     aLanguages = mProperties.mLanguages.Clone();
+   }
+ 
+   void GetUserAgent(nsCString& aUserAgent, CallerType aCallerType,
+                     ErrorResult& aRv) const;
+ 
++  already_AddRefed<NavigatorUAData> UserAgentData();
++
+   bool OnLine() const { return mOnline; }
+ 
+   // Worker thread only!
+   void SetOnLine(bool aOnline) { mOnline = aOnline; }
+ 
+   bool GlobalPrivacyControl() const;
+ 
+   void SetLanguages(const nsTArray<nsString>& aLanguages);

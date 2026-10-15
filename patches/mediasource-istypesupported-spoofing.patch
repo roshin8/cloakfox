@@ -1,6 +1,10 @@
---- a/b/dom/media/mediasource/MediaSource.cpp	2026-04-18 09:03:56
-+++ b/dom/media/mediasource/MediaSource.cpp	2026-04-18 09:04:50
-@@ -6,6 +6,7 @@
+diff --git a/dom/media/mediasource/MediaSource.cpp b/dom/media/mediasource/MediaSource.cpp
+--- a/dom/media/mediasource/MediaSource.cpp
++++ b/dom/media/mediasource/MediaSource.cpp
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "MediaSource.h"
  
@@ -8,7 +12,17 @@
  #include "AsyncEventRunner.h"
  #include "DecoderDoctorDiagnostics.h"
  #include "DecoderTraits.h"
-@@ -448,6 +449,16 @@
+ #include "MP4Decoder.h"
+ #include "MediaContainerType.h"
+ #include "MediaResult.h"
+ #include "MediaSourceDemuxer.h"
+ #include "SourceBuffer.h"
+@@ -419,16 +420,26 @@
+   mSourceBuffers->SetEnded(Optional(MediaSourceEndOfStreamError::Decode));
+   mDecoder->DecodeError(aError);
+ }
+ 
+ /* static */
  bool MediaSource::IsTypeSupported(const GlobalObject& aOwner,
                                    const nsAString& aType) {
    MOZ_ASSERT(NS_IsMainThread());
@@ -25,9 +39,20 @@
    DecoderDoctorDiagnostics diagnostics;
    IgnoredErrorResult rv;
    nsCOMPtr<nsPIDOMWindowInner> window =
---- a/b/dom/media/mediasource/moz.build	2026-04-18 00:00:00
-+++ b/dom/media/mediasource/moz.build	2026-04-18 00:00:00
-@@ -44,3 +44,7 @@
+       do_QueryInterface(aOwner.GetAsSupports());
+   Document* doc = window ? window->GetExtantDoc() : nullptr;
+   IsTypeSupported(
+       aType, &diagnostics, rv,
+       doc ? Some(doc->ShouldResistFingerprinting(RFPTarget::MediaCapabilities))
+diff --git a/dom/media/mediasource/moz.build b/dom/media/mediasource/moz.build
+--- a/dom/media/mediasource/moz.build
++++ b/dom/media/mediasource/moz.build
+@@ -37,8 +37,12 @@
+ 
+ TEST_DIRS += [
+     "gtest",
+ ]
+ 
  include("/ipc/chromium/chromium-config.mozbuild")
  
  FINAL_LIBRARY = "xul"

@@ -1,31 +1,46 @@
-diff --git a/servo/components/style/gecko/wrapper.rs b/servo/components/style/gecko/wrapper.rs
---- a/servo/components/style/gecko/wrapper.rs
-+++ b/servo/components/style/gecko/wrapper.rs
-@@ -2003,7 +2003,7 @@
-             | NonTSPseudoClass::Enabled
-             | NonTSPseudoClass::Disabled
-             | NonTSPseudoClass::Checked
--            | NonTSPseudoClass::Fullscreen
-+            | NonTSPseudoClass::MozCloakfoxFullscreen
-             | NonTSPseudoClass::Indeterminate
-             | NonTSPseudoClass::MozInert
-             | NonTSPseudoClass::PopoverOpen
-@@ -2050,6 +2050,11 @@
-             | NonTSPseudoClass::Stalled
-             | NonTSPseudoClass::PictureInPicture
-             | NonTSPseudoClass::Muted => self.state().intersects(pseudo_class.state_flag()),
-+            NonTSPseudoClass::Fullscreen => {
-+                self.state().intersects(ElementState::FULLSCREEN) ||
-+                    (unsafe { bindings::Gecko_ShouldMaskWindowActivity(self.0) } &&
-+                        unsafe { bindings::Gecko_IsRootElement(self.0) })
-+            },
-             NonTSPseudoClass::Paused => {
-                 self.is_html_media_element() && self.state().intersects(ElementState::PAUSED)
-             },
+diff --git a/docshell/base/BrowsingContext.cpp b/docshell/base/BrowsingContext.cpp
+--- a/docshell/base/BrowsingContext.cpp
++++ b/docshell/base/BrowsingContext.cpp
+@@ -3268,16 +3268,30 @@
+     if (nsCOMPtr<nsIObserverService> observerService =
+             mozilla::services::GetObserverService()) {
+       observerService->NotifyObservers(
+           ToSupports(this), "browsing-context-active-change", nullptr);
+     }
+   }
+ }
+ 
++void BrowsingContext::DidSet(FieldIndex<IDX_CloakfoxLogicalFocusedContextId>) {
++  // SyncedContext delivers this in each process in parent-resolved order.
++  // Only update logical CSS state; native focus, IME and stored elements stay
++  // under the existing focus action/permission machinery.
++  if (auto* fm = nsFocusManager::GetFocusManager()) {
++    PreOrderWalk([fm](BrowsingContext* bc) {
++      if (RefPtr<Document> doc = bc->GetExtantDocument();
++          doc && doc->ShouldMaskWindowActivity()) {
++        fm->RefreshCloakfoxFocusState(*doc);
++      }
++    });
++  }
++}
++
+ void BrowsingContext::DidSet(FieldIndex<IDX_SessionStoreEpoch>,
+                              uint32_t aOldValue) {
+   if (!mCurrentWindowContext) {
+     return;
+   }
+   SessionStoreChild* sessionStoreChild =
+       SessionStoreChild::From(mCurrentWindowContext->GetWindowGlobalChild());
+   if (!sessionStoreChild) {
 diff --git a/docshell/base/BrowsingContext.h b/docshell/base/BrowsingContext.h
 --- a/docshell/base/BrowsingContext.h
 +++ b/docshell/base/BrowsingContext.h
-@@ -124,6 +124,8 @@
+@@ -119,16 +119,18 @@
+   FIELD(SuspendMediaWhenInactive, bool)                                       \
+   /* If true, we're within the nested event loop in window.open, and this     \
+    * context may not be used as the target of a load */                       \
+   FIELD(PendingInitialization, bool)                                          \
+   /* Indicates if the browser window is active for the purpose of the         \
     * :-moz-window-inactive pseudoclass. Only read from or set on the          \
     * top BrowsingContext. */                                                  \
    FIELD(IsActiveBrowserWindowInternal, bool)                                  \
@@ -34,7 +49,17 @@ diff --git a/docshell/base/BrowsingContext.h b/docshell/base/BrowsingContext.h
    FIELD(OpenerPolicy, nsILoadInfo::CrossOriginOpenerPolicy)                   \
    /* Current opener for the BrowsingContext. Weak reference */                \
    FIELD(OpenerId, uint64_t)                                                   \
-@@ -1273,6 +1275,26 @@
+   FIELD(OnePermittedSandboxedNavigatorId, uint64_t)                           \
+   FIELD(CurrentInnerWindowId, uint64_t)                                       \
+   FIELD(HadOriginalOpener, bool)                                              \
+   /* Was this window created by a webpage through window.open or an anchor    \
+    * link? In general, windows created this way may be manipulated (e.g.      \
+@@ -1278,16 +1280,36 @@
+   void SendCommitTransaction(ContentParent* aParent,
+                              const BaseTransaction& aTxn, uint64_t aEpoch);
+   void SendCommitTransaction(ContentChild* aChild, const BaseTransaction& aTxn,
+                              uint64_t aEpoch);
+ 
    // Update dependents if the activeness of this BC was explicitly changed.
    void ActivenessChanged(bool aIsActive);
  
@@ -60,737 +85,21 @@ diff --git a/docshell/base/BrowsingContext.h b/docshell/base/BrowsingContext.h
 +
    using CanSetResult = syncedcontext::CanSetResult;
  
-   // Deleted catch-all overload: every field must provide a `CanSet` whose value
-diff --git a/layout/base/nsRefreshDriver.h b/layout/base/nsRefreshDriver.h
---- a/layout/base/nsRefreshDriver.h
-+++ b/layout/base/nsRefreshDriver.h
-@@ -198,6 +198,7 @@
-    * corresponding presshell is hidden or shown.
-    */
-   void SetActivity(bool aIsActive);
-+  void RefreshCloakfoxActivityMask();
- 
-   // Called when our pres shell gets attached to a widget, so that we can switch
-   // to its vsync source if we started ticking before the widget was available.
-diff --git a/servo/components/style/gecko/non_ts_pseudo_class_list.rs b/servo/components/style/gecko/non_ts_pseudo_class_list.rs
---- a/servo/components/style/gecko/non_ts_pseudo_class_list.rs
-+++ b/servo/components/style/gecko/non_ts_pseudo_class_list.rs
-@@ -53,6 +53,7 @@
-                 ("-moz-devtools-highlighted", MozDevtoolsHighlighted, DEVTOOLS_HIGHLIGHTED, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
-                 ("-moz-styleeditor-transitioning", MozStyleeditorTransitioning, STYLEEDITOR_TRANSITIONING, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
-                 ("fullscreen", Fullscreen, FULLSCREEN, _),
-+                ("-moz-cloakfox-fullscreen", MozCloakfoxFullscreen, FULLSCREEN, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
-                 ("modal", Modal, MODAL, _),
-                 ("open", Open, OPEN, _),
-                 ("-moz-topmost-modal", MozTopmostModal, TOPMOST_MODAL, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
-diff --git a/layout/style/res/ua.css b/layout/style/res/ua.css
---- a/layout/style/res/ua.css
-+++ b/layout/style/res/ua.css
-@@ -359,7 +359,7 @@
-   }
- }
- 
--:fullscreen:not(:root) {
-+:-moz-cloakfox-fullscreen:not(:root) {
-   -moz-top-layer: auto !important;
-   position: fixed !important;
-   inset: 0 !important;
-@@ -412,7 +412,7 @@
-   user-select: none;
- }
- 
--:fullscreen:not(:root)::backdrop {
-+:-moz-cloakfox-fullscreen:not(:root)::backdrop {
-   background: black;
- }
- 
-diff --git a/dom/base/Document.h b/dom/base/Document.h
---- a/dom/base/Document.h
-+++ b/dom/base/Document.h
-@@ -3672,6 +3672,15 @@
-    */
-   bool HasFocus(ErrorResult& rv) const;
- 
-+  // Only the WebIDL entry points mask activity; native callers keep real state.
-+  bool HasFocusForBindings(CallerType, ErrorResult&) const;
-+  bool HiddenForBindings(CallerType) const;
-+  dom::VisibilityState VisibilityStateForBindings(CallerType) const;
-+  bool ShouldMaskWindowActivity() const;
-+  // Safe on style worker threads: no window/BrowsingContext access.
-+  bool ShouldMaskWindowActivityForStyle() const;
-+  bool FullscreenForBindings(CallerType) const;
-+
-   /**
-    * Return true if this document itself has focus.
-    */
-@@ -4664,6 +4673,9 @@
-   // Recomputes the visibility state but doesn't set the new value.
-   dom::VisibilityState ComputeVisibilityState() const;
- 
-+  static void CloakfoxActivityPrefChanged(const char*, void*);
-+  void RefreshCloakfoxActivityMask();
-+
-   // Since we wouldn't automatically play media from non-visited page, we need
-   // to notify window when the page was first visited.
-   void MaybeActiveMediaComponents();
-diff --git a/layout/style/GeckoBindings.cpp b/layout/style/GeckoBindings.cpp
---- a/layout/style/GeckoBindings.cpp
-+++ b/layout/style/GeckoBindings.cpp
-@@ -239,6 +239,13 @@
-   return aElement->StyleState().GetInternalValue();
- }
- 
-+bool Gecko_ShouldMaskWindowActivity(const Element* aElement) {
-+  const auto* doc = aElement->OwnerDoc();
-+  // No Window/BrowsingContext access on parallel style threads. Detached
-+  // documents without a live presentation shell keep native state.
-+  return doc->GetPresShell() && doc->ShouldMaskWindowActivityForStyle();
-+}
-+
- bool Gecko_IsRootElement(const Element* aElement) {
-   return aElement->OwnerDoc()->GetRootElement() == aElement;
- }
-diff --git a/dom/base/nsFocusManager.cpp b/dom/base/nsFocusManager.cpp
---- a/dom/base/nsFocusManager.cpp
-+++ b/dom/base/nsFocusManager.cpp
-@@ -110,24 +110,28 @@
- struct nsDelayedBlurOrFocusEvent {
-   nsDelayedBlurOrFocusEvent(EventMessage aEventMessage, PresShell* aPresShell,
-                             Document* aDocument, EventTarget* aTarget,
--                            EventTarget* aRelatedTarget)
-+                            EventTarget* aRelatedTarget,
-+                            bool aWindowActivityChange)
-       : mPresShell(aPresShell),
-         mDocument(aDocument),
-         mTarget(aTarget),
-         mEventMessage(aEventMessage),
--        mRelatedTarget(aRelatedTarget) {}
-+        mRelatedTarget(aRelatedTarget),
-+        mWindowActivityChange(aWindowActivityChange) {}
- 
-   nsDelayedBlurOrFocusEvent(const nsDelayedBlurOrFocusEvent& aOther)
-       : mPresShell(aOther.mPresShell),
-         mDocument(aOther.mDocument),
-         mTarget(aOther.mTarget),
--        mEventMessage(aOther.mEventMessage) {}
-+        mEventMessage(aOther.mEventMessage),
-+        mWindowActivityChange(aOther.mWindowActivityChange) {}
- 
-   RefPtr<PresShell> mPresShell;
-   nsCOMPtr<Document> mDocument;
-   nsCOMPtr<EventTarget> mTarget;
-   EventMessage mEventMessage;
-   nsCOMPtr<EventTarget> mRelatedTarget;
-+  bool mWindowActivityChange;
- };
- 
- inline void ImplCycleCollectionUnlink(nsDelayedBlurOrFocusEvent& aField) {
-@@ -610,7 +614,29 @@
-       }
-     }
-   } else {
-+    RefPtr<Document> doc = window->GetExtantDoc();
-+    RefPtr<Element> old = window->GetFocusedElement();
-+    const bool logicalBlur = doc && doc->ShouldMaskWindowActivity() && old &&
-+                             old->State().HasState(ElementState::FOCUS);
-+    if (doc && doc->ShouldMaskWindowActivity() && old) {
-+      NotifyFocusStateChange(old, nullptr, 0, false, false);
-+    }
-     window->SetFocusedElement(nullptr);
-+    if (BrowsingContext* bc = window->GetBrowsingContext(); bc && bc->IsContent()) {
-+      RefPtr<BrowsingContext> logical = BrowsingContext::Get(
-+          bc->Top()->GetCloakfoxLogicalFocusedContextId());
-+      // Blurring a remembered element in an abandoned sibling must not move
-+      // the logical focus out of the current frame.
-+      if (!logical || IsSameOrAncestor(bc, logical)) {
-+        (void)bc->Top()->SetCloakfoxLogicalFocusedContextId(bc->Id());
-+      }
-+    }
-+    if (logicalBlur) {
-+      if (RefPtr<PresShell> shell = doc->GetPresShell()) {
-+        SendFocusOrBlurEvent(eBlur, shell, doc, old, false, false, nullptr,
-+                            false, true);
-+      }
-+    }
-   }
- 
-   LOGFOCUS(("<<ClearFocus end>>"));
-@@ -1447,10 +1473,12 @@
-         RefPtr<PresShell> presShell = mDelayedBlurFocusEvents[i].mPresShell;
-         nsCOMPtr<EventTarget> relatedTarget =
-             mDelayedBlurFocusEvents[i].mRelatedTarget;
-+        const bool windowActivityChange =
-+            mDelayedBlurFocusEvents[i].mWindowActivityChange;
-         mDelayedBlurFocusEvents.RemoveElementAt(i);
- 
-         FireFocusOrBlurEvent(message, presShell, target, false, false,
--                             relatedTarget);
-+                             relatedTarget, windowActivityChange);
-         --i;
-       }
-     }
-@@ -2017,12 +2045,63 @@
-                         nullptr /* aAncestorBrowsingContextToFocus */);
-     }
- 
-+    // A logical ancestor blur handler can redirect focus before we enter the
-+    // child. Respect that change instead of replacing its remembered path.
-+    if (newWindow->GetExtantDoc() &&
-+        newWindow->GetExtantDoc()->ShouldMaskWindowActivity()) {
-+      for (BrowsingContext* child = newBrowsingContext;
-+           child && child->GetParent(); child = child->GetParent()) {
-+        nsPIDOMWindowOuter* parent = child->GetParent()->GetDOMWindow();
-+        Element* frame = child->GetEmbedderElement();
-+        if (parent && frame && child->GetParent()->IsContent() &&
-+            parent->GetFocusedElement() != frame) {
-+          return Some(actionId);
-+        }
-+      }
-+    }
-     // set the focus node and method as needed
-     uint32_t focusMethod =
-         aFocusChanged ? aFlags & METHODANDRING_MASK
-                       : newWindow->GetFocusMethod() |
-                             (aFlags & (FLAG_SHOWRING | FLAG_NOSHOWRING));
-+    RefPtr<Document> logicalDoc = newWindow->GetExtantDoc();
-+    const bool logicalFocus = logicalDoc && logicalDoc->ShouldMaskWindowActivity();
-+    RefPtr<Element> oldLogicalFocus = newWindow->GetFocusedElement();
-+    RefPtr<PresShell> logicalShell = logicalFocus ? logicalDoc->GetPresShell() : nullptr;
-+    const bool logicalChange = logicalFocus && oldLogicalFocus != elementToFocus;
-+    RefPtr<nsFrameLoaderOwner> oldFrame = do_QueryObject(oldLogicalFocus);
-+    const bool oldWasFocused = oldLogicalFocus && !oldFrame &&
-+                              oldLogicalFocus->State().HasState(ElementState::FOCUS);
-+    if (logicalChange) {
-+      if (oldLogicalFocus) {
-+        NotifyFocusStateChange(oldLogicalFocus, nullptr, 0, false, false);
-+      }
-+      newWindow->SetFocusedElement(nullptr);
-+      if (oldWasFocused && logicalShell) {
-+        SendFocusOrBlurEvent(eBlur, logicalShell, logicalDoc, oldLogicalFocus,
-+                            false, false, elementToFocus, false, true);
-+        // A blur handler may choose another element or replace the document.
-+        if (newWindow->GetFocusedElement() ||
-+            newWindow->GetExtantDoc() != logicalDoc) {
-+          return Some(actionId);
-+        }
-+      }
-+    }
-+    if (logicalChange && (!elementToFocus->IsInComposedDoc() ||
-+                          elementToFocus->GetComposedDoc() != logicalDoc)) {
-+      return Some(actionId);
-+    }
-     newWindow->SetFocusedElement(elementToFocus, focusMethod);
-+    if (newBrowsingContext->IsContent()) {
-+      (void)newBrowsingContext->Top()->SetCloakfoxLogicalFocusedContextId(newBrowsingContext->Id());
-+    }
-+    if (logicalFocus) {
-+      RefreshCloakfoxFocusState(*newWindow->GetExtantDoc());
-+      if (logicalChange && logicalShell && elementToFocus) {
-+        SendFocusOrBlurEvent(eFocus, logicalShell, logicalDoc, elementToFocus,
-+                            false, false, oldLogicalFocus, false, true);
-+      }
-+    }
-     if (aFocusChanged) {
-       if (nsCOMPtr<nsIDocShell> docShell = newWindow->GetDocShell()) {
-         RefPtr<PresShell> presShell = docShell->GetPresShell();
-@@ -2247,12 +2326,52 @@
-         break;
-       }
- 
-+      if (window->GetExtantDoc() &&
-+          window->GetExtantDoc()->ShouldMaskWindowActivity()) {
-+        if (RefPtr<Element> old = window->GetFocusedElement()) {
-+          RefPtr<nsFrameLoaderOwner> oldFrame = do_QueryObject(old);
-+          RefPtr<PresShell> shell = window->GetExtantDoc()->GetPresShell();
-+          if (!oldFrame && old->State().HasState(ElementState::FOCUS) && shell &&
-+              !IsInActiveWindow(bc)) {
-+            NotifyFocusStateChange(old, nullptr, 0, false, false);
-+            window->SetFocusedElement(nullptr);
-+            SendFocusOrBlurEvent(eBlur, shell, window->GetExtantDoc(), old,
-+                                false, false, nullptr, false, true);
-+            if (window->GetFocusedElement()) {
-+              return needToNotifyOtherProcess;
-+            }
-+          }
-+          NotifyFocusStateChange(old, nullptr, 0, false, false);
-+        }
-+      }
-       window->SetFocusedElement(nullptr);
-       continue;
-     }
- 
-     if (frameElement != window->GetFocusedElement()) {
-+      const bool logicalFocus = window->GetExtantDoc() &&
-+                                window->GetExtantDoc()->ShouldMaskWindowActivity();
-+      if (logicalFocus) {
-+        if (RefPtr<Element> old = window->GetFocusedElement()) {
-+          RefPtr<nsFrameLoaderOwner> oldFrame = do_QueryObject(old);
-+          RefPtr<PresShell> shell = window->GetExtantDoc()->GetPresShell();
-+          if (!oldFrame && old->State().HasState(ElementState::FOCUS) && shell &&
-+              !IsInActiveWindow(bc)) {
-+            NotifyFocusStateChange(old, nullptr, 0, false, false);
-+            window->SetFocusedElement(nullptr);
-+            SendFocusOrBlurEvent(eBlur, shell, window->GetExtantDoc(), old,
-+                                false, false, nullptr, false, true);
-+            if (window->GetFocusedElement()) {
-+              return needToNotifyOtherProcess;
-+            }
-+          }
-+          NotifyFocusStateChange(old, nullptr, 0, false, false);
-+        }
-+      }
-       window->SetFocusedElement(frameElement);
-+      if (logicalFocus) {
-+        RefreshCloakfoxFocusState(*window->GetExtantDoc());
-+      }
- 
-       RefPtr<nsFrameLoaderOwner> loaderOwner = do_QueryObject(frameElement);
-       MOZ_ASSERT(loaderOwner);
-@@ -2544,6 +2663,10 @@
-   // Don't fire blur event on the root content which isn't editable.
-   bool sendBlurEvent =
-       element && element->IsInComposedDoc() && !IsNonFocusableRoot(element);
-+  const bool preserveLogicalFocus =
-+      window->GetExtantDoc() &&
-+      window->GetExtantDoc()->ShouldMaskWindowActivity() &&
-+      (mWindowBeingLowered || !IsInActiveWindow(window->GetBrowsingContext()));
-   if (element) {
-     if (!aIsLeavingDocument) {
-       // Ensure that focus navigation still continues from element.
-@@ -2551,7 +2674,7 @@
-       // when the document is refocused, so we don't need to do this.
-       element->OwnerDoc()->SetPreviouslyFocusedContent(element);
-     }
--    if (sendBlurEvent) {
-+    if (sendBlurEvent && !preserveLogicalFocus) {
-       NotifyFocusStateChange(element, aElementToFocus, 0, false, false);
-     }
- 
-@@ -2832,6 +2955,9 @@
-   }
- 
-   SetFocusedWindowInternal(aWindow, aActionId);
-+  if (BrowsingContext* bc = aWindow->GetBrowsingContext(); bc && bc->IsContent()) {
-+    (void)bc->Top()->SetCloakfoxLogicalFocusedContextId(bc->Id());
-+  }
- 
-   if (aAdjustWidget && !sTestMode) {
-     if (nsCOMPtr<nsIWidget> widget = presShell->GetRootWidget()) {
-@@ -3031,23 +3157,37 @@
-  public:
-   FocusBlurEvent(EventTarget* aTarget, EventMessage aEventMessage,
-                  nsPresContext* aContext, bool aWindowRaised, bool aIsRefocus,
--                 EventTarget* aRelatedTarget)
-+                 EventTarget* aRelatedTarget, bool aWindowActivityChange)
-       : mozilla::Runnable("FocusBlurEvent"),
-         mTarget(aTarget),
-         mContext(aContext),
-         mEventMessage(aEventMessage),
-         mWindowRaised(aWindowRaised),
-         mIsRefocus(aIsRefocus),
--        mRelatedTarget(aRelatedTarget) {}
-+        mRelatedTarget(aRelatedTarget),
-+        mWindowActivityChange(aWindowActivityChange) {}
- 
-   // TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230, bug 1535398)
-   MOZ_CAN_RUN_SCRIPT_BOUNDARY NS_IMETHOD Run() override {
-+    if (mEventMessage == eFocus && !mWindowActivityChange &&
-+        mContext->Document()->ShouldMaskWindowActivity()) {
-+      nsCOMPtr<nsIContent> content = do_QueryInterface(mTarget);
-+      nsPIDOMWindowOuter* window = mContext->Document()->GetWindow();
-+      // Earlier blur/focus handlers may redirect focus or detach this target.
-+      if (content && (!window || content->GetComposedDoc() != mContext->Document() ||
-+                      window->GetFocusedElement() != content)) {
-+        return NS_OK;
-+      }
-+    }
-     InternalFocusEvent event(true, mEventMessage);
-     event.mFlags.mBubbles = false;
-     event.mFlags.mCancelable = false;
-     event.mFromRaise = mWindowRaised;
-     event.mIsRefocus = mIsRefocus;
-     event.mRelatedTarget = mRelatedTarget;
-+    event.mFlags.mOnlySystemGroupDispatchInContent =
-+        mWindowActivityChange &&
-+        mContext->Document()->ShouldMaskWindowActivity();
-     return EventDispatcher::Dispatch(mTarget, mContext, &event);
-   }
- 
-@@ -3057,6 +3197,7 @@
-   bool mWindowRaised;
-   bool mIsRefocus;
-   nsCOMPtr<EventTarget> mRelatedTarget;
-+  bool mWindowActivityChange;
- };
- 
- class FocusInOutEvent : public Runnable {
-@@ -3065,14 +3206,15 @@
-                   nsPresContext* aContext,
-                   nsPIDOMWindowOuter* aOriginalFocusedWindow,
-                   nsIContent* aOriginalFocusedContent,
--                  EventTarget* aRelatedTarget)
-+                  EventTarget* aRelatedTarget, bool aWindowActivityChange)
-       : mozilla::Runnable("FocusInOutEvent"),
-         mTarget(aTarget),
-         mContext(aContext),
-         mEventMessage(aEventMessage),
-         mOriginalFocusedWindow(aOriginalFocusedWindow),
-         mOriginalFocusedContent(aOriginalFocusedContent),
--        mRelatedTarget(aRelatedTarget) {}
-+        mRelatedTarget(aRelatedTarget),
-+        mWindowActivityChange(aWindowActivityChange) {}
- 
-   // TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230, bug 1535398)
-   MOZ_CAN_RUN_SCRIPT_BOUNDARY NS_IMETHOD Run() override {
-@@ -3087,6 +3229,9 @@
-       event.mFlags.mBubbles = true;
-       event.mFlags.mCancelable = false;
-       event.mRelatedTarget = mRelatedTarget;
-+      event.mFlags.mOnlySystemGroupDispatchInContent =
-+          mWindowActivityChange &&
-+          mContext->Document()->ShouldMaskWindowActivity();
-       return EventDispatcher::Dispatch(mTarget, mContext, &event);
-     }
-     return NS_OK;
-@@ -3098,6 +3243,7 @@
-   nsCOMPtr<nsPIDOMWindowOuter> mOriginalFocusedWindow;
-   nsCOMPtr<nsIContent> mOriginalFocusedContent;
-   nsCOMPtr<EventTarget> mRelatedTarget;
-+  bool mWindowActivityChange;
- };
- 
- static Document* GetDocumentHelper(EventTarget* aTarget) {
-@@ -3114,13 +3260,15 @@
- void nsFocusManager::FireFocusInOrOutEvent(
-     EventMessage aEventMessage, PresShell* aPresShell, EventTarget* aTarget,
-     nsPIDOMWindowOuter* aCurrentFocusedWindow,
--    nsIContent* aCurrentFocusedContent, EventTarget* aRelatedTarget) {
-+    nsIContent* aCurrentFocusedContent, EventTarget* aRelatedTarget,
-+    bool aWindowActivityChange) {
-   NS_ASSERTION(aEventMessage == eFocusIn || aEventMessage == eFocusOut,
-                "Wrong event type for FireFocusInOrOutEvent");
- 
-   nsContentUtils::AddScriptRunner(MakeAndAddRef<FocusInOutEvent>(
-       aTarget, aEventMessage, aPresShell->GetPresContext(),
--      aCurrentFocusedWindow, aCurrentFocusedContent, aRelatedTarget));
-+      aCurrentFocusedWindow, aCurrentFocusedContent, aRelatedTarget,
-+      aWindowActivityChange));
- }
- 
- void nsFocusManager::SendFocusOrBlurEvent(EventMessage aEventMessage,
-@@ -3128,12 +3276,17 @@
-                                           Document* aDocument,
-                                           EventTarget* aTarget,
-                                           bool aWindowRaised, bool aIsRefocus,
--                                          EventTarget* aRelatedTarget) {
-+                                          EventTarget* aRelatedTarget,
-+                                          bool aWindowActivityChange,
-+                                          bool aLogicalFocusChange) {
-   MOZ_ASSERT(aEventMessage == eFocus || aEventMessage == eBlur,
-              "Wrong event type for SendFocusOrBlurEvent");
- 
-   nsCOMPtr<Document> eventTargetDoc = GetDocumentHelper(aTarget);
-   nsCOMPtr<Document> relatedTargetDoc = GetDocumentHelper(aRelatedTarget);
-+  aWindowActivityChange |= aWindowRaised || !!mWindowBeingLowered ||
-+      (!aLogicalFocusChange && aDocument && aDocument->GetBrowsingContext() &&
-+       !IsInActiveWindow(aDocument->GetBrowsingContext()));
- 
-   // set aRelatedTarget to null if it's not in the same document as aTarget
-   if (eventTargetDoc != relatedTargetDoc) {
-@@ -3149,7 +3302,8 @@
-     });
- 
-     mDelayedBlurFocusEvents.EmplaceBack(aEventMessage, aPresShell, aDocument,
--                                        aTarget, aRelatedTarget);
-+                                        aTarget, aRelatedTarget,
-+                                        aWindowActivityChange);
-     return;
-   }
- 
-@@ -3161,23 +3315,37 @@
-   }
- 
-   FireFocusOrBlurEvent(aEventMessage, aPresShell, aTarget, aWindowRaised,
--                       aIsRefocus, aRelatedTarget);
-+                       aIsRefocus, aRelatedTarget, aWindowActivityChange);
- }
- 
- void nsFocusManager::FireFocusOrBlurEvent(EventMessage aEventMessage,
-                                           PresShell* aPresShell,
-                                           EventTarget* aTarget,
-                                           bool aWindowRaised, bool aIsRefocus,
--                                          EventTarget* aRelatedTarget) {
-+                                          EventTarget* aRelatedTarget,
-+                                          bool aWindowActivityChange) {
-   nsCOMPtr<nsPIDOMWindowOuter> currentWindow = mFocusedWindow;
-   nsCOMPtr<nsPIDOMWindowInner> targetWindow = do_QueryInterface(aTarget);
-   nsCOMPtr<Document> targetDocument = do_QueryInterface(aTarget);
-+  aWindowActivityChange |= !!targetWindow || !!targetDocument || aWindowRaised;
-+  [[maybe_unused]] bool logicalFocusChange = false;
-+  if (!aWindowActivityChange && !targetWindow && !targetDocument) {
-+    nsCOMPtr<Document> doc = GetDocumentHelper(aTarget);
-+    if (doc && doc->ShouldMaskWindowActivity() &&
-+        !IsInActiveWindow(doc->GetBrowsingContext())) {
-+      // A logical background focus handler can redirect focus. Validate
-+      // focusin against that document, not the unrelated foreground tab.
-+      currentWindow = doc->GetWindow();
-+      logicalFocusChange = true;
-+    }
-+  }
-   nsCOMPtr<nsIContent> currentFocusedContent =
-       currentWindow ? currentWindow->GetFocusedElement() : nullptr;
- 
- #ifdef ACCESSIBILITY
-   nsAccessibilityService* accService = GetAccService();
--  if (accService) {
-+  // Logical background events do not change the OS/accessibility focus.
-+  if (accService && !logicalFocusChange) {
-     if (aEventMessage == eFocus) {
-       accService->NotifyOfDOMFocus(aTarget);
-     } else {
-@@ -3191,7 +3359,7 @@
- 
-   nsContentUtils::AddScriptRunner(MakeAndAddRef<FocusBlurEvent>(
-       aTarget, aEventMessage, aPresShell->GetPresContext(), aWindowRaised,
--      aIsRefocus, aRelatedTarget));
-+      aIsRefocus, aRelatedTarget, aWindowActivityChange));
- 
-   // Check that the target is not a window or document before firing
-   // focusin/focusout. Other browsers do not fire focusin/focusout on window,
-@@ -3204,7 +3372,8 @@
-     EventMessage focusInOrOutMessage =
-         aEventMessage == eFocus ? eFocusIn : eFocusOut;
-     FireFocusInOrOutEvent(focusInOrOutMessage, aPresShell, aTarget,
--                          currentWindow, currentFocusedContent, aRelatedTarget);
-+                          currentWindow, currentFocusedContent, aRelatedTarget,
-+                          aWindowActivityChange);
-   }
- }
- 
-@@ -6003,6 +6172,44 @@
-          aArea.IsFocusableWithoutStyle();
- }
- 
-+void nsFocusManager::RefreshCloakfoxFocusState(Document& aDocument) {
-+  nsPIDOMWindowOuter* window = aDocument.GetWindow();
-+  RefPtr<Element> element = window ? window->GetFocusedElement() : nullptr;
-+  if (!element || element->GetComposedDoc() != &aDocument) {
-+    return;
-+  }
-+  BrowsingContext* bc = aDocument.GetBrowsingContext();
-+  RefPtr<BrowsingContext> logicalContext = bc ? BrowsingContext::Get(
-+      bc->Top()->GetCloakfoxLogicalFocusedContextId()) : nullptr;
-+  const bool logicalFocus = aDocument.ShouldMaskWindowActivity() &&
-+                           (!logicalContext || IsSameOrAncestor(bc, logicalContext));
-+  const bool focused = logicalFocus ||
-+                       (mFocusedElement == element &&
-+                        IsInActiveWindow(window->GetBrowsingContext()));
-+  const bool showRing = focused && ShouldMatchFocusVisible(
-+      window, *element, window->GetFocusMethod());
-+  const bool lostLogicalFocus = !focused && aDocument.ShouldMaskWindowActivity() &&
-+                                element->State().HasState(ElementState::FOCUS) &&
-+                                !IsInActiveWindow(bc);
-+  NotifyFocusStateChange(element, nullptr, 0, focused, showRing);
-+  RefPtr<nsFrameLoaderOwner> frame = do_QueryObject(element);
-+  if (lostLogicalFocus && !frame) {
-+    window->SetFocusedElement(nullptr);
-+    // This also runs in the owning process when a remote frame is abandoned.
-+    nsContentUtils::AddScriptRunner(NS_NewRunnableFunction(
-+        "nsFocusManager::CloakfoxLogicalBlur",
-+        [doc = RefPtr<Document>(&aDocument), target = RefPtr<Element>(element)] {
-+          auto* fm = nsFocusManager::GetFocusManager();
-+          RefPtr<PresShell> shell = doc->GetPresShell();
-+          if (fm && shell && doc->ShouldMaskWindowActivity() &&
-+              target->GetComposedDoc() == doc) {
-+            fm->SendFocusOrBlurEvent(eBlur, shell, doc, target, false, false,
-+                                    nullptr, false, true);
-+          }
-+        }));
-+  }
-+}
-+
- nsresult NS_NewFocusManager(nsIFocusManager** aResult) {
-   NS_IF_ADDREF(*aResult = nsFocusManager::GetFocusManager());
-   return NS_OK;
-diff --git a/layout/base/nsRefreshDriver.cpp b/layout/base/nsRefreshDriver.cpp
---- a/layout/base/nsRefreshDriver.cpp
-+++ b/layout/base/nsRefreshDriver.cpp
-@@ -1377,6 +1377,15 @@
- }
- 
- RefreshDriverTimer* nsRefreshDriver::ChooseTimer() {
-+  if (mPresContext &&
-+      mPresContext->Document()->ShouldMaskWindowActivity()) {
-+    // A background compositor may stop delivering vsync. Use the same
-+    // software clock in both foreground and background while masking.
-+    if (!sRegularRateTimer) {
-+      sRegularRateTimer = new StartupRefreshDriverTimer(GetRegularTimerInterval());
-+    }
-+    return sRegularRateTimer;
-+  }
-   if (mThrottled) {
-     if (!sThrottledRateTimer) {
-       sThrottledRateTimer = MakeRefPtr<InactiveRefreshDriverTimer>(
-@@ -2924,7 +2933,9 @@
- }
- 
- void nsRefreshDriver::SetActivity(bool aIsActive) {
--  const bool shouldThrottle = !aIsActive;
-+  const bool shouldThrottle =
-+      !aIsActive && !(mPresContext &&
-+                     mPresContext->Document()->ShouldMaskWindowActivity());
-   if (mThrottled == shouldThrottle) {
-     return;
-   }
-@@ -2932,6 +2943,18 @@
-   if (mActiveTimer || GetReasonsToTick() != TickReasons::None) {
-     // We want to switch our timer type here, so just stop and restart the
-     // timer.
-+    EnsureTimerStarted(eForceAdjustTimer);
-+  }
-+}
-+
-+void nsRefreshDriver::RefreshCloakfoxActivityMask() {
-+  if (!mPresContext || !mPresContext->GetPresShell()) {
-+    return;
-+  }
-+  SetActivity(mPresContext->GetPresShell()->IsActive());
-+  // Also switch the timer when throttling hasn't changed (e.g. toggling the
-+  // option in a foreground tab). Frozen/BFCache documents remain frozen.
-+  if (mActiveTimer || GetReasonsToTick() != TickReasons::None) {
-     EnsureTimerStarted(eForceAdjustTimer);
-   }
- }
-diff --git a/dom/webidl/Document.webidl b/dom/webidl/Document.webidl
---- a/dom/webidl/Document.webidl
-+++ b/dom/webidl/Document.webidl
-@@ -173,7 +173,7 @@
-   // user interaction
-   [Pure]
-   readonly attribute WindowProxy? defaultView;
--  [Throws]
-+  [Throws, NeedsCallerType, BinaryName="hasFocusForBindings"]
-   boolean hasFocus();
-   [CEReactions, SetterThrows, SetterNeedsSubjectPrincipal]
-            attribute DOMString designMode;
-@@ -298,9 +298,9 @@
- partial interface Document {
-   // Note: Per spec the 'S' in these two is lowercase, but the "Moz"
-   // versions have it uppercase.
--  [LegacyLenientSetter, Unscopable]
-+  [LegacyLenientSetter, Unscopable, NeedsCallerType, BinaryName="fullscreenForBindings"]
-   readonly attribute boolean fullscreen;
--  [BinaryName="fullscreen"]
-+  [BinaryName="fullscreenForBindings", NeedsCallerType]
-   readonly attribute boolean mozFullScreen;
-   [LegacyLenientSetter, NeedsCallerType]
-   readonly attribute boolean fullscreenEnabled;
-@@ -353,7 +353,9 @@
- 
- // https://w3c.github.io/page-visibility/#extensions-to-the-document-interface
- partial interface Document {
-+  [NeedsCallerType, BinaryName="hiddenForBindings"]
-   readonly attribute boolean hidden;
-+  [NeedsCallerType, BinaryName="visibilityStateForBindings"]
-   readonly attribute VisibilityState visibilityState;
-            attribute EventHandler onvisibilitychange;
- };
-diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
---- a/dom/base/nsGlobalWindowInner.cpp
-+++ b/dom/base/nsGlobalWindowInner.cpp
-@@ -672,7 +672,7 @@
-   mDispatched = true;
- 
-   nsPIDOMWindowOuter* outer = mWindow->GetOuterWindow();
--  if (outer && outer->IsBackground()) {
-+  if (outer && mWindow->IsBackgroundInternal()) {
-     // Set a timeout handler with a timeout of 0 ms to throttle idle
-     // callback requests coming from a backround window using
-     // background timeout throttling.
-@@ -883,6 +883,11 @@
- }
- 
- bool nsGlobalWindowInner::IsBackgroundInternal() const {
-+  // Scheduling follows the page-facing activity policy, while the outer
-+  // window and Document::Hidden() retain real state for browser internals.
-+  if (mDoc && mDoc->ShouldMaskWindowActivity()) {
-+    return false;
-+  }
-   return !mOuterWindow || mOuterWindow->IsBackground();
- }
- 
-@@ -4079,6 +4084,10 @@
-       doc->WarnOnceAndReportAbout(DeprecatedOperations::eFullscreenAttribute);
-     }
-   }
-+  if (aCallerType != CallerType::System && mDoc &&
-+      mDoc->ShouldMaskWindowActivity()) {
-+    return true;
-+  }
-   FORWARD_TO_OUTER_OR_THROW(GetFullscreenOuter, (), aError, false);
- }
- 
-diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
---- a/modules/libpref/init/StaticPrefList.yaml
-+++ b/modules/libpref/init/StaticPrefList.yaml
-@@ -2403,6 +2403,12 @@
-   value: true
-   mirror: always
- 
-+# Opt-in page activity privacy; browser focus and lifecycle stay real.
-+- name: cloakfox.opt.focus_masking
-+  type: RelaxedAtomicBool
-+  value: false
-+  mirror: always
-+
- #---------------------------------------------------------------------------
- # Prefs starting with "consoleservice."
- #---------------------------------------------------------------------------
-diff --git a/dom/base/nsFocusManager.h b/dom/base/nsFocusManager.h
---- a/dom/base/nsFocusManager.h
-+++ b/dom/base/nsFocusManager.h
-@@ -161,6 +161,7 @@
-   }
- 
-   bool CanSkipFocus(nsIContent* aContent);
-+  void RefreshCloakfoxFocusState(Document&);
- 
-   MOZ_CAN_RUN_SCRIPT void FlushBeforeEventHandlingIfNeeded(
-       nsIContent* aContent) {
-@@ -499,7 +500,8 @@
-       mozilla::EventMessage aEventMessage, mozilla::PresShell* aPresShell,
-       Document* aDocument, mozilla::dom::EventTarget* aTarget,
-       bool aWindowRaised, bool aIsRefocus = false,
--      mozilla::dom::EventTarget* aRelatedTarget = nullptr);
-+      mozilla::dom::EventTarget* aRelatedTarget = nullptr,
-+      bool aWindowActivityChange = false, bool aLogicalFocusChange = false);
-   /**
-    * Fire a focus or blur event at aTarget.
-    *
-@@ -512,7 +514,8 @@
-       mozilla::EventMessage aEventMessage, mozilla::PresShell* aPresShell,
-       mozilla::dom::EventTarget* aTarget, bool aWindowRaised,
-       bool aIsRefocus = false,
--      mozilla::dom::EventTarget* aRelatedTarget = nullptr);
-+      mozilla::dom::EventTarget* aRelatedTarget = nullptr,
-+      bool aWindowActivityChange = false);
- 
-   /**
-    *  Fire a focusin or focusout event
-@@ -536,7 +539,8 @@
-       mozilla::dom::EventTarget* aTarget,
-       nsPIDOMWindowOuter* aCurrentFocusedWindow,
-       nsIContent* aCurrentFocusedContent,
--      mozilla::dom::EventTarget* aRelatedTarget = nullptr);
-+      mozilla::dom::EventTarget* aRelatedTarget = nullptr,
-+      bool aWindowActivityChange = false);
- 
-   /**
-    * Scrolls aContent into view unless the FLAG_NOSCROLL flag is set.
+   // Overload `DidSet` to get notifications for a particular field being set.
+   //
+   // You can also overload the variant that gets the old value if you need it.
+   template <size_t I>
+   void DidSet(FieldIndex<I>) {}
+   template <size_t I, typename T>
 diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
 --- a/dom/base/Document.cpp
 +++ b/dom/base/Document.cpp
-@@ -7,6 +7,7 @@
+@@ -2,16 +2,17 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /*
+  * Base class for all our document implementations.
   */
  
  #include "mozilla/dom/Document.h"
@@ -798,7 +107,17 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
  #include "MaskConfig.hpp"
  
  #include <inttypes.h>
-@@ -1653,6 +1654,10 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
+ #include <algorithm>
+ #include <cstddef>
+@@ -1649,16 +1650,20 @@
+ 
+   // void state used to differentiate an empty source from an unselected source
+   mPreloadPictureFoundSource.SetIsVoid(true);
+ 
+   RecomputeLanguageFromCharset();
  
    mPreloadReferrerInfo = new dom::ReferrerInfo(nullptr);
    mReferrerInfo = new dom::ReferrerInfo(nullptr);
@@ -809,7 +128,17 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
  }
  
  #ifndef ANDROID
-@@ -2470,6 +2475,10 @@
+ // unused by GeckoView
+ static bool IsAboutErrorPage(nsGlobalWindowInner* aWin, const char* aSpec) {
+   if (NS_WARN_IF(!aWin)) {
+     return false;
+   }
+@@ -2466,16 +2471,20 @@
+         mPageloadEventData.set_tlsHandshakeTime(
+             static_cast<uint32_t>(tlsHandshakeTime.ToMilliseconds()));
+       }
+     }
+   }
  }
  
  Document::~Document() {
@@ -820,7 +149,17 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    MOZ_LOG(gDocumentLeakPRLog, LogLevel::Debug, ("DOCUMENT %p destroyed", this));
    MOZ_ASSERT(!IsTopLevelContentDocument() || !IsResourceDoc(),
               "Can't be top-level and a resource doc at the same time");
-@@ -4943,6 +4952,79 @@
+ 
+   NS_ASSERTION(!mIsShowing, "Destroying a currently-showing document");
+ 
+   if (IsTopLevelContentDocument()) {
+     RemoveToplevelLoadingDocument(this);
+@@ -4999,16 +5008,89 @@
+     return false;
+   }
+ 
+   if (!fm->IsInActiveWindow(bc)) {
+     return false;
    }
  
    return fm->IsSameOrAncestor(bc, fm->GetFocusedBrowsingContext());
@@ -900,7 +239,17 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
  }
  
  bool Document::ThisDocumentHasFocus() const {
-@@ -7799,6 +7881,9 @@
+   nsFocusManager* fm = nsFocusManager::GetFocusManager();
+   return fm && fm->GetFocusedWindow() &&
+          fm->GetFocusedWindow()->GetExtantDoc() == this;
+ }
+ 
+@@ -7860,16 +7942,19 @@
+ 
+ void Document::TakeVideoFrameRequestCallbacks(
+     nsTArray<RefPtr<HTMLVideoElement>>& aVideoCallbacks) {
+   MOZ_ASSERT(aVideoCallbacks.IsEmpty());
+   mFrameRequestManager.Take(aVideoCallbacks);
  }
  
  bool Document::ShouldThrottleFrameRequests() const {
@@ -910,7 +259,17 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    if (mStaticCloneCount > 0) {
      // Even if we're not visible, a static clone may be, so run at full speed.
      return false;
-@@ -12865,6 +12950,10 @@
+   }
+ 
+   if (Hidden() && !StaticPrefs::layout_testing_top_level_always_active()) {
+     // We're not visible (probably in a background tab or the bf cache).
+     return true;
+@@ -12957,16 +13042,20 @@
+     }
+ 
+     // Set mIsShowing before firing events, in case those event handlers
+     // move us around.
+     mIsShowing = true;
      mVisible = true;
  
      UpdateVisibilityState();
@@ -921,7 +280,17 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    }
  
    NotifyActivityChanged();
-@@ -13573,7 +13662,8 @@
+ 
+   EnumerateExternalResources([aPersisted](Document& aExternalResource)
+                                  MOZ_CAN_RUN_SCRIPT_BOUNDARY_LAMBDA {
+                                    aExternalResource.OnPageShow(aPersisted,
+                                                                 nullptr);
+@@ -13665,17 +13754,18 @@
+       mState |= DocumentState::RTL_LOCALE;
+     } else {
+       mState |= DocumentState::LTR_LOCALE;
+     }
+   }
  
    if (aMaybeChangedStates.HasState(DocumentState::WINDOW_INACTIVE)) {
      BrowsingContext* bc = GetBrowsingContext();
@@ -931,7 +300,17 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
        mState |= DocumentState::WINDOW_INACTIVE;
      } else {
        mState &= ~DocumentState::WINDOW_INACTIVE;
-@@ -17536,8 +17626,11 @@
+     }
+   }
+ 
+   const DocumentState changedStates = oldStates ^ mState;
+   if (aNotify && !changedStates.IsEmpty()) {
+@@ -17630,18 +17720,21 @@
+     // 1. If document's visibility state equals visibilityState, then return.
+     return;
+   }
+   // 2. Set document's visibility state to visibilityState.
+   mVisibilityState = visibilityState;
    if (aDispatchEvent == DispatchVisibilityChange::Yes) {
      // 3. Fire an event named visibilitychange at document, with its bubbles
      // attribute initialized to true.
@@ -945,107 +324,69 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    }
    // TODO 4. Run the screen orientation change steps with document.
  
-diff --git a/docshell/base/BrowsingContext.cpp b/docshell/base/BrowsingContext.cpp
---- a/docshell/base/BrowsingContext.cpp
-+++ b/docshell/base/BrowsingContext.cpp
-@@ -3252,6 +3252,20 @@
-   }
- }
+   // 5. Run the view transition page visibility change steps with document.
+   // https://drafts.csswg.org/css-view-transitions/#view-transition-page-visibility-change-steps
+   const bool visible = !Hidden();
+   if (mActiveViewTransition && !visible) {
+     // The mActiveViewTransition check is an optimization: We don't allow
+diff --git a/dom/base/Document.h b/dom/base/Document.h
+--- a/dom/base/Document.h
++++ b/dom/base/Document.h
+@@ -3680,16 +3680,25 @@
+   // they could want the IncludeChromeOnly::Yes version.
+   nsIContent* GetUnretargetedFocusedContent(
+       IncludeChromeOnly = IncludeChromeOnly::No) const;
+   /**
+    * Return true if this document or a subdocument has focus.
+    */
+   bool HasFocus(ErrorResult& rv) const;
  
-+void BrowsingContext::DidSet(FieldIndex<IDX_CloakfoxLogicalFocusedContextId>) {
-+  // SyncedContext delivers this in each process in parent-resolved order.
-+  // Only update logical CSS state; native focus, IME and stored elements stay
-+  // under the existing focus action/permission machinery.
-+  if (auto* fm = nsFocusManager::GetFocusManager()) {
-+    PreOrderWalk([fm](BrowsingContext* bc) {
-+      if (RefPtr<Document> doc = bc->GetExtantDocument();
-+          doc && doc->ShouldMaskWindowActivity()) {
-+        fm->RefreshCloakfoxFocusState(*doc);
-+      }
-+    });
-+  }
-+}
++  // Only the WebIDL entry points mask activity; native callers keep real state.
++  bool HasFocusForBindings(CallerType, ErrorResult&) const;
++  bool HiddenForBindings(CallerType) const;
++  dom::VisibilityState VisibilityStateForBindings(CallerType) const;
++  bool ShouldMaskWindowActivity() const;
++  // Safe on style worker threads: no window/BrowsingContext access.
++  bool ShouldMaskWindowActivityForStyle() const;
++  bool FullscreenForBindings(CallerType) const;
 +
- void BrowsingContext::DidSet(FieldIndex<IDX_SessionStoreEpoch>,
-                              uint32_t aOldValue) {
-   if (!mCurrentWindowContext) {
-diff --git a/dom/webidl/DocumentOrShadowRoot.webidl b/dom/webidl/DocumentOrShadowRoot.webidl
---- a/dom/webidl/DocumentOrShadowRoot.webidl
-+++ b/dom/webidl/DocumentOrShadowRoot.webidl
-@@ -28,9 +28,9 @@
-   readonly attribute StyleSheetList styleSheets;
+   /**
+    * Return true if this document itself has focus.
+    */
+   bool ThisDocumentHasFocus() const;
  
-   readonly attribute Element? pointerLockElement;
--  [LegacyLenientSetter]
-+  [LegacyLenientSetter, NeedsCallerType, BinaryName="fullscreenElementForBindings"]
-   readonly attribute Element? fullscreenElement;
--  [BinaryName="fullscreenElement"]
-+  [BinaryName="fullscreenElementForBindings", NeedsCallerType]
-   readonly attribute Element? mozFullScreenElement;
+   void GetDesignMode(nsAString& aDesignMode);
+   void SetDesignMode(const nsAString& aDesignMode,
+                      nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& rv);
+@@ -4668,16 +4677,19 @@
+    */
+   Element* GetTitleElement();
  
-   [Pref="dom.scoped-custom-element-registries.enabled"]
-diff --git a/layout/style/GeckoBindings.h b/layout/style/GeckoBindings.h
---- a/layout/style/GeckoBindings.h
-+++ b/layout/style/GeckoBindings.h
-@@ -139,6 +139,7 @@
+   void RecordNavigationTiming(ReadyState aReadyState);
  
- // Selector Matching.
- uint64_t Gecko_ElementState(const mozilla::dom::Element*);
-+bool Gecko_ShouldMaskWindowActivity(const mozilla::dom::Element*);
- bool Gecko_IsRootElement(const mozilla::dom::Element*);
+   // Recomputes the visibility state but doesn't set the new value.
+   dom::VisibilityState ComputeVisibilityState() const;
  
- // Fills aArray with the cached lazy pseudo styles from aStyle.
-diff --git a/dom/base/DocumentOrShadowRoot.h b/dom/base/DocumentOrShadowRoot.h
---- a/dom/base/DocumentOrShadowRoot.h
-+++ b/dom/base/DocumentOrShadowRoot.h
-@@ -25,6 +25,7 @@
++  static void CloakfoxActivityPrefChanged(const char*, void*);
++  void RefreshCloakfoxActivityMask();
++
+   // Since we wouldn't automatically play media from non-visited page, we need
+   // to notify window when the page was first visited.
+   void MaybeActiveMediaComponents();
  
- namespace dom {
- 
-+enum class CallerType : uint32_t;
- class Animation;
- class Element;
- class ContentList;
-@@ -130,6 +131,7 @@
- 
-   Element* GetPointerLockElement();
-   Element* GetFullscreenElement() const;
-+  Element* GetFullscreenElementForBindings(CallerType) const;
-   Element* GetPictureInPictureElement() const;
- 
-   Element* ElementFromPoint(float aX, float aY);
-diff --git a/dom/events/PendingFullscreenEvent.h b/dom/events/PendingFullscreenEvent.h
---- a/dom/events/PendingFullscreenEvent.h
-+++ b/dom/events/PendingFullscreenEvent.h
-@@ -47,7 +47,11 @@
-     const nsCOMPtr<nsINode> target =
-         mTarget->GetComposedDoc() == aDoc ? mTarget.get() : aDoc;
-     (void)nsContentUtils::DispatchTrustedEvent(
--        aDoc, target, name, CanBubble::eYes, Cancelable::eNo, Composed::eYes);
-+        aDoc, target, name, CanBubble::eYes, Cancelable::eNo, Composed::eYes,
-+        nullptr,
-+        mType == FullscreenEventType::Change && aDoc->ShouldMaskWindowActivity()
-+            ? SystemGroupOnly::eYes
-+            : SystemGroupOnly::eNo);
-   }
- 
-   void Unlink() { mTarget = nullptr; }
-diff --git a/layout/style/res/html.css b/layout/style/res/html.css
---- a/layout/style/res/html.css
-+++ b/layout/style/res/html.css
-@@ -809,7 +809,7 @@
-   display: none !important;
- }
- 
--iframe:fullscreen {
-+iframe:-moz-cloakfox-fullscreen {
-   /* iframes in full-screen mode don't show a border. */
-   border: none !important;
-   padding: unset !important;
+   // Apply the fullscreen state to the document, and trigger related
+   // events. It returns false if the fullscreen element ready check
+   // fails and nothing gets changed.
+   MOZ_CAN_RUN_SCRIPT bool ApplyFullscreen(UniquePtr<FullscreenRequest>);
 diff --git a/dom/base/DocumentOrShadowRoot.cpp b/dom/base/DocumentOrShadowRoot.cpp
 --- a/dom/base/DocumentOrShadowRoot.cpp
 +++ b/dom/base/DocumentOrShadowRoot.cpp
-@@ -329,6 +329,18 @@
+@@ -324,16 +324,28 @@
+ }
+ 
+ Element* DocumentOrShadowRoot::GetPointerLockElement() {
+   nsCOMPtr<Element> pointerLockedElement =
+       PointerLockManager::GetLockedElement();
    return Element::FromNodeOrNull(Retarget(pointerLockedElement));
  }
  
@@ -1064,10 +405,794 @@ diff --git a/dom/base/DocumentOrShadowRoot.cpp b/dom/base/DocumentOrShadowRoot.c
  Element* DocumentOrShadowRoot::GetFullscreenElement() const {
    if (!AsNode().IsInComposedDoc()) {
      return nullptr;
+   }
+ 
+   Element* element = AsNode().OwnerDoc()->GetUnretargetedFullscreenElement();
+   NS_ASSERTION(!element || element->State().HasState(ElementState::FULLSCREEN),
+                "Fullscreen element should have fullscreen styles applied");
+diff --git a/dom/base/DocumentOrShadowRoot.h b/dom/base/DocumentOrShadowRoot.h
+--- a/dom/base/DocumentOrShadowRoot.h
++++ b/dom/base/DocumentOrShadowRoot.h
+@@ -20,16 +20,17 @@
+ 
+ namespace mozilla {
+ class ErrorResult;
+ class StyleSheet;
+ class ErrorResult;
+ 
+ namespace dom {
+ 
++enum class CallerType : uint32_t;
+ class Animation;
+ class Element;
+ class ContentList;
+ class CustomElementRegistry;
+ class Document;
+ class DocumentOrShadowRoot;
+ class HTMLInputElement;
+ class NodeList;
+@@ -125,16 +126,17 @@
+       mozilla::ErrorResult&);
+   already_AddRefed<ContentList> GetElementsByClassName(
+       const nsAString& aClasses);
+ 
+   ~DocumentOrShadowRoot();
+ 
+   Element* GetPointerLockElement();
+   Element* GetFullscreenElement() const;
++  Element* GetFullscreenElementForBindings(CallerType) const;
+   Element* GetPictureInPictureElement() const;
+ 
+   Element* ElementFromPoint(float aX, float aY);
+   nsINode* NodeFromPoint(float aX, float aY);
+ 
+   void ElementsFromPoint(float aX, float aY, nsTArray<RefPtr<Element>>&);
+   void NodesFromPoint(float aX, float aY, nsTArray<RefPtr<nsINode>>&);
+ 
+diff --git a/dom/base/nsFocusManager.cpp b/dom/base/nsFocusManager.cpp
+--- a/dom/base/nsFocusManager.cpp
++++ b/dom/base/nsFocusManager.cpp
+@@ -105,34 +105,38 @@
+ 
+ #define LOGCONTENT(format, content) LOGTAG(gFocusLog, format, content)
+ #define LOGCONTENTNAVIGATION(format, content) \
+   LOGTAG(gFocusNavigationLog, format, content)
+ 
+ struct nsDelayedBlurOrFocusEvent {
+   nsDelayedBlurOrFocusEvent(EventMessage aEventMessage, PresShell* aPresShell,
+                             Document* aDocument, EventTarget* aTarget,
+-                            EventTarget* aRelatedTarget)
++                            EventTarget* aRelatedTarget,
++                            bool aWindowActivityChange)
+       : mPresShell(aPresShell),
+         mDocument(aDocument),
+         mTarget(aTarget),
+         mEventMessage(aEventMessage),
+-        mRelatedTarget(aRelatedTarget) {}
++        mRelatedTarget(aRelatedTarget),
++        mWindowActivityChange(aWindowActivityChange) {}
+ 
+   nsDelayedBlurOrFocusEvent(const nsDelayedBlurOrFocusEvent& aOther)
+       : mPresShell(aOther.mPresShell),
+         mDocument(aOther.mDocument),
+         mTarget(aOther.mTarget),
+-        mEventMessage(aOther.mEventMessage) {}
++        mEventMessage(aOther.mEventMessage),
++        mWindowActivityChange(aOther.mWindowActivityChange) {}
+ 
+   RefPtr<PresShell> mPresShell;
+   nsCOMPtr<Document> mDocument;
+   nsCOMPtr<EventTarget> mTarget;
+   EventMessage mEventMessage;
+   nsCOMPtr<EventTarget> mRelatedTarget;
++  bool mWindowActivityChange;
+ };
+ 
+ inline void ImplCycleCollectionUnlink(nsDelayedBlurOrFocusEvent& aField) {
+   aField.mPresShell = nullptr;
+   aField.mDocument = nullptr;
+   aField.mTarget = nullptr;
+   aField.mRelatedTarget = nullptr;
+ }
+@@ -605,17 +609,39 @@
+         // Blur() will clear the focus of the ancestors of focusedBC, and
+         // this Focus() call might need to update the focus of those ancestors,
+         // so it needs to have a newer actionId to make that happen.
+         Focus(window, nullptr, 0, true, false, false, true,
+               GenerateFocusActionId());
+       }
+     }
+   } else {
++    RefPtr<Document> doc = window->GetExtantDoc();
++    RefPtr<Element> old = window->GetFocusedElement();
++    const bool logicalBlur = doc && doc->ShouldMaskWindowActivity() && old &&
++                             old->State().HasState(ElementState::FOCUS);
++    if (doc && doc->ShouldMaskWindowActivity() && old) {
++      NotifyFocusStateChange(old, nullptr, 0, false, false);
++    }
+     window->SetFocusedElement(nullptr);
++    if (BrowsingContext* bc = window->GetBrowsingContext(); bc && bc->IsContent()) {
++      RefPtr<BrowsingContext> logical = BrowsingContext::Get(
++          bc->Top()->GetCloakfoxLogicalFocusedContextId());
++      // Blurring a remembered element in an abandoned sibling must not move
++      // the logical focus out of the current frame.
++      if (!logical || IsSameOrAncestor(bc, logical)) {
++        (void)bc->Top()->SetCloakfoxLogicalFocusedContextId(bc->Id());
++      }
++    }
++    if (logicalBlur) {
++      if (RefPtr<PresShell> shell = doc->GetPresShell()) {
++        SendFocusOrBlurEvent(eBlur, shell, doc, old, false, false, nullptr,
++                            false, true);
++      }
++    }
+   }
+ 
+   LOGFOCUS(("<<ClearFocus end>>"));
+ 
+   return NS_OK;
+ }
+ 
+ NS_IMETHODIMP
+@@ -1442,20 +1468,22 @@
+         mDelayedBlurFocusEvents.RemoveElementAt(i);
+         --i;
+       } else if (!aDocument->EventHandlingSuppressed()) {
+         EventMessage message = mDelayedBlurFocusEvents[i].mEventMessage;
+         nsCOMPtr<EventTarget> target = mDelayedBlurFocusEvents[i].mTarget;
+         RefPtr<PresShell> presShell = mDelayedBlurFocusEvents[i].mPresShell;
+         nsCOMPtr<EventTarget> relatedTarget =
+             mDelayedBlurFocusEvents[i].mRelatedTarget;
++        const bool windowActivityChange =
++            mDelayedBlurFocusEvents[i].mWindowActivityChange;
+         mDelayedBlurFocusEvents.RemoveElementAt(i);
+ 
+         FireFocusOrBlurEvent(message, presShell, target, false, false,
+-                             relatedTarget);
++                             relatedTarget, windowActivityChange);
+         --i;
+       }
+     }
+   }
+ }
+ 
+ void nsFocusManager::WasNuked(nsPIDOMWindowOuter* aWindow) {
+   MOZ_ASSERT(aWindow, "Expected non-null window.");
+@@ -2012,22 +2040,73 @@
+     // otherwise, for inactive windows and when the caller cannot steal the
+     // focus, update the node in the window, and  raise the window if desired.
+     if (allowFrameSwitch) {
+       AdjustWindowFocus(newBrowsingContext, true, IsWindowVisible(newWindow),
+                         actionId, false /* aShouldClearAncestorFocus */,
+                         nullptr /* aAncestorBrowsingContextToFocus */);
+     }
+ 
++    // A logical ancestor blur handler can redirect focus before we enter the
++    // child. Respect that change instead of replacing its remembered path.
++    if (newWindow->GetExtantDoc() &&
++        newWindow->GetExtantDoc()->ShouldMaskWindowActivity()) {
++      for (BrowsingContext* child = newBrowsingContext;
++           child && child->GetParent(); child = child->GetParent()) {
++        nsPIDOMWindowOuter* parent = child->GetParent()->GetDOMWindow();
++        Element* frame = child->GetEmbedderElement();
++        if (parent && frame && child->GetParent()->IsContent() &&
++            parent->GetFocusedElement() != frame) {
++          return Some(actionId);
++        }
++      }
++    }
+     // set the focus node and method as needed
+     uint32_t focusMethod =
+         aFocusChanged ? aFlags & METHODANDRING_MASK
+                       : newWindow->GetFocusMethod() |
+                             (aFlags & (FLAG_SHOWRING | FLAG_NOSHOWRING));
++    RefPtr<Document> logicalDoc = newWindow->GetExtantDoc();
++    const bool logicalFocus = logicalDoc && logicalDoc->ShouldMaskWindowActivity();
++    RefPtr<Element> oldLogicalFocus = newWindow->GetFocusedElement();
++    RefPtr<PresShell> logicalShell = logicalFocus ? logicalDoc->GetPresShell() : nullptr;
++    const bool logicalChange = logicalFocus && oldLogicalFocus != elementToFocus;
++    RefPtr<nsFrameLoaderOwner> oldFrame = do_QueryObject(oldLogicalFocus);
++    const bool oldWasFocused = oldLogicalFocus && !oldFrame &&
++                              oldLogicalFocus->State().HasState(ElementState::FOCUS);
++    if (logicalChange) {
++      if (oldLogicalFocus) {
++        NotifyFocusStateChange(oldLogicalFocus, nullptr, 0, false, false);
++      }
++      newWindow->SetFocusedElement(nullptr);
++      if (oldWasFocused && logicalShell) {
++        SendFocusOrBlurEvent(eBlur, logicalShell, logicalDoc, oldLogicalFocus,
++                            false, false, elementToFocus, false, true);
++        // A blur handler may choose another element or replace the document.
++        if (newWindow->GetFocusedElement() ||
++            newWindow->GetExtantDoc() != logicalDoc) {
++          return Some(actionId);
++        }
++      }
++    }
++    if (logicalChange && (!elementToFocus->IsInComposedDoc() ||
++                          elementToFocus->GetComposedDoc() != logicalDoc)) {
++      return Some(actionId);
++    }
+     newWindow->SetFocusedElement(elementToFocus, focusMethod);
++    if (newBrowsingContext->IsContent()) {
++      (void)newBrowsingContext->Top()->SetCloakfoxLogicalFocusedContextId(newBrowsingContext->Id());
++    }
++    if (logicalFocus) {
++      RefreshCloakfoxFocusState(*newWindow->GetExtantDoc());
++      if (logicalChange && logicalShell && elementToFocus) {
++        SendFocusOrBlurEvent(eFocus, logicalShell, logicalDoc, elementToFocus,
++                            false, false, oldLogicalFocus, false, true);
++      }
++    }
+     if (aFocusChanged) {
+       if (nsCOMPtr<nsIDocShell> docShell = newWindow->GetDocShell()) {
+         RefPtr<PresShell> presShell = docShell->GetPresShell();
+         if (presShell && presShell->DidInitialize()) {
+           ScrollIntoView(presShell, elementToFocus, aFlags);
+         }
+       }
+     }
+@@ -2242,22 +2321,62 @@
+ 
+     if (aShouldClearAncestorFocus) {
+       // This is the BrowsingContext that receives the focus, no need to clear
+       // its focused element and the rest of the ancestors.
+       if (window->GetBrowsingContext() == aAncestorBrowsingContextToFocus) {
+         break;
+       }
+ 
++      if (window->GetExtantDoc() &&
++          window->GetExtantDoc()->ShouldMaskWindowActivity()) {
++        if (RefPtr<Element> old = window->GetFocusedElement()) {
++          RefPtr<nsFrameLoaderOwner> oldFrame = do_QueryObject(old);
++          RefPtr<PresShell> shell = window->GetExtantDoc()->GetPresShell();
++          if (!oldFrame && old->State().HasState(ElementState::FOCUS) && shell &&
++              !IsInActiveWindow(bc)) {
++            NotifyFocusStateChange(old, nullptr, 0, false, false);
++            window->SetFocusedElement(nullptr);
++            SendFocusOrBlurEvent(eBlur, shell, window->GetExtantDoc(), old,
++                                false, false, nullptr, false, true);
++            if (window->GetFocusedElement()) {
++              return needToNotifyOtherProcess;
++            }
++          }
++          NotifyFocusStateChange(old, nullptr, 0, false, false);
++        }
++      }
+       window->SetFocusedElement(nullptr);
+       continue;
+     }
+ 
+     if (frameElement != window->GetFocusedElement()) {
++      const bool logicalFocus = window->GetExtantDoc() &&
++                                window->GetExtantDoc()->ShouldMaskWindowActivity();
++      if (logicalFocus) {
++        if (RefPtr<Element> old = window->GetFocusedElement()) {
++          RefPtr<nsFrameLoaderOwner> oldFrame = do_QueryObject(old);
++          RefPtr<PresShell> shell = window->GetExtantDoc()->GetPresShell();
++          if (!oldFrame && old->State().HasState(ElementState::FOCUS) && shell &&
++              !IsInActiveWindow(bc)) {
++            NotifyFocusStateChange(old, nullptr, 0, false, false);
++            window->SetFocusedElement(nullptr);
++            SendFocusOrBlurEvent(eBlur, shell, window->GetExtantDoc(), old,
++                                false, false, nullptr, false, true);
++            if (window->GetFocusedElement()) {
++              return needToNotifyOtherProcess;
++            }
++          }
++          NotifyFocusStateChange(old, nullptr, 0, false, false);
++        }
++      }
+       window->SetFocusedElement(frameElement);
++      if (logicalFocus) {
++        RefreshCloakfoxFocusState(*window->GetExtantDoc());
++      }
+ 
+       RefPtr<nsFrameLoaderOwner> loaderOwner = do_QueryObject(frameElement);
+       MOZ_ASSERT(loaderOwner);
+       RefPtr<nsFrameLoader> loader = loaderOwner->GetFrameLoader();
+       if (loader && loader->IsRemoteFrame() &&
+           GetFocusedBrowsingContext() == bc) {
+         Blur(nullptr, nullptr, true, true, false, aActionId);
+       }
+@@ -2539,24 +2658,28 @@
+     }
+   }
+ 
+   LOGCONTENT("Element %s has been blurred", element.get());
+ 
+   // Don't fire blur event on the root content which isn't editable.
+   bool sendBlurEvent =
+       element && element->IsInComposedDoc() && !IsNonFocusableRoot(element);
++  const bool preserveLogicalFocus =
++      window->GetExtantDoc() &&
++      window->GetExtantDoc()->ShouldMaskWindowActivity() &&
++      (mWindowBeingLowered || !IsInActiveWindow(window->GetBrowsingContext()));
+   if (element) {
+     if (!aIsLeavingDocument) {
+       // Ensure that focus navigation still continues from element.
+       // If we're leaving the document, we will refocus the element
+       // when the document is refocused, so we don't need to do this.
+       element->OwnerDoc()->SetPreviouslyFocusedContent(element);
+     }
+-    if (sendBlurEvent) {
++    if (sendBlurEvent && !preserveLogicalFocus) {
+       NotifyFocusStateChange(element, aElementToFocus, 0, false, false);
+     }
+ 
+     if (!aRemainActive) {
+       bool windowBeingLowered = !aBrowsingContextToClear &&
+                                 !aAncestorBrowsingContextToFocus &&
+                                 aIsLeavingDocument && aAdjustWidget;
+       // If the object being blurred is a remote browser, deactivate remote
+@@ -2827,16 +2950,19 @@
+   }
+ 
+   // indicate that the window has taken focus.
+   if (aWindow->TakeFocus(true, focusMethod)) {
+     aIsNewDocument = true;
+   }
+ 
+   SetFocusedWindowInternal(aWindow, aActionId);
++  if (BrowsingContext* bc = aWindow->GetBrowsingContext(); bc && bc->IsContent()) {
++    (void)bc->Top()->SetCloakfoxLogicalFocusedContextId(bc->Id());
++  }
+ 
+   if (aAdjustWidget && !sTestMode) {
+     if (nsCOMPtr<nsIWidget> widget = presShell->GetRootWidget()) {
+       widget->SetFocus(nsIWidget::Raise::No, aFlags & FLAG_NONSYSTEMCALLER
+                                                  ? CallerType::NonSystem
+                                                  : CallerType::System);
+     }
+   }
+@@ -3026,190 +3152,233 @@
+                 focusedElement);
+   }
+ }
+ 
+ class FocusBlurEvent : public Runnable {
+  public:
+   FocusBlurEvent(EventTarget* aTarget, EventMessage aEventMessage,
+                  nsPresContext* aContext, bool aWindowRaised, bool aIsRefocus,
+-                 EventTarget* aRelatedTarget)
++                 EventTarget* aRelatedTarget, bool aWindowActivityChange)
+       : mozilla::Runnable("FocusBlurEvent"),
+         mTarget(aTarget),
+         mContext(aContext),
+         mEventMessage(aEventMessage),
+         mWindowRaised(aWindowRaised),
+         mIsRefocus(aIsRefocus),
+-        mRelatedTarget(aRelatedTarget) {}
++        mRelatedTarget(aRelatedTarget),
++        mWindowActivityChange(aWindowActivityChange) {}
+ 
+   // TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230, bug 1535398)
+   MOZ_CAN_RUN_SCRIPT_BOUNDARY NS_IMETHOD Run() override {
++    if (mEventMessage == eFocus && !mWindowActivityChange &&
++        mContext->Document()->ShouldMaskWindowActivity()) {
++      nsCOMPtr<nsIContent> content = do_QueryInterface(mTarget);
++      nsPIDOMWindowOuter* window = mContext->Document()->GetWindow();
++      // Earlier blur/focus handlers may redirect focus or detach this target.
++      if (content && (!window || content->GetComposedDoc() != mContext->Document() ||
++                      window->GetFocusedElement() != content)) {
++        return NS_OK;
++      }
++    }
+     InternalFocusEvent event(true, mEventMessage);
+     event.mFlags.mBubbles = false;
+     event.mFlags.mCancelable = false;
+     event.mFromRaise = mWindowRaised;
+     event.mIsRefocus = mIsRefocus;
+     event.mRelatedTarget = mRelatedTarget;
++    event.mFlags.mOnlySystemGroupDispatchInContent =
++        mWindowActivityChange &&
++        mContext->Document()->ShouldMaskWindowActivity();
+     return EventDispatcher::Dispatch(mTarget, mContext, &event);
+   }
+ 
+   const nsCOMPtr<EventTarget> mTarget;
+   const RefPtr<nsPresContext> mContext;
+   EventMessage mEventMessage;
+   bool mWindowRaised;
+   bool mIsRefocus;
+   nsCOMPtr<EventTarget> mRelatedTarget;
++  bool mWindowActivityChange;
+ };
+ 
+ class FocusInOutEvent : public Runnable {
+  public:
+   FocusInOutEvent(EventTarget* aTarget, EventMessage aEventMessage,
+                   nsPresContext* aContext,
+                   nsPIDOMWindowOuter* aOriginalFocusedWindow,
+                   nsIContent* aOriginalFocusedContent,
+-                  EventTarget* aRelatedTarget)
++                  EventTarget* aRelatedTarget, bool aWindowActivityChange)
+       : mozilla::Runnable("FocusInOutEvent"),
+         mTarget(aTarget),
+         mContext(aContext),
+         mEventMessage(aEventMessage),
+         mOriginalFocusedWindow(aOriginalFocusedWindow),
+         mOriginalFocusedContent(aOriginalFocusedContent),
+-        mRelatedTarget(aRelatedTarget) {}
++        mRelatedTarget(aRelatedTarget),
++        mWindowActivityChange(aWindowActivityChange) {}
+ 
+   // TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230, bug 1535398)
+   MOZ_CAN_RUN_SCRIPT_BOUNDARY NS_IMETHOD Run() override {
+     nsCOMPtr<nsIContent> originalWindowFocus =
+         mOriginalFocusedWindow ? mOriginalFocusedWindow->GetFocusedElement()
+                                : nullptr;
+     // Blink does not check that focus is the same after blur, but WebKit does.
+     // Opt to follow Blink's behavior (see bug 687787).
+     if (mEventMessage == eFocusOut ||
+         originalWindowFocus == mOriginalFocusedContent) {
+       InternalFocusEvent event(true, mEventMessage);
+       event.mFlags.mBubbles = true;
+       event.mFlags.mCancelable = false;
+       event.mRelatedTarget = mRelatedTarget;
++      event.mFlags.mOnlySystemGroupDispatchInContent =
++          mWindowActivityChange &&
++          mContext->Document()->ShouldMaskWindowActivity();
+       return EventDispatcher::Dispatch(mTarget, mContext, &event);
+     }
+     return NS_OK;
+   }
+ 
+   const nsCOMPtr<EventTarget> mTarget;
+   const RefPtr<nsPresContext> mContext;
+   EventMessage mEventMessage;
+   nsCOMPtr<nsPIDOMWindowOuter> mOriginalFocusedWindow;
+   nsCOMPtr<nsIContent> mOriginalFocusedContent;
+   nsCOMPtr<EventTarget> mRelatedTarget;
++  bool mWindowActivityChange;
+ };
+ 
+ static Document* GetDocumentHelper(EventTarget* aTarget) {
+   if (!aTarget) {
+     return nullptr;
+   }
+   if (const nsINode* node = nsINode::FromEventTarget(aTarget)) {
+     return node->OwnerDoc();
+   }
+   nsPIDOMWindowInner* win = nsPIDOMWindowInner::FromEventTarget(aTarget);
+   return win ? win->GetExtantDoc() : nullptr;
+ }
+ 
+ void nsFocusManager::FireFocusInOrOutEvent(
+     EventMessage aEventMessage, PresShell* aPresShell, EventTarget* aTarget,
+     nsPIDOMWindowOuter* aCurrentFocusedWindow,
+-    nsIContent* aCurrentFocusedContent, EventTarget* aRelatedTarget) {
++    nsIContent* aCurrentFocusedContent, EventTarget* aRelatedTarget,
++    bool aWindowActivityChange) {
+   NS_ASSERTION(aEventMessage == eFocusIn || aEventMessage == eFocusOut,
+                "Wrong event type for FireFocusInOrOutEvent");
+ 
+   nsContentUtils::AddScriptRunner(MakeAndAddRef<FocusInOutEvent>(
+       aTarget, aEventMessage, aPresShell->GetPresContext(),
+-      aCurrentFocusedWindow, aCurrentFocusedContent, aRelatedTarget));
++      aCurrentFocusedWindow, aCurrentFocusedContent, aRelatedTarget,
++      aWindowActivityChange));
+ }
+ 
+ void nsFocusManager::SendFocusOrBlurEvent(EventMessage aEventMessage,
+                                           PresShell* aPresShell,
+                                           Document* aDocument,
+                                           EventTarget* aTarget,
+                                           bool aWindowRaised, bool aIsRefocus,
+-                                          EventTarget* aRelatedTarget) {
++                                          EventTarget* aRelatedTarget,
++                                          bool aWindowActivityChange,
++                                          bool aLogicalFocusChange) {
+   MOZ_ASSERT(aEventMessage == eFocus || aEventMessage == eBlur,
+              "Wrong event type for SendFocusOrBlurEvent");
+ 
+   nsCOMPtr<Document> eventTargetDoc = GetDocumentHelper(aTarget);
+   nsCOMPtr<Document> relatedTargetDoc = GetDocumentHelper(aRelatedTarget);
++  aWindowActivityChange |= aWindowRaised || !!mWindowBeingLowered ||
++      (!aLogicalFocusChange && aDocument && aDocument->GetBrowsingContext() &&
++       !IsInActiveWindow(aDocument->GetBrowsingContext()));
+ 
+   // set aRelatedTarget to null if it's not in the same document as aTarget
+   if (eventTargetDoc != relatedTargetDoc) {
+     aRelatedTarget = nullptr;
+   }
+ 
+   if (aDocument && aDocument->EventHandlingSuppressed()) {
+     // if this event was already queued, remove it and append it to the end
+     mDelayedBlurFocusEvents.RemoveElementsBy([&](const auto& event) {
+       return event.mEventMessage == aEventMessage &&
+              event.mPresShell == aPresShell && event.mDocument == aDocument &&
+              event.mTarget == aTarget && event.mRelatedTarget == aRelatedTarget;
+     });
+ 
+     mDelayedBlurFocusEvents.EmplaceBack(aEventMessage, aPresShell, aDocument,
+-                                        aTarget, aRelatedTarget);
++                                        aTarget, aRelatedTarget,
++                                        aWindowActivityChange);
+     return;
+   }
+ 
+   // If mDelayedBlurFocusEvents queue is not empty, check if there are events
+   // that belongs to this doc, if yes, fire them first.
+   if (aDocument && !aDocument->EventHandlingSuppressed() &&
+       mDelayedBlurFocusEvents.Length()) {
+     FireDelayedEvents(aDocument);
+   }
+ 
+   FireFocusOrBlurEvent(aEventMessage, aPresShell, aTarget, aWindowRaised,
+-                       aIsRefocus, aRelatedTarget);
++                       aIsRefocus, aRelatedTarget, aWindowActivityChange);
+ }
+ 
+ void nsFocusManager::FireFocusOrBlurEvent(EventMessage aEventMessage,
+                                           PresShell* aPresShell,
+                                           EventTarget* aTarget,
+                                           bool aWindowRaised, bool aIsRefocus,
+-                                          EventTarget* aRelatedTarget) {
++                                          EventTarget* aRelatedTarget,
++                                          bool aWindowActivityChange) {
+   nsCOMPtr<nsPIDOMWindowOuter> currentWindow = mFocusedWindow;
+   nsCOMPtr<nsPIDOMWindowInner> targetWindow = do_QueryInterface(aTarget);
+   nsCOMPtr<Document> targetDocument = do_QueryInterface(aTarget);
++  aWindowActivityChange |= !!targetWindow || !!targetDocument || aWindowRaised;
++  [[maybe_unused]] bool logicalFocusChange = false;
++  if (!aWindowActivityChange && !targetWindow && !targetDocument) {
++    nsCOMPtr<Document> doc = GetDocumentHelper(aTarget);
++    if (doc && doc->ShouldMaskWindowActivity() &&
++        !IsInActiveWindow(doc->GetBrowsingContext())) {
++      // A logical background focus handler can redirect focus. Validate
++      // focusin against that document, not the unrelated foreground tab.
++      currentWindow = doc->GetWindow();
++      logicalFocusChange = true;
++    }
++  }
+   nsCOMPtr<nsIContent> currentFocusedContent =
+       currentWindow ? currentWindow->GetFocusedElement() : nullptr;
+ 
+ #ifdef ACCESSIBILITY
+   nsAccessibilityService* accService = GetAccService();
+-  if (accService) {
++  // Logical background events do not change the OS/accessibility focus.
++  if (accService && !logicalFocusChange) {
+     if (aEventMessage == eFocus) {
+       accService->NotifyOfDOMFocus(aTarget);
+     } else {
+       accService->NotifyOfDOMBlur(aTarget);
+     }
+   }
+ #endif
+ 
+   aPresShell->ScheduleContentRelevancyUpdate(
+       ContentRelevancyReason::FocusInSubtree);
+ 
+   nsContentUtils::AddScriptRunner(MakeAndAddRef<FocusBlurEvent>(
+       aTarget, aEventMessage, aPresShell->GetPresContext(), aWindowRaised,
+-      aIsRefocus, aRelatedTarget));
++      aIsRefocus, aRelatedTarget, aWindowActivityChange));
+ 
+   // Check that the target is not a window or document before firing
+   // focusin/focusout. Other browsers do not fire focusin/focusout on window,
+   // despite being required in the spec, so follow their behavior.
+   //
+   // As for document, we should not even fire focus/blur, but until then, we
+   // need this check. targetDocument should be removed once bug 1228802 is
+   // resolved.
+   if (!targetWindow && !targetDocument) {
+     EventMessage focusInOrOutMessage =
+         aEventMessage == eFocus ? eFocusIn : eFocusOut;
+     FireFocusInOrOutEvent(focusInOrOutMessage, aPresShell, aTarget,
+-                          currentWindow, currentFocusedContent, aRelatedTarget);
++                          currentWindow, currentFocusedContent, aRelatedTarget,
++                          aWindowActivityChange);
+   }
+ }
+ 
+ void nsFocusManager::ScrollIntoView(PresShell* aPresShell, nsIContent* aContent,
+                                     uint32_t aFlags) {
+   if (aFlags & FLAG_NOSCROLL) {
+     return;
+   }
+@@ -5998,12 +6167,50 @@
+   }
+   // HTML areas do not have their own frame, and the img frame we get from
+   // GetPrimaryFrame() is not relevant as to whether it is focusable or
+   // not, so we have to do all the relevant checks manually for them.
+   return frame->IsVisibleConsideringAncestors() &&
+          aArea.IsFocusableWithoutStyle();
+ }
+ 
++void nsFocusManager::RefreshCloakfoxFocusState(Document& aDocument) {
++  nsPIDOMWindowOuter* window = aDocument.GetWindow();
++  RefPtr<Element> element = window ? window->GetFocusedElement() : nullptr;
++  if (!element || element->GetComposedDoc() != &aDocument) {
++    return;
++  }
++  BrowsingContext* bc = aDocument.GetBrowsingContext();
++  RefPtr<BrowsingContext> logicalContext = bc ? BrowsingContext::Get(
++      bc->Top()->GetCloakfoxLogicalFocusedContextId()) : nullptr;
++  const bool logicalFocus = aDocument.ShouldMaskWindowActivity() &&
++                           (!logicalContext || IsSameOrAncestor(bc, logicalContext));
++  const bool focused = logicalFocus ||
++                       (mFocusedElement == element &&
++                        IsInActiveWindow(window->GetBrowsingContext()));
++  const bool showRing = focused && ShouldMatchFocusVisible(
++      window, *element, window->GetFocusMethod());
++  const bool lostLogicalFocus = !focused && aDocument.ShouldMaskWindowActivity() &&
++                                element->State().HasState(ElementState::FOCUS) &&
++                                !IsInActiveWindow(bc);
++  NotifyFocusStateChange(element, nullptr, 0, focused, showRing);
++  RefPtr<nsFrameLoaderOwner> frame = do_QueryObject(element);
++  if (lostLogicalFocus && !frame) {
++    window->SetFocusedElement(nullptr);
++    // This also runs in the owning process when a remote frame is abandoned.
++    nsContentUtils::AddScriptRunner(NS_NewRunnableFunction(
++        "nsFocusManager::CloakfoxLogicalBlur",
++        [doc = RefPtr<Document>(&aDocument), target = RefPtr<Element>(element)] {
++          auto* fm = nsFocusManager::GetFocusManager();
++          RefPtr<PresShell> shell = doc->GetPresShell();
++          if (fm && shell && doc->ShouldMaskWindowActivity() &&
++              target->GetComposedDoc() == doc) {
++            fm->SendFocusOrBlurEvent(eBlur, shell, doc, target, false, false,
++                                    nullptr, false, true);
++          }
++        }));
++  }
++}
++
+ nsresult NS_NewFocusManager(nsIFocusManager** aResult) {
+   NS_IF_ADDREF(*aResult = nsFocusManager::GetFocusManager());
+   return NS_OK;
+ }
+diff --git a/dom/base/nsFocusManager.h b/dom/base/nsFocusManager.h
+--- a/dom/base/nsFocusManager.h
++++ b/dom/base/nsFocusManager.h
+@@ -156,16 +156,17 @@
+ 
+   void NeedsFlushBeforeEventHandling(mozilla::dom::Element* aElement) {
+     if (mFocusedElement == aElement) {
+       mEventHandlingNeedsFlush = true;
+     }
+   }
+ 
+   bool CanSkipFocus(nsIContent* aContent);
++  void RefreshCloakfoxFocusState(Document&);
+ 
+   MOZ_CAN_RUN_SCRIPT void FlushBeforeEventHandlingIfNeeded(
+       nsIContent* aContent) {
+     if (mEventHandlingNeedsFlush) {
+       nsCOMPtr<Document> doc = aContent->GetComposedDoc();
+       if (doc) {
+         mEventHandlingNeedsFlush = false;
+         doc->FlushPendingNotifications(mozilla::FlushType::Layout);
+@@ -494,30 +495,32 @@
+    * aEventMessage should be either eFocus or eBlur.
+    *
+    * aWindowRaised should only be true if called from WindowRaised.
+    */
+   MOZ_CAN_RUN_SCRIPT void SendFocusOrBlurEvent(
+       mozilla::EventMessage aEventMessage, mozilla::PresShell* aPresShell,
+       Document* aDocument, mozilla::dom::EventTarget* aTarget,
+       bool aWindowRaised, bool aIsRefocus = false,
+-      mozilla::dom::EventTarget* aRelatedTarget = nullptr);
++      mozilla::dom::EventTarget* aRelatedTarget = nullptr,
++      bool aWindowActivityChange = false, bool aLogicalFocusChange = false);
+   /**
+    * Fire a focus or blur event at aTarget.
+    *
+    * aEventMessage should be either eFocus or eBlur.
+    * For blur events, aFocusMethod should normally be non-zero.
+    *
+    * aWindowRaised should only be true if called from WindowRaised.
+    */
+   MOZ_CAN_RUN_SCRIPT void FireFocusOrBlurEvent(
+       mozilla::EventMessage aEventMessage, mozilla::PresShell* aPresShell,
+       mozilla::dom::EventTarget* aTarget, bool aWindowRaised,
+       bool aIsRefocus = false,
+-      mozilla::dom::EventTarget* aRelatedTarget = nullptr);
++      mozilla::dom::EventTarget* aRelatedTarget = nullptr,
++      bool aWindowActivityChange = false);
+ 
+   /**
+    *  Fire a focusin or focusout event
+    *
+    *  aEventMessage should be either eFocusIn or eFocusOut.
+    *
+    *  aTarget is the content the event will fire on (the object that gained
+    *  focus for focusin, the object blurred for focusout).
+@@ -531,17 +534,18 @@
+    *  aRelatedTarget is the content related to the event (the object
+    *  losing focus for focusin, the object getting focus for focusout).
+    */
+   MOZ_CAN_RUN_SCRIPT void FireFocusInOrOutEvent(
+       mozilla::EventMessage aEventMessage, mozilla::PresShell* aPresShell,
+       mozilla::dom::EventTarget* aTarget,
+       nsPIDOMWindowOuter* aCurrentFocusedWindow,
+       nsIContent* aCurrentFocusedContent,
+-      mozilla::dom::EventTarget* aRelatedTarget = nullptr);
++      mozilla::dom::EventTarget* aRelatedTarget = nullptr,
++      bool aWindowActivityChange = false);
+ 
+   /**
+    * Scrolls aContent into view unless the FLAG_NOSCROLL flag is set.
+    */
+   MOZ_CAN_RUN_SCRIPT
+   void ScrollIntoView(mozilla::PresShell* aPresShell, nsIContent* aContent,
+                       uint32_t aFlags);
+ 
+diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -664,17 +664,17 @@
+   // executor either.
+   if (mDispatched || IsCancelled()) {
+     return;
+   }
+ 
+   mDispatched = true;
+ 
+   nsPIDOMWindowOuter* outer = mWindow->GetOuterWindow();
+-  if (outer && outer->IsBackground()) {
++  if (outer && mWindow->IsBackgroundInternal()) {
+     // Set a timeout handler with a timeout of 0 ms to throttle idle
+     // callback requests coming from a backround window using
+     // background timeout throttling.
+     DelayedDispatch(0);
+     return;
+   }
+ 
+   TimeStamp now = TimeStamp::Now();
+@@ -875,16 +875,21 @@
+ 
+   while (!mIdleRequestCallbacks.isEmpty()) {
+     RefPtr<IdleRequest> request = mIdleRequestCallbacks.getFirst();
+     RemoveIdleCallback(request);
+   }
+ }
+ 
+ bool nsGlobalWindowInner::IsBackgroundInternal() const {
++  // Scheduling follows the page-facing activity policy, while the outer
++  // window and Document::Hidden() retain real state for browser internals.
++  if (mDoc && mDoc->ShouldMaskWindowActivity()) {
++    return false;
++  }
+   return !mOuterWindow || mOuterWindow->IsBackground();
+ }
+ 
+ class PromiseDocumentFlushedResolver final {
+  public:
+   PromiseDocumentFlushedResolver(Promise* aPromise,
+                                  PromiseDocumentFlushedCallback& aCallback)
+       : mPromise(aPromise), mCallback(&aCallback) {}
+@@ -4071,16 +4076,20 @@
+ 
+ bool nsGlobalWindowInner::GetFullScreen(CallerType aCallerType,
+                                         ErrorResult& aError) {
+   if (aCallerType == CallerType::NonSystem) {
+     if (Document* doc = GetExtantDoc()) {
+       doc->WarnOnceAndReportAbout(DeprecatedOperations::eFullscreenAttribute);
+     }
+   }
++  if (aCallerType != CallerType::System && mDoc &&
++      mDoc->ShouldMaskWindowActivity()) {
++    return true;
++  }
+   FORWARD_TO_OUTER_OR_THROW(GetFullscreenOuter, (), aError, false);
+ }
+ 
+ bool nsGlobalWindowInner::GetFullScreen() {
+   bool fullscreen = GetFullScreen(CallerType::System, IgnoreErrors());
+   return fullscreen;
+ }
+ 
 diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
 --- a/dom/base/nsGlobalWindowInner.h
 +++ b/dom/base/nsGlobalWindowInner.h
-@@ -343,6 +343,7 @@
+@@ -338,16 +338,17 @@
+   // decision making of timeout-throttling.
+   virtual void UpdateActiveIndexedDBDatabaseCount(int32_t aDelta) override;
+ 
+   // Called on the current inner window of a browsing context when its
+   // background state changes according to selected tab or visibility of the
    // browser window.  Used with Suspend()/Resume() or Freeze()/Thaw() because
    // background state may change while the inner window is not current.
    void UpdateBackgroundState();
@@ -1075,10 +1200,135 @@ diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
  
    mozilla::dom::DebuggerNotificationManager*
    GetOrCreateDebuggerNotificationManager() override;
+ 
+   mozilla::dom::DebuggerNotificationManager*
+   GetExistingDebuggerNotificationManager() override;
+ 
+   nsIURI* GetBaseURI() const final;
+diff --git a/dom/events/PendingFullscreenEvent.h b/dom/events/PendingFullscreenEvent.h
+--- a/dom/events/PendingFullscreenEvent.h
++++ b/dom/events/PendingFullscreenEvent.h
+@@ -42,17 +42,21 @@
+         break;
+       case FullscreenEventType::Error:
+         name = u"fullscreenerror"_ns;
+         break;
+     }
+     const nsCOMPtr<nsINode> target =
+         mTarget->GetComposedDoc() == aDoc ? mTarget.get() : aDoc;
+     (void)nsContentUtils::DispatchTrustedEvent(
+-        aDoc, target, name, CanBubble::eYes, Cancelable::eNo, Composed::eYes);
++        aDoc, target, name, CanBubble::eYes, Cancelable::eNo, Composed::eYes,
++        nullptr,
++        mType == FullscreenEventType::Change && aDoc->ShouldMaskWindowActivity()
++            ? SystemGroupOnly::eYes
++            : SystemGroupOnly::eNo);
+   }
+ 
+   void Unlink() { mTarget = nullptr; }
+ 
+   nsINode* Target() const { return mTarget.get(); }
+ 
+  private:
+   nsCOMPtr<nsINode> mTarget;
+diff --git a/dom/webidl/Document.webidl b/dom/webidl/Document.webidl
+--- a/dom/webidl/Document.webidl
++++ b/dom/webidl/Document.webidl
+@@ -168,17 +168,17 @@
+   [CEReactions, Throws, NeedsSubjectPrincipal=NonSystem]
+   undefined write((TrustedHTML or DOMString)... text);
+   [CEReactions, Throws, NeedsSubjectPrincipal=NonSystem]
+   undefined writeln((TrustedHTML or DOMString)... text);
+ 
+   // user interaction
+   [Pure]
+   readonly attribute WindowProxy? defaultView;
+-  [Throws]
++  [Throws, NeedsCallerType, BinaryName="hasFocusForBindings"]
+   boolean hasFocus();
+   [CEReactions, SetterThrows, SetterNeedsSubjectPrincipal]
+            attribute DOMString designMode;
+   [CEReactions, Throws, NeedsSubjectPrincipal]
+   boolean execCommand(DOMString commandId, optional boolean showUI = false,
+                       optional (TrustedHTML or DOMString) value = "");
+   [Throws, NeedsSubjectPrincipal]
+   boolean queryCommandEnabled(DOMString commandId);
+@@ -293,19 +293,19 @@
+ 
+   [SameObject] readonly attribute HTMLAllCollection all;
+ };
+ 
+ // https://fullscreen.spec.whatwg.org/#api
+ partial interface Document {
+   // Note: Per spec the 'S' in these two is lowercase, but the "Moz"
+   // versions have it uppercase.
+-  [LegacyLenientSetter, Unscopable]
++  [LegacyLenientSetter, Unscopable, NeedsCallerType, BinaryName="fullscreenForBindings"]
+   readonly attribute boolean fullscreen;
+-  [BinaryName="fullscreen"]
++  [BinaryName="fullscreenForBindings", NeedsCallerType]
+   readonly attribute boolean mozFullScreen;
+   [LegacyLenientSetter, NeedsCallerType]
+   readonly attribute boolean fullscreenEnabled;
+   [BinaryName="fullscreenEnabled", NeedsCallerType]
+   readonly attribute boolean mozFullScreenEnabled;
+ 
+   [NewObject]
+   Promise<undefined> exitFullscreen();
+@@ -348,17 +348,19 @@
+   FailedCertSecurityInfo getFailedCertSecurityInfo();
+ 
+   [Func="Document::CallerIsTrustedAboutNetError", Throws]
+   NetErrorInfo getNetErrorInfo();
+ };
+ 
+ // https://w3c.github.io/page-visibility/#extensions-to-the-document-interface
+ partial interface Document {
++  [NeedsCallerType, BinaryName="hiddenForBindings"]
+   readonly attribute boolean hidden;
++  [NeedsCallerType, BinaryName="visibilityStateForBindings"]
+   readonly attribute VisibilityState visibilityState;
+            attribute EventHandler onvisibilitychange;
+ };
+ 
+ // https://drafts.csswg.org/cssom/#extensions-to-the-document-interface
+ partial interface Document {
+     attribute DOMString? selectedStyleSheetSet;
+     readonly attribute DOMString? lastStyleSheetSet;
+diff --git a/dom/webidl/DocumentOrShadowRoot.webidl b/dom/webidl/DocumentOrShadowRoot.webidl
+--- a/dom/webidl/DocumentOrShadowRoot.webidl
++++ b/dom/webidl/DocumentOrShadowRoot.webidl
+@@ -23,19 +23,19 @@
+ 
+   // Not implemented yet: bug 1430307.
+   // CaretPosition? caretPositionFromPoint (float x, float y);
+ 
+   readonly attribute Element? activeElement;
+   readonly attribute StyleSheetList styleSheets;
+ 
+   readonly attribute Element? pointerLockElement;
+-  [LegacyLenientSetter]
++  [LegacyLenientSetter, NeedsCallerType, BinaryName="fullscreenElementForBindings"]
+   readonly attribute Element? fullscreenElement;
+-  [BinaryName="fullscreenElement"]
++  [BinaryName="fullscreenElementForBindings", NeedsCallerType]
+   readonly attribute Element? mozFullScreenElement;
+ 
+   [Pref="dom.scoped-custom-element-registries.enabled"]
+   readonly attribute CustomElementRegistry? customElementRegistry;
+ 
+   [Pref="dom.media-pip.enabled"]
+   readonly attribute Element? pictureInPictureElement;
+ };
 diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 --- a/dom/workers/WorkerPrivate.cpp
 +++ b/dom/workers/WorkerPrivate.cpp
-@@ -3063,7 +3063,7 @@
+@@ -3068,17 +3068,17 @@
+     }
+ 
+     if (mLoadInfo.mWindow &&
+         nsGlobalWindowInner::Cast(mLoadInfo.mWindow)->IsFrozen()) {
+       Freeze(mLoadInfo.mWindow);
      }
  
      if (mLoadInfo.mWindow && mLoadInfo.mWindow->GetOuterWindow() &&
@@ -1087,3 +1337,300 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
        mIsInBackground = true;
      }
  
+     if (mLoadInfo.mWindow &&
+         nsGlobalWindowInner::Cast(mLoadInfo.mWindow)->IsPlayingAudio()) {
+       SetIsPlayingAudio(true);
+     }
+ 
+diff --git a/layout/base/nsRefreshDriver.cpp b/layout/base/nsRefreshDriver.cpp
+--- a/layout/base/nsRefreshDriver.cpp
++++ b/layout/base/nsRefreshDriver.cpp
+@@ -1372,16 +1372,25 @@
+ 
+ /* static */
+ TimeDuration nsRefreshDriver::GetMinRecomputeVisibilityInterval() {
+   return TimeDuration::FromMilliseconds(
+       StaticPrefs::layout_visibility_min_recompute_interval_ms());
+ }
+ 
+ RefreshDriverTimer* nsRefreshDriver::ChooseTimer() {
++  if (mPresContext &&
++      mPresContext->Document()->ShouldMaskWindowActivity()) {
++    // A background compositor may stop delivering vsync. Use the same
++    // software clock in both foreground and background while masking.
++    if (!sRegularRateTimer) {
++      sRegularRateTimer = new StartupRefreshDriverTimer(GetRegularTimerInterval());
++    }
++    return sRegularRateTimer;
++  }
+   if (mThrottled) {
+     if (!sThrottledRateTimer) {
+       sThrottledRateTimer = MakeRefPtr<InactiveRefreshDriverTimer>(
+           GetThrottledTimerInterval(),
+           DEFAULT_INACTIVE_TIMER_DISABLE_SECONDS * 1000.0);
+     }
+     return sThrottledRateTimer;
+   }
+@@ -2919,24 +2928,38 @@
+         return true;
+       }
+     }
+   }
+   return false;
+ }
+ 
+ void nsRefreshDriver::SetActivity(bool aIsActive) {
+-  const bool shouldThrottle = !aIsActive;
++  const bool shouldThrottle =
++      !aIsActive && !(mPresContext &&
++                     mPresContext->Document()->ShouldMaskWindowActivity());
+   if (mThrottled == shouldThrottle) {
+     return;
+   }
+   mThrottled = shouldThrottle;
+   if (mActiveTimer || GetReasonsToTick() != TickReasons::None) {
+     // We want to switch our timer type here, so just stop and restart the
+     // timer.
++    EnsureTimerStarted(eForceAdjustTimer);
++  }
++}
++
++void nsRefreshDriver::RefreshCloakfoxActivityMask() {
++  if (!mPresContext || !mPresContext->GetPresShell()) {
++    return;
++  }
++  SetActivity(mPresContext->GetPresShell()->IsActive());
++  // Also switch the timer when throttling hasn't changed (e.g. toggling the
++  // option in a foreground tab). Frozen/BFCache documents remain frozen.
++  if (mActiveTimer || GetReasonsToTick() != TickReasons::None) {
+     EnsureTimerStarted(eForceAdjustTimer);
+   }
+ }
+ 
+ nsPresContext* nsRefreshDriver::GetPresContext() const { return mPresContext; }
+ 
+ void nsRefreshDriver::DoRefresh() {
+   // Don't do a refresh unless we're in a state where we should be refreshing.
+diff --git a/layout/base/nsRefreshDriver.h b/layout/base/nsRefreshDriver.h
+--- a/layout/base/nsRefreshDriver.h
++++ b/layout/base/nsRefreshDriver.h
+@@ -193,16 +193,17 @@
+    */
+   void Thaw();
+ 
+   /**
+    * Throttle or unthrottle the refresh driver.  This is done if the
+    * corresponding presshell is hidden or shown.
+    */
+   void SetActivity(bool aIsActive);
++  void RefreshCloakfoxActivityMask();
+ 
+   // Called when our pres shell gets attached to a widget, so that we can switch
+   // to its vsync source if we started ticking before the widget was available.
+   void NotifyWidgetAttached();
+ 
+   /**
+    * Return the prescontext we were initialized with
+    */
+diff --git a/layout/style/GeckoBindings.cpp b/layout/style/GeckoBindings.cpp
+--- a/layout/style/GeckoBindings.cpp
++++ b/layout/style/GeckoBindings.cpp
+@@ -235,16 +235,23 @@
+ 
+   return true;
+ }
+ 
+ ElementState::InternalType Gecko_ElementState(const Element* aElement) {
+   return aElement->StyleState().GetInternalValue();
+ }
+ 
++bool Gecko_ShouldMaskWindowActivity(const Element* aElement) {
++  const auto* doc = aElement->OwnerDoc();
++  // No Window/BrowsingContext access on parallel style threads. Detached
++  // documents without a live presentation shell keep native state.
++  return doc->GetPresShell() && doc->ShouldMaskWindowActivityForStyle();
++}
++
+ bool Gecko_IsRootElement(const Element* aElement) {
+   return aElement->OwnerDoc()->GetRootElement() == aElement;
+ }
+ 
+ void Gecko_GetCachedLazyPseudoStyles(const ComputedStyle* aStyle,
+                                      nsTArray<const ComputedStyle*>* aArray) {
+   MOZ_ASSERT(aStyle);
+   aStyle->GetCachedLazyPseudoStyles(*aArray);
+diff --git a/layout/style/GeckoBindings.h b/layout/style/GeckoBindings.h
+--- a/layout/style/GeckoBindings.h
++++ b/layout/style/GeckoBindings.h
+@@ -134,16 +134,17 @@
+ void Gecko_LoadStyleSheetAsync(
+     mozilla::css::SheetLoadDataHolder* parent_data,
+     const mozilla::StyleCssUrl* url,
+     mozilla::StyleStrong<mozilla::StyleLockedMediaList>,
+     mozilla::StyleStrong<mozilla::StyleLockedImportRule>);
+ 
+ // Selector Matching.
+ uint64_t Gecko_ElementState(const mozilla::dom::Element*);
++bool Gecko_ShouldMaskWindowActivity(const mozilla::dom::Element*);
+ bool Gecko_IsRootElement(const mozilla::dom::Element*);
+ 
+ // Fills aArray with the cached lazy pseudo styles from aStyle.
+ void Gecko_GetCachedLazyPseudoStyles(
+     const mozilla::ComputedStyle* aStyle,
+     nsTArray<const mozilla::ComputedStyle*>* aArray);
+ 
+ bool Gecko_MatchLang(const mozilla::dom::Element*, nsAtom* override_lang,
+diff --git a/layout/style/res/html.css b/layout/style/res/html.css
+--- a/layout/style/res/html.css
++++ b/layout/style/res/html.css
+@@ -804,17 +804,17 @@
+   display: none;
+ }
+ 
+ area {
+   /* Don't give it frames other than its imageframe */
+   display: none !important;
+ }
+ 
+-iframe:fullscreen {
++iframe:-moz-cloakfox-fullscreen {
+   /* iframes in full-screen mode don't show a border. */
+   border: none !important;
+   padding: unset !important;
+ }
+ 
+ /* Details and summary
+  * https://html.spec.whatwg.org/#the-details-and-summary-elements
+  *
+diff --git a/layout/style/res/ua.css b/layout/style/res/ua.css
+--- a/layout/style/res/ua.css
++++ b/layout/style/res/ua.css
+@@ -357,17 +357,17 @@
+ /* Printing */
+ 
+ @media print {
+   * {
+     cursor: default !important;
+   }
+ }
+ 
+-:fullscreen:not(:root) {
++:-moz-cloakfox-fullscreen:not(:root) {
+   -moz-top-layer: auto !important;
+   position: fixed !important;
+   inset: 0 !important;
+   width: 100% !important;
+   height: 100% !important;
+   margin: 0 !important;
+   min-width: 0 !important;
+   max-width: none !important;
+@@ -410,17 +410,17 @@
+   -moz-top-layer: auto !important;
+   display: block;
+   position: fixed;
+   inset: 0;
+   /* This prevents undesired interactions with the selection code. */
+   user-select: none;
+ }
+ 
+-:fullscreen:not(:root)::backdrop {
++:-moz-cloakfox-fullscreen:not(:root)::backdrop {
+   background: black;
+ }
+ 
+ /* XML parse error reporting */
+ 
+ parsererror|parsererror {
+   display: block;
+   font-family: sans-serif;
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2419,16 +2419,22 @@
+   value: false
+   mirror: always
+ 
+ - name: cloakfox.enabled
+   type: RelaxedAtomicBool
+   value: true
+   mirror: always
+ 
++# Opt-in page activity privacy; browser focus and lifecycle stay real.
++- name: cloakfox.opt.focus_masking
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
+ #---------------------------------------------------------------------------
+ # Prefs starting with "consoleservice."
+ #---------------------------------------------------------------------------
+ 
+ #if defined(ANDROID)
+   # Disable sending console to logcat on release builds.
+ -   name: consoleservice.logcat
+     type: RelaxedAtomicBool
+diff --git a/servo/components/style/gecko/non_ts_pseudo_class_list.rs b/servo/components/style/gecko/non_ts_pseudo_class_list.rs
+--- a/servo/components/style/gecko/non_ts_pseudo_class_list.rs
++++ b/servo/components/style/gecko/non_ts_pseudo_class_list.rs
+@@ -48,16 +48,17 @@
+                 ("active-view-transition", ActiveViewTransition, ACTIVE_VIEW_TRANSITION, _),
+                 ("-moz-drag-over", MozDragOver, DRAGOVER, _),
+                 ("target", Target, URLTARGET, _),
+                 ("indeterminate", Indeterminate, INDETERMINATE, _),
+                 ("-moz-inert", MozInert, INERT, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+                 ("-moz-devtools-highlighted", MozDevtoolsHighlighted, DEVTOOLS_HIGHLIGHTED, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+                 ("-moz-styleeditor-transitioning", MozStyleeditorTransitioning, STYLEEDITOR_TRANSITIONING, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+                 ("fullscreen", Fullscreen, FULLSCREEN, _),
++                ("-moz-cloakfox-fullscreen", MozCloakfoxFullscreen, FULLSCREEN, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+                 ("modal", Modal, MODAL, _),
+                 ("open", Open, OPEN, _),
+                 ("-moz-topmost-modal", MozTopmostModal, TOPMOST_MODAL, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+                 ("-moz-broken", MozBroken, BROKEN, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS_AND_CHROME),
+                 ("-moz-has-dir-attr", MozHasDirAttr, HAS_DIR_ATTR, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+                 ("-moz-dir-attr-ltr", MozDirAttrLTR, HAS_DIR_ATTR_LTR, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+                 ("-moz-dir-attr-rtl", MozDirAttrRTL, HAS_DIR_ATTR_RTL, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+                 ("-moz-dir-attr-like-auto", MozDirAttrLikeAuto, HAS_DIR_ATTR_LIKE_AUTO, PSEUDO_CLASS_ENABLED_IN_UA_SHEETS),
+diff --git a/servo/components/style/gecko/wrapper.rs b/servo/components/style/gecko/wrapper.rs
+--- a/servo/components/style/gecko/wrapper.rs
++++ b/servo/components/style/gecko/wrapper.rs
+@@ -1993,17 +1993,17 @@
+         use selectors::matching::*;
+         match *pseudo_class {
+             NonTSPseudoClass::Autofill
+             | NonTSPseudoClass::Defined
+             | NonTSPseudoClass::Focus
+             | NonTSPseudoClass::Enabled
+             | NonTSPseudoClass::Disabled
+             | NonTSPseudoClass::Checked
+-            | NonTSPseudoClass::Fullscreen
++            | NonTSPseudoClass::MozCloakfoxFullscreen
+             | NonTSPseudoClass::Indeterminate
+             | NonTSPseudoClass::MozInert
+             | NonTSPseudoClass::PopoverOpen
+             | NonTSPseudoClass::PlaceholderShown
+             | NonTSPseudoClass::Target
+             | NonTSPseudoClass::Valid
+             | NonTSPseudoClass::Invalid
+             | NonTSPseudoClass::MozBroken
+@@ -2040,16 +2040,21 @@
+             | NonTSPseudoClass::ActiveViewTransition
+             | NonTSPseudoClass::MozValueEmpty
+             | NonTSPseudoClass::MozSuppressForPrintSelection
+             | NonTSPseudoClass::Seeking
+             | NonTSPseudoClass::Buffering
+             | NonTSPseudoClass::Stalled
+             | NonTSPseudoClass::PictureInPicture
+             | NonTSPseudoClass::Muted => self.state().intersects(pseudo_class.state_flag()),
++            NonTSPseudoClass::Fullscreen => {
++                self.state().intersects(ElementState::FULLSCREEN) ||
++                    (unsafe { bindings::Gecko_ShouldMaskWindowActivity(self.0) } &&
++                        unsafe { bindings::Gecko_IsRootElement(self.0) })
++            },
+             NonTSPseudoClass::Paused => {
+                 self.is_html_media_element() && self.state().intersects(ElementState::PAUSED)
+             },
+             NonTSPseudoClass::Playing => {
+                 self.is_html_media_element() && !self.state().intersects(ElementState::PAUSED)
+             },
+             NonTSPseudoClass::VolumeLocked => false, // Bug 2013371
+             NonTSPseudoClass::Dir(ref dir) => self.state().intersects(dir.element_state()),

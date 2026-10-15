@@ -1,6 +1,12 @@
---- a/b/dom/base/Navigator.cpp	2026-04-18 02:53:23
-+++ b/dom/base/Navigator.cpp	2026-04-18 08:37:05
-@@ -971,6 +971,10 @@
+diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
+--- a/dom/base/Navigator.cpp
++++ b/dom/base/Navigator.cpp
+@@ -882,16 +882,20 @@
+   return true;
+ }
+ 
+ //*****************************************************************************
+ //  Pointer Events interface
  //*****************************************************************************
  
  uint32_t Navigator::MaxTouchPoints(CallerType aCallerType) {
@@ -11,7 +17,17 @@
    nsIDocShell* docshell = GetDocShell();
    BrowsingContext* bc = docshell ? docshell->GetBrowsingContext() : nullptr;
  
-@@ -1707,6 +1711,10 @@
+   // Responsive Design Mode overrides the maxTouchPoints property when
+   // touch simulation is enabled.
+   if (bc && bc->Top()->InRDMPane()) {
+     return bc->Top()->GetMaxTouchPointsOverride();
+   }
+@@ -1653,16 +1657,20 @@
+ 
+ already_AddRefed<LegacyMozTCPSocket> Navigator::MozTCPSocket() {
+   RefPtr<LegacyMozTCPSocket> socket = new LegacyMozTCPSocket(GetWindow());
+   return socket.forget();
+ }
  
  void Navigator::GetGamepads(nsTArray<RefPtr<Gamepad>>& aGamepads,
                              ErrorResult& aRv) {
@@ -22,7 +38,17 @@
    if (!mWindow || !mWindow->IsFullyActive()) {
      return;
    }
-@@ -1965,6 +1973,13 @@
+   NS_ENSURE_TRUE_VOID(mWindow->GetDocShell());
+   nsGlobalWindowInner* win = nsGlobalWindowInner::Cast(mWindow);
+ 
+   if (!PermissionsPolicyUtils::IsFeatureAllowed(win->GetExtantDoc(),
+                                                 u"gamepad"_ns)) {
+@@ -1911,16 +1919,23 @@
+ }
+ 
+ already_AddRefed<Promise> Navigator::RequestMIDIAccess(
+     const MIDIOptions& aOptions, ErrorResult& aRv) {
+   if (!mWindow) {
      aRv.Throw(NS_ERROR_UNEXPECTED);
      return nullptr;
    }
@@ -36,7 +62,17 @@
    MIDIAccessManager* accessMgr = MIDIAccessManager::Get();
    return accessMgr->RequestMIDIAccess(mWindow, aOptions, aRv);
  }
-@@ -2281,6 +2296,14 @@
+ 
+ network::Connection* Navigator::GetConnection(ErrorResult& aRv) {
+   if (!mConnection) {
+     if (!mWindow) {
+       aRv.Throw(NS_ERROR_UNEXPECTED);
+@@ -2220,16 +2235,24 @@
+   str.AppendLiteral(") secureContext=");
+   str.AppendInt(aIsSecureContext);
+   return str;
+ }
+ 
  already_AddRefed<Promise> Navigator::RequestMediaKeySystemAccess(
      const nsAString& aKeySystem,
      const Sequence<MediaKeySystemConfiguration>& aConfigs, ErrorResult& aRv) {
@@ -51,7 +87,17 @@
    EME_LOG("%s", RequestKeySystemAccessLogString(aKeySystem, aConfigs,
                                                  mWindow->IsSecureContext())
                      .get());
-@@ -2375,6 +2398,10 @@
+ 
+   if (!mWindow->IsSecureContext()) {
+     Document* doc = mWindow->GetExtantDoc();
+     AutoTArray<nsString, 1> params;
+     nsString* uri = params.AppendElement();
+@@ -2322,16 +2345,20 @@
+       return nullptr;
+     }
+   }
+ 
+   return mAddonManager;
  }
  
  webgpu::Instance* Navigator::Gpu() {
@@ -62,7 +108,17 @@
    if (!mWebGpu) {
      mWebGpu = webgpu::Instance::Create(GetWindow()->AsGlobal());
    }
-@@ -2404,6 +2431,10 @@
+   return mWebGpu;
+ }
+ 
+ dom::LockManager* Navigator::Locks() {
+   if (!mLocks) {
+@@ -2351,16 +2378,20 @@
+   if (!mModelContext) {
+     mModelContext = new dom::ModelContext(GetWindow());
+   }
+   return mModelContext;
+ }
  
  /* static */
  bool Navigator::Webdriver() {
@@ -73,3 +129,8 @@
  #ifdef ENABLE_WEBDRIVER
    nsCOMPtr<nsIMarionette> marionette = do_GetService(NS_MARIONETTE_CONTRACTID);
    if (marionette) {
+     bool isBrowserAutomationRunning = false;
+     marionette->GetIsBrowserAutomationRunning(&isBrowserAutomationRunning);
+     if (isBrowserAutomationRunning) {
+       return true;
+     }

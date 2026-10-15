@@ -1,7 +1,12 @@
 diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
 --- a/dom/media/MediaDevices.cpp
 +++ b/dom/media/MediaDevices.cpp
-@@ -29,6 +29,7 @@
+@@ -24,16 +24,17 @@
+ #include "nsContentUtils.h"
+ #include "nsGlobalWindowInner.h"
+ #include "nsINamed.h"
+ #include "nsIScriptGlobalObject.h"
+ #include "nsPIDOMWindow.h"
  #include "nsPIDOMWindowInlines.h"
  #include "nsQueryObject.h"
  #include "MaskConfig.hpp"
@@ -9,7 +14,17 @@ diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
  
  namespace mozilla::dom {
  
-@@ -344,54 +345,30 @@
+ using ConstDeviceSetPromise = MediaManager::ConstDeviceSetPromise;
+ using LocalDeviceSetPromise = MediaManager::LocalDeviceSetPromise;
+ using LocalMediaDeviceSetRefCnt = MediaManager::LocalMediaDeviceSetRefCnt;
+ using MediaDeviceSetRefCnt = MediaManager::MediaDeviceSetRefCnt;
+ using mozilla::intl::Localization;
+@@ -340,64 +341,40 @@
+         haveDefaultOutput = true;
+         break;
+         // Avoid `default:` so that `-Wswitch` catches missing
+         // enumerators at compile time.
+     }
      exposed->AppendElement(device);
    }
  
@@ -86,10 +101,17 @@ diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
  
    return exposed;
  }
+ 
+ bool MediaDevices::CanExposeInfo(MediaDeviceKind aKind) const {
+   switch (aKind) {
+     case MediaDeviceKind::Audioinput:
+       return mCanExposeMicrophoneInfo;
 diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
 --- a/dom/media/MediaManager.cpp
 +++ b/dom/media/MediaManager.cpp
-@@ -3,6 +3,7 @@
+@@ -1,13 +1,14 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
   * You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "MediaManager.h"
@@ -97,7 +119,17 @@ diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
  
  #include "AudioCaptureTrack.h"
  #include "AudioDeviceInfo.h"
-@@ -3408,13 +3409,17 @@
+ #include "AudioStreamTrack.h"
+ #include "CubebDeviceEnumerator.h"
+ #include "CubebInputStream.h"
+ #include "MediaTimer.h"
+ #include "MediaTrackConstraints.h"
+@@ -3439,31 +3440,38 @@
+   nsresult rv = PrincipalToPrincipalInfo(principal, &principalInfo);
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return LocalDeviceSetPromise::CreateAndReject(
+         MakeRefPtr<MediaMgrError>(MediaMgrError::Name::NotAllowedError),
+         __func__);
    }
    bool resistFingerprinting =
        aWindow->AsGlobal()->ShouldResistFingerprinting(RFPTarget::MediaDevices);
@@ -116,7 +148,8 @@ diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
              MOZ_ASSERT(!aOriginKey.IsEmpty());
              RefPtr anonymized = new LocalMediaDeviceSetRefCnt();
              for (const RefPtr<MediaDevice>& device : *rawDevices) {
-@@ -3423,6 +3428,9 @@
+               nsString name = device->mRawName;
+               if (name.Find(u"AirPods"_ns) != -1) {
                  name = u"AirPods"_ns;
                }
  
@@ -126,3 +159,8 @@ diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
                nsString id = device->mRawID;
                if (resistFingerprinting) {
                  nsRFPService::GetMediaDeviceName(name, device->mKind);
+                 id = name;
+                 id.AppendInt(windowId);
+               }
+               // An empty id represents a virtual default device, for which
+               // the exposed deviceId is the empty string.

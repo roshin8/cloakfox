@@ -1,7 +1,12 @@
 diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
 --- a/layout/style/nsMediaFeatures.cpp
 +++ b/layout/style/nsMediaFeatures.cpp
-@@ -6,6 +6,8 @@
+@@ -1,16 +1,18 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /* the features that media queries can test */
  
  #include "PreferenceSheet.h"
  #include "MaskConfig.hpp"
@@ -10,7 +15,17 @@ diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
  #include "mozilla/GeckoBindings.h"
  #include "mozilla/LookAndFeel.h"
  #include "mozilla/RelativeLuminanceUtils.h"
-@@ -429,6 +431,13 @@
+ #include "mozilla/StaticPrefs_browser.h"
+ #include "mozilla/StaticPrefs_gfx.h"
+ #include "mozilla/StyleSheet.h"
+ #include "mozilla/StyleSheetInlines.h"
+ #include "mozilla/dom/BrowsingContextBinding.h"
+@@ -424,16 +426,23 @@
+   // Bug 1759772: Once HDR color is available, update each platform
+   // LookAndFeel implementation to return StyleDynamicRange::High when
+   // appropriate.
+   return StyleDynamicRange::Standard;
+ }
  
  StyleDynamicRange Gecko_MediaFeatures_VideoDynamicRange(
      const Document* aDocument) {
@@ -24,10 +39,20 @@ diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
    if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSVideoDynamicRange)) {
      return StyleDynamicRange::Standard;
    }
+   // Usually compositors can process HDR content even without HDR displays.
+   //
+   // This parallels logic in gfxPlatform::UseHDR().
+   if (StaticPrefs::gfx_color_management_hdr_force_enabled()) {
+     return StyleDynamicRange::High;
 diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
 --- a/modules/libpref/init/StaticPrefList.yaml
 +++ b/modules/libpref/init/StaticPrefList.yaml
-@@ -2422,6 +2422,12 @@
+@@ -2438,16 +2438,22 @@
+ 
+ # Optional log/pow fingerprint noise. Atomic so worker realm creation can
+ # read it safely; native precision is the default for data correctness.
+ - name: cloakfox.opt.math_data_noise
+   type: RelaxedAtomicBool
    value: false
    mirror: always
  
@@ -40,3 +65,8 @@ diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/Sta
  # Present reduced performance timestamps with keyed sub-millisecond detail.
  # Atomic because worker Performance objects read it off the main thread.
  - name: cloakfox.opt.timer_high_precision_jitter
+   type: RelaxedAtomicBool
+   value: true
+   mirror: always
+ 
+ #---------------------------------------------------------------------------

@@ -1,0 +1,23 @@
+diff --git a/dom/permission/PermissionStatus.cpp b/dom/permission/PermissionStatus.cpp
+--- a/dom/permission/PermissionStatus.cpp
++++ b/dom/permission/PermissionStatus.cpp
+@@ -35,16 +35,19 @@
+       nsPIDOMWindowInner* window = GetOwnerWindow();
+       if (window && window->IsFullyActive() &&
+           CloakfoxScreenAccess::IsEligible(window) &&
+           PermissionsPolicyUtils::IsFeatureAllowed(window->GetExtantDoc(),
+                                               u"window-management"_ns)) {
+         mState = PermissionState::Granted;
+       }
+     }
++    // No platform permission backs this virtual API. Firefox 157 combines
++    // browser and system states, so keep its snapshot internally consistent.
++    mSystemState = mState;
+     return SimplePromise::CreateAndResolve(NS_OK, __func__);
+   }
+   mSink = CreateSink();
+   MOZ_ASSERT(mSink);
+ 
+   return mSink->Init()->Then(
+       GetCurrentSerialEventTarget(), __func__,
+       [self = RefPtr(this)](

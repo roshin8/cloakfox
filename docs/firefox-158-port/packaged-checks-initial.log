@@ -1,0 +1,16 @@
+Checksumming Driver Descriptor Map (DDM : 0)…
+     Driver Descriptor Map (DDM : 0): verified   CRC32 $C39310A8
+Checksumming Apple (Apple_partition_map : 1)…
+     Apple (Apple_partition_map : 1): verified   CRC32 $C8CE099F
+Checksumming DiscRecording 9.0.3d5 (Apple_HFS : 2)…
+DiscRecording 9.0.3d5 (Apple_HFS : 2: verified   CRC32 $92E6E87B
+verified   CRC32 $CEA6F7F6
+hdiutil: WARNING: 'hdiutil attach -readonly -nobrowse -mountpoint ...' is deprecated. Please use 'diskutil image attach --readOnly --mountOptions nobrowse --mountPoint ...' instead.
+/dev/disk6          	Apple_partition_scheme         	
+/dev/disk6s1        	Apple_partition_map            	
+/dev/disk6s2        	Apple_HFS                      	/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/158-port/package-mount
+Traceback (most recent call last):
+  File "/tmp/cloakfox158-packaged.py", line 9, in <module>
+    ini=configparser.ConfigParser();ini.read(app/'Contents/Resources/application.ini');assert ini['App']['Version']=='158.0'
+                                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

@@ -1,0 +1,446 @@
+diff --git a/dom/base/CloakConfigOverlay.cpp b/dom/base/CloakConfigOverlay.cpp
+--- a/dom/base/CloakConfigOverlay.cpp
++++ b/dom/base/CloakConfigOverlay.cpp
+@@ -31,17 +31,17 @@
+   }
+   return "";
+ }
+ 
+ void CloakConfigOverlay_Set(uint32_t userContextId, const std::string& jsonStr) {
+   nsAutoString key;
+   key.AppendPrintf("cloak_cfg_%u", userContextId);
+   NS_ConvertUTF8toUTF16 value(jsonStr.c_str());
+-  mozilla::dom::RoverfoxStorageManager::PutString(key, value);
++  mozilla::dom::RoverfoxStorageManager::PutCppFirstString(key, value);
+ }
+ 
+ void CloakConfigOverlay_MergeUint(uint32_t userContextId, const std::string& key, uint32_t value) {
+   std::string current = CloakConfigOverlay_Get(userContextId);
+   nlohmann::json j = current.empty() ? nlohmann::json{} :
+     (nlohmann::json::accept(current) ? nlohmann::json::parse(current) : nlohmann::json{});
+   j[key] = value;
+   CloakConfigOverlay_Set(userContextId, j.dump());
+diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManager.cpp
+--- a/dom/base/RoverfoxStorageManager.cpp
++++ b/dom/base/RoverfoxStorageManager.cpp
+@@ -283,16 +283,29 @@
+ RoverfoxStorageManager::PutString(const nsAString& key,
+                                    const nsAString& value) {
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString utf8Value;
+   CopyUTF16toUTF8(value, utf8Value);
+   SetPrefValue(prefName, utf8Value);
+ }
+ 
++/* static */ void
++RoverfoxStorageManager::PutCppFirstString(const nsAString& key,
++                                       const nsAString& value) {
++  MOZ_ASSERT(NS_IsMainThread());
++  EnsureCacheObserver();
++  const nsCString prefName = MakeCppFirstPrefName(key);
++  NS_ConvertUTF16toUTF8 utf8Value(value);
++  // 157 fetches the authoritative parent value on every main-thread config
++  // read. Its synchronous write therefore needs no asynchronous pref-mirror
++  // acknowledgement state, while worker reads retain the warmed cache.
++  SetPrefValue(prefName, utf8Value);
++}
++
+ /* static */ bool
+ RoverfoxStorageManager::GetString(const nsAString& key, nsAString& outValue) {
+   // cpp-first priority check.
+   {
+     nsAutoCString cppFirst;
+     if (TryGetCppFirstPref(key, cppFirst)) {
+       CopyUTF8toUTF16(cppFirst, outValue);
+       return true;
+diff --git a/dom/base/RoverfoxStorageManager.h b/dom/base/RoverfoxStorageManager.h
+--- a/dom/base/RoverfoxStorageManager.h
++++ b/dom/base/RoverfoxStorageManager.h
+@@ -16,16 +16,17 @@
+ // Keys prefixed with "roverfox.s." to avoid conflicts.
+ class RoverfoxStorageManager {
+  public:
+   static void PutUint(const nsAString& key, uint32_t value);
+   static bool GetUint(const nsAString& key, uint32_t& outValue);
+   static void PutBool(const nsAString& key, bool value);
+   static bool GetBool(const nsAString& key, bool& outValue);
+   static void PutString(const nsAString& key, const nsAString& value);
++  static void PutCppFirstString(const nsAString& key, const nsAString& value);
+   static bool GetString(const nsAString& key, nsAString& outValue);
+   static void Remove(const nsAString& key);
+ 
+  private:
+   static nsTArray<nsCString>& ObservedConfigKeys();
+   static void EnsureCacheObserver();
+   static void OnStoragePrefChanged(const char* prefName, void* closure);
+   static nsCString MakePrefName(const nsAString& key);
+diff --git a/dom/base/WebRTCIPManager.cpp b/dom/base/WebRTCIPManager.cpp
+--- a/dom/base/WebRTCIPManager.cpp
++++ b/dom/base/WebRTCIPManager.cpp
+@@ -5,16 +5,18 @@
+ #include "MaskConfig.hpp"
+ #include "nsPrintfCString.h"
+ #include "nsGlobalWindowInner.h"
+ #include "nsDocShell.h"
+ #include "xpcpublic.h"
+ #include "mozilla/dom/BrowsingContext.h"
+ #include "mozilla/dom/Document.h"
+ #include "nsPIDOMWindow.h"
++#include "nsContentUtils.h"
++#include "mozilla/BasePrincipal.h"
+ 
+ namespace mozilla {
+ namespace dom {
+ 
+ /* static */ nsString
+ WebRTCIPManager::IPv4KeyForUserContext(uint32_t userContextId) {
+   nsString key;
+   key.AppendLiteral(u"webrtc_ipv4_");
+@@ -111,16 +113,19 @@
+   nsString key = IPv6DisabledKeyForUserContext(userContextId);
+   RoverfoxStorageManager::PutBool(key, true);
+ }
+ 
+ 
+ 
+ /* static */ bool
+ WebRTCIPManager::IsIPv4FunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj) {
++  // Only browser-privileged code may configure masks, even before discovery.
++  nsIPrincipal* principal = nsContentUtils::SubjectPrincipal(aCx);
++  if (!principal || !principal->IsSystemPrincipal()) return false;
+   nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
+   if (!win) {
+     return false;
+   }
+ 
+   uint32_t userContextId = 0;
+   if (BrowsingContext* bc = win->GetBrowsingContext()) {
+     userContextId = bc->OriginAttributesRef().mUserContextId;
+@@ -128,16 +133,19 @@
+ 
+   bool disabled = false;
+   RoverfoxStorageManager::GetBool(IPv4DisabledKeyForUserContext(userContextId), disabled);
+   return !disabled;
+ }
+ 
+ /* static */ bool
+ WebRTCIPManager::IsIPv6FunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj) {
++  // Only browser-privileged code may configure masks, even before discovery.
++  nsIPrincipal* principal = nsContentUtils::SubjectPrincipal(aCx);
++  if (!principal || !principal->IsSystemPrincipal()) return false;
+   nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
+   if (!win) {
+     return false;
+   }
+ 
+   uint32_t userContextId = 0;
+   if (BrowsingContext* bc = win->GetBrowsingContext()) {
+     userContextId = bc->OriginAttributesRef().mUserContextId;
+diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/HttpBaseChannel.cpp
+--- a/netwerk/protocol/http/HttpBaseChannel.cpp
++++ b/netwerk/protocol/http/HttpBaseChannel.cpp
+@@ -418,17 +418,17 @@
+           cfg["headers.Accept-Language"].get<std::string>().c_str());
+     }
+   }
+ 
+   rv = gHttpHandler->AddStandardRequestHeaders(
+       &mRequestHead, aURI, isHTTPS, contentPolicyType,
+       nsContentUtils::ShouldResistFingerprinting(this,
+                                                  RFPTarget::HttpUserAgent),
+-      languageOverride);
++      languageOverride, mLoadInfo->GetOriginAttributes().mUserContextId);
+   if (NS_FAILED(rv)) return rv;
+ 
+   nsAutoCString type;
+   if (aProxyInfo && NS_SUCCEEDED(aProxyInfo->GetType(type)) &&
+       !type.EqualsLiteral("unknown")) {
+     mProxyInfo = aProxyInfo;
+   }
+ 
+@@ -4036,17 +4036,17 @@
+   if (!mUpgradeProtocolCallback) {
+     return NS_ERROR_FAILURE;
+   }
+ 
+   mCaps |= NS_HTTP_CONNECT_ONLY;
+   if (aTlsTunnel) {
+     mCaps |= NS_HTTP_TLS_TUNNEL;
+   }
+-  mProxyResolveFlags = nsIProtocolProxyService::RESOLVE_PREFER_HTTPS_PROXY |
++  mProxyResolveFlags |= nsIProtocolProxyService::RESOLVE_PREFER_HTTPS_PROXY |
+                        nsIProtocolProxyService::RESOLVE_ALWAYS_TUNNEL;
+   return SetLoadFlags(nsIRequest::INHIBIT_CACHING | nsIChannel::LOAD_ANONYMOUS |
+                       nsIRequest::LOAD_BYPASS_CACHE |
+                       nsIChannel::LOAD_BYPASS_SERVICE_WORKER);
+ }
+ 
+ NS_IMETHODIMP
+ HttpBaseChannel::GetAllowSpdy(bool* aAllowSpdy) {
+diff --git a/netwerk/protocol/http/HttpConnectionUDP.cpp b/netwerk/protocol/http/HttpConnectionUDP.cpp
+--- a/netwerk/protocol/http/HttpConnectionUDP.cpp
++++ b/netwerk/protocol/http/HttpConnectionUDP.cpp
+@@ -588,18 +588,23 @@
+       nsDependentCString(trans->ConnectionInfo()->Origin()),
+       trans->ConnectionInfo()->OriginPort(), host);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+   request->SetMethod("CONNECT"_ns);
+   request->SetVersion(gHttpHandler->HttpVersion());
+ 
+   bool shouldResistFingerprinting = trans->Caps() & NS_HTTP_USE_RFP;
+-  rv = request->SetHeader(nsHttp::User_Agent,
+-                          gHttpHandler->UserAgent(shouldResistFingerprinting));
++  nsAutoCString userAgent;
++  if (NS_FAILED(trans->RequestHead()->GetHeader(nsHttp::User_Agent, userAgent))) {
++    userAgent = gHttpHandler->UserAgentForContainer(
++        shouldResistFingerprinting,
++        trans->ConnectionInfo()->GetOriginAttributes().mUserContextId);
++  }
++  rv = request->SetHeader(nsHttp::User_Agent, userAgent);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+   rv = request->SetHeader(nsHttp::Host, host);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+   nsAutoCString val;
+   if (NS_SUCCEEDED(
+           trans->RequestHead()->GetHeader(nsHttp::Proxy_Authorization, val))) {
+diff --git a/netwerk/protocol/http/nsHttpChannel.cpp b/netwerk/protocol/http/nsHttpChannel.cpp
+--- a/netwerk/protocol/http/nsHttpChannel.cpp
++++ b/netwerk/protocol/http/nsHttpChannel.cpp
+@@ -7882,18 +7882,20 @@
+   // updated because we can only know whether the site is exempted from
+   // fingerprinting protection after we have the AntiTracking Info.
+   //
+   // Note that we don't recalculate the header if it has been modified since the
+   // channel was created because we want to preserve the modified header.
+   if (!LoadIsUserAgentHeaderModified()) {
+     rv = mRequestHead.SetHeader(
+         nsHttp::User_Agent,
+-        gHttpHandler->UserAgent(nsContentUtils::ShouldResistFingerprinting(
+-            this, RFPTarget::HttpUserAgent)),
++        gHttpHandler->UserAgentForContainer(
++            nsContentUtils::ShouldResistFingerprinting(
++                this, RFPTarget::HttpUserAgent),
++            mLoadInfo->GetOriginAttributes().mUserContextId),
+         false, nsHttpHeaderArray::eVarietyRequestEnforceDefault);
+     MOZ_ASSERT(NS_SUCCEEDED(rv));
+   }
+ 
+   if (WaitingForTailUnblock()) {
+     // This channel is marked as Tail and is part of a request context
+     // that has positive number of non-tailed requestst, hence this channel
+     // has been put to a queue.
+diff --git a/netwerk/protocol/http/nsHttpConnection.cpp b/netwerk/protocol/http/nsHttpConnection.cpp
+--- a/netwerk/protocol/http/nsHttpConnection.cpp
++++ b/netwerk/protocol/http/nsHttpConnection.cpp
+@@ -2066,18 +2066,23 @@
+       nsDependentCString(trans->ConnectionInfo()->Origin()),
+       trans->ConnectionInfo()->OriginPort(), result);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+   // CONNECT host:port HTTP/1.1
+   request->SetMethod("CONNECT"_ns);
+   request->SetVersion(gHttpHandler->HttpVersion());
+   request->SetRequestURI(result);
+-  rv = request->SetHeader(nsHttp::User_Agent,
+-                          gHttpHandler->UserAgent(aShouldResistFingerprinting));
++  nsAutoCString userAgent;
++  if (NS_FAILED(trans->RequestHead()->GetHeader(nsHttp::User_Agent, userAgent))) {
++    userAgent = gHttpHandler->UserAgentForContainer(
++        aShouldResistFingerprinting,
++        trans->ConnectionInfo()->GetOriginAttributes().mUserContextId);
++  }
++  rv = request->SetHeader(nsHttp::User_Agent, userAgent);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+   // a CONNECT is always persistent
+   rv = request->SetHeader(nsHttp::Proxy_Connection, "keep-alive"_ns);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+   rv = request->SetHeader(nsHttp::Connection, "keep-alive"_ns);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsHttpHandler.cpp
+--- a/netwerk/protocol/http/nsHttpHandler.cpp
++++ b/netwerk/protocol/http/nsHttpHandler.cpp
+@@ -7,16 +7,17 @@
+ 
+ #include <bitset>
+ 
+ #include "ASpdySession.h"
+ #include "AltServiceChild.h"
+ #include "EventTokenBucket.h"
+ #include "HttpLog.h"
+ #include "MaskConfig.hpp"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "LoadContextInfo.h"
+ #include "SerializedLoadContext.h"
+ #include "TRRServiceChannel.h"
+ #include "Tickler.h"
+ #include "mozilla/AntiTrackingRedirectHeuristic.h"
+ #include "mozilla/AppShutdown.h"
+ #include "mozilla/Base64.h"
+ #include "mozilla/BasePrincipal.h"
+@@ -742,25 +743,57 @@
+             return NS_OK;
+           });
+     }
+   }
+   // guard may call aCallback here
+   return rv;
+ }
+ 
++// Request identity must use the channel's origin attributes, never the current
++// JS window or process-wide header caches. Context 0 is an explicit container.
++static std::optional<std::string> CloakfoxRequestHeader(
++    const char* aKey, uint32_t aUserContextId) {
++  if (!mozilla::StaticPrefs::cloakfox_enabled()) return std::nullopt;
++  const auto cfg = nlohmann::json::parse(
++      ::CloakConfigOverlay_Get(aUserContextId), nullptr, false);
++  if (cfg.is_object()) {
++    const auto value = cfg.find(aKey);
++    if (value != cfg.end() && value->is_string()) {
++      return value->get<std::string>();
++    }
++  }
++  const auto& env = MaskConfig::GetJson();
++  const auto value = env.find(aKey);
++  if (value != env.end() && value->is_string()) {
++    return value->get<std::string>();
++  }
++  return std::nullopt;
++}
++
++nsCString nsHttpHandler::UserAgentForContainer(bool aShouldResistFingerprinting,
++                                              uint32_t aUserContextId) {
++  if (auto value = CloakfoxRequestHeader("headers.User-Agent", aUserContextId)) {
++    return nsCString(value->c_str());
++  }
++  if (auto value = CloakfoxRequestHeader("navigator.userAgent", aUserContextId)) {
++    return nsCString(value->c_str());
++  }
++  return nsCString(UserAgent(aShouldResistFingerprinting));
++}
++
+ nsresult nsHttpHandler::AddStandardRequestHeaders(
+     nsHttpRequestHead* request, nsIURI* aURI, bool aIsHTTPS,
+     ExtContentPolicyType aContentPolicyType, bool aShouldResistFingerprinting,
+-    const nsCString& aLanguageOverride) {
++    const nsCString& aLanguageOverride, uint32_t aUserContextId) {
+   nsresult rv;
+ 
+   // Add the "User-Agent" header
+   rv = request->SetHeader(nsHttp::User_Agent,
+-                          UserAgent(aShouldResistFingerprinting), false,
++                          UserAgentForContainer(aShouldResistFingerprinting, aUserContextId), false,
+                           nsHttpHeaderArray::eVarietyRequestDefault);
+   if (NS_FAILED(rv)) return rv;
+ 
+   // MIME based content negotiation lives!
+   // Add the "Accept" header.  Note, this is set as an override because the
+   // service worker expects to see it.  The other "default" headers are
+   // hidden from service worker interception.
+   nsAutoCString accept;
+@@ -808,21 +841,24 @@
+ 
+   // add the "Send Hint" header
+   if (mSafeHintEnabled || sParentalControlsEnabled) {
+     rv = request->SetHeader(nsHttp::Prefer, "safe"_ns, false,
+                             nsHttpHeaderArray::eVarietyRequestDefault);
+     if (NS_FAILED(rv)) return rv;
+   }
+ 
++  const auto encoding = CloakfoxRequestHeader("headers.Accept-Encoding", aUserContextId);
++  const nsCString acceptEncodings = encoding ? nsCString(encoding->c_str()) :
++      (aIsHTTPS ? mHttpsAcceptEncodings : mHttpAcceptEncodings);
+   if (aIsHTTPS) {
+-    rv = request->SetHeader(nsHttp::Accept_Encoding, mHttpsAcceptEncodings,
++    rv = request->SetHeader(nsHttp::Accept_Encoding, acceptEncodings,
+                             false, nsHttpHeaderArray::eVarietyRequestDefault);
+   } else {
+-    rv = request->SetHeader(nsHttp::Accept_Encoding, mHttpAcceptEncodings,
++    rv = request->SetHeader(nsHttp::Accept_Encoding, acceptEncodings,
+                             false, nsHttpHeaderArray::eVarietyRequestDefault);
+   }
+   return NS_OK;
+ }
+ 
+ nsresult nsHttpHandler::AddConnectionHeader(nsHttpRequestHead* request,
+                                             uint32_t caps) {
+   // RFC2616 section 19.6.2 states that the "Connection: keep-alive"
+@@ -998,25 +1034,16 @@
+   return adjustUrgency(urgency, adjustment);
+ }
+ 
+ //-----------------------------------------------------------------------------
+ // nsHttpHandler <private>
+ //-----------------------------------------------------------------------------
+ 
+ const nsCString& nsHttpHandler::UserAgent(bool aShouldResistFingerprinting) {
+-  if (auto value = MaskConfig::GetString("headers.User-Agent")) {
+-    mUserAgent.Assign(nsCString(value.value().c_str()));
+-    return mUserAgent;
+-  }
+-  if (auto value = MaskConfig::GetString("navigator.userAgent")) {
+-    mUserAgent.Assign(nsCString(value.value().c_str()));
+-    return mUserAgent;
+-  }
+-
+   if (aShouldResistFingerprinting && !mSpoofedUserAgent.IsEmpty()) {
+     LOG(("using spoofed userAgent : %s\n", mSpoofedUserAgent.get()));
+     return mSpoofedUserAgent;
+   }
+ 
+   if (!mUserAgentOverride.IsVoid()) {
+     LOG(("using general.useragent.override : %s\n", mUserAgentOverride.get()));
+     return mUserAgentOverride;
+@@ -2137,21 +2164,16 @@
+   if (NS_SUCCEEDED(rv)) {
+     mAcceptLanguages.Assign(buf);
+   }
+   return rv;
+ }
+ 
+ nsresult nsHttpHandler::SetAcceptEncodings(const char* aAcceptEncodings,
+                                            bool isSecure, bool isDictionary) {
+-  nsCString encodingOverride;
+-  if (auto value = MaskConfig::GetString("headers.Accept-Encoding")) {
+-    encodingOverride.Assign(nsCString(value.value().c_str()));
+-    aAcceptEncodings = encodingOverride.get();
+-  }
+   if (isDictionary) {
+     mDictionaryAcceptEncodings = aAcceptEncodings;
+   } else if (isSecure) {
+     mHttpsAcceptEncodings = aAcceptEncodings;
+   } else {
+     // use legacy list if a secure override is not specified
+     mHttpAcceptEncodings = aAcceptEncodings;
+     if (mHttpsAcceptEncodings.IsEmpty()) {
+diff --git a/netwerk/protocol/http/nsHttpHandler.h b/netwerk/protocol/http/nsHttpHandler.h
+--- a/netwerk/protocol/http/nsHttpHandler.h
++++ b/netwerk/protocol/http/nsHttpHandler.h
+@@ -121,21 +121,22 @@
+ 
+   [[nodiscard]] nsresult AddAcceptAndDictionaryHeaders(
+       nsIURI* aURI, ExtContentPolicyType aType, nsHttpRequestHead* aRequest,
+       bool aSecure, nsHttpChannel* aChan, void (*aSuspend)(nsHttpChannel*),
+       const std::function<bool(bool, DictionaryCacheEntry*)>& aCallback);
+   [[nodiscard]] nsresult AddStandardRequestHeaders(
+       nsHttpRequestHead*, nsIURI* aURI, bool aIsHTTPS,
+       ExtContentPolicyType aContentPolicyType, bool aShouldResistFingerprinting,
+-      const nsCString& aLanguageOverride);
++      const nsCString& aLanguageOverride, uint32_t aUserContextId);
+   [[nodiscard]] nsresult AddConnectionHeader(nsHttpRequestHead*, uint32_t caps);
+   bool IsAcceptableEncoding(const char* encoding, bool isSecure);
+ 
+   const nsCString& UserAgent(bool aShouldResistFingerprinting);
++  nsCString UserAgentForContainer(bool aShouldResistFingerprinting, uint32_t aUserContextId);
+ 
+   enum HttpVersion HttpVersion() { return mHttpVersion; }
+   enum HttpVersion ProxyHttpVersion() { return mProxyHttpVersion; }
+   uint8_t RedirectionLimit() { return mRedirectionLimit; }
+   PRIntervalTime IdleTimeout() { return mIdleTimeout; }
+   PRIntervalTime SpdyTimeout() { return mSpdyTimeout; }
+   PRIntervalTime ResponseTimeout() {
+     return mResponseTimeoutEnabled ? mResponseTimeout : 0;

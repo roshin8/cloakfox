@@ -1,0 +1,146 @@
+diff --git a/layout/style/FontFace.cpp b/layout/style/FontFace.cpp
+--- a/layout/style/FontFace.cpp
++++ b/layout/style/FontFace.cpp
+@@ -234,46 +234,27 @@
+ void FontFace::GetSizeAdjust(nsACString& aResult) {
+   mImpl->GetSizeAdjust(aResult);
+ }
+ 
+ void FontFace::SetSizeAdjust(const nsACString& aValue, ErrorResult& aRv) {
+   mImpl->SetSizeAdjust(aValue, aRv);
+ }
+ 
+-FontFaceLoadStatus FontFace::Status() {
+-  nsAutoCString fontFamily;
+-  GetFamily(fontFamily);
+-
+-  if (mozilla::dom::IsFontAllowed(fontFamily)) {
+-    return FontFaceLoadStatus::Loaded;
+-  } else {
+-    return FontFaceLoadStatus::Error;
+-  }
+-}
++FontFaceLoadStatus FontFace::Status() { return mImpl->Status(); }
+ 
+ Promise* FontFace::Load(ErrorResult& aRv) {
+   EnsurePromise();
+ 
+   if (!mLoaded) {
+     aRv.Throw(NS_ERROR_FAILURE);
+     return nullptr;
+   }
+ 
+-  nsAutoCString fontFamily;
+-  GetFamily(fontFamily);
+-
+-  if (mozilla::dom::IsFontAllowed(fontFamily)) {
+-    // For allowed fonts, always resolve the promise
+-    mLoaded->MaybeResolve(this);
+-  } else {
+-    // For non-allowed fonts, always reject the promise
+-    mLoaded->MaybeReject(NS_ERROR_FAILURE);
+-  }
+-
++  mImpl->Load();
+   mImpl->UpdateOwnerKeepAlive();
+   return mLoaded;
+ }
+ 
+ Promise* FontFace::GetLoaded(ErrorResult& aRv) {
+   EnsurePromise();
+ 
+   if (!mLoaded) {
+diff --git a/layout/style/FontFaceImpl.cpp b/layout/style/FontFaceImpl.cpp
+--- a/layout/style/FontFaceImpl.cpp
++++ b/layout/style/FontFaceImpl.cpp
+@@ -350,24 +350,30 @@
+     return;
+   }
+   mUserFontEntry->Load();
+ }
+ 
+ void FontFaceImpl::SetStatus(FontFaceLoadStatus aStatus) {
+   gfxFontUtils::AssertSafeThreadOrServoFontMetricsLocked();
+ 
+-  nsAutoCString fontFamily;
+-  GetFamily(fontFamily);
+-
+-  if (IsFontAllowed(fontFamily)) {
+-    mStatus = FontFaceLoadStatus::Loaded;
+-  } else {
+-    mStatus = FontFaceLoadStatus::Error;
+-  }
++  if (mStatus == aStatus) {
++    return;
++  }
++
++  if (aStatus < mStatus) {
++    // We're being asked to go backwards in status!  Normally, this shouldn't
++    // happen.  But it can if the FontFace had a user font entry that had
++    // loaded, but then was given a new one by FontFaceSet::InsertRuleFontFace
++    // if we used a local() rule.  For now, just ignore the request to
++    // go backwards in status.
++    return;
++  }
++
++  mStatus = aStatus;
+ 
+   if (mInFontFaceSet) {
+     mFontFaceSet->OnFontFaceStatusChanged(this);
+   }
+ 
+   for (FontFaceSetImpl* otherSet : mOtherFontFaceSets) {
+     otherSet->OnFontFaceStatusChanged(this);
+   }
+diff --git a/layout/style/FontFaceImpl.h b/layout/style/FontFaceImpl.h
+--- a/layout/style/FontFaceImpl.h
++++ b/layout/style/FontFaceImpl.h
+@@ -3,17 +3,16 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #ifndef mozilla_dom_FontFaceImpl_h
+ #define mozilla_dom_FontFaceImpl_h
+ 
+ #include "gfxUserFontSet.h"
+ #include "mozilla/RWLock.h"
+ #include "mozilla/dom/FontFaceBinding.h"
+-#include "MaskConfig.hpp"
+ #include "nsTHashSet.h"
+ 
+ class gfxFontFaceBufferSource;
+ 
+ namespace mozilla {
+ class PostTraversalTask;
+ struct StyleLockedFontFaceRule;
+ namespace dom {
+@@ -22,30 +21,16 @@
+ class FontFaceBufferSource;
+ struct FontFaceDescriptors;
+ class FontFaceSetImpl;
+ class UTF8StringOrArrayBufferOrArrayBufferView;
+ }  // namespace dom
+ }  // namespace mozilla
+ 
+ namespace mozilla::dom {
+-
+-// Helper function to check if a font is in the allowed list
+-inline bool IsFontAllowed(const nsACString& aFontName) {
+-  if (std::vector<std::string> maskValues =
+-          MaskConfig::GetStringListLower("fonts");
+-      !maskValues.empty()) {
+-    std::string fontName(aFontName.BeginReading(), aFontName.EndReading());
+-    std::transform(fontName.begin(), fontName.end(), fontName.begin(),
+-                   ::tolower);
+-    return std::find(maskValues.begin(), maskValues.end(), fontName) !=
+-           maskValues.end();
+-  }
+-  return true;
+-}
+ 
+ class FontFaceImpl final {
+   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(FontFaceImpl)
+ 
+   friend class mozilla::PostTraversalTask;
+   friend class FontFaceBufferSource;
+   friend class Entry;
+ 

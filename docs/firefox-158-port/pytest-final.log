@@ -1,0 +1,142 @@
+....F....................s..............                                 [100%]
+=================================== FAILURES ===================================
+_ CamoufoxFollowup.test_webgl_uses_owner_principal_for_detached_and_offscreen_canvases _
+
+self = <test_camoufox_followup.CamoufoxFollowup testMethod=test_webgl_uses_owner_principal_for_detached_and_offscreen_canvases>
+
+        def test_webgl_uses_owner_principal_for_detached_and_offscreen_canvases(self):
+            method = block((SRC/'dom/canvas/ClientWebGLContext.cpp').read_text(),
+                           'uint32_t ClientWebGLContext::GetUserContextId() const')
+>           cpp(r'''
+    #include <cassert>
+    #include <cstdint>
+    struct Attr { uint32_t mUserContextId; };
+    struct Principal { Attr attrs; const Attr& OriginAttributesRef() { return attrs; } };
+    struct BrowsingContext { Attr attrs; const Attr& OriginAttributesRef() { return attrs; } };
+    struct Document { BrowsingContext* bc; BrowsingContext* GetBrowsingContext(){return bc;} };
+    struct Canvas { Document* doc; Principal* p; Document* OwnerDoc(){return doc;} Principal* NodePrincipal(){return p;} };
+    struct nsPIDOMWindowInner { BrowsingContext* bc; BrowsingContext* GetBrowsingContext(){return bc;} };
+    struct nsIGlobalObject { nsPIDOMWindowInner* win; Principal* p; Principal* PrincipalOrNull(){return p;} };
+    template<class T> using nsCOMPtr=T*;
+    nsPIDOMWindowInner* do_QueryInterface(nsIGlobalObject* g){return g->win;}
+    struct Offscreen { nsIGlobalObject* g; nsIGlobalObject* GetRelevantGlobal(){return g;} };
+    struct WorkerPrivate { Attr attrs; const Attr& GetOriginAttributes(){return attrs;} };
+    WorkerPrivate* worker=nullptr;
+    WorkerPrivate* GetCurrentThreadWorkerPrivate(){return worker;}
+    struct ClientWebGLContext { Canvas* mCanvasElement=nullptr; Offscreen* mOffscreenCanvas=nullptr; uint32_t GetUserContextId() const; };
+    ''' + method + r'''
+    int main(){
+     Principal owner{{7}}, other{{11}}; BrowsingContext stale{{99}};
+     Document attached{&stale}, detached{nullptr}; Canvas c{&detached,&owner};
+     ClientWebGLContext ctx; ctx.mCanvasElement=&c;
+     assert(ctx.GetUserContextId()==7);
+     c.doc=&attached; assert(ctx.GetUserContextId()==7);
+     c.p=&other; assert(ctx.GetUserContextId()==11);
+     ctx.mCanvasElement=nullptr;
+     nsPIDOMWindowInner win{nullptr}; nsIGlobalObject global{&win,&owner}; Offscreen off{&global};
+     ctx.mOffscreenCanvas=&off; assert(ctx.GetUserContextId()==7);
+     WorkerPrivate wp{{11}}; worker=&wp; global.win=nullptr; global.p=&other;
+     assert(ctx.GetUserContextId()==11);
+     global.p=nullptr; assert(ctx.GetUserContextId()==11);
+     worker=nullptr; assert(ctx.GetUserContextId()==0);
+     ctx.mOffscreenCanvas=nullptr; assert(ctx.GetUserContextId()==0);
+    }
+    ''')
+
+tests/fingerprint/test_camoufox_followup.py:17: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/fingerprint/test_upstream_hardening.py:35: in cpp
+    subprocess.run([compiler, "-std=c++17", str(source), "-o", str(binary)], check=True)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = False, timeout = None, check = True
+popenargs = (['/usr/bin/clang++', '-std=c++17', '/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmp4ty5wz2d/test.cpp', '-o', '/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmp4ty5wz2d/test'],)
+kwargs = {}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout is given, and the process takes too long, a TimeoutExpired
+        exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['/usr/bin/clang++', '-std=c++17', '/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmp4ty5wz2d/test.cpp', '-o', '/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmp4ty5wz2d/test']' returned non-zero exit status 1.
+
+/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/subprocess.py:571: CalledProcessError
+----------------------------- Captured stderr call -----------------------------
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmp4ty5wz2d/test.cpp:29:11: error: use of undeclared identifier 'dom'
+   29 |       if (dom::WorkerPrivate* wp = dom::GetCurrentThreadWorkerPrivate()) {
+      |           ^
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmp4ty5wz2d/test.cpp:29:31: error: use of undeclared identifier 'wp'
+   29 |       if (dom::WorkerPrivate* wp = dom::GetCurrentThreadWorkerPrivate()) {
+      |                               ^~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmp4ty5wz2d/test.cpp:29:36: error: use of undeclared identifier 'dom'
+   29 |       if (dom::WorkerPrivate* wp = dom::GetCurrentThreadWorkerPrivate()) {
+      |                                    ^
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmp4ty5wz2d/test.cpp:30:16: error: use of undeclared identifier 'wp'
+   30 |         return wp->GetOriginAttributes().mUserContextId;
+      |                ^~
+4 errors generated.
+=========================== short test summary info ============================
+SKIPPED [1] tests/fingerprint/test_sec_ch_ua.py:70: Extension assigned a non-Chromium profile (UA='Mozilla/5.0 (X11; Linux x86_64; rv:158.0) Gecko/20100101 Firefox/158.0'); Sec-CH-UA injection only applies to Chromium UAs. Retry to hit a Chromium profile, or force one via settings.
+1 failed, 38 passed, 1 skipped in 66.66s (0:01:06)

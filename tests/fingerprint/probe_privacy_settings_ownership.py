@@ -4,7 +4,9 @@ from pathlib import Path
 import tempfile
 import threading
 from http.server import ThreadingHTTPServer
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from probe_daily_defaults import launch
 from probe_privacy_media_hdr import Handler
 
@@ -28,27 +30,27 @@ def main():
         def read(key):
             return chrome("return JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_0'))[arguments[0]]", key)
         try:
-            d.set_context('content'); d.get('about:cloakfox')
+            d.set_context('content'); d.get('about:cloakfox#sec-media')
             WebDriverWait(d, 15).until(lambda x: x.execute_script("return document.querySelector('#grp-media select[data-key=\"mediaDevices:enabled\"]') !== null"))
             assert d.execute_script("return document.querySelector('[data-pref=\"cloakfox.opt.hdr_masking\"]').checked"), 'HDR control missing/default off'
             seed = chrome("return Services.prefs.getStringPref('cloakfox.container.0.math_seed')")
-            d.execute_script('''const r=document.querySelector('#grp-media .k[title="mediaDevices:micros"]');
-              if(!r) throw new Error('Media cap row uses the wrong key');
-              r.closest('.spoof-row').querySelector('.v').click();''')
+            cap=d.find_element(By.CSS_SELECTOR,'#grp-media .k[title="mediaDevices:micros"]').find_element(By.XPATH,'..').find_element(By.CSS_SELECTOR,'.v')
+            d.execute_script('arguments[0].scrollIntoView({block:"center"})',cap);cap.click()
             limits = d.execute_script("const i=document.querySelector('#grp-media .row-input');return [i.min,i.max,i.step]")
             assert limits == ['0','64','1'], limits
-            d.execute_script('''const i=document.querySelector('#grp-media .row-input');
-              i.value='65';i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));''')
+            field=d.find_element(By.CSS_SELECTOR,'#grp-media .row-input')
+            field.send_keys(Keys.COMMAND,'a');field.send_keys('65',Keys.ENTER)
             assert read('mediaDevices:micros') != 65, 'Invalid media cap saved'
-            d.execute_script('''const i=document.querySelector('#grp-media .row-input');
-              i.value='2';i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));''')
+            field.send_keys(Keys.COMMAND,'a');field.send_keys('2',Keys.ENTER)
             WebDriverWait(d, 10).until(lambda x: read('mediaDevices:micros') == 2)
             assert seed == chrome("return Services.prefs.getStringPref('cloakfox.container.0.math_seed')"), 'Editing a cap regenerated identity'
-            d.execute_script('''const s=document.querySelector('#grp-media select[data-key="mediaDevices:enabled"]');
-              s.value='false';s.dispatchEvent(new Event('change'));''')
+            control=d.find_element(By.CSS_SELECTOR,'#grp-media select[data-key="mediaDevices:enabled"]')
+            d.execute_script('arguments[0].scrollIntoView({block:"center"})',control)
+            Select(control).select_by_value('false')
             WebDriverWait(d, 10).until(lambda x: read('mediaDevices:enabled') is False)
-            d.execute_script('''const s=document.querySelector('#grp-media select[data-key="mediaDevices:enabled"]');
-              s.value='true';s.dispatchEvent(new Event('change'));''')
+            control=d.find_element(By.CSS_SELECTOR,'#grp-media select[data-key="mediaDevices:enabled"]')
+            d.execute_script('arguments[0].scrollIntoView({block:"center"})',control)
+            Select(control).select_by_value('true')
             WebDriverWait(d, 10).until(lambda x: read('mediaDevices:enabled') is True)
             assert chrome("return Services.prefs.getBoolPref('media.navigator.streams.fake',false)"), 'Fake hardware required'
             original = d.current_window_handle
@@ -80,10 +82,13 @@ def main():
                         const out=(await navigator.mediaDevices.enumerateDevices()).map(d=>d.toJSON());
                         s.getTracks().forEach(t=>t.stop());done(out);
                       },e=>done({error:e.name}));''')
-                devices = capture(); assert isinstance(devices, list), devices
+                devices = capture()
                 if not enabled:
-                    assert devices == [], ('Owner false ignored', devices)
+                    assert devices == {'error':'NotAllowedError'}, ('Disabled owner accessed capture hardware', devices)
+                    enumerated=d.execute_async_script("const done=arguments[0];navigator.mediaDevices.enumerateDevices().then(ds=>done(ds.map(d=>d.toJSON())),e=>done({error:e.name}));")
+                    assert enumerated == [], ('Disabled owner leaked devices', enumerated)
                 else:
+                    assert isinstance(devices, list), devices
                     assert {x['kind'] for x in devices} == {'audioinput','videoinput'}, devices
                     assert {x['label'] for x in devices} == {'Internal Microphone','Internal Camera'}, devices
                     # Persisted permissions make the native principal key stable across reloads.

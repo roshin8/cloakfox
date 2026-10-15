@@ -23,7 +23,9 @@ return arguments[0].map(id=>{
  return {id,seed:Services.prefs.getStringPref(prefix+'math_seed'),
  keyboard:Services.prefs.getStringPref(prefix+'keyboard_seed'),timing:Services.prefs.getStringPref(prefix+'timing_seed'),
  index:Services.prefs.getIntPref(prefix+'persona_index'),region:regions.getRegion(id),policy:privacy.getPrivacyPolicy(id),
- cfg:JSON.parse(Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${id}`))};
+ cfg:(()=>{const cfg=JSON.parse(Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${id}`));
+ // Per-launch timing salts intentionally rotate; all persistent fields stay equal.
+ delete cfg['timing:session_key_hi'];delete cfg['timing:session_key_lo'];return cfg;})()};
 });
 """
 CREATE = """

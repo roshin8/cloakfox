@@ -1,16 +1,30 @@
 diff --git a/dom/media/CubebUtils.cpp b/dom/media/CubebUtils.cpp
-index 1b52782a48..7219b68d88 100644
 --- a/dom/media/CubebUtils.cpp
 +++ b/dom/media/CubebUtils.cpp
-@@ -40,6 +40,7 @@
+@@ -41,16 +41,17 @@
+ #include <cmath>
  #include <thread>
+ 
  #include "CallbackThreadRegistry.h"
+ #include "CubebDeviceEnumerator.h"
+ #include "audioipc2_client_ffi_generated.h"
+ #include "audioipc2_server_ffi_generated.h"
  #include "mozilla/StaticPrefs_media.h"
 +#include "MaskConfig.hpp"
  
+ #if defined(ENABLE_TESTS) || defined(FUZZING)
+ #  define ENABLE_MOCK_CUBEB 1
+ #  include "MockCubeb.h"
+ #endif
+ 
  #define AUDIOIPC_STACK_SIZE_DEFAULT (64 * 4096)
  
-@@ -399,6 +400,8 @@ uint32_t PreferredSampleRate(bool aShouldResistFingerprinting) {
+@@ -496,16 +497,18 @@
+   return true;
+ }
+ 
+ uint32_t PreferredSampleRate(bool aShouldResistFingerprinting) {
+   StaticMutexAutoLock lock(sMutex);
    if (sCubebForcedSampleRate) {
      return sCubebForcedSampleRate;
    }
@@ -19,12 +33,21 @@ index 1b52782a48..7219b68d88 100644
    if (aShouldResistFingerprinting) {
      return 44100;
    }
+   if (!InitPreferredSampleRate()) {
+     return 44100;
+   }
+   MOZ_ASSERT(sPreferredSampleRate);
+   return sPreferredSampleRate;
 diff --git a/dom/media/moz.build b/dom/media/moz.build
-index 21063575d7..9e7c9f3e84 100644
 --- a/dom/media/moz.build
 +++ b/dom/media/moz.build
-@@ -418,5 +418,7 @@
- CXXFLAGS += ["-Werror=switch"]
+@@ -433,10 +433,12 @@
+ if CONFIG["CC_TYPE"] in ("clang", "gcc"):
+     CXXFLAGS += [
+         "-Wno-error=attributes",
+     ]
+ 
+ COMPILE_FLAGS["WARNINGS_CXXFLAGS"] += ["-Werror=switch"]
  
  FINAL_LIBRARY = "xul"
 +# DOM Mask
@@ -32,18 +55,30 @@ index 21063575d7..9e7c9f3e84 100644
  
  SPHINX_TREES["/media"] = "docs"
 diff --git a/dom/media/webaudio/AudioContext.cpp b/dom/media/webaudio/AudioContext.cpp
-index 66184b683b..daf30882ea 100644
 --- a/dom/media/webaudio/AudioContext.cpp
 +++ b/dom/media/webaudio/AudioContext.cpp
-@@ -45,6 +45,7 @@
- #include "mozilla/dom/WaveShaperNodeBinding.h"
- #include "mozilla/dom/Worklet.h"
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "AudioContext.h"
  
 +#include "MaskConfig.hpp"
  #include "AudioBuffer.h"
  #include "AudioBufferSourceNode.h"
  #include "AudioChannelService.h"
-@@ -561,6 +562,8 @@ double AudioContext::OutputLatency() {
+ #include "AudioDestinationNode.h"
+ #include "AudioListener.h"
+ #include "AudioNodeTrack.h"
+ #include "AudioStream.h"
+ #include "AudioWorkletImpl.h"
+@@ -556,16 +557,18 @@
+ }
+ 
+ double AudioContext::OutputLatency() {
+   if (mIsShutDown) {
+     return 0.0;
    }
    // When reduceFingerprinting is enabled, return a latency figure that is
    // fixed, but plausible for the platform.
@@ -52,7 +87,17 @@ index 66184b683b..daf30882ea 100644
    double latency_s = 0.0;
    if (mShouldResistFingerprinting) {
  #ifdef XP_MACOSX
-@@ -714,6 +717,8 @@ void AudioContext::UnregisterActiveNode(AudioNode* aNode) {
+     latency_s = 512. / mSampleRate;
+ #elif MOZ_WIDGET_ANDROID
+     latency_s = 0.020;
+ #elif XP_WIN
+     latency_s = 0.04;
+@@ -709,16 +712,18 @@
+   }
+ }
+ 
+ void AudioContext::UnregisterActiveNode(AudioNode* aNode) {
+   mActiveNodes.Remove(aNode);
  }
  
  uint32_t AudioContext::MaxChannelCount() const {
@@ -61,11 +106,20 @@ index 66184b683b..daf30882ea 100644
    if (mShouldResistFingerprinting) {
      return 2;
    }
+   return std::min<uint32_t>(
+       WebAudioUtils::MaxChannelCount,
+       mIsOffline ? mNumberOfChannels : CubebUtils::MaxNumberOfChannels());
+ }
+ 
 diff --git a/dom/media/webaudio/moz.build b/dom/media/webaudio/moz.build
-index 3ee8c0aa76..c0f1df8cf6 100644
 --- a/dom/media/webaudio/moz.build
 +++ b/dom/media/webaudio/moz.build
-@@ -149,3 +149,6 @@ include("/ipc/chromium/chromium-config.mozbuild")
+@@ -144,8 +144,11 @@
+ 
+ if CONFIG["MOZ_SYSTEM_AV1"]:
+     CXXFLAGS += CONFIG["MOZ_SYSTEM_LIBAOM_CFLAGS"]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
  
  FINAL_LIBRARY = "xul"
  LOCAL_INCLUDES += [".."]

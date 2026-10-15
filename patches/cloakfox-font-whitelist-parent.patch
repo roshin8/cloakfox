@@ -1,0 +1,122 @@
+diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList.cpp
+--- a/gfx/thebes/gfxPlatformFontList.cpp
++++ b/gfx/thebes/gfxPlatformFontList.cpp
+@@ -319,39 +319,44 @@
+ 
+   LoadBadUnderlineList();
+   LoadIconFontOverrideList();
+ 
+   mFontPrefs = MakeUnique<FontPrefs>();
+ 
+   // Retire the persisted whitelist written by earlier Cloakfox builds. It
+   // removed native UI fonts from the shared list before any document lookup.
+-  Preferences::ClearUser(kFontSystemWhitelistPref);
++  if (XRE_IsParentProcess()) {
++    Preferences::ClearUser(kFontSystemWhitelistPref);
++  }
+   gfxFontUtils::GetPrefsFontList(kFontSystemWhitelistPref, mEnabledFontsList);
++  // Preallocated children can see a saved whitelist before the parent clears
++  // it on disabled startup. Child prefs are read-only; clear the cached list.
++  if (!XRE_IsParentProcess() && !Preferences::GetBool("cloakfox.enabled", true)) {
++    mEnabledFontsList.Clear();
++  }
+   mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty();
+ 
+   // pref changes notification setup
+   NS_ASSERTION(!gFontListPrefObserver,
+                "There has been font list pref observer already");
+   gFontListPrefObserver = new gfxFontListPrefObserver();
+   NS_ADDREF(gFontListPrefObserver);
+ 
+   Preferences::RegisterPrefixCallbacks(FontListPrefChanged, kObservedPrefs);
+ 
+   nsCOMPtr<nsIObserverService> obs = services::GetObserverService();
+   if (obs) {
+     obs->AddObserver(gFontListPrefObserver, LOCALES_CHANGED_TOPIC, false);
+   }
+ 
+-  // Only the parent process listens for whitelist changes; it will then
+-  // notify its children to rebuild their font lists.
+-  if (XRE_IsParentProcess()) {
+-    Preferences::RegisterCallback(FontWhitelistPrefChanged,
+-                                  kFontSystemWhitelistPref);
+-  }
++  // Parent rebuilds the shared list; children update their cached active flag
++  // when the effective whitelist preference is forwarded.
++  Preferences::RegisterCallback(FontWhitelistPrefChanged,
++                                kFontSystemWhitelistPref);
+ 
+   RegisterStrongMemoryReporter(MakeAndAddRef<MemoryReporter>());
+ 
+   // initialize lang group pref font defaults (i.e. serif/sans-serif)
+   mDefaultGenericsLangGroup.AppendElements(std::size(gPrefLangNames));
+   for (uint32_t i = 0; i < std::size(gPrefLangNames); i++) {
+     nsAutoCString prefDefaultFontType("font.default.");
+     prefDefaultFontType.Append(GetPrefLangName(eFontPrefLang(i)));
+@@ -388,20 +393,18 @@
+ 
+   Preferences::UnregisterPrefixCallbacks(FontListPrefChanged, kObservedPrefs);
+ 
+   nsCOMPtr<nsIObserverService> obs = services::GetObserverService();
+   if (obs) {
+     obs->RemoveObserver(gFontListPrefObserver, LOCALES_CHANGED_TOPIC);
+   }
+ 
+-  if (XRE_IsParentProcess()) {
+-    Preferences::UnregisterCallback(FontWhitelistPrefChanged,
+-                                    kFontSystemWhitelistPref);
+-  }
++  Preferences::UnregisterCallback(FontWhitelistPrefChanged,
++                                  kFontSystemWhitelistPref);
+   NS_RELEASE(gFontListPrefObserver);
+ 
+   delete mSharedFontList.exchange(nullptr);
+ }
+ 
+ FontVisibility gfxPlatformFontList::GetFontVisibility(nsCString& aFont,
+                                                       bool& aFound) {
+   AutoLock lock(mLock);
+@@ -581,20 +584,21 @@
+ 
+   missingFonts.Sort();
+   aMissingFonts.Append(StringJoin("|"_ns, missingFonts));
+ }
+ 
+ /* static */
+ void gfxPlatformFontList::FontWhitelistPrefChanged(const char* aPref,
+                                                    void* aClosure) {
+-  MOZ_ASSERT(XRE_IsParentProcess());
+   auto* pfl = gfxPlatformFontList::PlatformFontList();
+   pfl->UpdateFontList(true);
+-  dom::ContentParent::NotifyUpdatedFonts(true);
++  if (XRE_IsParentProcess()) {
++    dom::ContentParent::NotifyUpdatedFonts(true);
++  }
+ }
+ 
+ void gfxPlatformFontList::ApplyWhitelist() {
+   uint32_t numFonts = mEnabledFontsList.Length();
+   if (!mFontFamilyWhitelistActive) {
+     return;
+   }
+   nsTHashSet<nsCString> familyNamesWhitelist;
+@@ -770,16 +774,19 @@
+     CancelLoader();
+ 
+     // Clear cached family records that will no longer be valid.
+     for (auto& f : mReplacementCharFallbackFamily) {
+       f = FontFamily();
+     }
+ 
+     gfxFontUtils::GetPrefsFontList(kFontSystemWhitelistPref, mEnabledFontsList);
++    if (!XRE_IsParentProcess() && !Preferences::GetBool("cloakfox.enabled", true)) {
++      mEnabledFontsList.Clear();
++    }
+     mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty();
+ 
+     LoadIconFontOverrideList();
+   }
+ 
+   // From here, gfxPlatformFontList::IsInitialized will return true,
+   // unless InitFontListForPlatform() fails and we reset it below.
+   if (MOZ_UNLIKELY(!++mFontlistInitCount)) {

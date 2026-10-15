@@ -384,9 +384,29 @@ function publish() {
   } catch (_e) { /* sharedData may not be available pre-init */ }
 }
 
+// This checkbox is a global graphics policy. Update only its active native
+// config field; regenerating personas here would discard manual values/seeds
+// and transient network masks. Config-write notifications only publish below.
+function applyStrictGraphicsPolicy() {
+  const disabled = Services.prefs.getBoolPref(
+    "cloakfox.opt.webgl_typed_readback_disabled", true);
+  for (const pref of Services.prefs.getChildList("cloakfox.s.cloak_cfg_")) {
+    if (!/^cloakfox\.s\.cloak_cfg_(?:0|[1-9]\d*)$/.test(pref)) continue;
+    try {
+      const cfg = JSON.parse(Services.prefs.getStringPref(pref, ""));
+      if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) continue;
+      if (cfg["webgl:typed_readback:disabled"] === disabled) continue;
+      cfg["webgl:typed_readback:disabled"] = disabled;
+      Services.prefs.setStringPref(pref, JSON.stringify(cfg));
+    } catch (_e) { /* preserve corrupt configs for the normal repair path */ }
+  }
+}
+
 const observer = {
   observe(_subject, topic, data) {
-    if (topic !== "nsPref:changed" || data === "cloakfox.font_identity_epoch") return;
+    if (topic !== "nsPref:changed" || data === "cloakfox.font_identity_epoch" ||
+        data?.startsWith("cloakfox.language_identity_epoch.")) return;
+    if (data === "cloakfox.opt.webgl_typed_readback_disabled") applyStrictGraphicsPolicy();
     if (data?.startsWith("cloakfox.s.cloak_cfg_")) {
       const raw = Services.prefs.getStringPref(data, "");
       try {
@@ -409,6 +429,16 @@ const observer = {
       // from the existing authoritative native config bridge on the main thread.
       const current = Services.prefs.getIntPref("cloakfox.font_identity_epoch", 0);
       Services.prefs.setIntPref("cloakfox.font_identity_epoch", (current + 1) & 0x7fffffff);
+      // Large dynamic config strings can be omitted from child preference IPC.
+      // The font epoch refreshes their authoritative worker-readable mirror;
+      // only then invalidate this owner's frozen language bindings. A global
+      // language epoch would reveal unrelated containers through array identity.
+      const owner = /^cloakfox\.s\.cloak_cfg_(0|[1-9]\d*)$/.exec(data);
+      if (owner && Number(owner[1]) <= 0xffffffff) {
+        const pref = `cloakfox.language_identity_epoch.${owner[1]}`;
+        const epoch = Services.prefs.getIntPref(pref, 0);
+        Services.prefs.setIntPref(pref, (epoch + 1) & 0x7fffffff);
+      }
     }
   },
 };

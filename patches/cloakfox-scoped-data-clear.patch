@@ -1,6 +1,12 @@
+diff --git a/toolkit/components/cleardata/ClearDataService.sys.mjs b/toolkit/components/cleardata/ClearDataService.sys.mjs
 --- a/toolkit/components/cleardata/ClearDataService.sys.mjs
 +++ b/toolkit/components/cleardata/ClearDataService.sys.mjs
-@@ -2497,17 +2497,37 @@
+@@ -2492,35 +2492,55 @@
+     }
+ 
+     return this._deleteInternal(aFlags, aCallback, aCleaner => {
+       return aCleaner.deleteAll();
+     });
    },
  
    deleteDataFromOriginAttributesPattern(aPattern, aCallback) {
@@ -44,7 +50,7 @@
  
      if (!aCallback) {
        aCallback = {
-@@ -2515,7 +2535,7 @@
+         onDataDeleted: () => {},
        };
      }
      return this._deleteInternal(
@@ -53,9 +59,20 @@
        aCallback,
        aCleaner => {
          if (aCleaner.deleteByOriginAttributes) {
+           return aCleaner.deleteByOriginAttributes(patternString);
+         }
+ 
+         // We don't want to delete more than what is strictly required.
+         return Promise.resolve();
+diff --git a/toolkit/components/cleardata/nsIClearDataService.idl b/toolkit/components/cleardata/nsIClearDataService.idl
 --- a/toolkit/components/cleardata/nsIClearDataService.idl
 +++ b/toolkit/components/cleardata/nsIClearDataService.idl
-@@ -13,7 +13,7 @@
+@@ -8,17 +8,17 @@
+ interface nsIClearDataCallback;
+ 
+ /**
+  * nsIClearDataService
+  *
   * Provides methods for cleaning data from a nsIPrincipal and/or from a time
   * range.
   */
@@ -64,7 +81,17 @@
  interface nsIClearDataService : nsISupports
  {
    /**
-@@ -148,6 +148,26 @@
+    * Delete data owned by local files or other hostless schemes.
+    * @param aIsUserRequest true if this request comes from a user interaction.
+    *        This information is important because if true, it's probably better
+    *        to remove more than less, for privacy reason. If false (e.g.
+    *        Clear-Site-Data header), we don't want to delete more than what is
+@@ -143,16 +143,36 @@
+    * @param aOriginAttributesPattern the originAttributes dictionary.
+    * @param aCallback the optional callback will be executed when the operation
+    *                  is completed.
+    */
+   void deleteDataFromOriginAttributesPattern(in jsval aOriginAttributesPattern,
                                               [optional] in nsIClearDataCallback aCallback);
  
    /**
@@ -91,3 +118,8 @@
     * This is a helper function to clear storageAccessAPI permissions
     * in a way that will not result in users getting logged out by
     * cookie purging. To that end we only clear permissions for principals
+    * whose base domain does not have any storage associated with it.
+    *
+    * The principals to be considered will need to be passed by the API consumer.
+    * It is recommended to use PrincipalsCollector.sys.mjs for that.
+    *

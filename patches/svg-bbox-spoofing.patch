@@ -1,20 +1,31 @@
 diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
 --- a/dom/svg/SVGGraphicsElement.cpp
 +++ b/dom/svg/SVGGraphicsElement.cpp
-@@ -4,6 +4,7 @@
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "mozilla/dom/SVGGraphicsElement.h"
  
 +#include "MaskConfig.hpp"
  #include "mozilla/ISVGDisplayableFrame.h"
  #include "mozilla/SVGContentUtils.h"
- #include "mozilla/SVGTextFrame.h"
-@@ -39,6 +40,22 @@
+ #include "mozilla/SVGUtils.h"
+ #include "mozilla/dom/BindContext.h"
+ #include "mozilla/dom/SVGAnimatedLength.h"
+ #include "mozilla/dom/SVGGraphicsElementBinding.h"
+ #include "mozilla/dom/SVGMatrix.h"
+ #include "mozilla/dom/SVGRect.h"
+@@ -28,16 +29,32 @@
  
- static already_AddRefed<SVGRect> ZeroBBox(SVGGraphicsElement& aOwner) {
-   return MakeAndAddRef<SVGRect>(&aOwner, gfx::Rect{0, 0, 0, 0});
-+}
-+
+ //----------------------------------------------------------------------
+ // Implementation
+ 
+ SVGGraphicsElement::SVGGraphicsElement(
+     already_AddRefed<mozilla::dom::NodeInfo> aNodeInfo)
+     : SVGGraphicsElementBase(std::move(aNodeInfo)) {}
+ 
 +// Cloakfox: sub-pixel noise on a gfx::Rect for SVG bbox spoofing.
 +static gfx::Rect CloakNoiseRect(gfx::Rect aRect) {
 +  auto seed = MaskConfig::GetUint32("canvas:seed");
@@ -29,34 +40,52 @@ diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
 +  aRect.width += n();
 +  aRect.height += n();
 +  return aRect;
- }
- 
++}
++
  already_AddRefed<SVGRect> SVGGraphicsElement::GetBBox(
-@@ -83,15 +100,15 @@
+     const SVGBoundingBoxOptions& aOptions) {
+   nsIFrame* frame = GetPrimaryFrame(FlushType::Layout);
  
-     rec.Scale(1 / dom::UserSpaceMetrics::GetZoom(this));
+   auto ZeroBBox = [this]() {
+     return MakeAndAddRef<SVGRect>(this, gfx::Rect{0, 0, 0, 0});
+   };
  
--    return MakeAndAddRef<SVGRect>(this, ToRect(rec));
-+    return MakeAndAddRef<SVGRect>(this, CloakNoiseRect(ToRect(rec)));
+@@ -47,21 +64,21 @@
+   ISVGDisplayableFrame* svgframe = do_QueryFrame(frame);
+ 
+   if (!svgframe && !frame->IsInSVGTextSubtree()) {
+     return ZeroBBox();
    }
  
    if (!NS_SVGNewGetBBoxEnabled()) {
      return MakeAndAddRef<SVGRect>(
 -        this,
 -        ToRect(SVGUtils::GetBBox(frame, {SVGBBoxFlag::IncludeFillGeometry,
+-                                         SVGBBoxFlag::TextContentBounds,
 -                                         SVGBBoxFlag::UseUserSpaceOfUseElement,
 -                                         SVGBBoxFlag::DisregardCSSZoom})));
 +        this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(
 +                  frame, {SVGBBoxFlag::IncludeFillGeometry,
++                          SVGBBoxFlag::TextContentBounds,
 +                          SVGBBoxFlag::UseUserSpaceOfUseElement,
 +                          SVGBBoxFlag::DisregardCSSZoom}))));
    }
    SVGBBoxFlags flags;
    if (aOptions.mFill) {
-@@ -111,7 +128,24 @@
+     flags += SVGBBoxFlag::IncludeFillGeometry;
    }
-   flags +=
-       {SVGBBoxFlag::UseUserSpaceOfUseElement, SVGBBoxFlag::DisregardCSSZoom};
+   if (aOptions.mStroke) {
+     flags += SVGBBoxFlag::IncludeStroke;
+   }
+@@ -71,41 +88,58 @@
+   if (aOptions.mClipped) {
+     flags += {SVGBBoxFlag::IncludeFillGeometry, SVGBBoxFlag::IncludeClipped};
+   }
+   if (flags.isEmpty()) {
+     return ZeroBBox();
+   }
+   flags += {SVGBBoxFlag::UseUserSpaceOfUseElement,
+             SVGBBoxFlag::TextContentBounds, SVGBBoxFlag::DisregardCSSZoom};
 -  return MakeAndAddRef<SVGRect>(this, ToRect(SVGUtils::GetBBox(frame, flags)));
 +  return MakeAndAddRef<SVGRect>(
 +      this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(frame, flags))));
@@ -79,7 +108,11 @@ diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
  }
  
  already_AddRefed<SVGMatrix> SVGGraphicsElement::GetCTM() {
-@@ -123,7 +157,7 @@
+   if (auto* currentDoc = GetComposedDoc()) {
+     // Flush all pending notifications so that our frames are up to date
+     currentDoc->FlushPendingNotifications(FlushType::Layout);
+   }
+   gfx::Matrix m = SVGContentUtils::GetCTM(this);
    if (m.IsSingular()) {
      m = {};
    }
@@ -88,7 +121,11 @@ diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
  }
  
  already_AddRefed<SVGMatrix> SVGGraphicsElement::GetScreenCTM() {
-@@ -135,7 +169,7 @@
+   if (auto* currentDoc = GetComposedDoc()) {
+     // Flush all pending notifications so that our frames are up to date
+     currentDoc->FlushPendingNotifications(FlushType::Layout);
+   }
+   gfx::Matrix m = SVGContentUtils::GetScreenCTM(this);
    if (m.IsSingular()) {
      m = {};
    }
@@ -97,3 +134,8 @@ diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
  }
  
  bool SVGGraphicsElement::IsSVGFocusable(bool* aIsFocusable,
+                                         int32_t* aTabIndex) {
+   // XXXedgar, maybe we could factor out the common code for SVG, HTML and
+   // MathML elements, see bug 1586011.
+   if (!IsInComposedDoc() || IsInDesignMode()) {
+     // In designMode documents we only allow focusing the document.

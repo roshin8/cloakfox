@@ -1,12 +1,12 @@
 """
 Cross-container variance probe.
 
-Runs the same canvas + audio fingerprint twice — once with userContextId=0
-(default container, math_seed=A), once with a fresh container 1
-(math_seed=B). Asserts:
+Runs a local HTTP page in the default container and a freshly created named
+container in one disposable profile. Verifies default-container reload stability
+and asserts:
   - canvas_hash differs between the two containers
   - audio_sum differs between the two containers
-  - Math.PI differs between the two containers (sanity for actor variance)
+  - Math.sin(0.5) differs between the two containers
 
 If any of these match, per-container spoofing isn't actually engaging —
 either SeedSync didn't auto-generate the per-container values or the
@@ -28,12 +28,16 @@ import os
 import secrets
 import sys
 import tempfile
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
+
+from probe_focus_masking import chrome
 
 
 PROBE_HTML = """<!doctype html>
@@ -46,7 +50,7 @@ r.math_pi = Math.PI;
 // Math.sin is the per-container canary now: with cloakfox.opt.
 // math_constants_noise=false (default), Math.PI is bit-exact across
 // all containers (3.141592653589793). The trig FUNCTIONS still get
-// per-call noise from the timing seed, so Math.sin(0.5) varies per
+// per-call noise from the site-derived Math seed, so Math.sin(0.5) varies per
 // container and serves as the strict-differential signal.
 r.math_sin_jitter = Math.sin(0.5);
 r.tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -144,10 +148,8 @@ setTimeout(() => { if (!finalized) finalize(); }, 4000);
 </body>"""
 
 
-def _profile_for_ucid(profile_dir: str, ucid: int) -> str:
-    """Selenium can't switch userContextId — so we use 2 separate profiles
-    with different per-container seeds and run each in isolation. Each
-    profile pretends to be 'container 0' but with a different seed."""
+def _profile(profile_dir: str) -> str:
+    """Seed a disposable default container; named container uses SeedSync."""
     seed = base64.b64encode(secrets.token_bytes(32)).decode()
     Path(profile_dir).mkdir(parents=True, exist_ok=True)
     Path(profile_dir, "user.js").write_text(
@@ -159,60 +161,85 @@ def _profile_for_ucid(profile_dir: str, ucid: int) -> str:
     return seed
 
 
-def _run(bin_path: str, profile_dir: str, probe_url: str) -> dict:
-    opts = Options()
-    opts.binary_location = bin_path
-    opts.add_argument("--headless")
-    opts.add_argument("-profile")
-    opts.add_argument(profile_dir)
-    svc = Service(log_output=str(Path(profile_dir) / "geckodriver.log"))
-    d = webdriver.Firefox(options=opts, service=svc)
-    try:
-        d.get(probe_url)
-        deadline = time.time() + 10
-        while time.time() < deadline:
-            if d.title == "PROBE_DONE":
-                break
-            time.sleep(0.2)
-        attr = d.find_element("css selector", "html").get_attribute("data-cfx-probe")
-        return json.loads(attr) if attr else {}
-    finally:
-        d.quit()
-
-
 def main() -> None:
     bin_path = os.environ.get("CLOAKFOX_BIN")
     if not bin_path or not os.path.exists(bin_path):
         sys.exit("CLOAKFOX_BIN not set or binary missing")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        probe_html = os.path.join(tmp, "probe.html")
-        Path(probe_html).write_text(PROBE_HTML)
-        probe_url = f"file://{probe_html}"
+    class Page(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = PROBE_HTML.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
 
-        prof_a = os.path.join(tmp, "profile_a")
-        prof_b = os.path.join(tmp, "profile_b")
-        seed_a = _profile_for_ucid(prof_a, 0)
-        seed_b = _profile_for_ucid(prof_b, 0)
-        if seed_a == seed_b:
-            sys.exit("internal: profiles have the same seed (bug in test setup)")
+        def log_message(self, *_args):
+            pass
 
-        result_a = _run(bin_path, prof_a, probe_url)
-        result_b = _run(bin_path, prof_b, probe_url)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Page)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        with tempfile.TemporaryDirectory(prefix="cloakfox-container-") as tmp:
+            profile = str(Path(tmp, "profile"))
+            _profile(profile)
+            opts = Options()
+            opts.binary_location = bin_path
+            opts.add_argument("--headless")
+            opts.add_argument("-profile")
+            opts.add_argument(profile)
+            d = webdriver.Firefox(options=opts, service=Service(
+                service_args=["--allow-system-access"],
+                log_output=str(Path(tmp, "geckodriver.log"))))
+            try:
+                url = f"http://127.0.0.1:{server.server_port}/"
+                def collect():
+                    d.get(url)
+                    deadline = time.monotonic() + 15
+                    while d.title != "PROBE_DONE" and time.monotonic() < deadline:
+                        time.sleep(.1)
+                    attr = d.find_element("css selector", "html").get_attribute("data-cfx-probe")
+                    assert attr, "page did not finish collecting fingerprints"
+                    return json.loads(attr)
+                result_a = collect()
+                repeated_a = collect()
+                for key in ("math_sin_jitter", "canvas_hash", "audio_sum"):
+                    assert result_a[key] == repeated_a[key], f"same-container reload changed {key}"
+                before = set(d.window_handles)
+                chrome(d, """
+                  const {ContextualIdentityService: cis} = ChromeUtils.importESModule(
+                    'moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs');
+                  const id=cis.create('Variance control','fingerprint','green').userContextId;
+                  gBrowser.selectedTab=gBrowser.addTab(arguments[0],{userContextId:id,
+                    triggeringPrincipal:Services.scriptSecurityManager.getSystemPrincipal()});
+                """, url)
+                d.switch_to.window(next(handle for handle in d.window_handles if handle not in before))
+                result_b = collect()
+                configs = chrome(d, """
+                  return [0,gBrowser.selectedBrowser.browsingContext.originAttributes.userContextId].map(id=>
+                    JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_'+id)));
+                """)
+                assert configs[0]["fingerprint:secret"] != configs[1]["fingerprint:secret"], "container secrets collided"
+            finally:
+                d.quit()
+    finally:
+        server.shutdown()
+        server.server_close()
 
-    print("=== profile A ===")
+    print("=== default container ===")
     print(json.dumps(result_a, indent=2))
-    print("\n=== profile B ===")
+    print("\n=== named container ===")
     print(json.dumps(result_b, indent=2))
     print()
 
     fails: list[str] = []
-    # Strict differential: should differ between profiles seeded with different math_seed.
+    # Strict differential: separate containers have different master secrets.
     # Math.PI is no longer the canary — it's intentionally bit-exact in
     # the new default (math_constants_noise=false). Use Math.sin(0.5)
-    # which gets per-call noise from the timing seed.
+    # which gets per-call noise from the site-derived Math seed.
     STRICT = ("math_sin_jitter", "canvas_hash", "audio_sum")
-    # Persona-derived: with only 3 personas per OS, two random math_seeds may
+    # Persona-derived: with only 3 personas per OS, two container math_seeds may
     # land on the same persona ~33% of the time. Treat as "diverse-aware" —
     # report whether they varied without failing on a collision.
     SOFT = ("ua", "platform", "hwc", "inner", "outer", "screen", "avail", "dpr", "webgl_renderer", "webgl_vendor", "geo_lat", "geo_lng")
@@ -236,7 +263,7 @@ def main() -> None:
     for k, name in [("dim_coherent", "screen/window dim coherence")]:
         for label, res in [("A", result_a), ("B", result_b)]:
             v = res.get(k)
-            if v is False:
+            if v is not True:
                 fails.append(f"{name} ({label}): screen={res.get('screen')} avail={res.get('avail')} outer={res.get('outer')} inner={res.get('inner')} — geometry not nested correctly")
 
     if not fails:

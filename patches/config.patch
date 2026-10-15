@@ -1,7 +1,12 @@
 diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
 --- a/browser/installer/package-manifest.in
 +++ b/browser/installer/package-manifest.in
-@@ -261,6 +261,14 @@
+@@ -258,16 +258,24 @@
+ #endif
+ #endif
+ #endif
+ 
+ ; shell assets
  #ifdef XP_WIN
  @RESPATH@/browser/components/shell/assets/kit.gif
  #endif
@@ -16,6 +21,11 @@ diff --git a/browser/installer/package-manifest.in b/browser/installer/package-m
  
  ; [Default Preferences]
  ; All the pref files must be part of base to prevent migration bugs
+ @RESPATH@/browser/@PREF_DIR@/firefox.js
+ @RESPATH@/browser/@PREF_DIR@/firefox-branding.js
+ @RESPATH@/greprefs.js
+ @RESPATH@/defaults/autoconfig/prefcalls.js
+ @RESPATH@/browser/defaults/permissions
 diff --git a/lw/moz.build b/lw/moz.build
 --- a/lw/moz.build
 +++ b/lw/moz.build
@@ -43,10 +53,14 @@ diff --git a/lw/moz.build b/lw/moz.build
 diff --git a/moz.build b/moz.build
 --- a/moz.build
 +++ b/moz.build
-@@ -355,3 +355,5 @@
- SPHINX_TREES["ai-agent-tools"] = "docs/ai-agent-tools"
- 
- include("build/templates.mozbuild")
+@@ -376,8 +376,10 @@
+         entry_point="generate_file",
+         extra_deps=[
+             "!/licenses.json",
+             "!/.cargo/config.toml",
+             "/Cargo.lock",
+         ],
+         force=True,
+     )
 +
 +DIRS += ["lw"]
-\ No newline at end of file

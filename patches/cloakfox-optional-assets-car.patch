@@ -1,7 +1,12 @@
 diff --git a/browser/app/moz.build b/browser/app/moz.build
 --- a/browser/app/moz.build
 +++ b/browser/app/moz.build
-@@ -74,8 +74,9 @@
+@@ -69,18 +69,19 @@
+     if ab_cd == "zh-TW":
+         lproj_root = ab_cd.replace("-", "_")
+     else:
+         lproj_root = ab_cd.split("-")[0]
+     branding = f"/{CONFIG['MOZ_BRANDING_DIRECTORY']}"
      extra_files = [
          (f"{branding}/firefox.icns", "Resources/firefox.icns"),
          (f"{branding}/document.icns", "Resources/document.icns"),
@@ -13,10 +18,20 @@ diff --git a/browser/app/moz.build b/browser/app/moz.build
      if CONFIG["MOZ_UPDATER"]:
          extra_files.append((
              f"!/{FINAL_TARGET}/org.mozilla.updater",
+             "Library/LaunchServices/org.mozilla.updater",
+         ))
+     MacOSBundle(
+         f"!/dist/{CONFIG['MOZ_MACBUNDLE_NAME']}",
+         skeleton="macbuild/Contents",
 diff --git a/toolkit/moz.configure b/toolkit/moz.configure
 --- a/toolkit/moz.configure
 +++ b/toolkit/moz.configure
-@@ -3292,6 +3292,16 @@
+@@ -3217,16 +3217,26 @@
+ 
+ @depends(moz_branding_directory, build_project)
+ def real_branding_directory(moz_branding_directory, build_project):
+     if moz_branding_directory:
+         return moz_branding_directory
      return f"{build_project}/branding/nightly"
  
  
@@ -33,3 +48,8 @@ diff --git a/toolkit/moz.configure b/toolkit/moz.configure
  confvar(
      "MOZ_APP_DISPLAYNAME",
      nargs=1,
+     set_as_config=False,
+     help="Branded application name",
+ )
+ 
+ 

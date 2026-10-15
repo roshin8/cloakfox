@@ -1,6 +1,11 @@
---- a/b/layout/style/nsMediaFeatures.cpp	2026-04-18 16:05:32
-+++ b/layout/style/nsMediaFeatures.cpp	2026-04-18 17:11:25
-@@ -7,6 +7,7 @@
+diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
+--- a/layout/style/nsMediaFeatures.cpp
++++ b/layout/style/nsMediaFeatures.cpp
+@@ -1,15 +1,16 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
  /* the features that media queries can test */
  
  #include "PreferenceSheet.h"
@@ -8,7 +13,17 @@
  #include "mozilla/GeckoBindings.h"
  #include "mozilla/LookAndFeel.h"
  #include "mozilla/RelativeLuminanceUtils.h"
-@@ -149,6 +150,15 @@
+ #include "mozilla/StaticPrefs_browser.h"
+ #include "mozilla/StaticPrefs_gfx.h"
+ #include "mozilla/StyleSheet.h"
+ #include "mozilla/StyleSheetInlines.h"
+ #include "mozilla/dom/BrowsingContextBinding.h"
+@@ -145,16 +146,25 @@
+     return 0;
+   }
+   bool color = true;
+   ps->GetPrintInColor(&color);
+   return color ? 0 : kDefaultMonochromeBpp;
  }
  
  StyleColorGamut Gecko_MediaFeatures_ColorGamut(const Document* aDocument) {
@@ -24,7 +39,17 @@
    auto* dx = GetDeviceContextFor(aDocument);
    if (!dx || aDocument->ShouldResistFingerprinting(RFPTarget::CSSColorInfo)) {
      return StyleColorGamut::Srgb;
-@@ -187,6 +197,12 @@
+   }
+   switch (dx->GetColorGamut()) {
+     case dom::ScreenColorGamut::Srgb:
+       return StyleColorGamut::Srgb;
+     case dom::ScreenColorGamut::Rec2020:
+@@ -183,16 +193,22 @@
+ 
+   // The spec says to use bits *per color component*, so divide by 3,
+   // and round down, since the spec says to use the smallest when the
+   // color components differ.
+   return depth / 3;
  }
  
  float Gecko_MediaFeatures_GetResolution(const Document* aDocument) {
@@ -37,7 +62,17 @@
    // We're returning resolution in terms of device pixels per css pixel, since
    // that is the preferred unit for media queries of resolution. This avoids
    // introducing precision error from conversion to and from less-used
-@@ -270,6 +286,11 @@
+   // physical units like inches.
+   nsPresContext* pc = aDocument->GetPresContext();
+   if (!pc) {
+     return 1.;
+   }
+@@ -269,16 +285,21 @@
+ #  error "Unknown platform?"
+ #endif
+     default:
+       return false;
+   }
  }
  
  bool Gecko_MediaFeatures_PrefersReducedMotion(const Document* aDocument) {
@@ -49,7 +84,17 @@
    if (aDocument->ShouldResistFingerprinting(
            RFPTarget::CSSPrefersReducedMotion)) {
      return false;
-@@ -278,6 +299,11 @@
+   }
+ 
+   // Check for DevTools override first
+   if (dom::BrowsingContext* bc = aDocument->GetBrowsingContext()) {
+     auto* top = bc->Top();
+@@ -291,16 +312,21 @@
+         break;
+     }
+   }
+ 
+   return LookAndFeel::GetInt(LookAndFeel::IntID::PrefersReducedMotion, 0) == 1;
  }
  
  bool Gecko_MediaFeatures_PrefersReducedTransparency(const Document* aDocument) {
@@ -61,7 +106,17 @@
    if (aDocument->ShouldResistFingerprinting(
            RFPTarget::CSSPrefersReducedTransparency)) {
      return false;
-@@ -304,6 +330,16 @@
+   }
+   return LookAndFeel::GetInt(LookAndFeel::IntID::PrefersReducedTransparency,
+                              0) == 1;
+ }
+ 
+@@ -317,16 +343,26 @@
+   return widget && widget->IsMacTitlebarDirectionRTL();
+ }
+ 
+ // Neither Linux, Windows, nor Mac have a way to indicate that low contrast is
+ // preferred so we use the presence of an accessibility theme or forced colors
  // as a signal.
  StylePrefersContrast Gecko_MediaFeatures_PrefersContrast(
      const Document* aDocument) {
@@ -78,7 +133,17 @@
    if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSPrefersContrast)) {
      return StylePrefersContrast::NoPreference;
    }
-@@ -326,6 +362,10 @@
+   const auto& prefs = PreferenceSheet::PrefsFor(*aDocument);
+   if (!prefs.mUseAccessibilityTheme && prefs.mUseDocumentColors) {
+     return StylePrefersContrast::NoPreference;
+   }
+   const auto& colors = prefs.ColorsFor(ColorScheme::Light);
+@@ -339,16 +375,20 @@
+   // https://www.w3.org/TR/WCAG21/#contrast-enhanced
+   if (ratio >= 7.0f) {
+     return StylePrefersContrast::More;
+   }
+   return StylePrefersContrast::Custom;
  }
  
  bool Gecko_MediaFeatures_InvertedColors(const Document* aDocument) {
@@ -89,3 +154,8 @@
    if (aDocument->ShouldResistFingerprinting(RFPTarget::CSSInvertedColors)) {
      return false;
    }
+   return LookAndFeel::GetInt(LookAndFeel::IntID::InvertedColors, 0) == 1;
+ }
+ 
+ StyleScripting Gecko_MediaFeatures_Scripting(const Document* aDocument) {
+   const auto* doc = aDocument;

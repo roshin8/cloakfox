@@ -1,6 +1,12 @@
+diff --git a/netwerk/base/nsProtocolProxyService.cpp b/netwerk/base/nsProtocolProxyService.cpp
 --- a/netwerk/base/nsProtocolProxyService.cpp
 +++ b/netwerk/base/nsProtocolProxyService.cpp
-@@ -9,6 +9,8 @@
+@@ -4,16 +4,18 @@
+ 
+ #include "nsProtocolProxyService.h"
+ 
+ #include "SimpleChannel.h"
+ #include "mozilla/AutoRestore.h"
  #include "mozilla/CondVar.h"
  #include "mozilla/Logging.h"
  #include "mozilla/Mutex.h"
@@ -9,7 +15,17 @@
  #include "mozilla/ScopeExit.h"
  #include "mozilla/StaticPrefs_network.h"
  #include "mozilla/Tokenizer.h"
-@@ -138,6 +140,34 @@
+ #include "mozilla/dom/nsMixedContentBlocker.h"
+ #include "nsCRT.h"
+ #include "nsContentUtils.h"
+ #include "nsDNSService2.h"
+ #include "nsICancelable.h"
+@@ -133,16 +135,44 @@
+     rv = aService->GetProtocolInfo(channelURI, &info);
+ 
+     if (NS_SUCCEEDED(rv) &&
+         !aService->CanUseProxy(channelURI, info.defaultPort)) {
+       aProxyInfo = nullptr;
      }
    }
  
@@ -44,3 +60,8 @@
    aCallback->OnProxyAvailable(aRequest, aChannel, aProxyInfo, aStatus);
  }
  
+ // The nsPACManCallback portion of this implementation should be run
+ // on the main thread - so call nsPACMan::AsyncGetProxyForURI() with
+ // a true mainThreadResponse parameter.
+ class nsAsyncResolveRequest final : public nsIRunnable,
+                                     public nsPACManCallback,

@@ -1,6 +1,10 @@
---- a/b/dom/websocket/WebSocket.cpp	2026-04-18 07:44:57
-+++ b/dom/websocket/WebSocket.cpp	2026-04-18 07:45:31
-@@ -6,6 +6,7 @@
+diff --git a/dom/websocket/WebSocket.cpp b/dom/websocket/WebSocket.cpp
+--- a/dom/websocket/WebSocket.cpp
++++ b/dom/websocket/WebSocket.cpp
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "WebSocket.h"
  
@@ -8,7 +12,17 @@
  #include "ErrorList.h"
  #include "js/ColumnNumber.h"  // JS::ColumnNumberOneOrigin
  #include "jsapi.h"
-@@ -1045,6 +1046,11 @@
+ #include "jsfriendapi.h"
+ #include "mozilla/Atomics.h"
+ #include "mozilla/BasePrincipal.h"
+ #include "mozilla/DOMEventTargetHelper.h"
+ #include "mozilla/LoadInfo.h"
+@@ -1044,16 +1045,21 @@
+ //---------------------------------------------------------------------------
+ // WebIDL
+ //---------------------------------------------------------------------------
+ 
+ // Constructor:
  already_AddRefed<WebSocket> WebSocket::Constructor(
      const GlobalObject& aGlobal, const nsAString& aUrl,
      const StringOrStringSequence& aProtocols, ErrorResult& aRv) {
@@ -20,10 +34,29 @@
    if (aProtocols.IsStringSequence()) {
      return WebSocket::ConstructorCommon(
          aGlobal, aUrl, aProtocols.GetAsStringSequence(), nullptr, ""_ns, aRv);
---- a/b/dom/websocket/moz.build	2026-04-18 00:00:00
-+++ b/dom/websocket/moz.build	2026-04-18 00:00:00
-@@ -18,3 +18,4 @@
+   }
+ 
+   Sequence<nsString> protocols;
+   if (!protocols.AppendElement(aProtocols.GetAsString(), fallible)) {
+     aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
+diff --git a/dom/websocket/moz.build b/dom/websocket/moz.build
+--- a/dom/websocket/moz.build
++++ b/dom/websocket/moz.build
+@@ -9,16 +9,17 @@
+     "WebSocket.h",
+ ]
+ 
+ UNIFIED_SOURCES += [
+     "WebSocket.cpp",
+ ]
+ 
  LOCAL_INCLUDES += [
 +    "/cloakcfg",
      "/dom/base",
  ]
+ 
+ MOCHITEST_CHROME_MANIFESTS += [
+     "tests/chrome.toml",
+ ]
+ 
+ MOCHITEST_MANIFESTS += [

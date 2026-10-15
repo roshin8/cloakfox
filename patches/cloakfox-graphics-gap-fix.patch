@@ -1,0 +1,237 @@
+diff --git a/dom/base/CanvasFingerprintManager.cpp b/dom/base/CanvasFingerprintManager.cpp
+--- a/dom/base/CanvasFingerprintManager.cpp
++++ b/dom/base/CanvasFingerprintManager.cpp
+@@ -27,27 +27,27 @@
+ }
+ 
+ void CanvasFingerprintManager::ApplyCanvasNoise(uint8_t* data, uint32_t length,
+                                                  uint32_t seed) {
+   if (seed == 0 || length == 0 || !data) return;
+   uint32_t state = seed;
+   for (uint32_t i = 0; i + 3 < length; i += 4) {
+     state = (state * 1664525u + 1013904223u);
+-    if (state & 0x100) {
+-      // Iterate RGB channels (skip alpha at i+3) to find first non-zero.
++    // High bits keep seeds separated by 1024 from sharing a noise mask.
++    if (state & 0x40000000) {
++      // Protect every usable RGB channel, retaining alpha and exact zeroes.
+       // This is format-agnostic: works for both RGBA (getImageData) and
+       // BGRA (GetImageBuffer/toDataURL). Skipping zero channels preserves
+       // clearRect transparency and avoids the CreepJS post-clear trap.
+       for (uint32_t c = 0; c < 3; c++) {
+         int32_t val = static_cast<int32_t>(data[i + c]);
+         if (val == 0) continue;
+         data[i + c] = static_cast<uint8_t>(
+-            (state & 0x200) ? std::min(val + 1, 255) : std::max(val - 1, 0));
+-        break;  // Only modify one channel per pixel
++            (state & 0x80000000) ? std::min(val + 1, 255) : std::max(val - 1, 1));
+       }
+     }
+   }
+ }
+ 
+ void CanvasFingerprintManager::DisableFunction(uint32_t aId) {
+   RoverfoxStorageManager::PutBool(DisabledKeyForUserContext(aId), true);
+ }
+diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -30,16 +30,17 @@
+ #include "js/PropertyAndElement.h"  // JS_DefineElement
+ #include "js/ScalarType.h"          // js::Scalar::Type
+ #include "mozilla/Base64.h"
+ #include "mozilla/EnumeratedRange.h"
+ #include "mozilla/RandomNum.h"
+ #include "mozilla/ResultVariant.h"
+ #include "mozilla/ScopeExit.h"
+ #include "mozilla/StaticPrefs_webgl.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/dom/BufferSourceBinding.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/GeneratePlaceholderCanvasData.h"
+ #include "mozilla/dom/ToJSValue.h"
+ #include "mozilla/dom/TypedArray.h"
+ #include "mozilla/dom/WebGLContextEvent.h"
+ #include "mozilla/dom/WorkerCommon.h"
+ #include "mozilla/gfx/CanvasManagerChild.h"
+@@ -5596,27 +5597,47 @@
+ void ClientWebGLContext::DrawElementsInstanced(GLenum mode, GLsizei count,
+                                                GLenum type, WebGLintptr offset,
+                                                GLsizei primcount) {
+   Run<RPROC(DrawElementsInstanced)>(mode, count, type, offset, primcount);
+   AfterDrawCall();
+ }
+ 
+ // ------------------------------ Readback -------------------------------
++// Precise/packed pixels can be computation data. Strict privacy denies
++// unprotected readbacks; explicit compatibility restores exact values. PBOs
++// bypass CPU noise and obey the same policy. Invalid enums retain native errors.
++static bool CloakfoxBlockPixelReadback(GLenum format, GLenum type, bool pbo,
++                                      uint32_t userContextId) {
++  if (!StaticPrefs::cloakfox_enabled() ||
++      !MaskConfig::GetBool("webgl:typed_readback:disabled", userContextId)
++           .value_or(true)) {
++    return false;
++  }
++  if (!webgl::PackingInfoInfo::For({format, type})) return false;
++  return pbo || format != LOCAL_GL_RGBA || type != LOCAL_GL_UNSIGNED_BYTE;
++}
++
+ void ClientWebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
+                                     GLsizei height, GLenum format, GLenum type,
+                                     WebGLsizeiptr offset,
+                                     dom::CallerType aCallerType,
+                                     ErrorResult& out_error) const {
+   const FuncScope funcScope(*this, "readPixels");
+   if (!ReadPixels_SharedPrecheck(&type, aCallerType, out_error)) return;
+   const auto& state = State();
+   if (!ValidateNonNegative("width", width)) return;
+   if (!ValidateNonNegative("height", height)) return;
+   if (!ValidateNonNegative("offset", offset)) return;
++  if (aCallerType != dom::CallerType::System &&
++      CloakfoxBlockPixelReadback(format, type, true, GetUserContextId())) {
++    EnqueueError(LOCAL_GL_INVALID_OPERATION,
++                 "Pixel readback is disabled by browser policy.");
++    return;
++  }
+ 
+   const auto desc = webgl::ReadPixelsDesc{{x, y},
+                                           *uvec2::From(width, height),
+                                           {format, type},
+                                           state.mPixelPackState};
+   Run<RPROC(ReadPixelsPbo)>(desc, static_cast<uint64_t>(offset));
+ }
+ 
+@@ -5645,16 +5666,23 @@
+ 
+   auto viewElemType = dstData.Type();
+   if (viewElemType == js::Scalar::Uint8Clamped) {
+     viewElemType = js::Scalar::Uint8;
+   }
+   if (viewElemType != reqScalarType) {
+     EnqueueError(LOCAL_GL_INVALID_OPERATION,
+                  "`pixels` type does not match `type`.");
++    return;
++  }
++
++  if (aCallerType != dom::CallerType::System &&
++      CloakfoxBlockPixelReadback(format, type, false, GetUserContextId())) {
++    EnqueueError(LOCAL_GL_INVALID_OPERATION,
++                 "Pixel readback is disabled by browser policy.");
+     return;
+   }
+ 
+   size_t elemSize = SizeOfViewElem(dstData);
+   dstData.ProcessFixedData<true>([&](const Span<uint8_t>& aData) {
+     const auto& range = ValidateArrayBufferView(aData, elemSize, dstElemOffset,
+                                                 0, LOCAL_GL_INVALID_VALUE);
+     if (!range) {
+@@ -5696,34 +5724,59 @@
+               range->size_bytes(), pii->elementsPerPixel, pii->bytesPerElement,
+               alphaChannelOffset, hasAlphaChannel);
+         }
+       }
+     }
+   });
+ }
+ 
+-// Cloakfox: per-container noise for gl.readPixels(), the other half of the
+-// classic "webglHash" (the toDataURL/toBlob half is handled in
+-// GetImageBuffer). Applied ONLY to 8-bit RGBA readback: float/integer formats
+-// are used for GPU compute readback where perturbing values would corrupt
+-// results rather than defend a fingerprint. Same canvas:seed as the 2D context
+-// and GetImageBuffer, so a container's surfaces stay mutually consistent.
++// Noise only ordinary RGBA8 pixels actually written by the backend. Precise
++// reads are denied above or preserved exactly by the explicit compute opt-out.
++static uint32_t CloakfoxAdvanceCanvasSeed(uint32_t seed, uint32_t pixels) {
++  // Skip the same LCG used by ApplyCanvasNoise without walking row padding.
++  uint32_t multiplier = 1664525u, increment = 1013904223u;
++  while (pixels) {
++    if (pixels & 1) seed = seed * multiplier + increment;
++    increment *= multiplier + 1;
++    multiplier *= multiplier;
++    pixels >>= 1;
++  }
++  return seed;
++}
++
+ static void CloakfoxNoiseReadPixels(const webgl::ReadPixelsDesc& desc,
++                                    const webgl::ReadPixelsResult& result,
+                                     const Span<uint8_t>& dest,
+                                     uint32_t seed) {
+   if (desc.pi.type != LOCAL_GL_UNSIGNED_BYTE ||
+       desc.pi.format != LOCAL_GL_RGBA) {
+     return;
+   }
+-  if (!seed || dest.size() < 4) {
+-    return;
+-  }
+-  mozilla::dom::CanvasFingerprintManager::ApplyCanvasNoise(
+-      dest.data(), static_cast<uint32_t>(dest.size() & ~size_t(3)), seed);
++  if (!seed || !result.byteStride || result.subrect.IsEmpty()) {
++    return;
++  }
++  // Noise only pixels the backend actually wrote. PACK_SKIP_ROWS/PIXELS,
++  // row padding, untouched destination tails and failed reads stay exact.
++  const auto& rect = result.subrect;
++  const size_t rowBytes = size_t(rect.width) * 4;
++  for (int32_t row = 0; row < rect.height; ++row) {
++    const size_t offset =
++        (size_t(desc.packState.skipRows) + rect.y + row) * result.byteStride +
++        (size_t(desc.packState.skipPixels) + rect.x) * 4;
++    if (offset > dest.size() || rowBytes > dest.size() - offset ||
++        rowBytes > UINT32_MAX) {
++      return;
++    }
++    const uint32_t firstPixel =
++        uint32_t(uint64_t(rect.y + row) * desc.size.x + rect.x);
++    mozilla::dom::CanvasFingerprintManager::ApplyCanvasNoise(
++        dest.data() + offset, static_cast<uint32_t>(rowBytes),
++        CloakfoxAdvanceCanvasSeed(seed, firstPixel));
++  }
+ }
+ 
+ bool ClientWebGLContext::DoReadPixels(const webgl::ReadPixelsDesc& desc,
+                                       const Span<uint8_t> dest) const {
+   RefPtr<webgl::NotLostData> notLost(mNotLost);
+   if (!notLost) {
+     return false;
+   }
+@@ -5764,17 +5817,17 @@
+ 
+   for (const auto i : IntegerRange(subrect.height)) {
+     const auto srcRow = srcSubrect.subspan(i * byteStride, xByteSize);
+     const auto destRow = destSubrect.subspan(i * byteStride, xByteSize);
+     Memcpy(&destRow, srcRow);
+   }
+ 
+   CloakfoxNoiseReadPixels(
+-      desc, dest, CloakfoxSiteSeed::Derive(GetUserContextId(), "canvas:seed",
++      desc, res, dest, CloakfoxSiteSeed::Derive(GetUserContextId(), "canvas:seed",
+           GetCookieJarSettings()));
+   return true;
+ }
+ 
+ RefPtr<dom::HTMLCanvasElement::SurfaceSnapshotPromise>
+ ClientWebGLContext::DoReadPixelsAsync() {
+   MOZ_ASSERT(GetChild());
+ 
+@@ -5901,17 +5954,17 @@
+           for (const auto i : IntegerRange(subrect.height)) {
+             const auto srcRow = srcSubrect.subspan(i * byteStride, xByteSize);
+             const auto destRow = destSubrect.subspan(i * byteStride, xByteSize);
+             Memcpy(&destRow, srcRow);
+           }
+ 
+           // Match synchronous snapshot readback: noise our copied RGBA
+           // pixels once, preserving alpha, before the native swizzle/flip.
+-          CloakfoxNoiseReadPixels(desc, pixels, noiseSeed);
++          CloakfoxNoiseReadPixels(desc, aReply, pixels, noiseSeed);
+ 
+           // RGBA->BGRA and flip-y.
+           MOZ_RELEASE_ASSERT(gfx::SwizzleYFlipData(
+               pixels.data(), stride, gfx::SurfaceFormat::R8G8B8A8,
+               pixels.data(), stride, gfx::SurfaceFormat::B8G8R8A8,
+               {size.x, size.y}));
+         }
+ 

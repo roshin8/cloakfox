@@ -1,6 +1,11 @@
---- a/b/dom/events/Clipboard.cpp	2026-04-18 02:15:09
-+++ b/dom/events/Clipboard.cpp	2026-04-18 02:15:31
-@@ -7,6 +7,7 @@
+diff --git a/dom/events/Clipboard.cpp b/dom/events/Clipboard.cpp
+--- a/dom/events/Clipboard.cpp
++++ b/dom/events/Clipboard.cpp
+@@ -1,15 +1,16 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
  #include "mozilla/dom/Clipboard.h"
  
  #include <algorithm>
@@ -8,7 +13,17 @@
  
  #include "imgIContainer.h"
  #include "imgITools.h"
-@@ -329,6 +330,17 @@
+ #include "mozilla/AbstractThread.h"
+ #include "mozilla/BasePrincipal.h"
+ #include "mozilla/RefPtr.h"
+ #include "mozilla/Result.h"
+ #include "mozilla/ResultVariant.h"
+@@ -345,16 +346,27 @@
+     callback->OnError(rv);
+     return;
+   }
+ }
+ 
  already_AddRefed<Promise> Clipboard::ReadHelper(nsIPrincipal& aSubjectPrincipal,
                                                  ReadRequestType aType,
                                                  ErrorResult& aRv) {
@@ -26,7 +41,17 @@
    // Create a new promise
    nsGlobalWindowInner* owner = GetOwnerWindow();
    RefPtr<Promise> p = dom::Promise::Create(owner, aRv);
-@@ -679,6 +691,17 @@
+   if (aRv.Failed()) {
+     return nullptr;
+   }
+ 
+   // If a "paste" clipboard event is actively being processed, we're
+@@ -893,16 +905,27 @@
+ 
+ NS_IMPL_ISUPPORTS(ClipboardWriteCallback, nsIAsyncClipboardRequestCallback)
+ 
+ }  // namespace
+ 
  already_AddRefed<Promise> Clipboard::Write(
      const Sequence<OwningNonNull<ClipboardItem>>& aData,
      nsIPrincipal& aSubjectPrincipal, ErrorResult& aRv) {
@@ -44,13 +69,29 @@
    // Create a promise
    RefPtr<nsGlobalWindowInner> owner = GetOwnerWindow();
    RefPtr<Promise> p = dom::Promise::Create(owner, aRv);
---- a/b/dom/events/moz.build	2026-04-18 00:00:00
-+++ b/dom/events/moz.build	2026-04-18 00:00:00
-@@ -175,6 +175,7 @@
-
+   if (aRv.Failed()) {
+     return nullptr;
+   }
+ 
+   Document* doc = owner->GetDoc();
+diff --git a/dom/events/moz.build b/dom/events/moz.build
+--- a/dom/events/moz.build
++++ b/dom/events/moz.build
+@@ -174,16 +174,17 @@
+ 
+ if CONFIG["MOZ_WEBSPEECH"] and CONFIG["MOZ_WIDGET_TOOLKIT"] != "android":
+     UNIFIED_SOURCES += ["SpeechRecognitionErrorEvent.cpp"]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
  FINAL_LIBRARY = "xul"
  LOCAL_INCLUDES += [
 +    "/cloakcfg",
      "/docshell/base",
      "/dom/base",
      "/dom/html",
+     "/dom/storage",
+     "/dom/xml",
+     "/dom/xul",
+     "/js/xpconnect/wrappers",
+     "/layout/forms",

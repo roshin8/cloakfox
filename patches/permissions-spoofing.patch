@@ -1,7 +1,10 @@
 diff --git a/dom/permission/PermissionStatus.cpp b/dom/permission/PermissionStatus.cpp
 --- a/dom/permission/PermissionStatus.cpp
 +++ b/dom/permission/PermissionStatus.cpp
-@@ -4,6 +4,7 @@
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "mozilla/dom/PermissionStatus.h"
  
@@ -9,7 +12,17 @@ diff --git a/dom/permission/PermissionStatus.cpp b/dom/permission/PermissionStat
  #include "PermissionStatusSink.h"
  #include "PermissionUtils.h"
  #include "mozilla/AsyncEventDispatcher.h"
-@@ -97,6 +98,15 @@
+ #include "mozilla/Permission.h"
+ #include "mozilla/Services.h"
+ #include "nsGlobalWindowInner.h"
+ #include "nsIPermissionManager.h"
+ 
+@@ -106,16 +107,25 @@
+   aName.Assign(GetPermissionType());
+ }
+ 
+ already_AddRefed<PermissionStatusSink> PermissionStatus::CreateSink() {
+   return MakeAndAddRef<PermissionStatusSink>(this, mName, GetPermissionType());
  }
  
  PermissionState PermissionStatus::ComputeStateFromAction(uint32_t aAction) {
@@ -25,10 +38,20 @@ diff --git a/dom/permission/PermissionStatus.cpp b/dom/permission/PermissionStat
    nsCOMPtr<nsIGlobalObject> global = GetRelevantGlobal();
    if (NS_WARN_IF(!global)) {
      return PermissionState::Denied;
+   }
+ 
+   return ActionToPermissionState(aAction, mName, global);
+ }
+ 
 diff --git a/dom/permission/moz.build b/dom/permission/moz.build
 --- a/dom/permission/moz.build
 +++ b/dom/permission/moz.build
-@@ -34,4 +34,8 @@
+@@ -29,9 +29,13 @@
+     "PermissionUtils.cpp",
+     "StorageAccessPermissionStatus.cpp",
+ ]
+ 
+ MOCHITEST_MANIFESTS += ["tests/mochitest.toml"]
  
  FINAL_LIBRARY = "xul"
  

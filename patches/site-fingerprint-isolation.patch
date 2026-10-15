@@ -1,11 +1,22 @@
+diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
 --- a/dom/base/AbstractRange.cpp
 +++ b/dom/base/AbstractRange.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -984,7 +985,7 @@
+ 
+ #include "mozilla/dom/AbstractRange.h"
+ 
+ #include "MaskConfig.hpp"
+ 
+@@ -969,17 +970,17 @@
+       aFlushLayout);
+ 
+   nsRect r = accumulator.mResultRect.IsEmpty() ? accumulator.mFirstRect
+                                                : accumulator.mResultRect;
+   rect->SetLayoutRect(r);
    // Cloakfox: same sub-pixel noise pattern as Element::GetBoundingClientRect.
    // Range-based text measurements are a separate code path used for font
    // fingerprinting via document.createRange().
@@ -14,7 +25,17 @@
      uint32_t s = seed.value();
      auto n = [&s]() {
        s = s * 1664525u + 1013904223u;
-@@ -1053,7 +1054,7 @@
+       return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+     };
+     rect->SetRect(static_cast<float>(rect->X()) + n(),
+                   static_cast<float>(rect->Y()) + n(),
+                   static_cast<float>(rect->Width()) + n(),
+@@ -1038,17 +1039,17 @@
+   CollectClientRectsAndText(
+       &builder, nullptr, this, startRef.GetContainer(),
+       *startRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets),
+       endRef.GetContainer(),
+       *endRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets), aClampToEdge,
        aFlushLayout);
    // Cloakfox: noise each rect in the list. CreepJS uses Range.getClientRects
    // against rendered text to probe per-character metrics.
@@ -23,14 +44,30 @@
      uint32_t s = seed.value();
      auto n = [&s]() {
        s = s * 1664525u + 1013904223u;
+       return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+     };
+     for (uint32_t i = 0; i < rectList->Length(); ++i) {
+       DOMRect* r = rectList->Item(i);
+       if (r) {
+diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
 --- a/dom/base/Element.cpp
 +++ b/dom/base/Element.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -1226,7 +1227,7 @@
+ 
+ /*
+  * Base class for all element classes; this provides an implementation
+  * of DOM Core's Element, implements nsIContent, provides
+  * utility methods for subclasses, and so forth.
+@@ -1217,17 +1218,17 @@
+   }
+ 
+   rect->SetLayoutRect(frame->GetBoundingClientRect());
+ 
+   // Cloakfox: sub-pixel noise on the returned rect using canvas:seed.
    // Layout-based fingerprints (e.g. font rendering detection) measure
    // getBoundingClientRect across elements; we add deterministic per-context
    // jitter so every container sees a different value.
@@ -39,7 +76,17 @@
      uint32_t s = seed.value();
      auto n = [&s]() {
        s = s * 1664525u + 1013904223u;
-@@ -1256,7 +1257,7 @@
+       return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+     };
+     rect->SetRect(static_cast<float>(rect->X()) + n(),
+                   static_cast<float>(rect->Y()) + n(),
+                   static_cast<float>(rect->Width()) + n(),
+@@ -1247,17 +1248,17 @@
+ 
+   nsLayoutUtils::RectListBuilder builder(rectList);
+   nsLayoutUtils::GetAllInFlowRects(
+       frame, nsLayoutUtils::GetContainingBlockForClientRect(frame), &builder,
+       nsLayoutUtils::GetAllInFlowRectsFlag::AccountForTransforms);
  
    // Cloakfox: same sub-pixel noise as getBoundingClientRect, applied to
    // every rect in the list. CreepJS measures per-rect for multi-line text.
@@ -48,7 +95,17 @@
      uint32_t s = seed.value();
      auto n = [&s]() {
        s = s * 1664525u + 1013904223u;
-@@ -6826,7 +6827,7 @@
+       return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+     };
+     for (uint32_t i = 0; i < rectList->Length(); ++i) {
+       DOMRect* r = rectList->Item(i);
+       if (r) {
+@@ -7007,17 +7008,17 @@
+     parent = result.mParent;
+   }
+ 
+   aRect = CSSIntRect::FromAppUnitsRounded(
+       frame->Style()->EffectiveZoom().Unzoom(rect));
    // Cloakfox: add integer jitter (±1px) to offset measurements. Covers
    // Element.offsetWidth/Height/Left/Top, which CreepJS and fingerprint.com
    // use for font detection via span.offsetWidth comparison.
@@ -57,14 +114,30 @@
      uint32_t s = seed.value() ^ static_cast<uint32_t>(aRect.width * 31 +
                                                         aRect.height * 17);
      s = s * 1664525u + 1013904223u;
+     int32_t dx = static_cast<int32_t>(s % 3) - 1;
+     s = s * 1664525u + 1013904223u;
+     int32_t dy = static_cast<int32_t>(s % 3) - 1;
+     s = s * 1664525u + 1013904223u;
+     int32_t dw = static_cast<int32_t>(s % 3) - 1;
+diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderingContext2D.cpp
 --- a/dom/canvas/CanvasRenderingContext2D.cpp
 +++ b/dom/canvas/CanvasRenderingContext2D.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -2325,7 +2326,8 @@
+ 
+ #include "CanvasRenderingContext2D.h"
+ 
+ #include <algorithm>
+ #include <numbers>
+@@ -2336,17 +2337,18 @@
+           if (BrowsingContext* bc = win->GetBrowsingContext()) {
+             userContextId = bc->OriginAttributesRef().mUserContextId;
+           }
+         } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+           userContextId = wp->GetOriginAttributes().mUserContextId;
          }
        }
      }
@@ -74,7 +147,17 @@
      if (canvasSeed != 0) {
        CanvasFingerprintManager::ApplyCanvasNoise(
            ret.get(), out_imageSize->width * out_imageSize->height * 4,
-@@ -5323,7 +5325,9 @@
+           canvasSeed);
+     }
+   }
+ 
+   return ret;
+@@ -5441,17 +5443,19 @@
+     double actualBoundingBoxLeft = offsetX - processor.mBoundingBox.X();
+     double actualBoundingBoxRight = processor.mBoundingBox.XMost() - offsetX;
+     double actualBoundingBoxAscent =
+         -processor.mBoundingBox.Y() - baselineAnchor;
+     double actualBoundingBoxDescent =
          processor.mBoundingBox.YMost() + baselineAnchor;
      // Cloakfox: add deterministic sub-pixel noise to text metrics using
      // canvas:seed so measureText is not a reliable font fingerprint.
@@ -85,7 +168,17 @@
        uint32_t s = seed.value();
        auto noise = [&s]() {
          s = s * 1664525u + 1013904223u;
-@@ -6823,7 +6827,8 @@
+         return (static_cast<double>(s) / 4294967295.0 - 0.5) * 0.4;
+       };
+       totalWidth += noise();
+       actualBoundingBoxLeft += noise();
+       actualBoundingBoxRight += noise();
+@@ -6940,17 +6944,18 @@
+           if (BrowsingContext* bc = win->GetBrowsingContext()) {
+             userContextId = bc->OriginAttributesRef().mUserContextId;
+           }
+         } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
+           userContextId = wp->GetOriginAttributes().mUserContextId;
          }
        }
      }
@@ -95,14 +188,30 @@
      if (canvasSeed != 0) {
        JS::AutoCheckCannotGC nogc2;
        bool isShared2;
+       uint8_t* pixelData =
+           JS_GetUint8ClampedArrayData(darray, &isShared2, nogc2);
+       CanvasFingerprintManager::ApplyCanvasNoise(pixelData, len.value(),
+                                                   canvasSeed);
+     }
+diff --git a/dom/canvas/CanvasUtils.cpp b/dom/canvas/CanvasUtils.cpp
 --- a/dom/canvas/CanvasUtils.cpp
 +++ b/dom/canvas/CanvasUtils.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -377,11 +378,15 @@
+ 
+ #include "CanvasUtils.h"
+ 
+ #include "MaskConfig.hpp"
+ 
+@@ -372,36 +373,40 @@
+       canvasExtractionFromThirdPartiesIsBlocked, aCx, aPrincipal,
+       getIsThirdPartyWindow, reportToConsole, prompt);
+ }
+ 
+ // Configured Cloakfox noise replaces Firefox's session-keyed randomization.
  // Keep permission/placeholder checks first, and leave unconfigured or disabled
  // contexts on Firefox's native policy. A configured zero intentionally disables
  // noise rather than requesting Firefox's randomization.
@@ -123,7 +232,14 @@
  }
  
  ImageExtraction ImageExtractionResult(dom::HTMLCanvasElement* aCanvasElement,
-@@ -396,7 +401,7 @@
+                                       JSContext* aCx,
+                                       nsIPrincipal* aPrincipal) {
+   if (IsUnrestrictedPrincipal(aPrincipal)) {
+     return ImageExtraction::Unrestricted;
+   }
+ 
+   nsCOMPtr<dom::Document> ownerDoc = aCanvasElement->OwnerDoc();
+   if (!IsImageExtractionAllowed(ownerDoc, aCx, aPrincipal)) {
      return ImageExtraction::Placeholder;
    }
  
@@ -132,7 +248,17 @@
      return ImageExtraction::Unrestricted;
    }
  
-@@ -564,7 +569,8 @@
+   if (ownerDoc->ShouldResistFingerprinting(
+           RFPTarget::EfficientCanvasRandomization) &&
+       GetCanvasExtractDataPermission(aPrincipal) !=
+           nsIPermissionManager::ALLOW_ACTION) {
+     return ImageExtraction::EfficientRandomize;
+@@ -559,17 +564,18 @@
+   if (IsUnrestrictedPrincipal(aPrincipal)) {
+     return ImageExtraction::Unrestricted;
+   }
+ 
+   if (!IsImageExtractionAllowed(aOffscreenCanvas, aCx, aPrincipal)) {
      return ImageExtraction::Placeholder;
    }
  
@@ -142,14 +268,30 @@
      return ImageExtraction::Unrestricted;
    }
  
+   if (GetCanvasExtractDataPermission(aPrincipal) ==
+       nsIPermissionManager::ALLOW_ACTION) {
+     return ImageExtraction::Unrestricted;
+   }
+ 
+diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
 --- a/dom/canvas/ClientWebGLContext.cpp
 +++ b/dom/canvas/ClientWebGLContext.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -1457,7 +1458,8 @@
+ 
+ #include "ClientWebGLContext.h"
+ #include "MaskConfig.hpp"
+ #include "CanvasFingerprintManager.h"
+ #include "WebGLParamsManager.h"
+@@ -1453,17 +1454,18 @@
+   // (CanvasRenderingContext2D.cpp). Without this the classic "webglHash" —
+   // draw a scene, then canvas.toDataURL()/toBlob() on the WebGL context — was
+   // completely unnoised and identical across containers, while the 2D canvas
+   // beside it was per-container. Uses the same canvas:seed so both surfaces
+   // stay consistent for a container, and is deterministic (unlike Gecko's
    // Randomize path above, which re-randomises per call and would break the
    // same-container-same-fingerprint invariant).
    if (buffer) {
@@ -159,7 +301,17 @@
      const auto size = *out_imageSize;
      if (seed && size.width > 0 && size.height > 0) {
        CheckedInt<uint32_t> len =
-@@ -5772,7 +5774,8 @@
+           CheckedInt<uint32_t>(size.width) * size.height * 4;
+       if (len.isValid()) {
+         CanvasFingerprintManager::ApplyCanvasNoise(buffer.get(), len.value(),
+                                                    seed);
+       }
+@@ -5766,17 +5768,18 @@
+ 
+   for (const auto i : IntegerRange(subrect.height)) {
+     const auto srcRow = srcSubrect.subspan(i * byteStride, xByteSize);
+     const auto destRow = destSubrect.subspan(i * byteStride, xByteSize);
+     Memcpy(&destRow, srcRow);
    }
  
    CloakfoxNoiseReadPixels(
@@ -169,7 +321,17 @@
    return true;
  }
  
-@@ -5812,7 +5815,8 @@
+ RefPtr<dom::HTMLCanvasElement::SurfaceSnapshotPromise>
+ ClientWebGLContext::DoReadPixelsAsync() {
+   MOZ_ASSERT(GetChild());
+ 
+   RefPtr<dom::HTMLCanvasElement::SurfaceSnapshotPromise::Private> promise =
+@@ -5806,17 +5809,18 @@
+   if (!checkedByteSize.isValid()) {
+     promise->Reject(NS_ERROR_NOT_AVAILABLE, __func__);
+     return promise;
+   }
+ 
    // Capture the requesting canvas's identity before dispatch. The IPC reply
    // runs later without the initiating realm, and its overlay may have changed.
    const uint32_t noiseSeed =
@@ -179,14 +341,30 @@
    const size_t expectedSize = checkedByteSize.value();
    const auto desc = webgl::ReadPixelsDesc{{0, 0}, size};
  
+   RefPtr<dom::PWebGLChild::ReadPixelsAsyncPromise> ipcPromise =
+       child->SendReadPixelsAsync(desc, static_cast<uint64_t>(expectedSize));
+   if (!ipcPromise) {
+     promise->Reject(NS_ERROR_FAILURE, __func__);
+     return promise;
+diff --git a/dom/media/webaudio/AnalyserNode.cpp b/dom/media/webaudio/AnalyserNode.cpp
 --- a/dom/media/webaudio/AnalyserNode.cpp
 +++ b/dom/media/webaudio/AnalyserNode.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -232,7 +233,8 @@
+ 
+ #include "mozilla/dom/AnalyserNode.h"
+ 
+ #include "AudioNodeEngine.h"
+ #include "AudioNodeTrack.h"
+@@ -227,17 +228,18 @@
+     nsPIDOMWindowInner* global = globalObj ? globalObj->GetAsInnerWindow() : nullptr;
+     if (global) {
+       if (BrowsingContext* bc = global->GetBrowsingContext()) {
+         userContextId = bc->OriginAttributesRef().mUserContextId;
+       }
      } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
        userContextId = wp->GetOriginAttributes().mUserContextId;
      }
@@ -196,7 +374,17 @@
      if (seed != 0) {
        AudioFingerprintManager::ApplyTransformation(mOutputBuffer.Elements(), mOutputBuffer.Length(), seed);
      }
-@@ -266,7 +268,8 @@
+   }
+   aArray.ProcessData([&](const Span<float>& aData, JS::AutoCheckCannotGC&&) {
+     size_t length = std::min(size_t(aData.Length()), mOutputBuffer.Length());
+ 
+     for (size_t i = 0; i < length; ++i) {
+@@ -261,17 +263,18 @@
+     nsPIDOMWindowInner* global = globalObj ? globalObj->GetAsInnerWindow() : nullptr;
+     if (global) {
+       if (BrowsingContext* bc = global->GetBrowsingContext()) {
+         userContextId = bc->OriginAttributesRef().mUserContextId;
+       }
      } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
        userContextId = wp->GetOriginAttributes().mUserContextId;
      }
@@ -206,7 +394,17 @@
      if (seed != 0) {
        AudioFingerprintManager::ApplyTransformation(mOutputBuffer.Elements(), mOutputBuffer.Length(), seed);
      }
-@@ -307,7 +310,8 @@
+   }
+   const double rangeScaleFactor = 1.0 / (mMaxDecibels - mMinDecibels);
+ 
+   aArray.ProcessData([&](const Span<uint8_t>& aData, JS::AutoCheckCannotGC&&) {
+     size_t length = std::min(size_t(aData.Length()), mOutputBuffer.Length());
+@@ -302,17 +305,18 @@
+       nsPIDOMWindowInner* global = globalObj ? globalObj->GetAsInnerWindow() : nullptr;
+       if (global) {
+         if (BrowsingContext* bc = global->GetBrowsingContext()) {
+           userContextId = bc->OriginAttributesRef().mUserContextId;
+         }
        } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
          userContextId = wp->GetOriginAttributes().mUserContextId;
        }
@@ -216,7 +414,17 @@
        if (seed != 0) {
          AudioFingerprintManager::ApplyTransformation(aData.Elements(), length, seed);
        }
-@@ -339,7 +343,8 @@
+     }
+   });
+ }
+ 
+ void AnalyserNode::GetByteTimeDomainData(const Uint8Array& aArray) {
+@@ -334,17 +338,18 @@
+       nsPIDOMWindowInner* global = globalObj ? globalObj->GetAsInnerWindow() : nullptr;
+       if (global) {
+         if (BrowsingContext* bc = global->GetBrowsingContext()) {
+           userContextId = bc->OriginAttributesRef().mUserContextId;
+         }
        } else if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
          userContextId = wp->GetOriginAttributes().mUserContextId;
        }
@@ -226,14 +434,30 @@
        if (seed != 0) {
          AudioFingerprintManager::ApplyTransformation(tmpBuffer.Elements(), length, seed);
        }
+     }
+     unsigned char* buffer = aData.Elements();
+     for (size_t i = 0; i < length; ++i) {
+       const float value = tmpBuffer[i];
+       // scale the value to the range of [0, UCHAR_MAX]
+diff --git a/dom/media/webaudio/AudioBuffer.cpp b/dom/media/webaudio/AudioBuffer.cpp
 --- a/dom/media/webaudio/AudioBuffer.cpp
 +++ b/dom/media/webaudio/AudioBuffer.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -315,7 +316,8 @@
+ 
+ #include "AudioBuffer.h"
+ 
+ #include <numeric>
+ 
+@@ -310,17 +311,18 @@
+       uint32_t userContextId = 0;
+       nsPIDOMWindowInner* global = GetParentObject();
+       if (global) {
+         if (BrowsingContext* bc = global->GetBrowsingContext()) {
+           userContextId = bc->OriginAttributesRef().mUserContextId;
          }
        }
        // Seed lookup runs even when global is null (workers get ucid=0 fallback)
@@ -243,7 +467,17 @@
        if (seed != 0) {
          JS::AutoCheckCannotGC nogc;
          bool isShared;
-@@ -388,7 +390,8 @@
+         float* jsData = JS_GetFloat32ArrayData(array, &isShared, nogc);
+         if (!isShared && jsData) {
+           AudioFingerprintManager::ApplyTransformation(jsData, Length(), seed);
+         }
+       }
+@@ -383,17 +385,18 @@
+         uint32_t userContextId = 0;
+         nsPIDOMWindowInner* global = GetParentObject();
+         if (global) {
+           if (BrowsingContext* bc = global->GetBrowsingContext()) {
+             userContextId = bc->OriginAttributesRef().mUserContextId;
            }
          }
          // Seed lookup runs even when global is null (workers get ucid=0 fallback)
@@ -253,14 +487,30 @@
          if (seed != 0) {
            AudioFingerprintManager::ApplyTransformation(
                aData.Elements(), calculateCount(aData.Length()), seed);
+         }
+       }
+     });
+     return;
+   }
+diff --git a/dom/svg/SVGGeometryElement.cpp b/dom/svg/SVGGeometryElement.cpp
 --- a/dom/svg/SVGGeometryElement.cpp
 +++ b/dom/svg/SVGGeometryElement.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -301,7 +302,7 @@
+ 
+ #include "SVGGeometryElement.h"
+ 
+ #include "MaskConfig.hpp"
+ #include "DOMSVGPoint.h"
+@@ -336,17 +337,17 @@
+ already_AddRefed<DOMSVGAnimatedNumber> SVGGeometryElement::PathLength() {
+   return mPathLength.ToDOMAnimatedNumber(this);
+ }
+ 
+ float SVGGeometryElement::GetTotalLength() {
    RefPtr<Path> flat = GetOrBuildPathForMeasuring();
    float length = flat ? flat->ComputeLength() : 0.f;
    // Cloakfox: sub-pixel noise to defeat SVG path-length fingerprinting.
@@ -269,15 +519,31 @@
      uint32_t s = seed.value() ^ static_cast<uint32_t>(length * 1000);
      s = s * 1664525u + 1013904223u;
      length += (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+   }
+   return length;
+ }
+ 
+ void SVGGeometryElement::FlushIfNeeded() {
+diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
 --- a/dom/svg/SVGGraphicsElement.cpp
 +++ b/dom/svg/SVGGraphicsElement.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -43,8 +44,8 @@
- }
+ 
+ #include "mozilla/dom/SVGGraphicsElement.h"
+ 
+ #include "MaskConfig.hpp"
+ #include "mozilla/ISVGDisplayableFrame.h"
+@@ -30,18 +31,18 @@
+ //----------------------------------------------------------------------
+ // Implementation
+ 
+ SVGGraphicsElement::SVGGraphicsElement(
+     already_AddRefed<mozilla::dom::NodeInfo> aNodeInfo)
+     : SVGGraphicsElementBase(std::move(aNodeInfo)) {}
  
  // Cloakfox: sub-pixel noise on a gfx::Rect for SVG bbox spoofing.
 -static gfx::Rect CloakNoiseRect(gfx::Rect aRect) {
@@ -287,12 +553,16 @@
    if (!seed || seed.value() == 0) return aRect;
    uint32_t s = seed.value();
    auto n = [&s]() {
-@@ -100,12 +101,12 @@
+     s = s * 1664525u + 1013904223u;
+     return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+   };
+   aRect.x += n();
+   aRect.y += n();
+@@ -64,17 +65,17 @@
+   ISVGDisplayableFrame* svgframe = do_QueryFrame(frame);
  
-     rec.Scale(1 / dom::UserSpaceMetrics::GetZoom(this));
- 
--    return MakeAndAddRef<SVGRect>(this, CloakNoiseRect(ToRect(rec)));
-+    return MakeAndAddRef<SVGRect>(this, CloakNoiseRect(OwnerDoc(), ToRect(rec)));
+   if (!svgframe && !frame->IsInSVGTextSubtree()) {
+     return ZeroBBox();
    }
  
    if (!NS_SVGNewGetBBoxEnabled()) {
@@ -300,11 +570,21 @@
 -        this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(
 +        this, CloakNoiseRect(OwnerDoc(), ToRect(SVGUtils::GetBBox(
                    frame, {SVGBBoxFlag::IncludeFillGeometry,
+                           SVGBBoxFlag::TextContentBounds,
                            SVGBBoxFlag::UseUserSpaceOfUseElement,
                            SVGBBoxFlag::DisregardCSSZoom}))));
-@@ -129,13 +130,13 @@
-   flags +=
-       {SVGBBoxFlag::UseUserSpaceOfUseElement, SVGBBoxFlag::DisregardCSSZoom};
+   }
+   SVGBBoxFlags flags;
+   if (aOptions.mFill) {
+     flags += SVGBBoxFlag::IncludeFillGeometry;
+@@ -89,23 +90,23 @@
+     flags += {SVGBBoxFlag::IncludeFillGeometry, SVGBBoxFlag::IncludeClipped};
+   }
+   if (flags.isEmpty()) {
+     return ZeroBBox();
+   }
+   flags += {SVGBBoxFlag::UseUserSpaceOfUseElement,
+             SVGBBoxFlag::TextContentBounds, SVGBBoxFlag::DisregardCSSZoom};
    return MakeAndAddRef<SVGRect>(
 -      this, CloakNoiseRect(ToRect(SVGUtils::GetBBox(frame, flags))));
 +      this, CloakNoiseRect(OwnerDoc(), ToRect(SVGUtils::GetBBox(frame, flags))));
@@ -319,7 +599,17 @@
    if (!seed || seed.value() == 0) return m;
    uint32_t s = seed.value();
    auto n = [&s]() {
-@@ -157,7 +158,7 @@
+     s = s * 1664525u + 1013904223u;
+     return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 1e-4f;
+   };
+   m._11 += n(); m._12 += n();
+   m._21 += n(); m._22 += n();
+@@ -117,29 +118,29 @@
+   if (auto* currentDoc = GetComposedDoc()) {
+     // Flush all pending notifications so that our frames are up to date
+     currentDoc->FlushPendingNotifications(FlushType::Layout);
+   }
+   gfx::Matrix m = SVGContentUtils::GetCTM(this);
    if (m.IsSingular()) {
      m = {};
    }
@@ -328,7 +618,11 @@
  }
  
  already_AddRefed<SVGMatrix> SVGGraphicsElement::GetScreenCTM() {
-@@ -169,7 +170,7 @@
+   if (auto* currentDoc = GetComposedDoc()) {
+     // Flush all pending notifications so that our frames are up to date
+     currentDoc->FlushPendingNotifications(FlushType::Layout);
+   }
+   gfx::Matrix m = SVGContentUtils::GetScreenCTM(this);
    if (m.IsSingular()) {
      m = {};
    }
@@ -337,14 +631,30 @@
  }
  
  bool SVGGraphicsElement::IsSVGFocusable(bool* aIsFocusable,
+                                         int32_t* aTabIndex) {
+   // XXXedgar, maybe we could factor out the common code for SVG, HTML and
+   // MathML elements, see bug 1586011.
+   if (!IsInComposedDoc() || IsInDesignMode()) {
+     // In designMode documents we only allow focusing the document.
+diff --git a/dom/svg/SVGTextContentElement.cpp b/dom/svg/SVGTextContentElement.cpp
 --- a/dom/svg/SVGTextContentElement.cpp
 +++ b/dom/svg/SVGTextContentElement.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -118,7 +119,7 @@
+ 
+ #include "mozilla/dom/SVGTextContentElement.h"
+ 
+ #include "MaskConfig.hpp"
+ #include "DOMSVGPoint.h"
+@@ -113,17 +114,17 @@
+   SVGTextFrame* textFrame = GetSVGTextFrame();
+   return textFrame ? textFrame->GetNumberOfChars(this) : 0;
+ }
+ 
+ float SVGTextContentElement::GetComputedTextLength() {
    SVGTextFrame* textFrame = GetSVGTextFrame();
    float length = textFrame ? textFrame->GetComputedTextLength(this) : 0.0f;
    // Cloakfox: sub-pixel noise to defeat SVG text-based font fingerprinting.
@@ -353,14 +663,30 @@
      uint32_t s = seed.value() ^ static_cast<uint32_t>(length * 1000);
      s = s * 1664525u + 1013904223u;
      length += (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+   }
+   return length;
+ }
+ 
+ void SVGTextContentElement::SelectSubString(uint32_t charnum, uint32_t nchars,
+diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 --- a/dom/workers/WorkerPrivate.cpp
 +++ b/dom/workers/WorkerPrivate.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -6822,9 +6823,10 @@
+ 
+ #include "WorkerPrivate.h"
+ 
+ #include <utility>
+ 
+@@ -6804,19 +6805,20 @@
+   // window actor; constant noise is opt-in via
+   // cloakfox.opt.math_constants_noise and is self-flagging.
+   // Cloakfox: this worker's OWN container. Without the explicit id this
+   // resolved container 0 off the main thread, whose cloak_cfg is not the
+   // one warmed for this worker — so the lookup missed entirely and the
    // worker-scope Math spoofer silently did not install in any non-default
    // container (measured: ctx 2 worker returned an exact, unnoised
    // Math.sin(0.5) while ctx 0's was noised).
@@ -374,9 +700,20 @@
      nsCString src;
      src.AppendPrintf(
          "(()=>{const M=Math,imul=M.imul,oFPTS=Function.prototype.toString;"
+         "const ab=new ArrayBuffer(8),f64=new Float64Array(ab),u32=new Uint32Array(ab);"
+         "const SEED=%u;"
+         "const noise=(r)=>{f64[0]=r;"
+         "let h=(u32[0]^u32[1]^SEED)>>>0;"
+         "h=imul(h^(h>>>16),2246822507)>>>0;"
+diff --git a/gfx/thebes/gfxFont.cpp b/gfx/thebes/gfxFont.cpp
 --- a/gfx/thebes/gfxFont.cpp
 +++ b/gfx/thebes/gfxFont.cpp
-@@ -3340,10 +3340,10 @@
+@@ -3336,20 +3336,20 @@
+ #  define GFX_MAYBE_UNUSED
+ #endif
+ 
+ template <typename T, typename Func>
+ bool gfxFont::ProcessShapedWordInternal(
      const T* aText, uint8_t aLength, uint32_t aHash, Script aRunScript,
      nsAtom* aLanguage, bool aVertical, uint16_t aAppUnitsPerDevUnit,
      gfx::ShapedTextFlags aFlags, RoundingFlags aRounding,
@@ -389,7 +726,17 @@
    {
      // If we have a word cache, attempt to look up the word in it.
      AutoReadLock lock(mLock);
-@@ -3375,6 +3375,7 @@
+     if (mWordCache) {
+       // if there's a cached entry for this word, just return it
+       if (auto entry = mWordCache->lookup(key)) {
+         entry->value()->ResetAge();
+ #ifndef RELEASE_OR_BETA
+@@ -3371,16 +3371,17 @@
+   UniquePtr<gfxShapedWord> newShapedWord(
+       gfxShapedWord::Create(aText, aLength, aRunScript, aLanguage,
+                             aAppUnitsPerDevUnit, aFlags, aRounding));
+   if (!newShapedWord) {
+     NS_WARNING("failed to create gfxShapedWord - expect missing text");
      return false;
    }
    newShapedWord->SetUserContextId(aUserContextId);
@@ -397,7 +744,17 @@
    DebugOnly<bool> ok = ShapeText(aText, 0, aLength, aRunScript, aLanguage,
                                   aVertical, aRounding, newShapedWord.get());
    NS_WARNING_ASSERTION(ok, "failed to shape word - expect garbled text");
-@@ -3432,7 +3433,8 @@
+ 
+   {
+     // We're going to cache the new shaped word, so lock for writing now.
+     AutoWriteLock lock(mLock);
+     if (!mWordCache) {
+@@ -3428,17 +3429,18 @@
+ }
+ 
+ bool gfxFont::WordCacheKey::HashPolicy::match(const Key& aKey,
+                                               const Lookup& aLookup) {
+   if (aKey.mLength != aLookup.mLength || aKey.mFlags != aLookup.mFlags ||
        aKey.mRounding != aLookup.mRounding ||
        aKey.mAppUnitsPerDevUnit != aLookup.mAppUnitsPerDevUnit ||
        aKey.mScript != aLookup.mScript || aKey.mLanguage != aLookup.mLanguage ||
@@ -407,7 +764,17 @@
      return false;
    }
  
-@@ -3463,13 +3465,13 @@
+   if (aKey.mTextIs8Bit) {
+     if (aLookup.mTextIs8Bit) {
+       return (0 == memcmp(aKey.mText.mSingle, aLookup.mText.mSingle,
+                           aKey.mLength * sizeof(uint8_t)));
+     }
+@@ -3459,23 +3461,23 @@
+                    !aLookup.mTextIs8Bit,
+                "didn't expect 8-bit text here");
+   return (0 == memcmp(aKey.mText.mDouble, aLookup.mText.mDouble,
+                       aKey.mLength * sizeof(char16_t)));
+ }
  
  bool gfxFont::ProcessSingleSpaceShapedWord(
      bool aVertical, uint16_t aAppUnitsPerDevUnit, gfx::ShapedTextFlags aFlags,
@@ -423,7 +790,17 @@
  }
  
  bool gfxFont::ShapeText(const uint8_t* aText, uint32_t aOffset,
-@@ -3826,7 +3828,7 @@
+                         uint32_t aLength, Script aScript, nsAtom* aLanguage,
+                         bool aVertical, RoundingFlags aRounding,
+                         gfxShapedText* aShapedText) {
+   nsDependentCSubstring ascii((const char*)aText, aLength);
+   nsAutoString utf16;
+@@ -3822,17 +3824,17 @@
+         if (wordIs8Bit) {
+           wordFlags |= gfx::ShapedTextFlags::TEXT_IS_8BIT;
+         }
+       }
+       MOZ_ASSERT(length <= std::numeric_limits<uint8_t>::max());
        bool processed = ProcessShapedWordInternal(
            aString + wordStart, static_cast<uint8_t>(length), hash, aRunScript,
            aLanguage, vertical, appUnitsPerDevUnit, wordFlags, rounding, tp,
@@ -432,7 +809,17 @@
            [&](gfxShapedWord* aShapedWord) {
              aTextRun->CopyGlyphDataFrom(aShapedWord, aRunStart + wordStart);
            });
-@@ -3853,7 +3855,7 @@
+       if (!processed) {
+         return false;  // failed, presumably out of memory?
+       }
+     }
+ 
+@@ -3849,17 +3851,17 @@
+         // Avoid tautological-constant-out-of-range-compare in 8-bit:
+         DebugOnly<char16_t> boundary16 = boundary;
+         NS_ASSERTION(boundary16 < 256, "unexpected boundary!");
+         bool processed = ProcessShapedWordInternal(
+             &boundary, 1,
              gfxShapedWord::HashMix(gfxShapedWord::sHashInitialValue, boundary),
              aRunScript, aLanguage, vertical, appUnitsPerDevUnit,
              flags | gfx::ShapedTextFlags::TEXT_IS_8BIT, rounding, tp,
@@ -441,9 +828,20 @@
              [&](gfxShapedWord* aShapedWord) {
                aTextRun->CopyGlyphDataFrom(aShapedWord, aRunStart + i);
                if (boundary == ' ') {
+                 aTextRun->GetCharacterGlyphs()[aRunStart + i].SetIsSpace();
+               }
+             });
+         if (!processed) {
+           return false;
+diff --git a/gfx/thebes/gfxFont.h b/gfx/thebes/gfxFont.h
 --- a/gfx/thebes/gfxFont.h
 +++ b/gfx/thebes/gfxFont.h
-@@ -750,6 +750,13 @@
+@@ -745,16 +745,23 @@
+         mFlags(aFlags),
+         mAppUnitsPerDevUnit(aAppUnitsPerDevUnit) {}
+ 
+   virtual ~gfxShapedText() = default;
+ 
    // Optional accessor overridden by shaped words and text runs for container ID.
    // Default returns 0 for non-textrun shaped text objects.
    virtual uint32_t GetUserContextId() const { return 0; }
@@ -457,7 +855,17 @@
  
    /**
     * This class records the information associated with a character in the
-@@ -1965,7 +1972,7 @@
+    * input string. It's optimized for the case where there is one glyph
+    * representing that character alone.
+    *
+    * A character can have zero or more associated glyphs. Each glyph
+    * has an advance width and an x and y offset.
+@@ -1960,17 +1967,17 @@
+                            nsAtom* aLanguage,
+                            mozilla::gfx::ShapedTextFlags aOrientation);
+ 
+   // Get a ShapedWord representing a single space for use in setting up a
+   // gfxTextRun.
    bool ProcessSingleSpaceShapedWord(
        bool aVertical, uint16_t aAppUnitsPerDevUnit,
        mozilla::gfx::ShapedTextFlags aFlags, RoundingFlags aRounding,
@@ -466,7 +874,17 @@
        const std::function<void(gfxShapedWord*)>& aCallback);
  
    // Called by the gfxFontCache timer to increment the age of all the words,
-@@ -2234,7 +2241,7 @@
+   // so that they'll expire after a sufficient period of non-use.
+   // Returns true if the cache is now empty, otherwise false.
+   bool AgeCachedWords();
+ 
+   // Discard all cached word records; called on memory-pressure notification.
+@@ -2229,17 +2236,17 @@
+   // for use in setting up a gfxTextRun.
+   template <typename T, typename Func>
+   bool ProcessShapedWordInternal(const T* aText, uint8_t aLength,
+                                  uint32_t aHash, Script aRunScript,
+                                  nsAtom* aLanguage, bool aVertical,
                                   uint16_t aAppUnitsPerDevUnit,
                                   mozilla::gfx::ShapedTextFlags aFlags,
                                   RoundingFlags aRounding,
@@ -475,7 +893,17 @@
                                   Func aCallback);
  
    // whether a given feature is included in feature settings from both the
-@@ -2271,6 +2278,7 @@
+   // font and the style. aFeatureOn set if resolved feature value is non-zero
+   bool HasFeatureSet(uint32_t aFeature, bool& aFeatureOn);
+ 
+   // used when analyzing whether a font has space contextual lookups
+   static mozilla::Atomic<nsTHashMap<nsUint32HashKey, Script>*> sScriptTagToCode;
+@@ -2268,67 +2275,68 @@
+ 
+     union {
+       const uint8_t* mSingle;
+       const char16_t* mDouble;
+     } mText;
      PLDHashNumber mHashKey;
      bool mTextIs8Bit;
      uint32_t mUserContextId;
@@ -483,7 +911,7 @@
  
      static constexpr PLDHashNumber ComputeHash(uint32_t aStringHash,
                                                 Script aScriptCode,
-@@ -2278,17 +2286,17 @@
+                                                uint32_t aLanguageHash,
                                                 int16_t aAppUnitsPerDevUnit,
                                                 ShapedTextFlags aFlags,
                                                 RoundingFlags aRounding,
@@ -504,7 +932,9 @@
          : mLanguage(aLanguage),
            mFlags(aFlags),
            mScript(aScriptCode),
-@@ -2298,9 +2306,9 @@
+           mAppUnitsPerDevUnit(aAppUnitsPerDevUnit),
+           mLength(aLength),
+           mRounding(aRounding),
            mHashKey(ComputeHash(aStringHash, aScriptCode,
                                 aLanguage ? aLanguage->hash() : 0,
                                 aAppUnitsPerDevUnit, aFlags, aRounding,
@@ -516,7 +946,8 @@
        NS_ASSERTION(aFlags & ShapedTextFlags::TEXT_IS_8BIT,
                     "8-bit flag should have been set");
        mText.mSingle = aText;
-@@ -2309,7 +2317,7 @@
+     }
+ 
      WordCacheKey(const char16_t* aText, uint8_t aLength, uint32_t aStringHash,
                   Script aScriptCode, nsAtom* aLanguage,
                   uint16_t aAppUnitsPerDevUnit, ShapedTextFlags aFlags,
@@ -525,7 +956,9 @@
          : mLanguage(aLanguage),
            mFlags(aFlags),
            mScript(aScriptCode),
-@@ -2319,9 +2327,9 @@
+           mAppUnitsPerDevUnit(aAppUnitsPerDevUnit),
+           mLength(aLength),
+           mRounding(aRounding),
            mHashKey(ComputeHash(aStringHash, aScriptCode,
                                 aLanguage ? aLanguage->hash() : 0,
                                 aAppUnitsPerDevUnit, aFlags, aRounding,
@@ -537,9 +970,20 @@
        // We can NOT assert that TEXT_IS_8BIT is false in aFlags here,
        // because this might be an 8bit-only word from a 16-bit textrun,
        // in which case the text we're passed is still in 16-bit form,
+       // and we'll have to use an 8-to-16bit comparison in KeyEquals.
+       mText.mDouble = aText;
+     }
+ 
+     class HashPolicy {
+diff --git a/gfx/thebes/gfxHarfBuzzShaper.cpp b/gfx/thebes/gfxHarfBuzzShaper.cpp
 --- a/gfx/thebes/gfxHarfBuzzShaper.cpp
 +++ b/gfx/thebes/gfxHarfBuzzShaper.cpp
-@@ -1491,8 +1491,7 @@
+@@ -1485,18 +1485,17 @@
+   uint32_t length = aLength;
+   hb_buffer_add_utf16(mBuffer, reinterpret_cast<const uint16_t*>(aText), length,
+                       0, length);
+ 
+   hb_shape(mHBFont, mBuffer, features.Elements(), features.Length());
  
    // Resolve seed from manager using user context ID.
    // seed == 0 means no perturbation (consistent with AudioFingerprintManager).
@@ -549,14 +993,30 @@
  
    if (seed != 0) {
      // Generate a random float [0, 0.1] to offset the letter spacing
+     seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+     float randomFloat = (static_cast<float>(seed) / 2147483647.0f) * 0.1f;
+     hb_position_t spacing = FloatToFixed(randomFloat);
+ 
+     uint32_t glyphCount;
+diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
 --- a/gfx/thebes/gfxTextRun.cpp
 +++ b/gfx/thebes/gfxTextRun.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -172,6 +173,7 @@
+ 
+ #include "gfxTextRun.h"
+ 
+ #include "SharedFontList-impl.h"
+ #include "TextDrawTarget.h"
+@@ -167,16 +168,17 @@
+                        nsTextFrameUtils::Flags aFlags2, uint32_t aUserContextId)
+     : gfxShapedText(aLength, aFlags, aParams->mAppUnitsPerDevUnit),
+       mUserData(aParams->mUserData),
+       mFontGroup(aFontGroup),
+       mFlags2(aFlags2),
        mUserContextId(aUserContextId ? aUserContextId
                                     : aFontGroup->GetUserContextId()),
        mShapingState(eShapingState_Normal) {
@@ -564,7 +1024,17 @@
    NS_ASSERTION(mAppUnitsPerDevUnit > 0, "Invalid app unit scale");
    NS_ADDREF(mFontGroup);
  
-@@ -1581,7 +1583,7 @@
+ #ifndef RELEASE_OR_BETA
+   gfxTextPerfMetrics* tp = aFontGroup->GetTextPerfMetrics();
+   if (tp) {
+     tp->current.textrunConst++;
+   }
+@@ -1576,17 +1578,17 @@
+ 
+   gfx::ShapedTextFlags flags =
+       gfx::ShapedTextFlags::TEXT_IS_8BIT | aOrientation;
+   bool vertical =
+       !!(GetFlags() & gfx::ShapedTextFlags::TEXT_ORIENT_VERTICAL_UPRIGHT);
    gfxFontShaper::RoundingFlags roundingFlags =
        aFont->GetRoundOffsetsToPixels(aDrawTarget);
    aFont->ProcessSingleSpaceShapedWord(
@@ -573,7 +1043,17 @@
        [&](gfxShapedWord* aShapedWord) {
          const GlyphRun* prevRun = TrailingGlyphRun();
          bool isCJK = prevRun && prevRun->mFont == aFont &&
-@@ -1882,7 +1884,11 @@
+                              prevRun->mOrientation == aOrientation
+                          ? prevRun->mIsCJK
+                          : false;
+         AddGlyphRun(aFont, FontMatchType::Kind::kUnspecified, aCharIndex, false,
+                     aOrientation, isCJK);
+@@ -1877,29 +1879,46 @@
+       mPageLang(gfxPlatformFontList::GetFontPrefLangFor(aLanguage)),
+       mExplicitLanguage(aExplicitLanguage),
+       mFontVariantEmoji(aVariantEmoji) {
+   // We don't use SetUserFontSet() here, as we want to unconditionally call
+   // EnsureFontList() rather than only do UpdateUserFonts() if it changed.
  
    // Resolve container identity on the owning thread. Worker documents can only
    // be accessed on the main thread, so use the worker origin attributes there.
@@ -586,7 +1066,12 @@
      if (auto* worker = dom::GetCurrentThreadWorkerPrivate()) {
        mUserContextId = worker->GetOriginAttributes().mUserContextId;
      }
-@@ -1895,6 +1901,19 @@
+   } else if (mFontVisibilityProvider) {
+     if (auto* doc = mFontVisibilityProvider->GetDocument()) {
+       if (auto* win = doc->GetInnerWindow()) {
+         if (auto* bc = win->GetBrowsingContext()) {
+           mUserContextId = bc->OriginAttributesRef().mUserContextId;
+         }
        }
      }
    }
@@ -606,9 +1091,20 @@
  }
  
  gfxFontGroup::~gfxFontGroup() {
+   // Should not be dropped by stylo
+   MOZ_ASSERT(!Servo_IsWorkerThread());
+ }
+ 
+ static StyleGenericFontFamily GetDefaultGeneric(nsAtom* aLanguage) {
+diff --git a/gfx/thebes/gfxTextRun.h b/gfx/thebes/gfxTextRun.h
 --- a/gfx/thebes/gfxTextRun.h
 +++ b/gfx/thebes/gfxTextRun.h
-@@ -961,6 +961,7 @@
+@@ -956,16 +956,17 @@
+ 
+   // Returns the first font in the font-group that has an OpenType MATH table,
+   // or null if no such font is available. The GetMathConstant methods may be
+   // called on the returned font.
+   already_AddRefed<gfxFont> GetFirstMathFont();
  
    const gfxFontStyle* GetStyle() const { return &mStyle; }
    uint32_t GetUserContextId() const { return mUserContextId; }
@@ -616,9 +1112,20 @@
  
    // Get the presContext for which this fontGroup was constructed. This may be
    // null! (In the case of canvas not connected to a document.)
+   FontVisibilityProvider* GetFontVisibilityProvider() const {
+     return mFontVisibilityProvider;
+   }
+ 
+   /**
+diff --git a/layout/base/moz.build b/layout/base/moz.build
 --- a/layout/base/moz.build
 +++ b/layout/base/moz.build
-@@ -146,6 +146,7 @@
+@@ -141,16 +141,17 @@
+     "../generic",
+     "../mathml",
+     "../painting",
+     "../printing",
+     "../style",
      "../tables",
      "../xul",
      "../xul/tree/",
@@ -626,14 +1133,30 @@
      "/docshell/base",
      "/dom/base",
      "/dom/html",
+     "/dom/svg",
+     "/dom/xul",
+ ]
+ 
+ if CONFIG["MOZ_WIDGET_TOOLKIT"] == "android":
+diff --git a/layout/base/nsPresContext.cpp b/layout/base/nsPresContext.cpp
 --- a/layout/base/nsPresContext.cpp
 +++ b/layout/base/nsPresContext.cpp
-@@ -1,3 +1,4 @@
+@@ -1,8 +1,9 @@
 +#include "CloakfoxSiteSeed.hpp"
  /* This Source Code Form is subject to the terms of the Mozilla Public
   * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-@@ -331,6 +332,7 @@
+ 
+ /* a presentation of a document, part 1 */
+ 
+ #include "nsPresContext.h"
+ 
+@@ -327,16 +328,17 @@
+   }
+ 
+   UpdateFontVisibility();
+   UpdateForcedColors(/* aNotify = */ false);
+ }
  
  static const char* gExactCallbackPrefs[] = {
      "cloakfox.enabled",
@@ -641,7 +1164,17 @@
      "privacy.resistFingerprinting.letterboxing",
      "dom.meta-viewport.enabled",
      "image.animation_mode",
-@@ -532,12 +534,32 @@
+     "intl.accept_languages",
+     "layout.css.devPixelsPerPx",
+     "layout.css.dpi",
+     "layout.css.letter-spacing.model",
+     "layout.css.ruby.normalize-metrics-factor",
+@@ -528,22 +530,42 @@
+   // would invalidate all subdocument frames already.
+ }
+ 
+ // static
+ void nsPresContext::PreferenceChanged(const char* aPrefName, void* aSelf) {
    static_cast<nsPresContext*>(aSelf)->PreferenceChanged(aPrefName);
  }
  
@@ -674,7 +1207,17 @@
    if (prefName.EqualsLiteral("cloakfox.enabled") ||
        prefName.EqualsLiteral("privacy.resistFingerprinting.letterboxing")) {
      // Refresh protected geometry and cached iframe CSS even when the viewport
-@@ -661,6 +683,7 @@
+     // already fits a bucket and toggling protection causes no resize.
+     UpdateInnerSizeSpoofedForRFP();
+     MediaFeatureValuesChanged(
+         {MediaFeatureChangeReason::SystemMetricsChange |
+          MediaFeatureChangeReason::ResolutionChange},
+@@ -657,16 +679,17 @@
+   return mRubyPositioningFactor > 0.0f;
+ }
+ 
+ void nsPresContext::Init(nsDeviceContext* aDeviceContext) {
+   MOZ_ASSERT(!mInitialized, "attempt to reinit pres context");
    MOZ_ASSERT(aDeviceContext);
  
    mDeviceContext = aDeviceContext;
@@ -682,7 +1225,17 @@
  
    // In certain rare cases (such as changing page mode), we tear down layout
    // state and re-initialize a new prescontext for a document. Given that we
-@@ -849,6 +872,7 @@
+   // hang style state off the DOM, we detect that re-initialization case and
+   // lazily drop the servo data. We don't do this eagerly during layout teardown
+   // because that would incur an extra whole-tree traversal that's unnecessary
+   // most of the time.
+   //
+@@ -845,16 +868,17 @@
+   // nsPresContext, it is necessary to prefix the class with the mozilla
+   // namespace here.
+   mCounterStyleManager = MakeRefPtr<mozilla::CounterStyleManager>(this);
+ 
+   dom::Document* doc = mPresShell->GetDocument();
    MOZ_ASSERT(doc);
    // Have to update PresContext's mDocument before calling any other methods.
    mDocument = doc;
@@ -690,9 +1243,20 @@
  
    LookAndFeel::HandleGlobalThemeChange();
  
+   // Initialize our state from the user preferences, now that we
+   // have a presshell, and hence a document.
+   GetUserPreferences();
+ 
+   EnsureTheme();
+diff --git a/layout/base/nsPresContext.h b/layout/base/nsPresContext.h
 --- a/layout/base/nsPresContext.h
 +++ b/layout/base/nsPresContext.h
-@@ -13,6 +13,7 @@
+@@ -8,16 +8,17 @@
+ #define nsPresContext_h_
+ 
+ #include "FontVisibilityProvider.h"
+ #include "Units.h"
+ #include "gfxRect.h"
  #include "gfxTypes.h"
  #include "mozilla/AppUnits.h"
  #include "mozilla/Attributes.h"
@@ -700,7 +1264,17 @@
  #include "mozilla/DepthOrderedFrameList.h"
  #include "mozilla/EnumeratedArray.h"
  #include "mozilla/MediaEmulationData.h"
-@@ -146,6 +147,11 @@
+ #include "mozilla/MemoryReporting.h"
+ #include "mozilla/NotNull.h"
+ #include "mozilla/PreferenceSheet.h"
+ #include "mozilla/PresShellForwards.h"
+ #include "mozilla/ScrollStyles.h"
+@@ -141,16 +142,21 @@
+   typedef mozilla::ScrollStyles ScrollStyles;
+   using TransactionId = mozilla::layers::TransactionId;
+ 
+   NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL
+   NS_DECL_CYCLE_COLLECTION_CLASS(nsPresContext)
  
    FONT_VISIBILITY_PROVIDER_IMPL
  
@@ -712,7 +1286,17 @@
    enum nsPresContextType : uint8_t {
      eContext_Galley,        // unpaginated screen presentation
      eContext_PrintPreview,  // paginated screen presentation
-@@ -1201,6 +1207,8 @@
+     eContext_Print,         // paginated printer presentation
+     eContext_PageLayout     // paginated & editable.
+   };
+ 
+   nsPresContext(mozilla::dom::Document* aDocument, nsPresContextType aType);
+@@ -1215,16 +1221,18 @@
+ 
+   // IMPORTANT: The ownership implicit in the following member variables
+   // has been explicitly checked.  If you add any members to this class,
+   // please make the ownership explicit (pinkerton, scc).
+ 
    // the PresShell owns a strong reference to the nsPresContext, and is
    // responsible for nulling this pointer before it is destroyed
    mozilla::PresShell* MOZ_NON_OWNING_REF mPresShell;  // [WEAK]
@@ -721,9 +1305,20 @@
    RefPtr<mozilla::dom::Document> mDocument;
    RefPtr<nsDeviceContext> mDeviceContext;  // [STRONG] could be weak, but
                                             // better safe than sorry.
+                                            // Cannot reintroduce cycles
+                                            // since there is no dependency
+                                            // from gfx back to layout.
+   RefPtr<nsFontCache> mFontCache;
+   RefPtr<mozilla::EventStateManager> mEventManager;
+diff --git a/toolkit/components/resistfingerprinting/FontVisibilityProvider.h b/toolkit/components/resistfingerprinting/FontVisibilityProvider.h
 --- a/toolkit/components/resistfingerprinting/FontVisibilityProvider.h
 +++ b/toolkit/components/resistfingerprinting/FontVisibilityProvider.h
-@@ -44,6 +44,14 @@
+@@ -39,16 +39,24 @@
+   virtual void ReportBlockedFontFamily(const nsCString& aMsg) const = 0;
+   virtual bool IsChrome() const = 0;
+   virtual bool IsPrivateBrowsing() const = 0;
+   virtual nsICookieJarSettings* GetCookieJarSettings() const = 0;
+   virtual mozilla::Maybe<FontVisibility> MaybeInheritFontVisibility() const = 0;
    virtual void UserFontSetUpdated(gfxUserFontEntry* aUpdatedFont = nullptr) = 0;
    // Document-free providers, such as font-list queries, use the default context.
    virtual mozilla::dom::Document* GetDocument() const { return nullptr; }
@@ -738,3 +1333,8 @@
  
    void ReportBlockedFontFamily(const gfxFontFamily& aFamily) const;
    void ReportBlockedFontFamily(const mozilla::fontlist::Family& aFamily) const;
+   void FormatBlockedFontFamilyMessage(nsCString& aMsg, const nsCString& aFamily,
+                                       FontVisibility aVisibility) const;
+   FontVisibility ComputeFontVisibility() const;
+ 
+ #define FONT_VISIBILITY_PROVIDER_IMPL                                         \

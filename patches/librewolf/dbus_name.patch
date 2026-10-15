@@ -1,7 +1,12 @@
 diff --git a/toolkit/components/remote/nsDBusRemoteClient.cpp b/toolkit/components/remote/nsDBusRemoteClient.cpp
 --- a/toolkit/components/remote/nsDBusRemoteClient.cpp
 +++ b/toolkit/components/remote/nsDBusRemoteClient.cpp
-@@ -73,14 +73,14 @@
+@@ -68,24 +68,24 @@
+   // characters so adjust the profile string properly.
+   nsAutoCString profileName;
+   nsresult rv = mozilla::Base64Encode(nsAutoCString(aProfile), profileName);
+   NS_ENSURE_SUCCESS(rv, false);
+ 
    mozilla::XREAppData::SanitizeNameForDBus(profileName);
  
    aDestinationName =
@@ -18,7 +23,17 @@ diff --git a/toolkit/components/remote/nsDBusRemoteClient.cpp b/toolkit/componen
      if (!g_dbus_is_name(aDestinationName.get())) {
        // We failed completely to get a valid bus name - just quit.
        LOG("  failed to validate profile DBus name");
-@@ -110,7 +110,7 @@
+       return false;
+     }
+   }
+ 
+   return true;
+@@ -105,25 +105,25 @@
+ 
+   nsAutoCString destinationName;
+   if (!GetRemoteDestinationName(appName.get(), aProfile, destinationName)) {
+     LOG("  failed to get remote destination name");
+     return NS_ERROR_FAILURE;
    }
  
    nsAutoCString pathName;
@@ -27,7 +42,7 @@ diff --git a/toolkit/components/remote/nsDBusRemoteClient.cpp b/toolkit/componen
  
    if (!g_variant_is_object_path(pathName.get())) {
      LOG("  failed to validate path name");
-@@ -118,7 +118,7 @@
+     return NS_ERROR_FAILURE;
    }
  
    nsAutoCString remoteInterfaceName;
@@ -36,10 +51,20 @@ diff --git a/toolkit/components/remote/nsDBusRemoteClient.cpp b/toolkit/componen
  
    LOG("  DBus destination: %s\n", destinationName.get());
    LOG("  DBus path: %s\n", pathName.get());
+   LOG("  DBus interface: %s\n", remoteInterfaceName.get());
+ 
+   nsAppShell::DBusConnectionCheck();
+   RefPtr<GDBusProxy> proxy = dont_AddRef(g_dbus_proxy_new_for_bus_sync(
+       G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_NONE, nullptr,
 diff --git a/toolkit/components/remote/nsDBusRemoteServer.cpp b/toolkit/components/remote/nsDBusRemoteServer.cpp
 --- a/toolkit/components/remote/nsDBusRemoteServer.cpp
 +++ b/toolkit/components/remote/nsDBusRemoteServer.cpp
-@@ -25,7 +25,7 @@
+@@ -20,27 +20,27 @@
+ // Mozilla has old GIO version in build roots
+ #define G_BUS_NAME_OWNER_FLAGS_DO_NOT_QUEUE GBusNameOwnerFlags(1 << 2)
+ 
+ static const char* introspect_template =
+     "<!DOCTYPE node PUBLIC \"-//freedesktop//DTD D-BUS Object Introspection "
      "1.0//EN\"\n"
      "\"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\">\n"
      "<node>\n"
@@ -48,7 +73,9 @@ diff --git a/toolkit/components/remote/nsDBusRemoteServer.cpp b/toolkit/componen
      "   <method name=\"OpenURL\">\n"
      "     <arg name=\"url\" direction=\"in\" type=\"ay\"/>\n"
      "   </method>\n"
-@@ -35,7 +35,7 @@
+     " </interface>\n"
+     "</node>\n";
+ 
  bool nsDBusRemoteServer::HandleOpenURL(const gchar* aInterfaceName,
                                         const gchar* aMethodName,
                                         Span<const gchar> aParam) {
@@ -57,7 +84,17 @@ diff --git a/toolkit/components/remote/nsDBusRemoteServer.cpp b/toolkit/componen
  
    if ((strcmp("OpenURL", aMethodName) != 0) ||
        (strcmp(ourInterfaceName.get(), aInterfaceName) != 0)) {
-@@ -128,7 +128,7 @@
+     g_warning("nsDBusRemoteServer: HandleOpenURL() called with wrong params!");
+     return false;
+   }
+ 
+   HandleCommandLine(aParam, gtk_get_current_event_time());
+@@ -123,17 +123,17 @@
+               "%s:%s setting is not supported", aInterfaceName, aPropertyName);
+   return false;
+ }
+ 
+ static const GDBusInterfaceVTable gInterfaceVTable = {
      HandleMethodCall, HandleGetProperty, HandleSetProperty};
  
  void nsDBusRemoteServer::OnBusAcquired(GDBusConnection* aConnection) {
@@ -66,7 +103,17 @@ diff --git a/toolkit/components/remote/nsDBusRemoteServer.cpp b/toolkit/componen
    if (!g_variant_is_object_path(mPathName.get())) {
      g_warning("nsDBusRemoteServer: object path is not valid");
      return;
-@@ -199,15 +199,14 @@
+   }
+ 
+   GUniquePtr<GError> error;
+   mIntrospectionData = dont_AddRef(g_dbus_node_info_new_for_xml(
+       nsPrintfCString(introspect_template, mAppName.get()).get(),
+@@ -194,25 +194,24 @@
+   gAppData->GetDBusAppName(mAppName);
+ 
+   nsAutoCString profileName;
+   MOZ_TRY(
+       mozilla::Base64Encode(aProfileName, strlen(aProfileName), profileName));
  
    mozilla::XREAppData::SanitizeNameForDBus(profileName);
  
@@ -84,3 +131,8 @@ diff --git a/toolkit/components/remote/nsDBusRemoteServer.cpp b/toolkit/componen
      if (!g_dbus_is_name(busName.get())) {
        // We failed completely to get a valid bus name - just quit.
        g_warning("nsDBusRemoteServer: couldn't get a valid bus name!");
+       return NS_ERROR_FAILURE;
+     }
+   }
+ 
+   mDBusID = g_bus_own_name(

@@ -162,7 +162,12 @@ diff --git a/dom/base/ScreenDimensionManager.h b/dom/base/ScreenDimensionManager
 diff --git a/dom/base/moz.build b/dom/base/moz.build
 --- a/dom/base/moz.build
 +++ b/dom/base/moz.build
-@@ -264,6 +264,7 @@
+@@ -261,16 +261,17 @@
+     "ProfilerCounter.h",
+     "RadioGroupContainer.h",
+     "Range.h",
+     "RequestCallbackManager.h",
+     "ResizeObserver.h",
      "ResponsiveImageSelector.h",
      "RoverfoxStorageManager.h",
      "SameProcessMessageQueue.h",
@@ -170,7 +175,17 @@ diff --git a/dom/base/moz.build b/dom/base/moz.build
      "ScreenLuminance.h",
      "ScreenOrientation.h",
      "Selection.h",
-@@ -485,6 +486,7 @@
+     "SerializedStackHolder.h",
+     "ShadowIncludingTreeIterator.h",
+     "ShadowRoot.h",
+     "SpeculationRules.h",
+     "SpeculationRuleSet.h",
+@@ -483,16 +484,17 @@
+     "RadioGroupContainer.cpp",
+     "Range.cpp",
+     "RangeUtils.cpp",
+     "RemoteOuterWindowProxy.cpp",
+     "ResizeObserver.cpp",
      "ResponsiveImageSelector.cpp",
      "RoverfoxStorageManager.cpp",
      "SameProcessMessageQueue.cpp",
@@ -178,10 +193,20 @@ diff --git a/dom/base/moz.build b/dom/base/moz.build
      "ScreenLuminance.cpp",
      "ScreenOrientation.cpp",
      "ScriptableContentIterator.cpp",
+     "ScrollingMetrics.cpp",
+     "Selection.cpp",
+     "SelectionChangeEventDispatcher.cpp",
+     "SerializedStackHolder.cpp",
+     "ShadowRoot.cpp",
 diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
 --- a/dom/base/nsGlobalWindowInner.cpp
 +++ b/dom/base/nsGlobalWindowInner.cpp
-@@ -287,6 +287,7 @@
+@@ -282,16 +282,17 @@
+ #include "nsIScriptGlobalObject.h"
+ #include "nsIScriptObjectPrincipal.h"
+ #include "nsISerialEventTarget.h"
+ #include "nsISimpleEnumerator.h"
+ #include "nsISizeOfEventTarget.h"
  #include "nsISlowScriptDebug.h"
  #include "nsISupportsPrimitives.h"
  #include "nsISupportsUtils.h"
@@ -189,7 +214,17 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
  #include "nsIThread.h"
  #include "nsITimedChannel.h"
  #include "nsIURI.h"
-@@ -7777,6 +7778,52 @@
+ #include "nsIWeakReference.h"
+ #include "nsIWebBrowserChrome.h"
+ #include "nsIWebNavigation.h"
+ #include "nsIWebProgressListener.h"
+ #include "nsIWidget.h"
+@@ -7758,16 +7759,62 @@
+   return NS_DispatchToCurrentThread(std::move(aRunnable));
+ }
+ 
+ nsISerialEventTarget* nsGlobalWindowInner::SerialEventTarget() const {
+   MOZ_RELEASE_ASSERT(NS_IsMainThread());
    return GetMainThreadSerialEventTarget();
  }
  
@@ -242,12 +277,22 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
  Worklet* nsGlobalWindowInner::GetPaintWorklet(ErrorResult& aRv) {
    if (!mPaintWorklet) {
      nsIPrincipal* principal = GetPrincipal();
+     if (!principal) {
+       aRv.Throw(NS_ERROR_FAILURE);
+       return nullptr;
+     }
+ 
 diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
 --- a/dom/base/nsGlobalWindowInner.h
 +++ b/dom/base/nsGlobalWindowInner.h
-@@ -677,6 +677,10 @@
+@@ -678,16 +678,20 @@
+ 
+   mozilla::dom::External* External();
  
    mozilla::dom::Worklet* GetPaintWorklet(mozilla::ErrorResult& aRv);
+ 
+   // Audio fingerprint seed for per-context audio fingerprinting
+   void SetAudioFingerprintSeed(uint32_t seed, mozilla::ErrorResult& aRv);
  
 +  // Screen dimension methods for per-context screen spoofing
 +  void SetScreenDimensions(int32_t aWidth, int32_t aHeight, mozilla::ErrorResult& aRv);
@@ -256,10 +301,20 @@ diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
    void GetWebExposedLocales(nsTArray<nsString>& aLocales);
  
    mozilla::dom::IntlUtils* GetIntlUtils(mozilla::ErrorResult& aRv);
+ 
+   // Font spacing seed for privacy-preserving font fingerprinting
+   void SetFontSpacingSeed(uint32_t seed, mozilla::ErrorResult& aRv);
+ 
+   void StoreSharedWorker(mozilla::dom::SharedWorker* aSharedWorker);
 diff --git a/dom/base/nsScreen.cpp b/dom/base/nsScreen.cpp
 --- a/dom/base/nsScreen.cpp
 +++ b/dom/base/nsScreen.cpp
-@@ -12,6 +12,7 @@
+@@ -7,16 +7,17 @@
+ #include "MaskConfig.hpp"
+ 
+ #include "mozilla/GeckoBindings.h"
+ #include "mozilla/dom/BrowsingContextBinding.h"
+ #include "mozilla/dom/Document.h"
  #include "mozilla/dom/DocumentInlines.h"
  #include "mozilla/widget/ScreenManager.h"
  #include "nsCOMPtr.h"
@@ -267,7 +322,17 @@ diff --git a/dom/base/nsScreen.cpp b/dom/base/nsScreen.cpp
  #include "nsDeviceContext.h"
  #include "nsGlobalWindowInner.h"
  #include "nsGlobalWindowOuter.h"
-@@ -74,6 +75,26 @@
+ #include "nsIDocShell.h"
+ #include "nsIDocShellTreeItem.h"
+ #include "nsLayoutUtils.h"
+ #include "nsPIDOMWindowInlines.h"
+ #include "nsPresContext.h"
+@@ -69,16 +70,36 @@
+   return nullptr;
+ }
+ 
+ nsDeviceContext* nsScreen::GetDeviceContext() const {
+   return nsLayoutUtils::GetDeviceContextForScreenInfo(GetOuter());
  }
  
  CSSIntRect nsScreen::GetRect() {
@@ -294,7 +359,17 @@ diff --git a/dom/base/nsScreen.cpp b/dom/base/nsScreen.cpp
    // Return window inner rect to prevent fingerprinting.
    if (ShouldResistFingerprinting(RFPTarget::ScreenRect)) {
      return GetTopWindowInnerRectForRFP();
-@@ -106,6 +127,24 @@
+   }
+ 
+   // Here we manipulate the value of aRect to represent the screen size,
+   // if there is an override set with WebDriver BiDi or in RDM.
+   if (nsPIDOMWindowInner* owner = GetOwnerWindow()) {
+@@ -101,16 +122,34 @@
+   nsDeviceContext* context = GetDeviceContext();
+   if (NS_WARN_IF(!context)) {
+     return {};
+   }
+   return CSSIntRect::FromAppUnitsRounded(context->GetRect());
  }
  
  CSSIntRect nsScreen::GetAvailRect() {
@@ -319,10 +394,20 @@ diff --git a/dom/base/nsScreen.cpp b/dom/base/nsScreen.cpp
    auto rect = MaskConfig::GetRect("screen.availLeft", "screen.availTop",
                                    "screen.availWidth", "screen.availHeight");
    if (rect.has_value()) {
+     auto values = rect.value();
+     return {values[0], values[1], values[2], values[3]};
+   }
+   // Return window inner rect to prevent fingerprinting.
+   if (ShouldResistFingerprinting(RFPTarget::ScreenAvailRect)) {
 diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
 --- a/dom/webidl/Window.webidl
 +++ b/dom/webidl/Window.webidl
-@@ -928,6 +928,18 @@
+@@ -927,16 +927,28 @@
+   /**
+    * Getter funcion for IntlUtils, which provides helper functions for
+    * localization.
+    */
+   [Throws, Func="IsChromeOrUAWidget"]
    readonly attribute IntlUtils intlUtils;
  };
  
@@ -341,10 +426,20 @@ diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
  partial interface Window {
    [SameObject, Replaceable]
    readonly attribute VisualViewport visualViewport;
+ };
+ 
+ // Font spacing seed interface for privacy-preserving font fingerprinting
+ partial interface Window {
+   [Throws, Func="mozilla::dom::FontSpacingSeedManager::IsFunctionEnabledForWebIDL"]
 diff --git a/gfx/src/moz.build b/gfx/src/moz.build
 --- a/gfx/src/moz.build
 +++ b/gfx/src/moz.build
-@@ -107,3 +107,6 @@
+@@ -102,8 +102,11 @@
+     SOURCES["nsRectIntersectGenericNeon.cpp"].flags += CONFIG["NEON_FLAGS"]
+ 
+ if CONFIG["INTEL_ARCHITECTURE"]:
+     if CONFIG["SSE4_2_FLAGS"]:
+         DEFINES["USE_SSE4_2"] = True
          LOCAL_INCLUDES += ["/third_party/xsimd/include"]
          SOURCES += ["nsRectIntersectGenericSSE42.cpp"]
          SOURCES["nsRectIntersectGenericSSE42.cpp"].flags += CONFIG["SSE4_2_FLAGS"]
@@ -354,7 +449,9 @@ diff --git a/gfx/src/moz.build b/gfx/src/moz.build
 diff --git a/gfx/src/nsDeviceContext.cpp b/gfx/src/nsDeviceContext.cpp
 --- a/gfx/src/nsDeviceContext.cpp
 +++ b/gfx/src/nsDeviceContext.cpp
-@@ -3,6 +3,7 @@
+@@ -1,13 +1,14 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "nsDeviceContext.h"
@@ -362,7 +459,17 @@ diff --git a/gfx/src/nsDeviceContext.cpp b/gfx/src/nsDeviceContext.cpp
  
  #include <algorithm>  // for max
  
-@@ -196,6 +197,13 @@
+ #include "gfxContext.h"
+ #include "gfxPoint.h"    // for gfxSize
+ #include "gfxTextRun.h"  // for gfxFontGroup
+ #include "mozilla/LookAndFeel.h"
+ #include "mozilla/ProfilerMarkers.h"
+@@ -191,16 +192,23 @@
+ }
+ 
+ bool nsDeviceContext::GetScreenIsHDR() {
+   RefPtr<widget::Screen> screen = FindScreen();
+   return screen->GetIsHDR();
  }
  
  nsSize nsDeviceContext::GetDeviceSurfaceDimensions() {
@@ -376,10 +483,20 @@ diff --git a/gfx/src/nsDeviceContext.cpp b/gfx/src/nsDeviceContext.cpp
    return GetRect().Size();
  }
  
+ nsRect nsDeviceContext::GetRect() {
+   if (IsPrinterContext()) {
+     return {0, 0, mWidth, mHeight};
+   }
+   RefPtr<widget::Screen> screen = FindScreen();
 diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
 --- a/layout/style/nsMediaFeatures.cpp
 +++ b/layout/style/nsMediaFeatures.cpp
-@@ -23,6 +23,8 @@
+@@ -18,16 +18,18 @@
+ #include "mozilla/dom/DocumentInlines.h"
+ #include "mozilla/dom/ScreenBinding.h"
+ #include "mozilla/gfx/gfxVars.h"
+ #include "nsCSSProps.h"
+ #include "nsCSSValue.h"
  #include "nsContentUtils.h"
  #include "nsDeviceContext.h"
  #include "nsGlobalWindowOuter.h"
@@ -388,7 +505,17 @@ diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
  #include "nsIBaseWindow.h"
  #include "nsIDocShell.h"
  #include "nsIPrintSettings.h"
-@@ -63,12 +65,16 @@
+ #include "nsIWidget.h"
+ #include "nsPresContext.h"
+ #include "nsStyleConsts.h"
+ 
+ using namespace mozilla;
+@@ -58,22 +60,26 @@
+ }
+ 
+ // A helper for three features below.
+ static nsSize GetDeviceSize(const Document& aDocument) {
+   if (aDocument.ShouldResistFingerprinting(RFPTarget::CSSDeviceSize)) {
      return GetSize(aDocument);
    }
  
@@ -411,3 +538,8 @@ diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
    }
  
    // Media queries in documents should use an override set with WebDriver BiDi
+   // if it exists.
+   if (dom::BrowsingContext* bc = aDocument.GetBrowsingContext()) {
+     Maybe<CSSIntSize> screenSize = bc->GetScreenAreaOverride();
+     if (screenSize.isSome()) {
+       return CSSPixel::ToAppUnits(screenSize.value());

@@ -1,7 +1,34 @@
-diff -urp before/cloakcfg/MaskConfig.hpp after/cloakcfg/MaskConfig.hpp
---- a/cloakcfg/MaskConfig.hpp	2026-08-09 00:15:20
-+++ b/cloakcfg/MaskConfig.hpp	2026-08-09 00:15:20
-@@ -148,8 +148,8 @@ inline std::optional<T> GetUintImpl(const std::string&
+diff --git a/cloakcfg/MaskConfig.hpp b/cloakcfg/MaskConfig.hpp
+--- a/cloakcfg/MaskConfig.hpp
++++ b/cloakcfg/MaskConfig.hpp
+@@ -131,19 +131,19 @@
+ inline std::optional<std::string> GetString(const std::string& key, uint32_t userContextId = 0) {
+   auto ctx = GetContextOverlay(userContextId);
+   if (HasKey(key, ctx) && ctx[key].is_string()) return ctx[key].get<std::string>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   return data[key].get<std::string>();
+ }
+ 
+-inline std::vector<std::string> GetStringList(const std::string& key) {
++inline std::vector<std::string> GetStringList(const std::string& key, uint32_t userContextId = 0) {
+   std::vector<std::string> result;
+-  auto ctx = GetContextOverlay();
++  auto ctx = GetContextOverlay(userContextId);
+   const auto& src = (HasKey(key, ctx) && ctx[key].is_array()) ? ctx : GetJson();
+   if (!HasKey(key, src)) return {};
+   for (const auto& item : src[key]) {
+     result.push_back(item.get<std::string>());
+   }
+   return result;
+ }
+ 
+@@ -163,48 +163,52 @@
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   if (data[key].is_number_unsigned()) return data[key].get<T>();
+   printf_stderr("ERROR: Value for key '%s' is not an unsigned integer\n",
+                 key.c_str());
    return std::nullopt;
  }
  
@@ -12,11 +39,58 @@ diff -urp before/cloakcfg/MaskConfig.hpp after/cloakcfg/MaskConfig.hpp
  }
  
  inline std::optional<uint32_t> GetUint32(const std::string& key, uint32_t userContextId = 0) {
-diff -urp before/dom/base/RoverfoxStorageManager.cpp after/dom/base/RoverfoxStorageManager.cpp
-diff -urp before/dom/base/RoverfoxStorageManager.cpp after/dom/base/RoverfoxStorageManager.cpp
---- a/dom/base/RoverfoxStorageManager.cpp	2026-08-09 00:28:26
-+++ b/dom/base/RoverfoxStorageManager.cpp	2026-08-09 00:28:26
-@@ -209,8 +209,18 @@ RoverfoxStorageManager::GetString(const nsAString& key
+   return GetUintImpl<uint32_t>(key, userContextId);
+ }
+ 
+ inline std::optional<int32_t> GetInt32(const std::string& key) {
+   auto ctx = GetContextOverlay();
+   if (HasKey(key, ctx) && ctx[key].is_number_integer()) return ctx[key].get<int32_t>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   if (data[key].is_number_integer()) return data[key].get<int32_t>();
+   printf_stderr("ERROR: Value for key '%s' is not an integer\n", key.c_str());
+   return std::nullopt;
+ }
+ 
+-inline std::optional<double> GetDouble(const std::string& key) {
+-  auto ctx = GetContextOverlay();
++inline std::optional<double> GetDouble(const std::string& key, uint32_t userContextId = 0) {
++  auto ctx = GetContextOverlay(userContextId);
+   if (HasKey(key, ctx) && ctx[key].is_number()) return ctx[key].get<double>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   if (data[key].is_number_float()) return data[key].get<double>();
+   if (data[key].is_number_unsigned() || data[key].is_number_integer())
+     return static_cast<double>(data[key].get<int64_t>());
+   printf_stderr("ERROR: Value for key '%s' is not a double\n", key.c_str());
+   return std::nullopt;
+ }
+ 
+-inline std::optional<bool> GetBool(const std::string& key) {
+-  auto ctx = GetContextOverlay();
++// Cloakfox: takes an explicit userContextId for the same reason GetString
++// does — CloakConfigOverlay_CurrentUserContextId() returns 0 off the main
++// thread, so a worker calling this without one resolves container 0's
++// persona instead of its own.
++inline std::optional<bool> GetBool(const std::string& key, uint32_t userContextId = 0) {
++  auto ctx = GetContextOverlay(userContextId);
+   if (HasKey(key, ctx) && ctx[key].is_boolean()) return ctx[key].get<bool>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   if (data[key].is_boolean()) return data[key].get<bool>();
+   printf_stderr("ERROR: Value for key '%s' is not a boolean\n", key.c_str());
+   return std::nullopt;
+ }
+ 
+diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManager.cpp
+--- a/dom/base/RoverfoxStorageManager.cpp
++++ b/dom/base/RoverfoxStorageManager.cpp
+@@ -220,18 +220,28 @@
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString utf8Value;
+   {
+     MutexAutoLock lock(GetLocalCacheMutex());
+     if (auto entry = GetLocalCache().Lookup(prefName)) {
        utf8Value = entry.Data();
      }
    }
@@ -36,145 +110,20 @@ diff -urp before/dom/base/RoverfoxStorageManager.cpp after/dom/base/RoverfoxStor
    }
    // Sync IPC read from parent (cross-process fallback for workers)
    if (utf8Value.IsEmpty() && !XRE_IsParentProcess() && NS_IsMainThread()) {
---- a/dom/workers/WorkerNavigator.cpp	2026-08-09 00:15:20
-+++ b/dom/workers/WorkerNavigator.cpp	2026-08-09 00:15:20
-@@ -128,6 +128,18 @@ void WorkerNavigator::SetLanguages(const nsTArray<nsSt
-   mProperties.mLanguages = aLanguages.Clone();
+     ContentChild* cc = ContentChild::GetSingleton();
+     if (cc) {
+       cc->SendRoverfoxStorageGet(prefName, &utf8Value);
+       if (!utf8Value.IsEmpty()) {
+         MutexAutoLock lock(GetLocalCacheMutex());
+diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
+--- a/dom/workers/WorkerNavigator.cpp
++++ b/dom/workers/WorkerNavigator.cpp
+@@ -108,18 +108,31 @@
+   }
  }
  
-+// Cloakfox: this worker's own container. CloakConfigOverlay_CurrentUserContextId()
-+// returns 0 off the main thread, so the context-blind MaskConfig getters would
-+// resolve container 0's persona for EVERY worker — a worker/window
-+// contradiction plus cross-container correlation. The worker's own origin
-+// attributes are valid on any thread, so pass them explicitly.
-+static uint32_t CloakfoxWorkerUcid() {
-+  if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
-+    return wp->GetOriginAttributes().mUserContextId;
-+  }
-+  return 0;
-+}
-+
- void WorkerNavigator::GetAppVersion(nsString& aAppVersion,
-                                     CallerType aCallerType,
-                                     ErrorResult& aRv) const {
-@@ -157,7 +169,7 @@ void WorkerNavigator::GetAppVersion(nsString& aAppVers
-     }
-   }
- 
--  if (auto value = MaskConfig::GetString("navigator.appVersion"))
-+  if (auto value = MaskConfig::GetString("navigator.appVersion", CloakfoxWorkerUcid()))
-     return aAppVersion.Assign(NS_ConvertUTF8toUTF16(value.value()));
-   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
-   MOZ_ASSERT(workerPrivate);
-@@ -193,7 +205,7 @@ void WorkerNavigator::GetPlatform(nsString& aPlatform,
-       }
-     }
-   }
--  if (auto value = MaskConfig::GetString("navigator.platform"))
-+  if (auto value = MaskConfig::GetString("navigator.platform", CloakfoxWorkerUcid()))
-     return aPlatform.Assign(NS_ConvertUTF8toUTF16(value.value()));
-   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
-   MOZ_ASSERT(workerPrivate);
-@@ -267,7 +279,7 @@ void WorkerNavigator::GetUserAgent(nsString& aUserAgen
-       }
-     }
-   }
--  if (auto value = MaskConfig::GetString("navigator.userAgent"))
-+  if (auto value = MaskConfig::GetString("navigator.userAgent", CloakfoxWorkerUcid()))
-     return aUserAgent.Assign(NS_ConvertUTF8toUTF16(value.value()));
-   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
-   MOZ_ASSERT(workerPrivate);
-@@ -291,7 +303,7 @@ uint64_t WorkerNavigator::HardwareConcurrency() const 
-       }
-     }
-   }
--  if (auto value = MaskConfig::GetUint64("navigator.hardwareConcurrency"))
-+  if (auto value = MaskConfig::GetUint64("navigator.hardwareConcurrency", CloakfoxWorkerUcid()))
-     return value.value();
-   RuntimeService* rts = RuntimeService::GetService();
-   MOZ_ASSERT(rts);
-diff -urp before/dom/workers/WorkerPrivate.cpp after/dom/workers/WorkerPrivate.cpp
---- a/dom/workers/WorkerPrivate.cpp	2026-08-09 00:15:20
-+++ b/dom/workers/WorkerPrivate.cpp	2026-08-09 00:15:20
-@@ -115,6 +115,7 @@
- #include "nsNetUtil.h"
- #include "nsPresContext.h"
- #include "nsPrintfCString.h"
-+#include "mozilla/dom/RoverfoxStorageManager.h"  // Cloakfox: warm per-container cfg
- #include "nsProxyRelease.h"
- #include "nsQueryObject.h"
- #include "nsRFPService.h"
-@@ -3148,6 +3149,25 @@ already_AddRefed<WorkerPrivate> WorkerPrivate::Constru
-   }
- 
-   worker->mDefaultLocale = std::move(defaultLocale);
-+
-+  // Cloakfox: warm this container's cloak_cfg into RoverfoxStorageManager's
-+  // mutex-protected cache while we are still on the main thread.
-+  //
-+  // The worker's navigator getters resolve their persona with an EXPLICIT
-+  // userContextId (they cannot use CloakConfigOverlay_CurrentUserContextId(),
-+  // which returns 0 off the main thread). That lookup ultimately reads
-+  // Preferences, which is main-thread-only, so off-thread reads are served
-+  // from the cache instead — but only if something populated it first.
-+  // Without this warm-up the worker silently fell back to container 0 and
-+  // reported a DIFFERENT persona than its own window: a self-contradiction,
-+  // and cross-container correlation since it exposed ctx 0's identity.
-+  if (NS_IsMainThread()) {
-+    nsAutoString cfgKey;
-+    cfgKey.AppendPrintf("cloak_cfg_%u",
-+                        worker->GetOriginAttributes().mUserContextId);
-+    nsAutoString ignored;
-+    (void)RoverfoxStorageManager::GetString(cfgKey, ignored);
-+  }
- 
-   // Create remote debugger endpoint here for child binding in
-   // WorkerThreadPrimaryRunnable
-diff -urp before/cloakcfg/MaskConfig.hpp after/cloakcfg/MaskConfig.hpp
---- a/cloakcfg/MaskConfig.hpp	2026-08-09 11:49:21
-+++ b/cloakcfg/MaskConfig.hpp	2026-08-09 11:49:21
-@@ -116,9 +116,9 @@ inline std::optional<std::string> GetString(const std:
-   return data[key].get<std::string>();
- }
- 
--inline std::vector<std::string> GetStringList(const std::string& key) {
-+inline std::vector<std::string> GetStringList(const std::string& key, uint32_t userContextId = 0) {
-   std::vector<std::string> result;
--  auto ctx = GetContextOverlay();
-+  auto ctx = GetContextOverlay(userContextId);
-   const auto& src = (HasKey(key, ctx) && ctx[key].is_array()) ? ctx : GetJson();
-   if (!HasKey(key, src)) return {};
-   for (const auto& item : src[key]) {
-@@ -166,8 +166,8 @@ inline std::optional<int32_t> GetInt32(const std::stri
-   return std::nullopt;
- }
- 
--inline std::optional<double> GetDouble(const std::string& key) {
--  auto ctx = GetContextOverlay();
-+inline std::optional<double> GetDouble(const std::string& key, uint32_t userContextId = 0) {
-+  auto ctx = GetContextOverlay(userContextId);
-   if (HasKey(key, ctx) && ctx[key].is_number()) return ctx[key].get<double>();
-   const auto& data = GetJson();
-   if (!HasKey(key, data)) return std::nullopt;
-@@ -178,8 +178,12 @@ inline std::optional<double> GetDouble(const std::stri
-   return std::nullopt;
- }
- 
--inline std::optional<bool> GetBool(const std::string& key) {
--  auto ctx = GetContextOverlay();
-+// Cloakfox: takes an explicit userContextId for the same reason GetString
-+// does — CloakConfigOverlay_CurrentUserContextId() returns 0 off the main
-+// thread, so a worker calling this without one resolves container 0's
-+// persona instead of its own.
-+inline std::optional<bool> GetBool(const std::string& key, uint32_t userContextId = 0) {
-+  auto ctx = GetContextOverlay(userContextId);
-   if (HasKey(key, ctx) && ctx[key].is_boolean()) return ctx[key].get<bool>();
-   const auto& data = GetJson();
-   if (!HasKey(key, data)) return std::nullopt;
-diff -urp before/dom/workers/WorkerNavigator.cpp after/dom/workers/WorkerNavigator.cpp
---- a/dom/workers/WorkerNavigator.cpp	2026-08-09 11:49:21
-+++ b/dom/workers/WorkerNavigator.cpp	2026-08-09 11:49:21
-@@ -105,8 +105,21 @@ JSObject* WorkerNavigator::WrapObject(JSContext* aCx,
+ JSObject* WorkerNavigator::WrapObject(JSContext* aCx,
+                                       JS::Handle<JSObject*> aGivenProto) {
    return WorkerNavigator_Binding::Wrap(aCx, this, aGivenProto);
  }
  
@@ -197,29 +146,150 @@ diff -urp before/dom/workers/WorkerNavigator.cpp after/dom/workers/WorkerNavigat
        value.has_value())
      return value.value();
    bool gpcStatus = StaticPrefs::privacy_globalprivacycontrol_enabled();
-@@ -126,18 +139,6 @@ void WorkerNavigator::SetLanguages(const nsTArray<nsSt
- void WorkerNavigator::SetLanguages(const nsTArray<nsString>& aLanguages) {
-   WorkerNavigator_Binding::ClearCachedLanguagesValue(this);
-   mProperties.mLanguages = aLanguages.Clone();
--}
--
--// Cloakfox: this worker's own container. CloakConfigOverlay_CurrentUserContextId()
--// returns 0 off the main thread, so the context-blind MaskConfig getters would
--// resolve container 0's persona for EVERY worker — a worker/window
--// contradiction plus cross-container correlation. The worker's own origin
--// attributes are valid on any thread, so pass them explicitly.
--static uint32_t CloakfoxWorkerUcid() {
--  if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
--    return wp->GetOriginAttributes().mUserContextId;
--  }
--  return 0;
- }
+   if (!gpcStatus) {
+     JSObject* jso = GetWrapper();
+     if (const nsCOMPtr<nsIGlobalObject> global = xpc::NativeGlobal(jso)) {
+       if (const nsCOMPtr<nsIPrincipal> principal = global->PrincipalOrNull()) {
+         gpcStatus = principal->GetIsInPrivateBrowsing() &&
+@@ -160,17 +173,17 @@
+     IgnoredErrorResult uaRv;
+     GetUserAgent(ua, aCallerType, uaRv);
+     if (!uaRv.Failed() && StringBeginsWith(ua, u"Mozilla/"_ns)) {
+       aAppVersion.Assign(Substring(ua, 8));
+       return;
+     }
+   }
  
- void WorkerNavigator::GetAppVersion(nsString& aAppVersion,
-diff -urp before/dom/workers/WorkerPrivate.cpp after/dom/workers/WorkerPrivate.cpp
---- a/dom/workers/WorkerPrivate.cpp	2026-08-09 11:49:21
-+++ b/dom/workers/WorkerPrivate.cpp	2026-08-09 11:49:21
-@@ -6421,7 +6421,14 @@ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalSco
+-  if (auto value = MaskConfig::GetString("navigator.appVersion"))
++  if (auto value = MaskConfig::GetString("navigator.appVersion", CloakfoxWorkerUcid()))
+     return aAppVersion.Assign(NS_ConvertUTF8toUTF16(value.value()));
+   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+   MOZ_ASSERT(workerPrivate);
+ 
+   if (aCallerType != CallerType::System) {
+     if (workerPrivate->ShouldResistFingerprinting(
+             RFPTarget::NavigatorAppVersion)) {
+       // See nsRFPService.h for spoofed value.
+@@ -196,17 +209,17 @@
+       uint32_t ucid = wp->GetOriginAttributes().mUserContextId;
+       nsAutoString stored;
+       if (mozilla::dom::NavigatorManager::GetPlatform(ucid, stored)) {
+         aPlatform = stored;
+         return;
+       }
+     }
+   }
+-  if (auto value = MaskConfig::GetString("navigator.platform"))
++  if (auto value = MaskConfig::GetString("navigator.platform", CloakfoxWorkerUcid()))
+     return aPlatform.Assign(NS_ConvertUTF8toUTF16(value.value()));
+   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+   MOZ_ASSERT(workerPrivate);
+ 
+   // navigator.platform is the same for default and spoofed values. The
+   // "general.platform.override" pref should override the default platform,
+   // but the spoofed platform should override the pref.
+   if (aCallerType == CallerType::System ||
+@@ -271,17 +284,17 @@
+       uint32_t ucid = wp->GetOriginAttributes().mUserContextId;
+       nsAutoString stored;
+       if (mozilla::dom::NavigatorManager::GetUserAgent(ucid, stored)) {
+         aUserAgent = stored;
+         return;
+       }
+     }
+   }
+-  if (auto value = MaskConfig::GetString("navigator.userAgent"))
++  if (auto value = MaskConfig::GetString("navigator.userAgent", CloakfoxWorkerUcid()))
+     return aUserAgent.Assign(NS_ConvertUTF8toUTF16(value.value()));
+   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+   MOZ_ASSERT(workerPrivate);
+ 
+   RefPtr<GetUserAgentRunnable> runnable = new GetUserAgentRunnable(
+       workerPrivate, aUserAgent,
+       workerPrivate->ShouldResistFingerprinting(RFPTarget::NavigatorUserAgent));
+ 
+@@ -295,17 +308,17 @@
+     if (wp) {
+       uint32_t ucid = wp->GetOriginAttributes().mUserContextId;
+       uint32_t stored = mozilla::dom::NavigatorManager::GetHardwareConcurrency(ucid);
+       if (stored > 0) {
+         return static_cast<uint64_t>(stored);
+       }
+     }
+   }
+-  if (auto value = MaskConfig::GetUint64("navigator.hardwareConcurrency"))
++  if (auto value = MaskConfig::GetUint64("navigator.hardwareConcurrency", CloakfoxWorkerUcid()))
+     return value.value();
+   RuntimeService* rts = RuntimeService::GetService();
+   MOZ_ASSERT(rts);
+ 
+   WorkerPrivate* aWorkerPrivate = GetCurrentThreadWorkerPrivate();
+ 
+   return rts->ClampedHardwareConcurrency(
+       aWorkerPrivate->ShouldResistFingerprinting(
+diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
+--- a/dom/workers/WorkerPrivate.cpp
++++ b/dom/workers/WorkerPrivate.cpp
+@@ -113,16 +113,17 @@
+ #include "nsIProtocolHandler.h"
+ #include "nsIScriptError.h"
+ #include "nsIURI.h"
+ #include "nsIURL.h"
+ #include "nsIUUIDGenerator.h"
+ #include "nsNetUtil.h"
+ #include "nsPresContext.h"
+ #include "nsPrintfCString.h"
++#include "mozilla/dom/RoverfoxStorageManager.h"  // Cloakfox: warm per-container cfg
+ #include "nsProxyRelease.h"
+ #include "nsQueryObject.h"
+ #include "nsRFPService.h"
+ #include "nsSandboxFlags.h"
+ #include "nsThreadManager.h"
+ #include "nsThreadUtils.h"
+ #include "nsUTF8Utils.h"
+ 
+@@ -3270,16 +3271,35 @@
+   JS::UniqueChars defaultLocale = JS_GetDefaultLocale(aCx);
+   if (NS_WARN_IF(!defaultLocale)) {
+     aRv.Throw(NS_ERROR_UNEXPECTED);
+     return nullptr;
+   }
+ 
+   worker->mDefaultLocale = std::move(defaultLocale);
+ 
++  // Cloakfox: warm this container's cloak_cfg into RoverfoxStorageManager's
++  // mutex-protected cache while we are still on the main thread.
++  //
++  // The worker's navigator getters resolve their persona with an EXPLICIT
++  // userContextId (they cannot use CloakConfigOverlay_CurrentUserContextId(),
++  // which returns 0 off the main thread). That lookup ultimately reads
++  // Preferences, which is main-thread-only, so off-thread reads are served
++  // from the cache instead — but only if something populated it first.
++  // Without this warm-up the worker silently fell back to container 0 and
++  // reported a DIFFERENT persona than its own window: a self-contradiction,
++  // and cross-container correlation since it exposed ctx 0's identity.
++  if (NS_IsMainThread()) {
++    nsAutoString cfgKey;
++    cfgKey.AppendPrintf("cloak_cfg_%u",
++                        worker->GetOriginAttributes().mUserContextId);
++    nsAutoString ignored;
++    (void)RoverfoxStorageManager::GetString(cfgKey, ignored);
++  }
++
+   // Create the remote debugger endpoints here so the child endpoint can be
+   // bound in WorkerThreadPrimaryRunnable. Self-gates on UseRemoteDebugger().
+   worker->CreateRemoteDebuggerEndpoints();
+ 
+   if (!runtimeService->RegisterWorker(*worker)) {
+     aRv.Throw(NS_ERROR_UNEXPECTED);
+     return nullptr;
+   }
+@@ -6778,17 +6798,24 @@
+   //      defineProperty. Non-wrapped functions still see the real
+   //      toString output. Window-scope spoofer relies on
+   //      Cu.exportFunction for the same effect; workers have no Cu so
+   //      we recreate the camouflage in pure JS.
+   //
    // Does not perturb constants (Math.PI, Math.E) — same default as the
    // window actor; constant noise is opt-in via
    // cloakfox.opt.math_constants_noise and is self-flagging.
@@ -235,3 +305,8 @@ diff -urp before/dom/workers/WorkerPrivate.cpp after/dom/workers/WorkerPrivate.c
        seedOpt.has_value() && seedOpt.value() != 0) {
      nsCString src;
      src.AppendPrintf(
+         "(()=>{const M=Math,imul=M.imul,oFPTS=Function.prototype.toString;"
+         "const ab=new ArrayBuffer(8),f64=new Float64Array(ab),u32=new Uint32Array(ab);"
+         "const SEED=%u;"
+         "const noise=(r)=>{f64[0]=r;"
+         "let h=(u32[0]^u32[1]^SEED)>>>0;"

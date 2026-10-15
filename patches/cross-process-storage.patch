@@ -1,7 +1,12 @@
 diff --git a/dom/ipc/ContentParent.cpp b/dom/ipc/ContentParent.cpp
 --- a/dom/ipc/ContentParent.cpp
 +++ b/dom/ipc/ContentParent.cpp
-@@ -1272,6 +1272,31 @@
+@@ -1191,16 +1191,41 @@
+     return IPC_FAIL(this, "SendInitGMPService failed");
+   }
+ 
+   mGMPCreated = true;
+ 
    return IPC_OK();
  }
  
@@ -33,10 +38,20 @@ diff --git a/dom/ipc/ContentParent.cpp b/dom/ipc/ContentParent.cpp
  static mozilla::glean::security::FissionPrincipalsExtra
  GetAndLogPrincipalValidationFailure(nsIPrincipal* aPrincipal,
                                      const char* aMethod) {
+   mozilla::glean::security::FissionPrincipalsExtra extra = {};
+   extra.value = Some(aMethod);
+ 
+   if (!aPrincipal) {
+     extra.principaltype = Some("NullPtr"_ns);
 diff --git a/dom/ipc/ContentParent.h b/dom/ipc/ContentParent.h
 --- a/dom/ipc/ContentParent.h
 +++ b/dom/ipc/ContentParent.h
-@@ -366,6 +366,11 @@
+@@ -363,16 +363,21 @@
+   // processes; if false, existing mappings are still valid but the data has
+   // been updated and so full reflows are in order.
+   static void NotifyUpdatedFonts(bool aFullRebuild);
+ 
+   mozilla::ipc::IPCResult RecvCreateClipboardContentAnalysis(
        Endpoint<PClipboardContentAnalysisParent>&& aParentEndpoint);
    mozilla::ipc::IPCResult RecvCreateGMPService();
  
@@ -48,10 +63,20 @@ diff --git a/dom/ipc/ContentParent.h b/dom/ipc/ContentParent.h
    NS_DECL_CYCLE_COLLECTION_CLASS_AMBIGUOUS(ContentParent, nsIObserver)
  
    NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL
+   NS_DECL_NSIDOMPROCESSPARENT
+   NS_DECL_NSIOBSERVER
+   NS_DECL_NSIDOMGEOPOSITIONCALLBACK
+   NS_DECL_NSIDOMGEOPOSITIONERRORCALLBACK
+   NS_DECL_NSIASYNCSHUTDOWNBLOCKER
 diff --git a/dom/ipc/PContent.ipdl b/dom/ipc/PContent.ipdl
 --- a/dom/ipc/PContent.ipdl
 +++ b/dom/ipc/PContent.ipdl
-@@ -1160,6 +1160,13 @@
+@@ -1162,16 +1162,23 @@
+         nsStructuredCloneContainer aState);
+ 
+     async RemoveFromBFCache(MaybeDiscardedBrowsingContext aContext);
+ 
+     async InitBackground(Endpoint<PBackgroundStarterParent> aEndpoint);
  
      async CreateGMPService();
  
@@ -65,10 +90,20 @@ diff --git a/dom/ipc/PContent.ipdl b/dom/ipc/PContent.ipdl
      async CreateClipboardContentAnalysis(Endpoint<PClipboardContentAnalysisParent> aParentEndpoint);
  
      async InitStreamFilter(uint64_t channelId, nsString addonId)
+         returns (Endpoint<PStreamFilterChild> aEndpoint);
+ 
+     async PRemoteSpellcheckEngine();
+ 
+     async InitCrashReporter(CrashReporterInitArgs aInitArgs);
 diff --git a/ipc/ipdl/sync-messages.ini b/ipc/ipdl/sync-messages.ini
 --- a/ipc/ipdl/sync-messages.ini
 +++ b/ipc/ipdl/sync-messages.ini
-@@ -371,6 +371,12 @@
+@@ -368,15 +368,21 @@
+ [PWebGL::SyncPing]
+ description = Used to throttle a lot of async WebGL command messages.
+ # -
+ [PIPCClientCerts::FindObjects]
+ description = Finds certificates and private keys in the parent process. As this is called from PKCS#11, there is no way to make this asynchronous.
  [PIPCClientCerts::Sign]
  description = Performs a signature on given data with a key corresponding to the given identifier. This is called from PKCS#11, so there is no way to make this asynchronous.
  # -
@@ -81,10 +116,19 @@ diff --git a/ipc/ipdl/sync-messages.ini b/ipc/ipdl/sync-messages.ini
  [PRemoteQuotaObject::MaybeUpdateSize]
  description = This must be synchronous until quota file streams become non-blocking. The synchronous message is never used on the main thread or the PBackground thread or a DOM worker threed.
  
+ #############################################################
+ #          AVOID ADDING NEW MESSAGES TO THIS FILE           #
+ #                see comment at top of file                 #
+ #############################################################
 diff --git a/modules/libpref/Preferences.cpp b/modules/libpref/Preferences.cpp
 --- a/modules/libpref/Preferences.cpp
 +++ b/modules/libpref/Preferences.cpp
-@@ -7315,6 +7315,8 @@
+@@ -7355,16 +7355,18 @@
+     PREF_LIST_ENTRY("spellchecker.dictionary"),
+     PREF_LIST_ENTRY("test.char"),
+     PREF_LIST_ENTRY("Test.IPC."),
+     PREF_LIST_ENTRY("exists.thenDoesNot"),
+     PREF_LIST_ENTRY("type.String."),
      PREF_LIST_ENTRY("toolkit.mozprotocol.url"),
      PREF_LIST_ENTRY("toolkit.telemetry.log.level"),
      PREF_LIST_ENTRY("ui."),
@@ -93,3 +137,8 @@ diff --git a/modules/libpref/Preferences.cpp b/modules/libpref/Preferences.cpp
  };
  
  #undef PREF_LIST_ENTRY
+ 
+ static bool ShouldSanitizePreference(const Pref* const aPref) {
+   // In the parent process, we use a heuristic to decide if a pref
+   // value should be sanitized before sending to subprocesses.
+   MOZ_DIAGNOSTIC_ASSERT(XRE_IsParentProcess());

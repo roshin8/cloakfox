@@ -1,6 +1,12 @@
+diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
 --- a/dom/events/EventStateManager.cpp
 +++ b/dom/events/EventStateManager.cpp
-@@ -39,6 +39,7 @@
+@@ -32,16 +32,17 @@
+ #include "mozilla/PresShell.h"
+ #include "mozilla/ProfilerLabels.h"
+ #include "mozilla/ScopeExit.h"
+ #include "mozilla/ScrollContainerFrame.h"
+ #include "mozilla/ScrollTypes.h"
  #include "mozilla/Services.h"
  #include "mozilla/StaticPrefs_accessibility.h"
  #include "mozilla/StaticPrefs_browser.h"
@@ -8,7 +14,17 @@
  #include "mozilla/StaticPrefs_dom.h"
  #include "mozilla/StaticPrefs_layout.h"
  #include "mozilla/StaticPrefs_mousewheel.h"
-@@ -1114,6 +1115,14 @@
+ #include "mozilla/StaticPrefs_ui.h"
+ #include "mozilla/StaticPrefs_zoom.h"
+ #include "mozilla/TextComposition.h"
+ #include "mozilla/TextControlElement.h"
+ #include "mozilla/TextEditor.h"
+@@ -1179,26 +1180,43 @@
+           // XXX FIXME: We won't dispatch `auxclick` for 4th nor 5th button.
+           break;
+         default:
+           break;
+       }
        break;
      }
      case eMouseEnterIntoWidget:
@@ -23,7 +39,10 @@
        PointerEventHandler::UpdatePointerActiveState(mouseEvent, aTargetContent);
        // In some cases on e10s eMouseEnterIntoWidget
        // event was sent twice into child process of content.
-@@ -1124,6 +1133,15 @@
+       // (From specific widget code (sending is not permanent) and
+       // from ESM::DispatchMouseOrPointerBoundaryEvent (sending is permanent)).
+       // IsCrossProcessForwardingStopped() helps to suppress sending accidental
+       // event from widget code.
        aEvent->StopCrossProcessForwarding();
        break;
      case eMouseExitFromWidget:
@@ -39,7 +58,17 @@
        // If this is a remote frame, we receive eMouseExitFromWidget from the
        // parent the mouse exits our content. Since the parent may update the
        // cursor while the mouse is outside our frame, and since PuppetWidget
-@@ -5192,6 +5210,10 @@
+       // caches the current cursor internally, re-entering our content (say from
+       // over a window edge) wont update the cursor if the cached value and the
+       // current cursor match. So when the mouse exits a remote frame, clear the
+       // cached widget cursor so a proper update will occur when the mouse
+       // re-enters.
+@@ -5342,16 +5360,20 @@
+                                             WidgetMouseEvent::eReal);
+   }
+ 
+   // Inherit whether the event is synthesized by the test API or not.
+   // Then, when the event is synthesized by a test API and handled in a remote
    // process, it won't be ignored.  See PresShell::HandleEvent().
    newEvent->mFlags.mIsSynthesizedForTests =
        aMouseEvent->mFlags.mIsSynthesizedForTests;
@@ -50,7 +79,17 @@
  
    newEvent->mRelatedTarget = aRelatedTarget;
    newEvent->mRefPoint = aMouseEvent->mRefPoint;
-@@ -5307,6 +5329,29 @@
+   newEvent->mModifiers = aMouseEvent->mModifiers;
+   newEvent->mInputSource = aMouseEvent->mInputSource;
+   newEvent->pointerId = aMouseEvent->pointerId;
+   newEvent->mMovement = aMouseEvent->mMovement;
+   // NOTE: If you need to change this if-expression, you need to update
+@@ -5443,16 +5465,39 @@
+   }
+ 
+   nsCOMPtr<nsIContent> targetContent = aTargetContent;
+   nsCOMPtr<nsIContent> relatedContent = aRelatedContent;
+ 
    UniquePtr<WidgetMouseEvent> dispatchEvent =
        CreateMouseOrPointerWidgetEvent(aMouseEvent, aMessage, relatedContent);
  
@@ -80,7 +119,17 @@
    AutoWeakFrame previousTarget = mCurrentTarget;
    mCurrentTargetContent = targetContent;
  
-@@ -5326,6 +5371,8 @@
+   nsEventStatus status = nsEventStatus_eIgnore;
+   ESMEventCB callback(targetContent);
+   RefPtr<nsPresContext> presContext = mPresContext;
+   EventDispatcher::Dispatch(targetContent, presContext, dispatchEvent.get(),
+                             nullptr, &status, &callback);
+@@ -5462,27 +5507,31 @@
+     // event to the remote frame.
+     if (IsTopLevelRemoteTarget(targetContent)) {
+       if (aMessage == eMouseOut) {
+         // For remote content, send a puppet widget mouse exit event.
+         UniquePtr<WidgetMouseEvent> remoteEvent =
              CreateMouseOrPointerWidgetEvent(aMouseEvent, eMouseExitFromWidget,
                                              relatedContent);
          remoteEvent->mExitFrom = Some(WidgetMouseEvent::ePuppet);
@@ -89,7 +138,11 @@
  
          // mCurrentTarget is set to the new target, so we must reset it to the
          // old target and then dispatch a cross-process event. (mCurrentTarget
-@@ -5337,6 +5384,8 @@
+         // will be set back below.) HandleCrossProcessEvent will query for the
+         // proper target via GetEventTarget which will return mCurrentTarget.
+         mCurrentTarget = mPresContext->GetPrimaryFrameFor(targetContent);
+         HandleCrossProcessEvent(remoteEvent.get(), &status);
+       } else if (aMessage == eMouseOver) {
          UniquePtr<WidgetMouseEvent> remoteEvent =
              CreateMouseOrPointerWidgetEvent(aMouseEvent, eMouseEnterIntoWidget,
                                              relatedContent);
@@ -98,7 +151,17 @@
          HandleCrossProcessEvent(remoteEvent.get(), &status);
        }
      }
-@@ -5606,6 +5655,22 @@
+   }
+ 
+   mCurrentTargetContent = nullptr;
+   mCurrentTarget = previousTarget;
+ 
+@@ -5742,16 +5791,32 @@
+ 
+   MOZ_LOG(logModule, LogLevel::Info,
+           ("Dispatched \"over\" and \"enter\" events (the original \"over\" "
+            "event target was in the document %p, and now in %p)",
+            aContent->GetComposedDoc(), mDocument.get()));
    wrapper->DidDispatchOverAndEnterEvent(
        aContent->GetComposedDoc() == mDocument ? aContent : nullptr,
        targetWidget);
@@ -120,10 +183,21 @@
 +  }
  }
  
- // Returns the center point of the window's client area. This is
+ // Returns the size and also the center point of the window's client area. The
+ // center point is in widget coordinates, i.e. relative to the widget's top-left
+ // corner, not in screen coordinates, the same units that UIEvent:: refpoint is
+ // in. It may not be the exact center of the window if the platform requires
+ // rounding the coordinate.
+ static std::pair<LayoutDeviceIntSize, LayoutDeviceIntPoint>
+diff --git a/dom/events/EventStateManager.h b/dom/events/EventStateManager.h
 --- a/dom/events/EventStateManager.h
 +++ b/dom/events/EventStateManager.h
-@@ -1421,6 +1421,10 @@
+@@ -1486,16 +1486,20 @@
+ 
+   bool mShouldAlwaysUseLineDeltas : 1;
+   bool mShouldAlwaysUseLineDeltasInitialized : 1;
+ 
+   bool mInTouchDrag;
  
    bool m_haveShutdown;
  
@@ -134,3 +208,8 @@
    RefPtr<OverOutElementsWrapper> mMouseEnterLeaveHelper;
    nsRefPtrHashtable<nsUint32HashKey, OverOutElementsWrapper>
        mPointersEnterLeaveHelper;
+ 
+   // Array for accesskey support
+   nsCOMArray<dom::Element> mAccessKeys;
+ 
+   bool ShouldAlwaysUseLineDeltas();

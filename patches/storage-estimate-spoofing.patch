@@ -1,7 +1,12 @@
 diff --git a/dom/quota/StorageManager.cpp b/dom/quota/StorageManager.cpp
 --- a/dom/quota/StorageManager.cpp
 +++ b/dom/quota/StorageManager.cpp
-@@ -7,6 +7,7 @@
+@@ -2,16 +2,17 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+  * You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "StorageManager.h"
+ 
  #include <cstdint>
  #include <cstdlib>
  
@@ -9,7 +14,17 @@ diff --git a/dom/quota/StorageManager.cpp b/dom/quota/StorageManager.cpp
  #include "ErrorList.h"
  #include "MainThreadUtils.h"
  #include "fs/FileSystemRequestHandler.h"
-@@ -767,8 +768,16 @@
+ #include "js/CallArgs.h"
+ #include "js/TypeDecls.h"
+ #include "mozilla/Attributes.h"
+ #include "mozilla/ErrorResult.h"
+ #include "mozilla/Maybe.h"
+@@ -762,30 +763,50 @@
+   return StorageManager_Binding::Wrap(aCx, this, aGivenProto);
+ }
+ 
+ // WebIDL Interface
+ 
  already_AddRefed<Promise> StorageManager::Persisted(ErrorResult& aRv) {
    MOZ_ASSERT(mGlobal);
  
@@ -28,7 +43,12 @@ diff --git a/dom/quota/StorageManager.cpp b/dom/quota/StorageManager.cpp
  }
  
  already_AddRefed<Promise> StorageManager::Persist(ErrorResult& aRv) {
-@@ -781,6 +790,18 @@
+   MOZ_ASSERT(mGlobal);
+ 
+   return ExecuteOpOnMainOrWorkerThread(mGlobal, RequestResolver::Type::Persist,
+                                        aRv);
+ }
+ 
  already_AddRefed<Promise> StorageManager::Estimate(ErrorResult& aRv) {
    MOZ_ASSERT(mGlobal);
  
@@ -47,10 +67,20 @@ diff --git a/dom/quota/StorageManager.cpp b/dom/quota/StorageManager.cpp
    return ExecuteOpOnMainOrWorkerThread(mGlobal, RequestResolver::Type::Estimate,
                                         aRv);
  }
+ 
+ already_AddRefed<Promise> StorageManager::GetDirectory(ErrorResult& aRv) {
+   return RefPtr(GetFileSystemManager())->GetDirectory(aRv);
+ }
+ 
 diff --git a/dom/quota/moz.build b/dom/quota/moz.build
 --- a/dom/quota/moz.build
 +++ b/dom/quota/moz.build
-@@ -195,5 +195,6 @@
+@@ -195,10 +195,11 @@
+ ]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ FINAL_LIBRARY = "xul"
  
  LOCAL_INCLUDES += [
      "/caps",

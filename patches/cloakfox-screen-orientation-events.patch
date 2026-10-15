@@ -1,7 +1,12 @@
 diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
 --- a/dom/base/ScreenOrientation.cpp
 +++ b/dom/base/ScreenOrientation.cpp
-@@ -959,8 +959,14 @@
+@@ -980,18 +980,24 @@
+       "dom::ScreenOrientation::DispatchChangeEvent", [self, doc]() {
+         RefPtr<Promise> pendingPromise;
+         if (doc) {
+           pendingPromise = doc->GetOrientationPendingPromise();
+           if (pendingPromise) {
              doc->ClearOrientationPendingPromise();
            }
          }
@@ -18,3 +23,8 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
          if (pendingPromise) {
            pendingPromise->MaybeResolveWithUndefined();
          }
+       });
+ }
+ 
+ JSObject* ScreenOrientation::WrapObject(JSContext* aCx,
+                                         JS::Handle<JSObject*> aGivenProto) {

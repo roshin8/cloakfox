@@ -1,7 +1,12 @@
 diff --git a/js/xpconnect/src/ExportHelpers.cpp b/js/xpconnect/src/ExportHelpers.cpp
 --- a/js/xpconnect/src/ExportHelpers.cpp
 +++ b/js/xpconnect/src/ExportHelpers.cpp
-@@ -418,7 +418,8 @@
+@@ -413,17 +413,18 @@
+   unsigned nargs = 0;
+   RootedObject unwrapped(cx, js::UncheckedUnwrap(callable));
+   if (unwrapped) {
+     if (JSFunction* fun = JS_GetObjectFunction(unwrapped)) {
+       nargs = JS_GetFunctionArity(fun);
      }
    }
  
@@ -11,7 +16,17 @@ diff --git a/js/xpconnect/src/ExportHelpers.cpp b/js/xpconnect/src/ExportHelpers
    JSFunction* fun =
        js::NewFunctionByIdWithReserved(cx, FunctionForwarder, nargs, flags, id);
    if (!fun) {
-@@ -488,7 +489,8 @@
+     return false;
+   }
+ 
+   // Stash the callable in slot 0.
+   AssertSameCompartment(cx, callable);
+@@ -483,17 +484,18 @@
+ 
+     // Unwrapping to see if we have a callable.
+     funObj = UncheckedUnwrap(funObj);
+     if (!JS::IsCallable(funObj)) {
+       JS_ReportErrorASCII(cx, "First argument must be a function");
        return false;
      }
  
@@ -21,7 +36,17 @@ diff --git a/js/xpconnect/src/ExportHelpers.cpp b/js/xpconnect/src/ExportHelpers
      if (id.isVoid()) {
        // If there wasn't any function name specified, copy the name from the
        // function being imported.  But be careful in case the callable we have
-@@ -527,6 +529,7 @@
+       // is not actually a JSFunction.
+       RootedString funName(cx);
+       JS::Rooted<JSFunction*> fun(cx, JS_GetObjectFunction(funObj));
+       if (fun) {
+         if (!JS_GetFunctionId(cx, fun, &funName)) {
+@@ -522,16 +524,17 @@
+     // GC hazard, we must wrap it to the same compartment.
+     if (!JS_WrapObject(cx, &funObj)) {
+       return false;
+     }
+ 
      // And now, let's create the forwarder function in the target compartment
      // for the function the be exported.
      FunctionForwarderOptions forwarderOptions;
@@ -29,10 +54,20 @@ diff --git a/js/xpconnect/src/ExportHelpers.cpp b/js/xpconnect/src/ExportHelpers
      forwarderOptions.allowCrossOriginArguments =
          options.allowCrossOriginArguments;
      if (!NewFunctionForwarder(cx, id, funObj, forwarderOptions, rval)) {
+       JS_ReportErrorASCII(cx, "Exporting function failed");
+       return false;
+     }
+ 
+     // We have the forwarder function in the target compartment. If
 diff --git a/js/xpconnect/src/xpcprivate.h b/js/xpconnect/src/xpcprivate.h
 --- a/js/xpconnect/src/xpcprivate.h
 +++ b/js/xpconnect/src/xpcprivate.h
-@@ -2317,15 +2317,21 @@
+@@ -2312,33 +2312,39 @@
+ };
+ 
+ class MOZ_STACK_CLASS ExportFunctionOptions : public OptionsBase {
+  public:
+   explicit ExportFunctionOptions(JSContext* cx = xpc_GetSafeJSContext(),
                                   JSObject* options = nullptr)
        : OptionsBase(cx, options),
          defineAs(cx, JS::PropertyKey::Void()),
@@ -54,7 +89,7 @@ diff --git a/js/xpconnect/src/xpcprivate.h b/js/xpconnect/src/xpcprivate.h
    bool allowCrossOriginArguments;
  };
  
-@@ -2333,7 +2339,7 @@
+ class MOZ_STACK_CLASS FunctionForwarderOptions : public OptionsBase {
   public:
    explicit FunctionForwarderOptions(JSContext* cx = xpc_GetSafeJSContext(),
                                      JSObject* options = nullptr)
@@ -63,7 +98,17 @@ diff --git a/js/xpconnect/src/xpcprivate.h b/js/xpconnect/src/xpcprivate.h
  
    JSObject* ToJSObject(JSContext* cx) {
      JS::RootedObject obj(cx, JS_NewObjectWithGivenProto(cx, nullptr, nullptr));
-@@ -2357,6 +2363,7 @@
+     if (!obj) {
+       return nullptr;
+     }
+ 
+     JS::RootedValue val(cx);
+@@ -2352,16 +2358,17 @@
+   }
+ 
+   virtual bool Parse() override {
+     return ParseBoolean("allowCrossOriginArguments",
+                         &allowCrossOriginArguments);
    }
  
    bool allowCrossOriginArguments;
@@ -71,3 +116,8 @@ diff --git a/js/xpconnect/src/xpcprivate.h b/js/xpconnect/src/xpcprivate.h
  };
  
  class MOZ_STACK_CLASS StackScopedCloneOptions : public OptionsBase {
+  public:
+   explicit StackScopedCloneOptions(JSContext* cx = xpc_GetSafeJSContext(),
+                                    JSObject* options = nullptr)
+       : OptionsBase(cx, options),
+         wrapReflectors(false),

@@ -1,7 +1,12 @@
 diff --git a/browser/base/content/browser-main.js b/browser/base/content/browser-main.js
 --- a/browser/base/content/browser-main.js
 +++ b/browser/base/content/browser-main.js
-@@ -10,9 +10,6 @@
+@@ -5,19 +5,16 @@
+ // prettier-ignore
+ // eslint-disable-next-line no-lone-blocks
+ {
+   Services.scriptloader.loadSubScript("chrome://browser/content/browser-init.js", this);
+   Services.scriptloader.loadSubScript("chrome://global/content/contentAreaUtils.js", this);
    Services.scriptloader.loadSubScript("chrome://browser/content/browser-captivePortal.js", this);
    if (AppConstants.MOZ_DATA_REPORTING) {
      Services.scriptloader.loadSubScript("chrome://browser/content/browser-data-submission-info-bar.js", this);
@@ -11,10 +16,20 @@ diff --git a/browser/base/content/browser-main.js b/browser/base/content/browser
    }
    Services.scriptloader.loadSubScript("chrome://browser/content/browser-pageActions.js", this);
    Services.scriptloader.loadSubScript("chrome://browser/content/sidebar/browser-sidebar.js", this);
+   Services.scriptloader.loadSubScript("chrome://browser/content/browser-customtitlebar.js", this);
+   Services.scriptloader.loadSubScript("chrome://browser/content/browser-unified-extensions.js", this);
+   Services.scriptloader.loadSubScript("chrome://browser/content/tabbrowser/drag-and-drop.js", this);
+   Services.scriptloader.loadSubScript("chrome://browser/content/tabbrowser/split-view-footer.js", this);
+   Services.scriptloader.loadSubScript("chrome://browser/content/tabbrowser/status-panel.js", this);
 diff --git a/browser/base/jar.mn b/browser/base/jar.mn
 --- a/browser/base/jar.mn
 +++ b/browser/base/jar.mn
-@@ -41,9 +41,6 @@
+@@ -36,19 +36,16 @@
+ *       content/browser/browser.xhtml                 (content/browser.xhtml)
+         content/browser/browser-a11yUtils.js          (content/browser-a11yUtils.js)
+         content/browser/browser-addons.js             (content/browser-addons.js)
+         content/browser/browser-captivePortal.js      (content/browser-captivePortal.js)
+         content/browser/browser-commands.js           (content/browser-commands.js)
          content/browser/browser-context.js            (content/browser-context.js)
          content/browser/browser-customization.js      (content/browser-customization.js)
          content/browser/browser-data-submission-info-bar.js (content/browser-data-submission-info-bar.js)
@@ -24,10 +39,20 @@ diff --git a/browser/base/jar.mn b/browser/base/jar.mn
          content/browser/browser-fullScreenAndPointerLock.js (content/browser-fullScreenAndPointerLock.js)
          content/browser/browser-gestureSupport.js           (content/browser-gestureSupport.js)
          content/browser/browser-init.js                     (content/browser-init.js)
+         content/browser/browser-main.js                     (content/browser-main.js)
+         content/browser/browser-menubar.js                  (content/browser-menubar.js)
+         content/browser/browser-pageActions.js              (content/browser-pageActions.js)
+         content/browser/browser-pagestyle.js                (content/browser-pagestyle.js)
+         content/browser/browser-places.js                   (content/browser-places.js)
 diff --git a/browser/components/BrowserComponents.manifest b/browser/components/BrowserComponents.manifest
 --- a/browser/components/BrowserComponents.manifest
 +++ b/browser/components/BrowserComponents.manifest
-@@ -93,9 +93,6 @@
+@@ -88,19 +88,16 @@
+ category browser-window-delayed-startup chrome://browser/content/browser-places.js#PlacesToolbarHelper PlacesToolbarHelper.init
+ category browser-window-delayed-startup chrome://browser/content/tabbrowser/browser-ctrlTab.js ctrlTab.observePref
+ # The object handling the downloads indicator is initialized here in the delayed startup function,
+ # but the actual indicator element is not loaded unless there are downloads to be displayed.
+ category browser-window-delayed-startup chrome://browser/content/downloads/indicator.js DownloadsButton.initializeIndicator
  category browser-window-delayed-startup chrome://browser/content/browser-fullScreenAndPointerLock.js FullScreen.init
  #ifdef MOZ_DATA_REPORTING
  category browser-window-delayed-startup chrome://browser/content/browser-data-submission-info-bar.js gDataNotificationInfoBar.init
@@ -37,10 +62,17 @@ diff --git a/browser/components/BrowserComponents.manifest b/browser/components/
  #endif
  category browser-window-delayed-startup chrome://browser/content/browser-addons.js gExtensionsNotifications.init
  category browser-window-delayed-startup chrome://browser/content/browser-captivePortal.js CaptivePortalWatcher.delayedStartup
+ 
+ # browser-window-sessionstore-initialized is fired from the window's delayed startup once SessionStore is initialized.
+ category browser-window-sessionstore-initialized chrome://browser/content/browser.js#gRestoreLastSessionObserver gRestoreLastSessionObserver.init
+ category browser-window-sessionstore-initialized chrome://browser/content/sidebar/browser-sidebar.js SidebarController.startDelayedLoad
+ category browser-window-sessionstore-initialized chrome://browser/content/browser.js#PanicButtonNotifier PanicButtonNotifier.init
 diff --git a/toolkit/crashreporter/jar.mn b/toolkit/crashreporter/jar.mn
 --- a/toolkit/crashreporter/jar.mn
 +++ b/toolkit/crashreporter/jar.mn
-@@ -3,8 +3,6 @@
+@@ -1,10 +1,8 @@
+ # This Source Code Form is subject to the terms of the Mozilla Public
+ # License, v. 2.0. If a copy of the MPL was not distributed with this
  # file, You can obtain one at http://mozilla.org/MPL/2.0/.
  
  toolkit.jar:

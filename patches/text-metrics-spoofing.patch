@@ -1,7 +1,12 @@
 diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderingContext2D.cpp
 --- a/dom/canvas/CanvasRenderingContext2D.cpp
 +++ b/dom/canvas/CanvasRenderingContext2D.cpp
-@@ -7,6 +7,7 @@
+@@ -2,16 +2,17 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "CanvasRenderingContext2D.h"
+ 
  #include <algorithm>
  #include <numbers>
  
@@ -9,7 +14,17 @@ diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderin
  #include "CanvasImageCache.h"
  #include "CanvasFingerprintManager.h"
  #include "nsPIDOMWindow.h"
-@@ -5320,6 +5321,20 @@
+ #include "mozilla/dom/WorkerPrivate.h"
+ #include "mozilla/dom/WorkerScope.h"
+ #include "CanvasUtils.h"
+ #include "GeckoBindings.h"
+ #include "ImageEncoder.h"
+@@ -5438,16 +5439,30 @@
+     // Note that actualBoundingBoxLeft measures the distance in the leftward
+     // direction, so its sign is reversed from our usual physical coordinates.
+     double actualBoundingBoxLeft = offsetX - processor.mBoundingBox.X();
+     double actualBoundingBoxRight = processor.mBoundingBox.XMost() - offsetX;
+     double actualBoundingBoxAscent =
          -processor.mBoundingBox.Y() - baselineAnchor;
      double actualBoundingBoxDescent =
          processor.mBoundingBox.YMost() + baselineAnchor;
@@ -30,3 +45,8 @@ diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderin
      return MakeUnique<TextMetrics>(
          totalWidth, actualBoundingBoxLeft, actualBoundingBoxRight,
          fontMetrics.maxAscent - baselineAnchor,   // fontBBAscent
+         fontMetrics.maxDescent + baselineAnchor,  // fontBBDescent
+         actualBoundingBoxAscent, actualBoundingBoxDescent,
+         fontMetrics.emAscent - baselineAnchor,   // emHeightAscent
+         fontMetrics.emDescent + baselineAnchor,  // emHeightDescent
+         font->GetBaseline(gfxFont::kHanging, fontOrientation) - baselineAnchor,

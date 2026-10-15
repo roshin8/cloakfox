@@ -1,7 +1,12 @@
 diff --git a/dom/media/mediacapabilities/MediaCapabilities.cpp b/dom/media/mediacapabilities/MediaCapabilities.cpp
 --- a/dom/media/mediacapabilities/MediaCapabilities.cpp
 +++ b/dom/media/mediacapabilities/MediaCapabilities.cpp
-@@ -6,6 +6,7 @@
+@@ -1,16 +1,17 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "MediaCapabilities.h"
  
  #include <utility>
  
@@ -9,7 +14,17 @@ diff --git a/dom/media/mediacapabilities/MediaCapabilities.cpp b/dom/media/media
  #include "AllocationPolicy.h"
  #include "DecoderTraits.h"
  #include "MP4Decoder.h"
-@@ -810,6 +811,17 @@
+ #include "MediaCapabilitiesValidation.h"
+ #include "MediaInfo.h"
+ #include "MediaRecorder.h"
+ #include "PDMFactorySupport.h"
+ #include "VPXDecoder.h"
+@@ -861,16 +862,27 @@
+           "key system configuration is not allowed in a non-secure context");
+       return promise.forget();
+     }
+   }
+ 
    // Step 3: Let p be a new Promise (already have it!)
    // Step 4: In parallel, run the Create a MediaCapabilitiesDecodingInfo
    //         algorithm with configuration and resolve p with its result.
@@ -27,7 +42,17 @@ diff --git a/dom/media/mediacapabilities/MediaCapabilities.cpp b/dom/media/media
    CreateMediaCapabilitiesDecodingInfo(aConfiguration, aRv, promise, behavior);
    return promise.forget();
  }
-@@ -1309,6 +1321,16 @@
+ 
+ // https://w3c.github.io/media-capabilities/#create-media-capabilities-decoding-info
+ void MediaCapabilities::CreateMediaCapabilitiesDecodingInfo(
+     const MediaDecodingConfiguration& aConfiguration, ErrorResult& aRv,
+     Promise* aPromise, const mediacaps::BehaviorConfig& aBehavior) {
+@@ -1424,16 +1436,26 @@
+   // rejected with a TypeError.
+   if (auto configCheck =
+           IsValidMediaEncodingConfiguration(aConfiguration, behavior);
+       configCheck.isErr()) {
+     RejectWithValidationResult(encodePromise, configCheck.unwrapErr());
      return encodePromise.forget();
    }
  
@@ -44,10 +69,20 @@ diff --git a/dom/media/mediacapabilities/MediaCapabilities.cpp b/dom/media/media
    LOG("Processing EncodingInfo for: {}", aConfiguration);
  
    // Step 1: Let info be a new MediaCapabilitiesEncodingInfo instance.
+   // Step 2: Set configuration to be a new MediaEncodingConfiguration.
+   // For every property in configuration create a new property with the same
+   // name and value in configuration.
+   // (Both steps handled when object created during async support check)
+ 
 diff --git a/dom/media/mediacapabilities/moz.build b/dom/media/mediacapabilities/moz.build
 --- a/dom/media/mediacapabilities/moz.build
 +++ b/dom/media/mediacapabilities/moz.build
-@@ -14,3 +14,7 @@
+@@ -9,8 +9,12 @@
+ UNIFIED_SOURCES += [
+     "MediaCapabilities.cpp",
+     "MediaCapabilitiesValidation.cpp",
+ ]
+ 
  include("/ipc/chromium/chromium-config.mozbuild")
  
  FINAL_LIBRARY = "xul"

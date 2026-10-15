@@ -56,7 +56,12 @@ def capture(binary, root, certificate, kind):
         record = fixture.observed[0]
         if os.environ.get("CHROME_QUIC_ALPS")=="1":
             assert record.get("alpsClientEE"),record
-        assert record["handshakes"] and record["alpn"] == ["h3"], record
+        # Chrome may establish more than one fresh QUIC session (e.g. a retry).
+        # Every negotiated session must use H3; a successful HTTP exchange is
+        # still required below. Session count is not a wire fingerprint field.
+        assert record["handshakes"] and record["alpn"], record
+        assert all(protocol == "h3" for protocol in record["alpn"]), record
+        assert all(handshake["alpn"] == "h3" for handshake in record["handshakes"]), record
         assert record["requests"] and record.get("settings") is not None, record
         result={"hello": record["clientHellos"][0],
                 "transportParameters": record["transportParameters"][0], "settings": record["settings"]}

@@ -1,8 +1,12 @@
 diff --git a/browser/components/urlbar/UrlbarProviderInterventions.sys.mjs b/browser/components/urlbar/UrlbarProviderInterventions.sys.mjs
-index 575205158bb8..e0c76c682a7d 100644
 --- a/browser/components/urlbar/UrlbarProviderInterventions.sys.mjs
 +++ b/browser/components/urlbar/UrlbarProviderInterventions.sys.mjs
-@@ -454,7 +454,7 @@ export class UrlbarProviderInterventions extends UrlbarProvider {
+@@ -411,17 +411,17 @@
+           ["firefox", ["fire fox", "fox fire", "foxfire"]],
+           // Recognize "mozila" as "mozilla".  This will catch common mispellings
+           // "mozila", "mozzila", and "mozzilla" (among others) due to the edit
+           // distance threshold of 1.
+           ["mozilla", ["mozila"]],
          ]),
        });
        for (let [id, phrases] of Object.entries(DOCUMENTS)) {
@@ -10,4 +14,9 @@ index 575205158bb8..e0c76c682a7d 100644
 +//        queryScorer.addDocument({ id, phrases });
        }
        return queryScorer;
-     });
+     },
+   });
+ 
+   /**
+    * The tip we should currently show.
+    *

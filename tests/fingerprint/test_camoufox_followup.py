@@ -30,6 +30,11 @@ struct Offscreen { nsIGlobalObject* g; nsIGlobalObject* GetRelevantGlobal(){retu
 struct WorkerPrivate { Attr attrs; const Attr& GetOriginAttributes(){return attrs;} };
 WorkerPrivate* worker=nullptr;
 WorkerPrivate* GetCurrentThreadWorkerPrivate(){return worker;}
+// Firefox158 calls these APIs through their actual DOM namespace.
+namespace dom {
+using ::WorkerPrivate;
+using ::GetCurrentThreadWorkerPrivate;
+}
 struct ClientWebGLContext { Canvas* mCanvasElement=nullptr; Offscreen* mOffscreenCanvas=nullptr; uint32_t GetUserContextId() const; };
 ''' + method + r'''
 int main(){

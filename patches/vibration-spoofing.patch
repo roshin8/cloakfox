@@ -1,9 +1,15 @@
---- a/b/dom/base/Navigator.cpp	2026-04-18 00:00:00
-+++ b/dom/base/Navigator.cpp	2026-04-18 00:00:00
-@@ -911,6 +911,10 @@
+diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
+--- a/dom/base/Navigator.cpp
++++ b/dom/base/Navigator.cpp
+@@ -948,16 +948,20 @@
+   }
+ 
+   return pattern;
+ }
+ 
  bool Navigator::Vibrate(const nsTArray<uint32_t>& aPattern) {
    MOZ_ASSERT(NS_IsMainThread());
-
+ 
 +  if (MaskConfig::GetBool("navigator:vibrate:disabled").value_or(false)) {
 +    return false;
 +  }
@@ -11,3 +17,8 @@
    if (!mWindow) {
      return false;
    }
+ 
+   nsCOMPtr<Document> doc = mWindow->GetExtantDoc();
+ 
+   if (!MayVibrate(doc)) {
+     return false;

@@ -49,13 +49,13 @@ def main():
             for enabled in (True, False):
                 chrome(driver, "Services.prefs.setBoolPref('browser.tabs.warnOnClose',false);")
                 print(f"Applying appearance: {enabled}", flush=True)
-                driver.get("about:cloakfox")
+                driver.get("about:cloakfox#sec-appearance")
                 WebDriverWait(driver, 10).until(lambda d: d.find_element(
                     By.ID, "cfx-appearance-status").text.startswith("Active:"))
                 toggle = driver.find_element(By.CSS_SELECTOR, f'input[data-pref="{PREF}"]')
                 assert toggle.is_selected() != enabled
                 old_pid = chrome(driver, "return Services.appinfo.processID")
-                driver.execute_script("arguments[0].click()", toggle)
+                toggle.click()
                 button = WebDriverWait(driver, 10).until(lambda d: d.find_element(
                     By.ID, "cfx-appearance-restart"))
                 assert button.is_displayed(), "Restart action should be available"
@@ -99,7 +99,7 @@ def main():
                 driver.set_context("content")
                 assert status["active"] == enabled, status
                 assert chrome(driver, "return Services.env.get('CLOAKFOX_RESTART_BUNDLE')") == "", "Restart request should be consumed"
-                driver.get("about:cloakfox")
+                driver.get("about:cloakfox#sec-appearance")
                 expected = "Firefox" if enabled else "Cloakfox"
                 if os.environ.get("CLOAKFOX_HEADFUL"):
                     pid = chrome(driver, "return Services.appinfo.processID")

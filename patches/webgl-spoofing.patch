@@ -127,7 +127,12 @@ diff --git a/dom/base/WebGLParamsManager.h b/dom/base/WebGLParamsManager.h
 diff --git a/dom/base/moz.build b/dom/base/moz.build
 --- a/dom/base/moz.build
 +++ b/dom/base/moz.build
-@@ -593,6 +593,14 @@
+@@ -591,16 +591,24 @@
+ # SpeechVoicesManager compiled separately to avoid unified build scope issues
+ # (includes RoverfoxStorageManager.h which can affect compilation units)
+ SOURCES += ["SpeechVoicesManager.cpp"]
+ 
+ EXPORTS.mozilla.dom += [
      "SpeechVoicesManager.h",
  ]
  
@@ -142,10 +147,20 @@ diff --git a/dom/base/moz.build b/dom/base/moz.build
  # Are we targeting x86-32 or x86-64?  If so, we want to include SSE2 code for
  # CharacterDataBuffer.cpp
  if CONFIG["INTEL_ARCHITECTURE"]:
+     SOURCES += ["CharacterDataBufferSSE2.cpp"]
+     SOURCES["CharacterDataBufferSSE2.cpp"].flags += CONFIG["SSE2_FLAGS"]
+ 
+ # Are we targeting PowerPC? If so, we can enable a SIMD version for
+ # CharacterDataBuffer.cpp as well.
 diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
 --- a/dom/base/nsGlobalWindowInner.cpp
 +++ b/dom/base/nsGlobalWindowInner.cpp
-@@ -27,6 +27,7 @@
+@@ -22,16 +22,17 @@
+ #include "MainThreadUtils.h"
+ #include "CanvasFingerprintManager.h"
+ #include "Navigator.h"
+ #include "PaintWorkletImpl.h"
+ #include "SessionStorageCache.h"
  #include "FontListManager.h"
  #include "Units.h"
  #include "VRManagerChild.h"
@@ -153,7 +168,17 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
  #include "WindowDestroyedEvent.h"
  #include "WindowNamedPropertiesHandler.h"
  #include "js/ComparisonOperators.h"
-@@ -8141,6 +8142,51 @@
+ #include "js/CompilationAndEvaluation.h"
+ #include "js/CompileOptions.h"
+ #include "js/Id.h"
+ #include "js/PropertyAndElement.h"  // JS_DefineProperty, JS_GetProperty
+ #include "js/PropertyDescriptor.h"
+@@ -8122,16 +8123,61 @@
+     if (global) {
+       JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
+       JS_SetProperty(cx, global, "setSpeechVoices", undef);
+       JS_DeleteProperty(cx, global, "setSpeechVoices");
+     }
    }
  }
  
@@ -205,10 +230,20 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
  RefPtr<GenericPromise> nsGlobalWindowInner::StorageAccessPermissionChanged(
      bool aGranted) {
    // Invalidate cached StorageAllowed field so that calls to GetLocalStorage
+   // give us the updated localStorage object.
+   ClearStorageAllowedCache();
+ 
+   // Just reset the active cookie and storage principals
+   nsCOMPtr<nsICookieJarSettings> cjs;
 diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
 --- a/dom/base/nsGlobalWindowInner.h
 +++ b/dom/base/nsGlobalWindowInner.h
-@@ -710,6 +710,10 @@
+@@ -715,16 +715,20 @@
+   void SetCanvasSeed(uint32_t seed, mozilla::ErrorResult& aRv);
+ 
+   // Per-context font list spoofing
+   void SetFontList(const nsAString& aFontList, mozilla::ErrorResult& aRv);
+ 
    // Per-context speech voices
    void SetSpeechVoices(const nsAString& aVoices, mozilla::ErrorResult& aRv);
  
@@ -219,10 +254,17 @@ diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
   public:
    void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
    void Alert(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+              mozilla::ErrorResult& aError);
+   bool Confirm(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+                mozilla::ErrorResult& aError);
+   void Prompt(const nsAString& aMessage, const nsAString& aInitial,
+               nsAString& aReturn, nsIPrincipal& aSubjectPrincipal,
 diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
 --- a/dom/canvas/ClientWebGLContext.cpp
 +++ b/dom/canvas/ClientWebGLContext.cpp
-@@ -3,6 +3,14 @@
+@@ -1,13 +1,21 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "ClientWebGLContext.h"
@@ -237,7 +279,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
  
  #include <fmt/format.h>
  
-@@ -780,6 +788,35 @@
+ #include <bitset>
+ 
+ #include "ClientWebGLExtensions.h"
+ #include "HostWebGLContext.h"
+ #include "TexUnpackBlob.h"
+@@ -776,38 +784,92 @@
+ }
+ 
+ void ClientWebGLContext::SetUnpackColorSpace(
+     const dom::PredefinedColorSpace val) {
+   mUnpackColorSpace = val;
    Run<RPROC(SetUnpackColorSpace)>(*mUnpackColorSpace);
  }
  
@@ -273,7 +325,13 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
  void ClientWebGLContext::GetContextAttributes(
      dom::Nullable<dom::WebGLContextAttributes>& retval) {
    retval.SetNull();
-@@ -793,15 +830,40 @@
+   const FuncScope funcScope(*this, "getContextAttributes");
+   RefPtr<webgl::NotLostData> notLost(mNotLost);
+   if (!notLost) {
+     return;
+   }
+ 
+   dom::WebGLContextAttributes& result = retval.SetValue();
  
    const auto& options = notLost->info.options;
  
@@ -323,7 +381,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
  }
  
  // -----------------------
-@@ -998,18 +1060,28 @@
+ 
+ NS_IMETHODIMP
+ ClientWebGLContext::SetDimensions(const int32_t signedWidth,
+                                   const int32_t signedHeight) {
+   const FuncScope funcScope(*this, "<SetDimensions>");
+@@ -994,28 +1056,38 @@
+   }
+ 
+   return true;
+ }
+ 
  std::unordered_map<GLenum, bool> webgl::MakeIsEnabledMap(const bool webgl2) {
    auto ret = std::unordered_map<GLenum, bool>{};
  
@@ -362,7 +430,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
    }
  
    return ret;
-@@ -2178,6 +2250,57 @@
+ }
+ 
+ // -------
+ 
+ uvec2 ClientWebGLContext::DrawingBufferSize() {
+@@ -2174,16 +2246,67 @@
+   RefPtr<webgl::NotLostData> notLost(mNotLost);
+   if (!notLost) {
+     return;
+   }
+   const auto& limits = Limits();
    const auto& state = State();
  
    // -
@@ -420,7 +498,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
  
    const auto fnSetRetval_Buffer = [&](const GLenum target) {
      const auto buffer = *MaybeFind(state.mBoundBufferByTarget, target);
-@@ -2283,49 +2406,84 @@
+     (void)ToJSValueOrNull(cx, buffer, retval);
+   };
+   const auto fnSetRetval_Tex = [&](const GLenum texTarget) {
+     const auto& texUnit = state.mTexUnits[state.mActiveTexUnit];
+     const auto tex = Find(texUnit.texByTarget, texTarget, nullptr);
+@@ -2279,59 +2402,94 @@
+       retval.setBoolean(state.mIsEnabledMap[LOCAL_GL_DEPTH_CLAMP]);
+       return;
+ 
+     // -
+     // Array returns
  
      // 2 floats
      case LOCAL_GL_DEPTH_RANGE:
@@ -520,7 +608,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
        return;
    }
  
-@@ -2505,6 +2663,17 @@
+   if (mIsWebGL2) {
+     switch (pname) {
+       case LOCAL_GL_COPY_READ_BUFFER_BINDING:
+         fnSetRetval_Buffer(LOCAL_GL_COPY_READ_BUFFER);
+         return;
+@@ -2501,28 +2659,50 @@
+       case dom::WEBGL_debug_renderer_info_Binding::UNMASKED_RENDERER_WEBGL: {
+         if (!IsExtensionEnabled(WebGLExtensionID::WEBGL_debug_renderer_info)) {
+           EnqueueError_ArgEnum("pname", pname);
+           return;
+         }
  
          switch (pname) {
            case dom::WEBGL_debug_renderer_info_Binding::UNMASKED_RENDERER_WEBGL:
@@ -538,7 +636,12 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
              if (ShouldResistFingerprinting(RFPTarget::WebGLRenderInfo) ||
                  ShouldResistFingerprinting(RFPTarget::WebGLRendererConstant)) {
                ret = Some("Mozilla"_ns);
-@@ -2517,6 +2686,17 @@
+             } else {
+               ret = GetUnmaskedRenderer();
+               if (ret && StaticPrefs::webgl_sanitize_unmasked_renderer()) {
+                 ret = Some(webgl::SanitizeRenderer(*ret));
+               }
+             }
              break;
  
            case dom::WEBGL_debug_renderer_info_Binding::UNMASKED_VENDOR_WEBGL:
@@ -556,7 +659,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
              if (ShouldResistFingerprinting(RFPTarget::WebGLRenderInfo)) {
                ret = Some("Mozilla"_ns);
              } else if (ShouldResistFingerprinting(
-@@ -2628,7 +2808,9 @@
+                            RFPTarget::WebGLVendorRandomize)) {
+               // Generate "Mozilla <Base64(uint64)>"
+               auto randomValue = RandomUint64();
+               if (randomValue.isSome()) {
+                 uint64_t value = randomValue.value();
+@@ -2624,17 +2804,19 @@
+         case LOCAL_GL_TRANSFORM_FEEDBACK_PAUSED:
+           retval.setBoolean(*maybe);
+           return;
+ 
+         // 4 bools
          case LOCAL_GL_COLOR_WRITEMASK: {
            const auto mask = uint8_t(*maybe);
            const auto bs = std::bitset<4>(mask);
@@ -567,7 +680,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
            JS::Rooted<JS::Value> arr(cx);
            if (!dom::ToJSValue(cx, src.data(), src.size(), &arr)) {
              rv = NS_ERROR_OUT_OF_MEMORY;
-@@ -3016,6 +3198,24 @@
+           }
+           retval.set(arr);
+           return;
+         }
+ 
+@@ -3012,16 +3194,34 @@
+ }
+ 
+ already_AddRefed<WebGLShaderPrecisionFormatJS>
+ ClientWebGLContext::GetShaderPrecisionFormat(const GLenum shadertype,
+                                              const GLenum precisiontype) {
    const FuncScope funcScope(*this, "getShaderPrecisionFormat");
    RefPtr<webgl::NotLostData> notLost(mNotLost);
    if (!notLost) {
@@ -592,7 +715,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
      return nullptr;
    }
  
-@@ -6391,6 +6591,17 @@
+   const auto& shaderPrecisions = *notLost->info.shaderPrecisions;
+   const auto args =
+       webgl::GetShaderPrecisionFormatArgs{shadertype, precisiontype};
+   const auto found = MaybeFind(shaderPrecisions, args);
+   if (!found) {
+@@ -6385,30 +6585,53 @@
+ }
+ 
+ bool ClientWebGLContext::IsSupported(const WebGLExtensionID ext,
+                                      const dom::CallerType callerType) const {
+   if (IsExtensionForbiddenForCaller(ext, callerType)) {
      return false;
    }
  
@@ -610,7 +743,14 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
    const auto& limits = Limits();
    return limits.supportedExtensions[ext];
  }
-@@ -6405,6 +6616,18 @@
+ 
+ void ClientWebGLContext::GetSupportedExtensions(
+     dom::Nullable<nsTArray<nsString>>& retval,
+     const dom::CallerType callerType) const {
+   retval.SetNull();
+   RefPtr<webgl::NotLostData> notLost(mNotLost);
+   if (!notLost) {
+     return;
    }
  
    auto& retarr = retval.SetValue();
@@ -629,10 +769,20 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
    for (const auto i : MakeEnumeratedRange(WebGLExtensionID::Max)) {
      if (!IsSupported(i, callerType)) continue;
  
+     const auto& extStr = GetExtensionName(i);
+     retarr.AppendElement(NS_ConvertUTF8toUTF16(extStr));
+   }
+ }
+ 
 diff --git a/dom/canvas/ClientWebGLContext.h b/dom/canvas/ClientWebGLContext.h
 --- a/dom/canvas/ClientWebGLContext.h
 +++ b/dom/canvas/ClientWebGLContext.h
-@@ -1089,6 +1089,11 @@
+@@ -1084,16 +1084,21 @@
+   }
+   void SetUnpackColorSpace(dom::PredefinedColorSpace);
+ 
+   // -
+ 
    void GetContextAttributes(dom::Nullable<dom::WebGLContextAttributes>& retval);
  
   private:
@@ -644,10 +794,20 @@ diff --git a/dom/canvas/ClientWebGLContext.h b/dom/canvas/ClientWebGLContext.h
    webgl::SwapChainOptions PrepareAsyncSwapChainOptions(
        WebGLFramebufferJS* fb, bool webvr,
        const webgl::SwapChainOptions& options = webgl::SwapChainOptions());
+ 
+  public:
+   layers::TextureType GetTexTypeForSwapChain() const;
+   void Present(
+       WebGLFramebufferJS*, const bool webvr = false,
 diff --git a/dom/canvas/moz.build b/dom/canvas/moz.build
 --- a/dom/canvas/moz.build
 +++ b/dom/canvas/moz.build
-@@ -183,6 +183,10 @@
+@@ -178,16 +178,20 @@
+ ]
+ 
+ # Suppress warnings from third-party code.
+ SOURCES["MurmurHash3.cpp"].flags += ["-Wno-implicit-fallthrough"]
+ 
  # WorkerPrivate.h for OffscreenCanvas worker context support
  LOCAL_INCLUDES += ["/dom/workers"]
  
@@ -658,10 +818,20 @@ diff --git a/dom/canvas/moz.build b/dom/canvas/moz.build
  LOCAL_INCLUDES += [
      "/js/xpconnect/wrappers",
  ]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ 
+ USE_LIBS += ["translator_gn"]  # Grab the Angle shader translator.
 diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
 --- a/dom/webidl/Window.webidl
 +++ b/dom/webidl/Window.webidl
-@@ -940,6 +940,18 @@
+@@ -939,16 +939,28 @@
+ };
+ 
+ // Screen color depth for per-context screen spoofing
+ partial interface Window {
+   [Throws, Func="mozilla::dom::ScreenDimensionManager::IsFunctionEnabledForWebIDL"]
    undefined setScreenColorDepth(long colorDepth);
  };
  
@@ -680,3 +850,8 @@ diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
  partial interface Window {
    [SameObject, Replaceable]
    readonly attribute VisualViewport visualViewport;
+ };
+ 
+ // Font spacing seed interface for privacy-preserving font fingerprinting
+ partial interface Window {
+   [Throws, Func="mozilla::dom::FontSpacingSeedManager::IsFunctionEnabledForWebIDL"]

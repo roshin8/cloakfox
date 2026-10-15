@@ -1,7 +1,105 @@
+diff --git a/build/moz.configure/update-programs.configure b/build/moz.configure/update-programs.configure
+--- a/build/moz.configure/update-programs.configure
++++ b/build/moz.configure/update-programs.configure
+@@ -78,64 +78,78 @@
+ 
+ option(
+     "--enable-mac-elevated-updates-with-generic-certs",
+     when=target_is_osx,
+     help="Allow local developer-signed builds to perform elevated updates on macOS",
+ )
+ 
+ 
+-def mac_prod_requirements_string(identifier):
++option(env="CLOAKFOX_MAC_TEAM_ID", nargs=1, when=target_is_osx,
++       help="Owner Apple Developer Team ID for authenticated Cloakfox updater helpers")
++
++@depends("CLOAKFOX_MAC_TEAM_ID", when=target_is_osx)
++def cloakfox_mac_team_id(value):
++    if not value:
++        return "43AQ936H96"
++    team = value[0]
++    if len(team) != 10 or not all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" for c in team):
++        die("CLOAKFOX_MAC_TEAM_ID must contain exactly 10 uppercase letters or digits")
++    return team
++
++
++def mac_prod_requirements_string(identifier, team_id):
+     return (
+         f'identifier "{identifier}" and anchor apple generic and '
+         "certificate 1[field.1.2.840.113635.100.6.2.6] and "
+         "certificate leaf[field.1.2.840.113635.100.6.1.13] and "
+-        'certificate leaf[subject.OU] = "43AQ936H96"'
++        f'certificate leaf[subject.OU] = "{team_id}"'
+     )
+ 
+ 
+ def mac_relaxed_requirements_string(identifier):
+     return f'identifier "{identifier}" and anchor apple generic'
+ 
+ 
+ @depends(
+     "--enable-mac-elevated-updates-with-generic-certs",
+     moz_mac_bundle_id,
++    cloakfox_mac_team_id,
+     when=target_is_osx,
+ )
+-def smauthorizedclients_requirements(enabled, bundle_id):
++def smauthorizedclients_requirements(enabled, bundle_id, team_id):
+     if enabled:
+         return mac_relaxed_requirements_string(bundle_id)
+     else:
+-        return mac_prod_requirements_string(bundle_id)
++        return mac_prod_requirements_string(bundle_id, team_id)
+ 
+ 
+ set_config("MOZ_SMAUTHORIZEDCLIENTS_REQUIREMENTS", smauthorizedclients_requirements)
+ 
+ 
+-def requirements_string(exec_id, relaxed):
++def requirements_string(exec_id, relaxed, team_id):
+     if relaxed:
+         return mac_relaxed_requirements_string(exec_id)
+     else:
+-        return mac_prod_requirements_string(exec_id)
+-
+-
+-@depends("--enable-mac-elevated-updates-with-generic-certs", when=target_is_osx)
++        return mac_prod_requirements_string(exec_id, team_id)
++
++
++@depends("--enable-mac-elevated-updates-with-generic-certs", cloakfox_mac_team_id, when=target_is_osx)
+ @imports(_from="xml.sax.saxutils", _import="escape")
+-def generate_smprivilegedexec_requirements(relaxed):
++def generate_smprivilegedexec_requirements(relaxed, team_id):
+     requirements = ""
+     smprivilegedexecutables_list = [
+         "org.mozilla.dmgInstallHelper",
+         "org.mozilla.updater",
+     ]
+ 
+     for executable in smprivilegedexecutables_list:
+         requirements += f"<key>{escape(executable)}</key>"
+         requirements += (
+-            f"<string>{escape(requirements_string(executable, relaxed))}</string>"
++            f"<string>{escape(requirements_string(executable, relaxed, team_id))}</string>"
+         )
+ 
+     return requirements
+ 
+ 
+ set_config(
+     "MOZ_SMPRIVILEGEDEXECUTABLES_REQUIREMENTS", generate_smprivilegedexec_requirements
+ )
 diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManager.cpp
 --- a/dom/base/RoverfoxStorageManager.cpp
 +++ b/dom/base/RoverfoxStorageManager.cpp
-@@ -17,6 +17,73 @@
+@@ -12,16 +12,83 @@
+   static nsTHashMap<nsCStringHashKey, nsCString> sCache;
+   return sCache;
+ }
+ 
+ /* static */ mozilla::Mutex&
  RoverfoxStorageManager::GetLocalCacheMutex() {
    static mozilla::Mutex sMutex("RoverfoxStorageCache");
    return sMutex;
@@ -75,7 +173,17 @@ diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManag
  }
  
  /* static */ nsCString
-@@ -38,7 +105,12 @@
+ RoverfoxStorageManager::MakePrefName(const nsAString& key) {
+   nsAutoCString prefName("roverfox.s.");
+   AppendUTF16toUTF8(key, prefName);
+   return nsCString(prefName);
+ }
+@@ -33,34 +100,48 @@
+   nsAutoCString prefName("cloakfox.s.");
+   AppendUTF16toUTF8(key, prefName);
+   return nsCString(prefName);
+ }
+ 
  /* static */ bool
  RoverfoxStorageManager::TryGetCppFirstPref(const nsAString& key,
                                              nsACString& outValue) {
@@ -88,7 +196,12 @@ diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManag
    // Worker construction warms this namespace on the main thread. Workers
    // must read that snapshot without accessing Preferences or synchronous IPC.
    if (!NS_IsMainThread()) {
-@@ -51,11 +123,20 @@
+     MutexAutoLock lock(GetLocalCacheMutex());
+     if (auto entry = GetLocalCache().Lookup(prefName)) {
+       outValue = entry.Data();
+       return true;
+     }
+     return false;
    }
  
    nsAutoCString v;
@@ -114,7 +227,17 @@ diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManag
      }
    }
    // Refresh on every main-thread lookup rather than reusing a stale snapshot.
-@@ -126,7 +207,7 @@
+   // GetString returns early for cpp-first values, before its legacy cache path.
+   {
+     MutexAutoLock lock(GetLocalCacheMutex());
+     if (v.IsEmpty()) {
+       GetLocalCache().Remove(prefName);
+@@ -121,17 +202,17 @@
+   // Check local cache first (immediate reads for values set in this process)
+   {
+     MutexAutoLock lock(GetLocalCacheMutex());
+     if (auto entry = GetLocalCache().Lookup(prefName)) {
+       strValue = entry.Data();
      }
    }
    // Fall back to Preferences (values synced from other processes)
@@ -123,7 +246,17 @@ diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManag
      Preferences::GetCString(prefName.get(), strValue);
    }
    // Sync IPC read from parent (cross-process fallback for workers)
-@@ -177,7 +258,7 @@
+   if (strValue.IsEmpty() && !XRE_IsParentProcess() && NS_IsMainThread()) {
+     ContentChild* cc = ContentChild::GetSingleton();
+     if (cc) {
+       cc->SendRoverfoxStorageGet(prefName, &strValue);
+       if (!strValue.IsEmpty()) {
+@@ -172,17 +253,17 @@
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString strValue;
+   {
+     MutexAutoLock lock(GetLocalCacheMutex());
+     if (auto entry = GetLocalCache().Lookup(prefName)) {
        strValue = entry.Data();
      }
    }
@@ -132,21 +265,57 @@ diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManag
      Preferences::GetCString(prefName.get(), strValue);
    }
    // Sync IPC read from parent (cross-process fallback for workers)
-diff --git a/modules/libpref/Preferences.cpp b/modules/libpref/Preferences.cpp
---- a/modules/libpref/Preferences.cpp
-+++ b/modules/libpref/Preferences.cpp
-@@ -7340,6 +7340,7 @@
-     PREF_LIST_ENTRY("ui."),
-     // Roverfox: allow cross-process sync of per-context fingerprint storage
-     PREF_LIST_ENTRY("roverfox.s."),
-+    PREF_LIST_ENTRY("cloakfox.s.cloak_cfg_"),
- };
+   if (strValue.IsEmpty() && !XRE_IsParentProcess() && NS_IsMainThread()) {
+     ContentChild* cc = ContentChild::GetSingleton();
+     if (cc) {
+       cc->SendRoverfoxStorageGet(prefName, &strValue);
+       if (!strValue.IsEmpty()) {
+diff --git a/dom/base/RoverfoxStorageManager.h b/dom/base/RoverfoxStorageManager.h
+--- a/dom/base/RoverfoxStorageManager.h
++++ b/dom/base/RoverfoxStorageManager.h
+@@ -1,12 +1,13 @@
+ #ifndef mozilla_dom_RoverfoxStorageManager_h
+ #define mozilla_dom_RoverfoxStorageManager_h
  
- #undef PREF_LIST_ENTRY
+ #include "nsString.h"
++#include "nsTArray.h"
+ #include "nsTHashMap.h"
+ #include "nsHashKeys.h"
+ #include "mozilla/Mutex.h"
+ 
+ namespace mozilla {
+ namespace dom {
+ 
+ // Cross-process key-value storage using Firefox Preferences + local cache.
+@@ -19,16 +20,19 @@
+   static bool GetUint(const nsAString& key, uint32_t& outValue);
+   static void PutBool(const nsAString& key, bool value);
+   static bool GetBool(const nsAString& key, bool& outValue);
+   static void PutString(const nsAString& key, const nsAString& value);
+   static bool GetString(const nsAString& key, nsAString& outValue);
+   static void Remove(const nsAString& key);
+ 
+  private:
++  static nsTArray<nsCString>& ObservedConfigKeys();
++  static void EnsureCacheObserver();
++  static void OnStoragePrefChanged(const char* prefName, void* closure);
+   static nsCString MakePrefName(const nsAString& key);
+   // cpp-first: separate pref namespace for values written by
+   // about:cloakfox (chrome-privileged). Checked first in the Get*
+   // helpers so chrome writes take priority over extension-set values.
+   static nsCString MakeCppFirstPrefName(const nsAString& key);
+   static bool TryGetCppFirstPref(const nsAString& key, nsACString& outValue);
+   static void SetPrefValue(const nsCString& prefName, const nsCString& value);
+   static nsTHashMap<nsCStringHashKey, nsCString>& GetLocalCache();
 diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 --- a/dom/workers/WorkerPrivate.cpp
 +++ b/dom/workers/WorkerPrivate.cpp
-@@ -3260,24 +3260,6 @@
+@@ -3265,52 +3265,53 @@
+   if (runtimeService->IsShuttingDown()) {
+     aRv.Throw(NS_ERROR_UNEXPECTED);
+     return nullptr;
+   }
+ 
    AgentClusterIdAndCoop idAndCoop = ComputeAgentClusterIdAndCoop(
        parent, aWorkerKind, aLoadInfo, aIsChromeWorker);
  
@@ -171,7 +340,14 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
    // Cloakfox: warm this container's cloak_cfg into RoverfoxStorageManager's
    // mutex-protected cache while we are still on the main thread.
    //
-@@ -3292,10 +3274,29 @@
+   // The worker's navigator getters resolve their persona with an EXPLICIT
+   // userContextId (they cannot use CloakConfigOverlay_CurrentUserContextId(),
+   // which returns 0 off the main thread). That lookup ultimately reads
+   // Preferences, which is main-thread-only, so off-thread reads are served
+   // from the cache instead — but only if something populated it first.
+   // Without this warm-up the worker silently fell back to container 0 and
+   // reported a DIFFERENT persona than its own window: a self-contradiction,
+   // and cross-container correlation since it exposed ctx 0's identity.
    if (NS_IsMainThread()) {
      nsAutoString cfgKey;
      cfgKey.AppendPrintf("cloak_cfg_%u",
@@ -202,31 +378,67 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
  
    // Create the remote debugger endpoints here so the child endpoint can be
    // bound in WorkerThreadPrimaryRunnable. Self-gates on UseRemoteDebugger().
-diff --git a/dom/base/RoverfoxStorageManager.h b/dom/base/RoverfoxStorageManager.h
---- a/dom/base/RoverfoxStorageManager.h
-+++ b/dom/base/RoverfoxStorageManager.h
-@@ -2,6 +2,7 @@
- #define mozilla_dom_RoverfoxStorageManager_h
+   worker->CreateRemoteDebuggerEndpoints();
  
- #include "nsString.h"
-+#include "nsTArray.h"
- #include "nsTHashMap.h"
- #include "nsHashKeys.h"
- #include "mozilla/Mutex.h"
-@@ -24,6 +25,9 @@
-   static void Remove(const nsAString& key);
+   if (!runtimeService->RegisterWorker(*worker)) {
+     aRv.Throw(NS_ERROR_UNEXPECTED);
+     return nullptr;
+diff --git a/modules/libpref/Preferences.cpp b/modules/libpref/Preferences.cpp
+--- a/modules/libpref/Preferences.cpp
++++ b/modules/libpref/Preferences.cpp
+@@ -7357,16 +7357,17 @@
+     PREF_LIST_ENTRY("Test.IPC."),
+     PREF_LIST_ENTRY("exists.thenDoesNot"),
+     PREF_LIST_ENTRY("type.String."),
+     PREF_LIST_ENTRY("toolkit.mozprotocol.url"),
+     PREF_LIST_ENTRY("toolkit.telemetry.log.level"),
+     PREF_LIST_ENTRY("ui."),
+     // Roverfox: allow cross-process sync of per-context fingerprint storage
+     PREF_LIST_ENTRY("roverfox.s."),
++    PREF_LIST_ENTRY("cloakfox.s.cloak_cfg_"),
+ };
  
-  private:
-+  static nsTArray<nsCString>& ObservedConfigKeys();
-+  static void EnsureCacheObserver();
-+  static void OnStoragePrefChanged(const char* prefName, void* closure);
-   static nsCString MakePrefName(const nsAString& key);
-   // cpp-first: separate pref namespace for values written by
-   // about:cloakfox (chrome-privileged). Checked first in the Get*
+ #undef PREF_LIST_ENTRY
+ 
+ static bool ShouldSanitizePreference(const Pref* const aPref) {
+   // In the parent process, we use a heuristic to decide if a pref
+   // value should be sanitized before sending to subprocesses.
+   MOZ_DIAGNOSTIC_ASSERT(XRE_IsParentProcess());
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2408,16 +2408,22 @@
+ #---------------------------------------------------------------------------
+ # Prefs starting with "cloakfox."
+ #---------------------------------------------------------------------------
+ 
+ # Cloakfox master switch. false = present the real, unspoofed identity
+ # everywhere (documented in cloakfox.cfg). RelaxedAtomicBool so the C++
+ # spoofers can read it off the main thread — worker and socket (H2/H3)
+ # threads — not just the main thread.
++# Explicit encrypted-only DNS: block native resolver fallback on every thread.
++- name: cloakfox.dns.fail_closed
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
+ - name: cloakfox.enabled
+   type: RelaxedAtomicBool
+   value: true
+   mirror: always
+ 
+ #---------------------------------------------------------------------------
+ # Prefs starting with "consoleservice."
+ #---------------------------------------------------------------------------
 diff --git a/netwerk/base/nsIOService.cpp b/netwerk/base/nsIOService.cpp
 --- a/netwerk/base/nsIOService.cpp
 +++ b/netwerk/base/nsIOService.cpp
-@@ -2166,6 +2166,16 @@
+@@ -2161,16 +2161,26 @@
+ };
+ 
+ NS_IMPL_ISUPPORTS(IOServiceProxyCallback, nsIProtocolProxyCallback)
+ 
+ NS_IMETHODIMP
  IOServiceProxyCallback::OnProxyAvailable(nsICancelable* request,
                                           nsIChannel* channel, nsIProxyInfo* pi,
                                           nsresult status) {
@@ -243,10 +455,128 @@ diff --git a/netwerk/base/nsIOService.cpp b/netwerk/base/nsIOService.cpp
    // Checking proxy status for speculative connect
    nsAutoCString type;
    if (NS_SUCCEEDED(status) && pi && NS_SUCCEEDED(pi->GetType(type)) &&
+       !type.EqualsLiteral("direct")) {
+     // proxies dont do speculative connect
+     return NS_OK;
+   }
+ 
+diff --git a/netwerk/dns/GetAddrInfo.cpp b/netwerk/dns/GetAddrInfo.cpp
+--- a/netwerk/dns/GetAddrInfo.cpp
++++ b/netwerk/dns/GetAddrInfo.cpp
+@@ -17,16 +17,17 @@
+ 
+ #include <algorithm>
+ 
+ #include "NativeDNSResolverOverrideParent.h"
+ #include "mozilla/ClearOnShutdown.h"
+ #include "mozilla/Logging.h"
+ #include "mozilla/StaticMutex.h"
+ #include "mozilla/StaticPrefs_network.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/net/DNS.h"
+ #include "mozilla/net/DNSPacket.h"
+ #include "nsError.h"
+ #include "nsHostResolver.h"
+ #include "nsIDNSService.h"
+ #include "nsINetworkLinkService.h"
+ #include "nsIOService.h"
+ #include "prerror.h"
+@@ -375,17 +376,18 @@
+ nsresult GetAddrInfo(const nsACString& aHost, uint16_t aAddressFamily,
+                      nsIDNSService::DNSFlags aFlags, AddrInfo** aAddrInfo,
+                      bool aGetTtl) {
+   if (NS_WARN_IF(aHost.IsEmpty()) || NS_WARN_IF(!aAddrInfo)) {
+     return NS_ERROR_NULL_POINTER;
+   }
+   *aAddrInfo = nullptr;
+ 
+-  if (StaticPrefs::network_dns_disabled()) {
++  if (StaticPrefs::network_dns_disabled() ||
++      StaticPrefs::cloakfox_dns_fail_closed()) {
+     return NS_ERROR_UNKNOWN_HOST;
+   }
+ 
+ #ifdef DNSQUERY_AVAILABLE
+   // The GetTTLData needs the canonical name to function properly
+   if (aGetTtl) {
+     aFlags |= nsIDNSService::RESOLVE_CANONICAL_NAME;
+   }
+@@ -407,16 +409,22 @@
+   }
+ 
+   if (StaticPrefs::network_dns_native_is_localhost()) {
+     // pretend we use the given host but use IPv4 localhost instead!
+     host = "localhost"_ns;
+     aAddressFamily = PR_AF_INET;
+   }
+ 
++  // Recheck at dispatch: native work may have been queued before a strict
++  // DNS policy change. Already dispatched OS requests cannot be recalled.
++  if (StaticPrefs::network_dns_disabled() ||
++      StaticPrefs::cloakfox_dns_fail_closed()) {
++    return NS_ERROR_UNKNOWN_HOST;
++  }
+   RefPtr<AddrInfo> info;
+   nsresult rv =
+       _GetAddrInfo_Portable(host, aAddressFamily, aFlags, getter_AddRefs(info));
+ 
+ #ifdef DNSQUERY_AVAILABLE
+   if (aGetTtl && NS_SUCCEEDED(rv)) {
+     // Figure out the canonical name, or if that fails, just use the host name
+     // we have.
+@@ -424,17 +432,20 @@
+     if (info && !info->CanonicalHostname().IsEmpty()) {
+       name = info->CanonicalHostname();
+     } else {
+       name = host;
+     }
+ 
+     LOG("Getting TTL for %s (cname = %s).", host.get(), name.get());
+     uint32_t ttl = 0;
+-    nsresult ttlRv = _GetTTLData_Windows(name, &ttl, aAddressFamily);
++    nsresult ttlRv =
++        StaticPrefs::network_dns_disabled() || StaticPrefs::cloakfox_dns_fail_closed()
++            ? NS_ERROR_UNKNOWN_HOST
++            : _GetTTLData_Windows(name, &ttl, aAddressFamily);
+     if (NS_SUCCEEDED(ttlRv)) {
+       auto builder = info->Build();
+       builder.SetTTL(ttl);
+       info = builder.Finish();
+       LOG("Got TTL %u for %s (name = %s).", ttl, host.get(), name.get());
+     } else {
+       LOG_WARNING("Could not get TTL for %s (cname = %s).", host.get(),
+                   name.get());
+@@ -562,16 +573,21 @@
+   nsAutoCString aliasTarget;
+ 
+   // Follow HTTPS AliasMode (SvcPriority 0) targets across separate lookups.
+   // Recursive resolvers do not chase the alias for us, so we re-query the
+   // TargetName until we get a ServiceMode RRSet or run out of aliases.
+   constexpr uint32_t kMaxHTTPSAliasChain = 8;
+   for (uint32_t i = 0; i < kMaxHTTPSAliasChain; i++) {
+     aResult = AsVariant(Nothing());
++    // Recheck native DNS policy for each queued alias dispatch.
++    if (StaticPrefs::network_dns_disabled() ||
++        StaticPrefs::cloakfox_dns_fail_closed()) {
++      return NS_ERROR_UNKNOWN_HOST;
++    }
+     HTTPSAliasTarget alias;
+     nsresult rv;
+     if (gOverrideServiceUsed && FindHTTPSRecordOverride(host, aResult, alias)) {
+       // The host has an override entry; treat it as authoritative.
+       rv = NS_OK;
+     } else {
+       rv = ResolveHTTPSRecordImpl(host, aFlags, aResult, aTTL, alias);
+     }
 diff --git a/netwerk/dns/nsHostResolver.cpp b/netwerk/dns/nsHostResolver.cpp
 --- a/netwerk/dns/nsHostResolver.cpp
 +++ b/netwerk/dns/nsHostResolver.cpp
-@@ -26,6 +26,7 @@
+@@ -21,16 +21,17 @@
+ #include "TRR.h"
+ #include "TRRQuery.h"
+ #include "TRRService.h"
+ #include "mozilla/Atomics.h"
+ #include "mozilla/DebugOnly.h"
  #include "mozilla/Logging.h"
  #include "mozilla/Preferences.h"
  #include "mozilla/StaticPrefs_network.h"
@@ -254,7 +584,17 @@ diff --git a/netwerk/dns/nsHostResolver.cpp b/netwerk/dns/nsHostResolver.cpp
  #include "mozilla/TimeStamp.h"
  #include "mozilla/glean/NetwerkDnsMetrics.h"
  #include "mozilla/glean/NetwerkMetrics.h"
-@@ -1064,7 +1065,11 @@
+ #include "nsComponentManagerUtils.h"
+ #include "nsError.h"
+ #include "nsHostResolver.h"
+ #include "nsIOService.h"
+ #include "nsISupports.h"
+@@ -1087,17 +1088,21 @@
+ 
+   rec->mResolving++;
+   rec->mTrrAttempts++;
+   rec->StoreNative(false);
+   return NS_OK;
  }
  
  nsresult nsHostResolver::NativeLookup(nsHostRecord* aRec) {
@@ -267,167 +607,11 @@ diff --git a/netwerk/dns/nsHostResolver.cpp b/netwerk/dns/nsHostResolver.cpp
      return NS_ERROR_UNKNOWN_HOST;
    }
    LOG(("NativeLookup host:%s af:%" PRId16, aRec->host.get(), aRec->af));
-diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
---- a/modules/libpref/init/StaticPrefList.yaml
-+++ b/modules/libpref/init/StaticPrefList.yaml
-@@ -2392,6 +2392,12 @@
- # everywhere (documented in cloakfox.cfg). RelaxedAtomicBool so the C++
- # spoofers can read it off the main thread — worker and socket (H2/H3)
- # threads — not just the main thread.
-+# Explicit encrypted-only DNS: block native resolver fallback on every thread.
-+- name: cloakfox.dns.fail_closed
-+  type: RelaxedAtomicBool
-+  value: false
-+  mirror: always
-+
- - name: cloakfox.enabled
-   type: RelaxedAtomicBool
-   value: true
-diff --git a/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h b/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h
---- a/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h
-+++ b/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h
-@@ -12,6 +12,13 @@
- // Extends ContentBlockingAllowListCache to also check for "cookie" allow
- // permissions.
- class BounceTrackingAllowList final : public ContentBlockingAllowListCache {
-+ public:
-+  // The native broad exceptions retain their upstream behavior. Cloakfox's
-+  // scoped exception is checked separately and never enters that broad cache.
-+  nsresult CheckForBaseDomain(const nsACString& aBaseDomain,
-+                             const OriginAttributes& aOriginAttributes,
-+                             bool& aIsAllowListed);
-+
-  private:
-   nsTArray<nsCString> GetAllowListPermissionTypes() override;
-   nsresult IsAllowListPermission(nsIPermission* aPermission,
-diff --git a/build/moz.configure/update-programs.configure b/build/moz.configure/update-programs.configure
---- a/build/moz.configure/update-programs.configure
-+++ b/build/moz.configure/update-programs.configure
-@@ -83,12 +83,25 @@
- )
  
+   // If this is not a A/AAAA request, make sure native HTTPS is enabled.
+   MOZ_ASSERT(aRec->IsAddrRecord() || IsNativeHTTPSEnabled());
+   mQueue.mLock.AssertCurrentThreadOwns();
  
--def mac_prod_requirements_string(identifier):
-+option(env="CLOAKFOX_MAC_TEAM_ID", nargs=1, when=target_is_osx,
-+       help="Owner Apple Developer Team ID for authenticated Cloakfox updater helpers")
-+
-+@depends("CLOAKFOX_MAC_TEAM_ID", when=target_is_osx)
-+def cloakfox_mac_team_id(value):
-+    if not value:
-+        return "43AQ936H96"
-+    team = value[0]
-+    if len(team) != 10 or not all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" for c in team):
-+        die("CLOAKFOX_MAC_TEAM_ID must contain exactly 10 uppercase letters or digits")
-+    return team
-+
-+
-+def mac_prod_requirements_string(identifier, team_id):
-     return (
-         f'identifier "{identifier}" and anchor apple generic and '
-         "certificate 1[field.1.2.840.113635.100.6.2.6] and "
-         "certificate leaf[field.1.2.840.113635.100.6.1.13] and "
--        'certificate leaf[subject.OU] = "43AQ936H96"'
-+        f'certificate leaf[subject.OU] = "{team_id}"'
-     )
- 
- 
-@@ -99,28 +112,29 @@
- @depends(
-     "--enable-mac-elevated-updates-with-generic-certs",
-     moz_mac_bundle_id,
-+    cloakfox_mac_team_id,
-     when=target_is_osx,
- )
--def smauthorizedclients_requirements(enabled, bundle_id):
-+def smauthorizedclients_requirements(enabled, bundle_id, team_id):
-     if enabled:
-         return mac_relaxed_requirements_string(bundle_id)
-     else:
--        return mac_prod_requirements_string(bundle_id)
-+        return mac_prod_requirements_string(bundle_id, team_id)
- 
- 
- set_config("MOZ_SMAUTHORIZEDCLIENTS_REQUIREMENTS", smauthorizedclients_requirements)
- 
- 
--def requirements_string(exec_id, relaxed):
-+def requirements_string(exec_id, relaxed, team_id):
-     if relaxed:
-         return mac_relaxed_requirements_string(exec_id)
-     else:
--        return mac_prod_requirements_string(exec_id)
--
--
--@depends("--enable-mac-elevated-updates-with-generic-certs", when=target_is_osx)
-+        return mac_prod_requirements_string(exec_id, team_id)
-+
-+
-+@depends("--enable-mac-elevated-updates-with-generic-certs", cloakfox_mac_team_id, when=target_is_osx)
- @imports(_from="xml.sax.saxutils", _import="escape")
--def generate_smprivilegedexec_requirements(relaxed):
-+def generate_smprivilegedexec_requirements(relaxed, team_id):
-     requirements = ""
-     smprivilegedexecutables_list = [
-         "org.mozilla.dmgInstallHelper",
-@@ -130,7 +144,7 @@
-     for executable in smprivilegedexecutables_list:
-         requirements += f"<key>{escape(executable)}</key>"
-         requirements += (
--            f"<string>{escape(requirements_string(executable, relaxed))}</string>"
-+            f"<string>{escape(requirements_string(executable, relaxed, team_id))}</string>"
-         )
- 
-     return requirements
-diff --git a/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp b/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp
---- a/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp
-+++ b/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp
-@@ -4,8 +4,46 @@
- 
- #include "BounceTrackingAllowList.h"
- #include "nsIPermissionManager.h"
-+#include "mozilla/BasePrincipal.h"
-+#include "mozilla/PermissionManager.h"
-+#include "nsNetUtil.h"
- 
- namespace mozilla {
-+
-+nsresult BounceTrackingAllowList::CheckForBaseDomain(
-+    const nsACString& aBaseDomain, const OriginAttributes& aOriginAttributes,
-+    bool& aIsAllowListed) {
-+  nsresult rv = ContentBlockingAllowListCache::CheckForBaseDomain(
-+      aBaseDomain, aOriginAttributes, aIsAllowListed);
-+  NS_ENSURE_SUCCESS(rv, rv);
-+  if (aIsAllowListed) {
-+    return NS_OK;
-+  }
-+
-+  // PermissionManager may intentionally share site permissions across
-+  // containers. Encode this narrow exception's scope in its private type,
-+  // using an attribute-free principal so global sharing prefs cannot rekey it.
-+  nsAutoCString type("cloakfox-bounce:");
-+  type.AppendInt(aOriginAttributes.mUserContextId);
-+  type.Append(':');
-+  type.AppendInt(aOriginAttributes.mPrivateBrowsingId);
-+  nsAutoCString origin("https://");
-+  origin.Append(aBaseDomain);
-+  nsCOMPtr<nsIURI> uri;
-+  rv = NS_NewURI(getter_AddRefs(uri), origin);
-+  NS_ENSURE_SUCCESS(rv, rv);
-+  nsCOMPtr<nsIPrincipal> principal =
-+      BasePrincipal::CreateContentPrincipal(uri, OriginAttributes{});
-+  NS_ENSURE_TRUE(principal, NS_ERROR_FAILURE);
-+  RefPtr<PermissionManager> permissions = PermissionManager::GetInstance();
-+  NS_ENSURE_TRUE(permissions, NS_ERROR_FAILURE);
-+  uint32_t capability = nsIPermissionManager::UNKNOWN_ACTION;
-+  rv = permissions->TestExactPermissionFromPrincipal(principal, type,
-+                                                     &capability);
-+  NS_ENSURE_SUCCESS(rv, rv);
-+  aIsAllowListed = capability == nsIPermissionManager::ALLOW_ACTION;
-+  return NS_OK;
-+}
- 
- nsTArray<nsCString> BounceTrackingAllowList::GetAllowListPermissionTypes() {
-   nsTArray<nsCString> types;
 diff --git a/toolkit/components/antitracking/URLQueryStrippingListService.sys.mjs b/toolkit/components/antitracking/URLQueryStrippingListService.sys.mjs
 --- a/toolkit/components/antitracking/URLQueryStrippingListService.sys.mjs
 +++ b/toolkit/components/antitracking/URLQueryStrippingListService.sys.mjs
@@ -935,61 +1119,88 @@ diff --git a/toolkit/components/antitracking/URLQueryStrippingListService.sys.mj
      return this.#isInitialized;
    }
  }
-diff --git a/netwerk/dns/GetAddrInfo.cpp b/netwerk/dns/GetAddrInfo.cpp
---- a/netwerk/dns/GetAddrInfo.cpp
-+++ b/netwerk/dns/GetAddrInfo.cpp
-@@ -22,6 +22,7 @@
- #include "mozilla/Logging.h"
- #include "mozilla/StaticMutex.h"
- #include "mozilla/StaticPrefs_network.h"
-+#include "mozilla/StaticPrefs_cloakfox.h"
- #include "mozilla/net/DNS.h"
- #include "mozilla/net/DNSPacket.h"
- #include "nsError.h"
-@@ -380,7 +381,8 @@
-   }
-   *aAddrInfo = nullptr;
+diff --git a/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp b/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp
+--- a/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp
++++ b/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp
+@@ -1,16 +1,54 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
--  if (StaticPrefs::network_dns_disabled()) {
-+  if (StaticPrefs::network_dns_disabled() ||
-+      StaticPrefs::cloakfox_dns_fail_closed()) {
-     return NS_ERROR_UNKNOWN_HOST;
-   }
+ #include "BounceTrackingAllowList.h"
+ #include "nsIPermissionManager.h"
++#include "mozilla/BasePrincipal.h"
++#include "mozilla/PermissionManager.h"
++#include "nsNetUtil.h"
  
-@@ -412,6 +414,12 @@
-     aAddressFamily = PR_AF_INET;
-   }
- 
-+  // Recheck at dispatch: native work may have been queued before a strict
-+  // DNS policy change. Already dispatched OS requests cannot be recalled.
-+  if (StaticPrefs::network_dns_disabled() ||
-+      StaticPrefs::cloakfox_dns_fail_closed()) {
-+    return NS_ERROR_UNKNOWN_HOST;
+ namespace mozilla {
++
++nsresult BounceTrackingAllowList::CheckForBaseDomain(
++    const nsACString& aBaseDomain, const OriginAttributes& aOriginAttributes,
++    bool& aIsAllowListed) {
++  nsresult rv = ContentBlockingAllowListCache::CheckForBaseDomain(
++      aBaseDomain, aOriginAttributes, aIsAllowListed);
++  NS_ENSURE_SUCCESS(rv, rv);
++  if (aIsAllowListed) {
++    return NS_OK;
 +  }
-   RefPtr<AddrInfo> info;
-   nsresult rv =
-       _GetAddrInfo_Portable(host, aAddressFamily, aFlags, getter_AddRefs(info));
-@@ -429,7 +437,10 @@
++
++  // PermissionManager may intentionally share site permissions across
++  // containers. Encode this narrow exception's scope in its private type,
++  // using an attribute-free principal so global sharing prefs cannot rekey it.
++  nsAutoCString type("cloakfox-bounce:");
++  type.AppendInt(aOriginAttributes.mUserContextId);
++  type.Append(':');
++  type.AppendInt(aOriginAttributes.mPrivateBrowsingId);
++  nsAutoCString origin("https://");
++  origin.Append(aBaseDomain);
++  nsCOMPtr<nsIURI> uri;
++  rv = NS_NewURI(getter_AddRefs(uri), origin);
++  NS_ENSURE_SUCCESS(rv, rv);
++  nsCOMPtr<nsIPrincipal> principal =
++      BasePrincipal::CreateContentPrincipal(uri, OriginAttributes{});
++  NS_ENSURE_TRUE(principal, NS_ERROR_FAILURE);
++  RefPtr<PermissionManager> permissions = PermissionManager::GetInstance();
++  NS_ENSURE_TRUE(permissions, NS_ERROR_FAILURE);
++  uint32_t capability = nsIPermissionManager::UNKNOWN_ACTION;
++  rv = permissions->TestExactPermissionFromPrincipal(principal, type,
++                                                     &capability);
++  NS_ENSURE_SUCCESS(rv, rv);
++  aIsAllowListed = capability == nsIPermissionManager::ALLOW_ACTION;
++  return NS_OK;
++}
  
-     LOG("Getting TTL for %s (cname = %s).", host.get(), name.get());
-     uint32_t ttl = 0;
--    nsresult ttlRv = _GetTTLData_Windows(name, &ttl, aAddressFamily);
-+    nsresult ttlRv =
-+        StaticPrefs::network_dns_disabled() || StaticPrefs::cloakfox_dns_fail_closed()
-+            ? NS_ERROR_UNKNOWN_HOST
-+            : _GetTTLData_Windows(name, &ttl, aAddressFamily);
-     if (NS_SUCCEEDED(ttlRv)) {
-       auto builder = info->Build();
-       builder.SetTTL(ttl);
-@@ -567,6 +578,11 @@
-   constexpr uint32_t kMaxHTTPSAliasChain = 8;
-   for (uint32_t i = 0; i < kMaxHTTPSAliasChain; i++) {
-     aResult = AsVariant(Nothing());
-+    // Recheck native DNS policy for each queued alias dispatch.
-+    if (StaticPrefs::network_dns_disabled() ||
-+        StaticPrefs::cloakfox_dns_fail_closed()) {
-+      return NS_ERROR_UNKNOWN_HOST;
-+    }
-     HTTPSAliasTarget alias;
-     nsresult rv;
-     if (gOverrideServiceUsed && FindHTTPSRecordOverride(host, aResult, alias)) {
+ nsTArray<nsCString> BounceTrackingAllowList::GetAllowListPermissionTypes() {
+   nsTArray<nsCString> types;
+   types.AppendElement("trackingprotection");
+   types.AppendElement("trackingprotection-pb");
+   types.AppendElement("cookie");
+   return types;
+ }
+diff --git a/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h b/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h
+--- a/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h
++++ b/toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h
+@@ -7,16 +7,23 @@
+ 
+ #include "mozilla/ContentBlockingAllowList.h"
+ 
+ namespace mozilla {
+ 
+ // Extends ContentBlockingAllowListCache to also check for "cookie" allow
+ // permissions.
+ class BounceTrackingAllowList final : public ContentBlockingAllowListCache {
++ public:
++  // The native broad exceptions retain their upstream behavior. Cloakfox's
++  // scoped exception is checked separately and never enters that broad cache.
++  nsresult CheckForBaseDomain(const nsACString& aBaseDomain,
++                             const OriginAttributes& aOriginAttributes,
++                             bool& aIsAllowListed);
++
+  private:
+   nsTArray<nsCString> GetAllowListPermissionTypes() override;
+   nsresult IsAllowListPermission(nsIPermission* aPermission,
+                                  bool* aResult) override;
+ };
+ 
+ }  // namespace mozilla
+ 

@@ -1,6 +1,12 @@
---- a/b/dom/base/AudioFingerprintManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/AudioFingerprintManager.cpp	2026-04-17 21:23:31
-@@ -26,24 +26,13 @@
+diff --git a/dom/base/AudioFingerprintManager.cpp b/dom/base/AudioFingerprintManager.cpp
+--- a/dom/base/AudioFingerprintManager.cpp
++++ b/dom/base/AudioFingerprintManager.cpp
+@@ -22,34 +22,23 @@
+ /* static */ void
+ AudioFingerprintManager::DisableFunction(uint32_t userContextId) {
+   nsString key = DisabledKeyForUserContext(userContextId);
+   RoverfoxStorageManager::PutBool(key, true);
+ }
  
  /* static */ void
  AudioFingerprintManager::SetSeed(uint32_t aUserContextId, uint32_t aSeed) {
@@ -27,9 +33,20 @@
    return 0;
  }
  
---- a/b/dom/base/CanvasFingerprintManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/CanvasFingerprintManager.cpp	2026-04-17 21:23:58
-@@ -17,22 +17,11 @@
+ /* static */ void
+ AudioFingerprintManager::ApplyTransformation(float* data, uint32_t length, uint32_t seed) {
+   if (seed == 0 || length == 0 || !data) {
+     return;
+   }
+diff --git a/dom/base/CanvasFingerprintManager.cpp b/dom/base/CanvasFingerprintManager.cpp
+--- a/dom/base/CanvasFingerprintManager.cpp
++++ b/dom/base/CanvasFingerprintManager.cpp
+@@ -13,32 +13,21 @@
+ 
+ nsString CanvasFingerprintManager::DisabledKeyForUserContext(uint32_t aId) {
+   nsAutoString key;
+   key.AppendPrintf("canvas_d_%u", aId);
+   return key;
  }
  
  void CanvasFingerprintManager::SetSeed(uint32_t aId, uint32_t aSeed) {
@@ -54,9 +71,20 @@
    return 0;
  }
  
---- a/b/dom/base/FontSpacingSeedManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/FontSpacingSeedManager.cpp	2026-04-17 21:24:05
-@@ -29,32 +29,21 @@
+ void CanvasFingerprintManager::ApplyCanvasNoise(uint8_t* data, uint32_t length,
+                                                  uint32_t seed) {
+   if (seed == 0 || length == 0 || !data) return;
+   uint32_t state = seed;
+   for (uint32_t i = 0; i + 3 < length; i += 4) {
+diff --git a/dom/base/FontSpacingSeedManager.cpp b/dom/base/FontSpacingSeedManager.cpp
+--- a/dom/base/FontSpacingSeedManager.cpp
++++ b/dom/base/FontSpacingSeedManager.cpp
+@@ -25,42 +25,31 @@
+   nsString key;
+   key.AppendLiteral(u"disabled_");
+   key.AppendInt(userContextId);
+   return key;
+ }
  
  /* static */ void
  FontSpacingSeedManager::SetSeed(uint32_t userContextId, uint32_t seed) {
@@ -93,9 +121,20 @@
  }
  
  /* static */ bool
---- a/b/dom/base/ScreenDimensionManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/ScreenDimensionManager.cpp	2026-04-17 21:24:23
-@@ -6,6 +6,8 @@
+ FontSpacingSeedManager::IsFunctionDisabled(uint32_t userContextId) {
+   nsString key = DisabledKeyForUserContext(userContextId);
+   bool disabled = false;
+   return RoverfoxStorageManager::GetBool(key, disabled) && disabled;
+ }
+diff --git a/dom/base/ScreenDimensionManager.cpp b/dom/base/ScreenDimensionManager.cpp
+--- a/dom/base/ScreenDimensionManager.cpp
++++ b/dom/base/ScreenDimensionManager.cpp
+@@ -1,16 +1,18 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "ScreenDimensionManager.h"
  #include "RoverfoxStorageManager.h"
@@ -104,7 +143,17 @@
  #include "nsGlobalWindowInner.h"
  #include "xpcpublic.h"
  #include "mozilla/dom/BrowsingContext.h"
-@@ -29,22 +30,15 @@
+ #include "mozilla/dom/Document.h"
+ #include "nsDocShell.h"
+ 
+ namespace mozilla {
+ namespace dom {
+@@ -24,55 +26,43 @@
+   if (BrowsingContext* bc = aWindow->GetBrowsingContext()) {
+     userContextId = bc->OriginAttributesRef().mUserContextId;
+   }
+   return userContextId;
+ }
  
  /* static */ void
  ScreenDimensionManager::SetDimensions(uint32_t aUserContextId, int32_t aWidth, int32_t aHeight) {
@@ -131,7 +180,11 @@
  
    if (width > 0 && height > 0) {
      *aWidth = static_cast<int32_t>(width);
-@@ -56,18 +50,13 @@
+     *aHeight = static_cast<int32_t>(height);
+     return true;
+   }
+   return false;
+ }
  
  /* static */ void
  ScreenDimensionManager::SetColorDepth(uint32_t aUserContextId, int32_t aColorDepth) {
@@ -153,9 +206,15 @@
  }
  
  /* static */ nsString
---- a/b/dom/base/WebGLParamsManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/WebGLParamsManager.cpp	2026-04-17 21:24:35
-@@ -1,5 +1,7 @@
+ ScreenDimensionManager::DisabledKeyForUserContext(uint32_t userContextId) {
+   nsString key;
+   key.AppendPrintf("screen_disabled_%u", userContextId);
+   return key;
+ }
+diff --git a/dom/base/WebGLParamsManager.cpp b/dom/base/WebGLParamsManager.cpp
+--- a/dom/base/WebGLParamsManager.cpp
++++ b/dom/base/WebGLParamsManager.cpp
+@@ -1,10 +1,12 @@
  /* Cloakfox: Per-context WebGL parameter manager */
  #include "WebGLParamsManager.h"
 +#include "MaskConfig.hpp"
@@ -163,7 +222,17 @@
  
  #include "mozilla/dom/BrowsingContext.h"
  #include "nsGlobalWindowInner.h"
-@@ -21,27 +22,29 @@
+ #include "xpcpublic.h"
+ 
+ namespace mozilla {
+ namespace dom {
+ 
+@@ -16,37 +18,39 @@
+ 
+ nsString WebGLParamsManager::RendererDisabledKey(uint32_t aId) {
+   nsAutoString key;
+   key.AppendPrintf("webgl_rd_%u", aId);
+   return key;
  }
  
  void WebGLParamsManager::SetVendor(uint32_t aId, const nsAString& aValue) {
@@ -205,17 +274,34 @@
  }
  
  void WebGLParamsManager::DisableVendorFunction(uint32_t aId) {
---- a/b/dom/base/WebRTCIPManager.cpp	2026-04-17 18:44:43
-+++ b/dom/base/WebRTCIPManager.cpp	2026-04-17 21:24:48
-@@ -1,6 +1,7 @@
+   RoverfoxStorageManager::PutBool(VendorDisabledKey(aId), true);
+ }
+ 
+ void WebGLParamsManager::DisableRendererFunction(uint32_t aId) {
+   RoverfoxStorageManager::PutBool(RendererDisabledKey(aId), true);
+diff --git a/dom/base/WebRTCIPManager.cpp b/dom/base/WebRTCIPManager.cpp
+--- a/dom/base/WebRTCIPManager.cpp
++++ b/dom/base/WebRTCIPManager.cpp
+@@ -1,12 +1,13 @@
  #include "WebRTCIPManager.h"
+ #include "nsPIDOMWindowInlines.h"
  #include "nsTHashMap.h"
  #include "RoverfoxStorageManager.h"
 +#include "MaskConfig.hpp"
  #include "nsPrintfCString.h"
  #include "nsGlobalWindowInner.h"
  #include "nsDocShell.h"
-@@ -48,32 +49,38 @@
+ #include "xpcpublic.h"
+ #include "mozilla/dom/BrowsingContext.h"
+ #include "mozilla/dom/Document.h"
+ #include "nsPIDOMWindow.h"
+ 
+@@ -44,42 +45,48 @@
+   key.AppendInt(userContextId);
+   return key;
+ }
+ 
+ 
  
  /* static */ void
  WebRTCIPManager::SetIPv4(uint32_t userContextId, const nsAString& ipv4) {
@@ -264,3 +350,8 @@
  }
  
  
+ 
+ /* static */ bool
+ WebRTCIPManager::IsIPv4FunctionDisabled(uint32_t userContextId) {
+   nsString key = IPv4DisabledKeyForUserContext(userContextId);
+   bool disabled = false;

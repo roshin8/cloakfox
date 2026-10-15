@@ -1,7 +1,12 @@
 diff --git a/dom/performance/LargestContentfulPaint.cpp b/dom/performance/LargestContentfulPaint.cpp
 --- a/dom/performance/LargestContentfulPaint.cpp
 +++ b/dom/performance/LargestContentfulPaint.cpp
-@@ -285,14 +285,22 @@
+@@ -280,33 +280,56 @@
+         "reported so far, return",
+         entry->Size(), performance->GetLargestContentfulPaintSize());
+     return;
+   }
+ 
    entry->QueueEntry();
  }
  
@@ -26,7 +31,7 @@ diff --git a/dom/performance/LargestContentfulPaint.cpp b/dom/performance/Larges
    if (mLoadTime.isNothing()) {
      return 0;
    }
-@@ -300,8 +308,23 @@
+ 
    return mPerformance->GetReducedTimePrecisionDOMHighRes(mLoadTime.ref());
  }
  
@@ -50,10 +55,20 @@ diff --git a/dom/performance/LargestContentfulPaint.cpp b/dom/performance/Larges
  }
  
  /* static */
+ Element* LargestContentfulPaint::GetContainingBlockForTextFrame(
+     const nsTextFrame* aTextFrame) {
+   nsIFrame* containingFrame = aTextFrame->GetContainingBlock();
+   MOZ_ASSERT(containingFrame);
+   return Element::FromNodeOrNull(containingFrame->GetContent());
 diff --git a/dom/performance/LargestContentfulPaint.h b/dom/performance/LargestContentfulPaint.h
 --- a/dom/performance/LargestContentfulPaint.h
 +++ b/dom/performance/LargestContentfulPaint.h
-@@ -87,6 +87,7 @@
+@@ -82,16 +82,17 @@
+                          Element* aElement, bool aShouldExposeRenderTime);
+ 
+   JSObject* WrapObject(JSContext* aCx,
+                        JS::Handle<JSObject*> aGivenProto) override;
+ 
    DOMHighResTimeStamp RenderTime() const;
    DOMHighResTimeStamp LoadTime() const;
    DOMHighResTimeStamp StartTime() const override;
@@ -61,7 +76,17 @@ diff --git a/dom/performance/LargestContentfulPaint.h b/dom/performance/LargestC
    DOMHighResTimeStamp PaintTime() const { return RenderTime(); }
    Nullable<DOMHighResTimeStamp> GetPresentationTime() const { return nullptr; }
  
-@@ -116,6 +117,9 @@
+   unsigned long Size() const { return mSize; }
+   void GetId(nsAString& aId) const {
+     if (mId) {
+       mId->ToString(aId);
+     }
+@@ -111,27 +112,32 @@
+   static void MaybeProcessImageForElementTiming(imgRequestProxy* aRequest,
+                                                 Element* aElement);
+ 
+   void QueueEntry();
+ 
   private:
    ~LargestContentfulPaint() = default;
  
@@ -71,7 +96,11 @@ diff --git a/dom/performance/LargestContentfulPaint.h b/dom/performance/LargestC
    void ReportLCPToNavigationTimings();
  
    RefPtr<PerformanceMainThread> mPerformance;
-@@ -127,6 +131,8 @@
+ 
+   // This is always set but only exposed to web content if
+   // mShouldExposeRenderTime is true.
+   const TimeStamp mRenderTime;
+   const Maybe<TimeStamp> mLoadTime;
    // This is set to false when for security reasons web content it not allowed
    // to see the RenderTime.
    const bool mShouldExposeRenderTime;
@@ -80,10 +109,17 @@ diff --git a/dom/performance/LargestContentfulPaint.h b/dom/performance/LargestC
    unsigned long mSize;
    nsCOMPtr<nsIURI> mURI;
  
+   nsWeakPtr mElement;
+   RefPtr<nsAtom> mId;
+ };
+ }  // namespace mozilla::dom
+ #endif
 diff --git a/dom/performance/Performance.cpp b/dom/performance/Performance.cpp
 --- a/dom/performance/Performance.cpp
 +++ b/dom/performance/Performance.cpp
-@@ -3,6 +3,7 @@
+@@ -1,13 +1,14 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "Performance.h"
@@ -91,7 +127,17 @@ diff --git a/dom/performance/Performance.cpp b/dom/performance/Performance.cpp
  
  #include <sstream>
  
-@@ -26,6 +27,7 @@
+ #if defined(XP_LINUX)
+ #  include <fcntl.h>
+ #  include <sys/mman.h>
+ #endif
+ 
+@@ -21,16 +22,17 @@
+ #include "PerformanceResourceTiming.h"
+ #include "PerformanceService.h"
+ #include "PerformanceWorker.h"
+ #include "mozilla/BasePrincipal.h"
+ #include "mozilla/ErrorResult.h"
  #include "mozilla/IntegerPrintfMacros.h"
  #include "mozilla/Perfetto.h"
  #include "mozilla/Preferences.h"
@@ -99,7 +145,17 @@ diff --git a/dom/performance/Performance.cpp b/dom/performance/Performance.cpp
  #include "mozilla/TimeStamp.h"
  #include "mozilla/dom/MessagePortBinding.h"
  #include "mozilla/dom/PerformanceBinding.h"
-@@ -112,6 +114,23 @@
+ #include "mozilla/dom/PerformanceEntryEvent.h"
+ #include "mozilla/dom/PerformanceNavigationBinding.h"
+ #include "mozilla/dom/PerformanceNavigationTiming.h"
+ #include "mozilla/dom/PerformanceObserverBinding.h"
+ #include "mozilla/dom/WorkerPrivate.h"
+@@ -107,25 +109,43 @@
+ 
+   WorkerGlobalScope* scope = workerPrivate->GlobalScope();
+   MOZ_ASSERT(scope);
+   performance = scope->GetPerformance();
+ 
    return performance.forget();
  }
  
@@ -123,7 +179,8 @@ diff --git a/dom/performance/Performance.cpp b/dom/performance/Performance.cpp
  Performance::Performance(nsIGlobalObject* aGlobal)
      : DOMEventTargetHelper(aGlobal),
        mResourceTimingBufferSize(kDefaultResourceTimingBufferSize),
-@@ -120,7 +139,8 @@
+       mPendingNotificationObserversTask(false),
+       mPendingResourceTimingBufferFullEvent(false),
        mRTPCallerType(aGlobal->GetRTPCallerType()),
        mCrossOriginIsolated(aGlobal->CrossOriginIsolated()),
        mShouldResistFingerprinting(aGlobal->ShouldResistFingerprinting(
@@ -133,7 +190,17 @@ diff --git a/dom/performance/Performance.cpp b/dom/performance/Performance.cpp
  
  Performance::~Performance() = default;
  
-@@ -154,8 +174,35 @@
+ DOMHighResTimeStamp Performance::TimeStampToDOMHighResForRendering(
+     TimeStamp aTimeStamp) const {
+   DOMHighResTimeStamp stamp = GetDOMTiming()->TimeStampToDOMHighRes(aTimeStamp);
+   // 0 is an inappropriate mixin for this this area; however CSS Animations
+   // needs to have it's Time Reduction Logic refactored, so it's currently
+@@ -149,18 +169,45 @@
+   // XXX: Removing this caused functions in pkcs11f.h to fail.
+   // Bug 1628021 investigates the root cause - it involves initializing
+   // the RNG service (part of GetRandomTimelineSeed()) off-main-thread
+   // but the underlying cause hasn't been identified yet.
+   if (mRTPCallerType == RTPCallerType::SystemPrincipal) {
      return rawTime;
    }
  
@@ -171,10 +238,19 @@ diff --git a/dom/performance/Performance.cpp b/dom/performance/Performance.cpp
  }
  
  DOMHighResTimeStamp Performance::NowUnclamped() const {
+   TimeDuration duration = TimeStamp::Now() - CreationTimeStamp();
+   return duration.ToMilliseconds();
+ }
+ 
+ DOMHighResTimeStamp Performance::TimeOrigin() {
 diff --git a/dom/performance/Performance.h b/dom/performance/Performance.h
 --- a/dom/performance/Performance.h
 +++ b/dom/performance/Performance.h
-@@ -5,6 +5,7 @@
+@@ -1,15 +1,16 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
  #ifndef mozilla_dom_Performance_h
  #define mozilla_dom_Performance_h
  
@@ -182,7 +258,17 @@ diff --git a/dom/performance/Performance.h b/dom/performance/Performance.h
  #include "mozilla/Attributes.h"
  #include "mozilla/DOMEventTargetHelper.h"
  #include "nsCOMPtr.h"
-@@ -78,6 +79,15 @@
+ #include "nsContentUtils.h"
+ #include "nsDOMNavigationTiming.h"
+ #include "nsTObserverArray.h"
+ 
+ class nsITimedChannel;
+@@ -73,16 +74,25 @@
+                                 nsTArray<RefPtr<PerformanceEntry>>& aRetval);
+ 
+   virtual PerformanceStorage* AsPerformanceStorage() = 0;
+ 
+   void ClearResourceTimings();
  
    DOMHighResTimeStamp Now();
  
@@ -198,7 +284,17 @@ diff --git a/dom/performance/Performance.h b/dom/performance/Performance.h
    DOMHighResTimeStamp NowUnclamped() const;
  
    DOMHighResTimeStamp TimeOrigin();
-@@ -227,6 +237,8 @@
+ 
+   already_AddRefed<PerformanceMark> Mark(
+       JSContext* aCx, const nsAString& aName,
+       const PerformanceMarkOptions& aMarkOptions, ErrorResult& aRv);
+ 
+@@ -222,16 +232,18 @@
+ 
+   bool mPendingResourceTimingBufferFullEvent;
+ 
+   RefPtr<PerformanceService> mPerformanceService;
+ 
    const RTPCallerType mRTPCallerType;
    const bool mCrossOriginIsolated;
    const bool mShouldResistFingerprinting;
@@ -207,10 +303,95 @@ diff --git a/dom/performance/Performance.h b/dom/performance/Performance.h
  
   private:
    MOZ_ALWAYS_INLINE bool CanAddResourceTimingEntry();
+   void ResourceTimingBufferFullEvent();
+   void MaybeEmitExternalProfilerMarker(
+       const nsAString& aName, Maybe<const PerformanceMeasureOptions&> aOptions,
+       Maybe<const nsAString&> aStartMark, const Optional<nsAString>& aEndMark);
+   void MaybeAddProfileMarker(
+diff --git a/dom/performance/PerformanceContainerTiming.cpp b/dom/performance/PerformanceContainerTiming.cpp
+--- a/dom/performance/PerformanceContainerTiming.cpp
++++ b/dom/performance/PerformanceContainerTiming.cpp
+@@ -93,21 +93,32 @@
+                                              AppUnitsPerCSSPixel());
+     mIntersectionRectObject = new DOMRectReadOnly(
+         mPerformance->GetParentObject(), x, y, width, height);
+   }
+   return do_AddRef(mIntersectionRectObject);
+ }
+ 
+ DOMHighResTimeStamp PerformanceContainerTiming::FirstRenderTime() const {
+-  return mPerformance->GetReducedTimePrecisionDOMHighRes(mFirstRenderTime);
++  if (!mCachedFirstRenderTime) {
++    mCachedFirstRenderTime.emplace(mPerformance->PresentTimestamp(
++        mPerformance->GetReducedTimePrecisionDOMHighRes(mFirstRenderTime)));
++  }
++  return *mCachedFirstRenderTime;
++}
++
++DOMHighResTimeStamp PerformanceContainerTiming::RawStartTime() const {
++  return mPerformance->GetReducedTimePrecisionDOMHighRes(mPaintTime);
+ }
+ 
+ DOMHighResTimeStamp PerformanceContainerTiming::StartTime() const {
+-  return mPerformance->GetReducedTimePrecisionDOMHighRes(mPaintTime);
++  if (!mCachedStartTime) {
++    mCachedStartTime.emplace(mPerformance->PresentTimestamp(RawStartTime()));
++  }
++  return *mCachedStartTime;
+ }
+ 
+ // ContainerTimingHelpers implementation
+ 
+ /* static */
+ void ContainerTimingHelpers::DropRecordForContainerRoot(
+     Element* aContainerRoot) {
+   nsGlobalWindowInner* window =
+diff --git a/dom/performance/PerformanceContainerTiming.h b/dom/performance/PerformanceContainerTiming.h
+--- a/dom/performance/PerformanceContainerTiming.h
++++ b/dom/performance/PerformanceContainerTiming.h
+@@ -61,16 +61,17 @@
+ 
+   already_AddRefed<DOMRectReadOnly> IntersectionRect() const;
+ 
+   unsigned long long Size() const { return mSize; }
+ 
+   DOMHighResTimeStamp FirstRenderTime() const;
+ 
+   DOMHighResTimeStamp StartTime() const override;
++  DOMHighResTimeStamp RawStartTime() const override;
+ 
+   DOMHighResTimeStamp PaintTime() const { return StartTime(); }
+   Nullable<DOMHighResTimeStamp> GetPresentationTime() const { return nullptr; }
+ 
+   Element* GetLastPaintedElement() const;
+ 
+   nsGenericHTMLElement* GetRootElement() const;
+ 
+@@ -86,13 +87,15 @@
+ 
+   nsRect mIntersectionRect;
+   // Lazily built from mIntersectionRect and cached.
+   mutable RefPtr<DOMRectReadOnly> mIntersectionRectObject;
+   uint64_t mSize;
+ 
+   TimeStamp mFirstRenderTime;
+   TimeStamp mPaintTime;
++  mutable Maybe<DOMHighResTimeStamp> mCachedFirstRenderTime;
++  mutable Maybe<DOMHighResTimeStamp> mCachedStartTime;
+ };
+ 
+ }  // namespace mozilla::dom
+ 
+ #endif  // mozilla_dom_PerformanceContainerTiming_h_
 diff --git a/dom/performance/PerformanceEntry.h b/dom/performance/PerformanceEntry.h
 --- a/dom/performance/PerformanceEntry.h
 +++ b/dom/performance/PerformanceEntry.h
-@@ -51,6 +51,11 @@
+@@ -46,16 +46,21 @@
+ 
+   const nsAtom* GetEntryType() const { return mEntryType; }
+   const nsStaticAtom* GetEntryTypeAsStaticAtom() const { return mEntryType; }
+ 
+   void SetEntryType(nsStaticAtom* aEntryType) { mEntryType = aEntryType; }
  
    virtual DOMHighResTimeStamp StartTime() const { return 0; }
  
@@ -222,10 +403,20 @@ diff --git a/dom/performance/PerformanceEntry.h b/dom/performance/PerformanceEnt
    // This is used by the Gecko Profiler only for adding precise markers.
    // It's not exposed to JS.
    virtual DOMHighResTimeStamp UnclampedStartTime() const {
+     MOZ_ASSERT(false, "UnclampedStartTime should not be called on this class.");
+     return 0;
+   }
+ 
+   virtual DOMHighResTimeStamp Duration() const { return 0; }
 diff --git a/dom/performance/PerformanceEventTiming.cpp b/dom/performance/PerformanceEventTiming.cpp
 --- a/dom/performance/PerformanceEventTiming.cpp
 +++ b/dom/performance/PerformanceEventTiming.cpp
-@@ -65,6 +65,31 @@
+@@ -60,16 +60,41 @@
+       mCancelable(aEventTimingEntry.mCancelable),
+       mInteractionId(aEventTimingEntry.mInteractionId),
+       mFallbackTime(aEventTimingEntry.mFallbackTime),
+       mMessage(aEventTimingEntry.mMessage) {}
+ 
  JSObject* PerformanceEventTiming::WrapObject(
      JSContext* cx, JS::Handle<JSObject*> aGivenProto) {
    return PerformanceEventTiming_Binding::Wrap(cx, this, aGivenProto);
@@ -257,10 +448,20 @@ diff --git a/dom/performance/PerformanceEventTiming.cpp b/dom/performance/Perfor
  }
  
  already_AddRefed<PerformanceEventTiming>
+ PerformanceEventTiming::TryGenerateEventTiming(const EventTarget* aTarget,
+                                                const WidgetEvent* aEvent) {
+   MOZ_ASSERT(NS_IsMainThread());
+   if (!StaticPrefs::dom_enable_event_timing() ||
+       aEvent->mFlags.mOnlyChromeDispatch) {
 diff --git a/dom/performance/PerformanceEventTiming.h b/dom/performance/PerformanceEventTiming.h
 --- a/dom/performance/PerformanceEventTiming.h
 +++ b/dom/performance/PerformanceEventTiming.h
-@@ -39,18 +39,22 @@
+@@ -34,28 +34,32 @@
+     return eventTiming.forget();
+   }
+ 
+   JSObject* WrapObject(JSContext* cx,
+                        JS::Handle<JSObject*> aGivenProto) override;
  
    DOMHighResTimeStamp ProcessingStart() const {
      if (mCachedProcessingStart.isNothing()) {
@@ -289,7 +490,17 @@ diff --git a/dom/performance/PerformanceEventTiming.h b/dom/performance/Performa
      }
      return mCachedProcessingEnd.value();
    }
-@@ -72,6 +76,7 @@
+ 
+   bool Cancelable() const { return mCancelable; }
+ 
+   uint64_t InteractionId() const { return mInteractionId.valueOr(0); }
+   bool HasKnownInteractionId() const { return mInteractionId.isSome(); }
+@@ -67,48 +71,31 @@
+   void SetInteractionId(uint64_t aInteractionId) {
+     mInteractionId = Some(aInteractionId);
+   }
+ 
+   nsINode* GetTarget() const;
  
    void SetDuration(const DOMHighResTimeStamp aDuration) {
      mDuration = Some(aDuration);
@@ -297,7 +508,7 @@ diff --git a/dom/performance/PerformanceEventTiming.h b/dom/performance/Performa
    }
  
    // nsRFPService::ReduceTimePrecisionAsMSecs might causes
-@@ -79,31 +84,13 @@
+   // some memory overhead, using the raw timestamp internally
    // to avoid calling in unnecessarily.
    Maybe<DOMHighResTimeStamp> RawDuration() const { return mDuration; }
  
@@ -332,7 +543,17 @@ diff --git a/dom/performance/PerformanceEventTiming.h b/dom/performance/Performa
  
    bool ShouldAddEntryToBuffer(double aDuration) const;
    bool ShouldAddEntryToObserverBuffer(PerformanceObserverInit&) const override;
-@@ -131,6 +118,8 @@
+ 
+   void BufferEntryIfNeeded() override;
+ 
+   void FinalizeEventTiming(const WidgetEvent* aEvent);
+ 
+@@ -126,33 +113,34 @@
+ 
+  private:
+   PerformanceEventTiming(Performance* aPerformance, const nsAString& aName,
+                          const TimeStamp& aStartTime, bool aIsCancelable,
+                          EventMessage aMessage);
  
    PerformanceEventTiming(const PerformanceEventTiming& aEventTimingEntry);
  
@@ -341,7 +562,13 @@ diff --git a/dom/performance/PerformanceEventTiming.h b/dom/performance/Performa
    ~PerformanceEventTiming() = default;
  
    RefPtr<Performance> mPerformance;
-@@ -144,10 +133,9 @@
+ 
+   DOMHighResTimeStamp mProcessingStart;
+   mutable Maybe<DOMHighResTimeStamp> mCachedProcessingStart;
+ 
+   DOMHighResTimeStamp mProcessingEnd;
+   mutable Maybe<DOMHighResTimeStamp> mCachedProcessingEnd;
+ 
    nsWeakPtr mTarget;
  
    DOMHighResTimeStamp mStartTime;
@@ -353,10 +580,20 @@ diff --git a/dom/performance/PerformanceEventTiming.h b/dom/performance/Performa
  
    bool mCancelable;
  
+   Maybe<uint64_t> mInteractionId;
+ 
+   Maybe<DOMHighResTimeStamp> mFallbackTime;
+ 
+   EventMessage mMessage;
 diff --git a/dom/performance/PerformanceNavigationTiming.cpp b/dom/performance/PerformanceNavigationTiming.cpp
 --- a/dom/performance/PerformanceNavigationTiming.cpp
 +++ b/dom/performance/PerformanceNavigationTiming.cpp
-@@ -22,10 +22,23 @@
+@@ -17,20 +17,33 @@
+ NS_IMPL_RELEASE_INHERITED(PerformanceNavigationTiming,
+                           PerformanceResourceTiming)
+ 
+ JSObject* PerformanceNavigationTiming::WrapObject(
+     JSContext* aCx, JS::Handle<JSObject*> aGivenProto) {
    return PerformanceNavigationTiming_Binding::Wrap(aCx, this, aGivenProto);
  }
  
@@ -384,7 +621,17 @@ diff --git a/dom/performance/PerformanceNavigationTiming.cpp b/dom/performance/P
  
  DOMHighResTimeStamp PerformanceNavigationTiming::UnloadEventStart() const {
    DOMHighResTimeStamp rawValue = 0;
-@@ -53,7 +66,7 @@
+   /*
+    * Per Navigation Timing Level 2, the value is 0 if
+    * a. there is no previous document or
+    * b. the same-origin-check fails.
+    *
+@@ -48,72 +61,72 @@
+      * GetUnloadEventStartHighRes returns 0 if
+      * 1. there is no previous document (a, above) or
+      * 2. the current URI does not have the same origin as
+      *    the previous document's URI. (same-origin-check:1)
+      */
      rawValue = mPerformance->GetDOMTiming()->GetUnloadEventStartHighRes();
    }
  
@@ -393,7 +640,10 @@ diff --git a/dom/performance/PerformanceNavigationTiming.cpp b/dom/performance/P
  }
  
  DOMHighResTimeStamp PerformanceNavigationTiming::UnloadEventEnd() const {
-@@ -64,14 +77,14 @@
+   DOMHighResTimeStamp rawValue = 0;
+ 
+   // See comments in PerformanceNavigationTiming::UnloadEventEnd().
+   if (mTimingData->AllRedirectsSameOrigin()) {
      rawValue = mPerformance->GetDOMTiming()->GetUnloadEventEndHighRes();
    }
  
@@ -410,7 +660,7 @@ diff --git a/dom/performance/PerformanceNavigationTiming.cpp b/dom/performance/P
  }
  
  DOMHighResTimeStamp PerformanceNavigationTiming::DomContentLoadedEventStart()
-@@ -79,7 +92,7 @@
+     const {
    DOMHighResTimeStamp rawValue =
        mPerformance->GetDOMTiming()->GetDomContentLoadedEventStartHighRes();
  
@@ -419,7 +669,7 @@ diff --git a/dom/performance/PerformanceNavigationTiming.cpp b/dom/performance/P
  }
  
  DOMHighResTimeStamp PerformanceNavigationTiming::DomContentLoadedEventEnd()
-@@ -87,28 +100,28 @@
+     const {
    DOMHighResTimeStamp rawValue =
        mPerformance->GetDOMTiming()->GetDomContentLoadedEventEndHighRes();
  
@@ -452,10 +702,20 @@ diff --git a/dom/performance/PerformanceNavigationTiming.cpp b/dom/performance/P
  }
  
  NavigationTimingType PerformanceNavigationTiming::Type() const {
+   switch (mPerformance->GetDOMTiming()->GetType()) {
+     case nsDOMNavigationTiming::TYPE_NAVIGATE:
+       return NavigationTimingType::Navigate;
+       break;
+     case nsDOMNavigationTiming::TYPE_RELOAD:
 diff --git a/dom/performance/PerformanceNavigationTiming.h b/dom/performance/PerformanceNavigationTiming.h
 --- a/dom/performance/PerformanceNavigationTiming.h
 +++ b/dom/performance/PerformanceNavigationTiming.h
-@@ -53,6 +53,7 @@
+@@ -48,16 +48,17 @@
+     SetInitiatorType(u"navigation"_ns);
+   }
+ 
+   DOMHighResTimeStamp Duration() const override {
+     return LoadEventEnd() - StartTime();
    }
  
    DOMHighResTimeStamp StartTime() const override { return 0; }
@@ -463,7 +723,17 @@ diff --git a/dom/performance/PerformanceNavigationTiming.h b/dom/performance/Per
  
    JSObject* WrapObject(JSContext* aCx,
                         JS::Handle<JSObject*> aGivenProto) override;
-@@ -85,6 +86,18 @@
+ 
+   DOMHighResTimeStamp UnloadEventStart() const;
+   DOMHighResTimeStamp UnloadEventEnd() const;
+ 
+   DOMHighResTimeStamp DomInteractive() const;
+@@ -80,14 +81,26 @@
+ 
+   /*
+    * For use with the WebIDL Func attribute to determine whether
+    * window.PerformanceNavigationTiming is exposed.
+    */
    static bool Enabled(JSContext* aCx, JSObject* aGlobal);
  
   private:
@@ -482,10 +752,18 @@ diff --git a/dom/performance/PerformanceNavigationTiming.h b/dom/performance/Per
    ~PerformanceNavigationTiming() = default;
  };
  
+ }  // namespace mozilla::dom
+ 
+ #endif  // mozilla_dom_PerformanceNavigationTiming_h_
 diff --git a/dom/performance/PerformancePaintTiming.cpp b/dom/performance/PerformancePaintTiming.cpp
 --- a/dom/performance/PerformancePaintTiming.cpp
 +++ b/dom/performance/PerformancePaintTiming.cpp
-@@ -36,13 +36,20 @@
+@@ -31,23 +31,30 @@
+ 
+ PerformancePaintTiming::~PerformancePaintTiming() = default;
+ 
+ JSObject* PerformancePaintTiming::WrapObject(
+     JSContext* aCx, JS::Handle<JSObject*> aGivenProto) {
    return PerformancePaintTiming_Binding::Wrap(aCx, this, aGivenProto);
  }
  
@@ -511,10 +789,20 @@ diff --git a/dom/performance/PerformancePaintTiming.cpp b/dom/performance/Perfor
    }
    return mCachedStartTime.value();
  }
+ 
+ size_t PerformancePaintTiming::SizeOfIncludingThis(
+     mozilla::MallocSizeOf aMallocSizeOf) const {
+   return aMallocSizeOf(this) + SizeOfExcludingThis(aMallocSizeOf);
+ }
 diff --git a/dom/performance/PerformancePaintTiming.h b/dom/performance/PerformancePaintTiming.h
 --- a/dom/performance/PerformancePaintTiming.h
 +++ b/dom/performance/PerformancePaintTiming.h
-@@ -31,6 +31,7 @@
+@@ -26,25 +26,27 @@
+ 
+   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(PerformancePaintTiming,
+                                            PerformanceEntry)
+ 
+   JSObject* WrapObject(JSContext* aCx,
                         JS::Handle<JSObject*> aGivenProto) override;
  
    DOMHighResTimeStamp StartTime() const override;
@@ -522,7 +810,11 @@ diff --git a/dom/performance/PerformancePaintTiming.h b/dom/performance/Performa
    DOMHighResTimeStamp PaintTime() const { return StartTime(); }
    Nullable<DOMHighResTimeStamp> GetPresentationTime() const { return nullptr; }
  
-@@ -42,6 +43,7 @@
+   size_t SizeOfIncludingThis(
+       mozilla::MallocSizeOf aMallocSizeOf) const override;
+ 
+  private:
+   ~PerformancePaintTiming();
    RefPtr<Performance> mPerformance;
  
    const TimeStamp mRawStartTime;
@@ -530,10 +822,18 @@ diff --git a/dom/performance/PerformancePaintTiming.h b/dom/performance/Performa
    mutable Maybe<DOMHighResTimeStamp> mCachedStartTime;
  };
  
+ }  // namespace mozilla::dom
+ 
+ #endif /* mozilla_dom_PerformanacePaintTiming_h___ */
 diff --git a/dom/performance/PerformanceResourceTiming.cpp b/dom/performance/PerformanceResourceTiming.cpp
 --- a/dom/performance/PerformanceResourceTiming.cpp
 +++ b/dom/performance/PerformanceResourceTiming.cpp
-@@ -50,6 +50,13 @@
+@@ -45,36 +45,46 @@
+ DOMHighResTimeStamp PerformanceResourceTiming::FetchStart() const {
+   if (mTimingData->TimingAllowed()) {
+     return mTimingData->FetchStartHighRes(mPerformance);
+   }
+   return StartTime();
  }
  
  DOMHighResTimeStamp PerformanceResourceTiming::StartTime() const {
@@ -547,7 +847,7 @@ diff --git a/dom/performance/PerformanceResourceTiming.cpp b/dom/performance/Per
    // Force the start time to be the earliest of:
    //  - RedirectStart
    //  - WorkerStart
-@@ -57,19 +64,22 @@
+   //  - AsyncOpen
    // Ignore zero values.  The RedirectStart and WorkerStart values
    // can come from earlier redirected channels prior to the AsyncOpen
    // time being recorded.
@@ -576,10 +876,20 @@ diff --git a/dom/performance/PerformanceResourceTiming.cpp b/dom/performance/Per
  }
  
  JSObject* PerformanceResourceTiming::WrapObject(
+     JSContext* aCx, JS::Handle<JSObject*> aGivenProto) {
+   return PerformanceResourceTiming_Binding::Wrap(aCx, this, aGivenProto);
+ }
+ 
+ size_t PerformanceResourceTiming::SizeOfIncludingThis(
 diff --git a/dom/performance/PerformanceResourceTiming.h b/dom/performance/PerformanceResourceTiming.h
 --- a/dom/performance/PerformanceResourceTiming.h
 +++ b/dom/performance/PerformanceResourceTiming.h
-@@ -57,6 +57,7 @@
+@@ -52,16 +52,17 @@
+   PerformanceResourceTiming(
+       UniquePtr<PerformanceTimingData>&& aPerformanceTimingData,
+       Performance* aPerformance, const nsAString& aName);
+ 
+   virtual JSObject* WrapObject(JSContext* aCx,
                                 JS::Handle<JSObject*> aGivenProto) override;
  
    virtual DOMHighResTimeStamp StartTime() const override;
@@ -587,7 +897,17 @@ diff --git a/dom/performance/PerformanceResourceTiming.h b/dom/performance/Perfo
  
    virtual DOMHighResTimeStamp Duration() const override {
      return ResponseEnd() - StartTime();
-@@ -222,6 +223,7 @@
+   }
+ 
+   void GetInitiatorType(nsAString& aInitiatorType) const {
+     aInitiatorType = mInitiatorType;
+   }
+@@ -224,14 +225,15 @@
+   nsString mDeliveryType;
+   const UniquePtr<PerformanceTimingData> mTimingData;  // always non-null
+   RefPtr<Performance> mPerformance;
+ 
+   // The same initial requested URI as the `name` attribute.
    nsCOMPtr<nsIURI> mOriginalURI;
  
   private:
@@ -595,10 +915,18 @@ diff --git a/dom/performance/PerformanceResourceTiming.h b/dom/performance/Perfo
    mutable Maybe<DOMHighResTimeStamp> mCachedStartTime;
  };
  
+ }  // namespace mozilla::dom
+ 
+ #endif /* mozilla_dom_PerformanceResourceTiming_h_ */
 diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/PerformanceTiming.cpp
 --- a/dom/performance/PerformanceTiming.cpp
 +++ b/dom/performance/PerformanceTiming.cpp
-@@ -109,7 +109,7 @@
+@@ -105,17 +105,17 @@
+           aPerformance->GetRTPCallerType())));
+ 
+   // Non-null aHttpChannel implies that this PerformanceTiming object is being
+   // used for subresources, which is irrelevant to this probe.
+   if (!aHttpChannel && StaticPrefs::dom_enable_performance() &&
        IsTopLevelContentDocument()) {
      glean::performance_time::response_start.AccumulateRawDuration(
          TimeDuration::FromMilliseconds(
@@ -607,7 +935,17 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
              mTimingData->ZeroTime()));
    }
  }
-@@ -398,7 +398,7 @@
+ 
+ CacheablePerformanceTimingData::CacheablePerformanceTimingData(
+     nsITimedChannel* aChannel, nsIHttpChannel* aHttpChannel)
+     : mEncodedBodySize(0),
+       mDecodedBodySize(0),
+@@ -413,17 +413,17 @@
+     return;
+   }
+   mServedFromCache = disposition == nsICacheInfoChannel::kCacheHit ||
+                      disposition == nsICacheInfoChannel::kCacheHitViaReval;
+ }
  
  PerformanceTiming::~PerformanceTiming() = default;
  
@@ -616,7 +954,17 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -505,7 +505,7 @@
+   if (!mFetchStart) {
+     if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+       return mZeroTime;
+     }
+     MOZ_ASSERT(!mAsyncOpen.IsNull(),
+@@ -520,32 +520,32 @@
+ 
+   // If the redirect count is 0, or if one of the cross-origin
+   // redirects doesn't have the proper Timing-Allow-Origin header,
+   // then RedirectStart and RedirectEnd will be set to zero
+   return aEnsureSameOriginAndIgnoreTAO ? mAllRedirectsSameOrigin
                                         : mAllRedirectsPassTAO;
  }
  
@@ -625,7 +973,14 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -520,7 +520,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized() ||
+       mAsyncOpen.IsNull()) {
+     return mZeroTime;
+   }
+   DOMHighResTimeStamp rawValue =
+       TimeStampToDOMHighRes(aPerformance, mAsyncOpen);
+   return nsRFPService::ReduceTimePrecisionAsMSecs(
+       rawValue, aPerformance->GetRandomTimelineSeed(),
        aPerformance->GetRTPCallerType());
  }
  
@@ -634,7 +989,17 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -545,7 +545,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized() ||
+       mWorkerStart.IsNull()) {
+     return mZeroTime;
+   }
+   DOMHighResTimeStamp rawValue =
+@@ -560,17 +560,17 @@
+  * resource timing. Since, navigation timing and resource timing check and
+  * interpret cross-domain redirects in a different manner,
+  * RedirectStartHighRes() will make no checks for cross-domain redirect.
+  * It's up to the consumers of this method (PerformanceTiming::RedirectStart()
+  * and PerformanceResourceTiming::RedirectStart() to make such verifications.
   *
   * @return a valid timing if the Performance Timing is enabled
   */
@@ -643,7 +1008,17 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -579,7 +579,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
+   }
+   return TimeStampToReducedDOMHighResOrFetchStart(aPerformance, mRedirectStart);
+ }
+@@ -594,17 +594,17 @@
+  * timing. Since, navigation timing and resource timing check and interpret
+  * cross-domain redirects in a different manner, RedirectEndHighRes() will make
+  * no checks for cross-domain redirect. It's up to the consumers of this method
+  * (PerformanceTiming::RedirectEnd() and
+  * PerformanceResourceTiming::RedirectEnd() to make such verifications.
   *
   * @return a valid timing if the Performance Timing is enabled
   */
@@ -652,7 +1027,17 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -602,7 +602,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
+   }
+   return TimeStampToReducedDOMHighResOrFetchStart(aPerformance, mRedirectEnd);
+ }
+@@ -617,133 +617,133 @@
+   // is no check in RedirectEndHighRes())
+   if (mTimingData->AllRedirectsSameOrigin() &&
+       mTimingData->RedirectCountReal()) {
+     return static_cast<int64_t>(mTimingData->RedirectEndHighRes(mPerformance));
+   }
    return 0;
  }
  
@@ -661,7 +1046,8 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -611,7 +611,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
    }
    // Bug 1637985 - DomainLookup information may be useful for fingerprinting.
    if (aPerformance->ShouldResistFingerprinting()) {
@@ -670,7 +1056,10 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
    }
    return TimeStampToReducedDOMHighResOrFetchStart(aPerformance,
                                                    mDomainLookupStart);
-@@ -622,7 +622,7 @@
+ }
+ 
+ DOMTimeMilliSec PerformanceTiming::DomainLookupStart() {
+   return static_cast<int64_t>(
        mTimingData->DomainLookupStartHighRes(mPerformance));
  }
  
@@ -679,7 +1068,8 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -631,11 +631,11 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
    }
    // Bug 1637985 - DomainLookup information may be useful for fingerprinting.
    if (aPerformance->ShouldResistFingerprinting()) {
@@ -693,7 +1083,13 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
    }
    DOMHighResTimeStamp rawValue =
        TimeStampToDOMHighRes(aPerformance, mDomainLookupEnd);
-@@ -649,7 +649,7 @@
+   return nsRFPService::ReduceTimePrecisionAsMSecs(
+       rawValue, aPerformance->GetRandomTimelineSeed(),
+       aPerformance->GetRTPCallerType());
+ }
+ 
+ DOMTimeMilliSec PerformanceTiming::DomainLookupEnd() {
+   return static_cast<int64_t>(
        mTimingData->DomainLookupEndHighRes(mPerformance));
  }
  
@@ -702,7 +1098,7 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -657,7 +657,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
      return mZeroTime;
    }
    if (mConnectStart.IsNull()) {
@@ -711,7 +1107,12 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
    }
    DOMHighResTimeStamp rawValue =
        TimeStampToDOMHighRes(aPerformance, mConnectStart);
-@@ -670,7 +670,7 @@
+   return nsRFPService::ReduceTimePrecisionAsMSecs(
+       rawValue, aPerformance->GetRandomTimelineSeed(),
+       aPerformance->GetRTPCallerType());
+ }
+ 
+ DOMTimeMilliSec PerformanceTiming::ConnectStart() {
    return static_cast<int64_t>(mTimingData->ConnectStartHighRes(mPerformance));
  }
  
@@ -720,7 +1121,11 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -682,7 +682,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
+   }
+   if (!mSecureConnection) {
+     return 0;  // We use 0 here, because mZeroTime is sometimes set to the
                 // navigation start time.
    }
    if (mSecureConnectionStart.IsNull()) {
@@ -729,7 +1134,13 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
    }
    DOMHighResTimeStamp rawValue =
        TimeStampToDOMHighRes(aPerformance, mSecureConnectionStart);
-@@ -696,7 +696,7 @@
+   return nsRFPService::ReduceTimePrecisionAsMSecs(
+       rawValue, aPerformance->GetRandomTimelineSeed(),
+       aPerformance->GetRTPCallerType());
+ }
+ 
+ DOMTimeMilliSec PerformanceTiming::SecureConnectionStart() {
+   return static_cast<int64_t>(
        mTimingData->SecureConnectionStartHighRes(mPerformance));
  }
  
@@ -738,7 +1149,8 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -705,7 +705,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
    }
    // Bug 1155008 - nsHttpTransaction is racy. Return ConnectStart when null
    if (mConnectEnd.IsNull()) {
@@ -747,7 +1159,12 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
    }
    DOMHighResTimeStamp rawValue =
        TimeStampToDOMHighRes(aPerformance, mConnectEnd);
-@@ -718,7 +718,7 @@
+   return nsRFPService::ReduceTimePrecisionAsMSecs(
+       rawValue, aPerformance->GetRandomTimelineSeed(),
+       aPerformance->GetRTPCallerType());
+ }
+ 
+ DOMTimeMilliSec PerformanceTiming::ConnectEnd() {
    return static_cast<int64_t>(mTimingData->ConnectEndHighRes(mPerformance));
  }
  
@@ -756,7 +1173,17 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -737,7 +737,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
+   }
+ 
+   if (mRequestStart.IsNull()) {
+@@ -752,17 +752,17 @@
+ 
+   return TimeStampToReducedDOMHighResOrFetchStart(aPerformance, mRequestStart);
+ }
+ 
+ DOMTimeMilliSec PerformanceTiming::RequestStart() {
    return static_cast<int64_t>(mTimingData->RequestStartHighRes(mPerformance));
  }
  
@@ -765,7 +1192,17 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -761,7 +761,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
+   }
+ 
+   if (mResponseStart.IsNull() ||
+@@ -776,69 +776,106 @@
+   }
+   return TimeStampToReducedDOMHighResOrFetchStart(aPerformance, mResponseStart);
+ }
+ 
+ DOMTimeMilliSec PerformanceTiming::ResponseStart() {
    return static_cast<int64_t>(mTimingData->ResponseStartHighRes(mPerformance));
  }
  
@@ -774,7 +1211,13 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -775,7 +775,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
+   }
+   if (mFirstInterimResponseStart.IsNull()) {
+     return 0;
+   }
+   return TimeStampToReducedDOMHighResOrFetchStart(aPerformance,
                                                    mFirstInterimResponseStart);
  }
  
@@ -783,7 +1226,13 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -789,7 +789,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
+   }
+   if (mFinalResponseHeadersStart.IsNull()) {
+     return 0;
+   }
+   return TimeStampToReducedDOMHighResOrFetchStart(aPerformance,
                                                    mFinalResponseHeadersStart);
  }
  
@@ -792,7 +1241,15 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
      Performance* aPerformance) {
    MOZ_ASSERT(aPerformance);
  
-@@ -805,7 +805,7 @@
+   if (!StaticPrefs::dom_enable_performance() || !IsInitialized()) {
+     return mZeroTime;
+   }
+   if (mResponseEnd.IsNull() ||
+       (!mCacheReadEnd.IsNull() && mCacheReadEnd < mResponseEnd)) {
+     mResponseEnd = mCacheReadEnd;
+   }
+   if (mResponseEnd.IsNull()) {
+     mResponseEnd = mWorkerResponseEnd;
    }
    // Bug 1155008 - nsHttpTransaction is racy. Return ResponseStart when null
    if (mResponseEnd.IsNull()) {
@@ -801,7 +1258,8 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
    }
    DOMHighResTimeStamp rawValue =
        TimeStampToDOMHighRes(aPerformance, mResponseEnd);
-@@ -814,6 +814,43 @@
+   return nsRFPService::ReduceTimePrecisionAsMSecs(
+       rawValue, aPerformance->GetRandomTimelineSeed(),
        aPerformance->GetRTPCallerType());
  }
  
@@ -845,10 +1303,20 @@ diff --git a/dom/performance/PerformanceTiming.cpp b/dom/performance/Performance
  DOMTimeMilliSec PerformanceTiming::ResponseEnd() {
    return static_cast<int64_t>(mTimingData->ResponseEndHighRes(mPerformance));
  }
+ 
+ JSObject* PerformanceTiming::WrapObject(JSContext* cx,
+                                         JS::Handle<JSObject*> aGivenProto) {
+   return PerformanceTiming_Binding::Wrap(cx, this, aGivenProto);
+ }
 diff --git a/dom/performance/PerformanceTiming.h b/dom/performance/PerformanceTiming.h
 --- a/dom/performance/PerformanceTiming.h
 +++ b/dom/performance/PerformanceTiming.h
-@@ -88,7 +88,7 @@
+@@ -88,17 +88,17 @@
+    *          page), if the given TimeStamp is valid. Otherwise, it will return
+    *          the FetchStart timing value.
+    */
+   inline DOMHighResTimeStamp TimeStampToReducedDOMHighResOrFetchStart(
+       Performance* aPerformance, TimeStamp aStamp) {
      MOZ_ASSERT(aPerformance);
  
      if (aStamp.IsNull()) {
@@ -857,7 +1325,17 @@ diff --git a/dom/performance/PerformanceTiming.h b/dom/performance/PerformanceTi
      }
  
      DOMHighResTimeStamp rawTimestamp =
-@@ -138,24 +138,39 @@
+         TimeStampToDOMHighRes(aPerformance, aStamp);
+ 
+     return nsRFPService::ReduceTimePrecisionAsMSecs(
+         rawTimestamp, aPerformance->GetRandomTimelineSeed(),
+         aPerformance->GetRTPCallerType());
+@@ -138,34 +138,49 @@
+ 
+     TimeDuration duration = aStamp - aPerformance->CreationTimeStamp();
+     return duration.ToMilliseconds() + mZeroTime;
+   }
+ 
    // The last channel's AsyncOpen time.  This may occur before the FetchStart
    // in some cases.
    DOMHighResTimeStamp AsyncOpenHighRes(Performance* aPerformance);
@@ -897,7 +1375,17 @@ diff --git a/dom/performance/PerformanceTiming.h b/dom/performance/PerformanceTi
  
    DOMHighResTimeStamp ZeroTime() const { return mZeroTime; }
  
-@@ -174,6 +189,10 @@
+   // If this is false the values of redirectStart/End will be 0 This is false if
+   // no redirects occured, or if any of the responses failed the
+   // timing-allow-origin check in HttpBaseChannel::TimingAllowCheck
+   //
+   // If aEnsureSameOriginAndIgnoreTAO is false, it checks if all redirects pass
+@@ -174,16 +189,20 @@
+   bool ShouldReportCrossOriginRedirect(
+       bool aEnsureSameOriginAndIgnoreTAO) const;
+ 
+   RenderBlockingStatusType RenderBlockingStatus() const {
+     return mRenderBlockingStatus;
    }
  
   private:
@@ -908,7 +1396,17 @@ diff --git a/dom/performance/PerformanceTiming.h b/dom/performance/PerformanceTi
    TimeStamp mAsyncOpen;
    TimeStamp mRedirectStart;
    TimeStamp mRedirectEnd;
-@@ -202,6 +221,22 @@
+   TimeStamp mDomainLookupStart;
+   TimeStamp mDomainLookupEnd;
+   TimeStamp mConnectStart;
+   TimeStamp mSecureConnectionStart;
+   TimeStamp mConnectEnd;
+@@ -202,16 +221,32 @@
+ 
+   // This is an offset that will be added to each timing ([ms] resolution).
+   // There are only 2 possible values: (1) logicaly equal to navigationStart
+   // TimeStamp (results are absolute timstamps - wallclock); (2) "0" (results
+   // are relative to the navigation start).
    DOMHighResTimeStamp mZeroTime = 0;
  
    DOMHighResTimeStamp mFetchStart = 0;
@@ -931,10 +1429,34 @@ diff --git a/dom/performance/PerformanceTiming.h b/dom/performance/PerformanceTi
  
    uint64_t mTransferSize = 0;
  
+   bool mServedFromCache = false;
+ 
+   RenderBlockingStatusType mRenderBlockingStatus =
+       RenderBlockingStatusType::Non_blocking;
+ };
+diff --git a/dom/performance/moz.build b/dom/performance/moz.build
+--- a/dom/performance/moz.build
++++ b/dom/performance/moz.build
+@@ -62,8 +62,10 @@
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ MOCHITEST_MANIFESTS += ["tests/mochitest.toml"]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ FINAL_LIBRARY = "xul"
++
++LOCAL_INCLUDES += ["/cloakcfg"]
 diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
 --- a/modules/libpref/init/StaticPrefList.yaml
 +++ b/modules/libpref/init/StaticPrefList.yaml
-@@ -2422,6 +2422,13 @@
+@@ -2438,16 +2438,23 @@
+ 
+ # Optional log/pow fingerprint noise. Atomic so worker realm creation can
+ # read it safely; native precision is the default for data correctness.
+ - name: cloakfox.opt.math_data_noise
+   type: RelaxedAtomicBool
    value: false
    mirror: always
  
@@ -948,71 +1470,22 @@ diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/Sta
  #---------------------------------------------------------------------------
  # Prefs starting with "consoleservice."
  #---------------------------------------------------------------------------
+ 
+ #if defined(ANDROID)
+   # Disable sending console to logcat on release builds.
+ -   name: consoleservice.logcat
+     type: RelaxedAtomicBool
 diff --git a/moz.build b/moz.build
 --- a/moz.build
 +++ b/moz.build
-@@ -363,4 +363,4 @@
- 
- include("build/templates.mozbuild")
+@@ -377,9 +377,9 @@
+         extra_deps=[
+             "!/licenses.json",
+             "!/.cargo/config.toml",
+             "/Cargo.lock",
+         ],
+         force=True,
+     )
  
 -DIRS += ["lw"]
-\ No newline at end of file
 +DIRS += ["cloakcfg", "lw"]
-\ No newline at end of file
-diff --git a/dom/performance/moz.build b/dom/performance/moz.build
---- a/dom/performance/moz.build
-+++ b/dom/performance/moz.build
-@@ -67,3 +67,5 @@
- include("/ipc/chromium/chromium-config.mozbuild")
- 
- FINAL_LIBRARY = "xul"
-+
-+LOCAL_INCLUDES += ["/cloakcfg"]
-diff --git a/dom/performance/PerformanceContainerTiming.cpp b/dom/performance/PerformanceContainerTiming.cpp
---- a/dom/performance/PerformanceContainerTiming.cpp
-+++ b/dom/performance/PerformanceContainerTiming.cpp
-@@ -98,11 +98,22 @@
- }
- 
- DOMHighResTimeStamp PerformanceContainerTiming::FirstRenderTime() const {
--  return mPerformance->GetReducedTimePrecisionDOMHighRes(mFirstRenderTime);
-+  if (!mCachedFirstRenderTime) {
-+    mCachedFirstRenderTime.emplace(mPerformance->PresentTimestamp(
-+        mPerformance->GetReducedTimePrecisionDOMHighRes(mFirstRenderTime)));
-+  }
-+  return *mCachedFirstRenderTime;
-+}
-+
-+DOMHighResTimeStamp PerformanceContainerTiming::RawStartTime() const {
-+  return mPerformance->GetReducedTimePrecisionDOMHighRes(mPaintTime);
- }
- 
- DOMHighResTimeStamp PerformanceContainerTiming::StartTime() const {
--  return mPerformance->GetReducedTimePrecisionDOMHighRes(mPaintTime);
-+  if (!mCachedStartTime) {
-+    mCachedStartTime.emplace(mPerformance->PresentTimestamp(RawStartTime()));
-+  }
-+  return *mCachedStartTime;
- }
- 
- // ContainerTimingHelpers implementation
-diff --git a/dom/performance/PerformanceContainerTiming.h b/dom/performance/PerformanceContainerTiming.h
---- a/dom/performance/PerformanceContainerTiming.h
-+++ b/dom/performance/PerformanceContainerTiming.h
-@@ -66,6 +66,7 @@
-   DOMHighResTimeStamp FirstRenderTime() const;
- 
-   DOMHighResTimeStamp StartTime() const override;
-+  DOMHighResTimeStamp RawStartTime() const override;
- 
-   DOMHighResTimeStamp PaintTime() const { return StartTime(); }
-   Nullable<DOMHighResTimeStamp> GetPresentationTime() const { return nullptr; }
-@@ -91,6 +92,8 @@
- 
-   TimeStamp mFirstRenderTime;
-   TimeStamp mPaintTime;
-+  mutable Maybe<DOMHighResTimeStamp> mCachedFirstRenderTime;
-+  mutable Maybe<DOMHighResTimeStamp> mCachedStartTime;
- };
- 
- }  // namespace mozilla::dom

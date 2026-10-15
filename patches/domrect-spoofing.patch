@@ -1,6 +1,12 @@
---- a/b/dom/base/Element.cpp	2026-04-18 07:41:27
-+++ b/dom/base/Element.cpp	2026-04-18 14:19:14
-@@ -1108,6 +1108,22 @@
+diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
+--- a/dom/base/Element.cpp
++++ b/dom/base/Element.cpp
+@@ -1197,32 +1197,67 @@
+ 
+   nsIFrame* frame = GetPrimaryFrame(FlushType::Layout);
+   if (!frame || frame->HasAnyStateBits(NS_FRAME_IS_NONDISPLAY)) {
+     // display:none, perhaps? Return the empty rect
+     return rect.forget();
    }
  
    rect->SetLayoutRect(frame->GetBoundingClientRect());
@@ -23,7 +29,16 @@
    return rect.forget();
  }
  
-@@ -1124,6 +1140,25 @@
+ already_AddRefed<DOMRectList> Element::GetClientRects() {
+   RefPtr<DOMRectList> rectList = new DOMRectList(this);
+ 
+   nsIFrame* frame = GetPrimaryFrame(FlushType::Layout);
+   if (!frame || frame->HasAnyStateBits(NS_FRAME_IS_NONDISPLAY)) {
+     // display:none, perhaps? Return an empty list
+     return rectList.forget();
+   }
+ 
+   nsLayoutUtils::RectListBuilder builder(rectList);
    nsLayoutUtils::GetAllInFlowRects(
        frame, nsLayoutUtils::GetContainingBlockForClientRect(frame), &builder,
        nsLayoutUtils::GetAllInFlowRectsFlag::AccountForTransforms);
@@ -49,7 +64,17 @@
    return rectList.forget();
  }
  
-@@ -5579,6 +5614,25 @@
+ const DOMTokenListSupportedToken Element::sAnchorAndFormRelValues[] = {
+     "noreferrer", "noopener", "opener", nullptr};
+ 
+ // https://html.spec.whatwg.org/multipage/urls-and-fetching.html#lazy-loading-attribute
+ static constexpr nsAttrValue::EnumTableEntry kLoadingTable[] = {
+@@ -6954,12 +6989,31 @@
+   while (parent && ShouldBeRetargeted(*this, *parent)) {
+     OffsetResult result = GetUnretargetedOffsetsFor(*parent);
+     rect += result.mRect.TopLeft();
+     parent = result.mParent;
+   }
  
    aRect = CSSIntRect::FromAppUnitsRounded(
        frame->Style()->EffectiveZoom().Unzoom(rect));
@@ -75,3 +100,4 @@
    return parent;
  }
  
+ }  // namespace mozilla::dom

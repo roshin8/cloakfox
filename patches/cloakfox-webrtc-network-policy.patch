@@ -1,7 +1,12 @@
 diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp b/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
 --- a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
 +++ b/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
-@@ -422,8 +422,80 @@
+@@ -437,18 +437,90 @@
+   mForceIceTcp =
+       Preferences::GetBool("media.peerconnection.ice.force_ice_tcp", false);
+   memset(mMaxReceiving, 0, sizeof(mMaxReceiving));
+   memset(mMaxSending, 0, sizeof(mMaxSending));
+   mJsConfiguration.mCertificatesProvided = false;
    mJsConfiguration.mPeerIdentityProvided = false;
  }
  
@@ -82,7 +87,17 @@ diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp b/dom/media/webrtc/js
  
    MOZ_ASSERT(!mTransportHandler,
               "PeerConnection should either be closed, or not initted in the "
-@@ -448,6 +520,23 @@
+              "first place.");
+ 
+   if (mTimeCard) {
+     STAMP_TIMECARD(mTimeCard, "Destructor Invoked");
+     STAMP_TIMECARD(mTimeCard, mHandle.c_str());
+@@ -463,16 +535,33 @@
+ 
+ nsresult PeerConnectionImpl::Initialize(PeerConnectionObserver& aObserver,
+                                         nsGlobalWindowInner* aWindow) {
+   nsresult res;
+ 
    MOZ_ASSERT(NS_IsMainThread());
  
    mPCObserver = &aObserver;
@@ -106,7 +121,17 @@ diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp b/dom/media/webrtc/js
  
    // Find the STS thread
  
-@@ -2457,6 +2546,7 @@
+   mSTSThread = do_GetService(NS_SOCKETTRANSPORTSERVICE_CONTRACTID, &res);
+   MOZ_ASSERT(mSTSThread);
+ 
+   RefPtr transportHandler = MediaTransportHandler::Create();
+   if (mPrivateWindow) {
+@@ -2444,16 +2533,17 @@
+   }
+ 
+   // Finally, store the stats
+   mFinalStats = std::move(report);
+ }
  
  NS_IMETHODIMP
  PeerConnectionImpl::Close() {
@@ -114,7 +139,17 @@ diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp b/dom/media/webrtc/js
    CSFLogDebug(LOGTAG, "%s: for %s", __FUNCTION__, mHandle.c_str());
    PC_AUTO_ENTER_API_CALL_NO_CHECK();
  
-@@ -2660,8 +2750,16 @@
+   if (IsClosed()) {
+     return NS_OK;
+   }
+ 
+   STAMP_TIMECARD(mTimeCard, "Close");
+@@ -2647,18 +2737,26 @@
+     return;
+   }
+ 
+   aRv = SetConfiguration(aConfiguration);
+ }
  
  nsresult PeerConnectionImpl::SetConfiguration(
      const RTCConfiguration& aConfiguration) {
@@ -132,10 +167,20 @@ diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp b/dom/media/webrtc/js
    if (NS_WARN_IF(NS_FAILED(rv))) {
      return rv;
    }
+ 
+   JsepBundlePolicy bundlePolicy;
+   switch (aConfiguration.mBundlePolicy) {
+     case dom::RTCBundlePolicy::Balanced:
+       bundlePolicy = kBundleBalanced;
 diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.h b/dom/media/webrtc/jsapi/PeerConnectionImpl.h
 --- a/dom/media/webrtc/jsapi/PeerConnectionImpl.h
 +++ b/dom/media/webrtc/jsapi/PeerConnectionImpl.h
-@@ -603,6 +603,12 @@
+@@ -588,16 +588,22 @@
+                               sdp::Direction aDirection);
+ 
+   void BreakCycles();
+ 
+   using RTCDtlsTransportMap =
        nsTHashMap<nsCStringHashKey, RefPtr<dom::RTCDtlsTransport>>;
  
   private:
@@ -148,3 +193,8 @@ diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.h b/dom/media/webrtc/jsap
    void ParseIceServers(const nsTArray<dom::RTCIceServer>& aIceServers,
                         ErrorResult& aRv);
  
+   virtual ~PeerConnectionImpl();
+   PeerConnectionImpl(const PeerConnectionImpl& rhs);
+   PeerConnectionImpl& operator=(PeerConnectionImpl);
+ 
+   RefPtr<dom::RTCStatsPromise> GetDataChannelStats(

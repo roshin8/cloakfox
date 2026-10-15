@@ -1,8 +1,9 @@
 diff --git a/dom/base/ChromeUtils.cpp b/dom/base/ChromeUtils.cpp
-index 52f0af76ec..2a7a9ae4fc 100644
 --- a/dom/base/ChromeUtils.cpp
 +++ b/dom/base/ChromeUtils.cpp
-@@ -5,6 +5,8 @@
+@@ -1,13 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "ChromeUtils.h"
@@ -10,8 +11,18 @@ index 52f0af76ec..2a7a9ae4fc 100644
 +#include "MouseTrajectories.hpp"
  
  #include "JSOracleParent.h"
+ #include "NonSharedGlobalSyncModuleLoaderScope.h"
  #include "ThirdPartyUtil.h"
-@@ -2115,6 +2117,24 @@ bool ChromeUtils::IsDarkBackground(GlobalObject&, Element& aElement) {
+ #include "VsyncSource.h"
+ #include "WrapperFactory.h"
+ #include "imgLoader.h"
+ #include "js/CallAndConstruct.h"  // JS::Call
+@@ -2719,16 +2721,34 @@
+ bool ChromeUtils::IsDarkBackground(GlobalObject&, Element& aElement) {
+   nsIFrame* f = aElement.GetPrimaryFrame(FlushType::Frames);
+   if (!f) {
+     return false;
+   }
    return nsNativeTheme::IsDarkBackground(f);
  }
  
@@ -36,10 +47,22 @@ index 52f0af76ec..2a7a9ae4fc 100644
  double ChromeUtils::DateNow(GlobalObject&) { return JS_Now() / 1000.0; }
  
  /* static */
-@@ -2141,6 +2161,77 @@ void ChromeUtils::GetAllPossibleUtilityActorNames(GlobalObject& aGlobal,
-   }
+ double ChromeUtils::Now(GlobalObject&) {
+   return (TimeStamp::Now() - TimeStamp::ProcessCreation()).ToMilliseconds();
  }
  
+ /* static */
+@@ -2754,16 +2774,87 @@
+ /* static */
+ void ChromeUtils::GetAllPossibleUtilityActorNames(GlobalObject& aGlobal,
+                                                   nsTArray<nsCString>& aNames) {
+   aNames.Clear();
+   for (UtilityActorName idlName :
+        MakeWebIDLEnumeratedRange<WebIDLUtilityActorName>()) {
+     aNames.AppendElement(GetEnumString(idlName));
+   }
++}
++
 +/* static */
 +int32_t ChromeUtils::CamouGetInt(GlobalObject& aGlobal,
 +                                 const nsAString& aVarName) {
@@ -109,16 +132,23 @@ index 52f0af76ec..2a7a9ae4fc 100644
 +
 +  aPoints.Clear();
 +  aPoints.AppendElements(flattenedPoints.data(), flattenedPoints.size());
-+}
-+
+ }
+ 
  /* static */
  bool ChromeUtils::ShouldResistFingerprinting(
      GlobalObject& aGlobal, JSRFPTarget aTarget,
+     nsIRFPTargetSetIDL* aOverriddenFingerprintingSettings,
+     const Optional<bool>& aIsPBM) {
+   RFPTarget target;
 diff --git a/dom/base/ChromeUtils.h b/dom/base/ChromeUtils.h
-index 138b9c3f80..c7c7ce74bf 100644
 --- a/dom/base/ChromeUtils.h
 +++ b/dom/base/ChromeUtils.h
-@@ -305,6 +305,10 @@ class ChromeUtils {
+@@ -335,28 +335,50 @@
+                                                         ErrorResult& aRv);
+ 
+   static void GetFormAutofillConfidences(
+       GlobalObject& aGlobal, const Sequence<OwningNonNull<Element>>& aElements,
+       nsTArray<FormAutofillConfidences>& aResults, ErrorResult& aRv);
  
    static bool IsDarkBackground(GlobalObject&, Element&);
  
@@ -128,11 +158,17 @@ index 138b9c3f80..c7c7ce74bf 100644
 +
    static double DateNow(GlobalObject&);
  
+   static double Now(GlobalObject&);
+ 
+   static double AwakeNow(GlobalObject&);
+ 
    static void EnsureJSOracleStarted(GlobalObject&);
-@@ -314,6 +318,24 @@ class ChromeUtils {
+ 
+   static unsigned AliveUtilityProcesses(const GlobalObject&);
+ 
    static void GetAllPossibleUtilityActorNames(GlobalObject& aGlobal,
                                                nsTArray<nsCString>& aNames);
- 
++
 +  static int32_t CamouGetInt(GlobalObject& aGlobal, const nsAString& aVarName);
 +
 +  static double CamouGetDouble(GlobalObject& aGlobal, const nsAString& aVarName,
@@ -150,32 +186,43 @@ index 138b9c3f80..c7c7ce74bf 100644
 +  static void CamouGetMouseTrajectory(GlobalObject& aGlobal, long aFromX,
 +                                     long aFromY, long aToX, long aToY,
 +                                     nsTArray<int32_t>& aPoints);
-+
+ 
    static bool ShouldResistFingerprinting(
        GlobalObject& aGlobal, JSRFPTarget aTarget,
-       const Nullable<uint64_t>& aOverriddenFingerprintingSettings);
+       nsIRFPTargetSetIDL* aOverriddenFingerprintingSettings,
+       const Optional<bool>& aIsPBM);
+ 
+   static void CallFunctionAndLogException(GlobalObject& aGlobal,
+                                           JS::Handle<JS::Value> aTargetGlobal,
 diff --git a/dom/chrome-webidl/ChromeUtils.webidl b/dom/chrome-webidl/ChromeUtils.webidl
-index 6a99703db1..82415eba19 100644
 --- a/dom/chrome-webidl/ChromeUtils.webidl
 +++ b/dom/chrome-webidl/ChromeUtils.webidl
-@@ -750,6 +750,13 @@ partial namespace ChromeUtils {
+@@ -930,25 +930,62 @@
+   sequence<FormAutofillConfidences> getFormAutofillConfidences(sequence<Element> elements);
+ 
+   /**
+    * Returns whether the background of the element is dark.
     */
    boolean isDarkBackground(Element element);
  
-+  /**
+   /**
 +   * Cloakfox debug commands
 +   */
 +  undefined camouDebug(DOMString varName);
 +
 +  boolean isCamouDebug();
 +
-   /**
++  /**
     * Starts the JSOracle process for ORB JavaScript validation, if it hasn't started already.
     */
-@@ -761,6 +768,36 @@ partial namespace ChromeUtils {
+   undefined ensureJSOracleStarted();
+ 
+   /**
+    * The number of currently alive utility processes.
+    */
    [ChromeOnly]
    readonly attribute unsigned long aliveUtilityProcesses;
- 
++
 +  /**
 +   * Get an int value from Cloakfox MaskConfig.
 +   */
@@ -205,7 +252,11 @@ index 6a99703db1..82415eba19 100644
 +   * Calculate a human-like mouse trajectory between two points.
 +   */
 +  sequence<long> camouGetMouseTrajectory(long fromX, long fromY, long toX, long toY);
-+
+ 
    /**
     * Get a list of all possible Utility process Actor Names ; mostly useful to
     * perform testing and ensure about:processes display is sound and misses no
+    * actor name.
+    */
+   [ChromeOnly]
+   sequence<UTF8String> getAllPossibleUtilityActorNames();

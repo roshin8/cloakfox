@@ -1,7 +1,12 @@
 diff --git a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp b/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
 --- a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
 +++ b/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp
-@@ -11,6 +11,7 @@
+@@ -6,16 +6,17 @@
+ 
+ #include "AudioChannelService.h"
+ #include "SpeechSynthesisChild.h"
+ #include "SpeechSynthesisParent.h"
+ #include "SpeechSynthesisUtterance.h"
  #include "SpeechSynthesisVoice.h"
  #include "mozilla/ClearOnShutdown.h"
  #include "mozilla/StaticPrefs_media.h"
@@ -9,7 +14,17 @@ diff --git a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp b/dom/media/webs
  #include "mozilla/StaticPtr.h"
  #include "mozilla/dom/ContentChild.h"
  #include "mozilla/dom/ContentParent.h"
-@@ -394,6 +395,12 @@
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/intl/LocaleService.h"
+ #include "nsCategoryManagerUtils.h"
+ #include "nsContentUtils.h"
+ #include "nsGlobalWindowInner.h"
+@@ -389,16 +390,22 @@
+ 
+   obs->NotifyObservers(nullptr, "synth-voices-changed", nullptr);
+ 
+   return NS_OK;
+ }
  
  NS_IMETHODIMP
  nsSynthVoiceRegistry::NotifyVoicesError(const nsAString& aError) {
@@ -22,3 +37,8 @@ diff --git a/dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp b/dom/media/webs
    if (XRE_IsParentProcess()) {
      nsTArray<SpeechSynthesisParent*> ssplist;
      GetAllSpeechSynthActors(ssplist);
+ 
+     for (uint32_t i = 0; i < ssplist.Length(); ++i) {
+       (void)ssplist[i]->SendNotifyVoicesError(aError);
+     }
+   }

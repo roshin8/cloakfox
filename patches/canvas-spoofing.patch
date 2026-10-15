@@ -1,6 +1,4 @@
 diff --git a/dom/base/CanvasFingerprintManager.cpp b/dom/base/CanvasFingerprintManager.cpp
-new file mode 100644
-index 0000000000..abcdef1234
 --- /dev/null
 +++ b/dom/base/CanvasFingerprintManager.cpp
 @@ -0,0 +1,82 @@
@@ -87,8 +85,6 @@ index 0000000000..abcdef1234
 +}  // namespace dom
 +}  // namespace mozilla
 diff --git a/dom/base/CanvasFingerprintManager.h b/dom/base/CanvasFingerprintManager.h
-new file mode 100644
-index 0000000000..bcdef12345
 --- /dev/null
 +++ b/dom/base/CanvasFingerprintManager.h
 @@ -0,0 +1,27 @@
@@ -120,13 +116,17 @@ index 0000000000..bcdef12345
 +
 +#endif  // mozilla_dom_CanvasFingerprintManager_h
 diff --git a/dom/base/moz.build b/dom/base/moz.build
-index xxxxxxxxxx..yyyyyyyyyy 100644
 --- a/dom/base/moz.build
 +++ b/dom/base/moz.build
-@@ -534,5 +534,13 @@
+@@ -559,16 +559,24 @@
+     # Conflicts with windows.h's definition of LoadImage.
+     "nsImageLoadingContent.cpp",
+     # Because of OS X headers.
+     "nsObjectLoadingContent.cpp",
+     # nsPluginArray.cpp includes npapi.h indirectly, and that includes a lot of system headers
      "nsPluginArray.cpp",
  ]
-
+ 
 +# CanvasFingerprintManager compiled separately to avoid unified build scope issues
 +# (includes RoverfoxStorageManager.h which can affect compilation units)
 +SOURCES += ["CanvasFingerprintManager.cpp"]
@@ -137,25 +137,21 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
 +
  # Are we targeting x86-32 or x86-64?  If so, we want to include SSE2 code for
  # CharacterDataBuffer.cpp
-diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
-index xxxxxxxxxx..yyyyyyyyyy 100644
---- a/dom/base/nsGlobalWindowInner.h
-+++ b/dom/base/nsGlobalWindowInner.h
-@@ -685,6 +685,9 @@
-
-   void ForgetSharedWorker(mozilla::dom::SharedWorker* aSharedWorker);
-
-+  // Per-context canvas fingerprint seed
-+  void SetCanvasSeed(uint32_t seed, mozilla::ErrorResult& aRv);
-+
-  public:
-   void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
-   void Alert(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+ if CONFIG["INTEL_ARCHITECTURE"]:
+     SOURCES += ["CharacterDataBufferSSE2.cpp"]
+     SOURCES["CharacterDataBufferSSE2.cpp"].flags += CONFIG["SSE2_FLAGS"]
+ 
+ # Are we targeting PowerPC? If so, we can enable a SIMD version for
+ # CharacterDataBuffer.cpp as well.
 diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
-index xxxxxxxxxx..yyyyyyyyyy 100644
 --- a/dom/base/nsGlobalWindowInner.cpp
 +++ b/dom/base/nsGlobalWindowInner.cpp
-@@ -20,6 +20,7 @@
+@@ -12,16 +12,17 @@
+ #include <cstdint>
+ #include <new>
+ #include <utility>
+ 
+ #include "AudioChannelService.h"
  #include "AutoplayPolicy.h"
  #include "Crypto.h"
  #include "MainThreadUtils.h"
@@ -163,10 +159,20 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
  #include "Navigator.h"
  #include "PaintWorkletImpl.h"
  #include "SessionStorageCache.h"
-@@ -7477,6 +7478,28 @@ void nsGlobalWindowInner::ForgetSharedWorker(SharedWorker* aSharedWorker) {
-   mSharedWorkers.RemoveElement(aSharedWorker);
+ #include "Units.h"
+ #include "VRManagerChild.h"
+ #include "WindowDestroyedEvent.h"
+ #include "WindowNamedPropertiesHandler.h"
+ #include "js/ComparisonOperators.h"
+@@ -7814,16 +7815,38 @@
+     if (global) {
+       JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
+       JS_SetProperty(cx, global, "setAudioFingerprintSeed", undef);
+       JS_DeleteProperty(cx, global, "setAudioFingerprintSeed");
+     }
+   }
  }
-
+ 
 +
 +void nsGlobalWindowInner::SetCanvasSeed(uint32_t seed, ErrorResult& aRv) {
 +  uint32_t userContextId = 0;
@@ -192,11 +198,45 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
  RefPtr<GenericPromise> nsGlobalWindowInner::StorageAccessPermissionChanged(
      bool aGranted) {
    // Invalidate cached StorageAllowed field so that calls to GetLocalStorage
+   // give us the updated localStorage object.
+   ClearStorageAllowedCache();
+ 
+   // Just reset the active cookie and storage principals
+   nsCOMPtr<nsICookieJarSettings> cjs;
+diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
+--- a/dom/base/nsGlobalWindowInner.h
++++ b/dom/base/nsGlobalWindowInner.h
+@@ -693,16 +693,19 @@
+   void StoreSharedWorker(mozilla::dom::SharedWorker* aSharedWorker);
+ 
+   void ForgetSharedWorker(mozilla::dom::SharedWorker* aSharedWorker);
+ 
+   void UpdateSharedWorkersLanguageOverride(const nsCString& aLanguageOverride);
+ 
+   void UpdateSharedWorkerTimezoneOverride(const nsAString& aTimezoneOverride);
+ 
++  // Per-context canvas fingerprint seed
++  void SetCanvasSeed(uint32_t seed, mozilla::ErrorResult& aRv);
++
+  public:
+   void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
+   void Alert(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+              mozilla::ErrorResult& aError);
+   bool Confirm(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+                mozilla::ErrorResult& aError);
+   void Prompt(const nsAString& aMessage, const nsAString& aInitial,
+               nsAString& aReturn, nsIPrincipal& aSubjectPrincipal,
 diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderingContext2D.cpp
-index xxxxxxxxxx..yyyyyyyyyy 100644
 --- a/dom/canvas/CanvasRenderingContext2D.cpp
 +++ b/dom/canvas/CanvasRenderingContext2D.cpp
-@@ -9,5 +9,9 @@
+@@ -3,16 +3,20 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "CanvasRenderingContext2D.h"
+ 
+ #include <algorithm>
+ #include <numbers>
+ 
  #include "CanvasImageCache.h"
 +#include "CanvasFingerprintManager.h"
 +#include "nsPIDOMWindow.h"
@@ -206,7 +246,16 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
  #include "GeckoBindings.h"
  #include "ImageEncoder.h"
  #include "ImageRegion.h"
-@@ -51,6 +52,7 @@
+ #include "LayerUserData.h"
+ #include "PseudoStyleType.h"
+ #include "Units.h"
+ #include "WindowRenderer.h"
+@@ -48,16 +52,17 @@
+ #include "mozilla/SVGObserverUtils.h"
+ #include "mozilla/ServoBindings.h"
+ #include "mozilla/ServoCSSParser.h"
+ #include "mozilla/ServoStyleSet.h"
+ #include "mozilla/StaticPrefs_browser.h"
  #include "mozilla/StaticPrefs_gfx.h"
  #include "mozilla/TimeStamp.h"
  #include "mozilla/UniquePtr.h"
@@ -214,10 +263,23 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
  #include "mozilla/dom/CanvasGradient.h"
  #include "mozilla/dom/CanvasPath.h"
  #include "mozilla/dom/CanvasPattern.h"
-@@ -2287,5 +2289,34 @@
-         SurfaceFormat::A8R8G8B8_UINT32);
-   }
-
+ #include "mozilla/dom/CanvasRenderingContext2DBinding.h"
+ #include "mozilla/dom/DOMMatrix.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/BrowsingContext.h"
+ #include "mozilla/dom/FontFaceSet.h"
+@@ -2306,16 +2311,45 @@
+         out_imageSize->height,
+         out_imageSize->width * out_imageSize->height * 4);
+     if (aExtractionBehavior == CanvasUtils::ImageExtraction::Randomize) {
+       nsRFPService::RandomizePixels(
+           GetCookieJarSettings(), PrincipalOrNull(), ret.get(),
+           out_imageSize->width, out_imageSize->height,
+           out_imageSize->width * out_imageSize->height * 4,
+           SurfaceFormat::A8R8G8B8_UINT32);
++    }
++  }
++
 +  // Per-context canvas fingerprint noise
 +  if (ret) {
 +    uint32_t userContextId = 0;
@@ -244,14 +306,23 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
 +      CanvasFingerprintManager::ApplyCanvasNoise(
 +          ret.get(), out_imageSize->width * out_imageSize->height * 4,
 +          canvasSeed);
-+    }
-+  }
-+
+     }
+   }
+ 
    return ret;
  }
-@@ -6615,5 +6644,37 @@
+ 
+ NS_IMETHODIMP
+ CanvasRenderingContext2D::GetInputStream(
+@@ -6870,16 +6904,48 @@
+                   aWidth * 4, SurfaceFormat::R8G8B8A8, dstWriteRect.Size());
+     } else {
+       UnpremultiplyData(src, srcStride, SurfaceFormat::A8R8G8B8_UINT32, dst,
+                         aWidth * 4, SurfaceFormat::R8G8B8A8,
+                         dstWriteRect.Size());
+     }
    } while (false);
-
+ 
 +  // Per-context canvas fingerprint noise
 +  {
 +    uint32_t userContextId = 0;
@@ -287,38 +358,11 @@ index xxxxxxxxxx..yyyyyyyyyy 100644
    readback->Unmap();
    *aRetval = darray;
    return NS_OK;
-diff --git a/dom/canvas/moz.build b/dom/canvas/moz.build
-index xxxxxxxxxx..yyyyyyyyyy 100644
---- a/dom/canvas/moz.build
-+++ b/dom/canvas/moz.build
-@@ -188,6 +188,9 @@ SOURCES += [
- # Suppress warnings from third-party code.
- SOURCES["MurmurHash3.cpp"].flags += ["-Wno-implicit-fallthrough"]
-
-+# WorkerPrivate.h for OffscreenCanvas worker context support
-+LOCAL_INCLUDES += ["/dom/workers"]
-+
- LOCAL_INCLUDES += [
-     "/js/xpconnect/wrappers",
- ]
-diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
-index xxxxxxxxxx..yyyyyyyyyy 100644
---- a/dom/webidl/Window.webidl
-+++ b/dom/webidl/Window.webidl
-@@ -892,6 +892,12 @@ partial interface Window {
-   readonly attribute VisualViewport visualViewport;
- };
-
-+// Per-context canvas fingerprint seed
-+partial interface Window {
-+  [Throws, Func="mozilla::dom::CanvasFingerprintManager::IsFunctionEnabledForWebIDL"]
-+  undefined setCanvasSeed(unsigned long seed);
-+};
-+
- // Used to assign marks to appear on the scrollbar when
- // finding on a page.
- partial interface Window {
-
+ }
+ 
+ void CanvasRenderingContext2D::EnsureErrorTarget() {
+   if (sErrorTarget.get()) {
+     return;
 diff --git a/dom/canvas/CanvasUtils.cpp b/dom/canvas/CanvasUtils.cpp
 --- a/dom/canvas/CanvasUtils.cpp
 +++ b/dom/canvas/CanvasUtils.cpp
@@ -410,3 +454,52 @@ diff --git a/dom/canvas/CanvasUtils.cpp b/dom/canvas/CanvasUtils.cpp
    }
  
    if (aOffscreenCanvas->ShouldResistFingerprinting(
+diff --git a/dom/canvas/moz.build b/dom/canvas/moz.build
+--- a/dom/canvas/moz.build
++++ b/dom/canvas/moz.build
+@@ -175,16 +175,19 @@
+ 
+ TEST_DIRS += [
+     "gtest",
+ ]
+ 
+ # Suppress warnings from third-party code.
+ SOURCES["MurmurHash3.cpp"].flags += ["-Wno-implicit-fallthrough"]
+ 
++# WorkerPrivate.h for OffscreenCanvas worker context support
++LOCAL_INCLUDES += ["/dom/workers"]
++
+ LOCAL_INCLUDES += [
+     "/js/xpconnect/wrappers",
+ ]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ 
+ USE_LIBS += ["translator_gn"]  # Grab the Angle shader translator.
+diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
+--- a/dom/webidl/Window.webidl
++++ b/dom/webidl/Window.webidl
+@@ -944,16 +944,22 @@
+ };
+ 
+ // Audio fingerprint seed for per-context audio fingerprinting
+ partial interface Window {
+   [Throws, Func="mozilla::dom::AudioFingerprintManager::IsFunctionEnabledForWebIDL"]
+   undefined setAudioFingerprintSeed(unsigned long seed);
+ };
+ 
++// Per-context canvas fingerprint seed
++partial interface Window {
++  [Throws, Func="mozilla::dom::CanvasFingerprintManager::IsFunctionEnabledForWebIDL"]
++  undefined setCanvasSeed(unsigned long seed);
++};
++
+ // Used to assign marks to appear on the scrollbar when
+ // finding on a page.
+ partial interface Window {
+   // The marks are values between 0 and scrollMax{X,Y} - scrollMin{X,Y}.
+   [ChromeOnly]
+   undefined setScrollMarks(sequence<unsigned long> marks,
+                            optional boolean onHorizontalScrollbar = false);
+ };

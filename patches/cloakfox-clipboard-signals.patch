@@ -1,32 +1,12 @@
---- a/modules/libpref/init/StaticPrefList.yaml
-+++ b/modules/libpref/init/StaticPrefList.yaml
-@@ -2212,6 +2212,12 @@
-   value: true
-   mirror: always
- 
-+# Opt-in clipboard signal privacy; native editing and chrome retain defaults.
-+- name: cloakfox.opt.clipboard_masking
-+  type: RelaxedAtomicBool
-+  value: false
-+  mirror: always
-+
- # Opt-in page activity privacy; browser focus and lifecycle stay real.
- - name: cloakfox.opt.focus_masking
-   type: RelaxedAtomicBool
---- a/dom/base/Document.h
-+++ b/dom/base/Document.h
-@@ -3493,6 +3493,8 @@
-   bool HiddenForBindings(CallerType) const;
-   dom::VisibilityState VisibilityStateForBindings(CallerType) const;
-   bool ShouldMaskWindowActivity() const;
-+  // Live clipboard event/metadata privacy for attached web documents only.
-+  bool ShouldMaskClipboardSignals() const;
-   // Safe on style worker threads: no window/BrowsingContext access.
-   bool ShouldMaskWindowActivityForStyle() const;
-   bool FullscreenForBindings(CallerType) const;
+diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
 --- a/dom/base/Document.cpp
 +++ b/dom/base/Document.cpp
-@@ -4921,6 +4921,13 @@
+@@ -5010,16 +5010,23 @@
+ 
+   if (!fm->IsInActiveWindow(bc)) {
+     return false;
+   }
+ 
    return fm->IsSameOrAncestor(bc, fm->GetFocusedBrowsingContext());
  }
  
@@ -40,9 +20,42 @@
  bool Document::ShouldMaskWindowActivity() const {
    // Exclude chrome, detached documents, replaced documents and the BFCache.
    // Include parser-time scripts in newly opened background tabs. IsActive()
+   // checks attachment/BFCache membership, independently of tab visibility.
+   return ShouldMaskWindowActivityForStyle() && IsCurrentActiveDocument() &&
+          IsActive();
+ }
+ 
+diff --git a/dom/base/Document.h b/dom/base/Document.h
+--- a/dom/base/Document.h
++++ b/dom/base/Document.h
+@@ -3685,16 +3685,18 @@
+    */
+   bool HasFocus(ErrorResult& rv) const;
+ 
+   // Only the WebIDL entry points mask activity; native callers keep real state.
+   bool HasFocusForBindings(CallerType, ErrorResult&) const;
+   bool HiddenForBindings(CallerType) const;
+   dom::VisibilityState VisibilityStateForBindings(CallerType) const;
+   bool ShouldMaskWindowActivity() const;
++  // Live clipboard event/metadata privacy for attached web documents only.
++  bool ShouldMaskClipboardSignals() const;
+   // Safe on style worker threads: no window/BrowsingContext access.
+   bool ShouldMaskWindowActivityForStyle() const;
+   bool FullscreenForBindings(CallerType) const;
+ 
+   /**
+    * Return true if this document itself has focus.
+    */
+   bool ThisDocumentHasFocus() const;
+diff --git a/dom/events/EventDispatcher.cpp b/dom/events/EventDispatcher.cpp
 --- a/dom/events/EventDispatcher.cpp
 +++ b/dom/events/EventDispatcher.cpp
-@@ -857,6 +857,42 @@
+@@ -920,16 +920,52 @@
+     aWriter.StringProperty("eventType", NS_ConvertUTF16toUTF8(aEventType));
+     if (!aTarget.IsEmpty()) {
+       aWriter.StringProperty("target", aTarget);
+     }
+     aWriter.DoubleProperty("latency", aLatency.ToMilliseconds());
    }
  };
  
@@ -85,7 +98,17 @@
  /* static */
  nsresult EventDispatcher::Dispatch(EventTarget* aTarget,
                                     nsPresContext* aPresContext,
-@@ -884,6 +920,20 @@
+                                    WidgetEvent* aEvent, Event* aDOMEvent,
+                                    nsEventStatus* aEventStatus,
+                                    EventDispatchingCallback* aCallback,
+                                    nsTArray<EventTarget*>* aTargets) {
+   AUTO_PROFILER_LABEL_HOT("EventDispatcher::Dispatch", OTHER);
+@@ -955,16 +991,30 @@
+ 
+   // Events shall not be fired while we are in stable state to prevent anything
+   // visible from the scripts.
+   MOZ_ASSERT(!nsContentUtils::IsInStableOrMetaStableState());
+   NS_ENSURE_TRUE(!nsContentUtils::IsInStableOrMetaStableState(),
                   NS_ERROR_DOM_INVALID_STATE_ERR);
  
    nsCOMPtr<EventTarget> target(aTarget);
@@ -106,29 +129,20 @@
  
    RefPtr<PerformanceEventTiming> eventTimingEntry;
    // Similar to PerformancePaintTiming, we don't need to
---- a/dom/events/InputEvent.h
-+++ b/dom/events/InputEvent.h
-@@ -33,7 +33,8 @@
-     return InputEvent_Binding::Wrap(aCx, this, aGivenProto);
-   }
+   // expose them for printing documents
+   if (aPresContext && !aPresContext->IsPrintingOrPrintPreview()) {
+     eventTimingEntry =
+         PerformanceEventTiming::TryGenerateEventTiming(target, aEvent);
  
--  void GetInputType(nsAString& aInputType);
-+  void GetInputType(nsAString& aInputType,
-+                   CallerType aCallerType = CallerType::System);
-   void GetData(nsAString& aData, CallerType aCallerType = CallerType::System);
-   already_AddRefed<DataTransfer> GetDataTransfer(
-       CallerType aCallerType = CallerType::System);
-@@ -41,6 +42,7 @@
-   bool IsComposing();
- 
-  protected:
-+  bool ShouldMaskClipboardSignals(CallerType aCallerType) const;
-   ~InputEvent() = default;
- 
-   // mInputTypeValue stores inputType attribute value if the instance is
+diff --git a/dom/events/InputEvent.cpp b/dom/events/InputEvent.cpp
 --- a/dom/events/InputEvent.cpp
 +++ b/dom/events/InputEvent.cpp
-@@ -8,6 +8,7 @@
+@@ -1,16 +1,17 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "mozilla/dom/InputEvent.h"
  
  #include "mozilla/StaticPrefs_dom.h"
  #include "mozilla/TextEvents.h"
@@ -136,7 +150,17 @@
  #include "prtime.h"
  
  namespace mozilla::dom {
-@@ -45,6 +46,12 @@
+ 
+ InputEvent::InputEvent(EventTarget* aOwner, nsPresContext* aPresContext,
+                        InternalEditorInputEvent* aEvent)
+     : UIEvent(aOwner, aPresContext,
+               aEvent
+@@ -38,16 +39,22 @@
+   }
+   aData = editorInputEvent->mData;
+ }
+ 
+ already_AddRefed<DataTransfer> InputEvent::GetDataTransfer(
      CallerType aCallerType) {
    InternalEditorInputEvent* editorInputEvent = mEvent->AsEditorInputEvent();
    MOZ_ASSERT(editorInputEvent);
@@ -149,7 +173,17 @@
    // If clipboard event is disabled, user may not want to leak clipboard
    // information via DOM events.  If so, we should return DataTransfer which
    // has empty string instead.  The reason why we make it have empty string is,
-@@ -63,9 +70,30 @@
+   // web apps may not expect that InputEvent.dataTransfer returns empty and
+   // non-null DataTransfer instance.
+   if (mEvent->IsTrusted() && aCallerType != CallerType::System &&
+       !StaticPrefs::dom_event_clipboardevents_enabled() &&
+       ExposesClipboardDataOrDataTransfer(editorInputEvent->mInputType)) {
+@@ -56,19 +63,40 @@
+     }
+     return do_AddRef(
+         new DataTransfer(editorInputEvent->mDataTransfer->GetParentObject(),
+                          editorInputEvent->mMessage, u""_ns));
+   }
    return do_AddRef(editorInputEvent->mDataTransfer);
  }
  
@@ -181,9 +215,51 @@
    if (editorInputEvent->mInputType == EditorInputType::eUnknown) {
      aInputType = mInputTypeValue;
    } else {
+     editorInputEvent->GetDOMInputTypeName(aInputType);
+   }
+ }
+ 
+ void InputEvent::GetTargetRanges(nsTArray<RefPtr<StaticRange>>& aTargetRanges) {
+diff --git a/dom/events/InputEvent.h b/dom/events/InputEvent.h
+--- a/dom/events/InputEvent.h
++++ b/dom/events/InputEvent.h
+@@ -26,24 +26,26 @@
+                                                   const nsAString& aType,
+                                                   const InputEventInit& aParam);
+ 
+   virtual JSObject* WrapObjectInternal(
+       JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override {
+     return InputEvent_Binding::Wrap(aCx, this, aGivenProto);
+   }
+ 
+-  void GetInputType(nsAString& aInputType);
++  void GetInputType(nsAString& aInputType,
++                   CallerType aCallerType = CallerType::System);
+   void GetData(nsAString& aData, CallerType aCallerType = CallerType::System);
+   already_AddRefed<DataTransfer> GetDataTransfer(
+       CallerType aCallerType = CallerType::System);
+   void GetTargetRanges(nsTArray<RefPtr<StaticRange>>& aTargetRanges);
+   bool IsComposing();
+ 
+  protected:
++  bool ShouldMaskClipboardSignals(CallerType aCallerType) const;
+   ~InputEvent() = default;
+ 
+   // mInputTypeValue stores inputType attribute value if the instance is
+   // created by script and not initialized with known inputType value.
+   nsString mInputTypeValue;
+ };
+ 
+ }  // namespace mozilla::dom
+diff --git a/dom/webidl/InputEvent.webidl b/dom/webidl/InputEvent.webidl
 --- a/dom/webidl/InputEvent.webidl
 +++ b/dom/webidl/InputEvent.webidl
-@@ -14,6 +14,7 @@
+@@ -8,16 +8,17 @@
+ 
+ [Exposed=Window]
+ interface InputEvent : UIEvent
+ {
+   constructor(DOMString type, optional InputEventInit eventInitDict = {});
  
    readonly attribute boolean       isComposing;
  
@@ -191,3 +267,34 @@
    readonly attribute DOMString inputType;
  
    [NeedsCallerType]
+   readonly attribute DOMString? data;
+ };
+ 
+ dictionary InputEventInit : UIEventInit
+ {
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -2419,16 +2419,22 @@
+   value: false
+   mirror: always
+ 
+ - name: cloakfox.enabled
+   type: RelaxedAtomicBool
+   value: true
+   mirror: always
+ 
++# Opt-in clipboard signal privacy; native editing and chrome retain defaults.
++- name: cloakfox.opt.clipboard_masking
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
+ # Opt-in page activity privacy; browser focus and lifecycle stay real.
+ - name: cloakfox.opt.focus_masking
+   type: RelaxedAtomicBool
+   value: false
+   mirror: always
+ 
+ #---------------------------------------------------------------------------
+ # Prefs starting with "consoleservice."

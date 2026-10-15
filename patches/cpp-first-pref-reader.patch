@@ -1,6 +1,12 @@
+diff --git a/dom/base/RoverfoxStorageManager.cpp b/dom/base/RoverfoxStorageManager.cpp
 --- a/dom/base/RoverfoxStorageManager.cpp
 +++ b/dom/base/RoverfoxStorageManager.cpp
-@@ -26,6 +26,53 @@
+@@ -21,16 +21,63 @@
+ 
+ /* static */ nsCString
+ RoverfoxStorageManager::MakePrefName(const nsAString& key) {
+   nsAutoCString prefName("roverfox.s.");
+   AppendUTF16toUTF8(key, prefName);
    return nsCString(prefName);
  }
  
@@ -54,7 +60,17 @@
  /* static */ void
  RoverfoxStorageManager::SetPrefValue(const nsCString& prefName,
                                        const nsCString& value) {
-@@ -55,6 +86,20 @@
+   // Always store locally for immediate reads in this process
+   {
+     MutexAutoLock lock(GetLocalCacheMutex());
+     GetLocalCache().InsertOrUpdate(prefName, nsCString(value));
+   }
+@@ -50,16 +97,30 @@
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString strValue;
+   strValue.AppendInt(static_cast<int64_t>(value));
+   SetPrefValue(prefName, strValue);
+ }
  
  /* static */ bool
  RoverfoxStorageManager::GetUint(const nsAString& key, uint32_t& outValue) {
@@ -75,7 +91,17 @@
    nsCString prefName = MakePrefName(key);
    nsAutoCString strValue;
    // Check local cache first (immediate reads for values set in this process)
-@@ -99,6 +144,15 @@
+   {
+     MutexAutoLock lock(GetLocalCacheMutex());
+     if (auto entry = GetLocalCache().Lookup(prefName)) {
+       strValue = entry.Data();
+     }
+@@ -94,16 +155,25 @@
+ RoverfoxStorageManager::PutBool(const nsAString& key, bool value) {
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString strValue(value ? "1" : "0");
+   SetPrefValue(prefName, strValue);
+ }
  
  /* static */ bool
  RoverfoxStorageManager::GetBool(const nsAString& key, bool& outValue) {
@@ -91,7 +117,17 @@
    nsCString prefName = MakePrefName(key);
    nsAutoCString strValue;
    {
-@@ -139,6 +193,14 @@
+     MutexAutoLock lock(GetLocalCacheMutex());
+     if (auto entry = GetLocalCache().Lookup(prefName)) {
+       strValue = entry.Data();
+     }
+   }
+@@ -134,16 +204,24 @@
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString utf8Value;
+   CopyUTF16toUTF8(value, utf8Value);
+   SetPrefValue(prefName, utf8Value);
+ }
  
  /* static */ bool
  RoverfoxStorageManager::GetString(const nsAString& key, nsAString& outValue) {
@@ -106,9 +142,20 @@
    nsCString prefName = MakePrefName(key);
    nsAutoCString utf8Value;
    {
+     MutexAutoLock lock(GetLocalCacheMutex());
+     if (auto entry = GetLocalCache().Lookup(prefName)) {
+       utf8Value = entry.Data();
+     }
+   }
+diff --git a/dom/base/RoverfoxStorageManager.h b/dom/base/RoverfoxStorageManager.h
 --- a/dom/base/RoverfoxStorageManager.h
 +++ b/dom/base/RoverfoxStorageManager.h
-@@ -25,6 +25,11 @@
+@@ -20,16 +20,21 @@
+   static void PutBool(const nsAString& key, bool value);
+   static bool GetBool(const nsAString& key, bool& outValue);
+   static void PutString(const nsAString& key, const nsAString& value);
+   static bool GetString(const nsAString& key, nsAString& outValue);
+   static void Remove(const nsAString& key);
  
   private:
    static nsCString MakePrefName(const nsAString& key);
@@ -120,3 +167,8 @@
    static void SetPrefValue(const nsCString& prefName, const nsCString& value);
    static nsTHashMap<nsCStringHashKey, nsCString>& GetLocalCache();
    static mozilla::Mutex& GetLocalCacheMutex();
+ };
+ 
+ }  // namespace dom
+ }  // namespace mozilla
+ 

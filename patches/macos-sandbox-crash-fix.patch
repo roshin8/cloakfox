@@ -1,39 +1,50 @@
 diff --git a/dom/ipc/ContentParent.cpp b/dom/ipc/ContentParent.cpp
-index fbd24a5d00..1ff3195235 100644
 --- a/dom/ipc/ContentParent.cpp
 +++ b/dom/ipc/ContentParent.cpp
-@@ -2324,22 +2324,24 @@ static void CacheSandboxParams(std::vector<std::string>& aCachedParams) {
+@@ -2343,32 +2343,34 @@
+ 
+   // TESTING_READ_PATH3, TESTING_READ_PATH4. In non-packaged builds,
+   // these are used to whitelist the repo dir and object dir respectively.
+   nsresult rv;
+   if (!mozilla::IsPackagedBuild()) {
      // Repo dir
      nsCOMPtr<nsIFile> repoDir;
      rv = nsMacUtilsImpl::GetRepoDir(getter_AddRefs(repoDir));
 -    if (NS_FAILED(rv)) {
 -      MOZ_CRASH("Failed to get path to repo dir");
+-    }
+-    nsCString repoDirPath;
+-    (void)repoDir->GetNativePath(repoDirPath);
+-    info.testingReadPath3 = repoDirPath.get();
 +    if (NS_SUCCEEDED(rv)) {
 +      nsCString repoDirPath;
 +      (void)repoDir->GetNativePath(repoDirPath);
 +      info.testingReadPath3 = repoDirPath.get();
 +    } else {
 +      NS_WARNING("Failed to get repo dir path for sandbox, skipping testingReadPath3");
-     }
--    nsCString repoDirPath;
--    (void)repoDir->GetNativePath(repoDirPath);
--    info.testingReadPath3 = repoDirPath.get();
++    }
  
      // Object dir
      nsCOMPtr<nsIFile> objDir;
      rv = nsMacUtilsImpl::GetObjDir(getter_AddRefs(objDir));
 -    if (NS_FAILED(rv)) {
 -      MOZ_CRASH("Failed to get path to build object dir");
+-    }
+-    nsCString objDirPath;
+-    (void)objDir->GetNativePath(objDirPath);
+-    info.testingReadPath4 = objDirPath.get();
 +    if (NS_SUCCEEDED(rv)) {
 +      nsCString objDirPath;
 +      (void)objDir->GetNativePath(objDirPath);
 +      info.testingReadPath4 = objDirPath.get();
 +    } else {
 +      NS_WARNING("Failed to get obj dir path for sandbox, skipping testingReadPath4");
-     }
--    nsCString objDirPath;
--    (void)objDir->GetNativePath(objDirPath);
--    info.testingReadPath4 = objDirPath.get();
++    }
    }
  
    // DEBUG_WRITE_DIR
+ #  ifdef DEBUG
+   // For bloat/leak logging or when a content process dies intentionally
+   // (|NoteIntentionalCrash|) for tests, it wants to log that it did this.
+   // Allow writing to this location.
+   nsAutoCString bloatLogDirPath;

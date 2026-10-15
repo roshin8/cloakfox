@@ -1,0 +1,624 @@
+diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp b/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
+--- a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
++++ b/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
+@@ -1,16 +1,17 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+  * You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "PeerConnectionImpl.h"
+ 
+ #include <cerrno>
+ #include <cstdlib>
++#include <functional>
+ #include <set>
+ #include <sstream>
+ #include <vector>
+ 
+ #include "IPeerConnection.h"
+ #include "MediaTrackGraph.h"
+ #include "PeerConnectionCtx.h"
+ #include "RTCDataChannelDeclarations.h"
+@@ -32,16 +33,21 @@
+ #include "mozilla/IntegerPrintfMacros.h"
+ #include "mozilla/Sprintf.h"
+ #include "mozilla/glean/DomMediaWebrtcMetrics.h"
+ #include "mozilla/media/MediaUtils.h"
+ #include "nsEffectiveTLDService.h"
+ #include "nsILoadContext.h"
+ #include "nsIPrefBranch.h"
+ #include "nsIPrefService.h"
++#include "nsIURIMutator.h"
++#include "nsIProtocolProxyCallback.h"
++#include "nsIProtocolProxyService.h"
++#include "nsIProxyInfo.h"
++#include "nsICancelable.h"
+ #include "nsNetCID.h"
+ #include "nsProxyRelease.h"
+ #include "nsServiceManagerUtils.h"
+ #include "nsThreadUtils.h"
+ #include "nspr.h"
+ #include "nss.h"
+ #include "pk11pub.h"
+ #include "prtime.h"
+@@ -2743,18 +2749,31 @@
+ nsresult PeerConnectionImpl::SetConfiguration(
+     const RTCConfiguration& aConfiguration) {
+   const int32_t policy = CloakfoxWebRTCMode();
+   if (IsClosed() || policy == 2) {
+     return NS_ERROR_DOM_SECURITY_ERR;
+   }
+   // Always constrain the native transport, including later JS calls that
+   // request "all" through setConfiguration. Never rely on candidate rewriting.
+-  const auto icePolicy = policy == 1 ? dom::RTCIceTransportPolicy::Relay
+-                                    : aConfiguration.mIceTransportPolicy;
++  auto icePolicy = policy == 1 ? dom::RTCIceTransportPolicy::Relay
++                              : aConfiguration.mIceTransportPolicy;
++  // Mask readiness adds a transport boundary; it cannot relax the independent
++  // container network/WebRTC policy. IP discovery requires explicit opt-in.
++  if (Preferences::GetBool("cloakfox.enabled", false) &&
++      Preferences::GetBool("cloakfox.webrtc.protect_unready", true)) {
++    const uint32_t ucid = mWindow && mWindow->GetBrowsingContext()
++        ? mWindow->GetBrowsingContext()->OriginAttributesRef().mUserContextId : 0;
++    nsString v4, v6;
++    const bool ready = WebRTCIPManager::GetIPv4(ucid, v4) && !v4.IsEmpty() &&
++                       WebRTCIPManager::GetIPv6(ucid, v6) && !v6.IsEmpty();
++    if (!ready || !Preferences::GetBool("cloakfox.webrtc.ip_lookup.enabled", false)) {
++      icePolicy = dom::RTCIceTransportPolicy::Relay;
++    }
++  }
+   nsresult rv = mTransportHandler->SetIceConfig(
+       aConfiguration.mIceServers, icePolicy);
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return rv;
+   }
+ 
+   JsepBundlePolicy bundlePolicy;
+   switch (aConfiguration.mBundlePolicy) {
+@@ -4652,32 +4671,36 @@
+     isPBM = true;
+   }
+ 
+   if (isPBM && Preferences::GetBool(
+                    "media.peerconnection.ice.proxy_only_if_pbmode", false)) {
+     return true;
+   }
+ 
+-  if (!Preferences::GetBool(
++  const bool protectProxy =
++      Preferences::GetBool("cloakfox.enabled", false) &&
++      Preferences::GetBool("cloakfox.webrtc.protect_proxy", true);
++  if (!protectProxy && !Preferences::GetBool(
+           "media.peerconnection.ice.proxy_only_if_behind_proxy", false)) {
+     return false;
+   }
+ 
+-  // Ok, we're supposed to be proxy_only, but only if a proxy is configured.
+-  // Let's just see if the document was loaded via a proxy.
+-
+-  nsCOMPtr<nsIHttpChannelInternal> httpChannelInternal = GetChannel();
+-  if (!httpChannelInternal) {
+-    return false;
+-  }
+-
+-  bool proxyUsed = false;
+-  (void)httpChannelInternal->GetIsProxyUsed(&proxyUsed);
+-  return proxyUsed;
++  // Blank/srcdoc child documents inherit the embedding document's route.
++  for (Document* doc = mWindow ? mWindow->GetExtantDoc() : nullptr; doc;
++       doc = doc->GetInProcessParentDocument()) {
++    nsCOMPtr<nsIHttpChannelInternal> channel = do_QueryInterface(doc->GetChannel());
++    bool proxyUsed = false;
++    if (channel && NS_SUCCEEDED(channel->GetIsProxyUsed(&proxyUsed)) && proxyUsed) {
++      return true;
++    }
++  }
++  // Configured manual/PAC/WPAD/system routes are resolved for each ICE server
++  // before gathering; a system mode with no actual proxy remains native.
++  return false;
+ }
+ 
+ void PeerConnectionImpl::EnsureTransports(const JsepSession& aSession) {
+   mJsepSession->ForEachTransceiver([this,
+                                     self = RefPtr<PeerConnectionImpl>(this)](
+                                        const JsepTransceiver& transceiver) {
+     if (transceiver.HasOwnTransport()) {
+       mTransportHandler->EnsureProvisionalTransport(
+@@ -4939,16 +4962,24 @@
+       WrapRunnable(mTransportHandler, &MediaTransportHandler::StartIceChecks,
+                    aSession.IsIceControlling(), attributes));
+ 
+   PerformOrEnqueueIceCtxOperation(runnable);
+ }
+ 
+ bool PeerConnectionImpl::GetPrefDefaultAddressOnly() const {
+   MOZ_ASSERT(NS_IsMainThread());
++
++  // Native default-route discovery creates a UDP socket; forceProxy rejects
++  // it before TCP TURN gathering can begin. Proxy-only ICE creates no host
++  // candidates and all TCP sockets use the browser proxy, so keep prefetched
++  // local addresses solely as allocation bases without direct route discovery.
++  if (mForceProxy) {
++    return false;
++  }
+ 
+   uint64_t winId = mWindow->WindowID();
+ 
+   bool default_address_only =
+       Preferences::GetBool("media.peerconnection.ice.default_address_only",
+                            false) ||
+       ShouldSpoofCandidateIP();
+   default_address_only |=
+@@ -5047,38 +5078,202 @@
+ 
+   if (IsIceCtxReady()) {
+     runnable->Run();
+   } else {
+     mQueuedIceCtxOperations.push_back(runnable);
+   }
+ }
+ 
++static nsString IceProxyTargetSnapshot(const RTCConfigurationInternal& aConfig) {
++  nsString snapshot;
++  for (const auto& server : aConfig.mIceServers) {
++    for (const auto& url : server.mUrls) {
++      snapshot.AppendInt(uint64_t(url.Length()));
++      snapshot.Append(':');
++      snapshot.Append(url);
++    }
++  }
++  return snapshot;
++}
++
++static nsCString IceProxyPreferenceSnapshot() {
++  nsCString snapshot;
++  for (const char* pref : {"network.proxy.type", "network.proxy.http_port",
++                          "network.proxy.ssl_port", "network.proxy.socks_port",
++                          "network.proxy.socks_version"}) {
++    snapshot.AppendInt(Preferences::GetInt(pref, 0));
++    snapshot.Append('|');
++  }
++  for (const char* pref : {"network.proxy.http", "network.proxy.ssl",
++                          "network.proxy.socks", "network.proxy.no_proxies_on",
++                          "network.proxy.autoconfig_url"}) {
++    nsAutoCString value;
++    Preferences::GetCString(pref, value);
++    snapshot.AppendInt(uint64_t(value.Length()));
++    snapshot.Append(':');
++    snapshot.Append(value);
++  }
++  snapshot.AppendInt(Preferences::GetBool("network.proxy.share_proxy_settings", false));
++  snapshot.AppendInt(Preferences::GetBool("network.proxy.allow_hijacking_localhost", false));
++  return snapshot;
++}
++
++// Resolve ICE targets with the same URI schemes/flags as WebrtcTCPSocket.
++// A configured proxy can route TURN differently from the document (PAC/system).
++class IceProxyRouteLookup final : public nsIProtocolProxyCallback {
++ public:
++  NS_DECL_ISUPPORTS
++  IceProxyRouteLookup(nsTArray<nsCOMPtr<nsIURI>>&& aTargets,
++                      std::function<void(bool)> aDone)
++      : mTargets(std::move(aTargets)), mDone(std::move(aDone)) {}
++
++  void Start() {
++    if (mTargets.IsEmpty()) {
++      Finish(false);
++      return;
++    }
++    nsCOMPtr<nsIProtocolProxyService> service =
++        do_GetService(NS_PROTOCOLPROXYSERVICE_CONTRACTID);
++    if (!service) {
++      Finish(true);
++      return;
++    }
++    nsCOMPtr<nsICancelable> request;
++    nsresult rv = service->AsyncResolve(
++        mTargets.LastElement(),
++        nsIProtocolProxyService::RESOLVE_PREFER_HTTPS_PROXY |
++            nsIProtocolProxyService::RESOLVE_ALWAYS_TUNNEL |
++            nsIProtocolProxyService::RESOLVE_PRESERVE_PAC_ERRORS,
++        this, nullptr, getter_AddRefs(request));
++    if (NS_FAILED(rv)) {
++      Finish(true);
++    }
++  }
++
++  NS_IMETHOD OnProxyAvailable(nsICancelable*, nsIChannel*, nsIProxyInfo* aInfo,
++                              nsresult aStatus) override {
++    nsAutoCString type;
++    if (NS_FAILED(aStatus) ||
++        (aInfo && (NS_FAILED(aInfo->GetType(type)) || type != "direct"))) {
++      Finish(true);
++    } else {
++      mTargets.RemoveLastElement();
++      Start();
++    }
++    return NS_OK;
++  }
++
++ private:
++  ~IceProxyRouteLookup() = default;
++  void Finish(bool aForce) {
++    auto done = std::move(mDone);
++    if (done) {
++      done(aForce);
++    }
++  }
++  nsTArray<nsCOMPtr<nsIURI>> mTargets;
++  std::function<void(bool)> mDone;
++};
++NS_IMPL_ISUPPORTS(IceProxyRouteLookup, nsIProtocolProxyCallback)
++
+ void PeerConnectionImpl::GatherIfReady() {
+   MOZ_ASSERT(NS_IsMainThread());
++
++  // Preserve 157's queued ICE checks across re-gathering (bug 2019381).
++  // Proxy resolution gates the same queue as the local-address request.
++  mProxyRouteLookupPending = true;
+ 
+   // Init local addrs here so that if we re-gather after an ICE restart
+   // resulting from changing WiFi networks, we get new local addrs.
+   // Otherwise, we would reuse the addrs from the original WiFi network
+   // and the ICE restart will fail.
+   if (!mStunAddrs.Length()) {
+     InitLocalAddrs();
+   }
+ 
+-  // Unlike before bug 2019381, we don't clear mQueuedIceCtxOperations here:
+-  // it can also hold an unrelated, still-pending StartIceChecks (eg; for a
+-  // bundled transport that was already negotiated in an earlier round),
+-  // which remains valid and must still run. A stale queued gather running
+-  // alongside a fresh one is harmless -- EnsureIceGathering() is a no-op
+-  // once gathering for the current round is already underway.
+-  nsCOMPtr<nsIRunnable> runnable(WrapRunnable(
+-      RefPtr<PeerConnectionImpl>(this), &PeerConnectionImpl::EnsureIceGathering,
+-      GetPrefDefaultAddressOnly(), GetPrefObfuscateHostAddresses()));
+-
+-  PerformOrEnqueueIceCtxOperation(runnable);
++  const uint64_t lookupGeneration = ++mProxyLookupGeneration;
++  const nsCString proxyPreferences = IceProxyPreferenceSnapshot();
++  const nsString proxyTargets = IceProxyTargetSnapshot(mJsConfiguration);
++  auto gather = [self = RefPtr{this}, lookupGeneration, proxyPreferences, proxyTargets](bool aRouteUsesProxy) {
++    if (self->IsClosed() || lookupGeneration != self->mProxyLookupGeneration) {
++      return;
++    }
++    if (proxyPreferences != IceProxyPreferenceSnapshot() ||
++        proxyTargets != IceProxyTargetSnapshot(self->mJsConfiguration)) {
++      // Queue instead of recursing if configuration changed during lookup.
++      NS_DispatchToMainThread(NS_NewRunnableFunction(
++          "PeerConnectionImpl::RefreshProxyRoute", [self] { self->GatherIfReady(); }));
++      return;
++    }
++    // Recheck the live master/native policies after asynchronous resolution.
++    self->mForceProxy = self->ShouldForceProxy() ||
++        (aRouteUsesProxy && Preferences::GetBool("cloakfox.enabled", false) &&
++         Preferences::GetBool("cloakfox.webrtc.protect_proxy", true));
++    if (auto config = self->GetProxyConfig()) {
++      self->mTransportHandler->SetProxyConfig(std::move(*config));
++    }
++    nsCOMPtr<nsIRunnable> runnable(WrapRunnable(
++        self, &PeerConnectionImpl::EnsureIceGathering,
++        self->GetPrefDefaultAddressOnly(), self->GetPrefObfuscateHostAddresses()));
++    // Local-answer StartIceChecks may already be queued while PAC resolves.
++    // Gathering must run first, and those later checks must remain queued.
++    self->mQueuedIceCtxOperations.insert(self->mQueuedIceCtxOperations.begin(), runnable);
++    self->mProxyRouteLookupPending = false;
++    self->FlushIceCtxOperationQueueIfReady();
++  };
++
++  const bool protectProxy =
++      Preferences::GetBool("cloakfox.enabled", false) &&
++      Preferences::GetBool("cloakfox.webrtc.protect_proxy", true);
++  if (!protectProxy || Preferences::GetInt("network.proxy.type", 5) == 0 ||
++      ShouldForceProxy()) {
++    gather(false);
++    return;
++  }
++
++  nsTArray<nsCOMPtr<nsIURI>> targets;
++  for (const auto& server : mJsConfiguration.mIceServers) {
++    for (const auto& url : server.mUrls) {
++      nsAutoCString value = NS_ConvertUTF16toUTF8(url);
++      const bool tls = StringBeginsWith(value, "turns:"_ns) ||
++                       StringBeginsWith(value, "stuns:"_ns);
++      int32_t colon = value.FindChar(':');
++      if (colon < 0) {
++        gather(true);  // malformed/unresolvable routes must not become direct
++        return;
++      }
++      nsAutoCString authority(Substring(value, colon + 1));
++      int32_t query = authority.FindChar('?');
++      if (query >= 0) {
++        authority.Truncate(query);
++      }
++      nsAutoCString spec(tls ? "https://"_ns : "http://"_ns);
++      spec.Append(authority);
++      nsCOMPtr<nsIURI> uri;
++      if (NS_FAILED(NS_NewURI(getter_AddRefs(uri), spec))) {
++        gather(true);
++        return;
++      }
++      int32_t port;
++      if (NS_FAILED(uri->GetPort(&port))) {
++        gather(true);
++        return;
++      }
++      if (port == -1 && NS_FAILED(NS_MutateURI(uri).SetPort(tls ? 5349 : 3478)
++                                     .Finalize(uri))) {
++        gather(true);
++        return;
++      }
++      targets.AppendElement(std::move(uri));
++    }
++  }
++  RefPtr<IceProxyRouteLookup> lookup =
++      new IceProxyRouteLookup(std::move(targets), std::move(gather));
++  lookup->Start();
+ }
+ 
+ already_AddRefed<nsIHttpChannelInternal> PeerConnectionImpl::GetChannel()
+     const {
+   Document* doc = mWindow->GetExtantDoc();
+   if (NS_WARN_IF(!doc)) {
+     NS_WARNING("Unable to get document from window");
+     return nullptr;
+diff --git a/dom/media/webrtc/jsapi/PeerConnectionImpl.h b/dom/media/webrtc/jsapi/PeerConnectionImpl.h
+--- a/dom/media/webrtc/jsapi/PeerConnectionImpl.h
++++ b/dom/media/webrtc/jsapi/PeerConnectionImpl.h
+@@ -810,17 +810,18 @@
+   void PerformOrEnqueueIceCtxOperation(nsIRunnable* runnable);
+   nsresult SetTargetForDefaultLocalAddressLookup();
+   void EnsureIceGathering(bool aDefaultRouteOnly, bool aObfuscateHostAddresses);
+ 
+   bool GetPrefDefaultAddressOnly() const;
+   bool GetPrefObfuscateHostAddresses() const;
+ 
+   bool IsIceCtxReady() const {
+-    return mLocalAddrsRequestState == STUN_ADDR_REQUEST_COMPLETE;
++    return mLocalAddrsRequestState == STUN_ADDR_REQUEST_COMPLETE &&
++           !mProxyRouteLookupPending;
+   }
+ 
+   // Ensure ICE transports exist that we might need when offer/answer concludes
+   void EnsureTransports(const JsepSession& aSession);
+ 
+   void UpdateRTCDtlsTransports();
+   // Creates/updates mSctpTransport based on whether a data section has
+   // appeared in an SDP. May run in have-remote-offer, where the
+@@ -900,16 +901,18 @@
+ 
+   // Used whenever we need to dispatch a runnable to STS to tweak something
+   // on our ICE ctx, but are not ready to do so at the moment (eg; we are
+   // waiting to get a callback with our http proxy config before we start
+   // gathering or start checking)
+   std::vector<nsCOMPtr<nsIRunnable>> mQueuedIceCtxOperations;
+ 
+   // Set if prefs dictate that we should force the use of a web proxy.
++  uint64_t mProxyLookupGeneration = 0;
++  bool mProxyRouteLookupPending = false;
+   bool mForceProxy = false;
+ 
+   // Used to cancel incoming stun addrs response
+   RefPtr<net::StunAddrsRequestChild> mStunAddrsRequest;
+ 
+   enum StunAddrRequestState {
+     STUN_ADDR_REQUEST_NONE,
+     STUN_ADDR_REQUEST_PENDING,
+diff --git a/dom/media/webrtc/transport/ipc/WebrtcTCPSocket.cpp b/dom/media/webrtc/transport/ipc/WebrtcTCPSocket.cpp
+--- a/dom/media/webrtc/transport/ipc/WebrtcTCPSocket.cpp
++++ b/dom/media/webrtc/transport/ipc/WebrtcTCPSocket.cpp
+@@ -222,17 +222,18 @@
+                      nsILoadInfo::SEC_ALLOW_CROSS_ORIGIN_SEC_CONTEXT_IS_NULL,
+                      nsIContentPolicy::TYPE_OTHER);
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return rv;
+   }
+ 
+   rv = pps->AsyncResolve(channel,
+                          nsIProtocolProxyService::RESOLVE_PREFER_HTTPS_PROXY |
+-                             nsIProtocolProxyService::RESOLVE_ALWAYS_TUNNEL,
++                             nsIProtocolProxyService::RESOLVE_ALWAYS_TUNNEL |
++          nsIProtocolProxyService::RESOLVE_PRESERVE_PAC_ERRORS,
+                          this, nullptr, getter_AddRefs(mProxyRequest));
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return rv;
+   }
+ 
+   // We pick back up in OnProxyAvailable
+ 
+   return NS_OK;
+@@ -284,20 +285,25 @@
+   }
+ 
+   LOG("WebrtcTCPSocket::OpenWithoutHttpProxy {}\n", fmt::ptr(this));
+ 
+   if (mClosed) {
+     return;
+   }
+ 
+-  if (NS_WARN_IF(mProxyConfig.isSome() && mProxyConfig->forceProxy() &&
+-                 !aSocksProxyInfo)) {
+-    CloseWithReason(NS_ERROR_FAILURE);
+-    return;
++  if (mProxyConfig.isSome() && mProxyConfig->forceProxy()) {
++    nsAutoCString proxyType;
++    // DIRECT can be a non-null head with a proxy failover entry. Require an
++    // actual SOCKS route here; HTTP proxy routes use OpenWithHttpProxy.
++    if (!aSocksProxyInfo || NS_FAILED(aSocksProxyInfo->GetType(proxyType)) ||
++        (proxyType != "socks" && proxyType != "socks4")) {
++      CloseWithReason(NS_ERROR_FAILURE);
++      return;
++    }
+   }
+ 
+   nsCString host;
+   int32_t port;
+ 
+   nsresult rv = mURI->GetHost(host);
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     CloseWithReason(rv);
+@@ -418,17 +424,20 @@
+   // -there shouldn't be an opportunity to send cookies, but explicitly disallow
+   // them anyway.
+   // -the previous proxy tunnel didn't support redirects e.g. 307. don't need to
+   // introduce new behavior. can't follow redirects on connect anyway.
+   nsCOMPtr<nsIChannel> localChannel;
+   rv = ioService->NewChannelFromURIWithProxyFlags(
+       mURI, mURI,
+       nsIProtocolProxyService::RESOLVE_PREFER_HTTPS_PROXY |
+-          nsIProtocolProxyService::RESOLVE_ALWAYS_TUNNEL,
++          nsIProtocolProxyService::RESOLVE_ALWAYS_TUNNEL |
++          nsIProtocolProxyService::RESOLVE_PRESERVE_PAC_ERRORS |
++          (mProxyConfig->forceProxy()
++               ? nsIProtocolProxyService::RESOLVE_REQUIRE_PROXY : 0),
+       loadInfo->LoadingNode(), loadInfo->GetLoadingPrincipal(),
+       loadInfo->TriggeringPrincipal(),
+       // We need this flag to allow loads from any origin since this channel
+       // is being used to CONNECT to an HTTP proxy.
+       nsILoadInfo::SEC_ALLOW_CROSS_ORIGIN_SEC_CONTEXT_IS_NULL,
+       nsIContentPolicy::TYPE_PROXIED_WEBRTC_MEDIA,
+       getter_AddRefs(localChannel));
+   if (NS_FAILED(rv)) {
+diff --git a/netwerk/protocol/http/nsHttpChannel.cpp b/netwerk/protocol/http/nsHttpChannel.cpp
+--- a/netwerk/protocol/http/nsHttpChannel.cpp
++++ b/netwerk/protocol/http/nsHttpChannel.cpp
+@@ -172,16 +172,29 @@
+                   nsICachingChannel::LOAD_BYPASS_LOCAL_CACHE) &&   \
+    !(((loadFlags) & nsIRequest::LOAD_FROM_CACHE) &&                \
+      (isPreferCacheLoadOverBypass)))
+ 
+ #define RECOVER_FROM_CACHE_FILE_ERROR(result) \
+   ((result) == NS_ERROR_FILE_NOT_FOUND ||     \
+    (result) == NS_ERROR_FILE_CORRUPTED || (result) == NS_ERROR_OUT_OF_MEMORY)
+ 
++// A required proxy is a sticky transport constraint, independent of live
++// browser prefs and proxy resolver callbacks (fast paths/failover bypass them).
++static nsresult CloakfoxRequiredProxyRoute(uint32_t aFlags, nsIProxyInfo* aInfo) {
++  if (!(aFlags & nsIProtocolProxyService::RESOLVE_REQUIRE_PROXY)) return NS_OK;
++  nsAutoCString type;
++  if (!aInfo || NS_FAILED(aInfo->GetType(type)) ||
++      (type != "http" && type != "https" && type != "masque" &&
++       type != "socks" && type != "socks4")) {
++    return NS_ERROR_PROXY_CONNECTION_REFUSED;
++  }
++  return NS_OK;
++}
++
+ static NS_DEFINE_CID(kStreamListenerTeeCID, NS_STREAMLISTENERTEE_CID);
+ 
+ enum ChannelDisposition {
+   kHttpCanceled = 0,
+   kHttpDisk = 1,
+   kHttpNetOK = 2,
+   kHttpNetEarlyFail = 3,
+   kHttpNetLateFail = 4,
+@@ -1402,16 +1415,21 @@
+   rv = mCachePump->AsyncRead(this);
+   if (NS_FAILED(rv)) return rv;
+ 
+   return NS_OK;
+ }
+ 
+ nsresult nsHttpChannel::Connect() {
+   LOG(("nsHttpChannel::Connect [this=%p]\n", this));
++
++  // Check the actual connection route before speculative or normal transport.
++  nsresult proxyBoundary = CloakfoxRequiredProxyRoute(
++      mProxyResolveFlags, mConnectionInfo ? mConnectionInfo->ProxyInfo() : nullptr);
++  NS_ENSURE_SUCCESS(proxyBoundary, proxyBoundary);
+ 
+   if (mAPIRedirectTo) {
+     LOG(("nsHttpChannel::Connect [transparent=%d]\n",
+          mAPIRedirectTo->second()));
+ 
+     nsresult rv = StartRedirectChannelToURI(
+         mAPIRedirectTo->first(),
+         mAPIRedirectTo->second() ? nsIChannelEventSink::REDIRECT_PERMANENT |
+@@ -4411,16 +4429,20 @@
+ 
+   return NS_OK;
+ }
+ 
+ nsresult nsHttpChannel::AsyncDoReplaceWithProxy(nsIProxyInfo* pi) {
+   LOG(("nsHttpChannel::AsyncDoReplaceWithProxy [this=%p pi=%p]", this, pi));
+   nsresult rv;
+ 
++  // A dead PROXY; DIRECT chain must fail before creating its replacement.
++  rv = CloakfoxRequiredProxyRoute(mProxyResolveFlags, pi);
++  NS_ENSURE_SUCCESS(rv, rv);
++
+   nsCOMPtr<nsIChannel> newChannel;
+   rv = gHttpHandler->NewProxiedChannel(mURI, pi, mProxyResolveFlags, mProxyURI,
+                                        mLoadInfo, getter_AddRefs(newChannel));
+   if (NS_FAILED(rv)) return rv;
+ 
+   uint32_t flags = nsIChannelEventSink::REDIRECT_INTERNAL;
+ 
+   rv = SetupReplacementChannel(mURI, newChannel, true, flags);
+@@ -6843,16 +6865,24 @@
+         Some(nsDependentCString(contentType.get())), newURI, redirectFlags,
+         channelId);
+   }
+ 
+   nsresult rv = HttpBaseChannel::SetupReplacementChannel(
+       newURI, newChannel, preserveMethod, redirectFlags);
+   if (NS_FAILED(rv)) return rv;
+ 
++  if (mProxyResolveFlags & nsIProtocolProxyService::RESOLVE_REQUIRE_PROXY) {
++    RefPtr<nsHttpChannel> replacement = do_QueryObject(newChannel);
++    if (!replacement) return NS_ERROR_PROXY_CONNECTION_REFUSED;
++    replacement->mProxyResolveFlags |=
++        nsIProtocolProxyService::RESOLVE_REQUIRE_PROXY |
++        nsIProtocolProxyService::RESOLVE_PRESERVE_PAC_ERRORS;
++  }
++
+   nsAutoCString uriHost;
+   mURI->GetAsciiHost(uriHost);
+   // disable https-rr when encountering a downgrade from https to http.
+   // If the host would have https-rr dns-entries, it would be misconfigured
+   // due to giving us mixed signals:
+   //   1. the signal to upgrade all http requests to https,
+   //   2. but also downgrading to http on https via redirects.
+   // Add to exclude list for that reason
+@@ -8023,17 +8053,18 @@
+   // proxying a non-http protocol like ftp. We don't need to discover proxy
+   // settings if we are never going to make a network connection.
+   if (!mProxyInfo &&
+       !(mLoadFlags & (LOAD_ONLY_FROM_CACHE | LOAD_NO_NETWORK_IO)) &&
+       !BypassProxy()) {
+     nsCOMPtr<nsIProtocolProxyService> pps =
+         mozilla::components::ProtocolProxy::Service();
+     nsCOMPtr<nsIProtocolProxyService2> pps2 = do_QueryInterface(pps);
+-    if (pps2 && pps2->IsEffectivelyDirect()) {
++    if (pps2 && pps2->IsEffectivelyDirect() &&
++        !(mProxyResolveFlags & nsIProtocolProxyService::RESOLVE_REQUIRE_PROXY)) {
+       mozilla::glean::networking::proxy_fast_path_used.Add(1);
+       MaybeStartDNSPrefetch();
+     } else if (NS_SUCCEEDED(ResolveProxy())) {
+       return;
+     }
+   }
+ 
+   if (!gHttpHandler->Active()) {
+@@ -8091,16 +8122,20 @@
+ }
+ 
+ // BeginConnect() SHOULD NOT call AsyncAbort(). AsyncAbort will be called by
+ // functions that called BeginConnect if needed. Only
+ // MaybeResolveProxyAndBeginConnect and OnProxyAvailable ever call
+ // BeginConnect.
+ nsresult nsHttpChannel::BeginConnect() {
+   LOG(("nsHttpChannel::BeginConnect [this=%p]\n", this));
++
++  // Also enforce on effectively-DIRECT and pre-populated failover fast paths.
++  nsresult proxyBoundary = CloakfoxRequiredProxyRoute(mProxyResolveFlags, mProxyInfo);
++  NS_ENSURE_SUCCESS(proxyBoundary, proxyBoundary);
+ 
+   AUTO_PROFILER_FLOW_MARKER("nsHttpChannel::BeginConnect", NETWORK,
+                             Flow::FromPointer(this));
+   nsresult rv;
+ 
+   // It is the caller's responsibility to not call us late in shutdown.
+   MOZ_ASSERT(gHttpHandler->Active());
+ 

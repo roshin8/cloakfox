@@ -25,6 +25,10 @@ Run:
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
+
 import base64
 import json
 import os
@@ -146,14 +150,41 @@ setTimeout(() => { if (!finalized) { r.worker_timeout = true; finalize(); } }, 4
 """
 
 
+@contextmanager
+def loopback_probe():
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = PROBE_HTML.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        def log_message(self, *_):
+            pass
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/probe"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+
 def _build_driver(bin_path: str, profile_dir: str, *, data_noise: bool | None = None,
-                  enabled: bool = True):
+                  enabled: bool = True, allow_system_access: bool = False,
+                  identity_seed: bytes | None = None):
     """Profile pre-seeded with cloakfox.enabled + a math_seed so SeedSync
     derives math:trig_seed into cloak_cfg before any worker can spawn —
     otherwise MaskConfig::GetUint32 returns nullopt and the worker
     spoofer is a no-op."""
     Path(profile_dir).mkdir(parents=True, exist_ok=True)
-    seed_bytes = bytearray(secrets.token_bytes(32))
+    seed_bytes = bytearray(secrets.token_bytes(32) if identity_seed is None else identity_seed)
+    if len(seed_bytes) != 32:
+        raise ValueError("The test identity seed must contain 32 bytes")
     # Keep other persona seeds random but reproduce the failing Math seed.
     seed_bytes[16:20] = (761685640).to_bytes(4, "big")
     seed = base64.b64encode(seed_bytes).decode()
@@ -169,7 +200,8 @@ def _build_driver(bin_path: str, profile_dir: str, *, data_noise: bool | None = 
     opts.add_argument("--headless")
     opts.add_argument("-profile")
     opts.add_argument(profile_dir)
-    svc = Service(log_output=str(Path(profile_dir) / "geckodriver.log"))
+    svc = Service(service_args=["--allow-system-access"] if allow_system_access else [],
+                  log_output=str(Path(profile_dir) / "geckodriver.log"))
     return webdriver.Firefox(options=opts, service=svc)
 
 
@@ -303,14 +335,13 @@ def main() -> None:
     if not bin_path or not os.path.exists(bin_path):
         sys.exit("CLOAKFOX_BIN not set or binary missing")
 
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory() as tmp, loopback_probe() as address:
         prof = os.path.join(tmp, "profile")
-        probe_html = os.path.join(tmp, "probe.html")
-        Path(probe_html).write_text(PROBE_HTML)
-
-        d = _build_driver(bin_path, prof)
+        # Site-derived noise requires a real schemeful site. file:// has none
+        # and intentionally uses conservative zero noise in Firefox157.
+        d = _build_driver(bin_path, prof, identity_seed=bytes(range(32)))
         try:
-            d.get(f"file://{probe_html}")
+            d.get(address)
             deadline = time.time() + 8
             while time.time() < deadline:
                 if d.title == "PROBE_DONE":

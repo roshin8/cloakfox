@@ -1,31 +1,12 @@
-diff --git a/dom/webidl/WebGPU.webidl b/dom/webidl/WebGPU.webidl
---- a/dom/webidl/WebGPU.webidl
-+++ b/dom/webidl/WebGPU.webidl
-@@ -85,7 +85,7 @@
- };
- 
- interface mixin NavigatorGPU {
--    [SameObject, Func="mozilla::webgpu::Instance::PrefEnabled", SecureContext] readonly attribute GPU gpu;
-+    [SameObject, Func="mozilla::webgpu::Instance::PrefEnabled", SecureContext] readonly attribute GPU? gpu;
- };
- // NOTE: see `dom/webidl/Navigator.webidl`
- // Navigator includes NavigatorGPU;
-diff --git a/dom/base/Navigator.h b/dom/base/Navigator.h
---- a/dom/base/Navigator.h
-+++ b/dom/base/Navigator.h
-@@ -216,7 +216,7 @@
- 
-   mozilla::dom::CredentialsContainer* Credentials();
-   dom::Clipboard* Clipboard();
--  webgpu::Instance* Gpu();
-+  webgpu::Instance* GetGpu();
-   dom::LockManager* Locks();
-   NavigatorLogin* Login();
-   dom::PrivateAttribution* PrivateAttribution();
 diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
 --- a/dom/base/Navigator.cpp
 +++ b/dom/base/Navigator.cpp
-@@ -2445,7 +2445,7 @@
+@@ -2344,17 +2344,17 @@
+     if (aRv.Failed()) {
+       return nullptr;
+     }
+   }
+ 
    return mAddonManager;
  }
  
@@ -34,22 +15,64 @@ diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
    // Cloakfox: return null (navigator.gpu -> null) when WebGPU is disabled
    if (MaskConfig::GetBool("navigator:webgpu:disabled").value_or(false)) {
      return nullptr;
-diff --git a/dom/workers/WorkerNavigator.h b/dom/workers/WorkerNavigator.h
---- a/dom/workers/WorkerNavigator.h
-+++ b/dom/workers/WorkerNavigator.h
-@@ -118,7 +118,7 @@
+   }
+   if (!mWebGpu) {
+     mWebGpu = webgpu::Instance::Create(GetWindow()->AsGlobal());
+   }
+   return mWebGpu;
+diff --git a/dom/base/Navigator.h b/dom/base/Navigator.h
+--- a/dom/base/Navigator.h
++++ b/dom/base/Navigator.h
+@@ -212,17 +212,17 @@
+   already_AddRefed<ServiceWorkerContainer> ServiceWorker();
+   // NOTE(krosylight): This currently exists solely for use counter purpose,
+   // since Navigator::ServiceWorker is also called by native functions. Remove
+   // this when we don't need the counter.
+   already_AddRefed<ServiceWorkerContainer> ServiceWorkerJS();
  
-   dom::MediaCapabilities* MediaCapabilities();
- 
+   mozilla::dom::CredentialsContainer* Credentials();
+   dom::Clipboard* Clipboard();
 -  webgpu::Instance* Gpu();
 +  webgpu::Instance* GetGpu();
- 
    dom::LockManager* Locks();
+   NavigatorLogin* Login();
+   dom::ModelContext* ModelContext();
+   static bool Webdriver();
  
+   void GetLanguages(nsTArray<nsString>& aLanguages);
+ 
+   StorageManager* Storage();
+diff --git a/dom/webidl/WebGPU.webidl b/dom/webidl/WebGPU.webidl
+--- a/dom/webidl/WebGPU.webidl
++++ b/dom/webidl/WebGPU.webidl
+@@ -83,17 +83,17 @@
+     [ChromeOnly] readonly attribute unsigned long wgpuDevice;
+     [ChromeOnly] readonly attribute DOMString wgpuDeviceType;
+     [ChromeOnly] readonly attribute DOMString wgpuDriver;
+     [ChromeOnly] readonly attribute DOMString wgpuDriverInfo;
+     [ChromeOnly] readonly attribute DOMString wgpuBackend;
+ };
+ 
+ interface mixin NavigatorGPU {
+-    [SameObject, Func="mozilla::webgpu::Instance::PrefEnabled", SecureContext] readonly attribute GPU gpu;
++    [SameObject, Func="mozilla::webgpu::Instance::PrefEnabled", SecureContext] readonly attribute GPU? gpu;
+ };
+ // NOTE: see `dom/webidl/Navigator.webidl`
+ // Navigator includes NavigatorGPU;
+ // NOTE: see `dom/webidl/WorkerNavigator.webidl`
+ // WorkerNavigator includes NavigatorGPU;
+ 
+ [
+     Func="mozilla::webgpu::Instance::PrefEnabled",
 diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
 --- a/dom/workers/WorkerNavigator.cpp
 +++ b/dom/workers/WorkerNavigator.cpp
-@@ -368,7 +368,7 @@
+@@ -284,17 +284,17 @@
+     nsIGlobalObject* global = workerPrivate->GlobalScope();
+     MOZ_ASSERT(global);
+ 
+     mMediaCapabilities = new dom::MediaCapabilities(global);
+   }
    return mMediaCapabilities;
  }
  
@@ -58,3 +81,30 @@ diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
    if (!mWebGpu) {
      WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
      MOZ_ASSERT(workerPrivate);
+ 
+     nsIGlobalObject* global = workerPrivate->GlobalScope();
+     MOZ_ASSERT(global);
+ 
+     mWebGpu = webgpu::Instance::Create(global);
+diff --git a/dom/workers/WorkerNavigator.h b/dom/workers/WorkerNavigator.h
+--- a/dom/workers/WorkerNavigator.h
++++ b/dom/workers/WorkerNavigator.h
+@@ -110,17 +110,17 @@
+   uint64_t HardwareConcurrency() const;
+ 
+   StorageManager* Storage();
+ 
+   network::Connection* GetConnection(ErrorResult& aRv);
+ 
+   dom::MediaCapabilities* MediaCapabilities();
+ 
+-  webgpu::Instance* Gpu();
++  webgpu::Instance* GetGpu();
+ 
+   dom::LockManager* Locks();
+ 
+   dom::Permissions* Permissions();
+ 
+   already_AddRefed<ServiceWorkerContainer> ServiceWorker();
+ 
+   dom::Serial* Serial();

@@ -1,6 +1,10 @@
---- a/b/dom/svg/SVGTextContentElement.cpp	2026-04-18 07:42:28
-+++ b/dom/svg/SVGTextContentElement.cpp	2026-04-18 07:43:00
-@@ -6,6 +6,7 @@
+diff --git a/dom/svg/SVGTextContentElement.cpp b/dom/svg/SVGTextContentElement.cpp
+--- a/dom/svg/SVGTextContentElement.cpp
++++ b/dom/svg/SVGTextContentElement.cpp
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "mozilla/dom/SVGTextContentElement.h"
  
@@ -8,7 +12,17 @@
  #include "DOMSVGPoint.h"
  #include "SVGTextFrame.h"
  #include "mozilla/dom/CharacterDataBuffer.h"
-@@ -116,7 +117,14 @@
+ #include "mozilla/dom/DOMPoint.h"
+ #include "mozilla/dom/SVGLengthBinding.h"
+ #include "mozilla/dom/SVGRect.h"
+ #include "mozilla/dom/SVGTextContentElementBinding.h"
+ #include "nsBidiUtils.h"
+@@ -110,17 +111,24 @@
+   }
+ 
+   SVGTextFrame* textFrame = GetSVGTextFrame();
+   return textFrame ? textFrame->GetNumberOfChars(this) : 0;
+ }
  
  float SVGTextContentElement::GetComputedTextLength() {
    SVGTextFrame* textFrame = GetSVGTextFrame();
@@ -24,11 +38,29 @@
  }
  
  void SVGTextContentElement::SelectSubString(uint32_t charnum, uint32_t nchars,
---- a/b/dom/svg/moz.build	2026-04-18 00:00:00
-+++ b/dom/svg/moz.build	2026-04-18 00:00:00
-@@ -263,4 +263,5 @@
+                                             ErrorResult& rv) {
+   SVGTextFrame* textFrame = GetSVGTextFrame();
+   if (!textFrame) return;
+ 
+   textFrame->SelectSubString(this, charnum, nchars, rv);
+diff --git a/dom/svg/moz.build b/dom/svg/moz.build
+--- a/dom/svg/moz.build
++++ b/dom/svg/moz.build
+@@ -254,16 +254,17 @@
+     "SVGViewElement.cpp",
+     "SVGViewportElement.cpp",
+ ]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ FINAL_LIBRARY = "xul"
  LOCAL_INCLUDES += [
 +    "/cloakcfg",
      "/dom",
      "/dom/base",
      "/dom/html",
+     "/dom/smil",
+     "/dom/svg",
+     "/dom/xml",
+     "/layout/base",
+     "/layout/generic",

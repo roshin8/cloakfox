@@ -1,0 +1,69 @@
+diff --git a/netwerk/protocol/websocket/WebSocketChannel.cpp b/netwerk/protocol/websocket/WebSocketChannel.cpp
+--- a/netwerk/protocol/websocket/WebSocketChannel.cpp
++++ b/netwerk/protocol/websocket/WebSocketChannel.cpp
+@@ -1,13 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "WebSocketChannel.h"
++#include "MaskConfig.hpp"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ 
+ #include <algorithm>
+ 
+ #include "WebSocketConnectionBase.h"
+ #include "WebSocketFrame.h"
+ #include "WebSocketLog.h"
+ #include "mozilla/Atomics.h"
+ #include "mozilla/Attributes.h"
+@@ -2854,16 +2856,31 @@
+     cos->AddClassFlags(nsIClassOfService::Unblocked);
+   }
+ 
+   // draft-ietf-hybi-thewebsocketprotocol-07 illustrates Upgrade: websocket
+   // in lower case, so go with that. It is technically case insensitive.
+   rv = mChannel->HTTPUpgrade("websocket"_ns, this);
+   NS_ENSURE_SUCCESS(rv, rv);
+ 
++  // Resolve identity from the actual channel, including worker handshakes.
++  // The HTTP handler's process-wide UA must not link separate containers.
++  if (StaticPrefs::cloakfox_enabled() && mLoadInfo) {
++    const uint32_t ucid = mLoadInfo->GetOriginAttributes().mUserContextId;
++    auto ua = MaskConfig::GetString("headers.User-Agent", ucid);
++    if (!ua || ua->empty()) {
++      ua = MaskConfig::GetString("navigator.userAgent", ucid);
++    }
++    if (ua && !ua->empty()) {
++      rv = mHttpChannel->SetRequestHeader("User-Agent"_ns,
++                                          nsDependentCString(ua->c_str()), false);
++      NS_ENSURE_SUCCESS(rv, rv);
++    }
++  }
++
+   rv = mHttpChannel->SetRequestHeader("Sec-WebSocket-Version"_ns,
+                                       nsLiteralCString(SEC_WEBSOCKET_VERSION),
+                                       false);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+   if (!mOrigin.IsEmpty()) {
+     rv = mHttpChannel->SetRequestHeader("Origin"_ns, mOrigin, false);
+     MOZ_ASSERT(NS_SUCCEEDED(rv));
+diff --git a/netwerk/protocol/websocket/moz.build b/netwerk/protocol/websocket/moz.build
+--- a/netwerk/protocol/websocket/moz.build
++++ b/netwerk/protocol/websocket/moz.build
+@@ -55,13 +55,14 @@
+     "PWebSocketEventListener.ipdl",
+ ]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ FINAL_LIBRARY = "xul"
+ 
+ LOCAL_INCLUDES += [
++    "/cloakcfg",
+     "/dom/base",
+     "/netwerk/base",
+ ]
+ 
+ include("/tools/fuzzing/libfuzzer-config.mozbuild")

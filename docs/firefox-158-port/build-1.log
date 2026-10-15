@@ -1,0 +1,173 @@
+Creating local state directory: /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051
+Creating the 'mach' site at /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051/_virtualenvs/mach
+Creating the 'build' site at /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051/_virtualenvs/build
+ 0:01.65 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:01.65 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:01.75 Clobber not needed.
+ 0:01.75 Config object not found by mach.
+ 0:02.08 Using Python 3.14.7 from /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051/_virtualenvs/build/bin/python
+ 0:02.08 Adding configure options from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+ 0:02.08   --enable-application=browser
+ 0:02.08   --allow-addon-sideload
+ 0:02.08   --disable-crashreporter
+ 0:02.08   --disable-backgroundtasks
+ 0:02.08   --disable-debug
+ 0:02.08   --disable-default-browser-agent
+ 0:02.08   --disable-tests
+ 0:02.08   --disable-updater
+ 0:02.08   --enable-release
+ 0:02.08   --disable-system-policies
+ 0:02.08   --with-app-name=cloakfox
+ 0:02.08   --with-branding=browser/branding/cloakfox
+ 0:02.08   --with-unsigned-addon-scopes=app,system
+ 0:02.08   --disable-bootstrap
+ 0:02.08   --enable-bundled-fonts
+ 0:02.08   --target=aarch64-apple-darwin
+ 0:02.08   --without-wasm-sandboxed-libraries
+ 0:02.08   --disable-debug-symbols
+ 0:02.08   HOST_CC=/Users/zeus/.mozbuild/clang/bin/clang
+ 0:02.08   CXX=/Users/zeus/.mozbuild/clang/bin/clang++
+ 0:02.08   CBINDGEN=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/.compat-tools/bin/cbindgen
+ 0:02.08   CC=/Users/zeus/.mozbuild/clang/bin/clang
+ 0:02.08   HOST_CXX=/Users/zeus/.mozbuild/clang/bin/clang++
+ 0:02.08   MOZ_REQUIRE_SIGNING=
+ 0:02.08 checking for vcs source checkout... no
+ 0:02.11 checking for a shell... /bin/sh
+ 0:02.13 checking for host system type... aarch64-apple-darwin27.0.0
+ 0:02.15 checking for target system type... aarch64-apple-darwin
+ 0:02.31 checking whether cross compiling... yes
+ 0:02.36 checking if configuration file confvars.sh exists... /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/browser/confvars.sh
+ 0:02.36 checking if configuration file configure.sh exists... /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/browser/branding/cloakfox/configure.sh
+ 0:02.37 checking for the target C compiler... /Users/zeus/.mozbuild/clang/bin/clang
+ 0:02.37 checking for ccache... not found
+ 0:02.39 Using target sysroot in /Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk
+ 0:02.58 checking whether the target C compiler can be used... yes
+ 0:02.58 checking for the target C++ compiler... /Users/zeus/.mozbuild/clang/bin/clang++
+ 0:02.69 checking whether the target C++ compiler can be used... yes
+ 0:02.81 checking for unwind.h... yes
+ 0:02.87 checking for target linker... lld
+ 0:02.96 checking for _Unwind_Backtrace... no
+ 0:02.96 checking for Python 3... /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051/_virtualenvs/build/bin/python (3.14.7)
+ 0:02.96 Using host sysroot in /Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk
+ 0:02.96 checking the target C compiler version... 19.1.7
+ 0:03.00 checking the target C compiler works... yes
+ 0:03.00 checking the target C++ compiler version... 19.1.7
+ 0:03.04 checking the target C++ compiler works... yes
+ 0:03.04 checking for the host C compiler... /Users/zeus/.mozbuild/clang/bin/clang
+ 0:03.04 checking whether the host C compiler can be used... yes
+ 0:03.04 checking the host C compiler version... 19.1.7
+ 0:03.04 checking the host C compiler works... yes
+ 0:03.04 checking for the host C++ compiler... /Users/zeus/.mozbuild/clang/bin/clang++
+ 0:03.04 checking whether the host C++ compiler can be used... yes
+ 0:03.04 checking the host C++ compiler version... 19.1.7
+ 0:03.04 checking the host C++ compiler works... yes
+ 0:03.09 checking for host linker... lld
+ 0:03.24 checking for 64-bit OS... yes
+ 0:03.34 checking for __thread keyword for TLS variables... no
+ 0:03.35 checking for the assembler... /Users/zeus/.mozbuild/clang/bin/clang
+ 0:03.38 checking for llvm-objdump... /Users/zeus/.mozbuild/clang/bin/llvm-objdump
+ 0:03.41 checking for ar... /Users/zeus/.mozbuild/clang/bin/llvm-ar
+ 0:03.47 checking whether ar supports response files... yes
+ 0:03.50 checking for host_ar... /Users/zeus/.mozbuild/clang/bin/llvm-ar
+ 0:03.63 checking for i8mm target feature... yes
+ 0:03.74 checking for ARM SVE2 target feature... yes
+ 0:03.83 checking for ARM dotprod target feature... yes
+ 0:03.91 checking for strndup... no
+ 0:03.99 checking for posix_memalign... no
+ 0:04.07 checking for memalign... no
+ 0:04.15 checking for malloc_usable_size... no
+ 0:04.19 checking for malloc.h... no
+ 0:04.22 checking for malloc_np.h... no
+ 0:04.29 checking for malloc/malloc.h... yes
+ 0:04.32 checking for stdint.h... yes
+ 0:04.37 checking for inttypes.h... yes
+ 0:04.42 checking for alloca.h... yes
+ 0:04.46 checking for sys/byteorder.h... no
+ 0:04.50 checking for getopt.h... yes
+ 0:04.54 checking for unistd.h... yes
+ 0:04.59 checking for nl_types.h... yes
+ 0:04.63 checking for cpuid.h... no
+ 0:04.67 checking for fts.h... yes
+ 0:04.71 checking for sys/statvfs.h... yes
+ 0:04.74 checking for sys/statfs.h... no
+ 0:04.78 checking for sys/vfs.h... no
+ 0:04.83 checking for sys/mount.h... yes
+ 0:04.87 checking for sys/quota.h... no
+ 0:04.91 checking for sys/queue.h... yes
+ 0:04.95 checking for sys/types.h... yes
+ 0:04.99 checking for netinet/in.h... yes
+ 0:05.03 checking for byteswap.h... no
+ 0:05.07 checking for memfd_create in sys/mman.h... no
+ 0:05.16 checking for clock_gettime(CLOCK_MONOTONIC)... no
+ 0:05.24 checking for clock_gettime(CLOCK_MONOTONIC) in rt... no
+ 0:05.34 checking for res_ninit()... no
+ 0:05.42 checking for dladdr... no
+ 0:05.50 checking for dladdr in -ldl... no
+ 0:05.60 checking for gethostbyname_r in -lc_r... no
+ 0:05.68 checking for socket in -lsocket... no
+ 0:05.72 checking for pthread.h... yes
+ 0:05.76 checking whether the C compiler supports -pthread... yes
+ 0:06.12 checking whether 64-bits std::atomic requires -latomic... do not know; assuming no
+ 0:06.15 checking whether the C++ compiler supports -Wimplicit-int-enum-cast... no
+ 0:06.18 checking whether the C++ compiler supports -Woctal-prefix-extension... no
+ 0:06.22 checking whether the C compiler supports -Wshift-bool... no
+ 0:06.25 checking whether the C++ compiler supports -Wshift-bool... no
+ 0:06.29 checking whether the C++ compiler supports -Wdeprecated-literal-operator... yes
+ 0:06.32 checking whether the C compiler supports -Winvalid-utf8... yes
+ 0:06.36 checking whether the C++ compiler supports -Winvalid-utf8... yes
+ 0:06.39 checking whether the C compiler supports -Wduplicate-method-arg... yes
+ 0:06.43 checking whether the C++ compiler supports -Wduplicate-method-arg... yes
+ 0:06.46 checking whether the C compiler supports -Wduplicate-method-match... yes
+ 0:06.50 checking whether the C++ compiler supports -Wduplicate-method-match... yes
+ 0:06.53 checking whether the C compiler supports -Wmissing-method-return-type... yes
+ 0:06.57 checking whether the C++ compiler supports -Wmissing-method-return-type... yes
+ 0:06.61 checking whether the C compiler supports -Wobjc-signed-char-bool... yes
+ 0:06.64 checking whether the C++ compiler supports -Wobjc-signed-char-bool... yes
+ 0:06.68 checking whether the C compiler supports -Wsemicolon-before-method-body... yes
+ 0:06.71 checking whether the C++ compiler supports -Wsemicolon-before-method-body... yes
+ 0:06.75 checking whether the C compiler supports -Wsuper-class-method-mismatch... yes
+ 0:06.78 checking whether the C++ compiler supports -Wsuper-class-method-mismatch... yes
+ 0:06.82 checking whether the C compiler supports -Wformat... yes
+ 0:06.86 checking whether the C++ compiler supports -Wformat... yes
+ 0:06.89 checking whether the C compiler supports -Wno-character-conversion... no
+ 0:06.93 checking whether the C++ compiler supports -Wno-character-conversion... no
+ 0:06.96 checking whether the C++ compiler supports -fno-sized-deallocation... yes
+ 0:07.00 checking whether the C++ compiler supports -fno-aligned-new... yes
+ 0:07.04 checking whether the C compiler supports -fdiagnostics-absolute-paths... yes
+ 0:07.07 checking whether the C++ compiler supports -fdiagnostics-absolute-paths... yes
+ 0:07.15 checking whether the C linker supports -Wl,--build-id=sha1... no
+ 0:07.19 checking whether the C assembler supports -Wa,--noexecstack... yes
+ 0:07.26 checking whether the C linker supports -Wl,-z,noexecstack... no
+ 0:07.34 checking whether the C linker supports -Wl,-z,text... no
+ 0:07.42 checking whether the C linker supports -Wl,-z,relro... no
+ 0:07.50 checking whether the C linker supports -Wl,-z,now... no
+ 0:07.58 checking whether the C linker supports -Wl,-z,nocopyreloc... no
+ 0:07.66 checking whether the C linker supports -Wl,-dead_strip... no
+ 0:07.69 checking whether the C assembler supports -fPIC... yes
+ 0:07.73 checking whether the C compiler supports -fPIC... yes
+ 0:07.77 checking whether the C++ compiler supports -fPIC... yes
+ 0:07.95 checking what kind of list files are supported by the linker...
+ 0:07.95 DEBUG: <truncated - see config.log for full output>
+ 0:07.95 DEBUG: |
+ 0:07.95 DEBUG: | clang: error: linker command failed with exit code 1 (use -v to see invocation)
+ 0:07.95 DEBUG: Executing: `/Users/zeus/.mozbuild/clang/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk -mmacosx-version-min=11.0 -fuse-ld=lld -o /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/conftestg68_0qbg.out -Wl,@/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/conftestxs7ajwlt.list`
+ 0:07.95 DEBUG: The command returned non-zero exit status 1.
+ 0:07.95 DEBUG: Its error output was:
+ 0:07.95 DEBUG: | ld64.lld: error: could not load TAPI file at /Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk/usr/lib/libSystem.tbd: malformed file
+ 0:07.95 DEBUG: | /Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk/usr/lib/libSystem.tbd:4:20: error: unknown architecture
+ 0:07.95 DEBUG: |                    arm64e.x1-macos, arm64e.x1-maccatalyst ]
+ 0:07.95 DEBUG: |                    ^~~~~~~~~~~~~~~
+ 0:07.95 DEBUG: |
+ 0:07.95 DEBUG: | clang: error: linker command failed with exit code 1 (use -v to see invocation)
+ 0:07.95 DEBUG: Executing: `/Users/zeus/.mozbuild/clang/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk -mmacosx-version-min=11.0 -fuse-ld=lld -o /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/conftestg68_0qbg.out @/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/conftestxs7ajwlt.list`
+ 0:07.95 DEBUG: The command returned non-zero exit status 1.
+ 0:07.95 DEBUG: Its error output was:
+ 0:07.95 DEBUG: | ld64.lld: error: could not load TAPI file at /Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk/usr/lib/libSystem.tbd: malformed file
+ 0:07.95 DEBUG: | /Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk/usr/lib/libSystem.tbd:4:20: error: unknown architecture
+ 0:07.95 DEBUG: |                    arm64e.x1-macos, arm64e.x1-maccatalyst ]
+ 0:07.95 DEBUG: |                    ^~~~~~~~~~~~~~~
+ 0:07.95 DEBUG: |
+ 0:07.95 DEBUG: | clang: error: linker command failed with exit code 1 (use -v to see invocation)
+ 0:07.95 E ERROR: Couldn't find one that works
+ 0:08.05 E *** Fix above errors and then restart with "./mach build"
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261014_200806.json

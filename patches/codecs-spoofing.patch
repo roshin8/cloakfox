@@ -1,7 +1,12 @@
 diff --git a/dom/media/mediaelement/HTMLMediaElement.cpp b/dom/media/mediaelement/HTMLMediaElement.cpp
 --- a/dom/media/mediaelement/HTMLMediaElement.cpp
 +++ b/dom/media/mediaelement/HTMLMediaElement.cpp
-@@ -8,6 +8,7 @@
+@@ -3,16 +3,17 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "mozilla/dom/HTMLMediaElement.h"
+ 
+ #include <algorithm>
  #include <cmath>
  #include <limits>
  #include <type_traits>
@@ -9,7 +14,17 @@ diff --git a/dom/media/mediaelement/HTMLMediaElement.cpp b/dom/media/mediaelemen
  
  #include "AudioDeviceInfo.h"
  #include "AudioStreamTrack.h"
-@@ -5794,6 +5795,35 @@
+ #include "AutoplayPolicy.h"
+ #include "ChannelMediaDecoder.h"
+ #include "CrossGraphPort.h"
+ #include "DOMMediaStream.h"
+ #include "DecoderDoctorDiagnostics.h"
+@@ -5800,16 +5801,45 @@
+     // `IsSupportedType` call from `CanHandleCodecsType()`.
+     // See bug 1399023.
+     return CANPLAY_MAYBE;
+   }
+   return status;
  }
  
  void HTMLMediaElement::CanPlayType(const nsAString& aType, nsAString& aResult) {
@@ -45,10 +60,20 @@ diff --git a/dom/media/mediaelement/HTMLMediaElement.cpp b/dom/media/mediaelemen
    DecoderDoctorDiagnostics diagnostics;
    CanPlayStatus canPlay = GetCanPlay(aType, &diagnostics);
    diagnostics.StoreFormatDiagnostics(OwnerDoc(), aType, canPlay != CANPLAY_NO,
+                                      __func__);
+   switch (canPlay) {
+     case CANPLAY_NO:
+       aResult.Truncate();
+       break;
 diff --git a/dom/media/mediaelement/moz.build b/dom/media/mediaelement/moz.build
 --- a/dom/media/mediaelement/moz.build
 +++ b/dom/media/mediaelement/moz.build
-@@ -29,6 +29,7 @@
+@@ -24,15 +24,16 @@
+ ]
+ 
+ if CONFIG["MOZ_ANDROID_HLS_SUPPORT"]:
+     DEFINES["MOZ_ANDROID_HLS_SUPPORT"] = True
+ 
  include("/ipc/chromium/chromium-config.mozbuild")
  
  LOCAL_INCLUDES += [
@@ -56,3 +81,7 @@ diff --git a/dom/media/mediaelement/moz.build b/dom/media/mediaelement/moz.build
      "/dom/base",
      "/dom/media",
      "/third_party/abseil-cpp",
+     "/third_party/libwebrtc",
+ ]
+ 
+ FINAL_LIBRARY = "xul"

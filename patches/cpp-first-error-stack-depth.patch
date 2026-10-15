@@ -1,7 +1,12 @@
 diff --git a/js/src/vm/ErrorObject.h b/js/src/vm/ErrorObject.h
 --- a/js/src/vm/ErrorObject.h
 +++ b/js/src/vm/ErrorObject.h
-@@ -178,7 +178,9 @@
+@@ -173,17 +173,19 @@
+ 
+ UniquePtr<JSErrorNotes::Note> CopyErrorNote(JSContext* cx,
+                                             JSErrorNotes::Note* note);
+ 
+ UniquePtr<JSErrorReport> CopyErrorReport(JSContext* cx, JSErrorReport* report);
  
  // Cut off the stack if it gets too deep (most commonly for infinite recursion
  // errors).
@@ -12,3 +17,8 @@ diff --git a/js/src/vm/ErrorObject.h b/js/src/vm/ErrorObject.h
  
  mozilla::Maybe<uint32_t> GetStackTraceLimit(JSContext* cx);
  
+ bool CaptureStack(JSContext* cx, MutableHandleObject stack, uint32_t limit);
+ 
+ JSString* ComputeStackString(JSContext* cx);
+ 
+ /*

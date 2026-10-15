@@ -16,11 +16,38 @@ trap 'rm -rf "$work"' EXIT
 # Minimal fake repo the script copies from.
 repo="$work/repo"
 mkdir -p "$repo/settings" "$repo/additions/placeholder" \
-         "$repo/patches/librewolf" "$repo/bundle/fonts/macos"
+         "$repo/patches/librewolf" "$repo/bundle/fonts/macos" \
+         "$repo/bundle/fonts/licenses" "$repo/scripts"
 echo '// cfg' > "$repo/settings/cloakfox.cfg"
 echo '# pack_vs' > "$repo/patches/librewolf/pack_vs.py"
 : > "$repo/bundle/fonts/macos/Arial.ttf"
 : > "$repo/bundle/fonts/macos/Verdana.ttf"
+echo 'Fixture font license' > "$repo/bundle/fonts/licenses/OFL.txt"
+echo 'Fixture font notices' > "$repo/bundle/fonts/FONT-NOTICES.txt"
+echo '{}' > "$repo/bundle/fonts/font-manifest.json"
+
+# Helpers are isolated fixture stubs: this test exercises staging idempotence,
+# while real addon integrity and font manifest checks have separate coverage.
+cat > "$repo/scripts/stage_ublock.py" <<'PYTHON'
+import argparse
+from pathlib import Path
+parser = argparse.ArgumentParser()
+parser.add_argument('--output-dir', required=True, type=Path)
+args = parser.parse_args()
+args.output_dir.mkdir(parents=True, exist_ok=True)
+PYTHON
+cp "$repo/scripts/stage_ublock.py" "$repo/scripts/stage_container_addons.py"
+cat > "$repo/scripts/audit-font-pack.py" <<'PYTHON'
+import argparse
+from pathlib import Path
+parser = argparse.ArgumentParser()
+parser.add_argument('--check', required=True, action='store_true')
+parser.parse_args()
+fonts = Path(__file__).resolve().parents[1] / 'bundle/fonts'
+for name in ['macos/Arial.ttf', 'macos/Verdana.ttf', 'licenses/OFL.txt',
+             'FONT-NOTICES.txt', 'font-manifest.json']:
+    assert (fonts / name).is_file(), name
+PYTHON
 
 # Minimal fake extracted firefox source dir (script runs from inside it).
 src="$work/firefox-src"
@@ -28,11 +55,15 @@ mkdir -p "$src/build/vs" "$src/browser/fonts" "$src/browser/config"
 printf '# base moz.build\n' > "$src/browser/fonts/moz.build"
 
 run_once() {
-    ( cd "$src" && bash "$SCRIPT" 146.0.1 1 "$repo" ) >/dev/null 2>&1
+    if ! ( cd "$src" && bash "$SCRIPT" 146.0.1 1 "$repo" ) >"$work/staging.log" 2>&1; then
+        echo "FAIL — copy-additions.sh failed before idempotence checks"
+        cat "$work/staging.log"
+        return 1
+    fi
 }
 
-run_once
-run_once
+run_once || exit 1
+run_once || exit 1
 
 count=$(grep -c "Cloakfox: bundled open-substitute font pack" \
         "$src/browser/fonts/moz.build")

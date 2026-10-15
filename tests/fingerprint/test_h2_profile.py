@@ -1,176 +1,165 @@
+"""HTTP/2 wire shapes selected through the current container network adapter.
+
+Firefox 158 exposes native Firefox and an opt-in measured Chrome 155 adapter.
+Legacy global H2 preferences are metadata, and Safari has no supported adapter.
+Use a trusted loopback TLS fixture; no external fingerprint service is contacted.
 """
-H2 fingerprint profile E2E test (Selenium + geckodriver).
-
-Why not Playwright: Playwright's Firefox driver speaks Juggler, which
-requires a Juggler-patched Firefox binary (Playwright ships one). Cloakfox
-is stock-patched Firefox, so Playwright cannot drive it. geckodriver speaks
-Marionette, which every Firefox build supports by default.
-
-Launches the built Cloakfox binary under each value of
-`network.http.http2.fingerprint_profile` (firefox, chrome, safari),
-visits tls.peet.ws/api/all, and asserts:
-
-1. The three profiles produce three DIFFERENT akamai_fingerprint_hash values.
-2. Each profile's SETTINGS frame, WINDOW_UPDATE value, and HPACK pseudo-header
-   order match the contract documented in patches/http2-fingerprint-spoofing.patch.
-
-Prerequisites:
-
-    pip install pytest selenium
-    brew install geckodriver   # or download from GitHub releases on Linux/Windows
-
-Run:
-
-    CLOAKFOX_BIN=/Applications/Cloakfox.app/Contents/MacOS/cloakfox \\
-        pytest tests/fingerprint/test_h2_profile.py -v
-
-Skips cleanly if CLOAKFOX_BIN is unset.
-"""
-
+import base64
+import hashlib
 import json
 import os
 from pathlib import Path
+import ssl
+import sys
+import tempfile
 
 import pytest
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 
-CLOAKFOX_BIN = os.environ.get("CLOAKFOX_BIN")
-PROBE_URL = "https://tls.peet.ws/api/all"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "network"))
+from h3_fixture import create_certificates
+from wire_fixture import TLSFixture
 
-# Expected H2 signature per profile. These must line up with what
-# patches/http2-fingerprint-spoofing.patch emits — a regression here
-# means the patch didn't fire or cloakfox.cfg clobbered the pref.
-PROFILE_EXPECTATIONS = {
-    "firefox": {
-        "settings_ids": {1, 2, 4, 5},           # HEADER_TABLE, PUSH, INITIAL_WINDOW, MAX_FRAME
-        "window_update": None,                  # variable, session-dependent
-        "pseudo_order": [":method", ":path", ":authority", ":scheme"],
-    },
-    "chrome": {
-        "settings_ids": {1, 2, 3, 4, 6},        # + MAX_CONCURRENT, MAX_HEADER_LIST; no MAX_FRAME
-        "settings_values": {3: 1000, 4: 6291456, 6: 262144},
-        "window_update": 15663105,
-        "pseudo_order": [":method", ":authority", ":scheme", ":path"],
-    },
-    "safari": {
-        "settings_ids": {2, 3, 4},              # sparse
-        "settings_values": {3: 100, 4: 2097152},
-        "window_update": 10485760,
-        "pseudo_order": [":method", ":scheme", ":path", ":authority"],
-    },
+ROOT = Path(__file__).resolve().parents[2]
+CLOAKFOX_BIN = os.environ.get("CLOAKFOX_BIN")
+UA = {
+    "firefox": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:158.0) Gecko/20100101 Firefox/158.0",
+    "chrome": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "safari": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
 }
 
 
-def _probe(bin_path: str, profile: str, log_dir: Path) -> dict:
-    """Launch Cloakfox with the given profile, return parsed peetwapp JSON."""
-    opts = Options()
-    opts.binary_location = bin_path
-    opts.add_argument("--headless")
-    opts.set_preference("network.http.http2.fingerprint_profile", profile)
-    opts.set_preference("browser.shell.checkDefaultBrowser", False)
-    opts.set_preference("browser.startup.page", 0)
-    opts.set_preference("devtools.jsonview.enabled", False)  # want raw JSON, not viewer
-
-    svc = Service(log_output=str(log_dir / f"gd-{profile}.log"))
-    driver = webdriver.Firefox(options=opts, service=svc)
-    try:
-        driver.set_page_load_timeout(30)
-        driver.get(PROBE_URL)
-        body = driver.execute_script(
-            "return document.body.innerText || document.body.textContent"
-        )
-        return json.loads(body.strip())
-    finally:
-        driver.quit()
+def _pinned_shapes():
+    # Independent stock Firefox158 capture and retained Chrome155 reference.
+    # Never derive expectations from Gecko
+    # implementation constants or the browser under test.
+    native = json.loads((ROOT / "docs/firefox-158-port/network-adapter-native-tls-h2.json").read_text())
+    chrome = json.loads((ROOT / "docs/firefox-157-port/chrome-network-reference.json").read_text())
+    assert native["stock"]["version"] == "158.0"
+    assert chrome["version"] == "Google Chrome 155.0.8059.40"
+    return {"firefox": native["stock"]["connections"][0], "chrome": chrome["h2"][0]}
 
 
-def _parse_settings(frame: dict) -> dict:
-    """Convert peetwapp SETTINGS frame ('MAX_HEADER_LIST_SIZE = 262144') to id->value dict."""
-    SETTING_NAME_TO_ID = {
-        "HEADER_TABLE_SIZE": 1, "ENABLE_PUSH": 2, "MAX_CONCURRENT_STREAMS": 3,
-        "INITIAL_WINDOW_SIZE": 4, "MAX_FRAME_SIZE": 5, "MAX_HEADER_LIST_SIZE": 6,
-    }
-    out = {}
-    for entry in frame.get("settings", []):
-        name, _, value = entry.partition(" = ")
-        sid = SETTING_NAME_TO_ID.get(name.strip())
-        if sid is not None:
-            out[sid] = int(value.strip())
-    return out
+def _shape(observation):
+    return {"settings": [list(pair) for pair in observation["settings"][0]],
+            "window_update": observation["windowUpdates"][0],
+            "pseudo_order": observation["pseudoHeaders"][0]}
 
 
-def _assert_shape(profile: str, payload: dict) -> None:
-    expect = PROFILE_EXPECTATIONS[profile]
-    sent = payload.get("http2", {}).get("sent_frames", [])
-    assert sent, f"[{profile}] peetwapp returned no sent_frames"
-
-    settings_frame = next((f for f in sent if f.get("frame_type") == "SETTINGS"), None)
-    assert settings_frame, f"[{profile}] no SETTINGS frame"
-    settings = _parse_settings(settings_frame)
-    assert set(settings.keys()) == expect["settings_ids"], (
-        f"[{profile}] SETTINGS ids {set(settings.keys())}, expected {expect['settings_ids']}"
-    )
-    for sid, value in expect.get("settings_values", {}).items():
-        assert settings.get(sid) == value, (
-            f"[{profile}] SETTINGS[{sid}]={settings.get(sid)}, expected {value}"
-        )
-
-    window_frame = next((f for f in sent if f.get("frame_type") == "WINDOW_UPDATE"), None)
-    if expect["window_update"] is not None:
-        assert window_frame and window_frame.get("increment") == expect["window_update"], (
-            f"[{profile}] WINDOW_UPDATE={window_frame.get('increment') if window_frame else 'none'}, "
-            f"expected {expect['window_update']}"
-        )
-
-    headers_frame = next((f for f in sent if f.get("frame_type") == "HEADERS"), None)
-    assert headers_frame, f"[{profile}] no HEADERS frame"
-    pseudos = [h.split(":")[1] and ":" + h.split(":")[1].strip()
-               for h in headers_frame.get("headers", []) if h.startswith(":")][:4]
-    # peetwapp strings look like ":method: GET" — extract just ":method"
-    pseudos = [h.split(":")[1].strip() and ":" + h.split(":")[1].strip()
-               for h in headers_frame.get("headers", []) if h.startswith(":")][:4]
-    # Simpler: take the first token before the second colon.
-    pseudos = []
-    for h in headers_frame.get("headers", []):
-        if not h.startswith(":"):
-            continue
-        name = h.split(":", 2)
-        if len(name) >= 2:
-            pseudos.append(":" + name[1])
-        if len(pseudos) == 4:
-            break
-    assert pseudos == expect["pseudo_order"], (
-        f"[{profile}] HPACK pseudo order {pseudos}, expected {expect['pseudo_order']}"
-    )
+def _probe(bin_path, profile, log_dir, certificate, fixture, enabled=True):
+    options = Options()
+    options.binary_location = bin_path
+    options.accept_insecure_certs = False
+    options.add_argument("-headless")
+    options.add_argument("-purgecaches")
+    options.set_preference("network.dns.localDomains", "h2-profile.test")
+    options.set_preference("network.trr.mode", 5)
+    # Deliberately conflicting historical input must not override owner intent.
+    options.set_preference("network.http.http2.fingerprint_profile", "safari")
+    with tempfile.TemporaryDirectory(prefix="cloakfox-h2-profile-", dir="/tmp") as tmp:
+        options.add_argument("-profile")
+        options.add_argument(tmp)
+        service = Service(service_args=["--allow-system-access"],
+                          log_output=str(log_dir / f"gd-{profile}.log"))
+        driver = webdriver.Firefox(options=options, service=service)
+        try:
+            driver.set_page_load_timeout(30)
+            driver.set_context("chrome")
+            selected = driver.execute_script("""
+                const {writeNetworkProfile}=ChromeUtils.importESModule(
+                    'resource:///modules/CloakfoxNetworkProfiles.sys.mjs');
+                Services.prefs.setBoolPref('cloakfox.enabled',true);
+                Services.prefs.setStringPref('cloakfox.s.cloak_cfg_0',
+                    JSON.stringify({'navigator.userAgent':arguments[0]}));
+                Services.prefs.setBoolPref('cloakfox.container.0.network_follow_identity',true);
+                const selected=writeNetworkProfile(0);
+                Cc['@mozilla.org/security/x509certdb;1'].getService(Ci.nsIX509CertDB)
+                    .addCertFromBase64(arguments[1],'CT,,');
+                return {...selected, atomicState:Services.prefs.getIntPref(
+                    'cloakfox.container.0.network_state')};
+            """, UA[profile], base64.b64encode(ssl.PEM_cert_to_DER_cert(certificate.read_text())).decode())
+            expected = "chrome" if profile == "chrome" else "firefox"
+            assert selected["family"] == expected, selected
+            assert selected["profileId"] == (1 if profile == "chrome" else 0), selected
+            assert selected["atomicState"] & 1 == selected["profileId"], selected
+            assert selected["unsupported"] == (profile == "safari"), selected
+            if not enabled:
+                # Keep a valid Chrome selection after disabling. This tests the
+                # native/socket gate even when stale adapter state is present.
+                driver.execute_script("""
+                    Services.prefs.setBoolPref('cloakfox.enabled',false);
+                    Services.prefs.setIntPref('cloakfox.container.0.network_state',arguments[0]);
+                """, selected["atomicState"])
+            observed_state = driver.execute_script("""
+                return {enabled:Services.prefs.getBoolPref('cloakfox.enabled'),
+                        atomicState:Services.prefs.getIntPref('cloakfox.container.0.network_state')};
+            """)
+            assert observed_state["enabled"] == enabled, observed_state
+            assert observed_state["atomicState"] == selected["atomicState"], observed_state
+            driver.set_context("content")
+            start = len(fixture.observed)
+            driver.get(f"https://h2-profile.test:{fixture.server_address[1]}/profile")
+            assert "local-wire-ok" in driver.page_source
+            observations = [value for value in fixture.observed[start:]
+                            if value.get("pseudoHeaders")]
+            assert observations, fixture.observed[start:]
+            wire = observations[0]
+            assert wire["protocol"] == "h2" and wire["tlsVersion"] == "TLSv1.3", wire
+            driver.set_context("chrome")
+            after_request = driver.execute_script("""
+                return {enabled:Services.prefs.getBoolPref('cloakfox.enabled'),
+                        atomicState:Services.prefs.getIntPref('cloakfox.container.0.network_state')};
+            """)
+            assert after_request == observed_state, after_request
+            driver.set_context("content")
+            result = {"selection": selected, "wire": wire,
+                      "stateAfterRequest": after_request,
+                      "browserVersion": driver.capabilities["browserVersion"],
+                      "observedState": observed_state,
+                      "navigator": driver.execute_script("return [navigator.platform,navigator.oscpu,navigator.userAgent,navigator.hardwareConcurrency]") }
+            (log_dir / f"{profile}.json").write_text(json.dumps(result, indent=2))
+            return result
+        finally:
+            driver.quit()
 
 
 @pytest.fixture(scope="session")
-def probe_results(tmp_path_factory) -> dict:
-    """Run peetwapp probe once per profile per session; share across tests."""
+def probe_results():
     if not CLOAKFOX_BIN or not os.path.exists(CLOAKFOX_BIN):
         pytest.skip("CLOAKFOX_BIN env var not set or binary missing")
-    log_dir = tmp_path_factory.mktemp("fingerprint-logs")
-    return {p: _probe(CLOAKFOX_BIN, p, log_dir) for p in ["firefox", "chrome", "safari"]}
+    log_dir = Path(os.environ.get("H2_REPORT_DIR", ROOT / "tests/fingerprint/reports/158-port/h2"))
+    log_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="cloakfox-h2-certs-", dir="/tmp") as tmp:
+        ca, cert, key = create_certificates(Path(tmp), ["h2-profile.test"])
+        fixture = TLSFixture(cert, key)
+        try:
+            return {profile: _probe(CLOAKFOX_BIN, profile, log_dir, ca, fixture)
+                    for profile in ("firefox", "chrome", "safari")}
+        finally:
+            fixture.close()
 
 
-@pytest.mark.parametrize("profile", ["firefox", "chrome", "safari"])
-def test_h2_profile_shape(probe_results: dict, profile: str) -> None:
-    """Each profile emits the H2 signature documented in the patch."""
-    _assert_shape(profile, probe_results[profile])
+@pytest.mark.parametrize("profile", ["firefox", "chrome"])
+def test_h2_profile_shape(probe_results, profile):
+    """Both supported adapters match independently captured SETTINGS/WU/HPACK."""
+    assert _shape(probe_results[profile]["wire"]) == _shape(_pinned_shapes()[profile])
 
 
-def test_h2_profiles_produce_distinct_fingerprints(probe_results: dict) -> None:
-    """All three profiles must produce distinct akamai_fingerprint_hash values."""
-    hashes = {}
-    for profile, payload in probe_results.items():
-        h = payload.get("http2", {}).get("akamai_fingerprint_hash") or payload.get(
-            "akamai_fingerprint_hash"
-        )
-        assert h, f"[{profile}] no akamai_fingerprint_hash in response"
-        hashes[profile] = h
-    assert len(set(hashes.values())) == 3, (
-        f"Profiles produced collapsing hashes: {hashes} — "
-        "either the pref isn't being read or cloakfox.cfg is clobbering user prefs"
-    )
+def test_h2_profiles_produce_distinct_fingerprints(probe_results):
+    """Supported adapters have distinct structural fingerprints on the wire."""
+    hashes = {profile: hashlib.sha256(json.dumps(_shape(probe_results[profile]["wire"]),
+                                               sort_keys=True).encode()).hexdigest()
+              for profile in ("firefox", "chrome")}
+    assert len(set(hashes.values())) == 2, hashes
+
+
+def test_unsupported_safari_retains_native_networking(probe_results):
+    """Unsupported Safari intent reports status and preserves complete native H2."""
+    safari = probe_results["safari"]
+    assert safari["selection"]["unsupported"] is True
+    assert safari["selection"]["family"] == "firefox"
+    assert safari["selection"]["profileId"] == 0
+    assert _shape(safari["wire"]) == _shape(_pinned_shapes()["firefox"])
+    assert _shape(safari["wire"]) == _shape(probe_results["firefox"]["wire"])

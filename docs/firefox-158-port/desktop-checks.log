@@ -1,0 +1,10 @@
+RUN probe_pointer_activity.py
+RESULT 1 probe_pointer_activity.py
+RUN probe_focus_masking.py
+RESULT 0 probe_focus_masking.py
+RUN probe_monaco_focus.py
+RESULT 0 probe_monaco_focus.py
+RUN probe_webgpu_null_safety.py
+RESULT 0 probe_webgpu_null_safety.py
+RUN probe_persona_generation.py
+RESULT 0 probe_persona_generation.py

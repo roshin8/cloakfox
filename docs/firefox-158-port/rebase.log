@@ -1,0 +1,142 @@
+PASS 1 all-addons-private-mode.patch
+PASS 2 anti-font-fingerprinting.patch
+PASS 3 audio-context-spoofing.patch
+PASS 4 audio-fingerprint-manager.patch
+PASS 5 browser-init.patch
+PASS 6 builtin-extension.patch
+PASS 7 canvas-spoofing.patch
+PASS 8 chromeutil.patch
+PASS 9 clipboard-spoofing.patch
+PASS 10 codecs-spoofing.patch
+PASS 11 document-lastmodified-spoofing.patch
+CONFLICT 11 config.patch ['moz.build']
+PASS 12 config.patch
+PASS 13 cross-process-storage.patch
+PASS 14 domrect-spoofing.patch
+PASS 15 fingerprint-injection.patch
+CONFLICT 15 font-hijacker.patch ['gfx/thebes/moz.build']
+PASS 16 font-hijacker.patch
+PASS 17 font-list-spoofing.patch
+PASS 18 font-bundle-packaging.patch
+PASS 19 system-font-spoofing.patch
+PASS 20 force-default-pointer.patch
+CONFLICT 20 geolocation-spoofing.patch ['dom/system/NetworkGeolocationProvider.sys.mjs']
+PASS 21 geolocation-spoofing.patch
+PASS 22 http2-fingerprint-spoofing.patch
+PASS 23 indexeddb-spoofing.patch
+PASS 24 locale-spoofing.patch
+PASS 25 macos-sandbox-crash-fix.patch
+PASS 26 media-capabilities-spoofing.patch
+PASS 27 media-features-spoofing.patch
+PASS 28 media-device-spoofing.patch
+PASS 29 mediasource-istypesupported-spoofing.patch
+PASS 30 navigator-extra-spoofing.patch
+PASS 31 cloakfox-webgpu-null-safety.patch
+CONFLICT 31 navigator-spoofing.patch ['dom/base/Navigator.cpp']
+PASS 32 navigator-spoofing.patch
+PASS 33 network-patches.patch
+PASS 34 notification-spoofing.patch
+PASS 35 permissions-spoofing.patch
+PASS 36 range-domrect-spoofing.patch
+PASS 37 screen-orientation-spoofing.patch
+PASS 38 screen-spoofing.patch
+PASS 39 shadow-root-bypass.patch
+PASS 40 speech-voices-spoofing.patch
+PASS 41 storage-estimate-spoofing.patch
+CONFLICT 41 svg-bbox-spoofing.patch ['dom/svg/SVGGraphicsElement.cpp']
+PASS 42 svg-bbox-spoofing.patch
+PASS 43 svg-geometry-spoofing.patch
+PASS 44 svg-metrics-spoofing.patch
+PASS 45 text-metrics-spoofing.patch
+PASS 46 timing-jitter-spoofing.patch
+PASS 47 timezone-spoofing.patch
+PASS 48 vibration-spoofing.patch
+PASS 49 visual-viewport-spoofing.patch
+PASS 50 voice-spoofing.patch
+PASS 51 webgl-spoofing.patch
+PASS 52 webgl-readback-noise.patch
+PASS 53 websocket-spoofing.patch
+CONFLICT 53 webrtc-ip-spoofing.patch ['dom/base/nsGlobalWindowInner.cpp']
+PASS 54 webrtc-ip-spoofing.patch
+PASS 55 cloakfox-webrtc-network-policy.patch
+PASS 56 window-name-spoofing.patch
+PASS 57 cloakfox-enabled-staticpref.patch
+PASS 58 cloak-config-webidl.patch
+PASS 59 unified-maskconfig.patch
+PASS 60 http3-fingerprint-spoofing.patch
+PASS 61 http2-profile-webidl.patch
+PASS 62 cpp-first-pref-reader.patch
+PASS 63 cpp-first-pref-migration.patch
+PASS 64 cpp-first-actors-registration.patch
+PASS 65 cpp-first-about-cloakfox.patch
+PASS 66 cpp-first-error-stack-depth.patch
+PASS 67 cpp-first-worker-spoofers.patch
+PASS 68 cloakfox-optional-assets-car.patch
+PASS 69 worker-container-identity.patch
+PASS 70 cloakfox-letterboxing.patch
+CONFLICT 70 cloakfox-container-forget.patch ['browser/components/sessionstore/SessionStore.sys.mjs']
+PASS 71 cloakfox-container-forget.patch
+PASS 72 cloakfox-scoped-data-clear.patch
+PASS 73 cloakfox-strict-proxy-guard.patch
+CONFLICT 73 site-fingerprint-isolation.patch ['dom/svg/SVGGraphicsElement.cpp']
+PASS 74 site-fingerprint-isolation.patch
+PASS 75 cloakfox-upstream-hardening.patch
+CONFLICT 75 cloakfox-region-policy-proxy.patch ['dom/system/NetworkGeolocationProvider.sys.mjs']
+PASS 76 cloakfox-region-policy-proxy.patch
+PASS 77 cloakfox-privacy-completion.patch
+PASS 78 cloakfox-window-activity.patch
+PASS 79 cloakfox-appearance.patch
+PASS 80 cloakfox-clipboard-signals.patch
+PASS 81 cloakfox-pointer-activity.patch
+PASS 82 cloakfox-hover-activity.patch
+PASS 83 cloakfox-native-worker-math.patch
+PASS 84 cloakfox-exported-function-identity.patch
+PASS 85 cloakfox-live-worker-math.patch
+PASS 86 cloakfox-bundled-font-rendering.patch
+CONFLICT 86 cloakfox-user-agent-data.patch ['dom/base/Navigator.cpp', 'dom/workers/WorkerNavigator.cpp']
+PASS 87 cloakfox-user-agent-data.patch
+PASS 88 cloakfox-math-data-correctness.patch
+PASS 89 cloakfox-math-data-toggle.patch
+PASS 90 cloakfox-hackerrank-media-recovery.patch
+PASS 91 cloakfox-appearance-profile.patch
+PASS 92 cloakfox-screen-presentation.patch
+CONFLICT 92 cloakfox-testdome-screen-management.patch ['dom/security/featurepolicy/FeaturePolicyUtils.cpp']
+PASS 93 cloakfox-testdome-screen-management.patch
+CONFLICT 93 cloakfox-window-management-permission.patch ['dom/base/Document.cpp', 'dom/security/permissionspolicy/PermissionsPolicy.cpp', 'dom/security/permissionspolicy/PermissionsPolicyUtils.h']
+PASS 94 cloakfox-window-management-permission.patch
+PASS 95 cloakfox-screen-orientation-events.patch
+PASS 96 cloakfox-webgl-live-state-followup.patch
+PASS 97 cloakfox-audio-analyser-copy-followup.patch
+PASS 98 cloakfox-speech-error-followup.patch
+PASS 99 cloakfox-stock-resource-followup.patch
+PASS 100 cloakfox-windows-manifest-followup.patch
+CONFLICT 100 performance-timeline-timing.patch ['moz.build']
+PASS 101 performance-timeline-timing.patch
+PASS 102 cloakfox-media-device-privacy.patch
+PASS 103 cloakfox-hdr-exposure-privacy.patch
+PASS 104 cloakfox-network-profile.patch
+CONFLICT 104 cloakfox-network-conformance.patch ['netwerk/socket/neqo_glue/src/lib.rs']
+PASS 105 cloakfox-network-conformance.patch
+PASS 106 cloakfox-graphics-gap-fix.patch
+PASS 107 cloakfox-fontface-native-loading.patch
+PASS 108 cloakfox-font-whitelist-parent.patch
+PASS 109 cloakfox-inherited-realm-privacy.patch
+PASS 110 cloakfox-native-realm-presentation.patch
+PASS 111 cloakfox-language-identity.patch
+PASS 112 cloakfox-request-identity-and-mask-storage.patch
+PASS 113 cloakfox-websocket-privacy.patch
+PASS 114 cloakfox-websocket-headers.patch
+PASS 115 cloakfox-proxy-resolver-errors.patch
+PASS 116 cloakfox-turn-proxy-privacy.patch
+PASS 117 cloakfox-privacy-enforcement.patch
+PASS 118 cloakfox-screen-permission-effective-state.patch
+PASS 119 cloakfox-hackerrank-actor-process-safety.patch
+PASS 120 cloakfox-pointer-hover-retention.patch
+PASS 121 bootstrap.patch
+PASS 122 custom-ubo-assets-bootstrap-location.patch
+PASS 123 dbus_name.patch
+PASS 124 devtools-bypass.patch
+PASS 125 disable-data-reporting-at-compile-time.patch
+PASS 126 mozilla_dirs.patch
+PASS 127 urlbarprovider-interventions.patch
+All 127 patches adapted

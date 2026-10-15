@@ -49,7 +49,7 @@ int main() {
  } finally {rmSync(dir,{recursive:true,force:true});}
 });
 
-test('production SeedSync emits one numeric invalidation for unsynced cfg changes without observer recursion', async()=>{
+test('production SeedSync emits one mirror refresh and scoped language invalidation without observer recursion', async()=>{
  const {default:vm}=await import('node:vm');
  const source=readFileSync(new URL('../../additions/browser/components/cloakfox/CloakfoxSeedSync.sys.mjs',import.meta.url),'utf8');
  const block=source.slice(source.indexOf('const observer = {'),source.indexOf('// Containers created AFTER startup'));
@@ -59,6 +59,8 @@ test('production SeedSync emits one numeric invalidation for unsynced cfg change
  vm.runInContext(block+'\nthis.observer=observer;',ctx);
  ctx.observer.observe(null,'nsPref:changed','cloakfox.s.cloak_cfg_3');
  assert.equal(prefs.get('cloakfox.font_identity_epoch'),1);
+ assert.equal(prefs.get('cloakfox.language_identity_epoch.3'),1);
+ assert.equal(prefs.get('cloakfox.language_identity_epoch.0'),undefined);
  assert.equal(publishes,1);
  ctx.observer.observe(null,'nsPref:changed','cloakfox.container.3.network_mode');
  assert.equal(prefs.get('cloakfox.font_identity_epoch'),1);

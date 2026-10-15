@@ -1,7 +1,12 @@
 diff --git a/netwerk/protocol/http/Http2Compression.cpp b/netwerk/protocol/http/Http2Compression.cpp
 --- a/netwerk/protocol/http/Http2Compression.cpp
 +++ b/netwerk/protocol/http/Http2Compression.cpp
-@@ -14,6 +14,8 @@
+@@ -9,16 +9,18 @@
+ #undef LOG
+ #define LOG(args) LOG5(args)
+ #undef LOG_ENABLED
+ #define LOG_ENABLED() LOG5_ENABLED()
+ 
  #include "Http2Compression.h"
  #include "Http2HuffmanIncoming.h"
  #include "Http2HuffmanOutgoing.h"
@@ -10,7 +15,17 @@ diff --git a/netwerk/protocol/http/Http2Compression.cpp b/netwerk/protocol/http/
  #include "mozilla/StaticPtr.h"
  #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
  #include "nsCharSeparatedTokenizer.h"
-@@ -1056,11 +1058,36 @@
+ #include "nsHttpHandler.h"
+ #include "nsIMemoryReporter.h"
+ 
+ namespace mozilla {
+ namespace net {
+@@ -1051,21 +1053,46 @@
+     if (mLowestBufferSizeWaiting < mMaxBufferSetting) {
+       EncodeTableSizeChange(mLowestBufferSizeWaiting);
+     }
+     EncodeTableSizeChange(mMaxBufferSetting);
+     mBufferSizeChangeWaiting = false;
    }
  
    // colon headers first
@@ -50,10 +65,20 @@ diff --git a/netwerk/protocol/http/Http2Compression.cpp b/netwerk/protocol/http/
      if (isWebsocket) {
        ProcessHeader(nvPair(":protocol"_ns, protocol), false, false);
      }
+   } else {
+     ProcessHeader(nvPair(":method"_ns, method), false, false);
+     ProcessHeader(nvPair(":authority"_ns, host), false, false);
+   }
+ 
 diff --git a/netwerk/protocol/http/Http2Compression.h b/netwerk/protocol/http/Http2Compression.h
 --- a/netwerk/protocol/http/Http2Compression.h
 +++ b/netwerk/protocol/http/Http2Compression.h
-@@ -168,6 +168,11 @@
+@@ -163,16 +163,21 @@
+       const nsACString& protocol, bool simpleConnectForm, nsACString& output,
+       bool addTEHeader);
+ 
+   int64_t GetParsedContentLength() {
+     return mParsedContentLength;
    }  // -1 on not found
  
    void SetMaxBufferSize(uint32_t maxBufferSize);
@@ -65,10 +90,20 @@ diff --git a/netwerk/protocol/http/Http2Compression.h b/netwerk/protocol/http/Ht
  
   private:
    enum outputCode {
+     kNeverIndexedLiteral,
+     kPlainLiteral,
+     kIndexedLiteral,
+     kIndex
+   };
 diff --git a/netwerk/protocol/http/Http2Session.cpp b/netwerk/protocol/http/Http2Session.cpp
 --- a/netwerk/protocol/http/Http2Session.cpp
 +++ b/netwerk/protocol/http/Http2Session.cpp
-@@ -27,6 +27,7 @@
+@@ -22,16 +22,17 @@
+ #include "Http2StreamBase.h"
+ #include "Http2StreamTunnel.h"
+ #include "Http2WebTransportSession.h"
+ #include "LoadContextInfo.h"
+ #include "mozilla/EndianUtils.h"
  #include "mozilla/Preferences.h"
  #include "mozilla/Sprintf.h"
  #include "mozilla/StaticPrefs_network.h"
@@ -76,7 +111,17 @@ diff --git a/netwerk/protocol/http/Http2Session.cpp b/netwerk/protocol/http/Http
  #include "mozilla/glean/NetwerkMetrics.h"
  #include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
  #include "nsHttp.h"
-@@ -1089,15 +1090,50 @@
+ #include "nsHttpConnection.h"
+ #include "nsHttpConnectionMgr.h"
+ #include "nsHttpHandler.h"
+ #include "nsIRequestContext.h"
+ #include "nsISupportsPriority.h"
+@@ -1087,66 +1088,117 @@
+ 
+   // entries need to be listed in order by ID
+   // 1st entry is bytes 9 to 14
+   // 2nd entry is bytes 15 to 20
+   // 3rd entry is bytes 21 to 26
    // 4th entry is bytes 27 to 32
    // 5th entry is bytes 33 to 38
  
@@ -134,7 +179,10 @@ diff --git a/netwerk/protocol/http/Http2Session.cpp b/netwerk/protocol/http/Http
  
    // We don't support HTTP/2 Push. Set SETTINGS_TYPE_ENABLE_PUSH to 0
    NetworkEndian::writeUint16(packet + kFrameHeaderBytes + (6 * numberOfEntries),
-@@ -1108,11 +1144,14 @@
+                              SETTINGS_TYPE_ENABLE_PUSH);
+   // The value portion of the setting pair is already initialized to 0
+   numberOfEntries++;
+ 
    // We might also want to set the SETTINGS_TYPE_MAX_CONCURRENT to 0
    // to indicate that we don't support any incoming push streams,
    // but some websites panic when we do that, so we don't by default.
@@ -151,7 +199,9 @@ diff --git a/netwerk/protocol/http/Http2Session.cpp b/netwerk/protocol/http/Http
      numberOfEntries++;
    }
    mWaitingForSettingsAck = true;
-@@ -1122,23 +1161,36 @@
+ 
+   // Advertise the Push RWIN for the session, and on each new pull stream
+   // send a window update
    NetworkEndian::writeUint16(packet + kFrameHeaderBytes + (6 * numberOfEntries),
                               SETTINGS_TYPE_INITIAL_WINDOW);
    NetworkEndian::writeUint32(
@@ -197,7 +247,17 @@ diff --git a/netwerk/protocol/http/Http2Session.cpp b/netwerk/protocol/http/Http
        StaticPrefs::network_http_http2_send_NO_RFC7540_PRI()) {
      NetworkEndian::writeUint16(
          packet + kFrameHeaderBytes + (6 * numberOfEntries),
-@@ -1159,7 +1211,14 @@
+         SETTINGS_NO_RFC7540_PRIORITIES);
+     NetworkEndian::writeUint32(
+         packet + kFrameHeaderBytes + (6 * numberOfEntries) + 2,
+         disableRFC7540Priorities ? 1 : 0);
+     numberOfEntries++;
+@@ -1157,17 +1209,24 @@
+   CreateFrameHeader(packet, dataLen, FRAME_TYPE_SETTINGS, 0, 0);
+   mOutputQueueUsed += kFrameHeaderBytes + dataLen;
+ 
+   LogIO(this, nullptr, "Generate Settings", packet,
+         kFrameHeaderBytes + dataLen);
  
    // now bump the local session window from 64KB
    uint32_t sessionWindowBump = mInitialRwin - kDefaultRwin;
@@ -212,4 +272,9 @@ diff --git a/netwerk/protocol/http/Http2Session.cpp b/netwerk/protocol/http/Http
 +  if (kDefaultRwin < mInitialRwin || chromeH2 || safariH2) {
      // send a window update for the session (Stream 0) for something large
      mLocalSessionWindow = mInitialRwin;
+ 
+     packet = mOutputQueueBuffer.get() + mOutputQueueUsed;
+     CreateFrameHeader(packet, 4, FRAME_TYPE_WINDOW_UPDATE, 0, 0);
+     mOutputQueueUsed += kFrameHeaderBytes + 4;
+     NetworkEndian::writeUint32(packet + kFrameHeaderBytes, sessionWindowBump);
  

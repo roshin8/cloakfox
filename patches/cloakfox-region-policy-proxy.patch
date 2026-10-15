@@ -1,7 +1,12 @@
 diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
 --- a/dom/base/AbstractRange.cpp
 +++ b/dom/base/AbstractRange.cpp
-@@ -985,7 +985,7 @@
+@@ -970,17 +970,17 @@
+       aFlushLayout);
+ 
+   nsRect r = accumulator.mResultRect.IsEmpty() ? accumulator.mFirstRect
+                                                : accumulator.mResultRect;
+   rect->SetLayoutRect(r);
    // Cloakfox: same sub-pixel noise pattern as Element::GetBoundingClientRect.
    // Range-based text measurements are a separate code path used for font
    // fingerprinting via document.createRange().
@@ -10,7 +15,17 @@ diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
      uint32_t s = seed.value();
      auto n = [&s]() {
        s = s * 1664525u + 1013904223u;
-@@ -1054,7 +1054,7 @@
+       return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+     };
+     rect->SetRect(static_cast<float>(rect->X()) + n(),
+                   static_cast<float>(rect->Y()) + n(),
+                   static_cast<float>(rect->Width()) + n(),
+@@ -1039,17 +1039,17 @@
+   CollectClientRectsAndText(
+       &builder, nullptr, this, startRef.GetContainer(),
+       *startRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets),
+       endRef.GetContainer(),
+       *endRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets), aClampToEdge,
        aFlushLayout);
    // Cloakfox: noise each rect in the list. CreepJS uses Range.getClientRects
    // against rendered text to probe per-character metrics.
@@ -19,10 +34,20 @@ diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
      uint32_t s = seed.value();
      auto n = [&s]() {
        s = s * 1664525u + 1013904223u;
+       return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+     };
+     for (uint32_t i = 0; i < rectList->Length(); ++i) {
+       DOMRect* r = rectList->Item(i);
+       if (r) {
 diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
 --- a/dom/base/Element.cpp
 +++ b/dom/base/Element.cpp
-@@ -1227,7 +1227,7 @@
+@@ -1218,17 +1218,17 @@
+   }
+ 
+   rect->SetLayoutRect(frame->GetBoundingClientRect());
+ 
+   // Cloakfox: sub-pixel noise on the returned rect using canvas:seed.
    // Layout-based fingerprints (e.g. font rendering detection) measure
    // getBoundingClientRect across elements; we add deterministic per-context
    // jitter so every container sees a different value.
@@ -31,7 +56,17 @@ diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
      uint32_t s = seed.value();
      auto n = [&s]() {
        s = s * 1664525u + 1013904223u;
-@@ -1257,7 +1257,7 @@
+       return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+     };
+     rect->SetRect(static_cast<float>(rect->X()) + n(),
+                   static_cast<float>(rect->Y()) + n(),
+                   static_cast<float>(rect->Width()) + n(),
+@@ -1248,17 +1248,17 @@
+ 
+   nsLayoutUtils::RectListBuilder builder(rectList);
+   nsLayoutUtils::GetAllInFlowRects(
+       frame, nsLayoutUtils::GetContainingBlockForClientRect(frame), &builder,
+       nsLayoutUtils::GetAllInFlowRectsFlag::AccountForTransforms);
  
    // Cloakfox: same sub-pixel noise as getBoundingClientRect, applied to
    // every rect in the list. CreepJS measures per-rect for multi-line text.
@@ -40,7 +75,17 @@ diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
      uint32_t s = seed.value();
      auto n = [&s]() {
        s = s * 1664525u + 1013904223u;
-@@ -6827,7 +6827,7 @@
+       return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+     };
+     for (uint32_t i = 0; i < rectList->Length(); ++i) {
+       DOMRect* r = rectList->Item(i);
+       if (r) {
+@@ -7008,17 +7008,17 @@
+     parent = result.mParent;
+   }
+ 
+   aRect = CSSIntRect::FromAppUnitsRounded(
+       frame->Style()->EffectiveZoom().Unzoom(rect));
    // Cloakfox: add integer jitter (±1px) to offset measurements. Covers
    // Element.offsetWidth/Height/Left/Top, which CreepJS and fingerprint.com
    // use for font detection via span.offsetWidth comparison.
@@ -49,10 +94,20 @@ diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
      uint32_t s = seed.value() ^ static_cast<uint32_t>(aRect.width * 31 +
                                                         aRect.height * 17);
      s = s * 1664525u + 1013904223u;
+     int32_t dx = static_cast<int32_t>(s % 3) - 1;
+     s = s * 1664525u + 1013904223u;
+     int32_t dy = static_cast<int32_t>(s % 3) - 1;
+     s = s * 1664525u + 1013904223u;
+     int32_t dw = static_cast<int32_t>(s % 3) - 1;
 diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
 --- a/dom/base/Navigator.cpp
 +++ b/dom/base/Navigator.cpp
-@@ -484,6 +484,16 @@
+@@ -471,16 +471,26 @@
+   GetLanguages(languages);
+   MOZ_ASSERT(languages.Length() >= 1);
+   aLanguage.Assign(languages[0]);
+ }
+ 
  void Navigator::GetLanguages(nsTArray<nsString>& aLanguages) {
    BrowsingContext* bc = mWindow ? mWindow->GetBrowsingContext() : nullptr;
    if (bc) {
@@ -69,16 +124,24 @@ diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
      const nsCString& languageOverride = bc->Top()->GetLanguageOverride();
  
      if (!languageOverride.IsEmpty()) {
+       GetAcceptLanguages(aLanguages, &languageOverride);
+ 
+       return;
+     }
+   }
 diff --git a/dom/base/TimezoneManager.cpp b/dom/base/TimezoneManager.cpp
 --- a/dom/base/TimezoneManager.cpp
 +++ b/dom/base/TimezoneManager.cpp
-@@ -1,4 +1,5 @@
+@@ -1,19 +1,37 @@
  #include "TimezoneManager.h"
 +#include "MaskConfig.hpp"
  #include "nsPIDOMWindowInlines.h"
  #include "RoverfoxStorageManager.h"
  #include "nsGlobalWindowInner.h"
-@@ -9,6 +10,23 @@
+ #include "xpcpublic.h"
+ #include "mozilla/dom/BrowsingContext.h"
+ #include "mozilla/dom/Document.h"
+ #include "nsDocShell.h"
  
  namespace mozilla {
  namespace dom {
@@ -102,10 +165,20 @@ diff --git a/dom/base/TimezoneManager.cpp b/dom/base/TimezoneManager.cpp
  
  /* static */ nsString
  TimezoneManager::DisabledKeyForUserContext(uint32_t userContextId) {
+   nsString key;
+   key.AppendPrintf("tz_disabled_%u", userContextId);
+   return key;
+ }
+ 
 diff --git a/dom/base/TimezoneManager.h b/dom/base/TimezoneManager.h
 --- a/dom/base/TimezoneManager.h
 +++ b/dom/base/TimezoneManager.h
-@@ -31,11 +31,7 @@
+@@ -26,21 +26,17 @@
+     RoverfoxStorageManager::PutString(key, timezone);
+   }
+ 
+   static void SetTimezone(uint32_t userContextId, const nsAString& timezone) {
+     StoreTimezone(userContextId, timezone);
      DisableFunction(userContextId);
    }
  
@@ -118,12 +191,22 @@ diff --git a/dom/base/TimezoneManager.h b/dom/base/TimezoneManager.h
  
    static void DisableFunction(uint32_t userContextId);
    static bool IsFunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj);
+ 
+  private:
+   static nsString DisabledKeyForUserContext(uint32_t userContextId);
+ };
+ 
 diff --git a/dom/base/nsGlobalWindowOuter.cpp b/dom/base/nsGlobalWindowOuter.cpp
 --- a/dom/base/nsGlobalWindowOuter.cpp
 +++ b/dom/base/nsGlobalWindowOuter.cpp
-@@ -2071,6 +2071,24 @@
+@@ -2076,16 +2076,34 @@
+       aDocument->ShouldResistFingerprinting(RFPTarget::JSLocale),
        aDocument->GetBrowsingContext()->Top()->GetLanguageOverride(),
        aDocument->GetBrowsingContext()->Top()->GetTimezoneOverride());
+ 
+   if (principal->IsSystemPrincipal()) {
+     creationOptions.setFreezeBuiltins(true);
+   }
  
 +  // Region defaults are scoped to this principal and realm. Explicit Intl
 +  // locale arguments retain normal ICU parsing and behavior.
@@ -146,10 +229,20 @@ diff --git a/dom/base/nsGlobalWindowOuter.cpp b/dom/base/nsGlobalWindowOuter.cpp
    // Determine if we need the Components object.
    bool needComponents = principal->IsSystemPrincipal();
    uint32_t flags = needComponents ? 0 : xpc::OMIT_COMPONENTS_OBJECT;
+   flags |= xpc::DONT_FIRE_ONNEWGLOBALHOOK;
+ 
+   if (!Window_Binding::Wrap(aCx, aNewInner, aNewInner, options,
+                             nsJSPrincipals::get(principal), aGlobal) ||
+       !xpc::InitGlobalObject(aCx, aGlobal, flags)) {
 diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderingContext2D.cpp
 --- a/dom/canvas/CanvasRenderingContext2D.cpp
 +++ b/dom/canvas/CanvasRenderingContext2D.cpp
-@@ -5325,7 +5325,7 @@
+@@ -5443,17 +5443,17 @@
+     double actualBoundingBoxLeft = offsetX - processor.mBoundingBox.X();
+     double actualBoundingBoxRight = processor.mBoundingBox.XMost() - offsetX;
+     double actualBoundingBoxAscent =
+         -processor.mBoundingBox.Y() - baselineAnchor;
+     double actualBoundingBoxDescent =
          processor.mBoundingBox.YMost() + baselineAnchor;
      // Cloakfox: add deterministic sub-pixel noise to text metrics using
      // canvas:seed so measureText is not a reliable font fingerprint.
@@ -158,10 +251,20 @@ diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderin
          PrincipalOrNull() ? PrincipalOrNull()->OriginAttributesRef().mUserContextId : 0,
          "canvas:seed", GetCookieJarSettings())); seed.value_or(0)) {
        uint32_t s = seed.value();
+       auto noise = [&s]() {
+         s = s * 1664525u + 1013904223u;
+         return (static_cast<double>(s) / 4294967295.0 - 0.5) * 0.4;
+       };
+       totalWidth += noise();
 diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
 --- a/dom/geolocation/Geolocation.cpp
 +++ b/dom/geolocation/Geolocation.cpp
-@@ -38,6 +38,8 @@
+@@ -33,16 +33,18 @@
+ #include "nsIPromptService.h"
+ #include "nsIScriptError.h"
+ #include "nsPIDOMWindow.h"
+ #include "nsPIDOMWindowInlines.h"
+ #include "nsServiceManagerUtils.h"
  #include "nsThreadUtils.h"
  #include "nsXULAppAPI.h"
  #include "MaskConfig.hpp"
@@ -170,7 +273,17 @@ diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
  
  class nsIPrincipal;
  
-@@ -87,6 +89,7 @@
+ // Some limit to the number of get or watch geolocation requests
+ // that a window can make.
+ #define MAX_GEO_REQUESTS_PER_WINDOW 1500
+ 
+ // This preference allows to override the "secure context" by
+@@ -82,16 +84,17 @@
+   // MOZ_CAN_RUN_SCRIPT_BOUNDARY is OK here because we're always called from a
+   // runnable.  Ideally nsIRunnable::Run and its overloads would just be
+   // MOZ_CAN_RUN_SCRIPT and then we could be too...
+   MOZ_CAN_RUN_SCRIPT_BOUNDARY
+   void SendLocation(nsIDOMGeoPosition* aLocation);
    bool WantsHighAccuracy() {
      return !mShutdown && mOptions && mOptions->mEnableHighAccuracy;
    }
@@ -178,7 +291,17 @@ diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
    void SetTimeoutTimer();
    void StopTimeoutTimer();
    MOZ_CAN_RUN_SCRIPT
-@@ -141,6 +144,7 @@
+   void NotifyErrorAndShutdown(uint16_t);
+   using ContentPermissionRequestBase::GetPrincipal;
+   nsIPrincipal* GetPrincipal();
+ 
+   bool IsWatch() { return mIsWatchPositionRequest; }
+@@ -136,16 +139,17 @@
+   bool mIsWatchPositionRequest;
+ 
+   nsCOMPtr<nsITimer> mTimeoutTimer;
+   GeoPositionCallback mCallback;
+   GeoPositionErrorCallback mErrorCallback;
    UniquePtr<PositionOptions> mOptions;
  
    RefPtr<Geolocation> mLocator;
@@ -186,7 +309,17 @@ diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
  
    int32_t mWatchId;
    bool mShutdown;
-@@ -375,11 +379,54 @@
+   bool mSeenAnySignal = false;
+   nsCOMPtr<nsIEventTarget> mMainThreadSerialEventTarget;
+ 
+   SystemGeolocationPermissionBehavior mBehavior;
+ };
+@@ -370,21 +374,64 @@
+   // is no longer visible so we should stop waiting for permission, whether it
+   // was granted or not.
+   tabBlockingDialogPromise->AppendNativeHandler(
+       new CancelSystemGeolocationPermissionRequest(permissionRequest));
+ 
    cancelRequestOnError.release();
  }
  
@@ -241,7 +374,17 @@ diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
      return NS_OK;
    }
  
-@@ -520,6 +567,9 @@
+   auto onSystemPermissionResult =
+       [self = RefPtr{this}](GeolocationPermissionStatus
+                                 aResult) MOZ_CAN_RUN_SCRIPT_BOUNDARY_LAMBDA {
+         if (aResult == GeolocationPermissionStatus::Granted ||
+             !StaticPrefs::dom_geolocation_require_system_permission_enabled()) {
+@@ -515,16 +562,19 @@
+ void nsGeolocationRequest::StopTimeoutTimer() {
+   if (mTimeoutTimer) {
+     mTimeoutTimer->Cancel();
+     mTimeoutTimer = nullptr;
+   }
  }
  
  void nsGeolocationRequest::SendLocation(nsIDOMGeoPosition* aPosition) {
@@ -251,7 +394,17 @@ diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
    if (mShutdown) {
      // Ignore SendLocationEvents issued before we were cleared.
      return;
-@@ -1147,12 +1197,6 @@
+   }
+ 
+   if (mOptions && mOptions->mMaximumAge > 0) {
+     EpochTimeStamp positionTime_ms;
+     aPosition->GetTimestamp(&positionTime_ms);
+@@ -1142,22 +1192,16 @@
+   } else {
+     mPendingCallbacks.AppendElement(aRequest);
+   }
+ }
+ 
  /* static */ bool Geolocation::RegisterRequestWithPrompt(
      nsGeolocationRequest* request) {
    nsIEventTarget* target = GetMainThreadSerialEventTarget();
@@ -264,7 +417,17 @@ diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
    ContentPermissionRequestBase::PromptResult pr = request->CheckPromptPrefs();
    if (pr == ContentPermissionRequestBase::PromptResult::Granted) {
      request->RequestDelayedTask(target,
-@@ -1183,6 +1227,15 @@
+                                 nsGeolocationRequest::DelayedTaskType::Allow);
+     return true;
+   }
+   if (pr == ContentPermissionRequestBase::PromptResult::Denied) {
+     request->RequestDelayedTask(target,
+@@ -1178,16 +1222,25 @@
+       permission == geolocation::SystemGeolocationPermissionBehavior::
+                         GeckoWillPromptUser) {
+     return geolocation::SystemGeolocationPermissionBehavior::NoPrompt;
+   }
+   return permission;
  }
  
  void Geolocation::RequestIfPermitted(nsGeolocationRequest* request) {
@@ -280,10 +443,20 @@ diff --git a/dom/geolocation/Geolocation.cpp b/dom/geolocation/Geolocation.cpp
    auto getPermission = [request = RefPtr{request}](auto aPermission) {
      switch (aPermission) {
        case geolocation::SystemGeolocationPermissionBehavior::
+           SystemWillPromptUser:
+       case geolocation::SystemGeolocationPermissionBehavior::
+           GeckoWillPromptUser:
+         request->SetPromptBehavior(aPermission);
+         break;
 diff --git a/dom/geolocation/GeolocationPosition.cpp b/dom/geolocation/GeolocationPosition.cpp
 --- a/dom/geolocation/GeolocationPosition.cpp
 +++ b/dom/geolocation/GeolocationPosition.cpp
-@@ -7,7 +7,6 @@
+@@ -2,17 +2,16 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "mozilla/dom/GeolocationPosition.h"
+ 
  #include "mozilla/FloatingPoint.h"
  #include "mozilla/dom/GeolocationCoordinates.h"
  #include "mozilla/dom/GeolocationPositionBinding.h"
@@ -291,7 +464,17 @@ diff --git a/dom/geolocation/GeolocationPosition.cpp b/dom/geolocation/Geolocati
  
  using mozilla::EqualOrBothNaN;
  
-@@ -59,19 +58,13 @@
+ // NaN() is a more convenient function name.
+ inline double NaN() { return mozilla::UnspecifiedNaN<double>(); }
+ 
+ ////////////////////////////////////////////////////
+ // nsGeoPositionCoords
+@@ -54,44 +53,35 @@
+   NS_INTERFACE_MAP_ENTRY(nsIDOMGeoPositionCoords)
+ NS_INTERFACE_MAP_END
+ 
+ NS_IMPL_ADDREF(nsGeoPositionCoords)
+ NS_IMPL_RELEASE(nsGeoPositionCoords)
  
  NS_IMETHODIMP
  nsGeoPositionCoords::GetLatitude(double* aLatitude) {
@@ -313,7 +496,11 @@ diff --git a/dom/geolocation/GeolocationPosition.cpp b/dom/geolocation/Geolocati
    return NS_OK;
  }
  
-@@ -83,10 +76,7 @@
+ NS_IMETHODIMP
+ nsGeoPositionCoords::GetAltitude(double* aAltitude) {
+   *aAltitude = mAlt;
+   return NS_OK;
+ }
  
  NS_IMETHODIMP
  nsGeoPositionCoords::GetAccuracy(double* aAccuracy) {
@@ -325,10 +512,20 @@ diff --git a/dom/geolocation/GeolocationPosition.cpp b/dom/geolocation/Geolocati
    return NS_OK;
  }
  
+ NS_IMETHODIMP
+ nsGeoPositionCoords::GetAltitudeAccuracy(double* aAltitudeAccuracy) {
+   *aAltitudeAccuracy = mVError;
+   return NS_OK;
+ }
 diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
 --- a/dom/svg/SVGGraphicsElement.cpp
 +++ b/dom/svg/SVGGraphicsElement.cpp
-@@ -45,7 +45,7 @@
+@@ -32,17 +32,17 @@
+ // Implementation
+ 
+ SVGGraphicsElement::SVGGraphicsElement(
+     already_AddRefed<mozilla::dom::NodeInfo> aNodeInfo)
+     : SVGGraphicsElementBase(std::move(aNodeInfo)) {}
  
  // Cloakfox: sub-pixel noise on a gfx::Rect for SVG bbox spoofing.
  static gfx::Rect CloakNoiseRect(Document* aDoc, gfx::Rect aRect) {
@@ -337,7 +534,17 @@ diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
    if (!seed || seed.value() == 0) return aRect;
    uint32_t s = seed.value();
    auto n = [&s]() {
-@@ -136,7 +136,7 @@
+     s = s * 1664525u + 1013904223u;
+     return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+   };
+   aRect.x += n();
+   aRect.y += n();
+@@ -96,17 +96,17 @@
+             SVGBBoxFlag::TextContentBounds, SVGBBoxFlag::DisregardCSSZoom};
+   return MakeAndAddRef<SVGRect>(
+       this, CloakNoiseRect(OwnerDoc(), ToRect(SVGUtils::GetBBox(frame, flags))));
+ }
+ 
  // Cloakfox: noise the 6 components of a 2D affine matrix. Applied to
  // getCTM / getScreenCTM so SVG transform fingerprints differ per container.
  static gfx::Matrix CloakNoiseMatrix(Document* aDoc, gfx::Matrix m) {
@@ -346,10 +553,20 @@ diff --git a/dom/svg/SVGGraphicsElement.cpp b/dom/svg/SVGGraphicsElement.cpp
    if (!seed || seed.value() == 0) return m;
    uint32_t s = seed.value();
    auto n = [&s]() {
+     s = s * 1664525u + 1013904223u;
+     return (static_cast<float>(s) / 4294967295.0f - 0.5f) * 1e-4f;
+   };
+   m._11 += n(); m._12 += n();
+   m._21 += n(); m._22 += n();
 diff --git a/dom/svg/SVGTextContentElement.cpp b/dom/svg/SVGTextContentElement.cpp
 --- a/dom/svg/SVGTextContentElement.cpp
 +++ b/dom/svg/SVGTextContentElement.cpp
-@@ -119,7 +119,7 @@
+@@ -114,17 +114,17 @@
+   SVGTextFrame* textFrame = GetSVGTextFrame();
+   return textFrame ? textFrame->GetNumberOfChars(this) : 0;
+ }
+ 
+ float SVGTextContentElement::GetComputedTextLength() {
    SVGTextFrame* textFrame = GetSVGTextFrame();
    float length = textFrame ? textFrame->GetComputedTextLength(this) : 0.0f;
    // Cloakfox: sub-pixel noise to defeat SVG text-based font fingerprinting.
@@ -358,12 +575,22 @@ diff --git a/dom/svg/SVGTextContentElement.cpp b/dom/svg/SVGTextContentElement.c
      uint32_t s = seed.value() ^ static_cast<uint32_t>(length * 1000);
      s = s * 1664525u + 1013904223u;
      length += (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+   }
+   return length;
+ }
+ 
+ void SVGTextContentElement::SelectSubString(uint32_t charnum, uint32_t nchars,
 diff --git a/dom/system/NetworkGeolocationProvider.sys.mjs b/dom/system/NetworkGeolocationProvider.sys.mjs
 --- a/dom/system/NetworkGeolocationProvider.sys.mjs
 +++ b/dom/system/NetworkGeolocationProvider.sys.mjs
-@@ -399,53 +399,17 @@
-       `Sending IP-address-based geolocation request${logStr} to network service: ${url}`
-     );
+@@ -478,73 +478,37 @@
+         this.listener.update(cachedLocation);
+       }
+       return;
+     }
+ 
+     // From here on, do a network geolocation request //
+     let url = Services.urlFormatter.formatURLPref("geo.provider.network.url");
  
 -    // Use CLOAK_CONFIG geolocation if configured
 -    let DEFAULT_DEG = -180;
@@ -401,6 +628,16 @@ diff --git a/dom/system/NetworkGeolocationProvider.sys.mjs b/dom/system/NetworkG
 -        );
 -      } else {
 -        // No CLOAK_CONFIG override, use real geolocation
+-        // formatURLPref() returns about:blank for a pref without a value.
+-        if (!url || url == "about:blank") {
+-          throw new Error("No network geolocation service URL is configured");
+-        }
+-
+-        let logStr = data.wifiAccessPoints ? " with wifi APs" : "";
+-        lazy.log.info(
+-          `Sending IP-address-based geolocation request${logStr} to network service: ${url}`
+-        );
+-
 -        result = await this.fetchLocation(url, wifiData);
 -
 -        lazy.log.info(
@@ -411,7 +648,16 @@ diff --git a/dom/system/NetworkGeolocationProvider.sys.mjs b/dom/system/NetworkG
 -          result.location.lng,
 -          accuracy || result.accuracy
 -        );
--      }
++      // formatURLPref() returns about:blank for a pref without a value.
++      if (!url || url == "about:blank") {
++        throw new Error("No network geolocation service URL is configured");
+       }
++
++      let logStr = data.wifiAccessPoints ? " with wifi APs" : "";
++      lazy.log.info(
++        `Sending IP-address-based geolocation request${logStr} to network service: ${url}`
++      );
++
 +      result = await this.fetchLocation(url, wifiData);
 +      lazy.log.info(
 +        `geo provider reported: ${result.location.lng}:${result.location.lat}`
@@ -424,10 +670,20 @@ diff --git a/dom/system/NetworkGeolocationProvider.sys.mjs b/dom/system/NetworkG
  
        if (this.listener) {
          this.listener.update(newLocation);
+       }
+ 
+       ensureCachedResponse();
+       gCachedResponse.store(newLocation, data.wifiAccessPoints);
+ 
 diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
 --- a/dom/workers/WorkerNavigator.cpp
 +++ b/dom/workers/WorkerNavigator.cpp
-@@ -74,6 +74,23 @@
+@@ -69,16 +69,33 @@
+   MOZ_ASSERT(rts);
+ 
+   RuntimeService::NavigatorProperties properties =
+       rts->GetNavigatorProperties();
+ 
    WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
    if (workerPrivate && !workerPrivate->GetLanguageOverride().IsEmpty()) {
      properties.mLanguages = workerPrivate->GetLanguageOverride().Clone();
@@ -451,10 +707,20 @@ diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
    }
  
    RefPtr<WorkerNavigator> navigator = new WorkerNavigator(properties, aOnLine);
+ 
+   return navigator.forget();
+ }
+ 
+ void WorkerNavigator::Invalidate() {
 diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 --- a/dom/workers/WorkerPrivate.cpp
 +++ b/dom/workers/WorkerPrivate.cpp
-@@ -3019,6 +3019,17 @@
+@@ -3004,16 +3004,27 @@
+           ShouldResistFingerprinting(RFPTarget::JSLocale), languageOverride,
+           timezoneOverride);
+       xpc::InitGlobalObjectOptions(
+           contentRealmOptions, UsesSystemPrincipal(), mIsSecureContext,
+           ShouldResistFingerprinting(RFPTarget::JSDateTimeUTC),
            ShouldResistFingerprinting(RFPTarget::JSMathFdlibm),
            ShouldResistFingerprinting(RFPTarget::JSLocale), languageOverride,
            timezoneOverride);
@@ -472,77 +738,20 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
        // Check if it's a privileged addon executing in order to allow access
        // to SharedArrayBuffer
        if (mLoadInfo.mPrincipal) {
-diff --git a/netwerk/base/nsProtocolProxyService.cpp b/netwerk/base/nsProtocolProxyService.cpp
---- a/netwerk/base/nsProtocolProxyService.cpp
-+++ b/netwerk/base/nsProtocolProxyService.cpp
-@@ -158,6 +158,24 @@
-                                ? 0 : Preferences::GetInt(pref.get(), 2);
-       nsAutoCString expected("cloakfox-container:");
-       expected.AppendInt(ucid);
-+      nsAutoCString bindingPref("cloakfox.container.");
-+      bindingPref.AppendInt(ucid);
-+      bindingPref.AppendLiteral(".proxy_ref");
-+      nsAutoCString reference;
-+      Preferences::GetCString(bindingPref.get(), reference);
-+      if (!reference.IsEmpty()) {
-+        nsAutoCString revisionPref("cloakfox.container.");
-+        revisionPref.AppendInt(ucid);
-+        revisionPref.AppendLiteral(".proxy_revision");
-+        nsAutoCString revision;
-+        Preferences::GetCString(revisionPref.get(), revision);
-+        expected.AssignLiteral("cloakfox-managed:");
-+        expected.AppendInt(ucid);
-+        expected.Append(':');
-+        expected.Append(reference);
-+        expected.Append(':');
-+        expected.Append(revision);
-+      }
-       nsAutoCString isolation;
-       if (aProxyInfo) aProxyInfo->GetConnectionIsolationKey(isolation);
-       if (mode != 0 && (mode != 1 || !aProxyInfo || !isolation.Equals(expected))) {
-diff --git a/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp b/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
---- a/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
-+++ b/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
-@@ -138,6 +138,14 @@
-   nsAutoCString challenges;
-   mProxyAuth = (httpStatus == 407);
- 
-+  // Named Cloakfox proxies supply their own preemptive Basic credentials.
-+  // Never negotiate a different identity from the browser-wide proxy cache or
-+  // prompt after rejection (including a proxy configured without credentials).
-+  if (mProxyAuth && mProxyInfo &&
-+      mProxyInfo->ConnectionIsolationKey().Find("cloakfox-managed:") == 0) {
-+    return NS_ERROR_PROXY_AUTHENTICATION_FAILED;
-+  }
-+
-   rv = PrepareForAuthentication(mProxyAuth);
-   if (NS_FAILED(rv)) return rv;
- 
-@@ -1581,6 +1589,20 @@
-   if (header == nsHttp::Proxy_Authorization) {
-     continuationState = &mProxyAuthContinuationState;
- 
-+    if (mProxyInfo &&
-+        mProxyInfo->ConnectionIsolationKey().Find("cloakfox-managed:") == 0) {
-+      // This route is scoped by container + catalog identity + revision at the
-+      // connection layer. Do not allow the global proxy auth cache to override
-+      // its credentials. SetProxyCredentials is a proxy header, not an origin
-+      // Authorization header, and is consumed by the CONNECT tunnel.
-+      const auto& credentials = mProxyInfo->ProxyAuthorizationHeader();
-+      if (!credentials.IsEmpty()) {
-+        rv = mAuthChannel->SetProxyCredentials(credentials);
-+        MOZ_ASSERT(NS_SUCCEEDED(rv));
-+      }
-+      return;
-+    }
-+
-     if (mProxyInfo) {
-       nsAutoCString type;
-       mProxyInfo->GetType(type);
+         if (auto* policy =
+                 BasePrincipal::Cast(mLoadInfo.mPrincipal)->AddonPolicy()) {
+           if (policy->IsPrivileged() &&
+               ExtensionPolicyService::GetSingleton().IsExtensionProcess()) {
+             // Privileged extensions are allowed to use SharedArrayBuffer in
 diff --git a/intl/components/src/Locale.cpp b/intl/components/src/Locale.cpp
 --- a/intl/components/src/Locale.cpp
 +++ b/intl/components/src/Locale.cpp
-@@ -27,48 +27,13 @@
+@@ -22,58 +22,23 @@
+ #include "unicode/utypes.h"
+ #include "MaskConfig.hpp"
+ 
+ namespace mozilla::intl {
+ 
  using namespace intl::LanguageTagLimits;
  
  
@@ -598,10 +807,20 @@ diff --git a/intl/components/src/Locale.cpp b/intl/components/src/Locale.cpp
  
  template <typename CharT>
  bool IsStructurallyValidLanguageTag(Span<const CharT> aLanguage) {
+   // unicode_language_subtag = alpha{2,3} | alpha{5,8};
+   size_t length = aLanguage.size();
+   const CharT* str = aLanguage.data();
+   return ((2 <= length && length <= 3) || (5 <= length && length <= 8)) &&
+          std::all_of(str, str + length, IsAsciiAlpha<CharT>);
 diff --git a/intl/components/src/Locale.h b/intl/components/src/Locale.h
 --- a/intl/components/src/Locale.h
 +++ b/intl/components/src/Locale.h
-@@ -208,11 +208,8 @@
+@@ -203,21 +203,18 @@
+  */
+ class MOZ_STACK_CLASS Locale final {
+  public:
+   using VariantsVector = Vector<VariantSubtag, 2>;
+   using ExtensionsVector = Vector<UniqueChars, 2>;
  
   private:
    LanguageSubtag mLanguage = {};
@@ -613,7 +832,17 @@ diff --git a/intl/components/src/Locale.h b/intl/components/src/Locale.h
  
    VariantsVector mVariants;
    ExtensionsVector mExtensions;
-@@ -341,28 +338,10 @@
+   UniqueChars mPrivateUse = nullptr;
+ 
+   friend class LocaleParser;
+ 
+  public:
+@@ -330,38 +327,20 @@
+     auto begin() const { return SubtagIterator<Vec>(mVector.begin()); }
+     auto end() const { return SubtagIterator<Vec>(mVector.end()); }
+ 
+     Span<const char> operator[](size_t aIndex) const {
+       return ToSpan(mVector[aIndex]);
      }
    };
  
@@ -646,10 +875,58 @@ diff --git a/intl/components/src/Locale.h b/intl/components/src/Locale.h
    auto Variants() const { return SubtagEnumeration(mVariants); }
    auto Extensions() const { return SubtagEnumeration(mExtensions); }
    Maybe<Span<const char>> PrivateUse() const {
+     if (const char* p = mPrivateUse.get()) {
+       return Some(MakeStringSpan(p));
+     }
+     return Nothing();
+   }
+diff --git a/netwerk/base/nsProtocolProxyService.cpp b/netwerk/base/nsProtocolProxyService.cpp
+--- a/netwerk/base/nsProtocolProxyService.cpp
++++ b/netwerk/base/nsProtocolProxyService.cpp
+@@ -153,16 +153,34 @@
+       const uint32_t ucid = loadInfo->GetOriginAttributes().mUserContextId;
+       nsAutoCString pref("cloakfox.container.");
+       pref.AppendInt(ucid);
+       pref.AppendLiteral(".network_mode");
+       const int32_t mode = Preferences::GetType(pref.get()) == nsIPrefBranch::PREF_INVALID
+                                ? 0 : Preferences::GetInt(pref.get(), 2);
+       nsAutoCString expected("cloakfox-container:");
+       expected.AppendInt(ucid);
++      nsAutoCString bindingPref("cloakfox.container.");
++      bindingPref.AppendInt(ucid);
++      bindingPref.AppendLiteral(".proxy_ref");
++      nsAutoCString reference;
++      Preferences::GetCString(bindingPref.get(), reference);
++      if (!reference.IsEmpty()) {
++        nsAutoCString revisionPref("cloakfox.container.");
++        revisionPref.AppendInt(ucid);
++        revisionPref.AppendLiteral(".proxy_revision");
++        nsAutoCString revision;
++        Preferences::GetCString(revisionPref.get(), revision);
++        expected.AssignLiteral("cloakfox-managed:");
++        expected.AppendInt(ucid);
++        expected.Append(':');
++        expected.Append(reference);
++        expected.Append(':');
++        expected.Append(revision);
++      }
+       nsAutoCString isolation;
+       if (aProxyInfo) aProxyInfo->GetConnectionIsolationKey(isolation);
+       if (mode != 0 && (mode != 1 || !aProxyInfo || !isolation.Equals(expected))) {
+         aChannel->Cancel(NS_ERROR_PROXY_CONNECTION_REFUSED);
+         aProxyInfo = nullptr;
+         aStatus = NS_ERROR_PROXY_CONNECTION_REFUSED;
+       }
+     }
 diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/HttpBaseChannel.cpp
 --- a/netwerk/protocol/http/HttpBaseChannel.cpp
 +++ b/netwerk/protocol/http/HttpBaseChannel.cpp
-@@ -9,6 +9,7 @@
+@@ -4,16 +4,17 @@
+ 
+ // HttpLog.h should generally be included first
+ #include "mozilla/net/HttpBaseChannel.h"
+ 
+ #include <algorithm>
  #include <utility>
  
  #include "HttpBaseChannel.h"
@@ -657,7 +934,17 @@ diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/H
  #include "HttpLog.h"
  #include "LoadInfo.h"
  #include "ReferrerInfo.h"
-@@ -400,9 +401,23 @@
+ #include "mozIRemoteLazyInputStream.h"
+ #include "mozIThirdPartyUtil.h"
+ #include "mozilla/AntiTrackingUtils.h"
+ #include "mozilla/BasePrincipal.h"
+ #include "mozilla/BinarySearch.h"
+@@ -395,19 +396,33 @@
+   }
+ 
+   RefPtr<mozilla::dom::BrowsingContext> browsingContext;
+   mLoadInfo->GetBrowsingContext(getter_AddRefs(browsingContext));
+   if (!browsingContext) {
      mLoadInfo->GetAssociatedBrowsingContext(getter_AddRefs(browsingContext));
    }
  
@@ -683,10 +970,79 @@ diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/H
  
    rv = gHttpHandler->AddStandardRequestHeaders(
        &mRequestHead, aURI, isHTTPS, contentPolicyType,
+       nsContentUtils::ShouldResistFingerprinting(this,
+                                                  RFPTarget::HttpUserAgent),
+       languageOverride);
+   if (NS_FAILED(rv)) return rv;
+ 
+diff --git a/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp b/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
+--- a/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
++++ b/netwerk/protocol/http/nsHttpChannelAuthProvider.cpp
+@@ -133,16 +133,24 @@
+   if (proxyInfo) {
+     mProxyInfo = do_QueryInterface(proxyInfo);
+     if (!mProxyInfo) return NS_ERROR_NO_INTERFACE;
+   }
+ 
+   nsAutoCString challenges;
+   mProxyAuth = (httpStatus == 407);
+ 
++  // Named Cloakfox proxies supply their own preemptive Basic credentials.
++  // Never negotiate a different identity from the browser-wide proxy cache or
++  // prompt after rejection (including a proxy configured without credentials).
++  if (mProxyAuth && mProxyInfo &&
++      mProxyInfo->ConnectionIsolationKey().Find("cloakfox-managed:") == 0) {
++    return NS_ERROR_PROXY_AUTHENTICATION_FAILED;
++  }
++
+   rv = PrepareForAuthentication(mProxyAuth);
+   if (NS_FAILED(rv)) return rv;
+ 
+   if (mProxyAuth) {
+     // only allow a proxy challenge if we have a proxy server configured.
+     // otherwise, we could inadvertently expose the user's proxy
+     // credentials to an origin server.  We could attempt to proceed as
+     // if we had received a 401 from the server, but why risk flirting
+@@ -1583,16 +1591,30 @@
+   // we're authenticating against a proxy
+   // or a webserver
+   nsISupports** continuationState;
+ 
+   nsAutoCString suffix;
+   if (header == nsHttp::Proxy_Authorization) {
+     continuationState = &mProxyAuthContinuationState;
+ 
++    if (mProxyInfo &&
++        mProxyInfo->ConnectionIsolationKey().Find("cloakfox-managed:") == 0) {
++      // This route is scoped by container + catalog identity + revision at the
++      // connection layer. Do not allow the global proxy auth cache to override
++      // its credentials. SetProxyCredentials is a proxy header, not an origin
++      // Authorization header, and is consumed by the CONNECT tunnel.
++      const auto& credentials = mProxyInfo->ProxyAuthorizationHeader();
++      if (!credentials.IsEmpty()) {
++        rv = mAuthChannel->SetProxyCredentials(credentials);
++        MOZ_ASSERT(NS_SUCCEEDED(rv));
++      }
++      return;
++    }
++
+     if (mProxyInfo) {
+       nsAutoCString type;
+       mProxyInfo->GetType(type);
+       if (type.EqualsLiteral("https") || type.EqualsLiteral("masque")) {
+         // Let this be overriden by anything from the cache.
+         auto const& pa = mProxyInfo->ProxyAuthorizationHeader();
+         if (!pa.IsEmpty()) {
+           rv = mAuthChannel->SetProxyCredentials(pa);
 diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsHttpHandler.cpp
 --- a/netwerk/protocol/http/nsHttpHandler.cpp
 +++ b/netwerk/protocol/http/nsHttpHandler.cpp
-@@ -2117,10 +2117,6 @@
+@@ -2121,20 +2121,16 @@
+         mainThread,
+         NS_NewRunnableFunction("nsHttpHandler::SetAcceptLanguages", [&rv]() {
+           rv = gHttpHandler->SetAcceptLanguages();
+         }));
+     return rv;
    }
  
    MOZ_ASSERT(NS_IsMainThread());
@@ -697,3 +1053,8 @@ diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsH
  
    mAcceptLanguagesIsDirty = false;
  
+   nsAutoCString acceptLanguages;
+   intl::LocaleService::GetInstance()->GetAcceptLanguages(acceptLanguages);
+ 
+   nsAutoCString buf;
+   nsresult rv = PrepareAcceptLanguages(acceptLanguages.get(), buf);

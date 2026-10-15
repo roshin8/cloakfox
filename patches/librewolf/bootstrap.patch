@@ -1,8 +1,12 @@
 diff --git a/python/mozversioncontrol/mozversioncontrol/repo/source.py b/python/mozversioncontrol/mozversioncontrol/repo/source.py
-index 59c1d5fbd238..410177d94d89 100644
 --- a/python/mozversioncontrol/mozversioncontrol/repo/source.py
 +++ b/python/mozversioncontrol/mozversioncontrol/repo/source.py
-@@ -91,7 +91,7 @@ class SrcRepository(Repository):
+@@ -108,17 +108,17 @@
+         """This function gets all files in your source folder e.g mozilla-central
+         and creates a list of that
+         """
+         res = []
+         # move away the .git or .hg folder from path to more easily test in a hg/git repo
          for root, dirs, files in os.walk(self.path):
              base = os.path.relpath(root, self.path)
              for name in files:
@@ -11,3 +15,8 @@ index 59c1d5fbd238..410177d94d89 100644
          return res
  
      def get_tracked_files_finder(self, path):
+         """Get files, similar to 'hg files -0' or 'git ls-files -z', thats why
+         we read the .gitignore file for patterns to ignore.
+         Speed could probably be improved.
+         """
+         import fnmatch

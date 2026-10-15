@@ -1,7 +1,34 @@
+diff --git a/cloakcfg/MaskConfig.hpp b/cloakcfg/MaskConfig.hpp
+--- a/cloakcfg/MaskConfig.hpp
++++ b/cloakcfg/MaskConfig.hpp
+@@ -287,17 +287,17 @@
+   return std::nullopt;
+ }
+ 
+ template <typename T>
+ inline T MParamGL(uint32_t pname, T defaultValue, bool isWebGL2) {
+   if (auto value = MaskConfig::GetNested(
+           isWebGL2 ? "webGl2:parameters" : "webGl:parameters",
+           std::to_string(pname));
+-      value.has_value()) {
++      value.has_value() && value->is_array()) {
+     return value.value().get<T>();
+   }
+   return defaultValue;
+ }
+ 
+ template <typename T>
+ inline std::vector<T> MParamGLVector(uint32_t pname,
+                                      std::vector<T> defaultValue,
 diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
 --- a/dom/canvas/ClientWebGLContext.cpp
 +++ b/dom/canvas/ClientWebGLContext.cpp
-@@ -791,28 +791,17 @@
+@@ -786,38 +786,27 @@
+ }
+ 
+ void ClientWebGLContext::SetUnpackColorSpace(
+     const dom::PredefinedColorSpace val) {
+   mUnpackColorSpace = val;
    Run<RPROC(SetUnpackColorSpace)>(*mUnpackColorSpace);
  }
  
@@ -38,7 +65,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
          return wp->GetOriginAttributes().mUserContextId;
        }
      }
-@@ -833,40 +822,15 @@
+   }
+   return 0;
+ }
+ 
+ void ClientWebGLContext::GetContextAttributes(
+@@ -828,50 +817,25 @@
+   if (!notLost) {
+     return;
+   }
+ 
+   dom::WebGLContextAttributes& result = retval.SetValue();
  
    const auto& options = notLost->info.options;
  
@@ -88,7 +125,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
  }
  
  // -----------------------
-@@ -2275,11 +2239,71 @@
+ 
+ NS_IMETHODIMP
+ ClientWebGLContext::SetDimensions(const int32_t signedWidth,
+                                   const int32_t signedHeight) {
+   const FuncScope funcScope(*this, "<SetDimensions>");
+@@ -2270,21 +2234,81 @@
+   retval.setNull();
+   RefPtr<webgl::NotLostData> notLost(mNotLost);
+   if (!notLost) {
+     return;
+   }
    const auto& limits = Limits();
    const auto& state = State();
  
@@ -162,7 +209,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
  
    if (data.has_value()) {
      const auto& value = data.value();
-@@ -2299,33 +2323,7 @@
+     if (std::holds_alternative<int64_t>(value)) {
+       retval.set(JS::NumberValue(double(std::get<int64_t>(value))));
+       return;
+     }
+     if (std::holds_alternative<double>(value)) {
+@@ -2294,43 +2318,17 @@
+     if (std::holds_alternative<bool>(value)) {
+       retval.set(JS::BooleanValue(std::get<bool>(value)));
+       return;
+     }
+     if (std::holds_alternative<std::string>(value)) {
        retval.set(StringValue(cx, std::get<std::string>(value), rv));
        return;
      }
@@ -197,7 +254,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
    }
  
    const auto fnSetRetval_Buffer = [&](const GLenum target) {
-@@ -2434,8 +2432,7 @@
+     const auto buffer = *MaybeFind(state.mBoundBufferByTarget, target);
+     (void)ToJSValueOrNull(cx, buffer, retval);
+   };
+   const auto fnSetRetval_Tex = [&](const GLenum texTarget) {
+     const auto& texUnit = state.mTexUnits[state.mActiveTexUnit];
+@@ -2429,18 +2427,17 @@
+ 
+     // -
+     // Array returns
+ 
+     // 2 floats
      case LOCAL_GL_DEPTH_RANGE:
        retval.set(Create<dom::Float32Array>(
            cx, this,
@@ -207,7 +274,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
            rv));
        return;
  
-@@ -2459,16 +2456,14 @@
+     case LOCAL_GL_ALIASED_POINT_SIZE_RANGE:
+       retval.set(Create<dom::Float32Array>(
+           cx, this,
+           MaskConfig::MParamGL<std::array<float, 2UL>>(
+               pname, limits.pointSizeRange, mIsWebGL2),
+@@ -2454,26 +2451,24 @@
+               pname, limits.lineWidthRange, mIsWebGL2),
+           rv));
+       return;
+ 
+     // 4 floats
      case LOCAL_GL_COLOR_CLEAR_VALUE:
        retval.set(Create<dom::Float32Array>(
            cx, this,
@@ -226,7 +303,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
            rv));
        return;
  
-@@ -2488,16 +2483,14 @@
+     // 2 ints
+     case LOCAL_GL_MAX_VIEWPORT_DIMS: {
+       auto maxViewportDim = BitwiseCast<int32_t>(limits.maxViewportDim);
+       const auto dims = std::array<int32_t, 2>{maxViewportDim, maxViewportDim};
+       retval.set(Create<dom::Int32Array>(
+@@ -2483,26 +2478,24 @@
+           rv));
+       return;
+     }
+ 
+     // 4 ints
      case LOCAL_GL_SCISSOR_BOX:
        retval.set(Create<dom::Int32Array>(
            cx, this,
@@ -245,7 +332,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
            rv));
        return;
  
-@@ -2653,9 +2646,14 @@
+     case LOCAL_GL_COMPRESSED_TEXTURE_FORMATS:
+       std::vector<uint32_t> compressedTextureUint32(
+           state.mCompressedTextureFormats.begin(),
+           state.mCompressedTextureFormats.end());
+       retval.set(Create<dom::Uint32Array>(
+@@ -2648,19 +2641,24 @@
+ 
+       case LOCAL_GL_RENDERER: {
+         bool allowRenderer = StaticPrefs::webgl_enable_renderer_query();
+         if (ShouldResistFingerprinting(RFPTarget::WebGLRenderInfo) ||
+             ShouldResistFingerprinting(RFPTarget::WebGLRendererConstant)) {
            allowRenderer = false;
          }
          if (allowRenderer) {
@@ -263,7 +360,17 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
            }
          }
          if (!ret) {
-@@ -2834,9 +2832,7 @@
+           ret = Some(std::string{"Mozilla"});
+         }
+         break;
+       }
+ 
+@@ -2829,19 +2827,17 @@
+         case LOCAL_GL_TRANSFORM_FEEDBACK_PAUSED:
+           retval.setBoolean(*maybe);
+           return;
+ 
+         // 4 bools
          case LOCAL_GL_COLOR_WRITEMASK: {
            const auto mask = uint8_t(*maybe);
            const auto bs = std::bitset<4>(mask);
@@ -274,10 +381,20 @@ diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.c
            JS::Rooted<JS::Value> arr(cx);
            if (!dom::ToJSValue(cx, src.data(), src.size(), &arr)) {
              rv = NS_ERROR_OUT_OF_MEMORY;
+           }
+           retval.set(arr);
+           return;
+         }
+ 
 diff --git a/dom/canvas/ClientWebGLContext.h b/dom/canvas/ClientWebGLContext.h
 --- a/dom/canvas/ClientWebGLContext.h
 +++ b/dom/canvas/ClientWebGLContext.h
-@@ -1090,7 +1090,6 @@
+@@ -1085,17 +1085,16 @@
+   void SetUnpackColorSpace(dom::PredefinedColorSpace);
+ 
+   // -
+ 
+   void GetContextAttributes(dom::Nullable<dom::WebGLContextAttributes>& retval);
  
   private:
    // Helper for mask config values
@@ -285,15 +402,8 @@ diff --git a/dom/canvas/ClientWebGLContext.h b/dom/canvas/ClientWebGLContext.h
    // Per-context WebGL parameter support
    uint32_t GetUserContextId() const;
  
-diff --git a/cloakcfg/MaskConfig.hpp b/cloakcfg/MaskConfig.hpp
---- a/cloakcfg/MaskConfig.hpp
-+++ b/cloakcfg/MaskConfig.hpp
-@@ -292,7 +292,7 @@
-   if (auto value = MaskConfig::GetNested(
-           isWebGL2 ? "webGl2:parameters" : "webGl:parameters",
-           std::to_string(pname));
--      value.has_value()) {
-+      value.has_value() && value->is_array()) {
-     return value.value().get<T>();
-   }
-   return defaultValue;
+   webgl::SwapChainOptions PrepareAsyncSwapChainOptions(
+       WebGLFramebufferJS* fb, bool webvr,
+       const webgl::SwapChainOptions& options = webgl::SwapChainOptions());
+ 
+  public:

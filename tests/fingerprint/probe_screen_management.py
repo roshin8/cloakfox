@@ -50,7 +50,7 @@ def run_policy(f):
     d=f.driver
     def query(state='granted',result='resolved'):
         value=d.execute_async_script(QUERY)
-        assert value=={'state':state,'result':result},value
+        assert value=={'state':state,'result':result},{'url':d.current_url,'expected':{'state':state,'result':result},'actual':value}
         return value
     f.set_config(0,{'navigator.userAgent':CHROME,'permissions:spoof':True})
     f.set_master(True);f.set_feature(True);f.set_origins([f.origin]);d=f.open()
@@ -63,8 +63,9 @@ def run_policy(f):
       ('malformed',{'Permissions-Policy':'window-management=('},False),
       ('lookalike',{'Permissions-Policy':'x-window-management=()'},False),
       ('boolean',{'Permissions-Policy':'window-management=?0'},False),
-      ('legacy',{'Feature-Policy':"window-management 'none'"},True)]
-    f.pref('dom.security.featurePolicy.header.enabled',True)
+      # Firefox158 reads only Permissions-Policy; the retired header is ignored.
+      ('legacy',{'Feature-Policy':"window-management 'none'"},False)]
+    f.pref('dom.security.permissionsPolicy.header.enabled',True)
     for name,headers,denied in cases:
         f.routes['/policy-'+name]=(PAGE,headers);d=f.open('/policy-'+name)
         query('denied' if denied else 'granted','NotAllowedError' if denied else 'resolved')
@@ -73,9 +74,9 @@ def run_policy(f):
               frame.onload=async()=>{const win=frame.contentWindow;const state=(await win.navigator.permissions.query({name:'window-management'})).state;
                 let result;try{await win.getScreenDetails();result='resolved'}catch(e){result=e.name}frame.remove();done({state,result})};document.body.append(frame);""")
             assert result=={'state':'denied','result':'NotAllowedError'},result
-    f.pref('dom.security.featurePolicy.header.enabled',False);d=f.open('/policy-modern');query('denied','NotAllowedError')
+    f.pref('dom.security.permissionsPolicy.header.enabled',False);d=f.open('/policy-modern');query('denied','NotAllowedError')
     d=f.open('/policy-legacy');query()
-    f.pref('dom.security.featurePolicy.header.enabled',True);d=f.open()
+    f.pref('dom.security.permissionsPolicy.header.enabled',True);d=f.open()
     dynamic=d.execute_async_script("""const done=arguments[0],frame=document.createElement('iframe');frame.src='/';
       frame.onload=async()=>{try{const win=frame.contentWindow;const before=(await win.navigator.permissions.query({name:'window-management'})).state;
        frame.allow="window-management 'none'";

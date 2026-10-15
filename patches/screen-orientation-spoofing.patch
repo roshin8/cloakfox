@@ -1,6 +1,10 @@
---- a/b/dom/base/ScreenOrientation.cpp	2026-04-18 03:13:18
-+++ b/dom/base/ScreenOrientation.cpp	2026-04-18 03:13:32
-@@ -6,6 +6,7 @@
+diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
+--- a/dom/base/ScreenOrientation.cpp
++++ b/dom/base/ScreenOrientation.cpp
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "ScreenOrientation.h"
  
@@ -8,7 +12,17 @@
  #include "mozilla/DOMEventTargetHelper.h"
  #include "mozilla/Hal.h"
  #include "mozilla/Preferences.h"
-@@ -714,6 +715,14 @@
+ #include "mozilla/StaticPrefs_browser.h"
+ #include "mozilla/dom/ContentChild.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/Event.h"
+ #include "mozilla/dom/Promise.h"
+@@ -733,16 +734,24 @@
+       return nsRFPService::ViewportSizeToAngle(size.width, size.height);
+     }
+   }
+   return mAngle;
+ }
  
  OrientationType ScreenOrientation::GetType(CallerType aCallerType,
                                             ErrorResult& aRv) const {
@@ -23,3 +37,8 @@
    Document* doc = GetResponsibleDocument();
    BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
    if (!bc) {
+     aRv.Throw(NS_ERROR_UNEXPECTED);
+     return OrientationType::Portrait_primary;
+   }
+ 
+   OrientationType orientation = bc->GetCurrentOrientationType();

@@ -1,7 +1,39 @@
+diff --git a/browser/components/BrowserGlue.sys.mjs b/browser/components/BrowserGlue.sys.mjs
+--- a/browser/components/BrowserGlue.sys.mjs
++++ b/browser/components/BrowserGlue.sys.mjs
+@@ -385,16 +385,23 @@
+     }
+ 
+     lazy.ContentBlockingPrefs.uninit();
+   },
+ 
+   // runs on startup, before the first command line handler is invoked
+   // (i.e. before the first window is opened)
+   _beforeUIStartup: function BG__beforeUIStartup() {
++    // Honor the saved macOS presentation without changing profile identity.
++    try {
++      const { initCloakfoxAppearance } = ChromeUtils.importESModule(
++        "resource:///modules/CloakfoxAppearance.sys.mjs"
++      );
++      initCloakfoxAppearance();
++    } catch (error) { Cu.reportError(error); }
+     // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
+     // cloakfox.s.* (cpp-first namespace), then snapshot all cloakfox
+     // seeds into sharedData so JSWindowActor children can read them.
+     try {
+       const { runCloakfoxPrefMigration } = ChromeUtils.importESModule(
+         "resource:///modules/CloakfoxPrefMigration.sys.mjs"
+       );
+       runCloakfoxPrefMigration();
 diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
 --- a/browser/installer/package-manifest.in
 +++ b/browser/installer/package-manifest.in
-@@ -205,6 +205,7 @@
+@@ -200,16 +200,17 @@
+ @RESPATH@/chrome/remote.manifest
+ #endif
+ 
+ ; Modules
+ @RESPATH@/browser/modules/*
  @RESPATH@/modules/*
  @RESPATH@/moz-src/*
  @RESPATH@/browser/actors/*
@@ -9,10 +41,20 @@ diff --git a/browser/installer/package-manifest.in b/browser/installer/package-m
  @RESPATH@/actors/*
  
  ; ANGLE GLES rendering libraries
+ #ifdef MOZ_ANGLE_RENDERER
+ @BINPATH@/libEGL@DLL_SUFFIX@
+ @BINPATH@/libGLESv2@DLL_SUFFIX@
+ #endif # MOZ_ANGLE_RENDERER
+ 
 diff --git a/toolkit/xre/MacLaunchHelper.mm b/toolkit/xre/MacLaunchHelper.mm
 --- a/toolkit/xre/MacLaunchHelper.mm
 +++ b/toolkit/xre/MacLaunchHelper.mm
-@@ -85,7 +85,19 @@
+@@ -80,17 +80,29 @@
+     // We use NSWorkspace to register the application into the
+     // `TALAppsToRelaunchAtLogin` list and allow for macOS session resume.
+     // This API only works with `.app`s.
+     __block dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+     NSWorkspaceOpenConfiguration* config =
          [NSWorkspaceOpenConfiguration configuration];
      [config setArguments:aArguments];
      [config setCreatesNewApplicationInstance:YES];
@@ -33,27 +75,20 @@ diff --git a/toolkit/xre/MacLaunchHelper.mm b/toolkit/xre/MacLaunchHelper.mm
  
      [[NSWorkspace sharedWorkspace]
          openApplicationAtURL:[NSURL fileURLWithPath:launchPath]
-diff --git a/browser/components/BrowserGlue.sys.mjs b/browser/components/BrowserGlue.sys.mjs
---- a/browser/components/BrowserGlue.sys.mjs
-+++ b/browser/components/BrowserGlue.sys.mjs
-@@ -391,6 +391,13 @@
-   // runs on startup, before the first command line handler is invoked
-   // (i.e. before the first window is opened)
-   _beforeUIStartup: function BG__beforeUIStartup() {
-+    // Honor the saved macOS presentation without changing profile identity.
-+    try {
-+      const { initCloakfoxAppearance } = ChromeUtils.importESModule(
-+        "resource:///modules/CloakfoxAppearance.sys.mjs"
-+      );
-+      initCloakfoxAppearance();
-+    } catch (error) { Cu.reportError(error); }
-     // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
-     // cloakfox.s.* (cpp-first namespace), then snapshot all cloakfox
-     // seeds into sharedData so JSWindowActor children can read them.
+                configuration:config
+            completionHandler:^(NSRunningApplication* aChild, NSError* aError) {
+              if (aError) {
+                NSLog(@"LaunchMacApp: Failed to run application. Error: %@",
+                      aError);
 diff --git a/toolkit/xre/nsCommandLineServiceMac.mm b/toolkit/xre/nsCommandLineServiceMac.mm
 --- a/toolkit/xre/nsCommandLineServiceMac.mm
 +++ b/toolkit/xre/nsCommandLineServiceMac.mm
-@@ -9,6 +9,7 @@
+@@ -4,16 +4,17 @@
+ 
+ #include "nsCommandLineServiceMac.h"
+ 
+ #include "nsString.h"
+ #include "nsTArray.h"
  #include "MacApplicationDelegate.h"
  #include "MacAutoreleasePool.h"
  #include <cstring>
@@ -61,7 +96,17 @@ diff --git a/toolkit/xre/nsCommandLineServiceMac.mm b/toolkit/xre/nsCommandLineS
  #include <Cocoa/Cocoa.h>
  
  namespace CommandLineServiceMac {
-@@ -52,8 +53,32 @@
+ 
+ static const int kArgsGrowSize = 20;
+ 
+ static char** sArgs = nullptr;
+ static int sArgsAllocated = 0;
+@@ -47,35 +48,65 @@
+   if (!sArgs) {
+     return;
+   }
+   sArgsAllocated = kArgsGrowSize;
+   sArgs[0] = nullptr;
    sArgsUsed = 0;
  
    NSString* path = [NSString stringWithUTF8String:argv[0]];
@@ -95,7 +140,10 @@ diff --git a/toolkit/xre/nsCommandLineServiceMac.mm b/toolkit/xre/nsCommandLineS
      // When we restart, we ask the updater binary to restart us instead.
      // Essentially, we are using the updater as a relauncher process. We pass
      // our pid along so that it waits for us to go away before it launches the
-@@ -64,13 +89,19 @@
+     // new process. Two processes of the same app bundle must not be registered
+     // with macOS at the same time: the second one is treated as another
+     // instance of the app and is given its own dock tile, which then sticks
+     // around in the dock's list of recently used applications.
      NSString* updaterPath = [[path stringByDeletingLastPathComponent]
          stringByAppendingPathComponent:
              @"updater.app/Contents/MacOS/org.mozilla.updater"];
@@ -122,3 +170,8 @@ diff --git a/toolkit/xre/nsCommandLineServiceMac.mm b/toolkit/xre/nsCommandLineS
    }
  
    // We adjust the path to point to the .app bundle, rather than the executable
+   // itself, to allow for the use of the NSWorkspace API for launching and
+   // relaunching the application. We intentionally exclude the
+   // org.mozilla.updater binary because we are experiencing NSCocoaErrors of
+   // type `kLSUnknownErr` when trying to launch the updater.app with the
+   // NSWorkspace API, at least on macOS 10.15. The updater is launched using

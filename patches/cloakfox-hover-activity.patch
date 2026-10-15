@@ -1,26 +1,33 @@
-diff --git a/widget/nsGUIEventIPC.h b/widget/nsGUIEventIPC.h
---- a/widget/nsGUIEventIPC.h
-+++ b/widget/nsGUIEventIPC.h
-@@ -311,6 +311,7 @@
-     WriteParam(aWriter,
-                static_cast<const mozilla::WidgetPointerHelper&>(aParam));
-     WriteParam(aWriter, aParam.mIgnoreRootScrollFrame);
-+    WriteParam(aWriter, aParam.mCloakfoxClearRetainedHover);
-     WriteParam(aWriter, aParam.mClickEventPrevented);
-     WriteParam(aWriter, aParam.mReason);
-     WriteParam(aWriter, aParam.mContextMenuTrigger);
-@@ -335,6 +336,7 @@
-            ReadParam(aReader,
-                      static_cast<mozilla::WidgetPointerHelper*>(aResult)) &&
-            ReadParam(aReader, &aResult->mIgnoreRootScrollFrame) &&
-+         ReadParam(aReader, &aResult->mCloakfoxClearRetainedHover) &&
-            ReadParam(aReader, &aResult->mClickEventPrevented) &&
-            ReadParam(aReader, &aResult->mReason) &&
-            ReadParam(aReader, &aResult->mContextMenuTrigger) &&
+diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
+--- a/dom/base/Document.cpp
++++ b/dom/base/Document.cpp
+@@ -5085,16 +5085,17 @@
+   }
+   if (mPresShell) {
+     // Fullscreen selector results change with the policy even if the native
+     // FULLSCREEN bit doesn't. Invalidate cached styles on live switches.
+     if (Element* root = GetRootElement()) {
+       nsLayoutUtils::PostRestyleEvent(root, RestyleHint::RestyleSubtree(),
+                                      nsChangeHint(0));
+     }
++    mPresShell->GetPresContext()->EventStateManager()->RefreshCloakfoxHoverState();
+     mPresShell->GetPresContext()->RefreshDriver()->RefreshCloakfoxActivityMask();
+     MaybeScheduleFrameRequestCallbacks();
+   }
+ }
+ 
+ bool Document::ThisDocumentHasFocus() const {
+   nsFocusManager* fm = nsFocusManager::GetFocusManager();
+   return fm && fm->GetFocusedWindow() &&
 diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
 --- a/dom/events/EventStateManager.cpp
 +++ b/dom/events/EventStateManager.cpp
-@@ -13,6 +13,7 @@
+@@ -8,16 +8,17 @@
+ #include "IMEContentObserver.h"
+ #include "RemoteDragStartData.h"
+ #include "Units.h"
+ #include "WheelHandlingHelper.h"
+ #include "imgIContainer.h"
  #include "mozilla/AppShutdown.h"
  #include "mozilla/AsyncEventDispatcher.h"
  #include "mozilla/Attributes.h"
@@ -28,7 +35,17 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
  #include "mozilla/ConnectedAncestorTracker.h"
  #include "mozilla/EditorBase.h"
  #include "mozilla/EventDispatcher.h"
-@@ -1180,10 +1181,17 @@
+ #include "mozilla/EventForwards.h"
+ #include "mozilla/FocusModel.h"
+ #include "mozilla/HTMLEditor.h"
+ #include "mozilla/Hal.h"
+ #include "mozilla/IMEStateManager.h"
+@@ -1198,20 +1199,27 @@
+       // event was sent twice into child process of content.
+       // (From specific widget code (sending is not permanent) and
+       // from ESM::DispatchMouseOrPointerBoundaryEvent (sending is permanent)).
+       // IsCrossProcessForwardingStopped() helps to suppress sending accidental
+       // event from widget code.
        aEvent->StopCrossProcessForwarding();
        break;
      case eMouseExitFromWidget:
@@ -47,7 +64,17 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
            mouseEvent->mFlags.mOnlySystemGroupDispatchInContent &&
            mPresContext->Document()->ShouldMaskWindowActivity()) {
          mCloakfoxMouseEntryFromOutside = true;
-@@ -4829,7 +4837,21 @@
+         mCloakfoxPointerEntryFromOutside = true;
+       }
+       // If this is a remote frame, we receive eMouseExitFromWidget from the
+       // parent the mouse exits our content. Since the parent may update the
+       // cursor while the mouse is outside our frame, and since PuppetWidget
+@@ -4847,17 +4855,31 @@
+   // as if the new presentation is resized, a new element may be hovered.
+   ResetHoverState();
+ 
+   mMouseEnterLeaveHelper = nullptr;
+   mPointersEnterLeaveHelper.Clear();
    PointerEventHandler::NotifyDestroyPresContext(presContext);
  }
  
@@ -69,7 +96,17 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
    if (mHoverContent) {
      SetContentState(nullptr, ElementState::HOVER);
    }
-@@ -5346,6 +5368,8 @@
+ }
+ 
+ void EventStateManager::SetPresContext(nsPresContext* aPresContext) {
+   mPresContext = aPresContext;
+ }
+@@ -5364,16 +5386,18 @@
+   // Then, when the event is synthesized by a test API and handled in a remote
+   // process, it won't be ignored.  See PresShell::HandleEvent().
+   newEvent->mFlags.mIsSynthesizedForTests =
+       aMouseEvent->mFlags.mIsSynthesizedForTests;
+   // Preserve the page-boundary policy while forwarding exits through the
    // OOP-frame ancestor chain. DOM dispatch rechecks the live document policy.
    newEvent->mFlags.mOnlySystemGroupDispatchInContent =
        aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent;
@@ -78,7 +115,17 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
  
    newEvent->mRelatedTarget = aRelatedTarget;
    newEvent->mRefPoint = aMouseEvent->mRefPoint;
-@@ -5490,6 +5514,11 @@
+   newEvent->mModifiers = aMouseEvent->mModifiers;
+   newEvent->mInputSource = aMouseEvent->mInputSource;
+   newEvent->pointerId = aMouseEvent->pointerId;
+   newEvent->mMovement = aMouseEvent->mMovement;
+   // NOTE: If you need to change this if-expression, you need to update
+@@ -5509,30 +5533,50 @@
+       if (aMessage == eMouseOut) {
+         // For remote content, send a puppet widget mouse exit event.
+         UniquePtr<WidgetMouseEvent> remoteEvent =
+             CreateMouseOrPointerWidgetEvent(aMouseEvent, eMouseExitFromWidget,
+                                             relatedContent);
          remoteEvent->mExitFrom = Some(WidgetMouseEvent::ePuppet);
          remoteEvent->mFlags.mOnlySystemGroupDispatchInContent =
              remotePrivateBoundary;
@@ -90,7 +137,14 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
  
          // mCurrentTarget is set to the new target, so we must reset it to the
          // old target and then dispatch a cross-process event. (mCurrentTarget
-@@ -5504,6 +5533,21 @@
+         // will be set back below.) HandleCrossProcessEvent will query for the
+         // proper target via GetEventTarget which will return mCurrentTarget.
+         mCurrentTarget = mPresContext->GetPrimaryFrameFor(targetContent);
+         HandleCrossProcessEvent(remoteEvent.get(), &status);
+       } else if (aMessage == eMouseOver) {
+         UniquePtr<WidgetMouseEvent> remoteEvent =
+             CreateMouseOrPointerWidgetEvent(aMouseEvent, eMouseEnterIntoWidget,
+                                             relatedContent);
          remoteEvent->mFlags.mOnlySystemGroupDispatchInContent =
              remotePrivateBoundary;
          HandleCrossProcessEvent(remoteEvent.get(), &status);
@@ -112,7 +166,17 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
        }
      }
    }
-@@ -5616,6 +5660,11 @@
+ 
+   mCurrentTargetContent = nullptr;
+   mCurrentTarget = previousTarget;
+ 
+   return targetWidget.forget();
+@@ -5635,36 +5679,49 @@
+       if (nsIDocShell* docshell = bc->GetDocShell()) {
+         if (RefPtr<nsPresContext> presContext = docshell->GetPresContext()) {
+           EventStateManager* kidESM = presContext->EventStateManager();
+           // Not moving into any element in this subdocument
+           MOZ_LOG(logModule, LogLevel::Info,
                    ("Notifying child EventStateManager (%p) of \"out\" "
                     "event...",
                     kidESM));
@@ -124,7 +188,11 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
            kidESM->NotifyMouseOut(aMouseEvent, nullptr);
          }
        }
-@@ -5627,6 +5676,12 @@
+     }
+   }
+   // That could have caused DOM events which could wreak havoc. Reverify
+   // things and be careful.
+   if (!wrapper->GetDeepestLeaveEventTarget()) {
      return;
    }
  
@@ -137,7 +205,7 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
    wrapper->WillDispatchOutAndOrLeaveEvent();
  
    // Don't touch hover state if aMovingInto is non-null.  Caller will update
-@@ -5634,8 +5689,10 @@
+   // hover state itself, and we have optimizations for hover switching between
    // two nearby elements both deep in the DOM tree that would be defeated by
    // switching the hover state to null here.
    if (!aMovingInto && (!isPointer || aMouseEvent->InputSourceSupportsHover())) {
@@ -150,7 +218,17 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
    }
  
    EnterLeaveDispatcher leaveDispatcher(
-@@ -5666,7 +5723,7 @@
+       this, wrapper->GetDeepestLeaveEventTarget(), aMovingInto, aMouseEvent,
+       isPointer ? ePointerLeave : eMouseLeave);
+ 
+   // "out" events hould be fired only when the deepest "leave" event target
+   // is the last "over" event target.
+@@ -5685,17 +5742,17 @@
+            wrapper->GetDeepestLeaveEventTarget()
+                ? ToString(*wrapper->GetDeepestLeaveEventTarget()).c_str()
+                : "nullptr",
+            wrapper->GetDeepestLeaveEventTarget()));
+   leaveDispatcher.Dispatch();
  
    MOZ_LOG(logModule, LogLevel::Info,
            ("Dispatched \"out\" and/or \"leave\" events"));
@@ -159,7 +237,17 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
  }
  
  void EventStateManager::RecomputeMouseEnterStateForRemoteFrame(
-@@ -5689,11 +5746,25 @@
+     Element& aElement) {
+   if (!mMouseEnterLeaveHelper ||
+       mMouseEnterLeaveHelper->GetDeepestLeaveEventTarget() != &aElement) {
+     return;
+   }
+@@ -5708,21 +5765,35 @@
+ void EventStateManager::NotifyMouseOver(WidgetMouseEvent* aMouseEvent,
+                                         nsIContent* aContent) {
+   NS_ASSERTION(aContent, "Mouse must be over something");
+ 
+   const bool isPointer = aMouseEvent->mClass == ePointerEventClass;
    LogModule* const logModule =
        isPointer ? sPointerBoundaryLog : sMouseBoundaryLog;
  
@@ -186,7 +274,17 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
      return;
    }
  
-@@ -5726,7 +5797,7 @@
+   // Before firing "over" and "enter" events, check for recursion
+   if (wrapper->IsDispatchingOverEventOn(aContent)) {
+     return;
+   }
+ 
+@@ -5745,35 +5816,38 @@
+                  "event...",
+                  parentESM.get()));
+         parentESM->NotifyMouseOver(aMouseEvent, docContent);
+       }
+     }
    }
    // Firing the DOM event in the parent document could cause all kinds
    // of havoc.  Reverify and take care.
@@ -195,7 +293,14 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
      return;
    }
  
-@@ -5741,10 +5812,13 @@
+   // Remember the deepest leave event target as the related content for the
+   // DispatchMouseOrPointerBoundaryEvent() call below, since NotifyMouseOut()
+   // resets it, bug 298477.
+   nsCOMPtr<nsIContent> deepestLeaveEventTarget =
+       wrapper->GetDeepestLeaveEventTarget();
+ 
+   EnterLeaveDispatcher enterDispatcher(this, aContent, deepestLeaveEventTarget,
+                                        aMouseEvent,
                                         isPointer ? ePointerEnter : eMouseEnter);
  
    if (!isPointer || aMouseEvent->InputSourceSupportsHover()) {
@@ -210,31 +315,20 @@ diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
  
    wrapper->WillDispatchOverAndEnterEvent(aContent);
  
-diff --git a/widget/MouseEvents.h b/widget/MouseEvents.h
---- a/widget/MouseEvents.h
-+++ b/widget/MouseEvents.h
-@@ -508,6 +508,9 @@
-   uint32_t mClickCount = 0;
- 
-   // Whether the event should ignore scroll frame bounds during dispatch.
-+  // A masked return to another element must clear the departed frame's hover
-+  // chain, while its boundary notifications remain private. Internal only.
-+  bool mCloakfoxClearRetainedHover = false;
-   bool mIgnoreRootScrollFrame = false;
- 
-   // Whether the event should be dispatched on a target limited in capturing
-@@ -555,6 +558,7 @@
-     mExitFrom = aEvent.mExitFrom;
-     mClickCount = aEvent.mClickCount;
-     mIgnoreRootScrollFrame = aEvent.mIgnoreRootScrollFrame;
-+    mCloakfoxClearRetainedHover = aEvent.mCloakfoxClearRetainedHover;
-     mIgnoreCapturingContent = aEvent.mIgnoreCapturingContent;
-     mClickEventPrevented = aEvent.mClickEventPrevented;
-     // NOTE: Intentionally not copying mSynthesizeMoveAfterDispatch, it should
+   // Fire mouseover
+   // XXX If aContent has already been removed from the DOM tree, what should we
+   // do? At least, dispatching `mouseover` on it is odd.
+   MOZ_LOG(logModule, LogLevel::Info,
+           ("Dispatching %s event to %s (%p)",
 diff --git a/dom/events/EventStateManager.h b/dom/events/EventStateManager.h
 --- a/dom/events/EventStateManager.h
 +++ b/dom/events/EventStateManager.h
-@@ -84,8 +84,10 @@
+@@ -79,18 +79,20 @@
+            mDeepestEnterEventTarget == aOverEventTarget;
+   }
+   void WillDispatchOutAndOrLeaveEvent() {
+     // Store the first "out" event target or the deepest "leave" event target
+     // which we fire and don't refire "out" event to that element while the
      // first "out" event is still ongoing.
      mDispatchingOutOrDeepestLeaveEventTarget = mDeepestEnterEventTarget;
    }
@@ -247,7 +341,17 @@ diff --git a/dom/events/EventStateManager.h b/dom/events/EventStateManager.h
      mDispatchingOutOrDeepestLeaveEventTarget = nullptr;
    }
    [[nodiscard]] bool IsDispatchingOutEventOnLastOverEventTarget() const {
-@@ -268,6 +270,7 @@
+     return mDispatchingOutOrDeepestLeaveEventTarget &&
+            mDispatchingOutOrDeepestLeaveEventTarget == mDeepestEnterEventTarget;
+   }
+   void OverrideOverEventTarget(nsIContent* aOverEventTarget) {
+     StoreOverEventTargetAndDeepestEnterEventTarget(aOverEventTarget);
+@@ -263,16 +265,17 @@
+    */
+   MOZ_CAN_RUN_SCRIPT_BOUNDARY void DispatchLegacyMouseScrollEvents(
+       nsIFrame* aTargetFrame, WidgetWheelEvent* aEvent, nsEventStatus* aStatus);
+ 
+   MOZ_CAN_RUN_SCRIPT_BOUNDARY void NotifyDestroyPresContext(
        nsPresContext* aPresContext);
  
    void ResetHoverState();
@@ -255,7 +359,17 @@ diff --git a/dom/events/EventStateManager.h b/dom/events/EventStateManager.h
  
    void SetPresContext(nsPresContext* aPresContext);
    void ClearFrameRefs(nsIFrame* aFrame);
-@@ -1487,6 +1490,7 @@
+   void MaybeLeavePendingLink(bool aWasCanceled);
+ 
+   nsIFrame* GetEventTarget();
+   nsIContent* GetExplicitEventTargetContent(const WidgetEvent* = nullptr);
+   nsIContent* GetEventTargetContent(const WidgetEvent* = nullptr);
+@@ -1487,16 +1490,17 @@
+   bool mShouldAlwaysUseLineDeltas : 1;
+   bool mShouldAlwaysUseLineDeltasInitialized : 1;
+ 
+   bool mInTouchDrag;
+ 
    bool m_haveShutdown;
  
    // Suppress only the first boundary events after a chrome-to-page return.
@@ -263,10 +377,20 @@ diff --git a/dom/events/EventStateManager.h b/dom/events/EventStateManager.h
    bool mCloakfoxMouseEntryFromOutside = false;
    bool mCloakfoxPointerEntryFromOutside = false;
  
+   RefPtr<OverOutElementsWrapper> mMouseEnterLeaveHelper;
+   nsRefPtrHashtable<nsUint32HashKey, OverOutElementsWrapper>
+       mPointersEnterLeaveHelper;
+ 
+   // Array for accesskey support
 diff --git a/dom/ipc/BrowserBridgeParent.cpp b/dom/ipc/BrowserBridgeParent.cpp
 --- a/dom/ipc/BrowserBridgeParent.cpp
 +++ b/dom/ipc/BrowserBridgeParent.cpp
-@@ -221,7 +221,15 @@
+@@ -218,17 +218,25 @@
+ 
+ IPCResult BrowserBridgeParent::RecvBeginDestroy() {
+   Destroy();
+   return IPC_OK();
+ }
  
  IPCResult BrowserBridgeParent::RecvDispatchSynthesizedMouseEvent(
      const WidgetMouseEvent& aEvent) {
@@ -283,14 +407,88 @@ diff --git a/dom/ipc/BrowserBridgeParent.cpp b/dom/ipc/BrowserBridgeParent.cpp
        aEvent.mReason != WidgetMouseEvent::eSynthesized) {
      return IPC_FAIL(this, "Unexpected event type");
    }
-diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
---- a/dom/base/Document.cpp
-+++ b/dom/base/Document.cpp
-@@ -5029,6 +5029,7 @@
-       nsLayoutUtils::PostRestyleEvent(root, RestyleHint::RestyleSubtree(),
-                                      nsChangeHint(0));
-     }
-+    mPresShell->GetPresContext()->EventStateManager()->RefreshCloakfoxHoverState();
-     mPresShell->GetPresContext()->RefreshDriver()->RefreshCloakfoxActivityMask();
-     MaybeScheduleFrameRequestCallbacks();
+ 
+   nsCOMPtr<nsIWidget> widget = Manager()->GetWidget();
+   if (!widget) {
+     return IPC_OK();
+   }
+diff --git a/widget/MouseEvents.h b/widget/MouseEvents.h
+--- a/widget/MouseEvents.h
++++ b/widget/MouseEvents.h
+@@ -503,16 +503,19 @@
+   Maybe<ExitFrom> mExitFrom;
+ 
+   // mClickCount may be non-zero value when mMessage is eMouseDown, eMouseUp,
+   // ePointerClick or eMouseDoubleClick. The number is count of mouse clicks.
+   // Otherwise, this must be 0.
+   uint32_t mClickCount = 0;
+ 
+   // Whether the event should ignore scroll frame bounds during dispatch.
++  // A masked return to another element must clear the departed frame's hover
++  // chain, while its boundary notifications remain private. Internal only.
++  bool mCloakfoxClearRetainedHover = false;
+   bool mIgnoreRootScrollFrame = false;
+ 
+   // Whether the event should be dispatched on a target limited in capturing
+   // content.
+   bool mIgnoreCapturingContent = false;
+ 
+   // Whether the event shouldn't cause click event.
+   bool mClickEventPrevented = false;
+@@ -550,16 +553,17 @@
+   void AssignMouseEventDataOnly(const WidgetMouseEvent& aEvent) {
+     // NOTE: Intentionally not copying mClickTarget, it should only be used by
+     //       the original mouseup event to dispatch the click event.
+     mReason = aEvent.mReason;
+     mContextMenuTrigger = aEvent.mContextMenuTrigger;
+     mExitFrom = aEvent.mExitFrom;
+     mClickCount = aEvent.mClickCount;
+     mIgnoreRootScrollFrame = aEvent.mIgnoreRootScrollFrame;
++    mCloakfoxClearRetainedHover = aEvent.mCloakfoxClearRetainedHover;
+     mIgnoreCapturingContent = aEvent.mIgnoreCapturingContent;
+     mClickEventPrevented = aEvent.mClickEventPrevented;
+     // NOTE: Intentionally not copying mSynthesizeMoveAfterDispatch, it should
+     //       only be used by the original event to check whether we need to
+     //       synthesize an additional mousemove or pointermove event.
+     mTriggerEvent = aEvent.mTriggerEvent;
+     // NOTE: Intentionally not copying mCallbackId, it should only be tracked by
+     //       the original event or propagated to the cross-process event.
+diff --git a/widget/nsGUIEventIPC.h b/widget/nsGUIEventIPC.h
+--- a/widget/nsGUIEventIPC.h
++++ b/widget/nsGUIEventIPC.h
+@@ -306,16 +306,17 @@
+   }
+ 
+   static void WriteForDerivedClass(MessageWriter* aWriter,
+                                    const paramType& aParam) {
+     baseParamTraits::WriteForDerivedClass(aWriter, aParam);
+     WriteParam(aWriter,
+                static_cast<const mozilla::WidgetPointerHelper&>(aParam));
+     WriteParam(aWriter, aParam.mIgnoreRootScrollFrame);
++    WriteParam(aWriter, aParam.mCloakfoxClearRetainedHover);
+     WriteParam(aWriter, aParam.mClickEventPrevented);
+     WriteParam(aWriter, aParam.mReason);
+     WriteParam(aWriter, aParam.mContextMenuTrigger);
+     WriteParam(aWriter, aParam.mExitFrom);
+     WriteParam(aWriter, aParam.mClickCount);
+     WriteParam(aWriter, aParam.mCallbackId);
+     WriteParam(aWriter, aParam.mMovement);
+ 
+@@ -330,16 +331,17 @@
+   static bool ReadForDerivedClass(MessageReader* aReader,
+                                   mozilla::EventClassID aExpectedEventClassID,
+                                   paramType* aResult) {
+     return baseParamTraits::ReadForDerivedClass(aReader, aExpectedEventClassID,
+                                                 aResult) &&
+            ReadParam(aReader,
+                      static_cast<mozilla::WidgetPointerHelper*>(aResult)) &&
+            ReadParam(aReader, &aResult->mIgnoreRootScrollFrame) &&
++         ReadParam(aReader, &aResult->mCloakfoxClearRetainedHover) &&
+            ReadParam(aReader, &aResult->mClickEventPrevented) &&
+            ReadParam(aReader, &aResult->mReason) &&
+            ReadParam(aReader, &aResult->mContextMenuTrigger) &&
+            ReadParam(aReader, &aResult->mExitFrom) &&
+            ReadParam(aReader, &aResult->mClickCount) &&
+            ReadParam(aReader, &aResult->mCallbackId) &&
+            ReadParam(aReader, &aResult->mMovement);
    }

@@ -1,7 +1,12 @@
 diff --git a/browser/installer/package-manifest.in b/browser/installer/package-manifest.in
 --- a/browser/installer/package-manifest.in
 +++ b/browser/installer/package-manifest.in
-@@ -43,6 +43,9 @@
+@@ -38,16 +38,19 @@
+ #ifdef MOZ_UPDATER
+ @APPNAME@/Contents/Library/LaunchServices
+ #endif
+ @APPNAME@/Contents/Frameworks
+ @APPNAME@/Contents/PkgInfo
  @RESPATH@/firefox.icns
  @RESPATH@/document.icns
  @RESPATH@/Assets.car
@@ -10,3 +15,9 @@ diff --git a/browser/installer/package-manifest.in b/browser/installer/package-m
 +#endif
  @RESPATH@/@LPROJ_ROOT@.lproj/*
  #endif
+ 
+ [@AB_CD@]
+ @RESPATH@/dictionaries/*
+ @RESPATH@/browser/localization/*
+ @RESPATH@/localization/*
+ #if defined(XP_WIN) || defined(MOZ_WIDGET_GTK)

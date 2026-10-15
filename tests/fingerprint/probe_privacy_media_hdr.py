@@ -36,7 +36,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='cloakfox-media-hdr-') as temp:
         profile = Path(temp) / 'profile'; profile.mkdir()
         (profile / 'user.js').write_text('\n'.join([
-            'user_pref("dom.security.featurePolicy.header.enabled", true);',
+            'user_pref("dom.security.permissionsPolicy.header.enabled", true);',
             'user_pref("media.navigator.streams.fake", true);',
             'user_pref("media.navigator.permission.disabled", true);',
             'user_pref("dom.security.https_only_mode", false);',
@@ -93,7 +93,7 @@ def main():
               navigator.mediaDevices.getUserMedia({audio:true,video:true}).then(s=>{
                 const labels=s.getTracks().map(t=>t.label);s.getTracks().forEach(t=>t.stop());done(labels);
               },e=>done({error:e.name}));''')
-            assert set(strict_labels)=={'Internal Microphone','Internal Camera'},('Disabled enumeration leaked track labels',strict_labels)
+            assert strict_labels=={'error':'NotAllowedError'},('Disabled media capture accessed device hardware',strict_labels)
             report['strictLabels']=strict_labels
             configure(cfg); d.refresh()
             captured = d.execute_async_script('''const done=arguments[0];

@@ -1,6 +1,4 @@
 diff --git a/dom/base/TimezoneManager.cpp b/dom/base/TimezoneManager.cpp
-new file mode 100644
-index 0000000000..7ec236d160
 --- /dev/null
 +++ b/dom/base/TimezoneManager.cpp
 @@ -0,0 +1,44 @@
@@ -49,8 +47,6 @@ index 0000000000..7ec236d160
 +}  // namespace dom
 +}  // namespace mozilla
 diff --git a/dom/base/TimezoneManager.h b/dom/base/TimezoneManager.h
-new file mode 100644
-index 0000000000..a7f5735e53
 --- /dev/null
 +++ b/dom/base/TimezoneManager.h
 @@ -0,0 +1,50 @@
@@ -105,10 +101,14 @@ index 0000000000..a7f5735e53
 +
 +#endif  // mozilla_dom_TimezoneManager_h
 diff --git a/dom/base/moz.build b/dom/base/moz.build
-index 617d0152bd..dc13a2b4ac 100644
 --- a/dom/base/moz.build
 +++ b/dom/base/moz.build
-@@ -285,6 +285,7 @@ EXPORTS.mozilla.dom += [
+@@ -287,16 +287,17 @@
+     "SubtleCrypto.h",
+     "SyncMessageSender.h",
+     "TestUtils.h",
+     "Text.h",
+     "Timeout.h",
      "TimeoutBudgetManager.h",
      "TimeoutHandler.h",
      "TimeoutManager.h",
@@ -116,7 +116,17 @@ index 617d0152bd..dc13a2b4ac 100644
      "TreeIterator.h",
      "TreeOrderedArray.h",
      "TreeOrderedArrayInlines.h",
-@@ -499,6 +500,7 @@ UNIFIED_SOURCES += [
+     "TreeWalker.h",
+     "UIDirectionManager.h",
+     "UnbindContext.h",
+     "UseCounterMetrics.h",
+     "UserActivation.h",
+@@ -517,16 +518,17 @@
+     "TextDirectiveUtil.cpp",
+     "TextInputProcessor.cpp",
+     "ThirdPartyUtil.cpp",
+     "Timeout.cpp",
+     "TimeoutBudgetManager.cpp",
      "TimeoutExecutor.cpp",
      "TimeoutHandler.cpp",
      "TimeoutManager.cpp",
@@ -124,11 +134,20 @@ index 617d0152bd..dc13a2b4ac 100644
      "TreeWalker.cpp",
      "UIDirectionManager.cpp",
      "UserActivation.cpp",
+     "ViewportMetaData.cpp",
+     "VisualViewport.cpp",
+     "WindowDestroyedEvent.cpp",
+     "WindowFeatures.cpp",
+     "WindowNamedPropertiesHandler.cpp",
 diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
-index ea66d28e53..2abb83c3a6 100644
 --- a/dom/base/nsGlobalWindowInner.cpp
 +++ b/dom/base/nsGlobalWindowInner.cpp
-@@ -246,6 +246,8 @@
+@@ -243,16 +243,18 @@
+ #include "nsIClipboard.h"
+ #include "nsIContentSecurityPolicy.h"
+ #include "nsIControllers.h"
+ #include "nsICookieJarSettings.h"
+ #include "nsICookieService.h"
  #include "nsID.h"
  #include "nsIDOMStorageManager.h"
  #include "FontSpacingSeedManager.h"
@@ -137,7 +156,17 @@ index ea66d28e53..2abb83c3a6 100644
  #include "nsDocShell.h"
  #include "mozilla/OriginAttributes.h"
  #include "nsIDOMXULControlElement.h"
-@@ -7525,6 +7527,53 @@ void nsGlobalWindowInner::SetFontSpacingSeed(uint32_t seed, ErrorResult& aRv) {
+ #include "nsIDeviceSensors.h"
+ #include "nsIDocShell.h"
+ #include "nsIDocShellTreeItem.h"
+ #include "nsIDocShellTreeOwner.h"
+ #include "nsIDocumentLoader.h"
+@@ -7870,16 +7872,63 @@
+     if (global) {
+       JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
+       JS_SetProperty(cx, global, "setFontSpacingSeed", undef);
+       JS_DeleteProperty(cx, global, "setFontSpacingSeed");
+     }
    }
  }
  
@@ -191,54 +220,41 @@ index ea66d28e53..2abb83c3a6 100644
  void nsGlobalWindowInner::StoreSharedWorker(SharedWorker* aSharedWorker) {
    MOZ_ASSERT(aSharedWorker);
    MOZ_ASSERT(!mSharedWorkers.Contains(aSharedWorker));
+ 
+   mSharedWorkers.AppendElement(aSharedWorker);
+ }
+ 
+ void nsGlobalWindowInner::ForgetSharedWorker(SharedWorker* aSharedWorker) {
 diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
-index 5f9a11b0d3..3183172d29 100644
 --- a/dom/base/nsGlobalWindowInner.h
 +++ b/dom/base/nsGlobalWindowInner.h
-@@ -683,6 +683,7 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
-
+@@ -688,16 +688,17 @@
+   void SetScreenColorDepth(int32_t aColorDepth, mozilla::ErrorResult& aRv);
+ 
+   void GetWebExposedLocales(nsTArray<nsString>& aLocales);
+ 
+   mozilla::dom::IntlUtils* GetIntlUtils(mozilla::ErrorResult& aRv);
+ 
    // Font spacing seed for privacy-preserving font fingerprinting
    void SetFontSpacingSeed(uint32_t seed, mozilla::ErrorResult& aRv);
 +  void SetTimezone(const nsAString& timezone, mozilla::ErrorResult& aRv);
-
+ 
    void StoreSharedWorker(mozilla::dom::SharedWorker* aSharedWorker);
-
-diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
-index 7a076768d0..a6f0d96a36 100644
---- a/dom/webidl/Window.webidl
-+++ b/dom/webidl/Window.webidl
-@@ -892,6 +892,12 @@ partial interface Window {
-   readonly attribute VisualViewport visualViewport;
- };
-
-+// Timezone interface for per-context timezone spoofing
-+partial interface Window {
-+  [Throws, Func="mozilla::dom::TimezoneManager::IsFunctionEnabledForWebIDL"]
-+  undefined setTimezone(DOMString timezone);
-+};
-+
- // Used to assign marks to appear on the scrollbar when
- // finding on a page.
- partial interface Window {
-diff --git a/js/public/Date.h b/js/public/Date.h
-index 98d5b1176e..89c2942a68 100644
---- a/js/public/Date.h
-+++ b/js/public/Date.h
-@@ -56,4 +56,9 @@ namespace JS {
- extern JS_PUBLIC_API void ResetTimeZone();
-
-+extern JS_PUBLIC_API bool SetTimeZoneOverride(const char* timezoneId);
-+
-+// Cloakfox: per-context timezone override
-+extern JS_PUBLIC_API bool SetRealmTimeZoneOverride(JSContext* cx, const char* timezoneId);
-+
- class ClippedTime;
- inline ClippedTime TimeClip(double time);
+ 
+   void ForgetSharedWorker(mozilla::dom::SharedWorker* aSharedWorker);
+ 
+   void UpdateSharedWorkersLanguageOverride(const nsCString& aLanguageOverride);
+ 
+   void UpdateSharedWorkerTimezoneOverride(const nsAString& aTimezoneOverride);
 diff --git a/dom/base/nsGlobalWindowOuter.cpp b/dom/base/nsGlobalWindowOuter.cpp
-index a1b2c3d4e5..f6g7h8i9j0 100644
 --- a/dom/base/nsGlobalWindowOuter.cpp
 +++ b/dom/base/nsGlobalWindowOuter.cpp
-@@ -86,6 +86,8 @@
+@@ -82,16 +82,18 @@
+ #include "js/PropertyAndElement.h"  // JS_DefineObject, JS_GetProperty
+ #include "js/PropertySpec.h"
+ #include "js/RealmIterators.h"
+ #include "js/Wrapper.h"
+ #include "js/friend/StackLimits.h"  // js::AutoCheckRecursionLimit
  #include "js/friend/WindowProxy.h"  // js::IsWindowProxy, js::SetWindowProxy
  #include "jsapi.h"
  #include "jsfriendapi.h"
@@ -247,11 +263,20 @@ index a1b2c3d4e5..f6g7h8i9j0 100644
  #include "mozilla/Likely.h"
  #include "mozilla/Preferences.h"
  #include "mozilla/SchedulerGroup.h"
-@@ -2480,6 +2482,22 @@ nsresult nsGlobalWindowOuter::SetNewDocument(Document* aDocument,
+ #include "mozilla/SpinEventLoopUntil.h"
+ #include "mozilla/Sprintf.h"
+ #include "mozilla/dom/ScriptSettings.h"
+ #include "nsJSEnvironment.h"
+ #include "nsJSUtils.h"
+@@ -2506,16 +2508,32 @@
+ 
+   // Update the current window for our BrowsingContext.
+   RefPtr<BrowsingContext> bc = GetBrowsingContext();
+ 
    if (bc->IsOwnedByProcess()) {
      MOZ_ALWAYS_SUCCEEDS(bc->SetCurrentInnerWindowId(mInnerWindow->WindowID()));
    }
-+
+ 
 +  // Cloakfox: Auto-apply stored timezone when navigating to new document
 +  // This ensures timezone persists across page navigations within same context
 +  {
@@ -267,14 +292,93 @@ index a1b2c3d4e5..f6g7h8i9j0 100644
 +      }
 +    }
 +  }
- 
++
    // We no longer need the old inner window.  Start its destruction if
    // its not being reused and clear our reference.
+   if (doomCurrentInner) {
+     currentInner->FreeInnerObjects();
+   }
+   currentInner = nullptr;
+ 
+   // We wait to fire the debugger hook until the window is all set up and hooked
+diff --git a/dom/base/nsJSUtils.cpp b/dom/base/nsJSUtils.cpp
+--- a/dom/base/nsJSUtils.cpp
++++ b/dom/base/nsJSUtils.cpp
+@@ -147,16 +147,18 @@
+   }
+ 
+   return true;
+ }
+ 
+ /* static */
+ void nsJSUtils::ResetTimeZone() { JS::ResetTimeZone(); }
+ 
++bool nsJSUtils::SetTimeZoneOverride(const char* aTz) { return JS::SetTimeZoneOverride(aTz); }
++
+ /* static */
+ bool nsJSUtils::DumpEnabled() {
+ #ifdef FUZZING
+   static bool mozFuzzDebug = !!PR_GetEnv("MOZ_FUZZ_DEBUG");
+   // We also want to dump in automation so mochitests can run.
+   return mozFuzzDebug || xpc::IsInAutomation();
+ #endif
+ 
+diff --git a/dom/base/nsJSUtils.h b/dom/base/nsJSUtils.h
+--- a/dom/base/nsJSUtils.h
++++ b/dom/base/nsJSUtils.h
+@@ -68,16 +68,17 @@
+ 
+   // Returns false if an exception got thrown on aCx.  Passing a null
+   // aElement is allowed; that wil produce an empty aEnvChain.
+   static bool GetEnvironmentChainForElement(JSContext* aCx,
+                                             mozilla::dom::Element* aElement,
+                                             JS::EnvironmentChain& aEnvChain);
+ 
+   static void ResetTimeZone();
++  static bool SetTimeZoneOverride(const char* timezoneId);
+ 
+   static bool DumpEnabled();
+ 
+   // A helper function that receives buffer pointer, creates ArrayBuffer, and
+   // convert it to Uint8Array.
+   // Note that the buffer needs to be created by JS_malloc (or at least can be
+   // freed by JS_free), as the resulting Uint8Array takes the ownership of the
+   // buffer.
+diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
+--- a/dom/webidl/Window.webidl
++++ b/dom/webidl/Window.webidl
+@@ -974,16 +974,22 @@
+ };
+ 
+ // Per-context speech voices
+ partial interface Window {
+   [Throws, Func="mozilla::dom::SpeechVoicesManager::IsFunctionEnabledForWebIDL"]
+   undefined setSpeechVoices(DOMString voices);
+ };
+ 
++// Timezone interface for per-context timezone spoofing
++partial interface Window {
++  [Throws, Func="mozilla::dom::TimezoneManager::IsFunctionEnabledForWebIDL"]
++  undefined setTimezone(DOMString timezone);
++};
++
+ // Used to assign marks to appear on the scrollbar when
+ // finding on a page.
+ partial interface Window {
+   // The marks are values between 0 and scrollMax{X,Y} - scrollMin{X,Y}.
+   [ChromeOnly]
+   undefined setScrollMarks(sequence<unsigned long> marks,
+                            optional boolean onHorizontalScrollbar = false);
+ };
 diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
-index c8e44687b7..9a2bae61e7 100644
 --- a/dom/workers/WorkerPrivate.cpp
 +++ b/dom/workers/WorkerPrivate.cpp
-@@ -23,6 +23,8 @@
+@@ -16,16 +16,18 @@
+ #include "WorkerEventTarget.h"
+ #include "WorkerNavigator.h"
+ #include "WorkerRef.h"
+ #include "WorkerRunnable.h"
+ #include "WorkerThread.h"
  #include "js/CallAndConstruct.h"  // JS_CallFunctionValue
  #include "js/CompilationAndEvaluation.h"
  #include "js/ContextOptions.h"
@@ -283,10 +387,20 @@ index c8e44687b7..9a2bae61e7 100644
  #include "js/Exception.h"
  #include "js/LocaleSensitive.h"
  #include "js/MemoryMetrics.h"
-@@ -6350,6 +6352,19 @@ WorkerGlobalScope* WorkerPrivate::GetOrCreateGlobalScope(JSContext* aCx) {
+ #include "js/SourceText.h"
+ #include "js/friend/ErrorMessages.h"  // JSMSG_OUT_OF_MEMORY
+ #include "js/friend/MicroTask.h"
+ #include "js/loader/ModuleLoaderBase.h"
+ #include "mozilla/AntiTrackingUtils.h"
+@@ -6727,16 +6729,29 @@
+   }
+ 
+   // Worker has already in "Canceling", let the WorkerGlobalScope start dying.
+   if (data->mCancelBeforeWorkerScopeConstructed) {
+     data->mScope->NoteTerminating();
      data->mScope->DisconnectGlobalTeardownObservers();
    }
-
+ 
 +  // Cloakfox: Apply per-context timezone override to this worker's JS realm.
 +  // All worker types (dedicated, shared, service) inherit userContextId from
 +  // the parent BrowserContext via OriginAttributes. Firefox creates separate
@@ -301,36 +415,70 @@ index c8e44687b7..9a2bae61e7 100644
 +  }
 +
    JS_FireOnNewGlobalObject(aCx, global);
-
+ 
    return data->mScope;
-diff --git a/dom/base/nsJSUtils.h b/dom/base/nsJSUtils.h
---- a/dom/base/nsJSUtils.h
-+++ b/dom/base/nsJSUtils.h
-@@ -77,2 +77,3 @@
-   static void ResetTimeZone();
-+  static bool SetTimeZoneOverride(const char* timezoneId);
+ }
  
-diff --git a/dom/base/nsJSUtils.cpp b/dom/base/nsJSUtils.cpp
---- a/dom/base/nsJSUtils.cpp
-+++ b/dom/base/nsJSUtils.cpp
-@@ -155,2 +155,4 @@
- void nsJSUtils::ResetTimeZone() { JS::ResetTimeZone(); }
+ WorkerDebuggerGlobalScope* WorkerPrivate::CreateDebuggerGlobalScope(
+     JSContext* aCx) {
+   auto data = mWorkerThreadAccessible.Access();
+diff --git a/js/public/Date.h b/js/public/Date.h
+--- a/js/public/Date.h
++++ b/js/public/Date.h
+@@ -48,16 +48,21 @@
+  * Left to its own devices, SpiderMonkey itself may occasionally try to detect
+  * system time changes.  However, no particular frequency of checking is
+  * guaranteed.  Embedders unable to accept occasional inaccuracies should call
+  * this method in response to system time changes, or immediately before
+  * operations requiring instantaneous correctness, to guarantee correct
+  * behavior.
+  */
+ extern JS_PUBLIC_API void ResetTimeZone();
 +
-+bool nsJSUtils::SetTimeZoneOverride(const char* aTz) { return JS::SetTimeZoneOverride(aTz); }
++extern JS_PUBLIC_API bool SetTimeZoneOverride(const char* timezoneId);
++
++// Cloakfox: per-context timezone override
++extern JS_PUBLIC_API bool SetRealmTimeZoneOverride(JSContext* cx, const char* timezoneId);
  
-
+ class ClippedTime;
+ inline ClippedTime TimeClip(double time);
+ 
+ /*
+  * |ClippedTime| represents the limited subset of dates/times described above.
+  *
+  * An invalid date/time may be created through the |ClippedTime::invalid|
 diff --git a/js/src/vm/DateTime.cpp b/js/src/vm/DateTime.cpp
 --- a/js/src/vm/DateTime.cpp
 +++ b/js/src/vm/DateTime.cpp
-@@ -40,2 +40,3 @@ static bool ComputeLocalTime(time_t local, struct tm* ptm) {
+@@ -30,16 +30,17 @@
+ #include "js/Date.h"
+ #include "js/GCAPI.h"
+ #include "js/Utility.h"
+ #include "js/Vector.h"
+ #include "threading/ExclusiveData.h"
+ #include "util/Text.h"
+ #include "vm/MutexIDs.h"
  #include "vm/Realm.h"
 +#include "jspubtd.h"
  
-@@ -595,6 +596,28 @@ void js::ResetTimeZoneInternal(ResetTimeZoneMode mode) {
- void js::ResetTimeZoneInternal(ResetTimeZoneMode mode) {
-   js::DateTimeInfo::resetTimeZone(mode);
+ static bool ComputeLocalTime(time_t local, struct tm* ptm) {
+   // Neither localtime_s nor localtime_r are required to act as if tzset has
+   // been called, therefore we need to explicitly call it to ensure any time
+   // zone changes are correctly picked up.
+ 
+ #if defined(_WIN32)
+   _tzset();
+@@ -583,16 +584,38 @@
+ /* static */
+ void js::FinishDateTimeState() {
+   js_delete(DateTimeInfo::instance);
+   DateTimeInfo::instance = nullptr;
  }
  
+ void js::ResetTimeZoneInternal(ResetTimeZoneMode mode) {
+   js::DateTimeInfo::resetTimeZone(mode);
++}
++
 +JS_PUBLIC_API bool JS::SetTimeZoneOverride(const char* timeZoneId) {
 +  if (!timeZoneId || *timeZoneId == 0) {
 +    return false;
@@ -351,8 +499,11 @@ diff --git a/js/src/vm/DateTime.cpp b/js/src/vm/DateTime.cpp
 +  }
 +  realm->setTimeZoneOverride(timeZoneId);
 +  return true;
-+}
-+
+ }
+ 
  JS_PUBLIC_API void JS::ResetTimeZone() {
    js::ResetTimeZoneInternal(js::ResetTimeZoneMode::ResetEvenIfOffsetUnchanged);
-
+ }
+ 
+ #if JS_HAS_INTL_API
+ #  if defined(XP_WIN)

@@ -1,19 +1,13 @@
-diff --git a/modules/libpref/moz.build b/modules/libpref/moz.build
---- a/modules/libpref/moz.build
-+++ b/modules/libpref/moz.build
-@@ -35,6 +35,7 @@
-     "browser",
-     "channelclassifier",
-     "clipboard",
-+    "cloakfox",
-     "content",
-     "converter",
-     "cookiebanners",
 diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
 --- a/modules/libpref/init/StaticPrefList.yaml
 +++ b/modules/libpref/init/StaticPrefList.yaml
-@@ -2200,6 +2200,19 @@
- #endif
+@@ -2401,16 +2401,29 @@
+ # hidden from the Async Clipboard read paths (Firefox-authored content read
+ # back from the in-process clipboard cache is unaffected).
+ - name: clipboard.readCustomFormatsFromClipboard.enabled
+   type: RelaxedAtomicBool
+   value: @IS_NIGHTLY_BUILD@
+   mirror: always
  
  #---------------------------------------------------------------------------
 +# Prefs starting with "cloakfox."
@@ -32,3 +26,29 @@ diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/Sta
  # Prefs starting with "consoleservice."
  #---------------------------------------------------------------------------
  
+ #if defined(ANDROID)
+   # Disable sending console to logcat on release builds.
+ -   name: consoleservice.logcat
+     type: RelaxedAtomicBool
+     value: @IS_NOT_RELEASE_OR_BETA@
+diff --git a/modules/libpref/moz.build b/modules/libpref/moz.build
+--- a/modules/libpref/moz.build
++++ b/modules/libpref/moz.build
+@@ -28,16 +28,17 @@
+     "accessibility",
+     "alerts",
+     "apz",
+     "beacon",
+     "bidi",
+     "browser",
+     "channelclassifier",
+     "clipboard",
++    "cloakfox",
+     "content",
+     "converter",
+     "datareporting",
+     "device",
+     "devtools",
+     "docshell",
+     "dom",
+     "editor",

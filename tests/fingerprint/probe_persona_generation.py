@@ -1,4 +1,6 @@
 """Fresh constrained persona generation, persistence, override policy and isolation."""
+import json
+from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from screen_management_fixture import ScreenManagementFixture
@@ -11,15 +13,24 @@ def main():
             WebDriverWait(d,15).until(lambda d:len(Select(d.find_element(By.ID,'cfx-persona-hardware')).options)>1)
             d.execute_script('document.documentElement.style.scrollBehavior="auto"')
         def cfg(id=0):
-            return f.chrome('return JSON.parse(Services.prefs.getStringPref("cloakfox.s.cloak_cfg_"+arguments[0]))',id)
+            # Session timing salts rotate at launch; compare every persistent identity field.
+            return f.chrome('const cfg=JSON.parse(Services.prefs.getStringPref("cloakfox.s.cloak_cfg_"+arguments[0]));delete cfg["timing:session_key_hi"];delete cfg["timing:session_key_lo"];return cfg',id)
+        def reveal(id):
+            d.execute_script('location.hash=arguments[0]',id)
+            WebDriverWait(d,5).until(lambda d:d.find_element(By.ID,id).is_displayed())
         def choose(id,value):
-            # Exercise the real change handler; headless spoofed geometry can
-            # make WebDriver's native option hit testing fail after a container switch.
-            assert d.execute_script("const s=document.getElementById(arguments[0]);return [...s.options].some(o=>o.value===arguments[1]);",id,value)
-            d.execute_script("const s=document.getElementById(arguments[0]);s.value=arguments[1];s.dispatchEvent(new Event('change',{bubbles:true}));",id,value)
+            if id != 'cfx-container-select':
+                reveal('cfx-persona-panel')
+            el=d.find_element(By.ID,id)
+            d.execute_script('arguments[0].scrollIntoView({block:"center"})',el)
+            if el.get_attribute('id') == 'cfx-persona-filter' and value != 'all':
+                Select(el).select_by_visible_text(value)
+            else:
+                Select(el).select_by_value(value)
         def generate():
+            reveal('cfx-persona-panel')
             el=d.find_element(By.ID,'cfx-generate-new')
-            d.execute_script('arguments[0].click()',el)
+            d.execute_script('arguments[0].scrollIntoView({block:"center"})',el);el.click()
             WebDriverWait(d,15).until(lambda d: not d.find_element(By.ID,'cfx-generate-new').get_attribute('aria-busy'))
             assert 'Generated and applied' in d.find_element(By.ID,'cfx-identity-status').text
         load();before=cfg()
@@ -40,8 +51,25 @@ def main():
         assert Select(d.find_element(By.ID,'cfx-persona-filter')).first_selected_option.get_attribute('value')=='Windows'
         assert Select(d.find_element(By.ID,'cfx-persona-hardware')).first_selected_option.get_attribute('value')=='nvidia'
         choose('cfx-persona-filter','macOS');choose('cfx-persona-hardware','apple')
+        reveal('cfx-persona-panel')
         clear=d.find_element(By.ID,'cfx-clear-overrides')
-        d.execute_script('arguments[0].scrollIntoView({block:"center"})',clear);clear.click()
+        d.execute_script('arguments[0].scrollIntoView({block:"center"})',clear)
+        try:
+            clear.click()
+        except ElementNotInteractableException:
+            diagnostic=d.execute_script("""const el=arguments[0],r=el.getBoundingClientRect();
+              const ancestors=[];for(let n=el;n;n=n.parentElement){const s=getComputedStyle(n);
+                ancestors.push({tag:n.tagName,id:n.id,hidden:n.hidden,open:n.open,
+                  display:s.display,visibility:s.visibility,overflow:s.overflow})}
+              return {hash:location.hash,container:document.getElementById('cfx-container-select').value,
+                overrideText:document.getElementById('cfx-override-count').textContent,
+                rect:r.toJSON(),viewport:[innerWidth,innerHeight],scroll:[scrollX,scrollY],
+                top:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.id,ancestors};""",clear)
+            diagnostic['overridePersisted']=f.chrome('return Services.prefs.prefHasUserValue("cloakfox.container.0.override.navigator.hardwareConcurrency")')
+            (f.report_path/'clear-overrides-diagnostic.json').write_text(json.dumps(diagnostic,indent=2))
+            d.save_screenshot(str(f.report_path/'clear-overrides-diagnostic.png'))
+            print('Clear overrides diagnostic:',json.dumps(diagnostic),flush=True)
+            raise
         # Clearing overrides refreshes the saved controls; stage the intended filters again.
         choose('cfx-persona-filter','macOS');choose('cfx-persona-hardware','apple')
         generate();mac=cfg()

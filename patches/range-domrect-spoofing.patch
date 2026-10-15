@@ -1,7 +1,9 @@
 diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
 --- a/dom/base/AbstractRange.cpp
 +++ b/dom/base/AbstractRange.cpp
-@@ -3,6 +3,8 @@
+@@ -1,13 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "mozilla/dom/AbstractRange.h"
@@ -10,7 +12,17 @@ diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
  
  #include "mozilla/Assertions.h"
  #include "mozilla/ContentIterator.h"
-@@ -979,6 +981,20 @@
+ #include "mozilla/PresShell.h"
+ #include "mozilla/RangeUtils.h"
+ #include "mozilla/SelectionMovementUtils.h"
+ #include "mozilla/dom/AbstractRangeBinding.h"
+ #include "mozilla/dom/ChildIterator.h"
+@@ -964,16 +966,30 @@
+       *mStart.Offset(RangeBoundary::OffsetFilter::kValidOffsets),
+       mEnd.GetContainer(),
+       *mEnd.Offset(RangeBoundary::OffsetFilter::kValidOffsets), aClampToEdge,
+       aFlushLayout);
+ 
    nsRect r = accumulator.mResultRect.IsEmpty() ? accumulator.mFirstRect
                                                 : accumulator.mResultRect;
    rect->SetLayoutRect(r);
@@ -31,7 +43,17 @@ diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
    return rect.forget();
  }
  
-@@ -1035,6 +1051,24 @@
+ already_AddRefed<DOMRectList> AbstractRange::GetClientRects(bool aClampToEdge,
+                                                             bool aFlushLayout) {
+   return GetClientRectsInner(AllowRangeCrossShadowBoundary::No, aClampToEdge,
+                              aFlushLayout);
+ }
+@@ -1020,16 +1036,34 @@
+           : mEnd;
+ 
+   CollectClientRectsAndText(
+       &builder, nullptr, this, startRef.GetContainer(),
+       *startRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets),
        endRef.GetContainer(),
        *endRef.Offset(RangeBoundary::OffsetFilter::kValidOffsets), aClampToEdge,
        aFlushLayout);
@@ -56,3 +78,8 @@ diff --git a/dom/base/AbstractRange.cpp b/dom/base/AbstractRange.cpp
    return rectList.forget();
  }
  
+ void AbstractRange::GetClientRectsAndTexts(
+     mozilla::dom::ClientRectsAndTexts& aResult, ErrorResult& aErr) {
+   if (!mIsPositioned) {
+     return;
+   }

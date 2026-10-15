@@ -1,7 +1,12 @@
 diff --git a/netwerk/protocol/http/moz.build b/netwerk/protocol/http/moz.build
 --- a/netwerk/protocol/http/moz.build
 +++ b/netwerk/protocol/http/moz.build
-@@ -257,3 +257,6 @@
+@@ -252,8 +252,11 @@
+ 
+ DIRS += ["happy_eyeballs_glue"]
+ 
+ XPCOM_MANIFESTS += [
+     "components.conf",
  ]
  
  include("/tools/fuzzing/libfuzzer-config.mozbuild")
@@ -12,7 +17,12 @@ diff --git a/netwerk/protocol/http/moz.build b/netwerk/protocol/http/moz.build
 diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsHttpHandler.cpp
 --- a/netwerk/protocol/http/nsHttpHandler.cpp
 +++ b/netwerk/protocol/http/nsHttpHandler.cpp
-@@ -11,6 +11,7 @@
+@@ -6,16 +6,17 @@
+ #include "nsHttpHandler.h"
+ 
+ #include <bitset>
+ 
+ #include "ASpdySession.h"
  #include "AltServiceChild.h"
  #include "EventTokenBucket.h"
  #include "HttpLog.h"
@@ -20,7 +30,17 @@ diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsH
  #include "LoadContextInfo.h"
  #include "SerializedLoadContext.h"
  #include "TRRServiceChannel.h"
-@@ -993,6 +994,15 @@
+ #include "Tickler.h"
+ #include "mozilla/AntiTrackingRedirectHeuristic.h"
+ #include "mozilla/AppShutdown.h"
+ #include "mozilla/Base64.h"
+ #include "mozilla/BasePrincipal.h"
+@@ -997,16 +998,25 @@
+   return adjustUrgency(urgency, adjustment);
+ }
+ 
+ //-----------------------------------------------------------------------------
+ // nsHttpHandler <private>
  //-----------------------------------------------------------------------------
  
  const nsCString& nsHttpHandler::UserAgent(bool aShouldResistFingerprinting) {
@@ -36,7 +56,17 @@ diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsH
    if (aShouldResistFingerprinting && !mSpoofedUserAgent.IsEmpty()) {
      LOG(("using spoofed userAgent : %s\n", mSpoofedUserAgent.get()));
      return mSpoofedUserAgent;
-@@ -2107,6 +2117,10 @@
+   }
+ 
+   if (!mUserAgentOverride.IsVoid()) {
+     LOG(("using general.useragent.override : %s\n", mUserAgentOverride.get()));
+     return mUserAgentOverride;
+@@ -2111,32 +2121,41 @@
+         mainThread,
+         NS_NewRunnableFunction("nsHttpHandler::SetAcceptLanguages", [&rv]() {
+           rv = gHttpHandler->SetAcceptLanguages();
+         }));
+     return rv;
    }
  
    MOZ_ASSERT(NS_IsMainThread());
@@ -47,7 +77,16 @@ diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsH
  
    mAcceptLanguagesIsDirty = false;
  
-@@ -2123,6 +2137,11 @@
+   nsAutoCString acceptLanguages;
+   intl::LocaleService::GetInstance()->GetAcceptLanguages(acceptLanguages);
+ 
+   nsAutoCString buf;
+   nsresult rv = PrepareAcceptLanguages(acceptLanguages.get(), buf);
+   if (NS_SUCCEEDED(rv)) {
+     mAcceptLanguages.Assign(buf);
+   }
+   return rv;
+ }
  
  nsresult nsHttpHandler::SetAcceptEncodings(const char* aAcceptEncodings,
                                             bool isSecure, bool isDictionary) {
@@ -59,3 +98,8 @@ diff --git a/netwerk/protocol/http/nsHttpHandler.cpp b/netwerk/protocol/http/nsH
    if (isDictionary) {
      mDictionaryAcceptEncodings = aAcceptEncodings;
    } else if (isSecure) {
+     mHttpsAcceptEncodings = aAcceptEncodings;
+   } else {
+     // use legacy list if a secure override is not specified
+     mHttpAcceptEncodings = aAcceptEncodings;
+     if (mHttpsAcceptEncodings.IsEmpty()) {

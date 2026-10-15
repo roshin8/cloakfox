@@ -1,0 +1,38 @@
+Probe did not complete (no completion sentinel) — the inline script threw before finishing. Treating as failure.
+Partial payload: {}
+Probe did not complete (no completion sentinel) — the inline script threw before finishing. Treating as failure.
+Partial payload: {"userAgent": "Cloakfox/1.0", "platform": "Linux x86_64"}
+Signal                                   Value                                    Verdict
+------------------------------------------------------------------------------------------
+platform                                 Win32                                    spoofed
+userAgent                                Mozilla/5.0 Firefox                      spoofed
+
+Heuristics: 2/2 spoofed
+Raw JSON: {
+  "userAgent": "Mozilla/5.0 Firefox",
+  "platform": "Win32"
+}
+Signal                                   Value                                    Verdict
+------------------------------------------------------------------------------------------
+platform                                 Win32                                    spoofed
+userAgent                                Cloakfox/1.0                             UNSPOOFED
+
+Heuristics: 1/2 spoofed
+Raw JSON: {
+  "userAgent": "Cloakfox/1.0",
+  "platform": "Win32"
+}
+Signal                                   Value                                    Verdict
+------------------------------------------------------------------------------------------
+navigator.gpu                            object                                   ?
+window.name                                                                       ?
+
+Heuristics: 0/0 spoofed
+Raw JSON: {
+  "window.name": "",
+  "navigator.gpu": "object"
+}
+No heuristics evaluated — cannot judge; treating as failure.
+Probe payload was not valid JSON — treating as failure.
+Probe payload was not an object — treating as failure.
+PASS — incomplete/empty/garbage payloads score as failure (2); complete runs score 0/1 correctly

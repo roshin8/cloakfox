@@ -1,45 +1,14 @@
-Cloakfox: register about:cloakfox + add browser/components/cloakfox/ to build.
-
-Three tiny hooks into the Firefox tree to register the native settings page:
-
-  1. browser/components/moz.build: add "cloakfox" to DIRS so the new
-     additions/browser/components/cloakfox/ directory gets built.
-
-  2. browser/components/about/components.conf: add 'cloakfox' to pages
-     list so AboutRedirector knows the URI exists.
-
-  3. browser/components/about/AboutRedirector.cpp: add kRedirMap entry
-     mapping about:cloakfox -> chrome://browser/content/cloakfox/settings.html
-     with IS_SECURE_CHROME_UI so the page can write prefs with parent
-     authority (fixes the class of bug that made setHttp2Profile silently
-     no-op from the extension).
-
-All other Cloakfox settings-page code lives in
-additions/browser/components/cloakfox/ — no other Firefox files touched.
-
---- a/browser/components/moz.build
-+++ b/browser/components/moz.build
-@@ -28,6 +28,7 @@
- DIRS += [
-     "about",
-     "aboutlogins",
-+    "cloakfox",
-     "aboutwelcome",
-     "asrouter",
-     "attribution",
---- a/browser/components/about/components.conf
-+++ b/browser/components/about/components.conf
-@@ -5,6 +5,7 @@
-
- pages = [
-     'asrouter',
-+    'cloakfox',
-     'blocked',
-     'certerror',
-     'downloads',
+diff --git a/browser/components/about/AboutRedirector.cpp b/browser/components/about/AboutRedirector.cpp
 --- a/browser/components/about/AboutRedirector.cpp
 +++ b/browser/components/about/AboutRedirector.cpp
-@@ -49,2 +49,7 @@
+@@ -42,16 +42,21 @@
+   unless your about: page really needs chrome privileges. Security review is
+   required before adding new map entries without
+   URI_SAFE_FOR_UNTRUSTED_CONTENT.
+ 
+   NOTE: changes to this redir map need to be accompanied with changes to
+     browser/components/about/components.conf
+ */
  static const RedirEntry kRedirMap[] = {
 +    // Cloakfox: privileged native settings, matching about:preferences.
 +    {"cloakfox", "chrome://browser/content/cloakfox/settings.html",
@@ -47,3 +16,51 @@ additions/browser/components/cloakfox/ — no other Firefox files touched.
 +    // Existing Firefox pages retain their original process/security flags.
 +
      {"aichatcontent", "chrome://browser/content/aiwindow/aiChatContent.html",
+      nsIAboutModule::URI_SAFE_FOR_UNTRUSTED_CONTENT |
+          nsIAboutModule::URI_CAN_LOAD_IN_PRIVILEGEDABOUT_PROCESS |
+          nsIAboutModule::URI_MUST_LOAD_IN_CHILD | nsIAboutModule::ALLOW_SCRIPT |
+          nsIAboutModule::HIDE_FROM_ABOUTABOUT},
+     {"asrouter", "chrome://browser/content/asrouter/asrouter-admin.html",
+      nsIAboutModule::URI_SAFE_FOR_UNTRUSTED_CONTENT |
+          nsIAboutModule::URI_CAN_LOAD_IN_PRIVILEGEDABOUT_PROCESS |
+diff --git a/browser/components/about/components.conf b/browser/components/about/components.conf
+--- a/browser/components/about/components.conf
++++ b/browser/components/about/components.conf
+@@ -1,15 +1,16 @@
+ # This Source Code Form is subject to the terms of the Mozilla Public
+ # License, v. 2.0. If a copy of the MPL was not distributed with this
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+ pages = [
+     'aichatcontent',
+     'asrouter',
++    'cloakfox',
+     'blocked',
+     'certerror',
+     'downloads',
+     'framecrashed',
+     'keyboard',
+     'logins',
+     'loginsimportreport',
+     'firefoxview',
+diff --git a/browser/components/moz.build b/browser/components/moz.build
+--- a/browser/components/moz.build
++++ b/browser/components/moz.build
+@@ -22,16 +22,17 @@
+ 
+ with Files("controlcenter/**"):
+     BUG_COMPONENT = ("Firefox", "General")
+ 
+ 
+ DIRS += [
+     "about",
+     "aboutlogins",
++    "cloakfox",
+     "aboutwelcome",
+     "aiwindow",
+     "asrouter",
+     "attribution",
+     "backup",
+     "contentanalysis",
+     "contextualidentity",
+     "controlcenter",

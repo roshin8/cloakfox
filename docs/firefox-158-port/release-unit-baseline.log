@@ -1,0 +1,15 @@
+E...........................
+======================================================================
+ERROR: test_actual_native_requirements_keep_owner_and_apple_constraints (test_release_config.MacOwnerPin.test_actual_native_requirements_keep_owner_and_apple_constraints)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/release/test_release_config.py", line 60, in test_actual_native_requirements_keep_owner_and_apple_constraints
+    requirement = namespace['mac_prod_requirements_string']('org.mozilla.updater', 'A1B2C3D4E5')
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: mac_prod_requirements_string() takes 1 positional argument but 2 were given
+
+----------------------------------------------------------------------
+Ran 28 tests in 2.642s
+
+FAILED (errors=1)
+Release inputs installed. Activation still requires built-updater and hosting validation.

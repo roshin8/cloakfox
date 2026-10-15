@@ -1,0 +1,125 @@
+diff --git a/dom/base/CloakfoxScreenPresentation.cpp b/dom/base/CloakfoxScreenPresentation.cpp
+--- a/dom/base/CloakfoxScreenPresentation.cpp
++++ b/dom/base/CloakfoxScreenPresentation.cpp
+@@ -42,19 +42,21 @@
+   nsString ua;
+   if (NavigatorManager::GetUserAgent(Container(aWindow), ua)) return Some(ua);
+   auto cfg = Overlay(aWindow);
+   auto at = cfg.find("navigator.userAgent");
+   if (at != cfg.end() && at->is_string()) {
+     ua.Assign(NS_ConvertUTF8toUTF16(at->get<std::string>().c_str()));
+     return Some(ua);
+   }
++  nsAutoCString nativeUA;
+   if (NS_FAILED(Navigator::GetUserAgent(aWindow, aWindow->GetExtantDoc(),
+-                                        Nothing(), ua)))
+-    return Nothing();
++                                        Nothing(), nativeUA)))
++    return Nothing();
++  CopyUTF8toUTF16(nativeUA, ua);
+   return Some(ua);
+ }
+ bool CloakfoxScreenAccess::IsOriginAllowed(const nsACString& aOrigin) {
+   nsAutoCString saved;
+   Preferences::GetCString("cloakfox.compat.screen_management.origins", saved);
+   auto origins = Json::parse(std::string(saved.BeginReading(), saved.Length()),
+                              nullptr, false);
+   if (!origins.is_array()) return false;
+diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -797,17 +797,17 @@
+   if (mCanvasElement) {
+     return mCanvasElement->NodePrincipal()->OriginAttributesRef().mUserContextId;
+   }
+   if (mOffscreenCanvas) {
+     if (nsIGlobalObject* global = mOffscreenCanvas->GetRelevantGlobal()) {
+       if (auto* principal = global->PrincipalOrNull()) {
+         return principal->OriginAttributesRef().mUserContextId;
+       }
+-      if (WorkerPrivate* wp = GetCurrentThreadWorkerPrivate()) {
++      if (dom::WorkerPrivate* wp = dom::GetCurrentThreadWorkerPrivate()) {
+         return wp->GetOriginAttributes().mUserContextId;
+       }
+     }
+   }
+   return 0;
+ }
+ 
+ void ClientWebGLContext::GetContextAttributes(
+@@ -1426,17 +1426,17 @@
+   if (buffer) {
+     const uint32_t seed = CloakfoxSiteSeed::Derive(GetUserContextId(), "canvas:seed",
+           GetCookieJarSettings());
+     const auto size = *out_imageSize;
+     if (seed && size.width > 0 && size.height > 0) {
+       CheckedInt<uint32_t> len =
+           CheckedInt<uint32_t>(size.width) * size.height * 4;
+       if (len.isValid()) {
+-        CanvasFingerprintManager::ApplyCanvasNoise(buffer.get(), len.value(),
++        dom::CanvasFingerprintManager::ApplyCanvasNoise(buffer.get(), len.value(),
+                                                    seed);
+       }
+     }
+   }
+   return buffer;
+ }
+ 
+ NS_IMETHODIMP
+@@ -2643,17 +2643,17 @@
+       case LOCAL_GL_RENDERER: {
+         bool allowRenderer = StaticPrefs::webgl_enable_renderer_query();
+         if (ShouldResistFingerprinting(RFPTarget::WebGLRenderInfo) ||
+             ShouldResistFingerprinting(RFPTarget::WebGLRendererConstant)) {
+           allowRenderer = false;
+         }
+         if (allowRenderer) {
+           nsAutoString stored;
+-          if (WebGLParamsManager::GetRenderer(GetUserContextId(), stored)) {
++          if (dom::WebGLParamsManager::GetRenderer(GetUserContextId(), stored)) {
+             ret = Some(std::string(NS_ConvertUTF16toUTF8(stored).get()));
+           } else {
+             ret = GetUnmaskedRenderer();
+             if (ret) {
+               ret = Some(webgl::SanitizeRenderer(*ret));
+             }
+           }
+         }
+@@ -2685,17 +2685,17 @@
+           EnqueueError_ArgEnum("pname", pname);
+           return;
+         }
+ 
+         switch (pname) {
+           case dom::WEBGL_debug_renderer_info_Binding::UNMASKED_RENDERER_WEBGL:
+             {
+               nsAutoString stored;
+-              if (WebGLParamsManager::GetRenderer(GetUserContextId(), stored)) {
++              if (dom::WebGLParamsManager::GetRenderer(GetUserContextId(), stored)) {
+                 ret = Some(NS_ConvertUTF16toUTF8(stored));
+                 break;
+               }
+             }
+             if (auto value = MaskConfig::GetString("webGl:renderer")) {
+               ret = Some(value.value());
+               break;
+             }
+@@ -2708,17 +2708,17 @@
+                 ret = Some(webgl::SanitizeRenderer(*ret));
+               }
+             }
+             break;
+ 
+           case dom::WEBGL_debug_renderer_info_Binding::UNMASKED_VENDOR_WEBGL:
+             {
+               nsAutoString stored;
+-              if (WebGLParamsManager::GetVendor(GetUserContextId(), stored)) {
++              if (dom::WebGLParamsManager::GetVendor(GetUserContextId(), stored)) {
+                 ret = Some(NS_ConvertUTF16toUTF8(stored));
+                 break;
+               }
+             }
+             if (auto value = MaskConfig::GetString("webGl:vendor")) {
+               ret = Some(value.value());
+               break;
+             }

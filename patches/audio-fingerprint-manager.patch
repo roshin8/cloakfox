@@ -149,7 +149,12 @@ diff --git a/dom/base/AudioFingerprintManager.h b/dom/base/AudioFingerprintManag
 diff --git a/dom/base/moz.build b/dom/base/moz.build
 --- a/dom/base/moz.build
 +++ b/dom/base/moz.build
-@@ -143,6 +143,7 @@
+@@ -138,16 +138,17 @@
+     "!UseCounterList.h",
+     "!UseCounterWorkerList.h",
+     "AbstractRange.h",
+     "AncestorIterator.h",
+     "AnimationFrameProvider.h",
      "AnonymousContent.h",
      "AtomAttributes.h",
      "Attr.h",
@@ -157,7 +162,17 @@ diff --git a/dom/base/moz.build b/dom/base/moz.build
      "AutoPrintEventDispatcher.h",
      "AutoSuppressEventHandlingAndSuspend.h",
      "BarProps.h",
-@@ -301,6 +302,11 @@
+     "BindContext.h",
+     "BodyConsumer.h",
+     "BodyUtil.h",
+     "BorrowedAttrInfo.h",
+     "CacheExpirationTime.h",
+@@ -298,16 +299,21 @@
+     "UseCounterMetrics.h",
+     "UserActivation.h",
+     "VideoFrameProvider.h",
+     "ViewportMetaData.h",
+     "VisualViewport.h",
      "WindowFeatures.h",
      "WindowProxyHolder.h",
  ]
@@ -169,10 +184,20 @@ diff --git a/dom/base/moz.build b/dom/base/moz.build
  
  if CONFIG["FUZZING"]:
      EXPORTS.mozilla.dom += [
+         "FuzzingFunctions.h",
+     ]
+ 
+ if CONFIG["FUZZING_SNAPSHOT"]:
+     EXPORTS.mozilla.dom += [
 diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
 --- a/dom/base/nsGlobalWindowInner.cpp
 +++ b/dom/base/nsGlobalWindowInner.cpp
-@@ -89,6 +89,7 @@
+@@ -83,16 +83,17 @@
+ #include "mozilla/StorageAccess.h"
+ #include "mozilla/StoragePrincipalHelper.h"
+ #include "mozilla/TelemetryHistogramEnums.h"
+ #include "mozilla/ThrottledEventQueue.h"
+ #include "mozilla/TimeStamp.h"
  #include "mozilla/UniquePtr.h"
  #include "mozilla/Utf16.h"
  #include "mozilla/dom/AudioContext.h"
@@ -180,7 +205,17 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
  #include "mozilla/dom/AutoEntryScript.h"
  #include "mozilla/dom/BarProps.h"
  #include "mozilla/dom/BindingDeclarations.h"
-@@ -7809,6 +7810,29 @@
+ #include "mozilla/dom/BindingUtils.h"
+ #include "mozilla/dom/BrowserChild.h"
+ #include "mozilla/dom/BrowsingContext.h"
+ #include "mozilla/dom/CSPEvalChecker.h"
+ #include "mozilla/dom/CallbackDebuggerNotification.h"
+@@ -7790,16 +7791,39 @@
+ 
+ void nsGlobalWindowInner::UpdateSharedWorkerTimezoneOverride(
+     const nsAString& aTimezoneOverride) {
+   for (RefPtr<SharedWorker> pinnedWorker : mSharedWorkers.ForwardRange()) {
+     pinnedWorker->UpdateTimezoneOverride(aTimezoneOverride);
    }
  }
  
@@ -210,10 +245,20 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
  RefPtr<GenericPromise> nsGlobalWindowInner::StorageAccessPermissionChanged(
      bool aGranted) {
    // Invalidate cached StorageAllowed field so that calls to GetLocalStorage
+   // give us the updated localStorage object.
+   ClearStorageAllowedCache();
+ 
+   // Just reset the active cookie and storage principals
+   nsCOMPtr<nsICookieJarSettings> cjs;
 diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
 --- a/dom/base/nsGlobalWindowInner.h
 +++ b/dom/base/nsGlobalWindowInner.h
-@@ -677,6 +677,9 @@
+@@ -675,16 +675,19 @@
+ 
+   // https://w3c.github.io/webappsec-secure-contexts/#dom-window-issecurecontext
+   bool IsSecureContext() const;
+ 
+   mozilla::dom::External* External();
  
    mozilla::dom::Worklet* GetPaintWorklet(mozilla::ErrorResult& aRv);
  
@@ -223,10 +268,20 @@ diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
    void GetWebExposedLocales(nsTArray<nsString>& aLocales);
  
    mozilla::dom::IntlUtils* GetIntlUtils(mozilla::ErrorResult& aRv);
+ 
+   // Font spacing seed for privacy-preserving font fingerprinting
+   void SetFontSpacingSeed(uint32_t seed, mozilla::ErrorResult& aRv);
+ 
+   void StoreSharedWorker(mozilla::dom::SharedWorker* aSharedWorker);
 diff --git a/dom/media/webaudio/AnalyserNode.cpp b/dom/media/webaudio/AnalyserNode.cpp
 --- a/dom/media/webaudio/AnalyserNode.cpp
 +++ b/dom/media/webaudio/AnalyserNode.cpp
-@@ -11,6 +11,11 @@
+@@ -6,16 +6,21 @@
+ 
+ #include "AudioNodeEngine.h"
+ #include "AudioNodeTrack.h"
+ #include "Tracing.h"
+ #include "mozilla/Mutex.h"
  #include "mozilla/PodOperations.h"
  #include "mozilla/dom/AnalyserNodeBinding.h"
  #include "nsMathUtils.h"
@@ -238,7 +293,17 @@ diff --git a/dom/media/webaudio/AnalyserNode.cpp b/dom/media/webaudio/AnalyserNo
  
  namespace mozilla {
  
-@@ -214,6 +219,24 @@
+ static const uint32_t MAX_FFT_SIZE = 32768;
+ static const size_t CHUNK_COUNT = MAX_FFT_SIZE >> WEBAUDIO_BLOCK_SIZE_BITS;
+ static_assert(MAX_FFT_SIZE == CHUNK_COUNT * WEBAUDIO_BLOCK_SIZE,
+               "MAX_FFT_SIZE must be a multiple of WEBAUDIO_BLOCK_SIZE");
+ static_assert((CHUNK_COUNT & (CHUNK_COUNT - 1)) == 0,
+@@ -209,32 +214,68 @@
+ }
+ 
+ void AnalyserNode::GetFloatFrequencyData(const Float32Array& aArray) {
+   if (!FFTAnalysis()) {
+     // Might fail to allocate memory
      return;
    }
  
@@ -263,7 +328,16 @@ diff --git a/dom/media/webaudio/AnalyserNode.cpp b/dom/media/webaudio/AnalyserNo
    aArray.ProcessData([&](const Span<float>& aData, JS::AutoCheckCannotGC&&) {
      size_t length = std::min(size_t(aData.Length()), mOutputBuffer.Length());
  
-@@ -230,6 +253,24 @@
+     for (size_t i = 0; i < length; ++i) {
+       aData[i] = WebAudioUtils::ConvertLinearToDecibels(
+           mOutputBuffer[i], -std::numeric_limits<float>::infinity());
+     }
+   });
+ }
+ 
+ void AnalyserNode::GetByteFrequencyData(const Uint8Array& aArray) {
+   if (!FFTAnalysis()) {
+     // Might fail to allocate memory
      return;
    }
  
@@ -288,7 +362,17 @@ diff --git a/dom/media/webaudio/AnalyserNode.cpp b/dom/media/webaudio/AnalyserNo
    const double rangeScaleFactor = 1.0 / (mMaxDecibels - mMinDecibels);
  
    aArray.ProcessData([&](const Span<uint8_t>& aData, JS::AutoCheckCannotGC&&) {
-@@ -253,6 +294,24 @@
+     size_t length = std::min(size_t(aData.Length()), mOutputBuffer.Length());
+ 
+     for (size_t i = 0; i < length; ++i) {
+       const double decibels = WebAudioUtils::ConvertLinearToDecibels(
+           mOutputBuffer[i], mMinDecibels);
+@@ -248,30 +289,66 @@
+   });
+ }
+ 
+ void AnalyserNode::GetFloatTimeDomainData(const Float32Array& aArray) {
+   aArray.ProcessData([&](const Span<float>& aData, JS::AutoCheckCannotGC&&) {
      size_t length = std::min(aData.Length(), size_t(FftSize()));
  
      GetTimeDomainData(aData.Elements(), length);
@@ -313,7 +397,14 @@ diff --git a/dom/media/webaudio/AnalyserNode.cpp b/dom/media/webaudio/AnalyserNo
    });
  }
  
-@@ -267,6 +326,24 @@
+ void AnalyserNode::GetByteTimeDomainData(const Uint8Array& aArray) {
+   aArray.ProcessData([&](const Span<uint8_t>& aData, JS::AutoCheckCannotGC&&) {
+     size_t length = std::min(aData.Length(), size_t(FftSize()));
+ 
+     AlignedTArray<float> tmpBuffer;
+     if (!tmpBuffer.SetLength(length, fallible)) {
+       return;
+     }
  
      GetTimeDomainData(tmpBuffer.Elements(), length);
  
@@ -338,10 +429,20 @@ diff --git a/dom/media/webaudio/AnalyserNode.cpp b/dom/media/webaudio/AnalyserNo
      unsigned char* buffer = aData.Elements();
      for (size_t i = 0; i < length; ++i) {
        const float value = tmpBuffer[i];
+       // scale the value to the range of [0, UCHAR_MAX]
+       const float scaled =
+           std::max(0.0f, std::min(float(UCHAR_MAX), 128.0f * (value + 1.0f)));
+       buffer[i] = static_cast<unsigned char>(scaled);
+     }
 diff --git a/dom/media/webaudio/AudioBuffer.cpp b/dom/media/webaudio/AudioBuffer.cpp
 --- a/dom/media/webaudio/AudioBuffer.cpp
 +++ b/dom/media/webaudio/AudioBuffer.cpp
-@@ -19,6 +19,9 @@
+@@ -14,16 +14,19 @@
+ #include "jsfriendapi.h"
+ #include "mozilla/ErrorResult.h"
+ #include "mozilla/HoldDropJSObjects.h"
+ #include "mozilla/MemoryReporting.h"
+ #include "mozilla/PodOperations.h"
  #include "mozilla/dom/AudioBufferBinding.h"
  #include "nsPrintfCString.h"
  #include "nsTHashSet.h"
@@ -351,7 +452,17 @@ diff --git a/dom/media/webaudio/AudioBuffer.cpp b/dom/media/webaudio/AudioBuffer
  
  namespace mozilla::dom {
  
-@@ -301,6 +304,27 @@
+ NS_IMPL_CYCLE_COLLECTION_CLASS(AudioBuffer)
+ 
+ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(AudioBuffer)
+   NS_IMPL_CYCLE_COLLECTION_UNLINK(mJSChannels)
+   NS_IMPL_CYCLE_COLLECTION_UNLINK_PRESERVED_WRAPPER
+@@ -296,16 +299,37 @@
+       // "4. Attach ArrayBuffers containing copies of the data to the
+       // AudioBuffer, to be returned by the next call to getChannelData."
+       JS::AutoCheckCannotGC nogc;
+       bool isShared;
+       float* jsData = JS_GetFloat32ArrayData(array, &isShared, nogc);
        MOZ_ASSERT(!isShared);  // Was created as unshared above
        CopyChannelDataToFloat(mSharedChannels, i, 0, jsData, Length());
      }
@@ -379,7 +490,17 @@ diff --git a/dom/media/webaudio/AudioBuffer.cpp b/dom/media/webaudio/AudioBuffer
      mJSChannels[i] = array;
    }
  
-@@ -352,6 +376,24 @@
+   mSharedChannels.SetNull(Length());
+ 
+   return true;
+ }
+ 
+@@ -347,16 +371,34 @@
+     return;
+   }
+ 
+   if (!mSharedChannels.IsNull()) {
+     aDestination.ProcessData([&](const Span<float>& aData,
                                   JS::AutoCheckCannotGC&&) {
        CopyChannelDataToFloat(mSharedChannels, aChannelNumber, aBufferOffset,
                               aData.Elements(), calculateCount(aData.Length()));
@@ -404,10 +525,20 @@ diff --git a/dom/media/webaudio/AudioBuffer.cpp b/dom/media/webaudio/AudioBuffer
      });
      return;
    }
+ 
+   aDestination.ProcessData(
+       [&](const Span<float>& aData, JS::AutoCheckCannotGC&&) {
+         PodZero(aData.Elements(), calculateCount(aData.Length()));
+       });
 diff --git a/dom/media/webaudio/moz.build b/dom/media/webaudio/moz.build
 --- a/dom/media/webaudio/moz.build
 +++ b/dom/media/webaudio/moz.build
-@@ -152,3 +152,6 @@
+@@ -147,8 +147,11 @@
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
+ 
+ FINAL_LIBRARY = "xul"
+ LOCAL_INCLUDES += [".."]
  
  # DOM Mask
  LOCAL_INCLUDES += ["/cloakcfg"]
@@ -417,7 +548,12 @@ diff --git a/dom/media/webaudio/moz.build b/dom/media/webaudio/moz.build
 diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
 --- a/dom/webidl/Window.webidl
 +++ b/dom/webidl/Window.webidl
-@@ -939,6 +939,12 @@
+@@ -938,16 +938,22 @@
+ };
+ 
+ // Font spacing seed interface for privacy-preserving font fingerprinting
+ partial interface Window {
+   [Throws, Func="mozilla::dom::FontSpacingSeedManager::IsFunctionEnabledForWebIDL"]
    undefined setFontSpacingSeed(unsigned long seed);
  };
  
@@ -430,3 +566,8 @@ diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
  // Used to assign marks to appear on the scrollbar when
  // finding on a page.
  partial interface Window {
+   // The marks are values between 0 and scrollMax{X,Y} - scrollMin{X,Y}.
+   [ChromeOnly]
+   undefined setScrollMarks(sequence<unsigned long> marks,
+                            optional boolean onHorizontalScrollbar = false);
+ };

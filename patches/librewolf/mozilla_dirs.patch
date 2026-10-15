@@ -1,7 +1,12 @@
 diff --git a/toolkit/components/extensions/NativeManifests.sys.mjs b/toolkit/components/extensions/NativeManifests.sys.mjs
 --- a/toolkit/components/extensions/NativeManifests.sys.mjs
 +++ b/toolkit/components/extensions/NativeManifests.sys.mjs
-@@ -37,6 +37,8 @@
+@@ -32,16 +32,18 @@
+     if (!this._initializePromise) {
+       let platform = AppConstants.platform;
+       if (platform == "win") {
+         this._lookup = this._winLookup;
+       } else if (platform == "macosx" || platform == "linux") {
          let dirs = [
            Services.dirsvc.get("XREUserNativeManifests", Ci.nsIFile).path,
            Services.dirsvc.get("XRESysNativeManifests", Ci.nsIFile).path,
@@ -10,10 +15,20 @@ diff --git a/toolkit/components/extensions/NativeManifests.sys.mjs b/toolkit/com
          ];
          this._lookup = (type, name, context) =>
            this._tryPaths(type, name, dirs, context);
+       } else {
+         throw new Error(
+           `Native manifests are not supported on ${AppConstants.platform}`
+         );
+       }
 diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
 --- a/toolkit/xre/nsXREDirProvider.cpp
 +++ b/toolkit/xre/nsXREDirProvider.cpp
-@@ -332,23 +332,25 @@
+@@ -327,33 +327,35 @@
+ /**
+  * Get the directory that is the parent of the system-wide directories
+  * for extensions and native manifests.
+  *
+  * On OSX this is /Library/Application Support/Mozilla
   * On Linux this is /usr/{lib,lib64}/mozilla
   *   (for 32- and 64-bit systems respsectively)
   */
@@ -45,7 +60,17 @@ diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
  #    endif
        ;
    rv = NS_NewNativeLocalFile(dirname, getter_AddRefs(localDir));
-@@ -416,8 +418,19 @@
+ #  endif
+ 
+   if (NS_SUCCEEDED(rv)) {
+     localDir.forget(aFile);
+   }
+@@ -411,18 +413,29 @@
+ #endif  // !defined(MOZ_WIDGET_ANDROID)
+   } else if (!strcmp(aProperty, NS_APP_APPLICATION_REGISTRY_DIR) ||
+              !strcmp(aProperty, XRE_USER_APP_DATA_DIR)) {
+     rv = GetUserAppDataDirectory(getter_AddRefs(file));
+   }
  #if defined(XP_UNIX) || defined(XP_MACOSX)
    else if (!strcmp(aProperty, XRE_SYS_NATIVE_MANIFESTS)) {
      rv = ::GetSystemParentDirectory(getter_AddRefs(file));
@@ -65,7 +90,17 @@ diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
      rv = GetUserDataDirectoryHome(getter_AddRefs(file), /* aLocal */ false,
                                    /* aForceLegacy */ true);
      NS_ENSURE_SUCCESS(rv, rv);
-@@ -454,9 +467,10 @@
+ #  if defined(XP_MACOSX)
+     rv = file->AppendNative("Mozilla"_ns);
+ #  else   // defined(XP_MACOSX)
+     rv = file->AppendNative(".mozilla"_ns);
+ #  endif  // defined(XP_MACOSX)
+@@ -449,19 +462,20 @@
+     rv = GetSystemExtensionsDirectory(getter_AddRefs(file));
+ #  endif
+   }
+ #endif  // defined(XP_UNIX) || defined(XP_MACOSX)
+ #if defined(XP_UNIX) && !defined(XP_MACOSX)
    else if (!strcmp(aProperty, XRE_SYS_SHARE_EXTENSION_PARENT_DIR)) {
  #  ifdef ENABLE_SYSTEM_EXTENSION_DIRS
  #    if defined(__OpenBSD__) || defined(__FreeBSD__)
@@ -78,7 +113,17 @@ diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
  #    endif
      rv = NS_NewNativeLocalFile(nsDependentCString(sysLExtDir),
                                 getter_AddRefs(file));
-@@ -980,13 +994,7 @@
+ #  endif
+   }
+ #endif  // defined(XP_UNIX) && !defined(XP_MACOSX)
+   else if (!strcmp(aProperty, XRE_USER_SYS_EXTENSION_DIR)) {
+ #ifdef ENABLE_SYSTEM_EXTENSION_DIRS
+@@ -975,23 +989,17 @@
+   }
+ 
+   int32_t dotIndex = appDirPath.RFind(u".app");
+   if (dotIndex == kNotFound) {
+     dotIndex = appDirPath.Length();
    }
    appDirPath = Substring(appDirPath, 1, dotIndex - 1);
  
@@ -93,7 +138,17 @@ diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
      return NS_ERROR_FAILURE;
    }
  
-@@ -1284,7 +1292,7 @@
+   if (NS_FAILED(localDir->Append(u"updates"_ns)) ||
+       NS_FAILED(localDir->AppendRelativePath(appDirPath))) {
+     return NS_ERROR_FAILURE;
+   }
+ 
+@@ -1279,27 +1287,27 @@
+ 
+ nsresult nsXREDirProvider::AppendSysUserExtensionPath(nsIFile* aFile) {
+   NS_ASSERTION(aFile, "Null pointer!");
+ 
+   nsresult rv;
  
  #if defined(XP_MACOSX) || defined(XP_WIN)
  
@@ -102,7 +157,9 @@ diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
    rv = aFile->AppendNative(nsDependentCString(sXR));
    NS_ENSURE_SUCCESS(rv, rv);
  
-@@ -1294,7 +1302,7 @@
+   static const char* const sExtensions = "Extensions";
+   rv = aFile->AppendNative(nsDependentCString(sExtensions));
+   NS_ENSURE_SUCCESS(rv, rv);
  
  #elif defined(XP_UNIX)
  
@@ -111,7 +168,17 @@ diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
    rv = aFile->AppendNative(nsDependentCString(sXR));
    NS_ENSURE_SUCCESS(rv, rv);
  
-@@ -1599,10 +1607,6 @@
+   static const char* const sExtensions = "extensions";
+   rv = aFile->AppendNative(nsDependentCString(sExtensions));
+   NS_ENSURE_SUCCESS(rv, rv);
+ 
+ #else
+@@ -1594,20 +1602,16 @@
+     rv = aFile->AppendNative(appName);
+   }
+   NS_ENSURE_SUCCESS(rv, rv);
+ 
+ #elif defined(XP_WIN)
    if (!profile.IsEmpty()) {
      rv = AppendProfileString(aFile, profile.get());
    } else {
@@ -122,7 +189,17 @@ diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
      rv = aFile->AppendNative(appName);
    }
    NS_ENSURE_SUCCESS(rv, rv);
-@@ -1640,16 +1644,6 @@
+ 
+ #elif defined(ANDROID)
+   // The directory used for storing profiles
+   // The parent of this directory is set in GetUserDataDirectoryHome
+   // XXX: handle gAppData->profile properly
+@@ -1635,26 +1639,16 @@
+     // let it become ".."
+     if (*profileStart == '.' && !aLocal) profileStart++;
+ 
+     folder.Append(profileStart);
+     ToLowerCase(folder);
  
      rv = AppendProfileString(aFile, folder.get());
    } else {
@@ -139,10 +216,20 @@ diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
      // This can be the case in tests.
      if (!appName.IsEmpty()) {
        folder.Append(appName);
+       ToLowerCase(folder);
+ 
+       rv = aFile->AppendNative(folder);
+     }
+   }
 diff --git a/xpcom/build/nsXULAppAPI.h b/xpcom/build/nsXULAppAPI.h
 --- a/xpcom/build/nsXULAppAPI.h
 +++ b/xpcom/build/nsXULAppAPI.h
-@@ -113,6 +113,8 @@
+@@ -108,16 +108,18 @@
+ #if defined(XP_UNIX) || defined(XP_MACOSX)
+ /**
+  * Directory service keys for the system-wide and user-specific
+  * directories where native manifests used by the WebExtensions
+  * native messaging and managed storage features are found.
   */
  #  define XRE_SYS_NATIVE_MANIFESTS "XRESysNativeManifests"
  #  define XRE_USER_NATIVE_MANIFESTS "XREUserNativeManifests"
@@ -151,3 +238,8 @@ diff --git a/xpcom/build/nsXULAppAPI.h b/xpcom/build/nsXULAppAPI.h
  #endif
  
  /**
+  * A directory service key which specifies the user system extension
+  * parent directory.
+  */
+ #define XRE_USER_SYS_EXTENSION_DIR "XREUSysExt"
+ 

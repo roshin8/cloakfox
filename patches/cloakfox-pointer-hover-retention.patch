@@ -1,0 +1,69 @@
+diff --git a/dom/events/EventStateManager.cpp b/dom/events/EventStateManager.cpp
+--- a/dom/events/EventStateManager.cpp
++++ b/dom/events/EventStateManager.cpp
+@@ -5695,18 +5695,20 @@
+     }
+   }
+   // That could have caused DOM events which could wreak havoc. Reverify
+   // things and be careful.
+   if (!wrapper->GetDeepestLeaveEventTarget()) {
+     return;
+   }
+ 
++  // Pointer exits run before mouse exits and can also update CSS :hover.
++  // Preserve the same private departure boundary in both event phases.
+   const bool retainHover =
+-      !aMovingInto && !isPointer && aMouseEvent->IsTrusted() &&
++      !aMovingInto && aMouseEvent->IsTrusted() &&
+       aMouseEvent->InputSourceSupportsHover() &&
+       aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent &&
+       !aMouseEvent->mCloakfoxClearRetainedHover &&
+       mPresContext->Document()->ShouldMaskWindowActivity();
+   wrapper->WillDispatchOutAndOrLeaveEvent();
+ 
+   // Don't touch hover state if aMovingInto is non-null.  Caller will update
+   // hover state itself, and we have optimizations for hover switching between
+@@ -5742,17 +5744,19 @@
+            wrapper->GetDeepestLeaveEventTarget()
+                ? ToString(*wrapper->GetDeepestLeaveEventTarget()).c_str()
+                : "nullptr",
+            wrapper->GetDeepestLeaveEventTarget()));
+   leaveDispatcher.Dispatch();
+ 
+   MOZ_LOG(logModule, LogLevel::Info,
+           ("Dispatched \"out\" and/or \"leave\" events"));
+-  wrapper->DidDispatchOutAndOrLeaveEvent(retainHover);
++  // Only the mouse helper needs the held target for hover reconciliation.
++  // Pointer targets must reset normally for later iframe boundary events.
++  wrapper->DidDispatchOutAndOrLeaveEvent(retainHover && !isPointer);
+ }
+ 
+ void EventStateManager::RecomputeMouseEnterStateForRemoteFrame(
+     Element& aElement) {
+   if (!mMouseEnterLeaveHelper ||
+       mMouseEnterLeaveHelper->GetDeepestLeaveEventTarget() != &aElement) {
+     return;
+   }
+@@ -5765,18 +5769,21 @@
+ void EventStateManager::NotifyMouseOver(WidgetMouseEvent* aMouseEvent,
+                                         nsIContent* aContent) {
+   NS_ASSERTION(aContent, "Mouse must be over something");
+ 
+   const bool isPointer = aMouseEvent->mClass == ePointerEventClass;
+   LogModule* const logModule =
+       isPointer ? sPointerBoundaryLog : sMouseBoundaryLog;
+ 
++  // Pointer entry already replaces CSS hover before the mouse phase runs.
++  // Its independent mouse-entry marker still identifies that pending return.
+   const bool returningFromOutside =
+-      !isPointer && mCloakfoxHoverRetained && aMouseEvent->IsTrusted() &&
++      !isPointer && (mCloakfoxHoverRetained || mCloakfoxMouseEntryFromOutside) &&
++      aMouseEvent->IsTrusted() &&
+       mPresContext->Document()->ShouldMaskWindowActivity();
+   // Scope the flag to boundary dispatch. The original move/down/up must still
+   // reach page listeners. Keeping the mouse boundary target across departures
+   // lets a return elsewhere clear hover in nested remote frames too.
+   const bool wasPrivate = aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent;
+   auto restorePrivate = MakeScopeExit([aMouseEvent, wasPrivate] {
+     aMouseEvent->mFlags.mOnlySystemGroupDispatchInContent = wasPrivate;
+   });

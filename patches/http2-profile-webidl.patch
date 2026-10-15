@@ -1,13 +1,15 @@
---- a/dom/base/nsGlobalWindowInner.cpp	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-20 21:28:44
-@@ -7884,6 +7884,138 @@
+diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -8208,16 +8208,148 @@
+     if (global) {
        JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
        JS_SetProperty(cx, global, "setWebGLRenderer", undef);
        JS_DeleteProperty(cx, global, "setWebGLRenderer");
-+    }
-+  }
-+}
-+
+     }
+   }
+ }
+ 
 +void nsGlobalWindowInner::SetHttp2Profile(const nsAString& aProfile,
 +                                          ErrorResult& aRv) {
 +  NS_ConvertUTF16toUTF8 utf8(aProfile);
@@ -136,16 +138,30 @@
 +      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
 +      JS_SetProperty(cx, global, "setHttp3Profile", undef);
 +      JS_DeleteProperty(cx, global, "setHttp3Profile");
-     }
++    }
++  }
++}
++
+ void nsGlobalWindowInner::SetCloakConfig(const nsAString& aJson,
+                                           ErrorResult& aRv) {
+   uint32_t userContextId = 0;
+   if (BrowsingContext* bc = GetBrowsingContext()) {
+     userContextId = bc->OriginAttributesRef().mUserContextId;
    }
- }
---- a/dom/base/nsGlobalWindowInner.h	2026-04-18 21:43:52
-+++ b/dom/base/nsGlobalWindowInner.h	2026-04-20 21:28:23
-@@ -722,6 +722,18 @@
+   NS_ConvertUTF16toUTF8 utf8(aJson);
+   std::string jsonStr(utf8.get());
+diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
+--- a/dom/base/nsGlobalWindowInner.h
++++ b/dom/base/nsGlobalWindowInner.h
+@@ -725,16 +725,28 @@
+   void SetSpeechVoices(const nsAString& aVoices, mozilla::ErrorResult& aRv);
+ 
+   // Per-context WebGL parameter spoofing
+   void SetWebGLVendor(const nsAString& vendor, mozilla::ErrorResult& aRv);
    void SetWebGLRenderer(const nsAString& renderer, mozilla::ErrorResult& aRv);
  
    void SetCloakConfig(const nsAString& aJson, mozilla::ErrorResult& aRv);
-+
+ 
 +  void SetHttp2Profile(const nsAString& profile, mozilla::ErrorResult& aRv);
 +
 +  void SetHttp3Profile(const nsAString& profile, mozilla::ErrorResult& aRv);
@@ -157,12 +173,24 @@
 +  // world get an undefined property and can't probe whether Cloakfox
 +  // is installed via this method.
 +  static bool IsCloakfoxShieldCaller(JSContext* aCx, JSObject* aObj);
- 
++
   public:
    void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
---- a/dom/webidl/Window.webidl	2026-04-18 21:43:52
-+++ b/dom/webidl/Window.webidl	2026-04-21 02:15:13
-@@ -964,8 +964,44 @@
+   void Alert(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+              mozilla::ErrorResult& aError);
+   bool Confirm(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+                mozilla::ErrorResult& aError);
+   void Prompt(const nsAString& aMessage, const nsAString& aInitial,
+               nsAString& aReturn, nsIPrincipal& aSubjectPrincipal,
+diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
+--- a/dom/webidl/Window.webidl
++++ b/dom/webidl/Window.webidl
+@@ -1004,18 +1004,54 @@
+ };
+ 
+ partial interface Window {
+   [Throws, Func="mozilla::dom::WebRTCIPManager::IsIPv6FunctionEnabledForWebIDL"]
+   undefined setWebRTCIPv6(DOMString ipv6);
  };
  
  partial interface Window {
@@ -208,3 +236,8 @@
  };
  
  // Used to assign marks to appear on the scrollbar when
+ // finding on a page.
+ partial interface Window {
+   // The marks are values between 0 and scrollMax{X,Y} - scrollMin{X,Y}.
+   [ChromeOnly]
+   undefined setScrollMarks(sequence<unsigned long> marks,

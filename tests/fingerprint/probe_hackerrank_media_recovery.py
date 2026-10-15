@@ -1,22 +1,23 @@
-"""Native WindowActor regression for the recorded HackerRank failover sequence.
+"""Test the installed HackerRank recovery actor over isolated loopback HTTPS.
 
-Uses an isolated loopback application fixture, not a real meeting or device.
-The production origin match is checked first; the same actor is then registered
-for loopback solely in the disposable test profile. No actor source is changed.
+The real registration and built module are used without replacing either.
+DNS is local, and this fixture opens no meeting and captures no devices.
 """
 import json
 import os
 from pathlib import Path
+import ssl
+import sys
+import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
-
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'network'))
+from h3_fixture import create_certificates
 
-ROOT = Path(__file__).resolve().parents[2]
-ACTOR = ROOT / 'additions/browser/components/cloakfox/actors/CloakfoxHackerRankMediaChild.sys.mjs'
 HTML = b'''<!doctype html><title>Media reconnect regression</title><script>
 let sdkId=41,writes=0,renders=0,captures=0;
 const handlers=new Map();
@@ -36,67 +37,55 @@ window.snapshot=()=>({idMatches:state.localZoomUserId===sdkId,visible:state.vide
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
-        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Type','text/html')
         self.end_headers()
         self.wfile.write(HTML)
-
-    def log_message(self, *_):
-        pass
+    def log_message(self,*_): pass
 
 
 def main():
-    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
-    Thread(target=server.serve_forever, daemon=True).start()
-    options = Options()
-    options.binary_location = os.environ['CLOAKFOX_BIN']
-    options.add_argument('-headless')
-    driver = webdriver.Firefox(options=options, service=Service(service_args=['--allow-system-access']))
-    results = []
-    url = f'http://127.0.0.1:{server.server_port}/'
-    try:
-        driver.set_context('chrome')
-        profile = Path(driver.execute_script("return Services.dirsvc.get('ProfD',Ci.nsIFile).path"))
-        assets = profile / 'chrome' / 'media-recovery-test'
-        assets.mkdir(parents=True)
-        (assets / ACTOR.name).write_bytes(ACTOR.read_bytes())
-        driver.execute_script("""const f=Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);f.initWithPath(arguments[0]);Services.io.getProtocolHandler('resource').QueryInterface(Ci.nsISubstitutingProtocolHandler).setSubstitution('mediarecoverytest',Services.io.newURI(Services.io.newFileURI(f).spec+'/'));""",str(assets))
-        def register(matches):
-            driver.execute_script("""ChromeUtils.registerWindowActor('CloakfoxHackerRankMedia',{child:{esModuleURI:'resource://mediarecoverytest/CloakfoxHackerRankMediaChild.sys.mjs',events:{DOMDocElementInserted:{}}},matches:arguments[0],allFrames:false});""",matches)
-        # Unregister the built-in actor when testing a binary containing the fix.
-        driver.execute_script("try { ChromeUtils.unregisterWindowActor('CloakfoxHackerRankMedia'); } catch (_) {}")
-        register(['https://www.hackerrank.com/pair/*'])
-        driver.set_context('content')
-        driver.get(url)
-        driver.execute_script('window.reconnect(52)')
-        assert driver.execute_script('return snapshot().idMatches') is False
-        assert driver.execute_script('return bound()') is not True
-        results.append('production origin scope excludes loopback')
-        driver.set_context('chrome')
-        driver.execute_script("ChromeUtils.unregisterWindowActor('CloakfoxHackerRankMedia')")
-        register(['http://127.0.0.1/*'])
-        driver.set_context('content')
-        for load in range(2):
-            driver.get(url)
-            WebDriverWait(driver, 10).until(lambda d: d.execute_script('return bound()'))
-            for next_id in [52, 63]:
-                driver.execute_script('window.reconnect(arguments[0])', next_id)
-                WebDriverWait(driver, 5).until(lambda d: d.execute_script('return snapshot().idMatches'))
-            result = driver.execute_script('return snapshot()')
-            assert result == {'idMatches':True,'visible':True,'writes':2,'renders':2,'captures':0,'readiness':False}, result
-            results.append({'load':load, **result})
-        driver.set_context('chrome')
-        driver.execute_script("Services.prefs.setBoolPref('cloakfox.compat.hackerrank_media',false)")
-        driver.set_context('content')
-        driver.get(url)
-        driver.execute_script('window.reconnect(52)')
-        result = driver.execute_script('return snapshot()')
-        assert result['idMatches'] is False and result['writes'] == 0 and result['captures'] == 0, result
-        results.append('opt-out leaves cached ID unchanged')
-        print(json.dumps(results, indent=2))
-        print('HACKERRANK MEDIA RECONNECT ACTOR PASS')
-    finally:
-        driver.quit()
-        server.shutdown()
+    with tempfile.TemporaryDirectory(prefix='cloakfox-media-actor-') as temp:
+        _,cert,key=create_certificates(Path(temp),['www.hackerrank.com','media-scope.test'])
+        server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(cert,key)
+        server.socket=ctx.wrap_socket(server.socket,server_side=True)
+        Thread(target=server.serve_forever,daemon=True).start()
+        options=Options();options.binary_location=os.environ['CLOAKFOX_BIN']
+        options.add_argument('-headless');options.add_argument('-purgecaches')
+        options.accept_insecure_certs=True
+        options.set_preference('network.dns.localDomains','www.hackerrank.com,media-scope.test')
+        options.set_preference('network.trr.mode',5)
+        driver=webdriver.Firefox(options=options,service=Service(service_args=['--allow-system-access']))
+        results=[]
+        url=f'https://www.hackerrank.com:{server.server_port}'
+        try:
+            for excluded in [url+'/outside',f'https://media-scope.test:{server.server_port}/pair/test']:
+                driver.get(excluded)
+                # Reconcile happens synchronously once bound. No actor match means
+                # the ID remains stale and no callbacks or capture calls exist.
+                driver.execute_script('window.reconnect(52)')
+                assert driver.execute_script('return snapshot().idMatches') is False
+                assert driver.execute_script('return bound()') is not True
+                results.append({'excluded':excluded,'bound':False})
+            for load in range(2):
+                driver.get(url+'/pair/test')
+                WebDriverWait(driver,10).until(lambda d:d.execute_script('return bound()'))
+                for next_id in [52,63]:
+                    driver.execute_script('window.reconnect(arguments[0])',next_id)
+                    WebDriverWait(driver,5).until(lambda d:d.execute_script('return snapshot().idMatches'))
+                result=driver.execute_script('return snapshot()')
+                assert result=={'idMatches':True,'visible':True,'writes':2,'renders':2,'captures':0,'readiness':False},result
+                results.append({'load':load,**result})
+            driver.set_context('chrome')
+            driver.execute_script("Services.prefs.setBoolPref('cloakfox.compat.hackerrank_media',false)")
+            driver.set_context('content');driver.get(url+'/pair/test')
+            driver.execute_script('window.reconnect(52)')
+            result=driver.execute_script('return snapshot()')
+            assert result['idMatches'] is False and result['writes']==0 and result['captures']==0,result
+            results.append('opt-out leaves cached ID unchanged')
+            print(json.dumps(results,indent=2));print('PASS: installed HackerRank recovery registration, two reloads, scope and opt-out')
+        finally:
+            driver.quit();server.shutdown();server.server_close()
 
-if __name__ == '__main__':
-    main()
+
+if __name__=='__main__':main()

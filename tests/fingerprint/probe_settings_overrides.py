@@ -54,6 +54,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="cloakfox-settings-") as tmp:
         profile = Path(tmp, "profile")
         profile.mkdir()
+        # Identity edits keep native networking unless the measured-profile opt-in is enabled.
         Path(profile, "user.js").write_text(
             'user_pref("cloakfox.enabled", true);\n'
             'user_pref("cloakfox.opt.clipboard_masking", true);\n'
@@ -94,11 +95,25 @@ def main():
             selection = driver.execute_script("const s=document.getElementById('cfx-container-select');return {value:s.value,options:Array.from(s.options,o=>o.value)}")
             check(selection["value"] == str(ucid), f"settings selects requested container {ucid}", selection)
 
+        def reveal(section):
+            driver.execute_script('location.hash=arguments[0]',section)
+            WebDriverWait(driver,5).until(lambda d:d.find_element(By.ID,section).is_displayed())
+
+        def click(element):
+            driver.execute_script('arguments[0].scrollIntoView({block:"center"})',element)
+            element.click()
+
         def row(key):
             return driver.find_element(By.CSS_SELECTOR, f'.k[title="{key}"]').find_element(By.XPATH, "..")
 
         def edit(key, value):
-            driver.execute_script("arguments[0].click()", row(key).find_element(By.CSS_SELECTOR, ".v"))
+            reveal('sec-identity')
+            pickers=row(key).find_elements(By.CSS_SELECTOR,'select[data-key]')
+            if pickers:
+                click(pickers[0])
+                Select(pickers[0]).select_by_value('custom')
+            else:
+                click(row(key).find_element(By.CSS_SELECTOR, ".v"))
             field = row(key).find_element(By.CSS_SELECTOR, ".row-input")
             field.send_keys(Keys.COMMAND, "a")
             field.send_keys(value)
@@ -115,11 +130,14 @@ def main():
                     expected = 41 if key.endswith("hardwareConcurrency") else value
                     check(state["pins"].get(key) == expected and state["cfg"].get(key) == expected,
                           f"container {id}: {key} edit reaches active config", state)
-                driver.execute_script("document.getElementById('cfx-regenerate').click()")
+                reveal('cfx-persona-panel')
+                old_secret=state['cfg']['fingerprint:secret']
+                click(driver.find_element(By.ID,'cfx-generate-new'))
+                WebDriverWait(driver,15).until(lambda d:snapshot(id)['cfg']['fingerprint:secret'] != old_secret)
                 state = snapshot(id)
                 check(state["cfg"]["navigator.userAgent"] == ua and state["cfg"]["headers.User-Agent"] == ua
-                      and state["cfg"]["navigator.hardwareConcurrency"] == 41 and state["h2"] == "chrome",
-                      f"container {id}: new persona preserves overrides and HTTP profile", state)
+                      and state["cfg"]["navigator.hardwareConcurrency"] == 41 and state["h2"] == "firefox",
+                      f"container {id}: new persona preserves overrides and native default HTTP profile", state)
                 driver.refresh()
                 WebDriverWait(driver, 15).until(lambda d: d.find_elements(By.CSS_SELECTOR, ".spoof-row.dyn"))
                 Select(driver.find_element(By.ID, "cfx-container-select")).select_by_value(str(id))
@@ -143,13 +161,15 @@ def main():
                 const {fillPersonaKeys}=ChromeUtils.importESModule('resource:///modules/CloakfoxPersonas.sys.mjs');
                 return fillPersonaKeys(Services.prefs.getStringPref('cloakfox.container.0.math_seed'),0)['navigator.hardwareConcurrency'];
                 """)
-            driver.execute_script("arguments[0].click()", row("navigator.hardwareConcurrency").find_element(By.CSS_SELECTOR, ".row-reset-x"))
+            reveal('sec-identity')
+            click(row("navigator.hardwareConcurrency").find_element(By.CSS_SELECTOR, ".row-reset-x"))
             state = snapshot(0)
             check("navigator.hardwareConcurrency" not in state["pins"]
                   and state["cfg"]["navigator.hardwareConcurrency"] == persona_cores
                   and state["cfg"]["navigator.userAgent"] == CHROME,
                   "resetting one field retains other overrides", state)
-            driver.execute_script("document.getElementById('cfx-clear-overrides').click()")
+            reveal('cfx-persona-panel')
+            click(driver.find_element(By.ID,'cfx-clear-overrides'))
             state = snapshot(0)
             check(not state["pins"] and "Firefox/" in state["cfg"]["navigator.userAgent"]
                   and snapshot(2)["cfg"]["navigator.userAgent"] == EDGE,

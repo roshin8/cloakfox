@@ -1,0 +1,470 @@
+diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
+--- a/dom/base/Navigator.cpp
++++ b/dom/base/Navigator.cpp
+@@ -113,16 +113,20 @@
+ 
+ #include "AutoplayPolicy.h"
+ #include "mozilla/DetailedPromise.h"
+ #include "mozilla/EMEUtils.h"
+ #include "mozilla/dom/AudioContext.h"
+ #include "mozilla/dom/HTMLMediaElement.h"
+ #include "mozilla/dom/WindowGlobalChild.h"
+ #include "mozilla/intl/LocaleService.h"
++#include "mozilla/intl/Locale.h"
++#include "mozilla/BasePrincipal.h"
++#include "mozilla/intl/ICU4CGlue.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/webgpu/Instance.h"
+ 
+ 
+ // Cloakfox: Lazy initialization for global timezone config.
+ // Cannot use static init because SpiderMonkey may not be ready yet.
+ static void EnsureGlobalTimezoneInitialized() {
+   static bool sInitialized = false;
+   if (sInitialized) return;
+@@ -472,28 +476,78 @@
+   }
+ }
+ 
+ /**
+  * Returns the first language from GetAcceptLanguages.
+  *
+  * Full details above in GetAcceptLanguages.
+  */
++// A persona's language is per container, never a process LocaleService change.
++// Locale parsing/canonicalization is local and safe on worker threads too.
++/* static */
++bool Navigator::GetCloakfoxLanguages(uint32_t aUserContextId,
++                                    nsTArray<nsString>& aLanguages) {
++  if (!StaticPrefs::cloakfox_enabled()) return false;
++  nsTArray<nsString> configured;
++  const auto append = [&](const std::string& value) {
++    nsAutoCString tag(value.c_str());
++    tag.Trim(" \t\r\n");
++    tag.ReplaceChar('_', '-');
++    intl::Locale locale;
++    if (intl::LocaleParser::TryParse(tag, locale).isErr() ||
++        locale.Canonicalize().isErr()) return;
++    nsTArray<char> chars;
++    intl::nsTArrayToBufferAdapter<char> buffer(chars);
++    if (locale.ToString(buffer).isErr()) return;
++    nsString language = NS_ConvertUTF8toUTF16(
++        nsDependentCSubstring(chars.Elements(), chars.Length()));
++    if (!configured.Contains(language)) configured.AppendElement(language);
++  };
++  if (auto primary = MaskConfig::GetString("navigator.language", aUserContextId)) {
++    append(*primary);
++  }
++  if (auto accept = MaskConfig::GetString("headers.Accept-Language", aUserContextId)) {
++    nsAutoCString header(accept->c_str());
++    for (const nsDependentCSubstring& item :
++         nsCCharSeparatedTokenizer(header, ',').ToRange()) {
++      // HTTP quality weights are not part of NavigatorLanguage's BCP47 tags.
++      int32_t semicolon = item.FindChar(';');
++      nsAutoCString tag(semicolon < 0 ? item : Substring(item, 0, semicolon));
++      append(std::string(tag.get(), tag.Length()));
++    }
++  }
++  if (configured.IsEmpty()) return false;
++  aLanguages = std::move(configured);
++  return true;
++}
++
+ void Navigator::GetLanguage(nsAString& aLanguage) {
+   nsTArray<nsString> languages;
+   GetLanguages(languages);
+   MOZ_ASSERT(languages.Length() >= 1);
+   aLanguage.Assign(languages[0]);
+ }
+ 
+ void Navigator::GetLanguages(nsTArray<nsString>& aLanguages) {
+   BrowsingContext* bc = mWindow ? mWindow->GetBrowsingContext() : nullptr;
++  nsIPrincipal* principal = mWindow
++      ? nsGlobalWindowInner::Cast(mWindow)->GetPrincipal() : nullptr;
++  // Browser UI keeps its native locale. Opaque sandboxed page principals must
++  // still receive the persona, since pages can read their values by messaging.
++  if (principal && !principal->IsSystemPrincipal() &&
++      !nsContentUtils::ShouldResistFingerprinting(GetDocShell(), RFPTarget::JSLocale) &&
++      GetCloakfoxLanguages(bc ? bc->OriginAttributesRef().mUserContextId : 0,
++                          aLanguages)) {
++    return;
++  }
+   if (bc) {
+-    const auto raw = CloakConfigOverlay_Get(
+-        bc->OriginAttributesRef().mUserContextId);
++    const auto raw = principal && !principal->IsSystemPrincipal()
++        ? CloakConfigOverlay_Get(bc->OriginAttributesRef().mUserContextId)
++        : std::string();
+     if (!raw.empty() && nlohmann::json::accept(raw)) {
+       const auto cfg = nlohmann::json::parse(raw);
+       if (cfg.contains("locale:all") && cfg["locale:all"].is_string()) {
+         nsAutoCString languages(cfg["locale:all"].get<std::string>().c_str());
+         GetAcceptLanguages(aLanguages, &languages);
+         return;
+       }
+     }
+diff --git a/dom/base/Navigator.h b/dom/base/Navigator.h
+--- a/dom/base/Navigator.h
++++ b/dom/base/Navigator.h
+@@ -224,16 +224,20 @@
+   dom::LockManager* Locks();
+   NavigatorLogin* Login();
+   dom::ModelContext* ModelContext();
+   bool Webdriver();
+ 
+   void GetLanguages(nsTArray<nsString>& aLanguages);
+ 
+   StorageManager* Storage();
++
++  // Thread-safe configured language parsing shared by windows and workers.
++  static bool GetCloakfoxLanguages(uint32_t aUserContextId,
++                                  nsTArray<nsString>& aLanguages);
+ 
+   static void GetAcceptLanguages(nsTArray<nsString>& aLanguages,
+                                  const nsCString* aLanguageOverride);
+ 
+   dom::MediaCapabilities* MediaCapabilities();
+   dom::MediaSession* MediaSession();
+   dom::AudioSession* AudioSession();
+ 
+diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -986,16 +986,19 @@
+     os->AddObserver(mObserver, MEMORY_PRESSURE_OBSERVER_TOPIC, false);
+     os->AddObserver(mObserver, PERMISSION_CHANGED_TOPIC, false);
+     os->AddObserver(mObserver, "browser-perm-changed", false);
+     os->AddObserver(mObserver, "screen-information-changed", false);
+     os->AddObserver(mObserver, "audio-playback", false);
+   }
+ 
+   Preferences::AddStrongObserver(mObserver, "intl.accept_languages");
++  Preferences::AddStrongObserver(mObserver, "cloakfox.s.cloak_cfg_");
++  Preferences::AddStrongObserver(mObserver, "cloakfox.enabled");
++  Preferences::AddStrongObserver(mObserver, "cloakfox.language_identity_epoch.");
+ 
+   // Watch for storage notifications so we can fire storage events.
+   RefPtr<StorageNotifierService> sns = StorageNotifierService::GetOrCreate();
+   if (sns) {
+     sns->Register(mObserver);
+   }
+ 
+   if (XRE_IsContentProcess()) {
+@@ -1317,16 +1320,19 @@
+     }
+ 
+     RefPtr<StorageNotifierService> sns = StorageNotifierService::GetOrCreate();
+     if (sns) {
+       sns->Unregister(mObserver);
+     }
+ 
+     Preferences::RemoveObserver(mObserver, "intl.accept_languages");
++    Preferences::RemoveObserver(mObserver, "cloakfox.s.cloak_cfg_");
++    Preferences::RemoveObserver(mObserver, "cloakfox.enabled");
++    Preferences::RemoveObserver(mObserver, "cloakfox.language_identity_epoch.");
+ 
+     // Drop its reference to this dying window, in case for some bogus reason
+     // the object stays around.
+     mObserver->Forget();
+   }
+ 
+   mMenubar = nullptr;
+   mToolbar = nullptr;
+@@ -5732,17 +5738,37 @@
+         nsCOMPtr<nsPIDOMWindowOuter> outer = GetOuterWindow();
+         outer->DispatchCustomEvent(u"orientationchange"_ns);
+       }
+     }
+     return NS_OK;
+   }
+ 
+   if (!nsCRT::strcmp(aTopic, NS_PREFBRANCH_PREFCHANGE_TOPIC_ID)) {
+-    MOZ_ASSERT(!NS_strcmp(aData, u"intl.accept_languages"));
++    if (NS_strcmp(aData, u"intl.accept_languages")) {
++      // Null principals belong to opaque page frames too; keep their cached
++      // languages synchronized without changing system/browser UI documents.
++      if (!GetPrincipal() || GetPrincipal()->IsSystemPrincipal()) return NS_OK;
++      NS_ConvertUTF16toUTF8 pref(aData);
++      BrowsingContext* bc = GetBrowsingContext();
++      if (!bc) return NS_OK;
++      nsAutoCString ownConfig;
++      ownConfig.AppendPrintf("cloakfox.s.cloak_cfg_%u",
++          bc->OriginAttributesRef().mUserContextId);
++      // Full persona strings can be omitted from dynamic preference IPC.
++      // The small owning-container epoch reaches content after the authoritative
++      // config snapshot refresh without invalidating another container's cache.
++      nsAutoCString ownEpoch;
++      ownEpoch.AppendPrintf("cloakfox.language_identity_epoch.%u",
++          bc->OriginAttributesRef().mUserContextId);
++      if (!pref.EqualsLiteral("cloakfox.enabled") && !pref.Equals(ownConfig) &&
++          !pref.Equals(ownEpoch)) {
++        return NS_OK;
++      }
++    }
+ 
+     // The user preferred languages have changed, we need to fire an event on
+     // Window object and invalidate the cache for navigator.languages. It is
+     // done for every change which can be a waste of cycles but those should be
+     // fairly rare.
+     // We MUST invalidate navigator.languages before sending the event in the
+     // very likely situation where an event handler will try to read its value.
+ 
+diff --git a/dom/workers/RuntimeService.cpp b/dom/workers/RuntimeService.cpp
+--- a/dom/workers/RuntimeService.cpp
++++ b/dom/workers/RuntimeService.cpp
+@@ -1130,18 +1130,50 @@
+   NS_INLINE_DECL_REFCOUNTING_INHERITED(WorkerThreadPrimaryRunnable, Runnable)
+ 
+  private:
+   ~WorkerThreadPrimaryRunnable() = default;
+ 
+   NS_DECL_NSIRUNNABLE
+ };
+ 
+-void PrefLanguagesChanged(const char* /* aPrefName */, void* /* aClosure */) {
+-  AssertIsOnMainThread();
++void PrefLanguagesChanged(const char* aPrefName, void* /* aClosure */) {
++  AssertIsOnMainThread();
++  if (aPrefName && StringBeginsWith(nsDependentCString(aPrefName), "cloakfox."_ns)) {
++    Maybe<uint32_t> container;
++    nsDependentCString pref(aPrefName);
++    if (!pref.EqualsLiteral("cloakfox.enabled")) {
++      const nsCString configPrefix("cloakfox.s.cloak_cfg_");
++      const nsCString epochPrefix("cloakfox.language_identity_epoch.");
++      const nsCString& prefix = StringBeginsWith(pref, epochPrefix)
++          ? epochPrefix : configPrefix;
++      if (!StringBeginsWith(pref, prefix)) return;
++      nsAutoCString suffix(Substring(pref, prefix.Length()));
++      nsresult rv;
++      int64_t id = suffix.ToInteger64(&rv);
++      if (NS_FAILED(rv) || id < 0 || id > UINT32_MAX) return;
++      nsAutoCString canonical;
++      canonical.AppendPrintf("%u", static_cast<uint32_t>(id));
++      if (!suffix.Equals(canonical)) return;
++      container = Some(static_cast<uint32_t>(id));
++    }
++    // Full persona strings can be omitted from dynamic preference IPC. The
++    // small per-container epoch follows the authoritative snapshot refresh.
++    // Queue invalidation after the main-thread observer has published that
++    // snapshot, and preserve frozen array identity in unaffected containers.
++    NS_DispatchToCurrentThread(NS_NewRunnableFunction(
++        "CloakfoxLanguageCacheChanged", [container]() {
++          nsTArray<nsString> nativeLanguages;
++          Navigator::GetAcceptLanguages(nativeLanguages, nullptr);
++          if (RuntimeService* runtime = RuntimeService::GetService()) {
++            runtime->UpdateAllWorkerLanguages(nativeLanguages, container);
++          }
++        }));
++    return;
++  }
+ 
+   nsTArray<nsString> languages;
+   Navigator::GetAcceptLanguages(languages, nullptr);
+ 
+   RuntimeService* runtime = RuntimeService::GetService();
+   if (runtime) {
+     runtime->UpdateAllWorkerLanguages(languages);
+   }
+@@ -1593,16 +1625,21 @@
+           LoadJSGCMemoryOptions,
+           PREF_JS_OPTIONS_PREFIX PREF_MEM_OPTIONS_PREFIX)) ||
+ #ifdef JS_GC_ZEAL
+       NS_FAILED(Preferences::RegisterCallback(
+           LoadGCZealOptions,
+           PREF_JS_OPTIONS_PREFIX PREF_GCZEAL_OPTIONS_PREFIX)) ||
+ #endif
+       WORKER_PREF("intl.accept_languages", PrefLanguagesChanged) ||
++      WORKER_PREF("cloakfox.enabled", PrefLanguagesChanged) ||
++      NS_FAILED(Preferences::RegisterPrefixCallbackAndCall(
++          PrefLanguagesChanged, "cloakfox.language_identity_epoch.")) ||
++      NS_FAILED(Preferences::RegisterPrefixCallbackAndCall(
++          PrefLanguagesChanged, "cloakfox.s.cloak_cfg_")) ||
+       WORKER_PREF("general.appversion.override", AppVersionOverrideChanged) ||
+       WORKER_PREF("general.platform.override", PlatformOverrideChanged) ||
+       NS_FAILED(Preferences::RegisterPrefixCallbackAndCall(
+           LoadContextOptions, PREF_JS_OPTIONS_PREFIX))) {
+     NS_WARNING("Failed to register pref callbacks!");
+   }
+ 
+ #undef WORKER_PREF
+@@ -1849,16 +1886,21 @@
+ 
+ #define WORKER_PREF(name, callback) \
+   NS_FAILED(Preferences::UnregisterCallback(callback, name))
+ 
+   if (mObserved) {
+     if (NS_FAILED(Preferences::UnregisterPrefixCallback(
+             LoadContextOptions, PREF_JS_OPTIONS_PREFIX)) ||
+         WORKER_PREF("intl.accept_languages", PrefLanguagesChanged) ||
++        WORKER_PREF("cloakfox.enabled", PrefLanguagesChanged) ||
++        NS_FAILED(Preferences::UnregisterPrefixCallback(
++            PrefLanguagesChanged, "cloakfox.language_identity_epoch.")) ||
++        NS_FAILED(Preferences::UnregisterPrefixCallback(
++            PrefLanguagesChanged, "cloakfox.s.cloak_cfg_")) ||
+         WORKER_PREF("general.appversion.override", AppVersionOverrideChanged) ||
+         WORKER_PREF("general.platform.override", PlatformOverrideChanged) ||
+ #ifdef JS_GC_ZEAL
+         NS_FAILED(Preferences::UnregisterCallback(
+             LoadGCZealOptions,
+             PREF_JS_OPTIONS_PREFIX PREF_GCZEAL_OPTIONS_PREFIX)) ||
+ #endif
+         NS_FAILED(Preferences::UnregisterPrefixCallback(
+@@ -2043,25 +2085,29 @@
+ 
+ void RuntimeService::UpdatePlatformOverridePreference(const nsAString& aValue) {
+   AssertIsOnMainThread();
+   MutexAutoLock lock(mMutex);
+   mNavigatorProperties.mPlatformOverridden = aValue;
+ }
+ 
+ void RuntimeService::UpdateAllWorkerLanguages(
+-    const nsTArray<nsString>& aLanguages) {
++    const nsTArray<nsString>& aLanguages, Maybe<uint32_t> aUserContextId) {
+   MOZ_ASSERT(NS_IsMainThread());
+ 
+   {
+     MutexAutoLock lock(mMutex);
+     mNavigatorProperties.mLanguages = aLanguages.Clone();
+   }
+-  BroadcastAllWorkers(
+-      [&aLanguages](auto& worker) { worker.UpdateLanguages(aLanguages); });
++  BroadcastAllWorkers([&aLanguages, aUserContextId](auto& worker) {
++    if (!aUserContextId ||
++        worker.GetOriginAttributes().mUserContextId == *aUserContextId) {
++      worker.UpdateLanguages(aLanguages);
++    }
++  });
+ }
+ 
+ void RuntimeService::UpdateAllWorkerMemoryParameter(JSGCParamKey aKey,
+                                                     Maybe<uint32_t> aValue) {
+   BroadcastAllWorkers([aKey, aValue](auto& worker) {
+     worker.UpdateJSWorkerMemoryParameter(aKey, aValue);
+   });
+ }
+diff --git a/dom/workers/RuntimeService.h b/dom/workers/RuntimeService.h
+--- a/dom/workers/RuntimeService.h
++++ b/dom/workers/RuntimeService.h
+@@ -141,17 +141,18 @@
+   }
+ 
+   void UpdateAppVersionOverridePreference(const nsAString& aValue);
+ 
+   void UpdatePlatformOverridePreference(const nsAString& aValue);
+ 
+   void UpdateAllWorkerContextOptions();
+ 
+-  void UpdateAllWorkerLanguages(const nsTArray<nsString>& aLanguages);
++  void UpdateAllWorkerLanguages(const nsTArray<nsString>& aLanguages,
++                               Maybe<uint32_t> aUserContextId = Nothing());
+ 
+   static void SetDefaultJSGCSettings(JSGCParamKey aKey,
+                                      Maybe<uint32_t> aValue) {
+     AssertIsOnMainThread();
+     sDefaultJSSettings->ApplyGCSetting(aKey, aValue);
+   }
+ 
+   void UpdateAllWorkerMemoryParameter(JSGCParamKey aKey,
+diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
+--- a/dom/workers/WorkerNavigator.cpp
++++ b/dom/workers/WorkerNavigator.cpp
+@@ -73,33 +73,16 @@
+   RuntimeService::NavigatorProperties properties =
+       rts->GetNavigatorProperties();
+ 
+   WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+   if (workerPrivate && !workerPrivate->GetLanguageOverride().IsEmpty()) {
+     properties.mLanguages = workerPrivate->GetLanguageOverride().Clone();
+   }
+ 
+-  if (workerPrivate) {
+-    const auto raw = CloakConfigOverlay_Get(
+-        workerPrivate->GetOriginAttributes().mUserContextId);
+-    if (!raw.empty() && nlohmann::json::accept(raw)) {
+-      const auto cfg = nlohmann::json::parse(raw);
+-      if (cfg.contains("navigator.languages") && cfg["navigator.languages"].is_array()) {
+-        properties.mLanguages.Clear();
+-        for (const auto& language : cfg["navigator.languages"]) {
+-          if (language.is_string()) {
+-            properties.mLanguages.AppendElement(
+-                NS_ConvertUTF8toUTF16(language.get<std::string>().c_str()));
+-          }
+-        }
+-      }
+-    }
+-  }
+-
+   RefPtr<WorkerNavigator> navigator = new WorkerNavigator(properties, aOnLine);
+ 
+   return navigator.forget();
+ }
+ 
+ void WorkerNavigator::Invalidate() {
+   if (mStorageManager) {
+     mStorageManager->Shutdown();
+@@ -155,16 +138,35 @@
+     if (const nsCOMPtr<nsIGlobalObject> global = xpc::NativeGlobal(jso)) {
+       if (const nsCOMPtr<nsIPrincipal> principal = global->PrincipalOrNull()) {
+         gpcStatus = principal->GetIsInPrivateBrowsing() &&
+                     StaticPrefs::privacy_globalprivacycontrol_pbmode_enabled();
+       }
+     }
+   }
+   return gpcStatus;
++}
++
++void WorkerNavigator::GetLanguage(nsString& aLanguage) const {
++  nsTArray<nsString> languages;
++  GetLanguages(languages);
++  MOZ_ASSERT(!languages.IsEmpty());
++  aLanguage.Assign(languages[0]);
++}
++
++void WorkerNavigator::GetLanguages(nsTArray<nsString>& aLanguages) const {
++  WorkerPrivate* worker = GetCurrentThreadWorkerPrivate();
++  MOZ_ASSERT(worker);
++  if (!worker->UsesSystemPrincipal() &&
++      !worker->ShouldResistFingerprinting(RFPTarget::JSLocale) &&
++      Navigator::GetCloakfoxLanguages(worker->GetOriginAttributes().mUserContextId,
++                                     aLanguages)) {
++    return;
++  }
++  aLanguages = mProperties.mLanguages.Clone();
+ }
+ 
+ void WorkerNavigator::SetLanguages(const nsTArray<nsString>& aLanguages) {
+   WorkerNavigator_Binding::ClearCachedLanguageValue(this);
+   WorkerNavigator_Binding::ClearCachedLanguagesValue(this);
+   mProperties.mLanguages = aLanguages.Clone();
+ }
+ 
+diff --git a/dom/workers/WorkerNavigator.h b/dom/workers/WorkerNavigator.h
+--- a/dom/workers/WorkerNavigator.h
++++ b/dom/workers/WorkerNavigator.h
+@@ -82,24 +82,19 @@
+ 
+   void GetPlatform(nsString& aPlatform, CallerType aCallerType,
+                    ErrorResult& aRv) const;
+ 
+   void GetProduct(nsString& aProduct) const { aProduct.AssignLiteral("Gecko"); }
+ 
+   bool TaintEnabled() const { return false; }
+ 
+-  void GetLanguage(nsString& aLanguage) const {
+-    MOZ_ASSERT(mProperties.mLanguages.Length() >= 1);
+-    aLanguage.Assign(mProperties.mLanguages[0]);
+-  }
++  void GetLanguage(nsString& aLanguage) const;
+ 
+-  void GetLanguages(nsTArray<nsString>& aLanguages) const {
+-    aLanguages = mProperties.mLanguages.Clone();
+-  }
++  void GetLanguages(nsTArray<nsString>& aLanguages) const;
+ 
+   void GetUserAgent(nsCString& aUserAgent, CallerType aCallerType,
+                     ErrorResult& aRv) const;
+ 
+   already_AddRefed<NavigatorUAData> UserAgentData();
+ 
+   bool OnLine() const { return mOnline; }
+ 

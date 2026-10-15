@@ -1,0 +1,1490 @@
+✔ unchanged source reuses one signed app and its owning profile (272.385834ms)
+✔ sealed and loose payload updates rebuild at the same path (427.996ms)
+✔ failed signing and failed installation retain the working copy (196.8855ms)
+✔ an active app cannot be replaced; a damaged inactive copy is rebuilt (89.99675ms)
+✔ Firefox appearance replaces the current SVG popup badge without losing controls (8.709708ms)
+✔ coherent window and worker measurements show no contradictions (1.565ms)
+✔ config contradictions are distinguished from measured mismatches and unavailable worker (0.182292ms)
+✔ production repair recomputes allowed changes and undo restores original override without rotating seed (0.992541ms)
+✔ production undo clears an override introduced by repair and stale repair cannot write (1.310667ms)
+✔ production undo refuses newer config and independently changed overrides (12.661ms)
+✔ production measurement excludes private windows and other containers even for default container (17.295917ms)
+✔ production measurement refuses a navigation race rather than attributing old readings to new page (1.464542ms)
+✔ canonical exact hosts reject URLs, wildcards, suffixes and malformed hosts (9.059542ms)
+✔ encrypted backups roundtrip, randomize and reject tampering/wrong passwords (795.617292ms)
+✔ untrusted backup rejects duplicate IDs, unknown keys, malformed seeds and missing rule targets (23.008708ms)
+✔ restore creates fresh IDs and remaps rules without overwriting old identities (0.592709ms)
+✔ failed import removes only newly created identities (0.204584ms)
+✔ temporary cleanup waits for successful clear and retains recovery marker on failure (0.160709ms)
+✔ a rule added during import is retained and only new containers are rolled back (0.399625ms)
+✔ startup recovery clears temporary tabs rather than treating them as permanent (0.10825ms)
+✔ failed import retains a rule reassigned by the user while save was pending (0.641542ms)
+✔ whole-window close schedules cleanup without TabClose and keeps temporary tabs in another window (1.478333ms)
+✔ rollback awaits persistence before reporting that newly created identities were removed (0.314042ms)
+✔ rollback save failure reports possible remaining state instead of completed removal (0.19225ms)
+✔ adding a site rule while native routing is disabled rejects without changing associations (0.15525ms)
+✔ v2 validates region, policy, opening pages, OS mode and reference-only named routes (2.815583ms)
+✔ v2 encrypted roundtrip binds the version and preserves all identity settings (247.477875ms)
+✔ missing named proxy remains blocked with its reference and cannot become a manual route (0.268ms)
+✔ present named proxy uses local binding, while previously blocked refs stay blocked (0.173875ms)
+✔ v2 restore exposes missing binding status and forwards every saved field unchanged (0.922292ms)
+✔ backup source OS metadata is optional for v2, strict when present, forbidden for v1 (0.543875ms)
+✔ appearance warning distinguishes changed, unknown and matching source OS without changing seeds or mode (0.207917ms)
+✔ restore passes and returns adaptation metadata while preserving original record and seeds (0.45475ms)
+✔ native identity writer persists restoration disclosure alongside unchanged imported seeds (3.6475ms)
+✔ backup UI previews adaptation and reloads its persistent restoration notice (4.705ms)
+✔ OS-specific generation modes survive backup validation (0.468167ms)
+✔ fresh profiles enable URL protection and avoid outgoing search suggestions (3.151666ms)
+✔ ordinary browser choices survive two startups including protective exceptions and search opt-in (0.9015ms)
+✔ native OS reduced-motion choice is not overridden on a fresh profile (0.415291ms)
+✔ mandatory RFP and container invariants are restored at startup (0.371667ms)
+✔ native exact-host routing defaults on while an explicit opt-out survives restart (2.768ms)
+✔ CloakfoxFeatureDetectChild preserves WebIDL receiver checks and native descriptor flags (5.162458ms)
+✔ CloakfoxFeatureDetectChild master switch preserves native values (0.547125ms)
+✔ CloakfoxWebGPUChild preserves WebIDL receiver checks and native descriptor flags (1.199584ms)
+✔ CloakfoxWebGPUChild master switch preserves native values (1.645416ms)
+✔ all bundled font bytes have exact hashes, license text and attribution (272.759375ms)
+✔ production font seed lookup uses prepared owner identity on style threads and observes changes (984.85125ms)
+✔ production SeedSync emits one mirror refresh and scoped language invalidation without observer recursion (1.4305ms)
+✔ every GPU class emits WebGL2 limits without exposing them on WebGL1 (5.200292ms)
+✔ no UA yields a non-Firefox H3 profile (the chimera guard holds) (0.752583ms)
+✔ H2 uses the actual Firefox engine for every identity (0.0805ms)
+✔ reconnect refreshes stale local ID and rerenders without starting capture (8.712541ms)
+✔ joining, closed and invalid SDK IDs never replace application state (1.537125ms)
+✔ new SDK clients detach old listeners and actor teardown cancels work (0.760792ms)
+✔ compatibility opt-out leaves the application alone (0.467959ms)
+✔ late service initialization is retried without recreating the service (0.474708ms)
+✔ teardown tolerates a destroyed content window and still detaches SDK callbacks (1.792834ms)
+✔ host selection retains complete correlated tuple without mutation (0.839459ms)
+✔ reject unsupported hosts and absent host distribution (0.638625ms)
+✔ host aliases normalize consistently (0.06225ms)
+✔ real Bayesian tuples select every supported OS deterministically (55.824167ms)
+✔ prunes default container including missing UCID without erasing mixed windows or unrelated selected tab (6.244209ms)
+✔ prunes saved/closed groups, empty windows and nested deferred sessions (0.193292ms)
+✔ rejects invalid, coerced, nonexistent IDs and missing confirmation before side effects (0.692875ms)
+✔ waits for close and clear before rotating; always releases lock (9.424958ms)
+✔ partial clear failure retains seeds and explains destructive partial effects (0.606417ms)
+✔ concurrent same-container forget cannot start a second clear (2.575584ms)
+✔ retains unrelated closed records when the last open tab belonged to target (0.398875ms)
+✔ uses native removal callback for late-update bookkeeping and preserves selected neighbor (0.347583ms)
+✔ restore preflight rejection leaves tabs and data untouched (0.264084ms)
+✔ accepts legacy numeric-string IDs in restore records while action IDs stay strict (0.244042ms)
+✔ successful forget clears typed bounce exceptions only after native data clear succeeds (0.40075ms)
+✔ prunes supported current, previous, upgrade and legacy restore files without losing other containers (1.42975ms)
+✔ backup read and atomic write failures reject instead of declaring data forgotten (0.44825ms)
+✖ strict SessionFile write rejects original writer failure after removing shutdown blocker (9.453416ms)
+✖ restore-file pruning uses SessionWriter mutex and releases it after failure (3.64725ms)
+✔ restore persistence failure prevents rotation and reports partial effects (1.777166ms)
+✔ waits for each target service-worker unregister callback and leaves other containers alone (8.188333ms)
+✔ service-worker unregister failure is reported instead of treated as successful clear (0.721042ms)
+✔ default-container clearing preserves shared permission flags; other IDs retain exact scope (0.079708ms)
+✔ cookie cleanup verification rejects residual target cookies but preserves other containers (0.165291ms)
+✔ only literal IP addresses accepted and IPv6 canonicalized (2.400667ms)
+✔ compare fresh different containers only; unknown is not a conflict-free measurement (1.439ms)
+✔ website rules match exact hosts and subdomains without suffix confusion (0.215625ms)
+✔ history records bounded URLs, supports reassignment, deletion and IP exceptions (0.898458ms)
+✔ temporary allowance expires and website exclusions take precedence (1.016ms)
+✔ conflicting observations do not transfer ownership and expired history is removed from storage (0.291125ms)
+✔ invalid website rules cannot overwrite the saved rules (0.351625ms)
+✔ animation math reuses one process snapshot across calls and windows (9.782375ms)
+✔ sin/cos/tan keep the page realm when its math-library policy can differ (1.767333ms)
+✔ numeric animation calls avoid realm round trips and repeated preference reads (57.362958ms)
+✔ published seed updates remain live in previously captured functions (2.674208ms)
+✔ removed or invalid seeds clear cached noise and a later seed restores it (1.617042ms)
+✔ Firebase tree sizes retain all children with the failing live seed (0.786958ms)
+✔ logarithms and powers preserve native values used by data encoders (0.695084ms)
+✔ optional data-math noise applies to new pages and switching off restores native results (0.928291ms)
+✔ opt-in data-math noise respects the master switch and zero seed (0.745542ms)
+✔ website appearance delegates to Firefox instead of pinning light (2.352958ms)
+✔ standalone controlled feature is spoofed to the pin (0.179334ms)
+✔ ORACLE (unsatisfiable term): pin ∧ native-false = false (0.199917ms)
+✔ ORACLE (satisfiable term): must NOT leak the real controlled value (0.137208ms)
+✔ uncontrolled clauses honor their real native value (0.164875ms)
+✔ pure uncontrolled queries defer (undefined) (0.06475ms)
+✔ all-controlled conjunction ANDs correctly (0.06975ms)
+✔ comma list is OR across queries (0.055042ms)
+✔ not inverts a controlled query (0.066084ms)
+✔ media type prefix is honored (0.103916ms)
+✔ color-gamut is a min-feature (p3 matches srgb and p3) (0.074333ms)
+✔ bare boolean-context feature has no controlled feature → defer (1.065166ms)
+✔ or-combined queries defer (not parsed) (0.172625ms)
+✔ without nativeEval, a mixed query defers rather than guess (0.11425ms)
+✔ pointer and hover queries defer to native digitizer/RDM capabilities (0.190792ms)
+✔ website color scheme is not a persona pin (0.245083ms)
+✔ inherit keeps existing system proxy, scoped proxy has no direct failover and resolves destination through proxy (2.097125ms)
+✔ blocked and malformed strict routes cancel before returning null, never inherit direct (1.306959ms)
+✔ proxy validation rejects embedded secrets, URL extras and unsafe ports (2.902042ms)
+✔ invalid container or route cannot overwrite a working policy (0.601166ms)
+✔ configured wrong-type modes fail closed using actual Gecko default-getter semantics (1.531291ms)
+✔ system background channels retain browser route, content-triggered and expanded-principal channels do not bypass container policy (0.444917ms)
+✔ callback exceptions cannot cause a second callback or cancel a valid channel (0.43425ms)
+✔ parent publishes numeric fail-closed policy and epoch for sanitized string changes (0.469875ms)
+✔ managed HTTP credentials remain proxy-only, with exact container identity and revision isolation (0.65625ms)
+✔ managed SOCKS5 uses native username/password API with remote DNS and no fallback (0.517042ms)
+✔ locked or missing managed credentials cancel before exactly one callback (0.514583ms)
+✔ native transport remains the default even for a Chrome identity (23.820625ms)
+✔ opt-in Chrome intent selects one combined native adapter profile (1.38075ms)
+✔ master off wins over the saved network choice (0.46725ms)
+✔ Gecko-native and unsupported identities have explicit status (1.550584ms)
+✔ a future engine cannot accidentally inherit the Gecko adapter (0.433125ms)
+✔ network intent and atomic native profile remain scoped to exact container zero (0.628458ms)
+✔ UA changes and malformed cfg never retain an old Chrome network profile (0.432208ms)
+✔ adapter names inherited from Object.prototype remain unavailable (0.424667ms)
+✔ registry startup reconciles persisted intent and discards stale adapter IDs (0.637875ms)
+✔ config observer uses a complete branch compatible with native matching (0.542125ms)
+✔ unmeasured Chrome versions retain native networking with explicit status (0.444708ms)
+✔ Edge, Opera and other Chromium-branded families are unsupported (0.412833ms)
+✔ profile and identity changes advance an atomic generation without switch-back revival (0.476ms)
+✔ generation exhaustion cannot wrap and revive an old profile (0.477417ms)
+✔ grant inventory distinguishes exact origin attributes, type, expiry and denial (12.744417ms)
+✔ expiry uses the original principal and capability, and never extends an existing boundary (0.953042ms)
+✔ missing consent, stale grants, policy grants, tab widening and isolation changes fail closed (0.22825ms)
+✔ revocation touches only the selected stored principal (0.100166ms)
+✔ session and timed expiry reject invalid dates without writes (0.12775ms)
+✔ workspace creation uses native empty profile allocation and saves before success (0.485625ms)
+✔ workspace opening resolves the registered profile and rejects current, busy or arbitrary paths (0.118292ms)
+✔ profile catalog save failure never launches or deletes profile storage (0.195291ms)
+✔ constrained generation follows supported OS and GPU combinations (95.736667ms)
+✔ fresh seeds generate fresh samples instead of a fixed persona pool (1.326083ms)
+✔ automatic preserves the previous sampling path and unknown filters fail (0.227333ms)
+✔ fresh cfg derives Firefox major from 155.0.1 (31.600083ms)
+✔ fresh cfg derives Firefox major from 156.0a1 (3.415792ms)
+✔ fresh cfg derives Firefox major from 157.0b3 (1.707958ms)
+✔ fresh cfg derives Firefox major from 155.2.0esr (1.735541ms)
+✔ startup migrates legacy identity only and keeps seeds and unrelated cfg (2.506416ms)
+✔ explicit identity overrides remain pinned while other generated fields migrate (1.549125ms)
+✔ unrecognized direct cfg identity is preserved (2.150083ms)
+✔ explicit Firefox-shaped UA and header overrides remain on their chosen version (1.486791ms)
+✔ font-key upgrade also migrates identity without losing existing values (1.595125ms)
+✔ startup repairs a saved macOS identity carrying Linux fonts (1.732375ms)
+✔ corrupt cfg rebuilds from persisted seeds with current identity (1.889958ms)
+✔ divergent navigator and HTTP overrides each retain the explicit choice (1.869ms)
+✔ first master seed selects mixed OS mode; existing seeded identity remains legacy (21.315334ms)
+✔ host mode flows through generated keys, pinned keys, preview labels and summary (8.557084ms)
+✔ saved 146 OS/hardware filters survive the port and invalid strings keep the legacy path (2.857167ms)
+✔ timing keys vary by launch salt and seed, and preserve explicit media choices (1.833042ms)
+✔ media exposure caps are editable without inventing devices or changing the identity (2.096834ms)
+✔ exceptions follow top-level schemeful site, vector and expiry independently (1.045875ms)
+✔ invalid and excessively broad exceptions rejected (0.274084ms)
+✔ presets only alter specified vectors and strict API flags (0.0595ms)
+✔ production native policy gates geometry separately, schemeful site, expiry and malformed data (1249.192125ms)
+✔ named proxy stores credentials only in LoginManager and emits redacted references (3.265375ms)
+✔ missing reference and deleted credential fail closed; deletion blocks bound containers (1.062709ms)
+✔ credential changes rotate connection isolation revision and apply to bound route (1.542083ms)
+✔ binding changed while LoginManager is pending never releases stale credentials (0.815667ms)
+✔ login storage failure leaves all existing bindings blocked and preserves reference (0.987708ms)
+✔ reject partial, oversized, and protocol-invalid credentials before mutating store (0.765375ms)
+✔ explicit diagnostics require proxy mode, preserve target origin attributes and prohibit redirects/cookies (7.090834ms)
+✔ route changed during diagnostic cannot publish success for another route (1.740042ms)
+✔ Rust-style origin normalization cannot collapse two named proxy credential records (0.8285ms)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Native query service drifted from shipped patch
++ actual - expected
+... Skipped lines
+
+  '/* This Source Code Form is subject to the terms of the Mozilla Public\n' +
+    ' * License, v. 2.0. If a copy of the MPL was not distributed with this\n' +
+    ' * file, You can obtain one at http://mozilla.org/MPL/2.0/. */\n' +
+    '\n' +
+    'const lazy = {};\n' +
+...
+    '\n' +
+-   '    // Cloakfox ships a local baseline. Publish it synchronously before the\n' +
+-   '    // first navigation; Remote Settings and strip-on-share initialization may\n' +
+-   '    // be pending or unavailable. Keep observing edits during that interval.\n' +
+-   '    this.prefStripList = new Set(\n' +
+-   '      Services.prefs.getStringPref(PREF_STRIP_LIST_NAME, "").split(" ").filter(Boolean)\n' +
+-   '    );\n' +
+-   '    this.prefAllowList = new Set(\n' +
+-   '      Services.prefs.getStringPref(PREF_ALLOW_LIST_NAME, "").split(",").filter(Boolean)\n' +
+-   '    );\n' +
+-   '    Services.prefs.addObserver(PREF_STRIP_LIST_NAME, this);\n' +
+-   '    Services.prefs.addObserver(PREF_ALLOW_LIST_NAME, this);\n' +
+-   '    Services.obs.addObserver(this, "xpcom-shutdown");\n' +
+-   '    this._notifyObservers();\n' +
+-   '\n' +
+-   '\n' +
+    '    // We can only access the remote settings in the parent process. For content\n' +
+    '    // processes, we will use sharedData to sync the list to content processes.\n' +
+    '    if (this.isParentProcess) {\n' +
+    '      this.#rs = lazy.RemoteSettings(COLLECTION_NAME);\n' +
+    '\n' +
+...
+    '\n' +
++   '    // Get the list from pref.\n' +
++   '    await this._onPrefUpdate(\n' +
++   '      PREF_STRIP_LIST_NAME,\n' +
++   '      Services.prefs.getStringPref(PREF_STRIP_LIST_NAME, "")\n' +
++   '    );\n' +
++   '    await this._onPrefUpdate(\n' +
++   '      PREF_ALLOW_LIST_NAME,\n' +
++   '      Services.prefs.getStringPref(PREF_ALLOW_LIST_NAME, "")\n' +
++   '    );\n' +
+-   '    // Load strip-on-share assets after publishing the navigation baseline.\n' +
+-   '    await this._notifyStripOnShareObservers();\n' +
+    '\n' +
++   '    Services.prefs.addObserver(PREF_STRIP_LIST_NAME, this);\n' +
++   '    Services.prefs.addObserver(PREF_ALLOW_LIST_NAME, this);\n' +
++   '\n' +
++   '    Services.obs.addObserver(this, "xpcom-shutdown");\n' +
++   '\n' +
+    '    this.#initResolver();\n' +
+    '    this.#pendingInit = null;\n' +
+    '  }\n' +
+    '\n' +
+    '  async #shutdown() {\n' +
+...
+    '\n' +
++   '    let observers = observer ? [observer] : this.observers;\n' +
++   '\n' +
++   '    if (observer || this.observers.size) {\n' +
++   '      lazy.logger.debug("_notifyObservers", {\n' +
++   '        observerCount: observers.length,\n' +
++   '        runObserverAfterRegister: observer != null,\n' +
++   '        stripEntriesAsString,\n' +
++   '        allowEntriesAsString,\n' +
++   '      });\n' +
++   '    }\n' +
++   '\n' +
++   '    for (let obs of observers) {\n' +
++   '      obs.onQueryStrippingListUpdate(\n'... 4102 more characters
+-   '    let observers = observer ? ['... 4498 more characters
+
+    at file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_query_list_readiness.mjs:33:33
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:639:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '/* This Source Code Form is subject to the terms of the Mozilla Public\n' +
+    ' * License, v. 2.0. If a copy of the MPL was not distributed with this\n' +
+    ' * file, You can obtain one at http://mozilla.org/MPL/2.0/. */\n' +
+    '\n' +
+    'const lazy = {};\n' +
+    '\n' +
+    'ChromeUtils.defineESModuleGetters(lazy, {\n' +
+    '  RemoteSettings: "resource://services-settings/remote-settings.sys.mjs",\n' +
+    '});\n' +
+    '\n' +
+    'import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";\n' +
+    '\n' +
+    'const COLLECTION_NAME = "query-stripping";\n' +
+    'const SHARED_DATA_KEY = "URLQueryStripping";\n' +
+    'const PREF_STRIP_LIST_NAME = "privacy.query_stripping.strip_list";\n' +
+    'const PREF_ALLOW_LIST_NAME = "privacy.query_stripping.allow_list";\n' +
+    'const PREF_TESTING_ENABLED = "privacy.query_stripping.testing";\n' +
+    'const PREF_STRIP_IS_TEST =\n' +
+    '  "privacy.query_stripping.strip_on_share.enableTestMode";\n' +
+    '\n' +
+    'ChromeUtils.defineLazyGetter(lazy, "logger", () => {\n' +
+    '  return console.createInstance({\n' +
+    '    prefix: "URLQueryStrippingListService",\n' +
+    '    maxLogLevelPref: "privacy.query_stripping.listService.logLevel",\n' +
+    '  });\n' +
+    '});\n' +
+    '\n' +
+    'XPCOMUtils.defineLazyPreferenceGetter(\n' +
+    '  lazy,\n' +
+    '  "testStripOnShare",\n' +
+    '  PREF_STRIP_IS_TEST\n' +
+    ');\n' +
+    '\n' +
+    'async function fetchList(fileName) {\n' +
+    '  let response = await fetch(\n' +
+    '    "chrome://global/content/antitracking/" + fileName\n' +
+    '  );\n' +
+    '  if (!response.ok) {\n' +
+    '    lazy.logger.error(\n' +
+    '      "Error fetching strip-on-share strip list" + response.status\n' +
+    '    );\n' +
+    '    throw new Error(\n' +
+    '      "Error fetching strip-on-share strip list" + response.status\n' +
+    '    );\n' +
+    '  }\n' +
+    '  return response.json();\n' +
+    '}\n' +
+    '\n' +
+    '// Lazy getter for the strip-on-share strip list.\n' +
+    'ChromeUtils.defineLazyGetter(lazy, "StripOnShareList", async () => {\n' +
+    '  let [stripOnShareList, stripOnShareLGPLParams] = await Promise.all([\n' +
+    '    fetchList("StripOnShare.json"),\n' +
+    '    fetchList("StripOnShareLGPL.json"),\n' +
+    '  ]);\n' +
+    '\n' +
+    '  if (!stripOnShareList || !stripOnShareLGPLParams) {\n' +
+    '    lazy.logger.error("Error strip-on-share strip list were not loaded");\n' +
+    '    throw new Error("Error fetching strip-on-share strip list were not loaded");\n' +
+    '  }\n' +
+    '\n' +
+    '  // Combines the mozilla licensed strip on share param\n' +
+    '  // list and the LGPL licensed strip on share param list\n' +
+    '  return combineAndParseLists(stripOnShareList, [stripOnShareLGPLParams]);\n' +
+    '});\n' +
+    '\n' +
+    'function combineAndParseLists(mainList, arrOfLists) {\n' +
+    '  arrOfLists.forEach(additionalList => {\n' +
+    '    for (let key in additionalList) {\n' +
+    '      if (Object.hasOwn(mainList, key)) {\n' +
+    '        mainList[key].queryParams.push(...additionalList[key].queryParams);\n' +
+    '\n' +
+    '        // Ensure empty hosts in global rules function as intended\n' +
+    '        mainList[key].hosts ??= [];\n' +
+    '        additionalList[key].hosts ??= [];\n' +
+    '\n' +
+    '        mainList[key].hosts.push(...additionalList[key].hosts);\n' +
+    '\n' +
+    '        mainList[key].schemelessSites ??= [];\n' +
+    '        additionalList[key].schemelessSites ??= [];\n' +
+    '        mainList[key].schemelessSites.push(\n' +
+    '          ...additionalList[key].schemelessSites\n' +
+    '        );\n' +
+    '      } else {\n' +
+    '        mainList[key] = additionalList[key];\n' +
+    '      }\n' +
+    '    }\n' +
+    '  });\n' +
+    '\n' +
+    '  for (let key in mainList) {\n' +
+    '    mainList[key].queryParams = (mainList[key].queryParams ?? []).map(param =>\n' +
+    '      param.toLowerCase()\n' +
+    '    );\n' +
+    '\n' +
+    '    // Hosts can be missing for global rules (isGlobal: true) and for any bad input.\n' +
+    '    mainList[key].hosts = (mainList[key].hosts ?? []).map(host =>\n' +
+    '      host.toLowerCase()\n' +
+    '    );\n' +
+    '    mainList[key].schemelessSites = (mainList[key].schemelessSites ?? []).map(\n' +
+    '      schemelessSites => schemelessSites.toLowerCase()\n' +
+    '    );\n' +
+    '\n' +
+    '    // Removes duplicate hosts\n' +
+    '    mainList[key].hosts = [...new Set(mainList[key].hosts)];\n' +
+    '    mainList[key].schemelessSites = [...new Set(mainList[key].schemelessSites)];\n' +
+    '\n' +
+    '    // Removes duplicate queryParams\n' +
+    '    mainList[key].queryParams = [...new Set(mainList[key].queryParams)];\n' +
+    '  }\n' +
+    '\n' +
+    '  return mainList;\n' +
+    '}\n' +
+    '\n' +
+    'export class URLQueryStrippingListService {\n' +
+    '  classId = Components.ID("{afff16f0-3fd2-4153-9ccd-c6d9abd879e4}");\n' +
+    '  QueryInterface = ChromeUtils.generateQI(["nsIURLQueryStrippingListService"]);\n' +
+    '\n' +
+    '  #isInitialized = false;\n' +
+    '  #pendingInit = null;\n' +
+    '  #initResolver;\n' +
+    '  #stripOnShareTestList = null;\n' +
+    '\n' +
+    '  #rs;\n' +
+    '  #onSyncCallback;\n' +
+    '\n' +
+    '  constructor() {\n' +
+    '    lazy.logger.debug("constructor");\n' +
+    '    this.observers = new Set();\n' +
+    '    this.stripOnShareObservers = new Set();\n' +
+    '    this.stripOnShareParams = null;\n' +
+    '    this.prefStripList = new Set();\n' +
+    '    this.prefAllowList = new Set();\n' +
+    '    this.remoteStripList = new Set();\n' +
+    '    this.remoteAllowList = new Set();\n' +
+    '    this.isParentProcess =\n' +
+    '      Services.appinfo.processType === Services.appinfo.PROCESS_TYPE_DEFAULT;\n' +
+    '  }\n' +
+    '\n' +
+    '  #onSync(event) {\n' +
+    '    lazy.logger.debug("onSync", event);\n' +
+    '    let {\n' +
+    '      data: { current },\n' +
+    '    } = event;\n' +
+    '    this._onRemoteSettingsUpdate(current);\n' +
+    '  }\n' +
+    '\n' +
+    '  async testSetList(testList) {\n' +
+    '    this.#stripOnShareTestList = combineAndParseLists(testList, []);\n' +
+    '    await this._notifyStripOnShareObservers();\n' +
+    '  }\n' +
+    '\n' +
+    '  testHasStripOnShareObservers() {\n' +
+    '    return !!this.stripOnShareObservers.size;\n' +
+    '  }\n' +
+    '\n' +
+    '  testHasQPSObservers() {\n' +
+    '    return !!this.observers.size;\n' +
+    '  }\n' +
+    '\n' +
+    '  async #init() {\n' +
+    '    // If there is already an init pending wait for it to complete.\n' +
+    '    if (this.#pendingInit) {\n' +
+    '      lazy.logger.debug("#init: Waiting for pending init");\n' +
+    '      await this.#pendingInit;\n' +
+    '      return;\n' +
+    '    }\n' +
+    '\n' +
+    '    if (this.#isInitialized) {\n' +
+    '      lazy.logger.debug("#init: Skip, already initialized");\n' +
+    '      return;\n' +
+    '    }\n' +
+    '    // Create a promise that resolves when init is complete. This allows us to\n' +
+    "    // handle incoming init calls while we're still initializing.\n" +
+    '    this.#pendingInit = new Promise(initResolve => {\n' +
+    '      this.#initResolver = initResolve;\n' +
+    '    });\n' +
+    '    this.#isInitialized = true;\n' +
+    '\n' +
+    '    lazy.logger.debug("#init: Run");\n' +
+    '\n' +
+    '    // We can only access the remote settings in the parent process. For content\n' +
+    '    // processes, we will use sharedData to sync the list to content processes.\n' +
+    '    if (this.isParentProcess) {\n' +
+    '      this.#rs = lazy.RemoteSettings(COLLECTION_NAME);\n' +
+    '\n' +
+    '      if (!this.#onSyncCallback) {\n' +
+    '        this.#onSyncCallback = this.#onSync.bind(this);\n' +
+    '        this.#rs.on("sync", this.#onSyncCallback);\n' +
+    '      }\n' +
+    '\n' +
+    '      // Get the initially available entries for remote settings.\n' +
+    '      let entries;\n' +
+    '      try {\n' +
+    '        entries = await this.#rs.get();\n' +
+    '      } catch (e) {}\n' +
+    '      this._onRemoteSettingsUpdate(entries || []);\n' +
+    '    } else {\n' +
+    '      // Register the message listener for the remote settings update from the\n' +
+    '      // sharedData.\n' +
+    '      Services.cpmm.sharedData.addEventListener("change", this);\n' +
+    '\n' +
+    '      // Get the remote settings data from the shared data.\n' +
+    '      let data = this._getListFromSharedData();\n' +
+    '\n' +
+    '      this._onRemoteSettingsUpdate(data);\n' +
+    '    }\n' +
+    '\n' +
+    '    // Get the list from pref.\n' +
+    '    await this._onPrefUpdate(\n' +
+    '      PREF_STRIP_LIST_NAME,\n' +
+    '      Services.prefs.getStringPref(PREF_STRIP_LIST_NAME, "")\n' +
+    '    );\n' +
+    '    await this._onPrefUpdate(\n' +
+    '      PREF_ALLOW_LIST_NAME,\n' +
+    '      Services.prefs.getStringPref(PREF_ALLOW_LIST_NAME, "")\n' +
+    '    );\n' +
+    '\n' +
+    '    Services.prefs.addObserver(PREF_STRIP_LIST_NAME, this);\n' +
+    '    Services.prefs.addObserver(PREF_ALLOW_LIST_NAME, this);\n' +
+    '\n' +
+    '    Services.obs.addObserver(this, "xpcom-shutdown");\n' +
+    '\n' +
+    '    this.#initResolver();\n' +
+    '    this.#pendingInit = null;\n' +
+    '  }\n' +
+    '\n' +
+    '  async #shutdown() {\n' +
+    '    // Ensure any pending init is done before shutdown.\n' +
+    '    if (this.#pendingInit) {\n' +
+    '      await this.#pendingInit;\n' +
+    '    }\n' +
+    '\n' +
+    '    // Already shut down.\n' +
+    '    if (!this.#isInitialized) {\n' +
+    '      return;\n' +
+    '    }\n' +
+    '    this.#isInitialized = false;\n' +
+    '\n' +
+    '    lazy.logger.debug("#shutdown");\n' +
+    '\n' +
+    '    // Unregister RemoteSettings listener (if it was registered).\n' +
+    '    if (this.#onSyncCallback) {\n' +
+    '      this.#rs.off("sync", this.#onSyncCallback);\n' +
+    '      this.#onSyncCallback = null;\n' +
+    '    }\n' +
+    '\n' +
+    '    Services.obs.removeObserver(this, "xpcom-shutdown");\n' +
+    '    Services.prefs.removeObserver(PREF_STRIP_LIST_NAME, this);\n' +
+    '    Services.prefs.removeObserver(PREF_ALLOW_LIST_NAME, this);\n' +
+    '  }\n' +
+    '\n' +
+    '  get hasObservers() {\n' +
+    '    return !this.observers.size && !this.stripOnShareObservers.size;\n' +
+    '  }\n' +
+    '  _onRemoteSettingsUpdate(entries) {\n' +
+    '    this.remoteStripList.clear();\n' +
+    '    this.remoteAllowList.clear();\n' +
+    '\n' +
+    '    for (let entry of entries) {\n' +
+    '      for (let item of entry.stripList) {\n' +
+    '        this.remoteStripList.add(item);\n' +
+    '      }\n' +
+    '\n' +
+    '      for (let item of entry.allowList) {\n' +
+    '        this.remoteAllowList.add(item);\n' +
+    '      }\n' +
+    '    }\n' +
+    '\n' +
+    '    // Because only the parent process will get the remote settings update, so\n' +
+    '    // we will sync the list to the shared data so that content processes can\n' +
+    '    // get the list.\n' +
+    '    if (this.isParentProcess) {\n' +
+    '      Services.ppmm.sharedData.set(SHARED_DATA_KEY, {\n' +
+    '        stripList: this.remoteStripList,\n' +
+    '        allowList: this.remoteAllowList,\n' +
+    '      });\n' +
+    '\n' +
+    '      if (Services.prefs.getBoolPref(PREF_TESTING_ENABLED, false)) {\n' +
+    '        Services.ppmm.sharedData.flush();\n' +
+    '      }\n' +
+    '    }\n' +
+    '\n' +
+    '    this._notifyObservers();\n' +
+    '  }\n' +
+    '\n' +
+    '  async _onPrefUpdate(pref, value) {\n' +
+    '    switch (pref) {\n' +
+    '      case PREF_STRIP_LIST_NAME:\n' +
+    '        this.prefStripList = new Set(value ? value.split(" ") : []);\n' +
+    '        break;\n' +
+    '\n' +
+    '      case PREF_ALLOW_LIST_NAME:\n' +
+    '        this.prefAllowList = new Set(value ? value.split(",") : []);\n' +
+    '        break;\n' +
+    '\n' +
+    '      default:\n' +
+    '        console.error(`Unexpected pref name ${pref}`);\n' +
+    '        return;\n' +
+    '    }\n' +
+    '\n' +
+    '    this._notifyObservers();\n' +
+    '    await this._notifyStripOnShareObservers();\n' +
+    '  }\n' +
+    '\n' +
+    '  _getListFromSharedData() {\n' +
+    '    let data = Services.cpmm.sharedData.get(SHARED_DATA_KEY);\n' +
+    '\n' +
+    '    return data ? [data] : [];\n' +
+    '  }\n' +
+    '\n' +
+    '  _notifyObservers(observer) {\n' +
+    '    let stripEntries = new Set([\n' +
+    '      ...this.prefStripList,\n' +
+    '      ...this.remoteStripList,\n' +
+    '    ]);\n' +
+    '    let allowEntries = new Set([\n' +
+    '      ...this.prefAllowList,\n' +
+    '      ...this.remoteAllowList,\n' +
+    '    ]);\n' +
+    '    let stripEntriesAsString = Array.from(stripEntries).join(" ").toLowerCase();\n' +
+    '    let allowEntriesAsString = Array.from(allowEntries).join(",").toLowerCase();\n' +
+    '\n' +
+    '    let observers = observer ? [observer] : this.observers;\n' +
+    '\n' +
+    '    if (observer || this.observers.size) {\n' +
+    '      lazy.logger.debug("_notifyObservers", {\n' +
+    '        observerCount: observers.length,\n' +
+    '        runObserverAfterRegister: observer != null,\n' +
+    '        stripEntriesAsString,\n' +
+    '        allowEntriesAsString,\n' +
+    '      });\n' +
+    '    }\n' +
+    '\n' +
+    '    for (let obs of observers) {\n' +
+    '      obs.onQueryStrippingListUpdate(\n'... 4102 more characters,
+  expected: '/* This Source Code Form is subject to the terms of the Mozilla Public\n' +
+    ' * License, v. 2.0. If a copy of the MPL was not distributed with this\n' +
+    ' * file, You can obtain one at http://mozilla.org/MPL/2.0/. */\n' +
+    '\n' +
+    'const lazy = {};\n' +
+    '\n' +
+    'ChromeUtils.defineESModuleGetters(lazy, {\n' +
+    '  RemoteSettings: "resource://services-settings/remote-settings.sys.mjs",\n' +
+    '});\n' +
+    '\n' +
+    'import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";\n' +
+    '\n' +
+    'const COLLECTION_NAME = "query-stripping";\n' +
+    'const SHARED_DATA_KEY = "URLQueryStripping";\n' +
+    'const PREF_STRIP_LIST_NAME = "privacy.query_stripping.strip_list";\n' +
+    'const PREF_ALLOW_LIST_NAME = "privacy.query_stripping.allow_list";\n' +
+    'const PREF_TESTING_ENABLED = "privacy.query_stripping.testing";\n' +
+    'const PREF_STRIP_IS_TEST =\n' +
+    '  "privacy.query_stripping.strip_on_share.enableTestMode";\n' +
+    '\n' +
+    'ChromeUtils.defineLazyGetter(lazy, "logger", () => {\n' +
+    '  return console.createInstance({\n' +
+    '    prefix: "URLQueryStrippingListService",\n' +
+    '    maxLogLevelPref: "privacy.query_stripping.listService.logLevel",\n' +
+    '  });\n' +
+    '});\n' +
+    '\n' +
+    'XPCOMUtils.defineLazyPreferenceGetter(\n' +
+    '  lazy,\n' +
+    '  "testStripOnShare",\n' +
+    '  PREF_STRIP_IS_TEST\n' +
+    ');\n' +
+    '\n' +
+    'async function fetchList(fileName) {\n' +
+    '  let response = await fetch(\n' +
+    '    "chrome://global/content/antitracking/" + fileName\n' +
+    '  );\n' +
+    '  if (!response.ok) {\n' +
+    '    lazy.logger.error(\n' +
+    '      "Error fetching strip-on-share strip list" + response.status\n' +
+    '    );\n' +
+    '    throw new Error(\n' +
+    '      "Error fetching strip-on-share strip list" + response.status\n' +
+    '    );\n' +
+    '  }\n' +
+    '  return response.json();\n' +
+    '}\n' +
+    '\n' +
+    '// Lazy getter for the strip-on-share strip list.\n' +
+    'ChromeUtils.defineLazyGetter(lazy, "StripOnShareList", async () => {\n' +
+    '  let [stripOnShareList, stripOnShareLGPLParams] = await Promise.all([\n' +
+    '    fetchList("StripOnShare.json"),\n' +
+    '    fetchList("StripOnShareLGPL.json"),\n' +
+    '  ]);\n' +
+    '\n' +
+    '  if (!stripOnShareList || !stripOnShareLGPLParams) {\n' +
+    '    lazy.logger.error("Error strip-on-share strip list were not loaded");\n' +
+    '    throw new Error("Error fetching strip-on-share strip list were not loaded");\n' +
+    '  }\n' +
+    '\n' +
+    '  // Combines the mozilla licensed strip on share param\n' +
+    '  // list and the LGPL licensed strip on share param list\n' +
+    '  return combineAndParseLists(stripOnShareList, [stripOnShareLGPLParams]);\n' +
+    '});\n' +
+    '\n' +
+    'function combineAndParseLists(mainList, arrOfLists) {\n' +
+    '  arrOfLists.forEach(additionalList => {\n' +
+    '    for (let key in additionalList) {\n' +
+    '      if (Object.hasOwn(mainList, key)) {\n' +
+    '        mainList[key].queryParams.push(...additionalList[key].queryParams);\n' +
+    '\n' +
+    '        // Ensure empty hosts in global rules function as intended\n' +
+    '        mainList[key].hosts ??= [];\n' +
+    '        additionalList[key].hosts ??= [];\n' +
+    '\n' +
+    '        mainList[key].hosts.push(...additionalList[key].hosts);\n' +
+    '\n' +
+    '        mainList[key].schemelessSites ??= [];\n' +
+    '        additionalList[key].schemelessSites ??= [];\n' +
+    '        mainList[key].schemelessSites.push(\n' +
+    '          ...additionalList[key].schemelessSites\n' +
+    '        );\n' +
+    '      } else {\n' +
+    '        mainList[key] = additionalList[key];\n' +
+    '      }\n' +
+    '    }\n' +
+    '  });\n' +
+    '\n' +
+    '  for (let key in mainList) {\n' +
+    '    mainList[key].queryParams = (mainList[key].queryParams ?? []).map(param =>\n' +
+    '      param.toLowerCase()\n' +
+    '    );\n' +
+    '\n' +
+    '    // Hosts can be missing for global rules (isGlobal: true) and for any bad input.\n' +
+    '    mainList[key].hosts = (mainList[key].hosts ?? []).map(host =>\n' +
+    '      host.toLowerCase()\n' +
+    '    );\n' +
+    '    mainList[key].schemelessSites = (mainList[key].schemelessSites ?? []).map(\n' +
+    '      schemelessSites => schemelessSites.toLowerCase()\n' +
+    '    );\n' +
+    '\n' +
+    '    // Removes duplicate hosts\n' +
+    '    mainList[key].hosts = [...new Set(mainList[key].hosts)];\n' +
+    '    mainList[key].schemelessSites = [...new Set(mainList[key].schemelessSites)];\n' +
+    '\n' +
+    '    // Removes duplicate queryParams\n' +
+    '    mainList[key].queryParams = [...new Set(mainList[key].queryParams)];\n' +
+    '  }\n' +
+    '\n' +
+    '  return mainList;\n' +
+    '}\n' +
+    '\n' +
+    'export class URLQueryStrippingListService {\n' +
+    '  classId = Components.ID("{afff16f0-3fd2-4153-9ccd-c6d9abd879e4}");\n' +
+    '  QueryInterface = ChromeUtils.generateQI(["nsIURLQueryStrippingListService"]);\n' +
+    '\n' +
+    '  #isInitialized = false;\n' +
+    '  #pendingInit = null;\n' +
+    '  #initResolver;\n' +
+    '  #stripOnShareTestList = null;\n' +
+    '\n' +
+    '  #rs;\n' +
+    '  #onSyncCallback;\n' +
+    '\n' +
+    '  constructor() {\n' +
+    '    lazy.logger.debug("constructor");\n' +
+    '    this.observers = new Set();\n' +
+    '    this.stripOnShareObservers = new Set();\n' +
+    '    this.stripOnShareParams = null;\n' +
+    '    this.prefStripList = new Set();\n' +
+    '    this.prefAllowList = new Set();\n' +
+    '    this.remoteStripList = new Set();\n' +
+    '    this.remoteAllowList = new Set();\n' +
+    '    this.isParentProcess =\n' +
+    '      Services.appinfo.processType === Services.appinfo.PROCESS_TYPE_DEFAULT;\n' +
+    '  }\n' +
+    '\n' +
+    '  #onSync(event) {\n' +
+    '    lazy.logger.debug("onSync", event);\n' +
+    '    let {\n' +
+    '      data: { current },\n' +
+    '    } = event;\n' +
+    '    this._onRemoteSettingsUpdate(current);\n' +
+    '  }\n' +
+    '\n' +
+    '  async testSetList(testList) {\n' +
+    '    this.#stripOnShareTestList = combineAndParseLists(testList, []);\n' +
+    '    await this._notifyStripOnShareObservers();\n' +
+    '  }\n' +
+    '\n' +
+    '  testHasStripOnShareObservers() {\n' +
+    '    return !!this.stripOnShareObservers.size;\n' +
+    '  }\n' +
+    '\n' +
+    '  testHasQPSObservers() {\n' +
+    '    return !!this.observers.size;\n' +
+    '  }\n' +
+    '\n' +
+    '  async #init() {\n' +
+    '    // If there is already an init pending wait for it to complete.\n' +
+    '    if (this.#pendingInit) {\n' +
+    '      lazy.logger.debug("#init: Waiting for pending init");\n' +
+    '      await this.#pendingInit;\n' +
+    '      return;\n' +
+    '    }\n' +
+    '\n' +
+    '    if (this.#isInitialized) {\n' +
+    '      lazy.logger.debug("#init: Skip, already initialized");\n' +
+    '      return;\n' +
+    '    }\n' +
+    '    // Create a promise that resolves when init is complete. This allows us to\n' +
+    "    // handle incoming init calls while we're still initializing.\n" +
+    '    this.#pendingInit = new Promise(initResolve => {\n' +
+    '      this.#initResolver = initResolve;\n' +
+    '    });\n' +
+    '    this.#isInitialized = true;\n' +
+    '\n' +
+    '    lazy.logger.debug("#init: Run");\n' +
+    '\n' +
+    '    // Cloakfox ships a local baseline. Publish it synchronously before the\n' +
+    '    // first navigation; Remote Settings and strip-on-share initialization may\n' +
+    '    // be pending or unavailable. Keep observing edits during that interval.\n' +
+    '    this.prefStripList = new Set(\n' +
+    '      Services.prefs.getStringPref(PREF_STRIP_LIST_NAME, "").split(" ").filter(Boolean)\n' +
+    '    );\n' +
+    '    this.prefAllowList = new Set(\n' +
+    '      Services.prefs.getStringPref(PREF_ALLOW_LIST_NAME, "").split(",").filter(Boolean)\n' +
+    '    );\n' +
+    '    Services.prefs.addObserver(PREF_STRIP_LIST_NAME, this);\n' +
+    '    Services.prefs.addObserver(PREF_ALLOW_LIST_NAME, this);\n' +
+    '    Services.obs.addObserver(this, "xpcom-shutdown");\n' +
+    '    this._notifyObservers();\n' +
+    '\n' +
+    '\n' +
+    '    // We can only access the remote settings in the parent process. For content\n' +
+    '    // processes, we will use sharedData to sync the list to content processes.\n' +
+    '    if (this.isParentProcess) {\n' +
+    '      this.#rs = lazy.RemoteSettings(COLLECTION_NAME);\n' +
+    '\n' +
+    '      if (!this.#onSyncCallback) {\n' +
+    '        this.#onSyncCallback = this.#onSync.bind(this);\n' +
+    '        this.#rs.on("sync", this.#onSyncCallback);\n' +
+    '      }\n' +
+    '\n' +
+    '      // Get the initially available entries for remote settings.\n' +
+    '      let entries;\n' +
+    '      try {\n' +
+    '        entries = await this.#rs.get();\n' +
+    '      } catch (e) {}\n' +
+    '      this._onRemoteSettingsUpdate(entries || []);\n' +
+    '    } else {\n' +
+    '      // Register the message listener for the remote settings update from the\n' +
+    '      // sharedData.\n' +
+    '      Services.cpmm.sharedData.addEventListener("change", this);\n' +
+    '\n' +
+    '      // Get the remote settings data from the shared data.\n' +
+    '      let data = this._getListFromSharedData();\n' +
+    '\n' +
+    '      this._onRemoteSettingsUpdate(data);\n' +
+    '    }\n' +
+    '\n' +
+    '    // Load strip-on-share assets after publishing the navigation baseline.\n' +
+    '    await this._notifyStripOnShareObservers();\n' +
+    '\n' +
+    '    this.#initResolver();\n' +
+    '    this.#pendingInit = null;\n' +
+    '  }\n' +
+    '\n' +
+    '  async #shutdown() {\n' +
+    '    // Ensure any pending init is done before shutdown.\n' +
+    '    if (this.#pendingInit) {\n' +
+    '      await this.#pendingInit;\n' +
+    '    }\n' +
+    '\n' +
+    '    // Already shut down.\n' +
+    '    if (!this.#isInitialized) {\n' +
+    '      return;\n' +
+    '    }\n' +
+    '    this.#isInitialized = false;\n' +
+    '\n' +
+    '    lazy.logger.debug("#shutdown");\n' +
+    '\n' +
+    '    // Unregister RemoteSettings listener (if it was registered).\n' +
+    '    if (this.#onSyncCallback) {\n' +
+    '      this.#rs.off("sync", this.#onSyncCallback);\n' +
+    '      this.#onSyncCallback = null;\n' +
+    '    }\n' +
+    '\n' +
+    '    Services.obs.removeObserver(this, "xpcom-shutdown");\n' +
+    '    Services.prefs.removeObserver(PREF_STRIP_LIST_NAME, this);\n' +
+    '    Services.prefs.removeObserver(PREF_ALLOW_LIST_NAME, this);\n' +
+    '  }\n' +
+    '\n' +
+    '  get hasObservers() {\n' +
+    '    return !this.observers.size && !this.stripOnShareObservers.size;\n' +
+    '  }\n' +
+    '  _onRemoteSettingsUpdate(entries) {\n' +
+    '    this.remoteStripList.clear();\n' +
+    '    this.remoteAllowList.clear();\n' +
+    '\n' +
+    '    for (let entry of entries) {\n' +
+    '      for (let item of entry.stripList) {\n' +
+    '        this.remoteStripList.add(item);\n' +
+    '      }\n' +
+    '\n' +
+    '      for (let item of entry.allowList) {\n' +
+    '        this.remoteAllowList.add(item);\n' +
+    '      }\n' +
+    '    }\n' +
+    '\n' +
+    '    // Because only the parent process will get the remote settings update, so\n' +
+    '    // we will sync the list to the shared data so that content processes can\n' +
+    '    // get the list.\n' +
+    '    if (this.isParentProcess) {\n' +
+    '      Services.ppmm.sharedData.set(SHARED_DATA_KEY, {\n' +
+    '        stripList: this.remoteStripList,\n' +
+    '        allowList: this.remoteAllowList,\n' +
+    '      });\n' +
+    '\n' +
+    '      if (Services.prefs.getBoolPref(PREF_TESTING_ENABLED, false)) {\n' +
+    '        Services.ppmm.sharedData.flush();\n' +
+    '      }\n' +
+    '    }\n' +
+    '\n' +
+    '    this._notifyObservers();\n' +
+    '  }\n' +
+    '\n' +
+    '  async _onPrefUpdate(pref, value) {\n' +
+    '    switch (pref) {\n' +
+    '      case PREF_STRIP_LIST_NAME:\n' +
+    '        this.prefStripList = new Set(value ? value.split(" ") : []);\n' +
+    '        break;\n' +
+    '\n' +
+    '      case PREF_ALLOW_LIST_NAME:\n' +
+    '        this.prefAllowList = new Set(value ? value.split(",") : []);\n' +
+    '        break;\n' +
+    '\n' +
+    '      default:\n' +
+    '        console.error(`Unexpected pref name ${pref}`);\n' +
+    '        return;\n' +
+    '    }\n' +
+    '\n' +
+    '    this._notifyObservers();\n' +
+    '    await this._notifyStripOnShareObservers();\n' +
+    '  }\n' +
+    '\n' +
+    '  _getListFromSharedData() {\n' +
+    '    let data = Services.cpmm.sharedData.get(SHARED_DATA_KEY);\n' +
+    '\n' +
+    '    return data ? [data] : [];\n' +
+    '  }\n' +
+    '\n' +
+    '  _notifyObservers(observer) {\n' +
+    '    let stripEntries = new Set([\n' +
+    '      ...this.prefStripList,\n' +
+    '      ...this.remoteStripList,\n' +
+    '    ]);\n' +
+    '    let allowEntries = new Set([\n' +
+    '      ...this.prefAllowList,\n' +
+    '      ...this.remoteAllowList,\n' +
+    '    ]);\n' +
+    '    let stripEntriesAsString = Array.from(stripEntries).join(" ").toLowerCase();\n' +
+    '    let allowEntriesAsString = Array.from(allowEntries).join(",").toLowerCase();\n' +
+    '\n' +
+    '    let observers = observer ? ['... 4498 more characters,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v25.9.0
+✖ tests/fingerprint/test_query_list_readiness.mjs (193.28625ms)
+✔ manual region is canonical, coherent, isolated and preserves unrelated identity (68.356875ms)
+✔ optional location is off for generated and manual defaults; independent bilingual preference persists (0.867542ms)
+✔ validation is atomic and rejects malformed, precise, future and dangerous input (0.923084ms)
+✔ reset and malformed storage do not reuse another container (0.680791ms)
+✖ region native implementation gates geo on site permission and avoids ambient/cache mutation (0.214167ms)
+✔ unconfigured personas receive explicit realm defaults without touching seeds (1.450417ms)
+✔ reapplying generated regions is byte-stable for legacy and partial configs (0.51975ms)
+✖ HTTP language override is scoped to channel origin attributes, not a handler cache (6.9545ms)
+✖ synthetic location retains site prompt and avoids device-permission override before Allow (1.457209ms)
+✖ cookie-only origin clearing leaves shared and scoped permissions and unrelated legacy state alone (7.251875ms)
+✖ explicit permission clearing removes only provably scoped nonzero entries (3.985542ms)
+✖ zero flags is a no-op with completion; legacy ALL still delegates with ALL (2.110333ms)
+✖ ALL-minus-permissions keeps the legacy notification and excludes permission cleaners (4.186667ms)
+✔ #7 each OS resolves its OWN persona generic from the union (0.967416ms)
+✔ #7 every union family is kept in the C++ global whitelist (0.379584ms)
+✔ #7 union has no duplicate families within a slot (0.110667ms)
+✔ #8 rebuild when cfg is absent (0.074958ms)
+✔ #8 rebuild when cfg predates the font keys (0.936417ms)
+✔ #8 corrupt cfg triggers rebuild (0.066708ms)
+✔ #8 valid-but-non-object JSON rebuilds instead of throwing (0.123792ms)
+✔ #8 up-to-date cfg is left alone (no clobber) (0.056542ms)
+✔ HMAC matches Node crypto for (https,example.co.uk) (1.398583ms)
+✔ HMAC matches Node crypto for (http,localhost) (2.564167ms)
+✔ HMAC matches Node crypto for (https,[::1]) (0.115166ms)
+✔ HMAC matches Node crypto for 12345678-1234-1234-1234-123456789abc.mozilla (0.119667ms)
+✔ top-level site stable; foreign ancestor bit removed; scheme/domain/secret/vector change output (0.277625ms)
+✔ missing/malformed context has no container-wide fallback; explicit zero disables noise (0.102416ms)
+✔ actor reads top-level cookie partition and cfg base seed, not frame origin or legacy seed offset (0.154625ms)
+✔ default container resolves its own secret and explicit zero independently (0.130083ms)
+✔ production C++ protocol matches HMAC vectors, opaque keys and ancestor normalization (442.374458ms)
+✔ native exact-container cfg lookup keeps ucid zero independent of ambient JS (1098.655667ms)
+✔ global strict toggle updates only its field in every canonical existing config (39.83275ms)
+✔ unrelated writes do not rewrite strict policy; malformed configs remain intact (3.142125ms)
+✔ language cache epochs follow mirror refresh and remain scoped to canonical owners (0.878125ms)
+✔ strict settings schema rejects secrets, IDs, arbitrary overrides and malformed settings (2.192ms)
+✔ opening pages reject privileged schemes and embedded authentication (0.199333ms)
+✔ version 0 migration preserves settings and derives required route without accepting future versions (0.226291ms)
+✔ capture copies only enumerated settings and detaches records from source objects (0.171292ms)
+✔ catalog import creates fresh IDs, survives reload, and rejects hostile imports atomically (2.287ms)
+✔ creation writes distinct persistent secrets into fresh containers before opening pages (6.657875ms)
+✔ missing proxy is rejected before creation, unbound required preset remains explicitly blocked (0.416875ms)
+✔ failed initialization removes only newly created identity and saves cleanup; opening failure preserves configured container (0.196584ms)
+✔ native creation generates fresh independent seeds, config and opening tabs after route binding and persistence (0.832875ms)
+✔ settings UI mounts, saves selected container settings and creates edited templates through the native API (46.670125ms)
+✔ template mode preserves legacy pins and gives new presets mixed OS mode (0.23425ms)
+✔ templates retain explicit generation operating systems (0.112334ms)
+✔ tracking exceptions require registrable hosts and preserve unrelated lists (2.520083ms)
+✔ DNS secure-only needs numeric bootstrap and never turns guard off during apply (1.428333ms)
+✔ DNS rejects malformed input before changing prefs and Firefox defaults clear explicit policy (0.579583ms)
+✔ existing native encrypted-only mode is not displayed as Firefox defaults (0.812208ms)
+✔ bounce exception scope lives in a private permission type, independent of shared OA preferences (2.225375ms)
+✖ native narrow bounce lookup stays out of the broad allowlist cache (8.81325ms)
+✔ bounce cleanup removes both exact scopes while retaining other containers and ordinary permissions (1.393583ms)
+✔ startup container-deleted observer clears typed grants without opening settings (0.5895ms)
+✔ default protection never contacts IP-echo services, including network changes (38.807917ms)
+✔ lookup requires its separate opt-in and master protection (18.980084ms)
+✔ disabling lookup while requests are pending cannot republish stale IPs (3.424375ms)
+✔ opt-out aborts active requests and starts no fallback service after failures (2.780458ms)
+✔ superseded refresh cannot start fallback requests after a newer generation begins (3.953958ms)
+✔ RTC actor uses privileged setters without reading the page global (1.30475ms)
+✖ production worker config epoch refresh handles oversized updates, removals and shutdown without IPC under lock (7.637ms)
+ℹ tests 241
+ℹ suites 0
+ℹ pass 229
+ℹ fail 12
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2431.474166
+
+✖ failing tests:
+
+test at tests/fingerprint/test_identity_restore_files.mjs:26:1
+✖ strict SessionFile write rejects original writer failure after removing shutdown blocker (9.453416ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_identity_restore_files.mjs:34:2)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /disk failure/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_identity_restore_files.mjs:37:1
+✖ restore-file pruning uses SessionWriter mutex and releases it after failure (3.64725ms)
+  TypeError: context.writer.pruneContainerRestoreFiles is not a function
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_identity_restore_files.mjs:42:29)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at tests/fingerprint/test_query_list_readiness.mjs:1:1
+✖ tests/fingerprint/test_query_list_readiness.mjs (193.28625ms)
+  'test failed'
+
+test at tests/fingerprint/test_regions.mjs:37:1
+✖ region native implementation gates geo on site permission and avoids ambient/cache mutation (0.214167ms)
+  Error: ENOENT: no such file or directory, open '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/geolocation/Geolocation.cpp'
+      at readFileSync (node:fs:436:20)
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_regions.mjs:39:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/geolocation/Geolocation.cpp'
+  }
+
+test at tests/fingerprint/test_regions.mjs:69:1
+✖ HTTP language override is scoped to channel origin attributes, not a handler cache (6.9545ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /CloakConfigOverlay_Get\(\s*mLoadInfo->GetOriginAttributes\(\).mUserContextId\)/. Input:
+  
+  '/* This Source Code Form is subject to the terms of the Mozilla Public\n' +
+    ' * License, v. 2.0. If a copy of the MPL was not distributed with this\n' +
+    ' * file, You can obtain one at http://mozilla.org/MPL/2.0/. */\n' +
+    '\n' +
+    '// HttpLog.h should generally be included first\n' +
+    '#include "mozilla/net/HttpBaseChannel.h"\n' +
+    '\n' +
+    '#include <algorithm>\n' +
+    '#include <utility>\n' +
+    '\n' +
+    '#include "HttpBaseChannel.h"\n' +
+    '#include "HttpLog.h"\n' +
+    '#include "LoadInfo.h"\n' +
+    '#include "ReferrerInfo.h"\n' +
+    '#include "mozIRemoteLazyInputStream.h"\n' +
+    '#include "mozIThirdPartyUtil.h"\n' +
+    '#include "mozilla/AntiTrackingUtils.h"\n' +
+    '#include "mozilla/BasePrincipal.h"\n' +
+    '#include "mozilla/BinarySearch.h"\n' +
+    '#include "mozilla/CompactPair.h"\n' +
+    '#include "mozilla/Components.h"\n' +
+    '#include "mozilla/ConsoleReportCollector.h"\n' +
+    '#include "mozilla/DebugOnly.h"\n' +
+    '#include "mozilla/InputStreamLengthHelper.h"\n' +
+    '#include "mozilla/LoadInfo.h"\n' +
+    '#include "mozilla/Mutex.h"\n' +
+    '#include "mozilla/NullPrincipal.h"\n' +
+    '#include "mozilla/PermissionManager.h"\n' +
+    '#include "mozilla/RemoteLazyInputStreamChild.h"\n' +
+    '#include "mozilla/StaticPrefs_browser.h"\n' +
+    '#include "mozilla/StaticPrefs_fission.h"\n' +
+    '#include "mozilla/StaticPrefs_javascript.h"\n' +
+    '#include "mozilla/StaticPrefs_network.h"\n' +
+    '#include "mozilla/StaticPrefs_security.h"\n' +
+    '#include "mozilla/Telemetry.h"\n' +
+    '#include "mozilla/Tokenizer.h"\n' +
+    '#include "mozilla/browser/NimbusFeatures.h"\n' +
+    '#include "mozilla/dom/BrowsingContext.h"\n' +
+    '#include "mozilla/dom/CanonicalBrowsingContext.h"\n' +
+    '#include "mozilla/dom/ContentChild.h"\n' +
+    '#include "mozilla/dom/Document.h"\n' +
+    '#include "mozilla/dom/FetchPriority.h"\n' +
+    '#include "mozilla/dom/LoadURIOptionsBinding.h"\n' +
+    '#include "mozilla/dom/ParentProcessChannelHandle.h"\n' +
+    '#include "mozilla/dom/Performance.h"\n' +
+    '#include "mozilla/dom/PerformanceStorage.h"\n' +
+    '#include "mozilla/dom/PolicyContainer.h"\n' +
+    '#include "mozilla/dom/ProcessIsolation.h"\n' +
+    '#include "mozilla/dom/RequestBinding.h"\n' +
+    '#include "mozilla/dom/WindowGlobalParent.h"\n' +
+    '#include "mozilla/dom/nsHTTPSOnlyUtils.h"\n' +
+    '#include "mozilla/dom/nsMixedContentBlocker.h"\n' +
+    '#include "mozilla/glean/NetwerkProtocolHttpMetrics.h"\n' +
+    '#include "mozilla/net/ChannelClassifierUtils.h"\n' +
+    '#include "mozilla/net/OpaqueResponseUtils.h"\n' +
+    '#include "mozilla/net/SFV.h"\n' +
+    '#include "nsBufferedStreams.h"\n' +
+    '#include "nsCOMPtr.h"\n' +
+    '#include "nsCRT.h"\n' +
+    '#include "nsContentSecurityManager.h"\n' +
+    '#include "nsContentSecurityUtils.h"\n' +
+    '#include "nsContentUtils.h"\n' +
+    '#include "nsDebug.h"\n' +
+    '#include "nsEscape.h"\n' +
+    '#include "nsGlobalWindowInner.h"\n' +
+    '#include "nsGlobalWindowOuter.h"\n' +
+    '#include "nsHTTPCompressConv.h"\n' +
+    '#include "nsHttpChannel.h"\n' +
+    '#include "nsHttpHandler.h"\n' +
+    '#include "nsICacheInfoChannel.h"\n' +
+    '#include "nsICachingChannel.h"\n' +
+    '#include "nsIChannelEventSink.h"\n' +
+    '#include "nsIConsoleService.h"\n' +
+    '#include "nsIContentPolicy.h"\n' +
+    '#include "nsICookieService.h"\n' +
+    '#include "nsIDNSService.h"\n' +
+    '#include "nsIDOMWindowUtils.h"\n' +
+    '#include "nsIDocShell.h"\n' +
+    '#include "nsIEncodedChannel.h"\n' +
+    '#include "nsIHttpHeaderVisitor.h"\n' +
+    '#include "nsILoadGroupChild.h"\n' +
+    '#include "nsIMIMEInputStream.h"\n' +
+    '#include "nsIMultiplexInputStream.h"\n' +
+    '#include "nsIMutableArray.h"\n' +
+    '#include "nsINetworkInterceptController.h"\n' +
+    '#include "nsIOService.h"\n' +
+    '#include "nsIObserverService.h"\n' +
+    '#include "nsIPrincipal.h"\n' +
+    '#include "nsIProtocolProxyService.h"\n' +
+    '#include "nsIScriptError.h"\n' +
+    '#include "nsIScriptSecurityManager.h"\n' +
+    '#include "nsISecurityConsoleMessage.h"\n' +
+    '#include "nsISeekableStream.h"\n' +
+    '#include "nsIStorageStream.h"\n' +
+    '#include "nsIStreamConverterService.h"\n' +
+    '#include "nsITimedChannel.h"\n' +
+    '#include "nsITransportSecurityInfo.h"\n' +
+    '#include "nsIURIMutator.h"\n' +
+    '#include "nsMimeTypes.h"\n' +
+    '#include "nsNetCID.h"\n' +
+    '#include "nsNetUtil.h"\n' +
+    '#include "nsPIDOMWindow.h"\n' +
+    '#include "nsProxyRelease.h"\n' +
+    '#include "nsQueryObject.h"\n' +
+    '#include "nsReadableUtils.h"\n' +
+    '#include "nsRedirectHistoryEntry.h"\n' +
+    '#include "nsServerTiming.h"\n' +
+    '#include "nsStreamListenerWrapper.h"\n' +
+    '#include "nsStreamUtils.h"\n' +
+    '#include "nsString.h"\n' +
+    '#include "nsThreadUtils.h"\n' +
+    '#include "nsURLHelper.h"\n' +
+    '\n' +
+    'using mozilla::dom::ForceMediaDocument;\n' +
+    'using mozilla::dom::RequestMode;\n' +
+    '\n' +
+    '#define LOGORB(msg, ...)                \\\n' +
+    '  MOZ_LOG(GetORBLog(), LogLevel::Debug, \\\n' +
+    '          ("%s: %p " msg, __func__, this, ##__VA_ARGS__))\n' +
+    '\n' +
+    'namespace mozilla {\n' +
+    'namespace net {\n' +
+    '\n' +
+    'static bool IsHeaderBlacklistedForRedirectCopy(nsHttpAtom const& aHeader) {\n' +
+    '  // IMPORTANT: keep this list ASCII-code sorted\n' +
+    '  static nsHttpAtomLiteral const* blackList[] = {\n' +
+    '      &nsHttp::Accept,\n' +
+    '      &nsHttp::Accept_Encoding,\n' +
+    '      &nsHttp::Accept_Language,\n' +
+    '      &nsHttp::Alternate_Service_Used,\n' +
+    '      &nsHttp::Authentication,\n' +
+    '      &nsHttp::Authorization,\n' +
+    '      &nsHttp::Connection,\n' +
+    '      &nsHttp::Content_Length,\n' +
+    '      &nsHttp::Cookie,\n' +
+    '      &nsHttp::Host,\n' +
+    '      &nsHttp::If,\n' +
+    '      &nsHttp::If_Match,\n' +
+    '      &nsHttp::If_Modified_Since,\n' +
+    '      &nsHttp::If_None_Match,\n' +
+    '      &nsHttp::If_None_Match_Any,\n' +
+    '      &nsHttp::If_Range,\n' +
+    '      &nsHttp::If_Unmodified_Since,\n' +
+    '      &nsHttp::Proxy_Authenticate,\n' +
+    '      &nsHttp::Proxy_Authorization,\n' +
+    '      &nsHttp::Range,\n' +
+    '      &nsHttp::TE,\n' +
+    '      &nsHttp::Transfer_Encoding,\n' +
+    '      &nsHttp::Upgrade,\n' +
+    '      &nsHttp::User_Agent,\n' +
+    '      &nsHttp::WWW_Authenticate};\n' +
+    '\n' +
+    '  class HttpAtomComparator {\n' +
+    '    nsHttpAtom const& mTarget;\n' +
+    '\n' +
+    '   public:\n' +
+    '    explicit HttpAtomComparator(nsHttpAtom const& aTarget) : mTarget(aTarget) {}\n' +
+    '    int operator()(nsHttpAtom const* aVal) const {\n' +
+    '      if (mTarget == *aVal) {\n' +
+    '        return 0;\n' +
+    '      }\n' +
+    '      return strcmp(mTarget.get(), aVal->get());\n' +
+    '    }\n' +
+    '    int operator()(nsHttpAtomLiteral const* aVal) const {\n' +
+    '      if (mTarget == *aVal) {\n' +
+    '        return 0;\n' +
+    '      }\n' +
+    '      return strcmp(mTarget.get(), aVal->get());\n' +
+    '    }\n' +
+    '  };\n' +
+    '\n' +
+    '  size_t unused;\n' +
+    '  return BinarySearchIf(blackList, 0, std::size(blackList),\n' +
+    '                        HttpAtomComparator(aHeader), &unused);\n' +
+    '}\n' +
+    '\n' +
+    'class AddHeadersToChannelVisitor final : public nsIHttpHeaderVisitor {\n' +
+    ' public:\n' +
+    '  NS_DECL_ISUPPORTS\n' +
+    '\n' +
+    '  explicit AddHeadersToChannelVisitor(nsIHttpChannel* aChannel)\n' +
+    '      : mChannel(aChannel) {}\n' +
+    '\n' +
+    '  NS_IMETHOD VisitHeader(const nsACString& aHeader,\n' +
+    '                         const nsACString& aValue) override {\n' +
+    '    nsHttpAtom atom = nsHttp::ResolveAtom(aHeader);\n' +
+    '    if (!IsHeaderBlacklistedForRedirectCopy(atom)) {\n' +
+    '      DebugOnly<nsresult> rv =\n' +
+    '          mChannel->SetRequestHeader(aHeader, aValue, false);\n' +
+    '      MOZ_ASSERT(NS_SUCCEEDED(rv));\n' +
+    '    }\n' +
+    '    return NS_OK;\n' +
+    '  }\n' +
+    '\n' +
+    ' private:\n' +
+    '  ~AddHeadersToChannelVisitor() = default;\n' +
+    '\n' +
+    '  nsCOMPtr<nsIHttpChannel> mChannel;\n' +
+    '};\n' +
+    '\n' +
+    'NS_IMPL_ISUPPORTS(AddHeadersToChannelVisitor, nsIHttpHeaderVisitor)\n' +
+    '\n' +
+    'static OpaqueResponseFilterFetch ConfiguredFilterFetchResponseBehaviour() {\n' +
+    '  uint32_t pref = StaticPrefs::\n' +
+    '      browser_opaqueResponseBlocking_filterFetchResponse_DoNotUseDirectly();\n' +
+    '  if (NS_WARN_IF(pref >\n' +
+    '                 static_cast<uint32_t>(OpaqueResponseFilterFetch::All))) {\n' +
+    '    return OpaqueResponseFilterFetch::All;\n' +
+    '  }\n' +
+    '\n' +
+    '  return static_cast<OpaqueResponseFilterFetch>(pref);\n' +
+    '}\n' +
+    '\n' +
+    'HttpBaseChannel::HttpBaseChannel()\n' +
+    '    : mReportCollector(new ConsoleReportCollector()),\n' +
+    '      mHttpHandler(gHttpHandler),\n' +
+    '      mClassOfService(0, false),\n' +
+    '      mRequestMode(RequestMode::No_cors),\n' +
+    '      mRedirectionLimit(gHttpHandler->RedirectionLimit()),\n' +
+    '      mCachedOpaqueResponseBlockingPref(\n' +
+    '          StaticPrefs::browser_opaqueResponseBlocking()) {\n' +
+    '  StoreApplyConversion(true);\n' +
+    '  StoreAllowSTS(true);\n' +
+    '  StoreTracingEnabled(true);\n' +
+    '  StoreReportTiming(true);\n' +
+    '  StoreAllowSpdy(true);\n' +
+    '  StoreAllowHttp3(true);\n' +
+    '  StoreAllowAltSvc(true);\n' +
+    '  StoreResponseTimeoutEnabled(true);\n' +
+    '  StoreAllRedirectsSameOrigin(true);\n' +
+    '  StoreAllRedirectsSameOriginIgnoringInternal(true);\n' +
+    '  StoreAllRedirectsPassTimingAllowCheck(true);\n' +
+    '  StoreUpgradableToSecure(true);\n' +
+    '  StoreIsUserAgentHeaderModified(false);\n' +
+    '\n' +
+    '  this->mSelfAddr.inet = {};\n' +
+    '  this->mPeerAddr.inet = {};\n' +
+    '  LOG(("Creating HttpBaseChannel @%p\\n", this));\n' +
+    '\n' +
+    '  // Subfields of unions cannot be targeted in an initializer list.\n' +
+    '#ifdef MOZ_VALGRIND\n' +
+    "  // Zero the entire unions so that Valgrind doesn't complain when we send them\n" +
+    '  // to another process.\n' +
+    '  memset(&mSelfAddr, 0, sizeof(NetAddr));\n' +
+    '  memset(&mPeerAddr, 0, sizeof(NetAddr));\n' +
+    '#endif\n' +
+    '  mSelfAddr.raw.family = PR_AF_UNSPEC;\n' +
+    '  mPeerAddr.raw.family = PR_AF_UNSPEC;\n' +
+    '}\n' +
+    '\n' +
+    'HttpBaseChannel::~HttpBaseChannel() {\n' +
+    '  LOG(("Destroying HttpBaseChannel @%p\\n", this));\n' +
+    '\n' +
+    "  // Make sure we don't leak\n" +
+    '  CleanRedirectCacheChainIfNecessary();\n' +
+    '\n' +
+    '  ReleaseMainThreadOnlyReferences();\n' +
+    '}\n' +
+    '\n' +
+    'namespace {  // anon\n' +
+    '\n' +
+    'class NonTailRemover : public nsISupports {\n' +
+    '  NS_DECL_THREADSAFE_ISUPPORTS\n' +
+    '\n' +
+    '  explicit NonTailRemover(nsIRequestContext* rc) : mRequestContext(rc) {}\n' +
+    '\n' +
+    ' private:\n' +
+    '  virtual ~NonTailRemover() {\n' +
+    '    MOZ_ASSERT(NS_IsMainThread());\n' +
+    '    mRequestContext->RemoveNonTailRequest();\n' +
+    '  }\n' +
+    '\n' +
+    '  nsCOMPtr<nsIRequestContext> mRequestContext;\n' +
+    '};\n' +
+    '\n' +
+    'NS_IMPL_ISUPPORTS0(NonTailRemover)\n' +
+    '\n' +
+    '}  // namespace\n' +
+    '\n' +
+    'void HttpBaseChannel::ReleaseMainThreadOnlyReferences() {\n' +
+    '  if (NS_IsMainThread()) {\n' +
+    '    // Already on main thread, let dtor to\n' +
+    '    // take care of releasing references\n' +
+    '    RemoveAsNonTailRequest();\n' +
+    '    return;\n' +
+    '  }\n' +
+    '\n' +
+    '  nsTArray<nsCOMPtr<nsISupports>> arrayToRelease;\n' +
+    '  arrayToRelease.AppendElement(mLoadGroup.forget());\n' +
+    '  arrayToRelease.AppendElement(mLoadInfo.forget());\n' +
+    '  arrayToRelease.AppendElement(mCallbacks.forget());\n' +
+    '  arrayToRelease.AppendElement(mProgressSink.forget());\n' +
+    '  arrayToRelease.AppendElement(mPrincipal.forget());\n' +
+    '  arrayToRelease.AppendElement(mListener.forget());\n' +
+    '  arrayToRelease.AppendElement(mCompressListener.forget());\n' +
+    '  arrayToRelease.AppendElement(mORB.forget());\n' +
+    '\n' +
+    '  if (LoadAddedAsNonTailRequest()) {\n' +
+    '    // RemoveNonTailRequest() on our request context must be called on the main\n' +
+    '    // thread\n' +
+    '    MOZ_RELEASE_ASSERT(mRequestContext,\n' +
+    '                       "Someone released rc or set flags w/o having it?");\n' +
+    '\n' +
+    '    nsCOMPtr<nsISupports> nonTailRemover(new NonTailRemover(mRequestContext));\n' +
+    '    arrayToRelease.AppendElement(nonTailRemover.forget());\n' +
+    '  }\n' +
+    '\n' +
+    '  NS_DispatchToMainThread(new ProxyReleaseRunnable(std::move(arrayToRelease)));\n' +
+    '}\n' +
+    '\n' +
+    'void HttpBaseChannel::AddClassificationFlags(uint32_t aClassificationFlags,\n' +
+    '                                             bool aIsThirdParty) {\n' +
+    '  LOG(\n' +
+    '      ("HttpBaseChannel::AddClassificationFlags classificationFlags=%d "\n' +
+    '       "thirdparty=%d %p",\n' +
+    '       aClassificat'... 223676 more characters
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_regions.mjs:72:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: `/* This Source Code Form is subject to the terms of the Mozilla Public\n * License, v. 2.0. If a copy of the MPL was not distributed with this\n * file, You can obtain one at http://mozilla.org/MPL/2.0/. */\n\n// HttpLog.h should generally be included first\n#include "mozilla/net/HttpBaseChannel.h"\n\n#include <algorithm>\n#include <utility>\n\n#include "HttpBaseChannel.h"\n#include "HttpLog.h"\n#include "LoadInfo.h"\n#include "ReferrerInfo.h"\n#include "mozIRemoteLazyInputStream.h"\n#include "mozIThirdPartyUtil.h"\n#include "mozilla/AntiTrackingUtils.h"\n#include "mozilla/BasePrincipal.h"\n#include "mozilla/BinarySearch.h"\n#include "mozilla/CompactPair.h"\n#include "mozilla/Components.h"\n#include "mozilla/ConsoleReportCollector.h"\n#include "mozilla/DebugOnly.h"\n#include "mozilla/InputStreamLengthHelper.h"\n#include "mozilla/LoadInfo.h"\n#include "mozilla/Mutex.h"\n#include "mozilla/NullPrincipal.h"\n#include "mozilla/PermissionManager.h"\n#include "mozilla/RemoteLazyInputStreamChild.h"\n#include "mozilla/StaticPrefs_browser.h"\n#include "mozilla/StaticPrefs_fission.h"\n#include "mozilla/StaticPrefs_javascript.h"\n#include "mozilla/StaticPrefs_network.h"\n#include "mozilla/StaticPrefs_security.h"\n#include "mozilla/Telemetry.h"\n#include "mozilla/Tokenizer.h"\n#include "mozilla/browser/NimbusFeatures.h"\n#include "mozilla/dom/BrowsingContext.h"\n#include "mozilla/dom/CanonicalBrowsingContext.h"\n#include "mozilla/dom/ContentChild.h"\n#include "mozilla/dom/Document.h"\n#include "mozilla/dom/FetchPriority.h"\n#include "mozilla/dom/LoadURIOptionsBinding.h"\n#include "mozilla/dom/ParentProcessChannelHandle.h"\n#include "mozilla/dom/Performance.h"\n#include "mozilla/dom/PerformanceStorage.h"\n#include "mozilla/dom/PolicyContainer.h"\n#include "mozilla/dom/ProcessIsolation.h"\n#include "mozilla/dom/RequestBinding.h"\n#include "mozilla/dom/WindowGlobalParent.h"\n#include "mozilla/dom/nsHTTPSOnlyUtils.h"\n#include "mozilla/dom/nsMixedContentBlocker.h"\n#include "mozilla/glean/NetwerkProtocolHttpMetrics.h"\n#include "mozilla/net/ChannelClassifierUtils.h"\n#include "mozilla/net/OpaqueResponseUtils.h"\n#include "mozilla/net/SFV.h"\n#include "nsBufferedStreams.h"\n#include "nsCOMPtr.h"\n#include "nsCRT.h"\n#include "nsContentSecurityManager.h"\n#include "nsContentSecurityUtils.h"\n#include "nsContentUtils.h"\n#include "nsDebug.h"\n#include "nsEscape.h"\n#include "nsGlobalWindowInner.h"\n#include "nsGlobalWindowOuter.h"\n#include "nsHTTPCompressConv.h"\n#include "nsHttpChannel.h"\n#include "nsHttpHandler.h"\n#include "nsICacheInfoChannel.h"\n#include "nsICachingChannel.h"\n#include "nsIChannelEventSink.h"\n#include "nsIConsoleService.h"\n#include "nsIContentPolicy.h"\n#include "nsICookieService.h"\n#include "nsIDNSService.h"\n#include "nsIDOMWindowUtils.h"\n#include "nsIDocShell.h"\n#include "nsIEncodedChannel.h"\n#include "nsIHttpHeaderVisitor.h"\n#include "nsILoadGroupChild.h"\n#include "nsIMIMEInputStream.h"\n#include "nsIMultiplexInputStream.h"\n#include "nsIMutableArray.h"\n#include "nsINetworkInterceptController.h"\n#include "nsIOService.h"\n#include "nsIObserverService.h"\n#include "nsIPrincipal.h"\n#include "nsIProtocolProxyService.h"\n#include "nsIScriptError.h"\n#include "nsIScriptSecurityManager.h"\n#include "nsISecurityConsoleMessage.h"\n#include "nsISeekableStream.h"\n#include "nsIStorageStream.h"\n#include "nsIStreamConverterService.h"\n#include "nsITimedChannel.h"\n#include "nsITransportSecurityInfo.h"\n#include "nsIURIMutator.h"\n#include "nsMimeTypes.h"\n#include "nsNetCID.h"\n#include "nsNetUtil.h"\n#include "nsPIDOMWindow.h"\n#include "nsProxyRelease.h"\n#include "nsQueryObject.h"\n#include "nsReadableUtils.h"\n#include "nsRedirectHistoryEntry.h"\n#include "nsServerTiming.h"\n#include "nsStreamListenerWrapper.h"\n#include "nsStreamUtils.h"\n#include "nsString.h"\n#include "nsThreadUtils.h"\n#include "nsURLHelper.h"\n\nusing mozilla::dom::ForceMediaDocument;\nusing mozilla::dom::RequestMode;\n\n#define LOGORB(msg, ...)                \\\n  MOZ_LOG(GetORBLog(), LogLevel::Debug, \\\n          ("%s: %p " msg, __func__, this, ##__VA_ARGS__))\n\nnamespace mozilla {\nnamespace net {\n\nstatic bool IsHeaderBlacklistedForRedirectCopy(nsHttpAtom const& aHeader) {\n  // IMPORTANT: keep this list ASCII-code sorted\n  static nsHttpAtomLiteral const* blackList[] = {\n      &nsHttp::Accept,\n      &nsHttp::Accept_Encoding,\n      &nsHttp::Accept_Language,\n      &nsHttp::Alternate_Service_Used,\n      &nsHttp::Authentication,\n      &nsHttp::Authorization,\n      &nsHttp::Connection,\n      &nsHttp::Content_Length,\n      &nsHttp::Cookie,\n      &nsHttp::Host,\n      &nsHttp::If,\n      &nsHttp::If_Match,\n      &nsHttp::If_Modified_Since,\n      &nsHttp::If_None_Match,\n      &nsHttp::If_None_Match_Any,\n      &nsHttp::If_Range,\n      &nsHttp::If_Unmodified_Since,\n      &nsHttp::Proxy_Authenticate,\n      &nsHttp::Proxy_Authorization,\n      &nsHttp::Range,\n      &nsHttp::TE,\n      &nsHttp::Transfer_Encoding,\n      &nsHttp::Upgrade,\n      &nsHttp::User_Agent,\n      &nsHttp::WWW_Authenticate};\n\n  class HttpAtomComparator {\n    nsHttpAtom const& mTarget;\n\n   public:\n    explicit HttpAtomComparator(nsHttpAtom const& aTarget) : mTarget(aTarget) {}\n    int operator()(nsHttpAtom const* aVal) const {\n      if (mTarget == *aVal) {\n        return 0;\n      }\n      return strcmp(mTarget.get(), aVal->get());\n    }\n    int operator()(nsHttpAtomLiteral const* aVal) const {\n      if (mTarget == *aVal) {\n        return 0;\n      }\n      return strcmp(mTarget.get(), aVal->get());\n    }\n  };\n\n  size_t unused;\n  return BinarySearchIf(blackList, 0, std::size(blackList),\n                        HttpAtomComparator(aHeader), &unused);\n}\n\nclass AddHeadersToChannelVisitor final : public nsIHttpHeaderVisitor {\n public:\n  NS_DECL_ISUPPORTS\n\n  explicit AddHeadersToChannelVisitor(nsIHttpChannel* aChannel)\n      : mChannel(aChannel) {}\n\n  NS_IMETHOD VisitHeader(const nsACString& aHeader,\n                         const nsACString& aValue) override {\n    nsHttpAtom atom = nsHttp::ResolveAtom(aHeader);\n    if (!IsHeaderBlacklistedForRedirectCopy(atom)) {\n      DebugOnly<nsresult> rv =\n          mChannel->SetRequestHeader(aHeader, aValue, false);\n      MOZ_ASSERT(NS_SUCCEEDED(rv));\n    }\n    return NS_OK;\n  }\n\n private:\n  ~AddHeadersToChannelVisitor() = default;\n\n  nsCOMPtr<nsIHttpChannel> mChannel;\n};\n\nNS_IMPL_ISUPPORTS(AddHeadersToChannelVisitor, nsIHttpHeaderVisitor)\n\nstatic OpaqueResponseFilterFetch ConfiguredFilterFetchResponseBehaviour() {\n  uint32_t pref = StaticPrefs::\n      browser_opaqueResponseBlocking_filterFetchResponse_DoNotUseDirectly();\n  if (NS_WARN_IF(pref >\n                 static_cast<uint32_t>(OpaqueResponseFilterFetch::All))) {\n    return OpaqueResponseFilterFetch::All;\n  }\n\n  return static_cast<OpaqueResponseFilterFetch>(pref);\n}\n\nHttpBaseChannel::HttpBaseChannel()\n    : mReportCollector(new ConsoleReportCollector()),\n      mHttpHandler(gHttpHandler),\n      mClassOfService(0, false),\n      mRequestMode(RequestMode::No_cors),\n      mRedirectionLimit(gHttpHandler->RedirectionLimit()),\n      mCachedOpaqueResponseBlockingPref(\n          StaticPrefs::browser_opaqueResponseBlocking()) {\n  StoreApplyConversion(true);\n  StoreAllowSTS(true);\n  StoreTracingEnabled(true);\n  StoreReportTiming(true);\n  StoreAllowSpdy(true);\n  StoreAllowHttp3(true);\n  StoreAllowAltSvc(true);\n  StoreResponseTimeoutEnabled(true);\n  StoreAllRedirectsSameOrigin(true);\n  StoreAllRedirectsSameOriginIgnoringInternal(true);\n  StoreAllRedirectsPassTimingAllowCheck(true);\n  StoreUpgradableToSecure(true);\n  StoreIsUserAgentHeaderModified(false);\n\n  this->mSelfAddr.inet = {};\n  this->mPeerAddr.inet = {};\n  LOG(("Creating HttpBaseChannel @%p\\n", this));\n\n  // Subfields of unions cannot be targeted in an initializer list.\n#ifdef MOZ_VALGRIND\n  // Zero the entire unions so that Valgrind doesn't complain when we send them\n  // to another process.\n  memset(&mSelfAddr, 0, sizeof(NetAddr));\n  memset(&mPeerAddr, 0, sizeof(NetAddr));\n#endif\n  mSelfAddr.raw.family = PR_AF_UNSPEC;\n  mPeerAddr.raw.family = PR_AF_UNSPEC;\n}\n\nHttpBaseChannel::~HttpBaseChannel() {\n  LOG(("Destroying HttpBaseChannel @%p\\n", this));\n\n  // Make sure we don't leak\n  CleanRedirectCacheChainIfNecessary();\n\n  ReleaseMainThreadOnlyReferences();\n}\n\nnamespace {  // anon\n\nclass NonTailRemover : public nsISupports {\n  NS_DECL_THREADSAFE_ISUPPORTS\n\n  explicit NonTailRemover(nsIRequestContext* rc) : mRequestContext(rc) {}\n\n private:\n  virtual ~NonTailRemover() {\n    MOZ_ASSERT(NS_IsMainThread());\n    mRequestContext->RemoveNonTailRequest();\n  }\n\n  nsCOMPtr<nsIRequestContext> mRequestContext;\n};\n\nNS_IMPL_ISUPPORTS0(NonTailRemover)\n\n}  // namespace\n\nvoid HttpBaseChannel::ReleaseMainThreadOnlyReferences() {\n  if (NS_IsMainThread()) {\n    // Already on main thread, let dtor to\n    // take care of releasing references\n    RemoveAsNonTailRequest();\n    return;\n  }\n\n  nsTArray<nsCOMPtr<nsISupports>> arrayToRelease;\n  arrayToRelease.AppendElement(mLoadGroup.forget());\n  arrayToRelease.AppendElement(mLoadInfo.forget());\n  arrayToRelease.AppendElement(mCallbacks.forget());\n  arrayToRelease.AppendElement(mProgressSink.forget());\n  arrayToRelease.AppendElement(mPrincipal.forget());\n  arrayToRelease.AppendElement(mListener.forget());\n  arrayToRelease.AppendElement(mCompressListener.forget());\n  arrayToRelease.AppendElement(mORB.forget());\n\n  if (LoadAddedAsNonTailRequest()) {\n    // RemoveNonTailRequest() on our request context must be called on the main\n    // thread\n    MOZ_RELEASE_ASSERT(mRequestContext,\n                       "Someone released rc or set flags w/o having it?");\n\n    nsCOMPtr<nsISupports> nonTailRemover(new NonTailRemover(mRequestContext));\n    arrayToRelease.AppendElement(nonTailRemover.forget());\n  }\n\n  NS_DispatchToMainThread(new ProxyReleaseRunnable(std::move(arrayToRelease)));\n}\n\nvoid HttpBaseChannel::AddClassificationFlags(uint32_t aClassificationFlags,\n                                             bool aIsThirdParty) {\n  LOG(\n      ("HttpBaseChannel::AddClassificationFlags classificationFlags=%d "\n       "thirdparty=%d %p",\n       aClassificat`... 223676 more characters,
+    expected: /CloakConfigOverlay_Get\(\s*mLoadInfo->GetOriginAttributes\(\).mUserContextId\)/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_regions.mjs:78:1
+✖ synthetic location retains site prompt and avoids device-permission override before Allow (1.457209ms)
+  Error: ENOENT: no such file or directory, open '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/geolocation/Geolocation.cpp'
+      at readFileSync (node:fs:436:20)
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_regions.mjs:79:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/geolocation/Geolocation.cpp'
+  }
+
+test at tests/fingerprint/test_scoped_data_clear.mjs:44:1
+✖ cookie-only origin clearing leaves shared and scoped permissions and unrelated legacy state alone (7.251875ms)
+  TypeError: service.deleteDataFromOriginAttributesPatternWithFlags is not a function
+      at file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:42:75
+      at new Promise (<anonymous>)
+      at clear (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:42:44)
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:46:22)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17)
+
+test at tests/fingerprint/test_scoped_data_clear.mjs:51:1
+✖ explicit permission clearing removes only provably scoped nonzero entries (3.985542ms)
+  TypeError: service.deleteDataFromOriginAttributesPatternWithFlags is not a function
+      at file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:42:75
+      at new Promise (<anonymous>)
+      at clear (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:42:44)
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:53:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
+
+test at tests/fingerprint/test_scoped_data_clear.mjs:58:1
+✖ zero flags is a no-op with completion; legacy ALL still delegates with ALL (2.110333ms)
+  TypeError: service.deleteDataFromOriginAttributesPatternWithFlags is not a function
+      at file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:42:75
+      at new Promise (<anonymous>)
+      at clear (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:42:44)
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:60:22)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at tests/fingerprint/test_scoped_data_clear.mjs:71:1
+✖ ALL-minus-permissions keeps the legacy notification and excludes permission cleaners (4.186667ms)
+  TypeError: service.deleteDataFromOriginAttributesPatternWithFlags is not a function
+      at file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:42:75
+      at new Promise (<anonymous>)
+      at clear (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:42:44)
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_scoped_data_clear.mjs:78:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at tests/fingerprint/test_tracking_dns.mjs:60:1
+✖ native narrow bounce lookup stays out of the broad allowlist cache (8.81325ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(source.includes('ContentBlockingAllowListCache::CheckForBaseDomain('))
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_tracking_dns.mjs:66:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_worker_config_snapshot.mjs:7:1
+✖ production worker config epoch refresh handles oversized updates, removals and shutdown without IPC under lock (7.637ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(lookup)
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_worker_config_snapshot.mjs:18:27)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

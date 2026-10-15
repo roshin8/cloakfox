@@ -266,6 +266,9 @@
     </section>
 
     <section class="card" id="sec-hardening">
+<label class="flag-row"><input type="checkbox" data-pref="cloakfox.opt.webgl_typed_readback_disabled"><span><strong>Restrict precise GPU readback</strong><small class="flag-description" role="list"><span role="listitem">Blocks precise and pixel-buffer readbacks that expose unprotected GPU data.</span><span role="listitem">Keeps ordinary canvas readback protected.</span><span role="listitem">Disable for applications that need exact GPU computation buffers; this restores that fingerprint surface.</span></small></span></label>
+<label class="flag-row"><input type="checkbox" data-pref="cloakfox.webrtc.protect_proxy"><span><strong>Protect WebRTC proxy routing</strong><small class="flag-description" role="list"><span role="listitem">Resolves the route for each ICE server before connecting.</span><span role="listitem">Uses supported proxy transports and blocks direct fallback when a proxy is required.</span><span role="listitem">Unsupported proxy or UDP-only combinations may prevent calls.</span></small></span></label>
+<label class="flag-row"><input type="checkbox" data-pref="cloakfox.webrtc.protect_unready"><span><strong>Require relay while IP alignment is unavailable</strong><small class="flag-description" role="list"><span role="listitem">Uses TURN relays while optional IP lookup is off or either address mask is missing.</span><span role="listitem">Services without TURN support may fail to connect.</span><span role="listitem">Existing calls need reconnection or ICE restart to apply changed routing.</span></small></span></label>
 <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.math_data_noise" aria-describedby="cfx-help-math-data-noise">
           <span><strong>Randomize logarithms and powers</strong><small id="cfx-help-math-data-noise" class="flag-description" role="list">

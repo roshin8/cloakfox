@@ -1,28 +1,12 @@
-diff --git a/browser/components/sessionstore/SessionWriter.sys.mjs b/browser/components/sessionstore/SessionWriter.sys.mjs
---- a/browser/components/sessionstore/SessionWriter.sys.mjs
-+++ b/browser/components/sessionstore/SessionWriter.sys.mjs
-@@ -70,6 +70,17 @@
-     const unlock = await lockIOWithMutex();
-     try {
-       return await SessionWriterInternal.write(state, options);
-+    } finally {
-+      unlock();
-+    }
-+  },
-+
-+  async pruneContainerRestoreFiles(userContextId) {
-+    const unlock = await lockIOWithMutex();
-+    try {
-+      const { pruneContainerRestoreFiles } = ChromeUtils.importESModule(
-+        "resource:///modules/CloakfoxIdentityActions.sys.mjs");
-+      await pruneContainerRestoreFiles(userContextId, SessionWriterInternal.Paths);
-     } finally {
-       unlock();
-     }
 diff --git a/browser/components/sessionstore/SessionFile.sys.mjs b/browser/components/sessionstore/SessionFile.sys.mjs
 --- a/browser/components/sessionstore/SessionFile.sys.mjs
 +++ b/browser/components/sessionstore/SessionFile.sys.mjs
-@@ -46,8 +46,13 @@
+@@ -41,18 +41,23 @@
+   read() {
+     return SessionFileInternal.read();
+   },
+   /**
+    * Write the contents of the session file, asynchronously.
     *
     * @param aData - May get changed on shutdown.
     */
@@ -38,7 +22,17 @@ diff --git a/browser/components/sessionstore/SessionFile.sys.mjs b/browser/compo
    },
    /**
     * Wipe the contents of the session file, asynchronously.
-@@ -424,7 +429,7 @@
+    */
+   wipe() {
+     return SessionFileInternal.wipe();
+   },
+ 
+@@ -421,17 +426,17 @@
+           ),
+         }
+       );
+     }
+ 
      return Promise.resolve(lazy.SessionWriter);
    },
  
@@ -47,7 +41,17 @@ diff --git a/browser/components/sessionstore/SessionFile.sys.mjs b/browser/compo
      if (lazy.RunState.isClosed) {
        return Promise.reject(new Error("SessionFile is closed"));
      }
-@@ -442,6 +447,7 @@
+ 
+     let isFinalWrite = false;
+     if (lazy.RunState.isClosing) {
+       // If shutdown has started, we will want to stop receiving
+       // write instructions.
+@@ -439,16 +444,17 @@
+       lazy.RunState.setClosed();
+     }
+ 
+     let performShutdownCleanup =
+       isFinalWrite && !lazy.SessionStore.willAutoRestore;
  
      this._attempts++;
      let options = { isFinalWrite, performShutdownCleanup };
@@ -55,7 +59,17 @@ diff --git a/browser/components/sessionstore/SessionFile.sys.mjs b/browser/compo
      let write = this.getWriter().then(writer => writer.write(aData, options));
  
      // Wait until the write is done.
-@@ -477,6 +483,7 @@
+     let promise = write.then(
+       msg => {
+         // Record how long the write took.
+         if (msg.telemetry.writeFileMs) {
+           Glean.sessionRestore.writeFile.accumulateSingleSample(
+@@ -474,16 +480,17 @@
+       err => {
+         // Catch and report any errors.
+         lazy.sessionStoreLogger.error(
+           "Could not write session state file ",
+           err,
            err.stack
          );
          this._failures++;
@@ -63,7 +77,17 @@ diff --git a/browser/components/sessionstore/SessionFile.sys.mjs b/browser/compo
          // By not doing anything special here we ensure that |promise| cannot
          // be rejected anymore. The shutdown/cleanup code at the end of the
          // function will thus always be executed.
-@@ -504,6 +511,7 @@
+       }
+     );
+ 
+     // Ensure that we can write sessionstore.js cleanly before the profile
+     // becomes unaccessible.
+@@ -501,16 +508,17 @@
+     );
+ 
+     // This code will always be executed because |promise| can't fail anymore.
+     // We ensured that by having a reject handler that reports the failure but
+     // doesn't forward the rejection.
      return promise.then(() => {
        // Remove the blocker, no matter if writing failed or not.
        IOUtils.profileBeforeChange.removeBlocker(promise);
@@ -71,10 +95,20 @@ diff --git a/browser/components/sessionstore/SessionFile.sys.mjs b/browser/compo
  
        if (isFinalWrite) {
          Services.obs.notifyObservers(
+           null,
+           "sessionstore-final-state-write-complete"
+         );
+       }
+     });
 diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/components/sessionstore/SessionSaver.sys.mjs
 --- a/browser/components/sessionstore/SessionSaver.sys.mjs
 +++ b/browser/components/sessionstore/SessionSaver.sys.mjs
-@@ -56,11 +56,11 @@
+@@ -51,21 +51,21 @@
+ 
+ /**
+  * The external API implemented by the SessionSaver module.
+  */
+ export var SessionSaver = Object.freeze({
    /**
     * Immediately saves the current session to disk.
     */
@@ -88,7 +122,17 @@ diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/comp
    },
  
    /**
-@@ -151,8 +151,8 @@
+    * Saves the current session to disk delayed by a given amount of time. Should
+    * another delayed run be scheduled already, we will ignore the given delay
+    * and state saving may occur a little earlier.
+    */
+   runDelayed() {
+@@ -146,18 +146,18 @@
+   /**
+    * How long before we assume that the user is idle (ms).
+    */
+   _idleDelay: null,
+ 
    /**
     * Immediately saves the current session to disk.
     */
@@ -99,7 +143,17 @@ diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/comp
    },
  
    /**
-@@ -246,7 +246,7 @@
+    * Saves the current session to disk delayed by a given amount of time. Should
+    * another delayed run be scheduled already, we will ignore the given delay
+    * and state saving may occur a little earlier.
+    *
+    * @param delay (optional)
+@@ -241,17 +241,17 @@
+ 
+   /**
+    * Saves the current session state. Collects data and writes to disk.
+    *
+    * @param forceUpdateAllWindows (optional)
     *        Forces us to recollect data for all windows and will bypass and
     *        update the corresponding caches.
     */
@@ -108,7 +162,17 @@ diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/comp
      // Cancel any pending timeouts.
      this.cancel();
  
-@@ -305,7 +305,7 @@
+     if (lazy.PrivateBrowsingUtils.permanentPrivateBrowsing) {
+       // Don't save (or even collect) anything in permanent private
+       // browsing mode
+ 
+       this.updateLastSaveTime();
+@@ -300,17 +300,17 @@
+         state.windows.unshift(state._closedWindows.pop());
+       }
+     }
+ 
+     // Clear cookies and storage on clean shutdown.
      this._maybeClearCookiesAndStorage(state);
  
      Glean.sessionRestore.collectData.stopAndAccumulate(timerId);
@@ -117,7 +181,17 @@ diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/comp
    },
  
    /**
-@@ -357,7 +357,7 @@
+    * Purges cookies and DOMSessionStorage data from the session on clean
+    * shutdown, only if requested by the user's preferences.
+    */
+   _maybeClearCookiesAndStorage(state) {
+     // Only do this on shutdown.
+@@ -352,46 +352,47 @@
+ 
+     // Write to disk.
+     this._saveState();
+   },
+ 
    /**
     * Write the given state object to disk.
     */
@@ -126,7 +200,14 @@ diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/comp
      if (!lazy.RunState.isRunning) {
        lazy.sessionStoreLogger.debug(
          "SessionSaver writing state during shutdown"
-@@ -372,7 +372,7 @@
+       );
+     }
+     // We update the time stamp before writing so that we don't write again
+     // too soon, if saving is requested before the write completes. Without
+     // this update we may save repeatedly if actions cause a runDelayed
+     // before writing has completed. See Bug 902280
+     this.updateLastSaveTime();
+ 
      // Write (atomically) to a session file, using a tmp file. Once the session
      // file is successfully updated, save the time stamp of the last save and
      // notify the observers.
@@ -135,7 +216,14 @@ diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/comp
        () => {
          this.updateLastSaveTime();
          if (!lazy.RunState.isRunning) {
-@@ -387,6 +387,7 @@
+           lazy.sessionStoreLogger.debug(
+             "SessionSaver sessionstore-state-write-complete during shutdown"
+           );
+         }
+         notify(null, "sessionstore-state-write-complete");
+       },
+       err => {
+         lazy.sessionStoreLogger.error(
            "SessionSaver write() rejected with error",
            err
          );
@@ -143,10 +231,20 @@ diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/comp
        }
      );
    },
+ };
+ 
+ XPCOMUtils.defineLazyPreferenceGetter(
+   SessionSaverInternal,
+   "_intervalWhileActive",
 diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/components/sessionstore/SessionStore.sys.mjs
 --- a/browser/components/sessionstore/SessionStore.sys.mjs
 +++ b/browser/components/sessionstore/SessionStore.sys.mjs
-@@ -296,6 +296,27 @@
+@@ -301,16 +301,37 @@
+  * @alias SessionStore
+  */
+ class _SessionStore {
+   QueryInterface = ChromeUtils.generateQI([
+     "nsIObserver",
      "nsISupportsWeakReference",
    ]);
  
@@ -174,7 +272,17 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
    #globalState = new GlobalState();
  
    // A counter to be used to generate a unique ID for each closed tab or window.
-@@ -1014,12 +1035,11 @@
+   #nextClosedId = 0;
+ 
+   /**
+    * Resets the counter used to hand out closed tab and window IDs.
+    * Only for testing purposes.
+@@ -1018,22 +1039,21 @@
+         this.#onPrefChange(aData);
+         this.#notifyOfClosedObjectsChange();
+         break;
+       case "idle-daily":
+         this.#onIdleDaily();
          this.#notifyOfClosedObjectsChange();
          break;
        case "clear-origin-attributes-data": {
@@ -192,7 +300,17 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
          }
          break;
        }
-@@ -5001,33 +5021,45 @@
+       case "browsing-context-did-set-embedder":
+         if (aSubject === aSubject.top && aSubject.isContent) {
+           const permanentKey = aSubject.embedderElement?.permanentKey;
+           if (permanentKey) {
+             this.#maybeRecreateSHistoryListener(permanentKey, aSubject);
+@@ -5039,60 +5059,55 @@
+         win.gBrowser.setIcon(tab, tabData.image);
+       }
+       lazy.TabStateCache.update(browser.permanentKey, {
+         image: null,
+       });
      }
    }
  
@@ -200,31 +318,47 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
 +  // Remove only this container from all current restorable records, including
 +  // default-container entries and mixed closed windows. Preserve other tabs.
    #forgetTabsWithUserContextId(userContextId) {
+-    const clearClosedTabs = windowState => {
+-      // In order to remove the tabs in the correct order, we store the
+-      // indexes, into an array, then we reverse the array and remove closed
+-      // data from the last one going backward.
+-      let indexes = [];
+-      windowState._closedTabs.forEach((closedTab, index) => {
+-        if (closedTab.state.userContextId == userContextId) {
+-          indexes.push(index);
+-        }
+-      });
+-
+-      for (let index of indexes.reverse()) {
+-        this.#removeClosedTabData(windowState, windowState._closedTabs, index);
+-      }
+-    };
+-
 -    for (let window of Services.wm.getEnumerator("navigator:browser")) {
 -      let windowState = this.#windows[window.__SSi];
 -      if (windowState) {
--        // In order to remove the tabs in the correct order, we store the
--        // indexes, into an array, then we revert the array and remove closed
--        // data from the last one going backward.
--        let indexes = [];
--        windowState._closedTabs.forEach((closedTab, index) => {
--          if (closedTab.state.userContextId == userContextId) {
--            indexes.push(index);
--          }
--        });
+-        clearClosedTabs(windowState);
+-      }
+-    }
 -
--        for (let index of indexes.reverse()) {
--          this.#removeClosedTabData(
--            windowState,
--            windowState._closedTabs,
--            index
--          );
--        }
+-    // Also prune closed windows: remove matching _closedTabs and tabs, and
+-    // drop the window entirely if no tabs remain.
+-    for (let i = this.#closedWindows.length - 1; i >= 0; i--) {
+-      let windowState = this.#closedWindows[i];
+-
+-      clearClosedTabs(windowState);
+-
+-      windowState.tabs = windowState.tabs.filter(
+-        tab => tab.userContextId != userContextId
+-      );
+-
+-      if (!windowState.tabs.length) {
+-        this.#removeClosedWindow(i);
+-        this.#saveableClosedWindowData.delete(windowState);
 -      }
 -    }
 -
 -    // Notify of changes to closed objects.
--    this.#notifyOfClosedObjectsChange();
 +    const { pruneContainerRestoreState } = ChromeUtils.importESModule(
 +      "resource:///modules/CloakfoxIdentityActions.sys.mjs"
 +    );
@@ -258,9 +392,45 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
 +      pruneContainerRestoreState(state, userContextId, removeClosed);
 +    }
 +    this.#closedObjectsChanged = true;
-+    this.#notifyOfClosedObjectsChange();
+     this.#notifyOfClosedObjectsChange();
 +    this.#notifyOfSavedTabGroupsChange();
 +    this.#saveStateDelayed();
    }
  
    /**
+    * Restores the session state stored in LastSession. This will attempt
+    * to merge data into the current session. If a window was opened at startup
+    * with pinned tab(s), then the remaining data from the previous session for
+    * that window will be opened into that window. Otherwise new windows will
+    * be opened.
+diff --git a/browser/components/sessionstore/SessionWriter.sys.mjs b/browser/components/sessionstore/SessionWriter.sys.mjs
+--- a/browser/components/sessionstore/SessionWriter.sys.mjs
++++ b/browser/components/sessionstore/SessionWriter.sys.mjs
+@@ -65,16 +65,27 @@
+    * Write the contents of the session file.
+    *
+    * @param state - May get changed on shutdown.
+    */
+   async write(state, options = {}) {
+     const unlock = await lockIOWithMutex();
+     try {
+       return await SessionWriterInternal.write(state, options);
++    } finally {
++      unlock();
++    }
++  },
++
++  async pruneContainerRestoreFiles(userContextId) {
++    const unlock = await lockIOWithMutex();
++    try {
++      const { pruneContainerRestoreFiles } = ChromeUtils.importESModule(
++        "resource:///modules/CloakfoxIdentityActions.sys.mjs");
++      await pruneContainerRestoreFiles(userContextId, SessionWriterInternal.Paths);
+     } finally {
+       unlock();
+     }
+   },
+ 
+   async wipe() {
+     const unlock = await lockIOWithMutex();
+     try {

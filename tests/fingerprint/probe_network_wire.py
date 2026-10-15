@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import ssl
+import shutil
 import sys
 import tempfile
 import time
@@ -20,6 +21,28 @@ from h3_fixture import create_certificates
 from wire_fixture import TLSFixture
 
 
+def launch_wire_browser(binary, profile, log, preferences=None):
+    """Keep profile discovery as well as the browser profile disposable.
+
+    Firefox initializes its profile registry before honoring -profile. On macOS,
+    the user's Firefox registry can be protected by TCC even for an explicit
+    test profile, so give this process independent app-data roots.
+    """
+    options=Options();options.binary_location=binary
+    options.accept_insecure_certs=False
+    options.add_argument('-headless');options.add_argument('-purgecaches')
+    options.profile=str(profile)
+    options.set_preference('remote.prefs.recommended',False)
+    for name,value in (preferences or {}).items():options.set_preference(name,value)
+    app_data=profile.parent/(profile.name+'-app-data')
+    local_data=profile.parent/(profile.name+'-local-data')
+    app_data.mkdir();local_data.mkdir()
+    service=Service(executable_path=os.environ.get('GECKODRIVER') or shutil.which('geckodriver'),
+        service_args=['--allow-system-access'],log_output=str(log),
+        env={**os.environ,'MOZ_APP_DATA':str(app_data),'MOZ_LOCAL_APP_DATA':str(local_data)})
+    return webdriver.Firefox(options=options,service=service)
+
+
 def main():
     report={}
     binaries={'stock':os.environ.get('FIREFOX_BIN','/Applications/Firefox.app/Contents/MacOS/firefox'),
@@ -30,15 +53,9 @@ def main():
         servers=[TLSFixture(cert,key) for _ in range(3)]
         try:
             for label,binary in binaries.items():
-                options=Options();options.binary_location=binary
-                options.accept_insecure_certs=False
-                options.add_argument('-headless');options.add_argument('-purgecaches')
                 profile=root/label;profile.mkdir()
-                options.add_argument('-profile');options.add_argument(str(profile))
-                options.set_preference('remote.prefs.recommended',False)
-                options.set_preference('network.dns.localDomains','wire.test,wrong.test')
-                options.set_preference('network.trr.mode',5)
-                d=webdriver.Firefox(options=options,service=Service(service_args=['--allow-system-access'],log_output=str(root/(label+'.log'))))
+                d=launch_wire_browser(binary,profile,root/(label+'.log'),{
+                    'network.dns.localDomains':'wire.test,wrong.test','network.trr.mode':5})
                 d.set_page_load_timeout(15)
                 try:
                     address=f'https://wire.test:{servers[0].server_address[1]}/'

@@ -75,12 +75,16 @@ def run_case(binary, root, case, enabled, disabled):
         options.binary_location = binary
         if os.environ.get("CLOAKFOX_HEADFUL") != "1":
             options.add_argument("-headless")
+        options.add_argument("-purgecaches")
         options.add_argument("-profile")
         options.add_argument(str(profile))
         driver = webdriver.Firefox(options=options, service=Service(
             service_args=["--allow-system-access"], log_output=str(log_path)))
         driver.set_script_timeout(15)
         try:
+            info = chrome(driver, "return {version:Services.appinfo.version,buildID:Services.appinfo.appBuildID}")
+            assert info["version"].startswith("158."), info
+            results.append({"browserInfo": info})
             config = chrome(driver, """
                 const key='cloakfox.s.cloak_cfg_0';
                 const cfg=JSON.parse(Services.prefs.getStringPref(key,'{}'));
@@ -105,20 +109,10 @@ def run_case(binary, root, case, enabled, disabled):
                     """, kind, URL)
                 result = read_getter(driver, token, kind)
                 assert not result.get("missing"), f"{case}/{kind}: GPU binding missing"
-                if not enabled or (kind == "blank" and not disabled):
-                    assert result == {"type": "object", "isNull": False, "same": True}, result
-                elif kind == "blank":
-                    assert result == {"type": "object", "isNull": True, "same": True}, result
-                elif disabled:
-                    # Existing page actors hide GPU; the native disabled return
-                    # is null in any realm the actor doesn't reach.
-                    assert result["type"] == "undefined" or result["isNull"], f"{kind}: {result}"
-                else:
-                    # The enabled control may retain the actor's undefined
-                    # presentation or expose the enabled native GPU instance.
-                    assert result["type"] == "undefined" or result == {
-                        "type": "object", "isNull": False, "same": True
-                    }, f"{kind}: {result}"
+                expected = ({"type": "undefined", "isNull": False, "same": True}
+                            if enabled and disabled else
+                            {"type": "object", "isNull": False, "same": True})
+                assert result == expected, f"{case}/{kind}: {result}"
                 results.append({"realm": kind, "value": result})
                 if kind == "blank":
                     descriptor = driver.execute_script("""
@@ -144,21 +138,15 @@ def run_case(binary, root, case, enabled, disabled):
                     results.append({"realm": "saved-after-navigation", "value": saved})
                     fresh = read_getter(driver, token, "frame")
                     assert not fresh.get("missing"), fresh
-                    if not enabled:
-                        assert fresh == {"type": "object", "isNull": False, "same": True}, fresh
-                    elif disabled:
-                        assert fresh["type"] == "undefined" or fresh["isNull"], fresh
-                    else:
-                        assert fresh["type"] == "undefined" or fresh == {
-                            "type": "object", "isNull": False, "same": True
-                        }, fresh
+                    assert fresh == expected, f"{case}/fresh-after-navigation: {fresh}"
                     results.append({"realm": "fresh-after-navigation", "value": fresh})
             worker = driver.execute_async_script("""
                 const done=arguments[0], w=new Worker('/worker.js');
                 w.onmessage=e=>{w.terminate();done(e.data)};
                 w.onerror=e=>{w.terminate();done({error:e.message})};
             """)
-            assert worker == {"type": "object", "nonnull": True, "same": True}, worker
+            assert worker == {"type": "undefined" if enabled and disabled else "object",
+                              "nonnull": True, "same": True}, worker
             results.append({"realm": "worker", "value": worker})
             WebDriverWait(driver, 5).until(lambda d: d.execute_script("return window.probeToken") == token)
         finally:

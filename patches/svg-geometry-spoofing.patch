@@ -1,6 +1,10 @@
---- a/b/dom/svg/SVGGeometryElement.cpp	2026-04-18 17:13:05
-+++ b/dom/svg/SVGGeometryElement.cpp	2026-04-18 17:13:44
-@@ -6,6 +6,7 @@
+diff --git a/dom/svg/SVGGeometryElement.cpp b/dom/svg/SVGGeometryElement.cpp
+--- a/dom/svg/SVGGeometryElement.cpp
++++ b/dom/svg/SVGGeometryElement.cpp
+@@ -1,14 +1,15 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "SVGGeometryElement.h"
  
@@ -8,7 +12,17 @@
  #include "DOMSVGPoint.h"
  #include "SVGAnimatedLength.h"
  #include "SVGCircleElement.h"
-@@ -292,7 +293,14 @@
+ #include "SVGEllipseElement.h"
+ #include "SVGGeometryProperty.h"
+ #include "SVGPathElement.h"
+ #include "SVGRectElement.h"
+ #include "gfxPlatform.h"
+@@ -333,17 +334,24 @@
+ }
+ 
+ already_AddRefed<DOMSVGAnimatedNumber> SVGGeometryElement::PathLength() {
+   return mPathLength.ToDOMAnimatedNumber(this);
+ }
  
  float SVGGeometryElement::GetTotalLength() {
    RefPtr<Path> flat = GetOrBuildPathForMeasuring();
@@ -24,3 +38,8 @@
  }
  
  void SVGGeometryElement::FlushIfNeeded() {
+   FlushType flushType =
+       GeometryDependsOnCoordCtx() ? FlushType::Layout : FlushType::Style;
+   (void)GetPrimaryFrame(flushType);
+ }
+ 

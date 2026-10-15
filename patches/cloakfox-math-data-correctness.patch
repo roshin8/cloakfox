@@ -1,6 +1,12 @@
+diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 --- a/dom/workers/WorkerPrivate.cpp
 +++ b/dom/workers/WorkerPrivate.cpp
-@@ -6389,11 +6389,13 @@
+@@ -6802,21 +6802,23 @@
+ static bool InstallCloakfoxWorkerMath(JSContext* aCx,
+                                       JS::HandleObject aGlobal,
+                                       uint32_t aSeed) {
+   JS::RootedValue mathValue(aCx);
+   if (!JS_GetProperty(aCx, aGlobal, "Math", &mathValue)) {
      return false;
    }
    JS::RootedObject math(aCx, &mathValue.toObject());
@@ -16,3 +22,8 @@
    for (const char* name : methods) {
      JS::RootedValue original(aCx);
      if (!JS_GetProperty(aCx, math, name, &original)) {
+       return false;
+     }
+     JSFunction* originalFunction = JS_GetObjectFunction(&original.toObject());
+     JSFunction* function = js::NewFunctionWithReserved(
+         aCx, CloakfoxWorkerMath, JS_GetFunctionArity(originalFunction), 0, name);

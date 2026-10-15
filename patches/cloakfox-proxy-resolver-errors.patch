@@ -1,0 +1,176 @@
+diff --git a/netwerk/base/nsIProtocolProxyService.idl b/netwerk/base/nsIProtocolProxyService.idl
+--- a/netwerk/base/nsIProtocolProxyService.idl
++++ b/netwerk/base/nsIProtocolProxyService.idl
+@@ -68,16 +68,26 @@
+         (1 << 3) | RESOLVE_IGNORE_URI_SCHEME;
+ 
+     /**
+      * When the proxy configuration is manual this flag may be passed to the
+      * resolve and asyncResolve methods to that all methods will be tunneled via
+      * CONNECT through the http proxy.
+      */
+     const unsigned long RESOLVE_ALWAYS_TUNNEL = (1 << 4);
++
++    /** Preserve unavailable/failed PAC errors instead of falling back DIRECT.
++     * Privacy-sensitive transports opt in; ordinary channel behavior is native.
++     */
++    const unsigned long RESOLVE_PRESERVE_PAC_ERRORS = (1 << 5);
++
++    /** Require an actual proxy after filters and native bypass rules. A channel
++     * is canceled before its callback can fall back to a direct connection.
++     */
++    const unsigned long RESOLVE_REQUIRE_PROXY = (1 << 6);
+ 
+     /**
+      * This method returns via callback a nsIProxyInfo instance that identifies
+      * a proxy to be used for the given channel.  Otherwise, this method returns
+      * null indicating that a direct connection should be used.
+      *
+      * @param aChannelOrURI
+      *        The channel for which a proxy is to be found, or, if no channel is
+diff --git a/netwerk/base/nsProtocolProxyService.cpp b/netwerk/base/nsProtocolProxyService.cpp
+--- a/netwerk/base/nsProtocolProxyService.cpp
++++ b/netwerk/base/nsProtocolProxyService.cpp
+@@ -116,17 +116,17 @@
+ //-----------------------------------------------------------------------------
+ 
+ // Calls onProxyAvailable after making sure we don't pass a nsIProxyInfo
+ // for loopback URLs or URLs that should not use a proxy.
+ // static
+ void nsProtocolProxyService::CallOnProxyAvailableCallback(
+     nsProtocolProxyService* aService, nsIProtocolProxyCallback* aCallback,
+     nsICancelable* aRequest, nsIChannel* aChannel, nsIProxyInfo* aProxyInfo,
+-    nsresult aStatus) {
++    nsresult aStatus, uint32_t aResolveFlags) {
+   nsresult rv;
+   nsCOMPtr<nsIURI> channelURI;
+   if (aChannel) {
+     aChannel->GetURI(getter_AddRefs(channelURI));
+   }
+ 
+   // This check makes sure that we don't accidentally proxy loopback URLs if
+   // one of the proxy filters allows it.
+@@ -181,16 +181,30 @@
+       if (mode != 0 && (mode != 1 || !aProxyInfo || !isolation.Equals(expected))) {
+         aChannel->Cancel(NS_ERROR_PROXY_CONNECTION_REFUSED);
+         aProxyInfo = nullptr;
+         aStatus = NS_ERROR_PROXY_CONNECTION_REFUSED;
+       }
+     }
+   }
+ 
++  // Forced TURN CONNECT channels resolve again after the TCP route lookup.
++  // Cancel here as HTTP treats resolver errors as a non-fatal DIRECT fallback.
++  if (aResolveFlags & nsIProtocolProxyService::RESOLVE_REQUIRE_PROXY) {
++    nsAutoCString type;
++    if (NS_FAILED(aStatus) || !aProxyInfo ||
++        NS_FAILED(aProxyInfo->GetType(type)) ||
++        (type != "http" && type != "https" && type != "masque" &&
++         type != "socks" && type != "socks4")) {
++      aStatus = NS_ERROR_PROXY_CONNECTION_REFUSED;
++      aProxyInfo = nullptr;
++      if (aChannel) aChannel->Cancel(aStatus);
++    }
++  }
++
+   aCallback->OnProxyAvailable(aRequest, aChannel, aProxyInfo, aStatus);
+ }
+ 
+ // The nsPACManCallback portion of this implementation should be run
+ // on the main thread - so call nsPACMan::AsyncGetProxyForURI() with
+ // a true mainThreadResponse parameter.
+ class nsAsyncResolveRequest final : public nsIRunnable,
+                                     public nsPACManCallback,
+@@ -397,17 +411,18 @@
+     // In the cancelation case, we may still have another PLEvent in
+     // the queue that wants to call DoCallback.  No need to wait for
+     // it, just run the callback now.
+     DoCallback();
+   }
+ 
+   void DoCallback() {
+     bool pacAvailable = true;
+-    if (mStatus == NS_ERROR_NOT_AVAILABLE && !mProxyInfo) {
++    if (mStatus == NS_ERROR_NOT_AVAILABLE && !mProxyInfo &&
++        !(mResolveFlags & nsIProtocolProxyService::RESOLVE_PRESERVE_PAC_ERRORS)) {
+       // If the PAC service is not avail (e.g. failed pac load
+       // or shutdown) then we will be going direct. Make that
+       // mapping now so that any filters are still applied.
+       mPACString = "DIRECT;"_ns;
+       mStatus = NS_OK;
+ 
+       LOG(("pac not available, use DIRECT\n"));
+       pacAvailable = false;
+@@ -439,17 +454,17 @@
+ 
+         if (NS_SUCCEEDED(self->mStatus)) {
+           self->mPPS->MaybeDisableDNSPrefetch(self->mProxyInfo);
+         }
+ 
+         self->EnsureResolveFlagsMatch();
+         nsProtocolProxyService::CallOnProxyAvailableCallback(
+             self->mPPS, self->mCallback, self, self->mChannel, self->mProxyInfo,
+-            self->mStatus);
++            self->mStatus, self->mResolveFlags);
+ 
+         return NS_OK;
+       };
+ 
+       if (NS_SUCCEEDED(mStatus)) {
+         mAsyncFilterApplier = new AsyncApplyFilters(info, consumeFiltersResult);
+         // This may call consumeFiltersResult() directly.
+         mAsyncFilterApplier->AsyncProcess(this);
+@@ -470,28 +485,28 @@
+         RefPtr<nsAsyncResolveRequest> newRequest =
+             new nsAsyncResolveRequest(mPPS, mChannel, mResolveFlags, mCallback);
+         rv = mPPS->mPACMan->AsyncGetProxyForURI(proxyURI, newRequest,
+                                                 mResolveFlags, true);
+       }
+ 
+       if (NS_FAILED(rv)) {
+         nsProtocolProxyService::CallOnProxyAvailableCallback(
+-            mPPS, mCallback, this, mChannel, nullptr, rv);
++            mPPS, mCallback, this, mChannel, nullptr, rv, mResolveFlags);
+       }
+ 
+       // do not call onproxyavailable() in SUCCESS case - the newRequest will
+       // take care of that
+     } else {
+       LOG(("pac thread callback did not provide information %" PRIX32 "\n",
+            static_cast<uint32_t>(mStatus)));
+       if (NS_SUCCEEDED(mStatus)) mPPS->MaybeDisableDNSPrefetch(mProxyInfo);
+       EnsureResolveFlagsMatch();
+       nsProtocolProxyService::CallOnProxyAvailableCallback(
+-          mPPS, mCallback, this, mChannel, mProxyInfo, mStatus);
++          mPPS, mCallback, this, mChannel, mProxyInfo, mStatus, mResolveFlags);
+     }
+ 
+     // We are on the main thread now and don't need these any more so
+     // release them to avoid having to proxy them back to the main thread
+     // in the dtor
+     mCallback = nullptr;  // in case the callback holds an owning ref to us
+     mPPS = nullptr;
+     mXPComPPS = nullptr;
+diff --git a/netwerk/base/nsProtocolProxyService.h b/netwerk/base/nsProtocolProxyService.h
+--- a/netwerk/base/nsProtocolProxyService.h
++++ b/netwerk/base/nsProtocolProxyService.h
+@@ -326,17 +326,18 @@
+                                                const nsACString& aUri,
+                                                bool aSystemWPADSetting);
+ 
+   static void CallOnProxyAvailableCallback(nsProtocolProxyService* aService,
+                                            nsIProtocolProxyCallback* aCallback,
+                                            nsICancelable* aRequest,
+                                            nsIChannel* aChannel,
+                                            nsIProxyInfo* aProxyInfo,
+-                                           nsresult aStatus);
++                                           nsresult aStatus,
++                                           uint32_t aResolveFlags);
+ 
+  public:
+   // The Sun Forte compiler and others implement older versions of the
+   // C++ standard's rules on access and nested classes.  These structs
+   // need to be public in order to deal with those compilers.
+ 
+   struct HostInfoIP {
+     uint16_t family;

@@ -1,7 +1,9 @@
 diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList.cpp
 --- a/gfx/thebes/gfxPlatformFontList.cpp
 +++ b/gfx/thebes/gfxPlatformFontList.cpp
-@@ -3,6 +3,7 @@
+@@ -1,13 +1,14 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
   * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  #include "gfxPlatformFontList.h"
@@ -9,7 +11,17 @@ diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList
  
  #include "FontVisibilityProvider.h"
  #include "GeckoProfiler.h"
-@@ -320,6 +321,53 @@
+ #include "SharedFontList-impl.h"
+ #include "base/eintr_wrapper.h"
+ #include "gfxScriptItemizer.h"
+ #include "gfxTextRun.h"
+ #include "gfxUserFontSet.h"
+@@ -314,16 +315,63 @@
+ 
+   mLangService = nsLanguageAtomService::GetService();
+ 
+   LoadBadUnderlineList();
+   LoadIconFontOverrideList();
  
    mFontPrefs = MakeUnique<FontPrefs>();
  
@@ -63,21 +75,35 @@ diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList
    gfxFontUtils::GetPrefsFontList(kFontSystemWhitelistPref, mEnabledFontsList);
    mFontFamilyWhitelistActive = !mEnabledFontsList.IsEmpty();
  
+   // pref changes notification setup
+   NS_ASSERTION(!gFontListPrefObserver,
+                "There has been font list pref observer already");
+   gFontListPrefObserver = new gfxFontListPrefObserver();
+   NS_ADDREF(gFontListPrefObserver);
 diff --git a/gfx/thebes/moz.build b/gfx/thebes/moz.build
 --- a/gfx/thebes/moz.build
 +++ b/gfx/thebes/moz.build
-@@ -301,3 +301,6 @@
- COMPILE_FLAGS["WARNINGS_CXXFLAGS"] += ["-Werror=switch"]
+@@ -305,8 +305,11 @@
+     "icu",
+ ]
  
- include("/tools/fuzzing/libfuzzer-config.mozbuild")
+ LICENSED_UNDER += ["gfx-font-list"]
+ LICENSED_UNDER["gfx-font-list"].paths = [
+     "gfxMacPlatformFontList.mm",
+     "gfxPlatformFontList.cpp",
+ ]
 +
 +# DOM Mask
 +LOCAL_INCLUDES += ["/cloakcfg"]
-\ No newline at end of file
 diff --git a/layout/style/FontFace.cpp b/layout/style/FontFace.cpp
 --- a/layout/style/FontFace.cpp
 +++ b/layout/style/FontFace.cpp
-@@ -239,7 +239,16 @@
+@@ -234,27 +234,46 @@
+ void FontFace::GetSizeAdjust(nsACString& aResult) {
+   mImpl->GetSizeAdjust(aResult);
+ }
+ 
+ void FontFace::SetSizeAdjust(const nsACString& aValue, ErrorResult& aRv) {
    mImpl->SetSizeAdjust(aValue, aRv);
  }
  
@@ -95,7 +121,9 @@ diff --git a/layout/style/FontFace.cpp b/layout/style/FontFace.cpp
  
  Promise* FontFace::Load(ErrorResult& aRv) {
    EnsurePromise();
-@@ -249,7 +258,17 @@
+ 
+   if (!mLoaded) {
+     aRv.Throw(NS_ERROR_FAILURE);
      return nullptr;
    }
  
@@ -114,10 +142,20 @@ diff --git a/layout/style/FontFace.cpp b/layout/style/FontFace.cpp
    mImpl->UpdateOwnerKeepAlive();
    return mLoaded;
  }
+ 
+ Promise* FontFace::GetLoaded(ErrorResult& aRv) {
+   EnsurePromise();
+ 
+   if (!mLoaded) {
 diff --git a/layout/style/FontFaceImpl.cpp b/layout/style/FontFaceImpl.cpp
 --- a/layout/style/FontFaceImpl.cpp
 +++ b/layout/style/FontFaceImpl.cpp
-@@ -355,20 +355,14 @@
+@@ -350,30 +350,24 @@
+     return;
+   }
+   mUserFontEntry->Load();
+ }
+ 
  void FontFaceImpl::SetStatus(FontFaceLoadStatus aStatus) {
    gfxFontUtils::AssertSafeThreadOrServoFontMetricsLocked();
  
@@ -146,10 +184,20 @@ diff --git a/layout/style/FontFaceImpl.cpp b/layout/style/FontFaceImpl.cpp
  
    if (mInFontFaceSet) {
      mFontFaceSet->OnFontFaceStatusChanged(this);
+   }
+ 
+   for (FontFaceSetImpl* otherSet : mOtherFontFaceSets) {
+     otherSet->OnFontFaceStatusChanged(this);
+   }
 diff --git a/layout/style/FontFaceImpl.h b/layout/style/FontFaceImpl.h
 --- a/layout/style/FontFaceImpl.h
 +++ b/layout/style/FontFaceImpl.h
-@@ -8,6 +8,7 @@
+@@ -3,16 +3,17 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #ifndef mozilla_dom_FontFaceImpl_h
+ #define mozilla_dom_FontFaceImpl_h
+ 
  #include "gfxUserFontSet.h"
  #include "mozilla/RWLock.h"
  #include "mozilla/dom/FontFaceBinding.h"
@@ -157,7 +205,17 @@ diff --git a/layout/style/FontFaceImpl.h b/layout/style/FontFaceImpl.h
  #include "nsTHashSet.h"
  
  class gfxFontFaceBufferSource;
-@@ -26,6 +27,20 @@
+ 
+ namespace mozilla {
+ class PostTraversalTask;
+ struct StyleLockedFontFaceRule;
+ namespace dom {
+@@ -21,16 +22,30 @@
+ class FontFaceBufferSource;
+ struct FontFaceDescriptors;
+ class FontFaceSetImpl;
+ class UTF8StringOrArrayBufferOrArrayBufferView;
+ }  // namespace dom
  }  // namespace mozilla
  
  namespace mozilla::dom {
@@ -178,10 +236,20 @@ diff --git a/layout/style/FontFaceImpl.h b/layout/style/FontFaceImpl.h
  
  class FontFaceImpl final {
    NS_INLINE_DECL_THREADSAFE_REFCOUNTING(FontFaceImpl)
+ 
+   friend class mozilla::PostTraversalTask;
+   friend class FontFaceBufferSource;
+   friend class Entry;
+ 
 diff --git a/layout/style/moz.build b/layout/style/moz.build
 --- a/layout/style/moz.build
 +++ b/layout/style/moz.build
-@@ -369,3 +369,6 @@
+@@ -364,8 +364,11 @@
+         "nsCSSPropsGenerated.inc",
+         script="GenerateCSSProperties.py",
+         entry_point="gen_ns_css_props",
+     )
+     CbindgenHeader(
          "ServoStyleConsts.h",
          inputs=["/servo/ports/geckolib", "/servo/components/style"],
      )

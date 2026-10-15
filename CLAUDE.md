@@ -4,7 +4,7 @@ Daily-driver privacy browser: Camoufox (C++ fingerprint spoofing) + ContainerShi
 
 ## What This Is
 
-A hard fork of Camoufox, rebased onto Firefox 157.0.1 with C++ engine patches, transformed into a daily-use browser with:
+A hard fork of Camoufox, rebased onto Firefox 158.0 with C++ engine patches, transformed into a daily-use browser with:
 - C++ level fingerprint spoofing (canvas, audio, fonts, WebGL, navigator, screen, WebRTC, etc.)
 - Firefox Multi-Account Containers with per-container unique fingerprints
 - Top-level schemeful-site deterministic noise within each container
@@ -13,14 +13,14 @@ A hard fork of Camoufox, rebased onto Firefox 157.0.1 with C++ engine patches, t
 ## Architecture
 
 Three layers:
-1. **C++ Engine** — Camoufox + LibreWolf patches (112 active) applied to Firefox 157.0.1. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
+1. **C++ Engine** — Camoufox + LibreWolf patches (ordered native patches) applied to Firefox 158.0. Spoofs APIs at native level via self-destructing `window.setXxx()` methods.
 2. **Cloakfox Shield Extension** — Stripped ContainerShield. Popup UI plus a parent-process pref/persona bridge (`experiment-apis/cloakfox.js`). NO content or inject scripts — see "Spoofer Architecture (cpp-first)" below.
 3. **Config** — `policies.json` + `cloakfox.cfg` restore daily-driver features (search, bookmarks, passwords) while keeping privacy hardened.
 
 ## Build
 
 ```bash
-make fetch           # Download Firefox 157.0.1 source tarball
+make fetch           # Download Firefox 158.0 source tarball
 make setup-minimal   # Extract source + copy additions/ (policies, cloakcfg, extension)
 make dir             # Apply all patches (ordered via patches/order.txt)
 make extension       # Build Cloakfox Shield extension in-place
@@ -30,7 +30,7 @@ make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 
 ## Repo Structure
 
-- `patches/` — Flat directory of all C++ engine patches (112 active, ordered by `patches/order.txt`)
+- `patches/` — Flat directory of all C++ engine patches (ordered by `patches/order.txt`)
 - `patches/order.txt` — Explicit apply order; overrides alphabetical default
 - `settings/` — policies.json, cloakfox.cfg, local-settings.js
 - `additions/cloakcfg/` — MaskConfig.hpp, MouseTrajectories.hpp, json.hpp (copied into firefox-src)
@@ -38,7 +38,8 @@ make package-macos   # Create macOS DMG (also: package-linux, package-windows)
 - `scripts/` — Build automation scripts (patch.py, fetch-firefox.sh, copy-additions.sh, package.py)
 - `branding/` — App icons and about dialog assets
 - `tests/` — `tests/fingerprint/` is the live suite (selenium probes + node/pytest unit
-  tests). `tests/async*/` and `tests/golden-firefox/` are inherited Playwright E2E
+  tests). Exclude generated `tests/fingerprint/reports` from pytest collection.
+  `tests/async*/` and `tests/golden-firefox/` are inherited Playwright E2E
   suites that do NOT run on this branch (no Juggler); `tests/conftest.py` is their
   Playwright fixture file and breaks pytest collection, hence `--noconftest`.
 
@@ -114,3 +115,30 @@ alone. `cloakfox.compat.hackerrank_media=false` disables it on the next load.
 - Test spoofed values are deterministic given same seed
 - Test different containers produce different fingerprints
 - Test different domains produce different fingerprints within same container
+
+
+### Identity-gap port safeguards
+
+Request UA/encoding and CONNECT identity use channel/transaction origin attributes;
+native handler caches retain native values. Allowed WebSockets retain their real
+Origin, cookie isolation and TLS/proxy behavior, with own-container headers.
+Authoritative mask writes use cloakfox.s;158 synchronously re-reads parent config
+on the main thread and keeps worker snapshots behind the existing cache mutex.
+
+Native window/worker GPU getters enforce container policy even before deferred
+blank-frame actors, preserving native brands and enabled-object identity. Canonical
+language lists and frozen caches follow own-container updates, while system
+windows/ChromeWorkers retain native values. Opaque content keeps masked languages.
+
+Canvas noise covers nonzero RGB even when alpha is zero; alpha and all-zero clears
+remain exact. Precise/PBO WebGL readback is restricted by default, with an explicit
+compatibility opt-out. Existing158 site seeds, asynchronous snapshot ownership and
+mutable WebGL state are preserved. FontFace URL/buffer loading remains native;
+existing158 masked local-font policy remains in force, and global whitelist
+retirement is parent-only.
+
+WebRTC proxy protection and unready relay controls default on. Optional reported-IP
+lookup remains separately opt-in (`cloakfox.webrtc.ip_lookup.enabled`). Required
+proxy checks cover resolver, actual connection, failover and replacement routes.
+TURN-less or unsupported proxy combinations can fail. Existing calls need ICE
+restart/recreation after routing changes; this is not an OS VPN kill switch.

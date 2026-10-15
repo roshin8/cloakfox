@@ -1,14 +1,30 @@
---- a/b/dom/notification/Notification.cpp	2026-04-18 02:35:03
-+++ b/dom/notification/Notification.cpp	2026-04-18 02:36:10
-@@ -8,6 +8,7 @@
+diff --git a/dom/notification/Notification.cpp b/dom/notification/Notification.cpp
+--- a/dom/notification/Notification.cpp
++++ b/dom/notification/Notification.cpp
+@@ -1,16 +1,17 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "mozilla/dom/Notification.h"
  
  #include <utility>
  
 +#include "MaskConfig.hpp"
  #include "Navigator.h"
  #include "NotificationUtils.h"
- #include "mozilla/Encoding.h"
-@@ -474,6 +475,22 @@
+ #include "mozilla/HoldDropJSObjects.h"
+ #include "mozilla/OwningNonNull.h"
+ #include "mozilla/StaticPrefs_dom.h"
+ #include "mozilla/UseCounter.h"
+ #include "mozilla/dom/BindingUtils.h"
+ #include "mozilla/dom/Document.h"
+@@ -503,16 +504,32 @@
+ 
+ // static
+ already_AddRefed<Promise> Notification::RequestPermission(
+     const GlobalObject& aGlobal,
+     const Optional<OwningNonNull<NotificationPermissionCallback>>& aCallback,
      ErrorResult& aRv) {
    AssertIsOnMainThread();
  
@@ -31,7 +47,17 @@
    // Get principal from global to make permission request for notifications.
    nsCOMPtr<nsPIDOMWindowInner> window =
        do_QueryInterface(aGlobal.GetAsSupports());
-@@ -512,6 +529,10 @@
+   nsCOMPtr<nsIScriptObjectPrincipal> sop =
+       do_QueryInterface(aGlobal.GetAsSupports());
+   if (!sop || !window) {
+     aRv.Throw(NS_ERROR_UNEXPECTED);
+     return nullptr;
+@@ -541,16 +558,20 @@
+   window->AsGlobal()->Dispatch(request.forget());
+ 
+   return promise.forget();
+ }
+ 
  // static
  NotificationPermission Notification::GetPermission(const GlobalObject& aGlobal,
                                                     ErrorResult& aRv) {
@@ -42,9 +68,20 @@
    nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
    return GetPermission(global, PermissionCheckPurpose::PermissionAttribute,
                         aRv);
---- a/b/dom/notification/moz.build	2026-04-18 00:00:00
-+++ b/dom/notification/moz.build	2026-04-18 00:00:00
-@@ -51,6 +51,7 @@
+ }
+ 
+ // static
+ NotificationPermission Notification::GetPermission(
+     nsIGlobalObject* aGlobal, PermissionCheckPurpose aPurpose,
+diff --git a/dom/notification/moz.build b/dom/notification/moz.build
+--- a/dom/notification/moz.build
++++ b/dom/notification/moz.build
+@@ -44,16 +44,17 @@
+ IPDL_SOURCES += [
+     "PNotification.ipdl",
+ ]
+ 
+ include("/ipc/chromium/chromium-config.mozbuild")
  
  FINAL_LIBRARY = "xul"
  LOCAL_INCLUDES += [
@@ -52,3 +89,8 @@
      "/dom/base",
      "/dom/ipc",
      # NotificationHandler::RespondOnClick, but see bug 1966910.
+     "/js/xpconnect/src",
+     # Safe Browsing classification for notifications (bug 1986300).
+     "/netwerk/url-classifier",
+ ]
+ 

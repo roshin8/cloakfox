@@ -1,21 +1,12 @@
-Cloakfox: register CloakfoxMath JSWindowActor.
-
-Adds the CloakfoxMath actor to the declarative JSWINDOWACTORS table in
-ActorManagerParent. Fires on DOMWindowCreated for every http/https/file
-document, runs with chrome principal in the content process, spoofs
-Math.PI / Math.E / trig family per userContextId. No extension involved.
-
-Actor body ships at additions/browser/components/cloakfox/actors/
-CloakfoxMath{Child,Parent}.sys.mjs → lands at resource:///actors/ via
-FINAL_TARGET_FILES.actors in that dir's moz.build.
-
-Gated on cloakfox.enabled pref — the child actor checks this at entry
-and bails if unset, so the actor stays resident but has zero impact
-when Cloakfox is disabled.
-
+diff --git a/toolkit/modules/ActorManagerParent.sys.mjs b/toolkit/modules/ActorManagerParent.sys.mjs
 --- a/toolkit/modules/ActorManagerParent.sys.mjs
 +++ b/toolkit/modules/ActorManagerParent.sys.mjs
-@@ -90,6 +90,227 @@
+@@ -109,16 +109,237 @@
+ 
+ /**
+  * Fission-compatible JSWindowActor implementations.
+  * Each actor options object takes the form of a WindowActorOptions dictionary.
+  * Detailed documentation of these options is in dom/docs/ipc/jsactors.rst,
   * available at https://firefox-source-docs.mozilla.org/dom/ipc/jsactors.html
   */
  let JSWINDOWACTORS = {
@@ -242,4 +233,9 @@ when Cloakfox is disabled.
 +  },
    AboutCertViewer: {
      parent: {
-       esModuleURI: "resource://gre/modules/AboutCertViewerParent.sys.mjs",
+       esModuleURI:
+         "moz-src:///toolkit/components/certviewer/AboutCertViewerParent.sys.mjs",
+     },
+     child: {
+       esModuleURI:
+         "moz-src:///toolkit/components/certviewer/AboutCertViewerChild.sys.mjs",

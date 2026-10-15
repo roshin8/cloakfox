@@ -260,7 +260,15 @@ export function fillWebGLKeys(keys, renderer) {
   if (renderer) table[GL.RENDERER] = renderer;
 
   keys["webGl:parameters"] = table;
-  keys["webGl2:parameters"] = table;
+  // WebGL2-only pnames must not become valid queries on a WebGL1 context.
+  // Conservative desktop limits common to the supported GPU classes.
+  keys["webGl2:parameters"] = {
+    ...table,
+    35375: 24,   // MAX_UNIFORM_BUFFER_BINDINGS
+    35380: 256,  // UNIFORM_BUFFER_OFFSET_ALIGNMENT
+    32883: 2048, // MAX_3D_TEXTURE_SIZE
+    35071: 256,  // MAX_ARRAY_TEXTURE_LAYERS
+  };
   keys["webGl:supportedExtensions"] = GL1_EXTENSIONS;
   keys["webGl2:supportedExtensions"] = GL2_EXTENSIONS;
   const prec = shaderPrecision();
@@ -622,6 +630,10 @@ export function fillPersonaKeys(seedB64, ucid = null, constraints = null) {
     if (!filtered && index >= 0 && index < 30) fp = previewPersona(index, mode);
   }
   const keys = bfToCloakKeys(fp, prng);
+
+  // Precise/PBO GPU readbacks bypass canvas noise. Explicit opt-out preserves
+  // compute compatibility; never perturb numerical application buffers.
+  keys["webgl:typed_readback:disabled"] = userOpt("webgl_typed_readback_disabled", true);
 
   // ── User opt-in dangerous-disable flags (unchanged from prior impl) ──
   if (userOpt("window_name_disabled"))   keys["window:name:disabled"] = true;

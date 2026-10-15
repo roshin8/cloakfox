@@ -8,7 +8,7 @@ import sys
 import tempfile
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'network'))
 from h3_fixture import H3Fixtures, create_certificates
-from probe_daily_defaults import launch
+from probe_network_wire import launch_wire_browser
 from probe_network_policy import READ
 
 
@@ -28,7 +28,8 @@ def main():
                 for repeat in range(3):
                     fixture=H3Fixtures(cert,key,count=1)
                     profile=root/(label+str(repeat));profile.mkdir()
-                    d=launch(profile,root/(label+str(repeat)+'.log'))
+                    d=launch_wire_browser(binary,profile,root/(label+str(repeat)+'.log'))
+                    d.set_context('chrome')
                     try:
                         d.set_script_timeout(25)
                         d.execute_script("""

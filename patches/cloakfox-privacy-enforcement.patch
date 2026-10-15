@@ -1,0 +1,180 @@
+diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
+--- a/dom/media/MediaDevices.cpp
++++ b/dom/media/MediaDevices.cpp
+@@ -34,16 +34,29 @@
+ namespace mozilla::dom {
+ 
+ using ConstDeviceSetPromise = MediaManager::ConstDeviceSetPromise;
+ using LocalDeviceSetPromise = MediaManager::LocalDeviceSetPromise;
+ using LocalMediaDeviceSetRefCnt = MediaManager::LocalMediaDeviceSetRefCnt;
+ using MediaDeviceSetRefCnt = MediaManager::MediaDeviceSetRefCnt;
+ using mozilla::intl::Localization;
+ 
++// Privacy enforcement is owner-scoped; reporting a fake device list is not
++// an access control. Preserve system callers and the global kill switch.
++static bool CloakfoxMediaDisabled(nsPIDOMWindowInner* owner) {
++  if (!owner || !Preferences::GetBool("cloakfox.enabled", false)) return false;
++  if (auto* doc = owner->GetExtantDoc();
++      doc && doc->NodePrincipal()->IsSystemPrincipal()) return false;
++  auto* bc = owner->GetBrowsingContext();
++  const uint32_t ucid = bc ? bc->OriginAttributesRef().mUserContextId : 0;
++  const auto cfg = CloakfoxSiteSeed::ExactConfig(ucid);
++  const auto enabled = cfg.find("mediaDevices:enabled");
++  return enabled != cfg.end() && enabled->is_boolean() && !enabled->get<bool>();
++}
++
+ MediaDevices::MediaDevices(nsPIDOMWindowInner* aWindow)
+     : DOMEventTargetHelper(aWindow), mDefaultOutputLabel(VoidString()) {}
+ 
+ MediaDevices::~MediaDevices() {
+   MOZ_ASSERT(NS_IsMainThread());
+   mDeviceChangeListener.DisconnectIfExists();
+ }
+ 
+@@ -77,16 +90,20 @@
+     IgnoredErrorResult ignored;
+     if (topDoc && !topDoc->HasFocus(ignored)) {
+       doc->SetUseCounter(eUseCounter_custom_GetUserMediaUnfocused);
+     }
+   }
+   RefPtr<Promise> p = Promise::Create(global, aRv);
+   if (NS_WARN_IF(aRv.Failed())) {
+     return nullptr;
++  }
++  if (aCallerType != CallerType::System && CloakfoxMediaDisabled(owner)) {
++    p->MaybeRejectWithNotAllowedError("Media access is disabled by browser policy.");
++    return p.forget();
+   }
+   /* If requestedMediaTypes is the empty set, return a promise rejected with a
+    * TypeError. */
+   if (!MediaManager::IsOn(aConstraints.mVideo) &&
+       !MediaManager::IsOn(aConstraints.mAudio)) {
+     p->MaybeRejectWithTypeError("audio and/or video is required");
+     return p.forget();
+   }
+@@ -184,16 +201,20 @@
+     if (topDoc && !topDoc->HasFocus(ignored)) {
+       doc->SetUseCounter(eUseCounter_custom_EnumerateDevicesUnfocused);
+     }
+   }
+   RefPtr<Promise> p = Promise::Create(global, aRv);
+   if (NS_WARN_IF(aRv.Failed())) {
+     return nullptr;
+   }
++  if (CloakfoxMediaDisabled(owner)) {
++    p->MaybeResolve(nsTArray<RefPtr<MediaDeviceInfo>>());
++    return p.forget();
++  }
+   mPendingEnumerateDevicesPromises.AppendElement(p);
+   MaybeResumeDeviceExposure();
+   return p.forget();
+ }
+ 
+ void MediaDevices::MaybeResumeDeviceExposure() {
+   if (mPendingEnumerateDevicesPromises.IsEmpty() &&
+       !mHaveUnprocessedDeviceListChange) {
+@@ -223,17 +244,19 @@
+        shouldResistFingerprinting](
+           RefPtr<const MediaDeviceSetRefCnt> aAllDevices) mutable {
+         RefPtr<MediaDeviceSetRefCnt> exposedDevices =
+             FilterExposedDevices(*aAllDevices);
+         if (haveDeviceListChange && !shouldResistFingerprinting) {
+           if (ShouldQueueDeviceChange(*exposedDevices)) {
+             NS_DispatchToCurrentThread(NS_NewRunnableFunction(
+                 "devicechange", [self = RefPtr(this), this] {
+-                  DispatchTrustedEvent(u"devicechange"_ns);
++                  if (!CloakfoxMediaDisabled(GetOwnerWindow())) {
++                    DispatchTrustedEvent(u"devicechange"_ns);
++                  }
+                 }));
+           }
+           mLastPhysicalDevices = std::move(aAllDevices);
+         }
+         if (!enumerateDevicesPromises.IsEmpty()) {
+           ResumeEnumerateDevices(std::move(enumerateDevicesPromises),
+                                  std::move(exposedDevices));
+         }
+@@ -468,18 +491,22 @@
+                  }
+                }
+              });
+ }
+ 
+ void MediaDevices::ResolveEnumerateDevicesPromise(
+     Promise* aPromise, const LocalMediaDeviceSet& aDevices) const {
+   nsCOMPtr<nsPIDOMWindowInner> window = GetOwnerWindow();
++  nsTArray<RefPtr<MediaDeviceInfo>> infos;
++  if (CloakfoxMediaDisabled(window)) {
++    aPromise->MaybeResolve(std::move(infos));
++    return;
++  }
+   auto windowId = window->WindowID();
+-  nsTArray<RefPtr<MediaDeviceInfo>> infos;
+   bool legacy = IsLegacyMode(window);
+   bool capturePermitted =
+       legacy &&
+       MediaManager::Get()->IsActivelyCapturingOrHasAPermission(windowId);
+ 
+   for (const RefPtr<LocalMediaDevice>& device : aDevices) {
+     bool exposeInfo = CanExposeInfo(device->Kind()) || legacy;
+     bool exposeLabel = legacy ? capturePermitted : exposeInfo;
+@@ -495,16 +522,20 @@
+     const DisplayMediaStreamConstraints& aConstraints, CallerType aCallerType,
+     ErrorResult& aRv) {
+   nsCOMPtr<nsIGlobalObject> global = xpc::NativeGlobal(GetWrapper());
+   RefPtr<Promise> p = Promise::Create(global, aRv);
+   if (NS_WARN_IF(aRv.Failed())) {
+     return nullptr;
+   }
+   nsCOMPtr<nsPIDOMWindowInner> owner = do_QueryInterface(global);
++  if (aCallerType != CallerType::System && CloakfoxMediaDisabled(owner)) {
++    p->MaybeRejectWithNotAllowedError("Media access is disabled by browser policy.");
++    return p.forget();
++  }
+   /* If the relevant global object of this does not have transient activation,
+    * return a promise rejected with a DOMException object whose name attribute
+    * has the value InvalidStateError. */
+   WindowContext* wc = owner->GetWindowContext();
+   if (!wc || !wc->HasValidTransientUserGestureActivation()) {
+     p->MaybeRejectWithInvalidStateError(
+         "getDisplayMedia requires transient activation from a user gesture.");
+     return p.forget();
+@@ -629,16 +660,20 @@
+     return nullptr;
+   }
+   /* (This includes the expected user activation update of
+    * https://github.com/w3c/mediacapture-output/issues/107)
+    * If the relevant global object of this does not have transient activation,
+    * return a promise rejected with a DOMException object whose name attribute
+    * has the value InvalidStateError. */
+   nsCOMPtr<nsPIDOMWindowInner> owner = do_QueryInterface(global);
++  if (aCallerType != CallerType::System && CloakfoxMediaDisabled(owner)) {
++    p->MaybeRejectWithNotAllowedError("Media access is disabled by browser policy.");
++    return p.forget();
++  }
+   WindowContext* wc = owner->GetWindowContext();
+   if (!wc || !wc->HasValidTransientUserGestureActivation()) {
+     p->MaybeRejectWithInvalidStateError(
+         "selectAudioOutput requires transient user activation.");
+     return p.forget();
+   }
+   RefPtr<MediaDevices> self(this);
+   MediaManager::Get()
+@@ -763,16 +798,17 @@
+ 
+ NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED_0(MediaDevices,
+                                                DOMEventTargetHelper)
+ NS_IMPL_CYCLE_COLLECTION_INHERITED(MediaDevices, DOMEventTargetHelper,
+                                    mPendingEnumerateDevicesPromises)
+ 
+ void MediaDevices::OnDeviceChange() {
+   MOZ_ASSERT(NS_IsMainThread());
++  if (CloakfoxMediaDisabled(GetOwnerWindow())) return;
+   if (NS_FAILED(CheckCurrentGlobalCorrectness())) {
+     // This is a ghost window, don't do anything.
+     return;
+   }
+ 
+   mHaveUnprocessedDeviceListChange = true;
+   MaybeResumeDeviceExposure();
+ }

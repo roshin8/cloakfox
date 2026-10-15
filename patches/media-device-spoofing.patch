@@ -1,16 +1,30 @@
 diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
-index 067094cb6b..9088f71793 100644
 --- a/dom/media/MediaDevices.cpp
 +++ b/dom/media/MediaDevices.cpp
-@@ -26,6 +26,7 @@
- #include "nsPIDOMWindow.h"
+@@ -23,16 +23,17 @@
+ #include "mozilla/intl/Localization.h"
+ #include "nsContentUtils.h"
  #include "nsGlobalWindowInner.h"
+ #include "nsINamed.h"
+ #include "nsIScriptGlobalObject.h"
+ #include "nsPIDOMWindow.h"
+ #include "nsPIDOMWindowInlines.h"
  #include "nsQueryObject.h"
 +#include "MaskConfig.hpp"
  
  namespace mozilla::dom {
  
-@@ -329,52 +330,52 @@ RefPtr<MediaDeviceSetRefCnt> MediaDevices::FilterExposedDevices(
+ using ConstDeviceSetPromise = MediaManager::ConstDeviceSetPromise;
+ using LocalDeviceSetPromise = MediaManager::LocalDeviceSetPromise;
+ using LocalMediaDeviceSetRefCnt = MediaManager::LocalMediaDeviceSetRefCnt;
+ using MediaDeviceSetRefCnt = MediaManager::MediaDeviceSetRefCnt;
+ using mozilla::intl::Localization;
+@@ -339,62 +340,62 @@
+         haveDefaultOutput = true;
+         break;
+         // Avoid `default:` so that `-Wswitch` catches missing
+         // enumerators at compile time.
+     }
      exposed->AppendElement(device);
    }
  
@@ -18,9 +32,7 @@ index 067094cb6b..9088f71793 100644
 -    // We expose a single device of each kind.
 -    // Legacy mode also achieves the same thing, except for speakers.
 -    nsTHashSet<MediaDeviceKind> seenKinds;
-+  // Replaces the RFP-based device count spoofing with one that controls the
-+  // number of devices exposed.
- 
+-
 -    for (uint32_t i = 0; i < exposed->Length(); i++) {
 -      RefPtr<mozilla::MediaDevice> device = exposed->ElementAt(i);
 -      if (seenKinds.Contains(device->mKind)) {
@@ -30,10 +42,7 @@ index 067094cb6b..9088f71793 100644
 -      }
 -      seenKinds.Insert(device->mKind);
 -    }
-+  if (!MaskConfig::GetBool("mediaDevices:enabled")) {
-+    return exposed;
-+  }
- 
+-
 -    // We haven't seen at least one of each kind of device.
 -    // Audioinput, Videoinput, Audiooutput.
 -    // Insert fake devices.
@@ -65,6 +74,13 @@ index 067094cb6b..9088f71793 100644
 -        exposed->AppendElement(
 -            new MediaDevice(new MediaEngineFake(), info, u""_ns));
 -      }
++  // Replaces the RFP-based device count spoofing with one that controls the
++  // number of devices exposed.
++
++  if (!MaskConfig::GetBool("mediaDevices:enabled")) {
++    return exposed;
++  }
++
 +  uint32_t numMics = MaskConfig::GetUint32("mediaDevices:micros").value_or(3);
 +  uint32_t numWebcams =
 +      MaskConfig::GetUint32("mediaDevices:webcams").value_or(1);
@@ -107,3 +123,8 @@ index 067094cb6b..9088f71793 100644
      }
    }
  
+   return exposed;
+ }
+ 
+ bool MediaDevices::CanExposeInfo(MediaDeviceKind aKind) const {
+   switch (aKind) {

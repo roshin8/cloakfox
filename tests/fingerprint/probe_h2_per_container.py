@@ -1,164 +1,123 @@
+"""Verify supported H2 adapters stay scoped to two live containers.
+
+One browser session loads the same trusted loopback origin from Firefox and
+Chrome 155 containers. Production writeNetworkProfile commits each owner's
+atomic state; ordered wire shapes match independently captured references.
 """
-Per-container HTTP/2 fingerprint E2E.
-
-STATUS (2026-07-27): PASSES. Container 1 (firefox) and container 2 (chrome)
-emit distinct akamai H2 hashes, proving the C3 per-container read engages.
-(The fix: Http2Session::SendHello resolves userContextId from
-mSocketTransport->GetOriginAttributes(), since ConnectionInfo() is null
-that early — see PENDING.md.)
-
-test_h2_profile.py sets the GLOBAL `network.http.http2.fingerprint_profile`
-and relaunches per profile. This proves the deeper property: within a
-SINGLE browser session, two different containers emit DIFFERENT H2 wire
-fingerprints, driven by their own `cloakfox.container.<ucid>.h2_profile`
-prefs (the C3 per-container read in Http2Session).
-
-Setup: container 1 -> "firefox", container 2 -> "chrome". We open a tab in
-each container (chrome-context gBrowser.addTab; Selenium can't set
-userContextId) pointed at tls.peet.ws/api/all, and assert the two
-containers' `http2.akamai_fingerprint_hash` values DIFFER. Without the C3
-per-container read, both connections would read the global pref and the
-hashes would collapse.
-
-Run:
-    CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \\
-        python tests/fingerprint/probe_h2_per_container.py
-"""
-
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import os
-import sys
-import tempfile
-import time
 from pathlib import Path
+import ssl
+import tempfile
 
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
 
-PROBE_URL = "https://tls.peet.ws/api/all"
-# Two non-default containers with deliberately different H2 profiles.
+from test_h2_profile import UA, _pinned_shapes, _shape
+from h3_fixture import create_certificates
+from wire_fixture import TLSFixture
+
 CONTAINERS = {1: "firefox", 2: "chrome"}
 
-# Open a BLANK tab bound to the container, then navigate its content from
-# within (window.location) so the top-level document load is content-
-# initiated and its channel inherits the container's origin attributes
-# (userContextId=N). Loading the URL directly via addTab with a system
-# triggeringPrincipal makes the channel use default (ucid=0) origin
-# attributes, which is NOT what a real container navigation does.
-OPEN_CONTAINER_TAB = """
-const [userContextId] = arguments;
-const win = Services.wm.getMostRecentWindow('navigator:browser');
-const tab = win.gBrowser.addTab('about:blank', {
-  userContextId,
-  triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
-});
-win.gBrowser.selectedTab = tab;
-return true;
-"""
 
-
-def _akamai_hash_in_container(driver, ucid: int) -> str:
+def _wire_in_container(driver, ucid, address, fixture):
     before = set(driver.window_handles)
     driver.set_context("chrome")
     try:
-        driver.execute_script(OPEN_CONTAINER_TAB, ucid)
+        owner = driver.execute_script("""
+          const tab=gBrowser.addTab('about:blank',{userContextId:arguments[0],
+            triggeringPrincipal:Services.scriptSecurityManager.getSystemPrincipal()});
+          gBrowser.selectedTab=tab;
+          return tab.linkedBrowser.browsingContext.originAttributes.userContextId;
+        """, ucid)
+        assert owner == ucid, (owner, ucid)
     finally:
         driver.set_context("content")
+    WebDriverWait(driver, 15).until(lambda d: set(d.window_handles) - before)
+    driver.switch_to.window((set(driver.window_handles) - before).pop())
+    WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+    start = len(fixture.observed)
+    # A content-initiated top-level navigation preserves the container owner.
+    driver.execute_script("window.location.href=arguments[0]", address)
+    WebDriverWait(driver, 30).until(lambda d: d.current_url == address and
+                                  "local-wire-ok" in d.page_source)
+    records = [entry for entry in fixture.observed[start:] if entry.get("pseudoHeaders")]
+    assert records, fixture.observed[start:]
+    wire = records[0]
+    assert wire["protocol"] == "h2" and wire["tlsVersion"] == "TLSv1.3", wire
+    return wire
 
-    deadline = time.time() + 15
-    handle = None
-    while time.time() < deadline:
-        extra = set(driver.window_handles) - before
-        if extra:
-            handle = extra.pop()
-            break
-        time.sleep(0.1)
-    if not handle:
-        raise RuntimeError(f"container {ucid}: new tab never appeared")
 
-    driver.switch_to.window(handle)
-    # Wait for the blank container doc to be ready, then do a content-
-    # initiated navigation inside it (so the channel inherits the
-    # container's origin attributes).
-    ready = time.time() + 10
-    while time.time() < ready:
+def main():
+    binary = os.environ["CLOAKFOX_BIN"]
+    report_dir = Path(os.environ.get("REPORT_DIR", Path(__file__).parent / "reports/157-privacy-port/h2/per-container"))
+    report_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="cloakfox-h2-containers-", dir="/tmp") as tmp:
+        root = Path(tmp)
+        ca, cert, key = create_certificates(root, ["h2-container.test"])
+        fixture = TLSFixture(cert, key)
+        options = Options()
+        options.binary_location = binary
+        options.accept_insecure_certs = False
+        options.add_argument("-headless")
+        options.add_argument("-purgecaches")
+        profile = root / "profile"
+        profile.mkdir()
+        options.add_argument("-profile")
+        options.add_argument(str(profile))
+        options.set_preference("privacy.userContext.enabled", True)
+        options.set_preference("network.dns.localDomains", "h2-container.test")
+        options.set_preference("network.trr.mode", 5)
+        options.set_preference("network.http.http2.fingerprint_profile", "safari")
+        driver = None
+        results = {}
         try:
-            if driver.execute_script("return document.readyState") == "complete":
-                break
-        except Exception:
-            pass
-        time.sleep(0.2)
-    driver.execute_script("window.location.href = arguments[0];", PROBE_URL)
-    deadline = time.time() + 60
-    payload = None
-    while time.time() < deadline:
-        try:
-            body = driver.execute_script(
-                "return document.body ? (document.body.innerText || "
-                "document.body.textContent) : ''"
-            )
-            if body and body.strip().startswith("{"):
-                payload = json.loads(body.strip())
-                break
-        except Exception:
-            pass
-        time.sleep(0.3)
-    if payload is None:
-        raise RuntimeError(f"container {ucid}: no JSON from {PROBE_URL}")
-    h = payload.get("http2", {}).get("akamai_fingerprint_hash") or payload.get(
-        "akamai_fingerprint_hash"
-    )
-    if not h:
-        raise RuntimeError(f"container {ucid}: no akamai_fingerprint_hash in response")
-    return h
-
-
-def main() -> None:
-    bin_path = os.environ.get("CLOAKFOX_BIN")
-    if not bin_path or not os.path.exists(bin_path):
-        sys.exit("CLOAKFOX_BIN not set or binary missing")
-
-    with tempfile.TemporaryDirectory() as tmp:
-        prof = os.path.join(tmp, "profile")
-        Path(prof).mkdir(parents=True, exist_ok=True)
-        lines = [
-            'user_pref("cloakfox.enabled", true);',
-            'user_pref("privacy.userContext.enabled", true);',
-            # Serve tls.peet.ws JSON as raw text, not Firefox's JSON-viewer UI.
-            'user_pref("devtools.jsonview.enabled", false);',
-        ]
-        for ucid, profile in CONTAINERS.items():
-            lines.append(f'user_pref("cloakfox.container.{ucid}.h2_profile", "{profile}");')
-        Path(prof, "user.js").write_text("\n".join(lines) + "\n")
-
-        opts = Options()
-        opts.binary_location = bin_path
-        opts.add_argument("--headless")
-        opts.add_argument("-profile")
-        opts.add_argument(prof)
-        svc = Service(service_args=["--allow-system-access"], log_output=str(Path(prof) / "geckodriver.log"))
-        driver = webdriver.Firefox(options=opts, service=svc)
-        driver.set_page_load_timeout(30)
-        try:
-            hashes = {ucid: _akamai_hash_in_container(driver, ucid)
-                      for ucid in CONTAINERS}
+            driver = webdriver.Firefox(options=options, service=Service(
+                service_args=["--allow-system-access"], log_output=str(report_dir / "geckodriver.log")))
+            driver.set_context("chrome")
+            selections = driver.execute_script("""
+              const {writeNetworkProfile}=ChromeUtils.importESModule(
+                'resource:///modules/CloakfoxNetworkProfiles.sys.mjs');
+              Services.prefs.setBoolPref('cloakfox.enabled',true);
+              const results={};
+              for(const [ucid,ua] of Object.entries(arguments[0])) {
+                Services.prefs.setStringPref('cloakfox.s.cloak_cfg_'+ucid,
+                  JSON.stringify({'navigator.userAgent':ua}));
+                Services.prefs.setBoolPref('cloakfox.container.'+ucid+'.network_follow_identity',true);
+                const selected=writeNetworkProfile(Number(ucid));
+                results[ucid]={...selected,atomicState:Services.prefs.getIntPref(
+                  'cloakfox.container.'+ucid+'.network_state')};
+              }
+              Cc['@mozilla.org/security/x509certdb;1'].getService(Ci.nsIX509CertDB)
+                .addCertFromBase64(arguments[1],'CT,,');
+              return results;
+            """, {str(ucid): UA[family] for ucid, family in CONTAINERS.items()},
+                base64.b64encode(ssl.PEM_cert_to_DER_cert(ca.read_text())).decode())
+            driver.set_context("content")
+            references = _pinned_shapes()
+            for ucid, family in CONTAINERS.items():
+                selection = selections[str(ucid)]
+                expected_id = 1 if family == "chrome" else 0
+                assert selection["profileId"] == expected_id and selection["family"] == family, selection
+                assert not selection["unsupported"] and selection["atomicState"] & 1 == expected_id, selection
+                address = f"https://h2-container.test:{fixture.server_address[1]}/container/{ucid}"
+                wire = _wire_in_container(driver, ucid, address, fixture)
+                shape = _shape(wire)
+                assert shape == _shape(references[family]), (ucid, family, shape)
+                results[str(ucid)] = {"selection": selection, "wire": wire,
+                    "fingerprint": hashlib.sha256(json.dumps(shape, sort_keys=True).encode()).hexdigest()}
+            assert len({entry["fingerprint"] for entry in results.values()}) == len(CONTAINERS), results
+            (report_dir / "results.json").write_text(json.dumps(results, indent=2))
+            print("PASS: same-session Firefox/Chrome155 container wire shapes match pinned captures and remain distinct")
         finally:
-            driver.quit()
-
-    for ucid, profile in CONTAINERS.items():
-        print(f"container {ucid} ({profile}): akamai_fingerprint_hash = {hashes[ucid]}")
-    print()
-
-    if len(set(hashes.values())) == len(hashes):
-        print("PASS: each container emits a distinct H2 fingerprint (per-container "
-              "read engaged)")
-    else:
-        print("FAIL: containers share an H2 fingerprint — the per-container read "
-              "is not engaging; both fell back to the global pref")
-        sys.exit(1)
+            if driver: driver.quit()
+            fixture.close()
 
 
 if __name__ == "__main__":

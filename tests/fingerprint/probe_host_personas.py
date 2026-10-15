@@ -9,10 +9,20 @@ def snapshot(driver,ucid):
     driver.set_context('content')
     WebDriverWait(driver,15).until(lambda d:d.execute_script("return !document.querySelector('[aria-busy=true]')"))
     driver.set_context('chrome')
-    return driver.execute_script("""
+    result = driver.execute_script("""
 const prefix='cloakfox.container.'+arguments[0]+'.';
 return {mode:Services.prefs.getStringPref(prefix+'persona_os_mode','legacy'),seed:Services.prefs.getStringPref(prefix+'math_seed'),cfg:Services.prefs.getStringPref('cloakfox.s.cloak_cfg_'+arguments[0])};
 """,ucid)
+    #157 session timing keys rotate on launch; persisted identity fields stay exact.
+    cfg = json.loads(result['cfg'])
+    result['sessionTiming'] = [cfg.pop('timing:session_key_hi'), cfg.pop('timing:session_key_lo')]
+    result['cfg'] = cfg
+    return result
+
+
+def identity(state):
+    return {key:value for key,value in state.items() if key != 'sessionTiming'}
+
 
 def main():
     with tempfile.TemporaryDirectory(prefix='cloakfox-host-personas-') as temp:
@@ -46,13 +56,13 @@ def main():
             driver.set_context('content')
             driver.execute_script("const s=document.querySelector('select[data-key=\"navigator.hardwareConcurrency\"]');s.value='16';s.dispatchEvent(new Event('change'))")
             before_generated=snapshot(driver,ucid)
-            assert json.loads(before_generated['cfg'])['navigator.hardwareConcurrency']==16
+            assert before_generated['cfg']['navigator.hardwareConcurrency']==16
             other=snapshot(driver,0)
             driver.set_context('content')
             driver.execute_script("document.getElementById('cfx-persona-choice').value='3';document.getElementById('cfx-generate-new').click()")
             generated=snapshot(driver,ucid)
             assert generated['seed']!=before_generated['seed']
-            assert json.loads(generated['cfg'])['navigator.hardwareConcurrency']==16
+            assert generated['cfg']['navigator.hardwareConcurrency']==16
             assert driver.execute_script("return Services.prefs.getIntPref('cloakfox.container.'+arguments[0]+'.persona_index',-1)",ucid)==-1
             assert snapshot(driver,0)==other
             driver.set_context('content')
@@ -64,13 +74,15 @@ def main():
         finally:driver.quit()
         driver=launch(profile,Path(temp)/'second.log')
         try:
-            restarted=snapshot(driver,ucid);assert restarted==old,(old,restarted)
+            restarted=snapshot(driver,ucid)
+            assert identity(restarted)==identity(old),(old,restarted)
+            assert restarted['sessionTiming'] != old['sessionTiming'], 'restart reused timing session key'
             driver.set_context('content');driver.get('about:cloakfox')
             WebDriverWait(driver,15).until(lambda d:d.execute_script("return document.getElementById('cfx-headline-text').textContent !== '—'"))
             driver.execute_script("const s=document.getElementById('cfx-container-select');s.value=String(arguments[0]);s.dispatchEvent(new Event('change'));const f=document.getElementById('cfx-persona-filter');f.value=arguments[1];f.dispatchEvent(new Event('change'));document.getElementById('cfx-generate-new').click();",ucid,{"Darwin":"macOS","WINNT":"Windows","Linux":"Linux"}[host])
             changed=snapshot(driver,ucid)
             assert changed['mode']=={'Darwin':'macos','WINNT':'windows','Linux':'linux'}[host];assert changed['seed']!=old['seed']
-            assert json.loads(changed['cfg'])['navigator.platform']==expected
+            assert changed['cfg']['navigator.platform']==expected
             for os, mode, platform in [('Windows','windows','Win32'),('macOS','macos','MacIntel'),('Linux','linux','Linux x86_64')]:
                 before=snapshot(driver,ucid)
                 driver.set_context('content')
@@ -83,7 +95,7 @@ def main():
                     driver.execute_script("document.getElementById('cfx-generate-new').click()")
                     result=snapshot(driver,ucid)
                     assert result['mode']==mode
-                    assert json.loads(result['cfg'])['navigator.platform']==platform
+                    assert result['cfg']['navigator.platform']==platform
                     assert result['seed']!=before['seed']
                     before=result
                     driver.set_context('content')
@@ -93,7 +105,7 @@ def main():
                 driver.get('about:cloakfox?ucid='+str(ucid))
                 WebDriverWait(driver,10).until(lambda d:d.execute_script("return document.getElementById('cfx-persona-filter').value")==os)
                 assert snapshot(driver,ucid)==result
-            print(json.dumps({'ok':True,'host':host,'newMode':fresh['mode'],'legacyRestartStable':restarted==old,'explicitHostMode':changed['mode']}))
+            print(json.dumps({'ok':True,'host':host,'newMode':fresh['mode'],'legacyRestartStable':identity(restarted)==identity(old),'timingKeyRotated':restarted['sessionTiming']!=old['sessionTiming'],'explicitHostMode':changed['mode']}))
         finally:driver.quit()
 
 if __name__=='__main__':main()

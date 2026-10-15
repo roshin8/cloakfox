@@ -1,33 +1,14 @@
-Cloakfox: invoke pref migration + seed sync + WebRTC sync at BrowserGlue.
-
-Three parent-process modules invoked at _beforeUIStartup:
-
-  1. CloakfoxPrefMigration: one-shot mirror of legacy roverfox.s.*
-     prefs (pre-cpp-first extension era) into cloakfox.s.*. Sets
-     cloakfox.migration.v1.done=true on first run.
-
-  2. CloakfoxSeedSync: continuous snapshot of cloakfox.container.*
-     and cloakfox.* prefs into Services.ppmm.sharedData, plus a
-     pref observer that keeps the snapshot live. JSWindowActor
-     children read seeds via Services.cpmm.sharedData.get since
-     user-set prefs in our custom namespaces don't auto-sync to
-     content processes (verified empirically).
-
-  3. CloakfoxWebRTCSync: async fetch of the user's current public
-     IPv4 from a public IP-echo endpoint, published to sharedData.
-     CloakfoxWebRTC actor reads the value and calls the C++
-     window.setWebRTCIPv4 setter so ICE candidates report the
-     same IP HTTP shows. Network-change observer refreshes on
-     link bounces (VPN connect/disconnect, sleep/wake).
-
-Order matters: migration first (so any roverfox.s.* legacy values
-land in cloakfox.s.* / cloakfox.container.* before sync snapshots
-them), then seed-sync, then WebRTC sync (async, doesn't block).
-
+diff --git a/browser/components/BrowserGlue.sys.mjs b/browser/components/BrowserGlue.sys.mjs
 --- a/browser/components/BrowserGlue.sys.mjs
 +++ b/browser/components/BrowserGlue.sys.mjs
-@@ -382,5 +382,42 @@
-
+@@ -385,16 +385,53 @@
+     }
+ 
+     lazy.ContentBlockingPrefs.uninit();
+   },
+ 
+   // runs on startup, before the first command line handler is invoked
+   // (i.e. before the first window is opened)
    _beforeUIStartup: function BG__beforeUIStartup() {
 +    // Cloakfox: migrate legacy roverfox.s.* prefs (extension era) to
 +    // cloakfox.s.* (cpp-first namespace), then snapshot all cloakfox
@@ -67,5 +48,10 @@ them), then seed-sync, then WebRTC sync (async, doesn't block).
 +      ensureCloakfoxPinned();
 +    } catch (_e) { /* non-Cloakfox builds — ignore */ }
      lazy.SessionStartup.init();
-
+ 
      // check if we're in safe mode
+     if (Services.appinfo.inSafeMode) {
+       Services.ww.openWindow(
+         null,
+         "chrome://browser/content/safeMode.xhtml",
+         "_blank",

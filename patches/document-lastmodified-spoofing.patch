@@ -1,6 +1,12 @@
---- a/b/dom/base/Document.cpp	2026-04-18 09:02:19
-+++ b/dom/base/Document.cpp	2026-04-18 16:04:12
-@@ -9,6 +9,7 @@
+diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
+--- a/dom/base/Document.cpp
++++ b/dom/base/Document.cpp
+@@ -2,16 +2,17 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /*
+  * Base class for all our document implementations.
   */
  
  #include "mozilla/dom/Document.h"
@@ -8,7 +14,17 @@
  
  #include <inttypes.h>
  #include <stdlib.h>
-@@ -4472,6 +4473,13 @@
+ #include <string.h>
+ 
+ #include <algorithm>
+ #include <cstddef>
+ #include <cstdint>
+@@ -4557,16 +4558,23 @@
+   } else {
+     // If we for whatever reason failed to find the last modified time
+     // (or even the current time), fall back to what NS4.x returned.
+     aFormattedTimeString.AssignLiteral(u"01/01/1970 00:00:00");
+   }
  }
  
  void Document::GetLastModified(nsAString& aLastModified) const {
@@ -22,3 +38,8 @@
    if (!mLastModified.IsEmpty()) {
      aLastModified.Assign(mLastModified);
    } else {
+     GetFormattedTimeString(PR_Now(),
+                            ShouldResistFingerprinting(RFPTarget::JSDateTimeUTC),
+                            aLastModified);
+   }
+ }

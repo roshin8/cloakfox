@@ -197,7 +197,12 @@ diff --git a/dom/base/FontListManager.h b/dom/base/FontListManager.h
 diff --git a/dom/base/moz.build b/dom/base/moz.build
 --- a/dom/base/moz.build
 +++ b/dom/base/moz.build
-@@ -569,6 +569,13 @@
+@@ -567,16 +567,23 @@
+ # CanvasFingerprintManager compiled separately to avoid unified build scope issues
+ # (includes RoverfoxStorageManager.h which can affect compilation units)
+ SOURCES += ["CanvasFingerprintManager.cpp"]
+ 
+ EXPORTS.mozilla.dom += [
      "CanvasFingerprintManager.h",
  ]
  
@@ -211,10 +216,20 @@ diff --git a/dom/base/moz.build b/dom/base/moz.build
  # Are we targeting x86-32 or x86-64?  If so, we want to include SSE2 code for
  # CharacterDataBuffer.cpp
  if CONFIG["INTEL_ARCHITECTURE"]:
+     SOURCES += ["CharacterDataBufferSSE2.cpp"]
+     SOURCES["CharacterDataBufferSSE2.cpp"].flags += CONFIG["SSE2_FLAGS"]
+ 
+ # Are we targeting PowerPC? If so, we can enable a SIMD version for
+ # CharacterDataBuffer.cpp as well.
 diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
 --- a/dom/base/nsGlobalWindowInner.cpp
 +++ b/dom/base/nsGlobalWindowInner.cpp
-@@ -22,6 +22,7 @@
+@@ -17,16 +17,17 @@
+ #include "AudioChannelService.h"
+ #include "AutoplayPolicy.h"
+ #include "Crypto.h"
+ #include "MainThreadUtils.h"
+ #include "CanvasFingerprintManager.h"
  #include "Navigator.h"
  #include "PaintWorkletImpl.h"
  #include "SessionStorageCache.h"
@@ -222,7 +237,17 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
  #include "Units.h"
  #include "VRManagerChild.h"
  #include "WindowDestroyedEvent.h"
-@@ -7906,6 +7907,25 @@
+ #include "WindowNamedPropertiesHandler.h"
+ #include "js/ComparisonOperators.h"
+ #include "js/CompilationAndEvaluation.h"
+ #include "js/CompileOptions.h"
+ #include "js/Id.h"
+@@ -7887,16 +7888,35 @@
+     if (global) {
+       JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
+       JS_SetProperty(cx, global, "setCanvasSeed", undef);
+       JS_DeleteProperty(cx, global, "setCanvasSeed");
+     }
    }
  }
  
@@ -248,10 +273,20 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
  RefPtr<GenericPromise> nsGlobalWindowInner::StorageAccessPermissionChanged(
      bool aGranted) {
    // Invalidate cached StorageAllowed field so that calls to GetLocalStorage
+   // give us the updated localStorage object.
+   ClearStorageAllowedCache();
+ 
+   // Just reset the active cookie and storage principals
+   nsCOMPtr<nsICookieJarSettings> cjs;
 diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
 --- a/dom/base/nsGlobalWindowInner.h
 +++ b/dom/base/nsGlobalWindowInner.h
-@@ -695,6 +695,9 @@
+@@ -696,16 +696,19 @@
+ 
+   void UpdateSharedWorkersLanguageOverride(const nsCString& aLanguageOverride);
+ 
+   void UpdateSharedWorkerTimezoneOverride(const nsAString& aTimezoneOverride);
+ 
    // Per-context canvas fingerprint seed
    void SetCanvasSeed(uint32_t seed, mozilla::ErrorResult& aRv);
  
@@ -261,10 +296,20 @@ diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
   public:
    void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
    void Alert(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+              mozilla::ErrorResult& aError);
+   bool Confirm(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+                mozilla::ErrorResult& aError);
+   void Prompt(const nsAString& aMessage, const nsAString& aInitial,
+               nsAString& aReturn, nsIPrincipal& aSubjectPrincipal,
 diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
 --- a/dom/webidl/Window.webidl
 +++ b/dom/webidl/Window.webidl
-@@ -951,6 +951,12 @@
+@@ -950,16 +950,22 @@
+ };
+ 
+ // Per-context canvas fingerprint seed
+ partial interface Window {
+   [Throws, Func="mozilla::dom::CanvasFingerprintManager::IsFunctionEnabledForWebIDL"]
    undefined setCanvasSeed(unsigned long seed);
  };
  
@@ -277,10 +322,20 @@ diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
  // Used to assign marks to appear on the scrollbar when
  // finding on a page.
  partial interface Window {
+   // The marks are values between 0 and scrollMax{X,Y} - scrollMin{X,Y}.
+   [ChromeOnly]
+   undefined setScrollMarks(sequence<unsigned long> marks,
+                            optional boolean onHorizontalScrollbar = false);
+ };
 diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList.cpp
 --- a/gfx/thebes/gfxPlatformFontList.cpp
 +++ b/gfx/thebes/gfxPlatformFontList.cpp
-@@ -28,6 +28,7 @@
+@@ -24,16 +24,17 @@
+ #include "mozilla/StaticPrefs_mathml.h"
+ #include "mozilla/TextUtils.h"
+ #include "mozilla/TimeStamp.h"
+ #include "mozilla/dom/BlobImpl.h"
+ #include "mozilla/dom/ContentChild.h"
  #include "mozilla/dom/ContentParent.h"
  #include "mozilla/dom/ContentProcessMessageManager.h"
  #include "mozilla/dom/Document.h"
@@ -288,7 +343,17 @@ diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList
  #include "mozilla/gfx/2D.h"
  #include "mozilla/gfx/Logging.h"
  #include "mozilla/glean/GfxMetrics.h"
-@@ -1804,6 +1805,20 @@
+ #include "mozilla/intl/Locale.h"
+ #include "mozilla/intl/LocaleService.h"
+ #include "mozilla/intl/OSPreferences.h"
+ #include "mozilla/ipc/FileDescriptorUtils.h"
+ #include "nsCRT.h"
+@@ -1765,16 +1766,30 @@
+ 
+ bool gfxPlatformFontList::FindAndAddFamiliesLocked(
+     FontVisibilityProvider* aFontVisibilityProvider,
+     StyleGenericFontFamily aGeneric, const nsACString& aFamily,
+     nsTArray<FamilyAndGeneric>* aOutput, FindFamiliesFlags aFlags,
      gfxFontStyle* aStyle, nsAtom* aLanguage, gfxFloat aDevToCssSize) {
    nsAutoCString key;
    GenerateFontListKey(aFamily, key);
@@ -309,10 +374,20 @@ diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList
  
    bool allowHidden = bool(aFlags & FindFamiliesFlags::eSearchHiddenFamilies);
    FontVisibility visibilityLevel =
+       aFontVisibilityProvider ? aFontVisibilityProvider->GetFontVisibility()
+                               : FontVisibility::User;
+ 
+   // If this font lookup is the result of resolving a CSS generic (not a direct
+   // font-family request by the page), and RFP settings allow generics to be
 diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
 --- a/gfx/thebes/gfxTextRun.cpp
 +++ b/gfx/thebes/gfxTextRun.cpp
-@@ -9,6 +9,8 @@
+@@ -4,16 +4,18 @@
+ 
+ #include "gfxTextRun.h"
+ 
+ #include "SharedFontList-impl.h"
+ #include "TextDrawTarget.h"
  #include "gfx2DGlue.h"
  #include "gfxContext.h"
  #include "gfxFontConstants.h"
@@ -321,7 +396,17 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  #include "gfxFontMissingGlyphs.h"
  #include "gfxGlyphExtents.h"
  #include "gfxHarfBuzzShaper.h"
-@@ -1928,6 +1929,8 @@
+ #include "gfxPlatformFontList.h"
+ #include "gfxUserFontSet.h"
+ #include "mozilla/ClearOnShutdown.h"
+ #include "mozilla/Likely.h"
+ #include "mozilla/MruCache.h"
+@@ -1932,16 +1934,18 @@
+   }
+ 
+   nsTArray<gfxFontGroup::FamilyFace> mFontList;
+ };
+ 
  NS_IMPL_ISUPPORTS(DeferredClearResolvedFonts, nsIRunnable)
  
  void gfxFontGroup::EnsureFontList() {
@@ -330,10 +415,20 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
    // Ensure resolved font instances are valid; discard them if necessary.
    auto* pfl = gfxPlatformFontList::PlatformFontList();
    if (mFontListGeneration != pfl->GetGeneration()) {
+     // Forget cached fonts that may no longer be valid.
+     mLastPrefFamily = FontFamily();
+     mLastPrefFont = nullptr;
+     mDefaultFont = nullptr;
+     mResolvedFonts = false;
 diff --git a/layout/style/FontFaceSet.cpp b/layout/style/FontFaceSet.cpp
 --- a/layout/style/FontFaceSet.cpp
 +++ b/layout/style/FontFaceSet.cpp
-@@ -26,6 +26,9 @@
+@@ -21,16 +21,19 @@
+ #include "mozilla/ServoBindings.h"
+ #include "mozilla/ServoCSSParser.h"
+ #include "mozilla/ServoStyleSet.h"
+ #include "mozilla/ServoUtils.h"
+ #include "mozilla/Sprintf.h"
  #include "mozilla/css/Loader.h"
  #include "mozilla/dom/CSSFontFaceRule.h"
  #include "mozilla/dom/Document.h"
@@ -343,7 +438,17 @@ diff --git a/layout/style/FontFaceSet.cpp b/layout/style/FontFaceSet.cpp
  #include "mozilla/dom/DocumentInlines.h"
  #include "mozilla/dom/Event.h"
  #include "mozilla/dom/FontFaceImpl.h"
-@@ -134,6 +137,14 @@
+ #include "mozilla/dom/FontFaceSetBinding.h"
+ #include "mozilla/dom/FontFaceSetDocumentImpl.h"
+ #include "mozilla/dom/FontFaceSetIterator.h"
+ #include "mozilla/dom/FontFaceSetLoadEvent.h"
+ #include "mozilla/dom/FontFaceSetLoadEventBinding.h"
+@@ -129,16 +132,24 @@
+ }
+ 
+ void FontFaceSet::Destroy() { mImpl->Destroy(); }
+ 
+ already_AddRefed<Promise> FontFaceSet::Load(JSContext* aCx,
                                              const nsACString& aFont,
                                              const nsAString& aText,
                                              ErrorResult& aRv) {
@@ -358,7 +463,17 @@ diff --git a/layout/style/FontFaceSet.cpp b/layout/style/FontFaceSet.cpp
    FlushUserFontSet();
  
    nsTArray<RefPtr<Promise>> promises;
-@@ -165,6 +176,14 @@
+ 
+   nsTArray<RefPtr<FontFace>> faces;
+   {
+     nsTArray<FontFace*> weakFaces;
+     mImpl->FindMatchingFontFaces(aFont, aText, weakFaces, aRv);
+@@ -160,16 +171,24 @@
+     promises.AppendElement(promise);
+   }
+ 
+   return Promise::All(aCx, promises, aRv);
+ }
  
  bool FontFaceSet::Check(const nsACString& aFont, const nsAString& aText,
                          ErrorResult& aRv) {
@@ -373,3 +488,8 @@ diff --git a/layout/style/FontFaceSet.cpp b/layout/style/FontFaceSet.cpp
    FlushUserFontSet();
  
    nsTArray<FontFace*> faces;
+   mImpl->FindMatchingFontFaces(aFont, aText, faces, aRv);
+   if (aRv.Failed()) {
+     return false;
+   }
+ 

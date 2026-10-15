@@ -1,6 +1,11 @@
---- a/b/dom/base/nsGlobalWindowOuter.cpp	2026-04-18 02:32:47
-+++ b/dom/base/nsGlobalWindowOuter.cpp	2026-04-18 02:32:59
-@@ -7,6 +7,7 @@
+diff --git a/dom/base/nsGlobalWindowOuter.cpp b/dom/base/nsGlobalWindowOuter.cpp
+--- a/dom/base/nsGlobalWindowOuter.cpp
++++ b/dom/base/nsGlobalWindowOuter.cpp
+@@ -1,15 +1,16 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
  #include "nsGlobalWindowOuter.h"
  
  #include <algorithm>
@@ -8,7 +13,17 @@
  
  #include "mozilla/Assertions.h"
  #include "mozilla/ScopeExit.h"
-@@ -3407,6 +3408,11 @@
+ #include "nsDeviceContext.h"
+ #include "nsGlobalWindowInner.h"
+ 
+ // Local Includes
+ #include "Navigator.h"
+@@ -3430,23 +3431,32 @@
+ void nsGlobalWindowOuter::SetStatusOuter(const nsAString& aStatus) {
+   mStatus = aStatus;
+ 
+   // We don't support displaying window.status in the UI, so there's nothing
+   // left to do here.
  }
  
  void nsGlobalWindowOuter::GetNameOuter(nsAString& aName) {
@@ -20,7 +35,7 @@
    if (mDocShell) {
      mDocShell->GetName(aName);
    }
-@@ -3414,6 +3420,10 @@
+ }
  
  void nsGlobalWindowOuter::SetNameOuter(const nsAString& aName,
                                         mozilla::ErrorResult& aError) {
@@ -31,3 +46,8 @@
    if (mDocShell) {
      aError = mDocShell->SetName(aName);
    }
+ }
+ 
+ // NOTE: The idea of this function is that it should return the same as
+ // nsPresContext::CSSToDeviceScale() if it was in aWindow synchronously. For
+ // that, we use the UnscaledDevicePixelsPerCSSPixel() (which contains the device

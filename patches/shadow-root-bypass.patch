@@ -1,7 +1,12 @@
 diff --git a/dom/webidl/Element.webidl b/dom/webidl/Element.webidl
 --- a/dom/webidl/Element.webidl
 +++ b/dom/webidl/Element.webidl
-@@ -295,6 +295,10 @@
+@@ -290,16 +290,20 @@
+ // https://dom.spec.whatwg.org/#element
+ partial interface Element {
+   // Shadow DOM v1
+   [Throws, UseCounter]
+   ShadowRoot attachShadow(ShadowRootInit shadowRootInitDict);
    [BinaryName="shadowRootForBindings"]
    readonly attribute ShadowRoot? shadowRoot;
  
@@ -12,3 +17,8 @@ diff --git a/dom/webidl/Element.webidl b/dom/webidl/Element.webidl
    [NeedsSubjectPrincipal, Func="Document::IsCallerChromeOrAddon"]
    readonly attribute ShadowRoot? openOrClosedShadowRoot;
  
+   [BinaryName="assignedSlotByMode"]
+   readonly attribute HTMLSlotElement? assignedSlot;
+ 
+   [ChromeOnly, BinaryName="assignedSlot"]
+   readonly attribute HTMLSlotElement? openOrClosedAssignedSlot;

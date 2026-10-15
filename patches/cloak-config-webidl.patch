@@ -1,5 +1,164 @@
---- a/b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:16:00
-+++ b/dom/base/CloakConfigOverlay.cpp	2026-04-16 21:15:37
+diff --git a/cloakcfg/MaskConfig.hpp b/cloakcfg/MaskConfig.hpp
+--- a/cloakcfg/MaskConfig.hpp
++++ b/cloakcfg/MaskConfig.hpp
+@@ -38,16 +38,23 @@
+ #include <cstddef>
+ #include <vector>
+ #include <algorithm>
+ 
+ #ifdef _WIN32
+ #  include <windows.h>
+ #endif
+ 
++// Extern — implemented in dom/base/CloakConfigOverlay.cpp
++extern std::string CloakConfigOverlay_Get(uint32_t userContextId);
++extern void CloakConfigOverlay_Set(uint32_t userContextId, const std::string& jsonStr);
++extern void CloakConfigOverlay_MergeUint(uint32_t userContextId, const std::string& key, uint32_t value);
++extern void CloakConfigOverlay_MergeString(uint32_t userContextId, const std::string& key, const std::string& value);
++extern uint32_t CloakConfigOverlay_CurrentUserContextId();
++
+ namespace MaskConfig {
+ 
+ // Function to get the value of an environment variable as a UTF-8 string.
+ inline std::optional<std::string> get_env_utf8(const std::string& name) {
+ #ifdef _WIN32
+   std::wstring wName(name.begin(), name.end());
+   DWORD size = GetEnvironmentVariableW(wName.c_str(), nullptr, 0);
+   if (size == 0) return std::nullopt;  // Environment variable not found
+@@ -102,47 +109,62 @@
+     }
+ 
+     jsonConfig = nlohmann::json::parse(jsonString);
+   });
+ 
+   return jsonConfig;
+ }
+ 
++inline nlohmann::json GetContextOverlay(uint32_t userContextId = 0) {
++  // userContextId==0 means the default container OR "caller didn't
++  // specify" (the context-blind getters). Resolve the current window's
++  // container so non-manager spoofers read their own overlay, not ctx 0.
++  if (userContextId == 0) userContextId = CloakConfigOverlay_CurrentUserContextId();
++  std::string jsonStr = CloakConfigOverlay_Get(userContextId);
++  if (!jsonStr.empty() && nlohmann::json::accept(jsonStr)) return nlohmann::json::parse(jsonStr);
++  return nlohmann::json{};
++}
++
+ inline bool HasKey(const std::string& key, const nlohmann::json& data) {
+   return data.contains(key);
+ }
+ 
+ inline std::optional<std::string> GetString(const std::string& key, uint32_t userContextId = 0) {
++  auto ctx = GetContextOverlay(userContextId);
++  if (HasKey(key, ctx) && ctx[key].is_string()) return ctx[key].get<std::string>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   return data[key].get<std::string>();
+ }
+ 
+ inline std::vector<std::string> GetStringList(const std::string& key) {
+   std::vector<std::string> result;
+-  const auto& data = GetJson();
+-  if (!HasKey(key, data)) return {};
+-  for (const auto& item : data[key]) {
++  auto ctx = GetContextOverlay();
++  const auto& src = (HasKey(key, ctx) && ctx[key].is_array()) ? ctx : GetJson();
++  if (!HasKey(key, src)) return {};
++  for (const auto& item : src[key]) {
+     result.push_back(item.get<std::string>());
+   }
+   return result;
+ }
+ 
+ inline std::vector<std::string> GetStringListLower(const std::string& key) {
+   std::vector<std::string> result = GetStringList(key);
+   for (auto& str : result) {
+     std::transform(str.begin(), str.end(), str.begin(),
+                    [](unsigned char c) { return std::tolower(c); });
+   }
+   return result;
+ }
+ 
+ template <typename T>
+ inline std::optional<T> GetUintImpl(const std::string& key, uint32_t userContextId = 0) {
++  auto ctx = GetContextOverlay(userContextId);
++  if (HasKey(key, ctx) && ctx[key].is_number_unsigned()) return ctx[key].get<T>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   if (data[key].is_number_unsigned()) return data[key].get<T>();
+   printf_stderr("ERROR: Value for key '%s' is not an unsigned integer\n",
+                 key.c_str());
+   return std::nullopt;
+ }
+ 
+@@ -150,34 +172,40 @@
+   return GetUintImpl<uint64_t>(key);
+ }
+ 
+ inline std::optional<uint32_t> GetUint32(const std::string& key, uint32_t userContextId = 0) {
+   return GetUintImpl<uint32_t>(key, userContextId);
+ }
+ 
+ inline std::optional<int32_t> GetInt32(const std::string& key) {
++  auto ctx = GetContextOverlay();
++  if (HasKey(key, ctx) && ctx[key].is_number_integer()) return ctx[key].get<int32_t>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   if (data[key].is_number_integer()) return data[key].get<int32_t>();
+   printf_stderr("ERROR: Value for key '%s' is not an integer\n", key.c_str());
+   return std::nullopt;
+ }
+ 
+ inline std::optional<double> GetDouble(const std::string& key) {
++  auto ctx = GetContextOverlay();
++  if (HasKey(key, ctx) && ctx[key].is_number()) return ctx[key].get<double>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   if (data[key].is_number_float()) return data[key].get<double>();
+   if (data[key].is_number_unsigned() || data[key].is_number_integer())
+     return static_cast<double>(data[key].get<int64_t>());
+   printf_stderr("ERROR: Value for key '%s' is not a double\n", key.c_str());
+   return std::nullopt;
+ }
+ 
+ inline std::optional<bool> GetBool(const std::string& key) {
++  auto ctx = GetContextOverlay();
++  if (HasKey(key, ctx) && ctx[key].is_boolean()) return ctx[key].get<bool>();
+   const auto& data = GetJson();
+   if (!HasKey(key, data)) return std::nullopt;
+   if (data[key].is_boolean()) return data[key].get<bool>();
+   printf_stderr("ERROR: Value for key '%s' is not a boolean\n", key.c_str());
+   return std::nullopt;
+ }
+ 
+ inline bool CheckBool(const std::string& key) {
+@@ -217,21 +245,21 @@
+   }
+   return std::nullopt;
+ }
+ 
+ // Helpers for WebGL
+ 
+ inline std::optional<nlohmann::json> GetNested(const std::string& domain,
+                                                std::string keyStr) {
++  auto ctx = GetContextOverlay();
++  if (ctx.contains(domain) && ctx[domain].contains(keyStr)) return ctx[domain][keyStr];
+   auto data = GetJson();
+   if (!data.contains(domain)) return std::nullopt;
+-
+   if (!data[domain].contains(keyStr)) return std::nullopt;
+-
+   return data[domain][keyStr];
+ }
+ 
+ template <typename T>
+ inline std::optional<T> GetAttribute(const std::string attrib, bool isWebGL2) {
+   auto value = MaskConfig::GetNested(
+       isWebGL2 ? "webGl2:contextAttributes" : "webGl:contextAttributes",
+       attrib);
+diff --git a/dom/base/CloakConfigOverlay.cpp b/dom/base/CloakConfigOverlay.cpp
+--- /dev/null
++++ b/dom/base/CloakConfigOverlay.cpp
 @@ -0,0 +1,74 @@
 +/* Cloakfox: Per-context MaskConfig overlay via RoverfoxStorageManager. */
 +#include "RoverfoxStorageManager.h"
@@ -75,120 +234,34 @@
 +  }
 +  return 0;
 +}
---- a/b/cloakcfg/MaskConfig.hpp	2026-04-16 21:14:45
-+++ b/cloakcfg/MaskConfig.hpp	2026-04-16 21:15:37
-@@ -23,6 +23,13 @@
- #  include <windows.h>
- #endif
+diff --git a/dom/base/moz.build b/dom/base/moz.build
+--- a/dom/base/moz.build
++++ b/dom/base/moz.build
+@@ -709,9 +709,10 @@
+         "/servo/components/style/properties/data.py",
+         "/servo/components/style/properties/longhands.toml",
+         "/servo/components/style/properties/shorthands.toml",
+         "/servo/components/style/properties/counted_unknown_properties.py",
+     ],
+ )
  
-+// Extern — implemented in dom/base/CloakConfigOverlay.cpp
-+extern std::string CloakConfigOverlay_Get(uint32_t userContextId);
-+extern void CloakConfigOverlay_Set(uint32_t userContextId, const std::string& jsonStr);
-+extern void CloakConfigOverlay_MergeUint(uint32_t userContextId, const std::string& key, uint32_t value);
-+extern void CloakConfigOverlay_MergeString(uint32_t userContextId, const std::string& key, const std::string& value);
-+extern uint32_t CloakConfigOverlay_CurrentUserContextId();
-+
- namespace MaskConfig {
- 
- // Function to get the value of an environment variable as a UTF-8 string.
-@@ -87,11 +93,23 @@
-   return jsonConfig;
- }
- 
-+inline nlohmann::json GetContextOverlay(uint32_t userContextId = 0) {
-+  // userContextId==0 means the default container OR "caller didn't
-+  // specify" (the context-blind getters). Resolve the current window's
-+  // container so non-manager spoofers read their own overlay, not ctx 0.
-+  if (userContextId == 0) userContextId = CloakConfigOverlay_CurrentUserContextId();
-+  std::string jsonStr = CloakConfigOverlay_Get(userContextId);
-+  if (!jsonStr.empty() && nlohmann::json::accept(jsonStr)) return nlohmann::json::parse(jsonStr);
-+  return nlohmann::json{};
-+}
-+
- inline bool HasKey(const std::string& key, const nlohmann::json& data) {
-   return data.contains(key);
- }
- 
- inline std::optional<std::string> GetString(const std::string& key, uint32_t userContextId = 0) {
-+  auto ctx = GetContextOverlay(userContextId);
-+  if (HasKey(key, ctx) && ctx[key].is_string()) return ctx[key].get<std::string>();
-   const auto& data = GetJson();
-   if (!HasKey(key, data)) return std::nullopt;
-   return data[key].get<std::string>();
-@@ -99,9 +113,10 @@
- 
- inline std::vector<std::string> GetStringList(const std::string& key) {
-   std::vector<std::string> result;
--  const auto& data = GetJson();
--  if (!HasKey(key, data)) return {};
--  for (const auto& item : data[key]) {
-+  auto ctx = GetContextOverlay();
-+  const auto& src = (HasKey(key, ctx) && ctx[key].is_array()) ? ctx : GetJson();
-+  if (!HasKey(key, src)) return {};
-+  for (const auto& item : src[key]) {
-     result.push_back(item.get<std::string>());
-   }
-   return result;
-@@ -118,6 +133,8 @@
- 
- template <typename T>
- inline std::optional<T> GetUintImpl(const std::string& key, uint32_t userContextId = 0) {
-+  auto ctx = GetContextOverlay(userContextId);
-+  if (HasKey(key, ctx) && ctx[key].is_number_unsigned()) return ctx[key].get<T>();
-   const auto& data = GetJson();
-   if (!HasKey(key, data)) return std::nullopt;
-   if (data[key].is_number_unsigned()) return data[key].get<T>();
-@@ -135,6 +152,8 @@
- }
- 
- inline std::optional<int32_t> GetInt32(const std::string& key) {
-+  auto ctx = GetContextOverlay();
-+  if (HasKey(key, ctx) && ctx[key].is_number_integer()) return ctx[key].get<int32_t>();
-   const auto& data = GetJson();
-   if (!HasKey(key, data)) return std::nullopt;
-   if (data[key].is_number_integer()) return data[key].get<int32_t>();
-@@ -143,6 +162,8 @@
- }
- 
- inline std::optional<double> GetDouble(const std::string& key) {
-+  auto ctx = GetContextOverlay();
-+  if (HasKey(key, ctx) && ctx[key].is_number()) return ctx[key].get<double>();
-   const auto& data = GetJson();
-   if (!HasKey(key, data)) return std::nullopt;
-   if (data[key].is_number_float()) return data[key].get<double>();
-@@ -153,6 +174,8 @@
- }
- 
- inline std::optional<bool> GetBool(const std::string& key) {
-+  auto ctx = GetContextOverlay();
-+  if (HasKey(key, ctx) && ctx[key].is_boolean()) return ctx[key].get<bool>();
-   const auto& data = GetJson();
-   if (!HasKey(key, data)) return std::nullopt;
-   if (data[key].is_boolean()) return data[key].get<bool>();
-@@ -202,11 +225,11 @@
- 
- inline std::optional<nlohmann::json> GetNested(const std::string& domain,
-                                                std::string keyStr) {
-+  auto ctx = GetContextOverlay();
-+  if (ctx.contains(domain) && ctx[domain].contains(keyStr)) return ctx[domain][keyStr];
-   auto data = GetJson();
-   if (!data.contains(domain)) return std::nullopt;
--
-   if (!data[domain].contains(keyStr)) return std::nullopt;
--
-   return data[domain][keyStr];
- }
- 
---- a/b/dom/base/nsGlobalWindowInner.cpp	2026-04-16 21:14:45
-+++ b/dom/base/nsGlobalWindowInner.cpp	2026-04-16 21:15:37
-@@ -7872,6 +7872,26 @@
+ # DOM Mask
+-LOCAL_INCLUDES += ["/cloakcfg"]
+\ No newline at end of file
++LOCAL_INCLUDES += ["/cloakcfg"]
++SOURCES += ["CloakConfigOverlay.cpp"]
+diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -8208,16 +8208,36 @@
+     if (global) {
        JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
        JS_SetProperty(cx, global, "setWebGLRenderer", undef);
        JS_DeleteProperty(cx, global, "setWebGLRenderer");
-+    }
-+  }
-+}
-+
+     }
+   }
+ }
+ 
 +void nsGlobalWindowInner::SetCloakConfig(const nsAString& aJson,
 +                                          ErrorResult& aRv) {
 +  uint32_t userContextId = 0;
@@ -205,33 +278,49 @@
 +      JS::Rooted<JS::Value> undef(cx, JS::UndefinedValue());
 +      JS_SetProperty(cx, global, "setCloakConfig", undef);
 +      JS_DeleteProperty(cx, global, "setCloakConfig");
-     }
-   }
- }
---- a/b/dom/base/nsGlobalWindowInner.h	2026-04-16 21:14:45
-+++ b/dom/base/nsGlobalWindowInner.h	2026-04-16 21:15:37
-@@ -720,6 +720,8 @@
++    }
++  }
++}
++
+ RefPtr<GenericPromise> nsGlobalWindowInner::StorageAccessPermissionChanged(
+     bool aGranted) {
+   // Invalidate cached StorageAllowed field so that calls to GetLocalStorage
+   // give us the updated localStorage object.
+   ClearStorageAllowedCache();
+ 
+   // Just reset the active cookie and storage principals
+   nsCOMPtr<nsICookieJarSettings> cjs;
+diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
+--- a/dom/base/nsGlobalWindowInner.h
++++ b/dom/base/nsGlobalWindowInner.h
+@@ -723,16 +723,18 @@
+ 
+   // Per-context speech voices
+   void SetSpeechVoices(const nsAString& aVoices, mozilla::ErrorResult& aRv);
+ 
    // Per-context WebGL parameter spoofing
    void SetWebGLVendor(const nsAString& vendor, mozilla::ErrorResult& aRv);
    void SetWebGLRenderer(const nsAString& renderer, mozilla::ErrorResult& aRv);
-+
-+  void SetCloakConfig(const nsAString& aJson, mozilla::ErrorResult& aRv);
  
++  void SetCloakConfig(const nsAString& aJson, mozilla::ErrorResult& aRv);
++
   public:
    void Alert(nsIPrincipal& aSubjectPrincipal, mozilla::ErrorResult& aError);
---- a/b/dom/base/moz.build	2026-04-16 21:14:45
-+++ b/dom/base/moz.build	2026-04-16 21:15:37
-@@ -691,4 +691,5 @@
- )
+   void Alert(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+              mozilla::ErrorResult& aError);
+   bool Confirm(const nsAString& aMessage, nsIPrincipal& aSubjectPrincipal,
+                mozilla::ErrorResult& aError);
+   void Prompt(const nsAString& aMessage, const nsAString& aInitial,
+               nsAString& aReturn, nsIPrincipal& aSubjectPrincipal,
+diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
+--- a/dom/webidl/Window.webidl
++++ b/dom/webidl/Window.webidl
+@@ -1003,16 +1003,21 @@
+   undefined setWebRTCIPv4(DOMString ipv4);
+ };
  
- # DOM Mask
--LOCAL_INCLUDES += ["/cloakcfg"]
-\ No newline at end of file
-+LOCAL_INCLUDES += ["/cloakcfg"]
-+SOURCES += ["CloakConfigOverlay.cpp"]
---- a/b/dom/webidl/Window.webidl	2026-04-16 21:14:45
-+++ b/dom/webidl/Window.webidl	2026-04-16 21:15:37
-@@ -963,6 +963,11 @@
+ partial interface Window {
+   [Throws, Func="mozilla::dom::WebRTCIPManager::IsIPv6FunctionEnabledForWebIDL"]
    undefined setWebRTCIPv6(DOMString ipv6);
  };
  
@@ -243,3 +332,8 @@
  // Used to assign marks to appear on the scrollbar when
  // finding on a page.
  partial interface Window {
+   // The marks are values between 0 and scrollMax{X,Y} - scrollMin{X,Y}.
+   [ChromeOnly]
+   undefined setScrollMarks(sequence<unsigned long> marks,
+                            optional boolean onHorizontalScrollbar = false);
+ };
