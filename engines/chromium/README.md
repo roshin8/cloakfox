@@ -223,3 +223,18 @@ shared/service workers, opaque origins and raw WebGL/WebGPU remain uncovered.
 The RGB low-bit transform reduces precision and is deterministic/idempotent for
 the same site and coordinates. It does not establish resistance to all canvas
 fingerprinting or guarantee a website's verification outcome.
+
+### Worker and GPU extension
+
+The next source patch carries canvas privacy into shared/service-worker storage
+partitions, protects WebGL RGBA8 CPU/PBO pixel reads and reduces GPU identifiers.
+WebGPU compute data is unchanged by default; explicit
+`privacy.blockWebGPUReadback=true` denies READ maps instead of adding image noise
+to arbitrary buffer data. This also blocks CPU access to compute results.
+
+Apply `apply_worker_gpu_patch.py` after `apply_canvas_patch.py`; use the follow-up
+script's `--check` for the combined final state. New ready capabilities are
+`workerCanvasPrivacyVersion`, `webglPrivacyVersion` and `webgpuPrivacyVersion`.
+The launcher accepts `--disable-canvas-privacy` and `--block-webgpu-readback`,
+rejecting unsupported native builds. `privacyPatched` remains false.
+See [coverage, worker-pool semantics and limitations](../../docs/dual-engine/cef-worker-gpu-privacy.md).

@@ -204,7 +204,12 @@ def run(binary, root):
                 assert "Chrome/" in identity["ua"] and "Firefox/" not in identity["ua"], identity
                 assert identity["firefox"] == "undefined", identity
                 report["identity"] = identity
-                graphics = app.evaluate(a, Path(__file__).with_name("webgl_render.js").read_text())
+                graphics_browser = a
+                if app.ready.get("webglPrivacyVersion", 0) > 0:
+                    diagnostic = app.rpc("open", container="2147483646", url=url, privacy={"canvas":False})
+                    assert diagnostic["ok"] and not diagnostic["canvasEnabled"], diagnostic
+                    graphics_browser = app.open("2147483646", url)
+                graphics = app.evaluate(graphics_browser, Path(__file__).with_name("webgl_render.js").read_text())
                 assert graphics["pixel"] == [255, 0, 0, 255] and graphics["error"] == 0, graphics
                 report["graphics"] = graphics
                 report["checks"].append(phase + ": WebGL2 shaders compile and render the expected pixel")

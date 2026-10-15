@@ -170,3 +170,15 @@ Metal/WebGL rendering and pre-certificate transport probes pass. See
 pixel formats, raw WebGL/WebGPU, broader privacy groups and the shared settings UI
 remain open. This checks the small native patch experiment, not privacy parity or
 the whole feasibility milestone.
+
+### Worker and GPU increment — 2026-10-15
+
+Shared/service-worker ownership, opaque RGBA8 WebGL direct/PBO readback and GPU
+identifier reduction now pass native runtime probes. WebGPU has an independent,
+opt-in all-READ-map denial policy; selective image noise is deferred, and default
+compute remains exact. All 53 engine tests, CTest, isolation/sandbox, actual WGSL
+workloads and pre-certificate transport checks pass. See
+`../../dual-engine/cef-worker-gpu-privacy-20261015.json`. The shared/service-worker
+identity follows the effective storage pool owner, including intentionally
+unpartitioned pools. General GPU capabilities, other pixel formats, persona/shared
+configuration and UI remain open; milestone 3 stays incomplete.

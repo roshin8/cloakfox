@@ -177,3 +177,18 @@ standalone SDK transfer requirements. The tested app is
 Native Chromium privacy protections and the shared Gecko/Chromium UI remain
 pending. This result completes the source-build baseline, not milestone 1's
 native canvas privacy gate or privacy parity.
+
+## Native worker/GPU follow-up — 2026-10-15
+
+The separately packaged worker/GPU companion passes 53 Python tests, one C++ test,
+native isolation/sandbox and pre-certificate transport probes. Canvas ownership
+now covers shared and service workers. WebGL protects opaque RGBA8 direct/PBO
+readback, and GPU identifying metadata is reduced. An independent opt-in setting
+blocks all WebGPU READ maps, including compute; selective WebGPU pixel noise is
+not implemented. Actual WGSL render/compute and disabled controls pass across
+all four global types. A private-worker shutdown assertion was reproduced and
+repaired without disabling assertions. Prior SDKs/apps remain preserved.
+
+See [scope, evidence and limitations](cef-worker-gpu-privacy.md) and
+[the dated result](cef-worker-gpu-privacy-20261015.json). Privacy parity, shared
+configuration/UI and authenticated H2/H3 isolation remain pending.

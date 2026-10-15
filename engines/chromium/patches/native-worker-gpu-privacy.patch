@@ -1,0 +1,593 @@
+--- a/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
++++ b/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
+@@ -213,6 +213,8 @@
+     auto* host = content::RenderProcessHost::FromID(child_process_id);
+     auto* profile = host ? Profile::FromBrowserContext(host->GetBrowserContext())
+                          : nullptr;
++    if (profile && profile->GetPrefs()->GetBoolean("cloakfox.webgpu_block_readback"))
++      command_line->AppendSwitch("cloakfox-webgpu-block-readback");
+     if (profile && profile->GetPrefs()->GetBoolean("cloakfox.canvas_enabled")) {
+       command_line->AppendSwitchASCII(
+           "cloakfox-canvas-key", profile->GetPrefs()->GetString("cloakfox.canvas_key"));
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -53,6 +53,10 @@
+ 
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+   registry->RegisterIntegerPref("cloakfox.canvas_readback_version", 1);
++  registry->RegisterIntegerPref("cloakfox.worker_canvas_privacy_version", 1);
++  registry->RegisterIntegerPref("cloakfox.webgl_privacy_version", 1);
++  registry->RegisterIntegerPref("cloakfox.webgpu_privacy_version", 1);
++  registry->RegisterBooleanPref("cloakfox.webgpu_block_readback", false);
+   registry->RegisterBooleanPref("cloakfox.canvas_enabled", true);
+   registry->RegisterStringPref("cloakfox.canvas_key", "");
+   registry->RegisterBooleanPref(cef::prefs::kEnableStorageNotificationService,
+--- a/components/performance_manager/worker_watcher.cc
++++ b/components/performance_manager/worker_watcher.cc
+@@ -366,15 +366,15 @@
+   auto it = service_worker_nodes_.find(version_id);
+   CHECK(it != service_worker_nodes_.end());
+ 
+-  auto service_worker_node = std::move(it->second);
+-
+-  // First, disconnect all current clients of this service worker.
+-  DisconnectAllServiceWorkerClients(service_worker_node.get(), version_id);
+-
+-#if DCHECK_IS_ON()
+-  DCHECK(!detached_frame_count_per_worker_.contains(service_worker_node.get()));
++  // Keep the node registered while disconnecting clients. A worker client may
++  // already be destroyed, and its cleanup checks IsServiceWorkerNode(), which
++  // identifies this node through service_worker_nodes_.
++  DisconnectAllServiceWorkerClients(it->second.get(), version_id);
++
++#if DCHECK_IS_ON()
++  DCHECK(!detached_frame_count_per_worker_.contains(it->second.get()));
+ #endif  // DCHECK_IS_ON()
+-  PerformanceManagerImpl::DeleteNode(std::move(service_worker_node));
++  PerformanceManagerImpl::DeleteNode(std::move(it->second));
+ 
+   service_worker_nodes_.erase(it);
+   size_t erased = std::erase_if(
+--- a/content/renderer/worker/embedded_shared_worker_stub.cc
++++ b/content/renderer/worker/embedded_shared_worker_stub.cc
+@@ -129,6 +129,7 @@
+       token, info->url, info->options->type, info->options->credentials,
+       blink::WebString::FromUtf8(info->options->name),
+       blink::WebSecurityOrigin(constructor_key.origin()),
++      constructor_key,
+       blink::WebSecurityOrigin(origin), is_constructor_secure_context,
+       blink::WebString::FromUtf8(user_agent), ua_metadata,
+       ToWebContentSecurityPolicies(info->content_security_policies),
+--- a/third_party/blink/public/web/web_shared_worker.h
++++ b/third_party/blink/public/web/web_shared_worker.h
+@@ -56,6 +56,7 @@
+ namespace blink {
+ 
+ class MessagePortDescriptor;
++class StorageKey;
+ class WebString;
+ class WebSharedWorkerClient;
+ class WebURL;
+@@ -78,6 +79,7 @@
+       network::mojom::CredentialsMode,
+       const WebString& name,
+       WebSecurityOrigin constructor_origin,
++      const blink::StorageKey& constructor_key,
+       WebSecurityOrigin origin_from_browser,
+       bool is_constructor_secure_context,
+       const WebString& user_agent,
+--- a/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.cc
++++ b/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.cc
+@@ -13,6 +13,8 @@
+ #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+ #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
+ #include "third_party/blink/renderer/platform/network/blink_schemeful_site.h"
++#include "third_party/blink/renderer/platform/storage/blink_storage_key.h"
++#include "third_party/blink/renderer/platform/supplementable.h"
+ #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+ #include "third_party/skia/include/core/SkColorSpace.h"
+ #include "third_party/skia/include/core/SkData.h"
+@@ -21,6 +23,26 @@
+ namespace blink {
+ namespace {
+ using Key = std::array<uint8_t, 32>;
++class CanvasPartitionOwner final : public GarbageCollected<CanvasPartitionOwner>,
++                                   public Supplement<ExecutionContext> {
++ public:
++  static const char kSupplementName[];
++  CanvasPartitionOwner(ExecutionContext& context, const BlinkStorageKey& key)
++      : Supplement<ExecutionContext>(context) {
++    // Shared/service workers belong to their effective storage partition,
++    // which may intentionally be unpartitioned by a storage-access policy.
++    if (!key.GetNonce() && !key.GetSecurityOrigin()->IsOpaque() &&
++        !key.GetTopLevelSite().IsOpaque())
++      site = key.GetTopLevelSite();
++  }
++  void Trace(Visitor* visitor) const override {
++    Supplement<ExecutionContext>::Trace(visitor);
++  }
++  const std::optional<BlinkSchemefulSite>& OwnerSite() const { return site; }
++ private:
++  std::optional<BlinkSchemefulSite> site;
++};
++const char CanvasPartitionOwner::kSupplementName[] = "CloakfoxCanvasPartitionOwner";
+ std::optional<Key> SiteKey(ExecutionContext* context) {
+   const auto key = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+       "cloakfox-canvas-key");
+@@ -33,13 +55,15 @@
+     owner_site = window->GetStorageKey()
+                      .CopyWithForceEnabledThirdPartyStoragePartitioning()
+                      .GetTopLevelSite();
++  } else if (auto* owner =
++                 Supplement<ExecutionContext>::From<CanvasPartitionOwner>(context)) {
++    owner_site = owner->OwnerSite();
+   } else if (auto* worker = DynamicTo<WorkerGlobalScope>(context)) {
+     const auto* origin = worker->top_level_frame_security_origin();
+     if (origin && !origin->IsOpaque())
+       owner_site = BlinkSchemefulSite(scoped_refptr<const SecurityOrigin>(origin));
+   }
+-  // Shared/service worker ownership and opaque origins require separate
+-  // browser-provided partition identity plumbing; do not collapse to "null".
++  // Missing, nonce and opaque partition identities must never collapse to "null".
+   if (!owner_site || owner_site->IsOpaque())
+     return std::nullopt;
+   const auto site = std::string("cloakfox-canvas-v1:") + owner_site->Serialize().Utf8();
+@@ -75,6 +99,19 @@
+ }
+ }  // namespace
+ 
++bool CloakfoxCanvasPrivacyEnabled() {
++  return base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++             "cloakfox-canvas-key").size() == 64;
++}
++bool CloakfoxWebGPUReadbackBlocked() {
++  return base::CommandLine::ForCurrentProcess()->HasSwitch("cloakfox-webgpu-block-readback");
++}
++void CloakfoxSetCanvasOwnerSite(ExecutionContext* context, const BlinkStorageKey& key) {
++  CHECK(context);
++  CHECK(!Supplement<ExecutionContext>::From<CanvasPartitionOwner>(context));
++  Supplement<ExecutionContext>::ProvideTo(
++      *context, MakeGarbageCollected<CanvasPartitionOwner>(*context, key));
++}
+ void CloakfoxCanvasReadback(ExecutionContext* context, const SkPixmap& pixels,
+                             int sx, int sy) {
+   if (const auto key = SiteKey(context))
+--- a/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h
++++ b/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h
+@@ -6,6 +6,10 @@
+ #include "third_party/skia/include/core/SkPixmap.h"
+ namespace blink {
+ class ExecutionContext;
++class BlinkStorageKey;
++CORE_EXPORT bool CloakfoxCanvasPrivacyEnabled();
++CORE_EXPORT bool CloakfoxWebGPUReadbackBlocked();
++CORE_EXPORT void CloakfoxSetCanvasOwnerSite(ExecutionContext*, const BlinkStorageKey&);
+ class StaticBitmapImage;
+ // Only modifies caller-owned readback memory; never the canvas surface.
+ CORE_EXPORT void CloakfoxCanvasReadback(ExecutionContext*, const SkPixmap&,
+--- a/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
++++ b/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
+@@ -70,6 +70,7 @@
+ #include "third_party/blink/renderer/platform/loader/fetch/fetch_client_settings_object_snapshot.h"
+ #include "third_party/blink/renderer/platform/loader/fetch/policy_container_utils.h"
+ #include "third_party/blink/renderer/platform/network/content_security_policy_parsers.h"
++#include "third_party/blink/renderer/platform/storage/blink_storage_key.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+ #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+ #include "third_party/blink/renderer/platform/weborigin/security_policy.h"
+@@ -214,6 +215,7 @@
+     network::mojom::CredentialsMode credentials_mode,
+     const WebString& name,
+     WebSecurityOrigin constructor_origin,
++    const blink::StorageKey& constructor_key,
+     WebSecurityOrigin origin_from_browser,
+     bool is_constructor_secure_context,
+     const WebString& user_agent,
+@@ -269,6 +271,20 @@
+       true /* allow_running_of_insecure_content */,
+       false /* strictly_block_blockable_mixed_content */,
+       GenericFontFamilySettings());
++
++  // A shared worker belongs to its browser-selected storage partition, which
++  // may have clients under several top-level sites when unpartitioned access
++  // is allowed. Use the actual key, never the first creator's hypothetical
++  // partitioned view. Opaque/nonce keys cannot identify a schemeful owner.
++  const BlinkStorageKey storage_key(constructor_key);
++  scoped_refptr<SecurityOrigin> partition_owner;
++  if (!storage_key.GetNonce() &&
++      !storage_key.GetSecurityOrigin()->IsOpaque() &&
++      !origin_from_browser.Get()->IsOpaque() &&
++      !storage_key.GetTopLevelSite().IsOpaque()) {
++    partition_owner = SecurityOrigin::CreateFromString(
++        storage_key.GetTopLevelSite().Serialize());
++  }
+ 
+   // Some params (e.g. address space) passed to GlobalScopeCreationParams are
+   // dummy values. They will be updated after worker script fetch on the worker
+@@ -298,7 +314,7 @@
+       /*direct_sockets_force_enabled_in_parent=*/false,
+       /*interface_registry=*/nullptr,
+       /*agent_group_scheduler_compositor_task_runner=*/nullptr,
+-      /*top_level_frame_security_origin=*/nullptr,
++      /*top_level_frame_security_origin=*/partition_owner.get(),
+       /*parent_storage_access_api_status=*/
+       net::StorageAccessApiStatus::kNone,
+       require_cross_site_request_for_cookies,
+@@ -367,6 +383,7 @@
+     network::mojom::CredentialsMode credentials_mode,
+     const WebString& name,
+     WebSecurityOrigin constructor_origin,
++    const blink::StorageKey& constructor_key,
+     WebSecurityOrigin origin_from_browser,
+     bool is_constructor_secure_context,
+     const WebString& user_agent,
+@@ -396,7 +413,8 @@
+       base::WrapUnique(new WebSharedWorkerImpl(token, std::move(host), client));
+   worker->StartWorkerContext(
+       script_request_url, script_type, credentials_mode, name,
+-      constructor_origin, origin_from_browser, is_constructor_secure_context,
++      constructor_origin, constructor_key, origin_from_browser,
++      is_constructor_secure_context,
+       user_agent, ua_metadata, content_security_policies,
+       outside_fetch_client_settings_object, devtools_worker_token,
+       std::move(content_settings), std::move(browser_interface_broker),
+--- a/third_party/blink/renderer/core/exported/web_shared_worker_impl.h
++++ b/third_party/blink/renderer/core/exported/web_shared_worker_impl.h
+@@ -112,6 +112,7 @@
+       network::mojom::CredentialsMode,
+       const WebString& name,
+       WebSecurityOrigin constructor_origin,
++      const blink::StorageKey& constructor_key,
+       WebSecurityOrigin origin_from_browser,
+       bool is_constructor_secure_context,
+       const WebString& user_agent,
+--- a/third_party/blink/renderer/core/workers/global_scope_creation_params.h
++++ b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+@@ -261,7 +261,11 @@
+ 
+   // The security origin of the top level frame associated with the worker. This
+   // can be used, for instance, to check if the top level frame has an opaque
+-  // origin.
++  // origin. For shared workers, this is instead the canonical schemeful-site
++  // origin of the browser-selected storage partition, for native canvas
++  // ownership. Unpartitioned pools use their actual first-party partition
++  // owner because multiple embedding top-level sites can share one worker.
++  // Shared opaque/nonce keys leave this null.
+   scoped_refptr<const SecurityOrigin> top_level_frame_security_origin;
+ 
+   // Timestamp of the dedicated worker start.
+--- a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc
++++ b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc
+@@ -70,6 +70,7 @@
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_content_index_event_init.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_notification_event_init.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_payment_request_event_init.h"
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
+ #include "third_party/blink/renderer/core/core_initializer.h"
+ #include "third_party/blink/renderer/core/dom/events/event.h"
+ #include "third_party/blink/renderer/core/execution_context/agent.h"
+@@ -1797,11 +1798,15 @@
+ 
+   ancestor_frame_type_ = ancestor_frame_type;
+ 
++  // The persisted browser registration key remains authoritative on restart,
++  // including when no client document exists. Install native canvas ownership
++  // before the first script evaluation can read an OffscreenCanvas.
++  storage_key_ = storage_key;
++  CloakfoxSetCanvasOwnerSite(this, storage_key_);
++
+   global_scope_initialized_ = true;
+   if (!pause_evaluation_)
+     ReadyToRunWorkerScript();
+-
+-  storage_key_ = storage_key;
+ }
+ 
+ void ServiceWorkerGlobalScope::PauseEvaluation() {
+--- a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+@@ -7,6 +7,8 @@
+ #include <memory>
+ 
+ #include "base/compiler_specific.h"
++#include "base/process/memory.h"
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
+ #include "base/containers/heap_array.h"
+ #include "base/feature_list.h"
+ #include "base/numerics/checked_math.h"
+@@ -919,8 +921,43 @@
+     if (!binder.Succeeded()) {
+       return;
+     }
+-    ContextGL()->ReadPixels(x, y, width, height, format, type,
+-                            reinterpret_cast<void*>(offset));
++    if (CloakfoxCanvasPrivacyEnabled() && format == GL_RGBA &&
++        type == GL_UNSIGNED_BYTE && width > 0 && height > 0) {
++      const auto params = GetPackPixelStoreParams();
++      unsigned bytes = 0, padding = 0, skip = 0;
++      if (WebGLImageConversion::ComputeImageSizeInBytes(
++              format, type, width, height, 1, params,
++              &bytes, &padding, &skip) != GL_NO_ERROR)
++        return;
++      void* memory = nullptr;
++      const size_t total = static_cast<size_t>(bytes) + skip;
++      if (!base::UncheckedCalloc(2, total, &memory)) {
++        SynthesizeGLError(GL_OUT_OF_MEMORY, "readPixels", "privacy readback allocation failed");
++        return;
++      }
++      std::unique_ptr<uint8_t, base::UncheckedFreeDeleter> data(
++          static_cast<uint8_t*>(memory));
++      uint8_t* reference = data.get() + total;
++      memset(reference, 255, total);
++      // Read directly into CPU-owned memory before writing the protected PBO
++      // destination. Raw pixels never become available through buffer copies.
++      CloakfoxCollectDriverErrors();
++      ContextGL()->BindBuffer(GL_PIXEL_PACK_BUFFER, 0);
++      ContextGL()->ReadPixels(x, y, width, height, format, type, data.get());
++      bool failed = CloakfoxCollectDriverErrors();
++      if (!failed) {
++        ContextGL()->ReadPixels(x, y, width, height, format, type, reference);
++        failed = CloakfoxCollectDriverErrors();
++      }
++      ContextGL()->BindBuffer(GL_PIXEL_PACK_BUFFER, buffer->Object());
++      if (failed)
++        return;
++      CloakfoxProtectPixelBytes(data.get(), width, height, x, y, framebuffer);
++      CloakfoxCommitPixelBytes(data.get(), reference, nullptr, width, height, offset);
++    } else {
++      ContextGL()->ReadPixels(x, y, width, height, format, type,
++                              reinterpret_cast<void*>(offset));
++    }
+   }
+ }
+ 
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -82,6 +82,8 @@
+ #include "third_party/blink/renderer/core/geometry/dom_rect_read_only.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_host.h"
+ #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
++#include "base/process/memory.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/predefined_color_space.h"
+ #include "third_party/blink/renderer/core/html/html_image_element.h"
+@@ -3828,6 +3830,9 @@
+ 
+ bool WebGLRenderingContextBase::ExtensionSupportedAndAllowed(
+     const ExtensionTracker* tracker) {
++  if (CloakfoxCanvasPrivacyEnabled() &&
++      String(tracker->ExtensionName()) == "WEBGL_debug_renderer_info")
++    return false;
+   if (tracker->Draft() &&
+       !RuntimeEnabledFeatures::WebGLDraftExtensionsEnabled())
+     return false;
+@@ -5281,6 +5286,92 @@
+   ReadPixelsHelper(x, y, width, height, format, type, pixels.Get(), 0);
+ }
+ 
++bool WebGLRenderingContextBase::CloakfoxCollectDriverErrors() {
++  bool failed = false;
++  for (GLenum error = ContextGL()->GetError(); error != GL_NO_ERROR;
++       error = ContextGL()->GetError()) {
++    failed = true;
++    if (!synthetic_errors_.Contains(error))
++      synthetic_errors_.push_back(error);
++    if (error == GL_CONTEXT_LOST_KHR)
++      break;
++  }
++  return failed;
++}
++
++void WebGLRenderingContextBase::CloakfoxProtectPixelBytes(
++    uint8_t* data, GLsizei width, GLsizei height, GLint source_x, GLint source_y,
++    WebGLFramebuffer* framebuffer) {
++  if (!data || width <= 0 || height <= 0)
++    return;
++  const auto params = GetPackPixelStoreParams();
++  unsigned bytes = 0, padding = 0, skip = 0;
++  if (WebGLImageConversion::ComputeImageSizeInBytes(
++          GL_RGBA, GL_UNSIGNED_BYTE, width, height, 1, params,
++          &bytes, &padding, &skip) != GL_NO_ERROR)
++    return;
++  const size_t row_bytes = static_cast<size_t>(params.row_length > 0 ?
++                                               params.row_length : width) * 4 + padding;
++  const auto info = SkImageInfo::Make(width, 1, kRGBA_8888_SkColorType,
++                                     kUnpremul_SkAlphaType);
++  for (int row = 0; row < height; ++row) {
++    const int64_t gl_y = static_cast<int64_t>(source_y) + row;
++    const int64_t image_y = framebuffer ? gl_y :
++        static_cast<int64_t>(GetDrawingBuffer()->Size().height()) - 1 - gl_y;
++    if (!base::IsValueInRangeForNumericType<int>(image_y))
++      continue;
++    SkPixmap pixels(info, data + skip + static_cast<size_t>(row) * row_bytes,
++                     static_cast<size_t>(width) * 4);
++    CloakfoxCanvasReadback(GetExecutionContext(), pixels, source_x,
++                           static_cast<int>(image_y));
++  }
++}
++
++void WebGLRenderingContextBase::CloakfoxCommitPixelBytes(
++    uint8_t* data, const uint8_t* reference, uint8_t* destination,
++    GLsizei width, GLsizei height, int64_t pbo_offset) {
++  const auto params = GetPackPixelStoreParams();
++  unsigned bytes = 0, padding = 0, skip = 0;
++  if (WebGLImageConversion::ComputeImageSizeInBytes(
++          GL_RGBA, GL_UNSIGNED_BYTE, width, height, 1, params,
++          &bytes, &padding, &skip) != GL_NO_ERROR)
++    return;
++  const size_t stride = static_cast<size_t>(params.row_length > 0 ?
++                                             params.row_length : width) * 4 + padding;
++  // Two native reads start with opposite sentinel values. Only actual pixels
++  // overwrite both; clipped pixels and pack gaps retain different sentinels.
++  // The transform changes RGB low bits only, so compare the invariant high
++  // bits and alpha after protection. No framebuffer-size guess is needed,
++  // including texture mip/layer attachments and browser-owned XR buffers.
++  const auto written = [&](size_t start) {
++    return data[start + 3] == reference[start + 3] &&
++           (data[start] & 0xfe) == (reference[start] & 0xfe) &&
++           (data[start + 1] & 0xfe) == (reference[start + 1] & 0xfe) &&
++           (data[start + 2] & 0xfe) == (reference[start + 2] & 0xfe);
++  };
++  for (int row = 0; row < height; ++row) {
++    const size_t row_start = skip + static_cast<size_t>(row) * stride;
++    int column = 0;
++    while (column < width) {
++      if (!written(row_start + static_cast<size_t>(column) * 4)) {
++        ++column;
++        continue;
++      }
++      const int first = column++;
++      while (column < width &&
++             written(row_start + static_cast<size_t>(column) * 4))
++        ++column;
++      const size_t start = row_start + static_cast<size_t>(first) * 4;
++      const size_t count = static_cast<size_t>(column - first) * 4;
++      if (destination)
++        memcpy(destination + start, data + start, count);
++      else
++        ContextGL()->BufferSubData(GL_PIXEL_PACK_BUFFER, pbo_offset + start,
++                                   count, data + start);
++    }
++  }
++}
++
+ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+                                                  GLint y,
+                                                  GLsizei width,
+@@ -5354,7 +5445,37 @@
+     if (!binder.Succeeded()) {
+       return;
+     }
+-    ContextGL()->ReadPixels(x, y, width, height, format, type, data);
++    const bool protect = CloakfoxCanvasPrivacyEnabled() &&
++                         format == GL_RGBA && type == GL_UNSIGNED_BYTE &&
++                         width > 0 && height > 0;
++    if (!protect) {
++      ContextGL()->ReadPixels(x, y, width, height, format, type, data);
++      return;
++    }
++    unsigned bytes = 0, skip = 0;
++    if (WebGLImageConversion::ComputeImageSizeInBytes(
++            format, type, width, height, 1, GetPackPixelStoreParams(),
++            &bytes, nullptr, &skip) != GL_NO_ERROR)
++      return;
++    const size_t total = static_cast<size_t>(bytes) + skip;
++    void* memory = nullptr;
++    if (!base::UncheckedCalloc(2, total, &memory)) {
++      SynthesizeGLError(GL_OUT_OF_MEMORY, "readPixels", "privacy readback allocation failed");
++      return;
++    }
++    std::unique_ptr<uint8_t, base::UncheckedFreeDeleter> scratch(
++        static_cast<uint8_t*>(memory));
++    uint8_t* reference = scratch.get() + total;
++    memset(reference, 255, total);
++    CloakfoxCollectDriverErrors();
++    ContextGL()->ReadPixels(x, y, width, height, format, type, scratch.get());
++    if (CloakfoxCollectDriverErrors())
++      return;
++    ContextGL()->ReadPixels(x, y, width, height, format, type, reference);
++    if (CloakfoxCollectDriverErrors())
++      return;
++    CloakfoxProtectPixelBytes(scratch.get(), width, height, x, y, framebuffer);
++    CloakfoxCommitPixelBytes(scratch.get(), reference, data, width, height);
+   }
+ }
+ 
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+@@ -1389,6 +1389,16 @@
+     return true;
+   }
+ 
++  // Keep driver errors observable while distinguishing a failed read from an
++  // earlier error. The privacy path never transforms a failed destination.
++  bool CloakfoxCollectDriverErrors();
++  void CloakfoxProtectPixelBytes(uint8_t*, GLsizei width, GLsizei height,
++                                 GLint source_x, GLint source_y,
++                                 WebGLFramebuffer*);
++  void CloakfoxCommitPixelBytes(uint8_t* protected_data,
++                                const uint8_t* reference, uint8_t* destination,
++                                GLsizei width, GLsizei height,
++                                int64_t pbo_offset = 0);
+   virtual WebGLImageConversion::PixelStoreParams GetPackPixelStoreParams();
+   virtual WebGLImageConversion::PixelStoreParams GetUnpackPixelStoreParams(
+       TexImageDimension);
+--- a/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
++++ b/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
+@@ -10,6 +10,7 @@
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_device_descriptor.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_queue_descriptor.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_request_adapter_options.h"
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
+ #include "third_party/blink/renderer/core/dom/dom_exception.h"
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/modules/webgpu/dawn_enum_conversions.h"
+@@ -126,8 +127,12 @@
+ GPUAdapterInfo* GPUAdapter::CreateAdapterInfoForAdapter() {
+   bool is_fallback_adapter = adapter_type_ == wgpu::AdapterType::CPU;
+ 
++  // Reduce identifiers for both adapter.info and device.adapterInfo. Capability
++  // values remain truthful so applications can select supported GPU workloads.
++  const bool privacy_enabled = CloakfoxCanvasPrivacyEnabled();
+   GPUAdapterInfo* info;
+-  if (RuntimeEnabledFeatures::WebGPUDeveloperFeaturesEnabled()) {
++  if (!privacy_enabled &&
++      RuntimeEnabledFeatures::WebGPUDeveloperFeaturesEnabled()) {
+     // If WebGPU developer features have been enabled then provide all available
+     // adapter info values.
+     info = MakeGarbageCollected<GPUAdapterInfo>(
+@@ -145,8 +150,9 @@
+     }
+   } else {
+     info = MakeGarbageCollected<GPUAdapterInfo>(
+-        vendor_, architecture_, subgroup_min_size_, subgroup_max_size_,
+-        is_fallback_adapter);
++        privacy_enabled ? String() : vendor_,
++        privacy_enabled ? String() : architecture_, subgroup_min_size_,
++        subgroup_max_size_, is_fallback_adapter);
+   }
+ 
+   // SAFETY: Required from caller
+--- a/third_party/blink/renderer/modules/webgpu/gpu_buffer.cc
++++ b/third_party/blink/renderer/modules/webgpu/gpu_buffer.cc
+@@ -13,6 +13,7 @@
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_buffer_descriptor.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_buffer_map_state.h"
++#include "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h"
+ #include "third_party/blink/renderer/core/dom/dom_exception.h"
+ #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+ #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
+@@ -316,6 +317,13 @@
+                             uint64_t offset,
+                             std::optional<uint64_t> size,
+                             ExceptionState& exception_state) {
++  if (CloakfoxWebGPUReadbackBlocked() &&
++      (mode & static_cast<uint32_t>(wgpu::MapMode::Read))) {
++    exception_state.ThrowDOMException(
++        DOMExceptionCode::kNotAllowedError,
++        "WebGPU read mapping is blocked by the profile privacy policy.");
++    return;
++  }
+   // Compute the defaulted size which is "until the end of the buffer" or 0 if
+   // offset is past the end of the buffer.
+   uint64_t size_defaulted = 0;
+@@ -387,6 +395,17 @@
+   auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(
+       script_state, exception_state.GetContext());
+   auto promise = resolver->Promise();
++
++  // READ maps can contain arbitrary compute results, not only image pixels.
++  // An explicit opt-in policy denies readback rather than corrupting that data.
++  // WRITE maps and mapped-at-creation buffers retain their native behavior.
++  if (CloakfoxWebGPUReadbackBlocked() &&
++      (mode & static_cast<uint32_t>(wgpu::MapMode::Read))) {
++    resolver->RejectWithDOMException(
++        DOMExceptionCode::kNotAllowedError,
++        "WebGPU read mapping is blocked by the profile privacy policy.");
++    return promise;
++  }
+ 
+   // And send the command, leaving remaining validation to Dawn.
+   auto* callback = MakeWGPUOnceCallback(resolver->WrapCallbackInScriptScope(

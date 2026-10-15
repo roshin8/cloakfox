@@ -1,4 +1,4 @@
-"""Launch disposable Chrome-style windows. This is not a privacy-patched browser."""
+"""Launch disposable Chromium development windows with reported native capabilities."""
 import argparse
 import contextlib
 import json
@@ -10,12 +10,14 @@ import threading
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Cloakfox Chromium development prototype; test keychain, no fingerprint protections')
+    parser = argparse.ArgumentParser(description='Cloakfox Chromium development prototype; test keychain, partial native privacy only')
     parser.add_argument('--binary', type=Path,
         default=Path(__file__).parent / 'build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium')
     parser.add_argument('--container', action='append', default=[])
     parser.add_argument('--url', default='about:blank')
     parser.add_argument('--profile-root', type=Path, help='Optional dedicated prototype root; never use a Firefox/Chrome user profile')
+    parser.add_argument('--disable-canvas-privacy', action='store_true', help='Disable canvas/WebGL readback protection and GPU identifier masking')
+    parser.add_argument('--block-webgpu-readback', action='store_true', help='Deny WebGPU READ maps, including compute-result readback; requires native GPU privacy build')
     args = parser.parse_args()
     if not args.binary.is_file():
         parser.error('Build the companion first; see engines/chromium/README.md')
@@ -37,12 +39,26 @@ def main():
             ready = json.loads(first)
             if ready.get('event') != 'ready':
                 raise SystemExit('Unexpected startup response: ' + first)
-            protection = ('partial native canvas protection; privacy parity incomplete'
+            if args.block_webgpu_readback and ready.get('webgpuPrivacyVersion') != 1:
+                raise SystemExit('This companion does not support WebGPU readback policy')
+            if args.disable_canvas_privacy and ready.get('canvasReadbackVersion') != 1:
+                raise SystemExit('This companion does not support native canvas policy')
+            protection = ('partial native canvas/worker/GPU privacy; parity incomplete'
+                          if ready.get('webgpuPrivacyVersion') == 1 else
+                          'partial native canvas protection; privacy parity incomplete'
                           if ready.get('canvasReadbackVersion') == 1
                           else 'fingerprint protection not implemented')
             print('Development prototype: Chromium ' + ready['chromiumVersion'] + '; ' + protection + '.', flush=True)
             for request_id, container in enumerate(args.container or ['1'], start=1):
-                process.stdin.write(json.dumps({'version': 1, 'id': request_id, 'command': 'open', 'container': container, 'url': args.url}) + '\n')
+                request = {'version':1, 'id':request_id, 'command':'open', 'container':container, 'url':args.url}
+                policy = {}
+                if args.disable_canvas_privacy:
+                    policy['canvas'] = False
+                if args.block_webgpu_readback:
+                    policy['blockWebGPUReadback'] = True
+                if policy:
+                    request['privacy'] = policy
+                process.stdin.write(json.dumps(request) + '\n')
             process.stdin.flush()
             rejected = []
             def drain():

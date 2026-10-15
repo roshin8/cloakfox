@@ -164,16 +164,21 @@ const before=pixels(x);f.remove();return {before,after:pixels(x)};})()""")
         self.assertTrue(all(pixel == 0 for pixel in value['after']))
     def test_readback_does_not_change_drawing_surface(self):
         a = self.app.open('101', self.url)
-        result = self.app.evaluate(a, "(() => {" + DRAW + """
-const c=document.createElement('canvas');const x=draw(c);pixels(x);c.toDataURL();
-const g=document.createElement('canvas').getContext('webgl2');
-const t=g.createTexture();g.bindTexture(g.TEXTURE_2D,t);
-g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,c);
-const f=g.createFramebuffer();g.bindFramebuffer(g.FRAMEBUFFER,f);
-g.framebufferTexture2D(g.FRAMEBUFFER,g.COLOR_ATTACHMENT0,g.TEXTURE_2D,t,0);
-const out=new Uint8Array(4);g.readPixels(0,0,1,1,g.RGBA,g.UNSIGNED_BYTE,out);
-return {pixel:Array.from(out),error:g.getError()};})()""")
-        self.assertEqual(result, {'pixel':[72,108,144,255],'error':0})
+        metrics = self.app.rpc('cdp', browser=a, method='Emulation.setDeviceMetricsOverride',
+                               params={'width':800,'height':600,'deviceScaleFactor':1,'mobile':False})
+        self.assertTrue(metrics['ok'], metrics)
+        self.app.evaluate(a, "(() => {" + DRAW + "const c=document.createElement('canvas');const x=draw(c);pixels(x);c.toDataURL();document.body.style.margin='0';document.body.append(c);return true})()")
+        self.app.evaluate(a, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
+        screenshot = self.app.rpc('cdp', browser=a, method='Page.captureScreenshot',
+                                  params={'format':'png','clip':{'x':0,'y':0,'width':32,'height':24,'scale':1}})
+        self.assertTrue(screenshot['ok'], screenshot)
+        png = 'data:image/png;base64,' + screenshot['result']['data']
+        opened = self.app.rpc('open', container='104', url=self.url, privacy={'canvas':False})
+        self.assertTrue(opened['ok'], opened)
+        decoder = self.app.open('104', self.url)
+        import json
+        pixel = self.app.evaluate(decoder, "(async()=>{const bitmap=await createImageBitmap(await(await fetch("+json.dumps(png)+")).blob());const c=document.createElement('canvas');c.width=32;c.height=24;const x=c.getContext('2d');x.drawImage(bitmap,0,0);bitmap.close();return Array.from(x.getImageData(0,0,1,1).data)})()")
+        self.assertEqual(pixel, [72,108,144,255])
     def test_crop_matches_full_read_and_transparent_pixels_stay_zero(self):
         a = self.app.open('101', self.url)
         result = self.app.evaluate(a, "(() => {" + DRAW + "const c=document.createElement('canvas');const x=draw(c);const full=pixels(x);const crop=Array.from(x.getImageData(3,4,17,9).data);const expected=[];for(let y=4;y<13;y++)for(let x=3;x<20;x++)expected.push(...full.slice((y*32+x)*4,(y*32+x+1)*4));x.clearRect(0,0,32,24);return {same:JSON.stringify(crop)===JSON.stringify(expected),blank:pixels(x).every(v=>v===0)};})()")

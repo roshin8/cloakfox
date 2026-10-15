@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <thread>
 #include "include/base/cef_callback.h"
 #include "include/cef_devtools_message_observer.h"
@@ -229,6 +230,14 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     auto capability = global_context->GetPreference("cloakfox.canvas_readback_version");
     canvasVersion_ = capability && capability->GetType() == VTYPE_INT ? capability->GetInt() : 0;
     ready->SetInt("canvasReadbackVersion", canvasVersion_);
+    const auto nativeVersion = [&global_context](const char* name) {
+      auto value = global_context->GetPreference(name);
+      return value && value->GetType() == VTYPE_INT ? value->GetInt() : 0;
+    };
+    webgpuVersion_ = nativeVersion("cloakfox.webgpu_privacy_version");
+    ready->SetInt("webgpuPrivacyVersion", webgpuVersion_);
+    ready->SetInt("webglPrivacyVersion", nativeVersion("cloakfox.webgl_privacy_version"));
+    ready->SetInt("workerCanvasPrivacyVersion", nativeVersion("cloakfox.worker_canvas_privacy_version"));
     ready->SetBool("privacyPatched", false); ready->SetBool("probeEnabled", probe_);
     ready->SetBool("testKeychain", testKeychain_);
     ready->SetBool("testQuicRoute", testQuicPort_ != 0);
@@ -252,6 +261,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     data->SetInt("browser", browser->GetIdentifier());
     data->SetString("container", container); data->SetBool("private", isPrivate);
     data->SetBool("canvasEnabled", canvasVersion_ > 0 && contexts_.at(key).canvasEnabled);
+    data->SetBool("webgpuReadbackBlocked", webgpuVersion_ > 0 && contexts_.at(key).blockWebGPUReadback);
     if (requestId == 0) data->Remove("id");
     emit(data);
     if (closing_) browser->GetHost()->CloseBrowser(true);
@@ -290,6 +300,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     CefRefPtr<CefRequestContext> context;
     bool ready = false;
     bool canvasEnabled = true;
+    bool blockWebGPUReadback = false;
     int creating = 0;
     std::vector<OpenRequest> pending;
   };
@@ -308,15 +319,17 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     if (closing_ || !contexts_.count(key)) return;
     auto& entry = contexts_.at(key);
     entry.context = context;
-    if (canvasVersion_ > 0) {
-      auto enabled = CefValue::Create(); enabled->SetBool(entry.canvasEnabled);
-      CefString failure;
-      if (!context->SetPreference("cloakfox.canvas_enabled", enabled, failure)) {
-        for (const auto& request : entry.pending)
-          error(request.id, "Cannot configure native canvas policy: " + failure.ToString());
-        contexts_.erase(key);
-        return;
-      }
+    const auto applyBool = [&context](const char* name, bool value, CefString& failure) {
+      auto setting = CefValue::Create(); setting->SetBool(value);
+      return context->SetPreference(name, setting, failure);
+    };
+    CefString failure;
+    if ((canvasVersion_ > 0 && !applyBool("cloakfox.canvas_enabled", entry.canvasEnabled, failure)) ||
+        (webgpuVersion_ > 0 && !applyBool("cloakfox.webgpu_block_readback", entry.blockWebGPUReadback, failure))) {
+      for (const auto& request : entry.pending)
+        error(request.id, "Cannot configure native privacy policy: " + failure.ToString());
+      contexts_.erase(key);
+      return;
     }
     entry.ready = true;
     auto pending = std::move(entry.pending);
@@ -357,16 +370,26 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
           (data->HasKey("private") && data->GetType("private") != VTYPE_BOOL)) {
         error(id, "Invalid open request"); return;
       }
-      bool canvasEnabled = true;
-      const bool explicitPolicy = data->HasKey("privacy");
-      if (explicitPolicy) {
+      std::optional<bool> canvasEnabled;
+      std::optional<bool> blockWebGPUReadback;
+      if (data->HasKey("privacy")) {
         auto policy = data->GetType("privacy") == VTYPE_DICTIONARY
                           ? data->GetDictionary("privacy") : nullptr;
-        if (!canvasVersion_ || !policy || policy->GetSize() != 1 ||
-            policy->GetType("canvas") != VTYPE_BOOL) {
+        if (!policy || policy->GetSize() == 0) {
           error(id, "Unsupported privacy policy"); return;
         }
-        canvasEnabled = policy->GetBool("canvas");
+        CefDictionaryValue::KeyList options;
+        policy->GetKeys(options);
+        for (const auto& option : options) {
+          const auto name = option.ToString();
+          if (policy->GetType(name) != VTYPE_BOOL ||
+              (name == "canvas" ? canvasVersion_ == 0 :
+               name == "blockWebGPUReadback" ? webgpuVersion_ == 0 : true)) {
+            error(id, "Unsupported privacy policy"); return;
+          }
+          if (name == "canvas") canvasEnabled = policy->GetBool(name);
+          else blockWebGPUReadback = policy->GetBool(name);
+        }
       }
       const auto container = data->GetString("container").ToString();
       const auto url = data->GetString("url").ToString();
@@ -380,11 +403,14 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
           throw std::runtime_error("Invalid container ID");
         const auto key = std::string(isPrivate ? "private:" : "persistent:") + container;
         auto& entry = contexts_[key];
-        if (entry.context && explicitPolicy && entry.canvasEnabled != canvasEnabled) {
-          error(id, "Canvas policy conflicts with live container context"); return;
+        if (entry.context &&
+            ((canvasEnabled && entry.canvasEnabled != *canvasEnabled) ||
+             (blockWebGPUReadback && entry.blockWebGPUReadback != *blockWebGPUReadback))) {
+          error(id, "Privacy policy conflicts with live container context"); return;
         }
         if (!entry.context) {
-          entry.canvasEnabled = canvasEnabled;
+          entry.canvasEnabled = canvasEnabled.value_or(true);
+          entry.blockWebGPUReadback = blockWebGPUReadback.value_or(false);
           CefRequestContextSettings settings;
           if (!isPrivate) CefString(&settings.cache_path) = paths_->cachePath(container);
           entry.context = CefRequestContext::CreateContext(settings, new ContextHandler(this, key));
@@ -420,6 +446,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
   const bool testKeychain_;
   const int testQuicPort_;
   int canvasVersion_ = 0;
+  int webgpuVersion_ = 0;
   int lastId_ = 0;
   bool closing_ = false;
   int creatingWindows_ = 0;
