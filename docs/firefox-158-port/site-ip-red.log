@@ -1,0 +1,95 @@
+✔ only literal IP addresses accepted and IPv6 canonicalized (1.514125ms)
+✔ compare fresh different containers only; unknown is not a conflict-free measurement (0.88775ms)
+✔ website rules match exact hosts and subdomains without suffix confusion (0.230125ms)
+✔ history records bounded URLs, supports reassignment, deletion and IP exceptions (0.653541ms)
+✔ temporary allowance expires and website exclusions take precedence (0.264375ms)
+✔ conflicting observations do not transfer ownership and expired history is removed from storage (0.1085ms)
+✔ invalid website rules cannot overwrite the saved rules (0.158625ms)
+✖ warnings require the same exact hostname, same IP and another container (1.227458ms)
+✖ each container and hostname retains independent visits on a shared address (0.160042ms)
+✖ unscoped legacy history and IP-only observations cannot imply a website visit (0.693458ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 7
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 101.643833
+
+✖ failing tests:
+
+test at tests/fingerprint/test_ip_conflicts.mjs:57:1
+✖ warnings require the same exact hostname, same IP and another container (1.227458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + [
+  +   1
+  + ]
+  - []
+
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_ip_conflicts.mjs:60:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 1 ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_ip_conflicts.mjs:67:1
+✖ each container and hostname retains independent visits on a shared address (0.160042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    [
+  +   1
+  -   2
+    ]
+
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_ip_conflicts.mjs:71:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 1 ],
+    expected: [ 2 ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_ip_conflicts.mjs:76:1
+✖ unscoped legacy history and IP-only observations cannot imply a website visit (0.693458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + [
+  +   1
+  + ]
+  - []
+
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_ip_conflicts.mjs:80:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 1 ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

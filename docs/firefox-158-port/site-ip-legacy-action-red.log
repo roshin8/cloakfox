@@ -1,0 +1,42 @@
+✔ only literal IP addresses accepted and IPv6 canonicalized (1.036583ms)
+✔ compare fresh different containers only; unknown is not a conflict-free measurement (0.743ms)
+✔ website rules match exact hosts and subdomains without suffix confusion (0.169375ms)
+✔ history records bounded URLs, supports reassignment, deletion and IP exceptions (0.6185ms)
+✔ temporary allowance expires and website exclusions take precedence (0.223291ms)
+✔ container visits remain separate and expired history is removed from storage (0.118541ms)
+✔ invalid website rules cannot overwrite the saved rules (0.090584ms)
+✔ warnings require the same exact hostname, same IP and another container (0.152167ms)
+✔ each container and hostname retains independent visits on a shared address (0.626917ms)
+✔ unscoped legacy history and IP-only observations cannot imply a website visit (0.120458ms)
+✖ legacy row actions leave scoped website visits intact (0.740584ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 10
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 101.3655
+
+✖ failing tests:
+
+test at tests/fingerprint/test_ip_conflicts.mjs:82:1
+✖ legacy row actions leave scoped website visits intact (0.740584ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  2 !== 1
+
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_ip_conflicts.mjs:90:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -101,23 +101,24 @@ export function initIPConflicts() {
       if (!shouldCheckWebsite(id,url) || hasTemporaryIPAllowance(id)) return;
       checkContainerIP(id).then(async()=>{
         if (!browser.isConnected || !Services.prefs.getBoolPref('cloakfox.ip_conflicts.enabled',false) ||
-            browser.contentPrincipal?.originAttributes.userContextId!==id ||
-            Services.prefs.getBoolPref(`cloakfox.container.${id}.allow_shared_ip`,false)) return;
+            browser.contentPrincipal?.originAttributes.userContextId!==id) return;
         if (browser.currentURI.spec !== url || !shouldCheckWebsite(id,url) || hasTemporaryIPAllowance(id)) return;
         const result=ipConflictResults().find(row=>row.ucid===id);
         if (!result?.ip) return;
-        const conflicts=conflictForIP(id,result.ip);
-        if (!conflicts.length || ipExceptions().includes(result.ip)) { recordIPAccess(result.ip,id,url); return; }
+        const conflicts=conflictForIP(id,result.ip,url);
+        if (!conflicts.length || ipExceptions().includes(result.ip) ||
+            Services.prefs.getBoolPref(`cloakfox.container.${id}.allow_shared_ip`,false)) { recordIPAccess(result.ip,id,url); return; }
         if (Services.prefs.getStringPref('cloakfox.ip_conflicts.response','warning') === 'warning') {
           showIPWarning(browser,id,url,result.ip); return;
         }
         const box=win.gBrowser.getNotificationBox(browser);
         if (box.getNotificationWithValue('cloakfox-ip-conflict')) return;
         await box.appendNotification('cloakfox-ip-conflict',{
-          label:'This container shares its measured public IP with another container. Websites may link these sessions.',
+          label:'Another container visited this hostname with the same public IP. This website may link these sessions.',
           priority:box.PRIORITY_WARNING_MEDIUM,
         },[{label:'Review IP conflicts',callback(){win.openTrustedLinkIn(`about:cloakfox?ucid=${id}#cfx-ip-conflict-panel`,'tab');}},
           {label:'Allow sharing for this container',callback(){allowSharedIP(id,true);}}]);
+        recordIPAccess(result.ip,id,url);
       }).catch(Cu.reportError);
     }};
     win.__cloakfoxIPMonitor=listener;win.gBrowser.addTabsProgressListener(listener);
@@ -177,38 +178,48 @@ export function ipHistory() {
   if (rows.length !== stored.length) { Services.prefs.setStringPref(HISTORY_PREF,JSON.stringify(rows)); Services.prefs.savePrefFile(null); }
   return rows;
 }
+function visitedHostname(url) {
+  try {
+    const uri = new URL(url);
+    return /^https?:$/.test(uri.protocol) ? uri.hostname.toLowerCase().replace(/\.$/, '') : '';
+  } catch { return ''; }
+}
 export function recordIPAccess(ip, id, url = '') {
   ip = normalizeObservedIP(ip); validateId(id);
-  const rows = ipHistory(), old = rows.find(row => row.ip === ip);
-  // A conflicting observation must not silently transfer ownership.
-  if (old && old.ucid !== id) return;
+  const hostname = visitedHostname(url);
+  if (!hostname) return;
+  const rows = ipHistory();
+  const matches = row => row.ip === ip && row.ucid === id && row.hostname === hostname;
+  const old = rows.find(matches);
   let safeURL = '';
   try { const u = new URL(url); if (/^https?:$/.test(u.protocol)) { u.username='';u.password='';u.search='';u.hash='';safeURL=u.href.slice(0,2048); } } catch {}
   const now = Date.now();
-  const row = {ip,ucid:id,firstAccessed:old?.firstAccessed || now,lastAccessed:now,accessCount:(old?.accessCount || 0)+1,
+  const row = {ip,ucid:id,hostname,firstAccessed:old?.firstAccessed || now,lastAccessed:now,accessCount:(old?.accessCount || 0)+1,
     urls:[...(safeURL ? [safeURL] : []),...(old?.urls || [])].slice(0,10)};
-  writeJSON(HISTORY_PREF, [row,...rows.filter(value => value.ip !== ip)].slice(0,500));
+  writeJSON(HISTORY_PREF, [row,...rows.filter(value => !matches(value))].slice(0,500));
 }
-export function clearIPHistory(ip = null) {
-  writeJSON(HISTORY_PREF, ip === null ? [] : ipHistory().filter(row => row.ip !== normalizeObservedIP(ip)));
+export function clearIPHistory(ip = null, id = null, hostname = null) {
+  writeJSON(HISTORY_PREF, ip === null ? [] : ipHistory().filter(row => row.ip !== normalizeObservedIP(ip) ||
+    (id !== null && row.ucid !== id) || (hostname !== null && (row.hostname ?? '') !== hostname)));
   for (const [id,row] of records) if (ip === null || row.ip === ip) records.delete(id);
   Services.obs.notifyObservers(null,'cloakfox-ip-conflicts-updated');
 }
-export function reassignIP(ip,id) {
+export function reassignIP(ip,id,fromId = null,hostname = null) {
   validateId(id);ip=normalizeObservedIP(ip);
-  writeJSON(HISTORY_PREF,ipHistory().map(row => row.ip === ip ? {...row,ucid:id} : row));
+  writeJSON(HISTORY_PREF,ipHistory().map(row => row.ip === ip &&
+    (fromId === null || row.ucid === fromId) && (hostname === null || (row.hostname ?? '') === hostname) ? {...row,ucid:id} : row));
 }
-export function conflictForIP(id, ip) {
-  if (!ip) return [];
-  const recent = ipConflictResults().filter(row => row.ucid !== id && row.ip === ip).map(row => row.ucid);
-  const history = ipHistory().filter(row => row.ucid !== id && row.ip === ip).map(row => row.ucid);
-  return [...new Set([...recent,...history])];
+export function conflictForIP(id, ip, url = '') {
+  const hostname = visitedHostname(url);
+  if (!ip || !hostname) return [];
+  return [...new Set(ipHistory().filter(row => row.ucid !== id && row.ip === ip &&
+    row.hostname === hostname).map(row => row.ucid))];
 }
 const warningContexts = new Map();
 export function getIPWarning(token) {
   const context = warningContexts.get(token);
   if (!context || !context.browser.isConnected || Date.now() - context.created > 3600000) return null;
-  return {id:context.id,url:context.url,ip:context.ip,conflicts:conflictForIP(context.id,context.ip)};
+  return {id:context.id,url:context.url,ip:context.ip,conflicts:conflictForIP(context.id,context.ip,context.url)};
 }
 export async function resolveIPWarning(token, action) {
   const context = warningContexts.get(token);
@@ -218,7 +229,7 @@ export async function resolveIPWarning(token, action) {
     if (context.browser.currentURI.spec !== 'chrome://browser/content/cloakfox/ip-warning.html?token='+token) throw new Error('The tab has navigated away.');
     if (!result.ip) return {error:result.error};
     context.ip = result.ip;
-    if (conflictForIP(context.id,result.ip).length && !ipExceptions().includes(result.ip)) return {conflict:true,ip:result.ip};
+    if (conflictForIP(context.id,result.ip,context.url).length && !ipExceptions().includes(result.ip)) return {conflict:true,ip:result.ip};
   } else if (action === 'once') allowIPOnce(context.id);
   else if (action === 'container') allowSharedIP(context.id,true);
   else if (action === 'ip') setIPException(context.ip,true);

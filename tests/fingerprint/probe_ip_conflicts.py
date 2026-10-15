@@ -39,6 +39,12 @@ def main():
    assert all(r['conflicts'] for r in rows()),rows()
    assert all(s.hits==1 for s in servers)
    d.execute_script("Services.prefs.setStringPref('cloakfox.ip_conflicts.response','notification');Services.prefs.setBoolPref('cloakfox.ip_conflicts.enabled',true);const w=Services.wm.getMostRecentWindow('navigator:browser');w.gBrowser.selectedTab=w.gBrowser.addTab('https://api64.ipify.org/?fixture=page',{userContextId:arguments[0],triggeringPrincipal:Services.scriptSecurityManager.getSystemPrincipal()});",ids[1])
+   # Settings measurements and a visit to another hostname cannot imply a visit here.
+   WebDriverWait(d,15).until(lambda d:d.execute_script("return ChromeUtils.importESModule('resource:///modules/CloakfoxIPConflicts.sys.mjs').ipHistory().some(row=>row.ucid===arguments[0]&&row.hostname==='api64.ipify.org');",ids[1]))
+   assert not d.execute_script("const w=Services.wm.getMostRecentWindow('navigator:browser');return !!w.gBrowser.getNotificationBox(w.gBrowser.selectedBrowser).getNotificationWithValue('cloakfox-ip-conflict');")
+   assert d.execute_script("const m=ChromeUtils.importESModule('resource:///modules/CloakfoxIPConflicts.sys.mjs');m.recordIPAccess('192.0.2.1',arguments[0],'https://httpbin.org/ip');return m.conflictForIP(arguments[1],'192.0.2.1','https://api64.ipify.org/');",ids[0],ids[1]) == []
+   assert d.execute_script("return ChromeUtils.importESModule('resource:///modules/CloakfoxIPConflicts.sys.mjs').conflictForIP(arguments[0],'192.0.2.1','https://api64.ipify.org/');",ids[1]) == []
+   d.execute_script("const m=ChromeUtils.importESModule('resource:///modules/CloakfoxIPConflicts.sys.mjs');m.recordIPAccess('192.0.2.1',arguments[0],'https://api64.ipify.org/');Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser.reload();",ids[0])
    WebDriverWait(d,15).until(lambda d:d.execute_script("const w=Services.wm.getMostRecentWindow('navigator:browser');return !!w.gBrowser.getNotificationBox(w.gBrowser.selectedBrowser).getNotificationWithValue('cloakfox-ip-conflict');"))
    d.execute_script("Services.prefs.setBoolPref('cloakfox.ip_conflicts.enabled',false)")
    # Full warning page keeps the original container and only continues after an explicit action.

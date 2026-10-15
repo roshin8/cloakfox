@@ -15,7 +15,7 @@ if (!warning) {
   const name = id => id === 0 ? 'Default' : ContextualIdentityService.getPublicIdentityFromId(id)?.name || `Container ${id}`;
   function renderComparison(ip, conflicts) {
     document.getElementById('heading').textContent = conflicts.length === 1 ? 'Two containers. One public IP.' : 'These containers share a public IP.';
-    document.getElementById('warning-detail').textContent = `${name(warning.id)} matches an address already used by ${conflicts.map(name).join(', ')}.`;
+    document.getElementById('warning-detail').textContent = `${name(warning.id)} uses the same public IP for this hostname as ${conflicts.map(name).join(', ')}.`;
     document.getElementById('current-container').textContent = name(warning.id);
     document.getElementById('current-ip').textContent = ip;
     const list = document.getElementById('conflicting-containers');
@@ -25,7 +25,7 @@ if (!warning) {
       heading.textContent = name(id);
       const label = document.createElement('div');
       label.className = 'label';
-      label.textContent = 'Previously observed';
+      label.textContent = 'Previously visited this hostname';
       const address = document.createElement('div');
       address.className = 'address';
       address.textContent = ip;

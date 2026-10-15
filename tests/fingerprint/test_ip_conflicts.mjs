@@ -44,12 +44,49 @@ test('temporary allowance expires and website exclusions take precedence',()=>{
  monitor.allowIPOnce(1,1000);assert.equal(monitor.hasTemporaryIPAllowance(1,30999),true);
  assert.equal(monitor.hasTemporaryIPAllowance(1,31000),false);
 });
-test('conflicting observations do not transfer ownership and expired history is removed from storage',()=>{
+test('container visits remain separate and expired history is removed from storage',()=>{
  monitor.clearIPHistory();monitor.recordIPAccess('192.0.2.8',1,'https://example.com');monitor.recordIPAccess('192.0.2.8',2,'https://example.com');
- assert.equal(monitor.ipHistory()[0].ucid,1);assert.equal(monitor.ipHistory()[0].accessCount,1);
+ assert.deepEqual(monitor.ipHistory().map(row=>row.ucid).sort(),[1,2]);assert.ok(monitor.ipHistory().every(row=>row.accessCount===1));
  prefs.set('cloakfox.ip_conflicts.history',JSON.stringify([{ip:'192.0.2.8',ucid:1,lastAccessed:Date.now()-31*86400000}]));
  assert.equal(monitor.ipHistory().length,0);assert.equal(prefs.get('cloakfox.ip_conflicts.history'),'[]');
 });
 test('invalid website rules cannot overwrite the saved rules',()=>{
  const before=monitor.getIPRules(1);assert.throws(()=>monitor.setIPRules({mode:'all',include:['https://example.com'],exclude:[]},1));assert.deepEqual(monitor.getIPRules(1),before);
+});
+
+test('warnings require the same exact hostname, same IP and another container',()=>{
+ monitor.clearIPHistory();
+ monitor.recordIPAccess('192.0.2.10',1,'https://one.example/path');
+ assert.deepEqual(monitor.conflictForIP(2,'192.0.2.10','https://two.example/'),[]);
+ assert.deepEqual(monitor.conflictForIP(2,'192.0.2.10','https://sub.one.example/'),[]);
+ assert.deepEqual(monitor.conflictForIP(1,'192.0.2.10','https://one.example/'),[]);
+ assert.deepEqual(monitor.conflictForIP(2,'192.0.2.11','https://one.example/'),[]);
+ assert.deepEqual(monitor.conflictForIP(2,'192.0.2.10','http://ONE.example:8080/elsewhere'),[1]);
+ assert.deepEqual(monitor.conflictForIP(2,'192.0.2.10'),[]);
+});
+test('each container and hostname retains independent visits on a shared address',()=>{
+ monitor.clearIPHistory();
+ monitor.recordIPAccess('192.0.2.11',1,'https://one.example/');
+ monitor.recordIPAccess('192.0.2.11',2,'https://two.example/');
+ assert.deepEqual(monitor.conflictForIP(3,'192.0.2.11','https://two.example/'),[2]);
+ monitor.recordIPAccess('192.0.2.11',2,'https://one.example/');
+ assert.deepEqual(monitor.conflictForIP(1,'192.0.2.11','https://one.example/'),[2]);
+ assert.deepEqual(monitor.conflictForIP(3,'192.0.2.11','https://one.example/').sort(),[1,2]);
+});
+test('unscoped legacy history and IP-only observations cannot imply a website visit',()=>{
+ monitor.clearIPHistory();
+ prefs.set('cloakfox.ip_conflicts.history',JSON.stringify([{ip:'192.0.2.12',ucid:1,lastAccessed:Date.now(),urls:['https://one.example/']}]));
+ monitor.recordIPAccess('192.0.2.12',2);
+ assert.deepEqual(monitor.conflictForIP(3,'192.0.2.12','https://one.example/'),[]);
+});
+test('legacy row actions leave scoped website visits intact',()=>{
+ monitor.clearIPHistory();
+ monitor.recordIPAccess('192.0.2.20',1,'https://one.example/');
+ const legacy={ip:'192.0.2.20',ucid:1,lastAccessed:Date.now(),urls:[]};
+ prefs.set('cloakfox.ip_conflicts.history',JSON.stringify([...monitor.ipHistory(),legacy]));
+ monitor.reassignIP('192.0.2.20',2,1,'');
+ assert.deepEqual(monitor.conflictForIP(3,'192.0.2.20','https://one.example/'),[1]);
+ monitor.clearIPHistory('192.0.2.20',2,'');
+ assert.equal(monitor.ipHistory().length,1);
+ assert.equal(monitor.ipHistory()[0].hostname,'one.example');
 });

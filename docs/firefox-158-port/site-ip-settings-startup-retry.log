@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_ip_conflict_settings.py", line 47, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_ip_conflict_settings.py", line 9, in main
+    root=Path(t);profile=root/'profile';profile.mkdir();d=launch(profile,root/'gecko.log')
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_daily_defaults.py", line 58, in launch
+    driver = webdriver.Firefox(options=options, service=Service(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/firefox/webdriver.py", line 69, in __init__
+    super().__init__(command_executor=executor, options=self.options)
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/common/webdriver.py", line 25, in __init__
+    super().__init__(*args, **kwargs)
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 296, in __init__
+    self.start_session(capabilities)
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 401, in start_session
+    response = self.execute(Command.NEW_SESSION, caps)["value"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 506, in execute
+    self.error_handler.check_response(response)
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.WebDriverException: Message: Failed to decode response from marionette

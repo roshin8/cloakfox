@@ -48,7 +48,7 @@ loadNetwork();
   const ipMonitor = ChromeUtils.importESModule('resource:///modules/CloakfoxIPConflicts.sys.mjs');
   const panel=document.createElement('section');panel.id='cfx-ip-conflict-panel';panel.className='card';
   const heading=document.createElement('h2');heading.textContent='IP conflict management';panel.append(heading);
-  const note=document.createElement('p');note.textContent='Checks ipify through each container’s route, with httpbin as fallback. Observations can differ by destination or address family. Warnings appear after the initial connection. Private windows are excluded. Local history retains up to 500 IPs for 30 days and ten recent URLs per IP, without query strings or fragments.';panel.append(note);
+  const note=document.createElement('p');note.textContent='Checks ipify through each container’s route, with httpbin as fallback. Observations can differ by destination or address family. Warnings require a recorded visit to the same exact hostname in another container with the same IP. Manual route checks do not count as visits. Warnings appear after the initial connection. Private windows are excluded. Local history retains up to 500 container/hostname/IP records for 30 days and ten recent URLs per record, without query strings or fragments.';panel.append(note);
   function toggle(labelText,id){const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.id=id;label.append(input,document.createTextNode(labelText));panel.append(label);return input;}
   const automatic=toggle('Check automatically on website navigation','cfx-ip-auto');
   automatic.checked=Services.prefs.getBoolPref('cloakfox.ip_conflicts.enabled',false);
@@ -98,7 +98,7 @@ loadNetwork();
   const exceptionLabel=document.createElement('label');exceptionLabel.textContent='IP address';const exceptionInput=document.createElement('input');exceptionInput.placeholder='192.0.2.1';exceptionLabel.append(exceptionInput);panel.append(exceptionLabel);
   action('Allow IP',()=>{ipMonitor.setIPException(exceptionInput.value,true);exceptionInput.value='';});
   const exceptionList=document.createElement('div');panel.append(exceptionList);
-  const historyTitle=document.createElement('h3');historyTitle.textContent='IP ownership history';panel.append(historyTitle);
+  const historyTitle=document.createElement('h3');historyTitle.textContent='Website IP visit history';panel.append(historyTitle);
   action('Clear all IP records',()=>ipMonitor.clearIPHistory());
   const historyList=document.createElement('div');panel.append(historyList);
   function displayHistory(){
@@ -109,14 +109,14 @@ loadNetwork();
     historyList.replaceChildren();
     for(const record of ipMonitor.ipHistory()){
       const row=document.createElement('div');row.className='ip-record';
-      const heading=document.createElement('strong');heading.textContent=record.ip+' · '+(names.get(record.ucid)||'Deleted container');row.append(heading);
+      const heading=document.createElement('strong');heading.textContent=record.ip+' · '+(names.get(record.ucid)||'Deleted container')+' · '+(record.hostname||'Legacy record — not used for warnings');row.append(heading);
       const meta=document.createElement('p');meta.textContent=`First: ${new Date(record.firstAccessed).toLocaleString()} · Last: ${new Date(record.lastAccessed).toLocaleString()} · ${record.accessCount} observations`;row.append(meta);
       const owner=document.createElement('select');owner.setAttribute('aria-label','Assign '+record.ip+' to container');for(const item of all)owner.append(new Option(item.name,item.userContextId));owner.value=String(record.ucid);row.append(owner);
-      action('Reassign',()=>ipMonitor.reassignIP(record.ip,Number(owner.value)),row);action('Delete record',()=>ipMonitor.clearIPHistory(record.ip),row);action('Allow IP',()=>ipMonitor.setIPException(record.ip,true),row);
+      action('Reassign',()=>ipMonitor.reassignIP(record.ip,Number(owner.value),record.ucid,record.hostname??''),row);action('Delete record',()=>ipMonitor.clearIPHistory(record.ip,record.ucid,record.hostname??''),row);action('Allow IP',()=>ipMonitor.setIPException(record.ip,true),row);
       const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Recent URLs';details.append(summary);
       for(const url of record.urls){const line=document.createElement('p');line.textContent=url;details.append(line);}row.append(details);historyList.append(row);
     }
-    if(!historyList.children.length)historyList.textContent='No recorded IP ownership. History is collected on checked website visits.';
+    if(!historyList.children.length)historyList.textContent='No recorded website visits. History is collected on checked website visits.';
   }
 
   function displayIPs(){
@@ -126,8 +126,8 @@ loadNetwork();
     const rows=ipMonitor.ipConflictResults().filter(row=>names.has(row.ucid));
     results.replaceChildren();
     if (!rows.length) {results.textContent='No recent measurements. Check now or enable automatic checks.';return;}
-    for(const row of rows){row.conflicts=ipMonitor.conflictForIP(row.ucid,row.ip);const line=document.createElement('span');line.style.display='block';
-      line.textContent=`${names.get(row.ucid)}: ${row.ip||'Unknown'} — ${row.error|| (row.conflicts.length ? 'shared with '+row.conflicts.map(id=>names.get(id)||`Container ${id}`).join(', ') : 'no match in recent measurements or retained history')}`;results.append(line);}
+    for(const row of rows){const line=document.createElement('span');line.style.display='block';
+      line.textContent=`${names.get(row.ucid)}: ${row.ip||'Unknown'} — ${row.error|| (row.conflicts.length ? 'same measured address as '+row.conflicts.map(id=>names.get(id)||`Container ${id}`).join(', ') : 'no match in recent route measurements')}`;results.append(line);}
   }
   check.addEventListener('click',async()=>{
     check.disabled=true;results.textContent='Checking container routes…';

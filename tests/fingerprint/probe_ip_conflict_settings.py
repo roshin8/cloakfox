@@ -35,13 +35,13 @@ def main():
    assert 'secret=x' not in d.find_element('id','cfx-ip-conflict-panel').text
    for width in [1280,848,600]:
     d.set_window_size(width,1000)
-    assert d.execute_script('return document.documentElement.scrollWidth <= innerWidth'),width
+    WebDriverWait(d,5).until(lambda d:d.execute_script('return document.documentElement.scrollWidth <= innerWidth'),f'responsive width {width}')
    d.set_window_size(1280,1000)
    d.find_element('class name','ip-manager-fields').location_once_scrolled_into_view
    d.set_context('chrome');d.save_screenshot(str(Path(__file__).resolve().parents[2]/'docs/ip-conflicts/settings.png'));d.set_context('content')
    d.execute_script("const s=document.getElementById('cfx-layout');s.value='grouped';s.dispatchEvent(new Event('change'))")
    assert d.execute_script("return document.getElementById('cfx-ip-conflict-panel').closest('.settings-group').querySelector('summary').textContent==='IP conflict management'")
-   click('Delete record');assert 'No recorded IP ownership.' in d.find_element('id','cfx-ip-conflict-panel').text
+   click('Delete record');assert 'No recorded website visits.' in d.find_element('id','cfx-ip-conflict-panel').text
    print('PASS: website rules persist, exception add/remove, history display/delete, URL redaction, responsive settings')
   finally:d.quit()
 if __name__=='__main__':main()

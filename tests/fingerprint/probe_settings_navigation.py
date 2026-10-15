@@ -26,6 +26,7 @@ def main():
             assert driver.execute_script("return !document.querySelector('.hero').hidden && document.getElementById('cfx-proxy-manager').hidden")
             container=driver.execute_script("return document.getElementById('cfx-container-select').value")
             category('region')
+            assert not driver.find_element('id','cfx-chromium-status').is_displayed(), 'Chromium status must stay inside its settings section'
             driver.execute_script("document.getElementById('cfx-region-locale').value='fr-CA'")
             def appearance(layout, theme):
                 driver.execute_script("for(const [id,value] of [['cfx-layout',arguments[0]],['cfx-theme',arguments[1]]]){const s=document.getElementById(id);s.value=value;s.dispatchEvent(new Event('change'));}",layout,theme)
@@ -39,6 +40,7 @@ def main():
             assert driver.execute_script("return document.getElementById('cfx-container-select').value")==container
             driver.execute_script("const s=document.getElementById('cfx-settings-search');s.value='saved proxies';s.dispatchEvent(new Event('input'))")
             assert driver.execute_script("return !document.getElementById('cfx-proxy-manager').hidden")
+            assert not driver.find_element('id','cfx-chromium-status').is_displayed(), 'Unrelated search must hide Chromium status'
             driver.execute_script("const s=document.getElementById('cfx-settings-search');s.value='zzzz-no-setting';s.dispatchEvent(new Event('input'))")
             assert driver.execute_script("return !document.querySelector('.settings-empty').hidden")
             category('display')
@@ -55,6 +57,12 @@ def main():
             appearance('console','light')
             driver.find_element('css selector', '[data-panel="sec-graphics"]').click()
             assert driver.execute_script("return document.getElementById('sec-display').hidden && !document.getElementById('sec-graphics').hidden")
+            for layout in ('console','grouped'):
+                appearance(layout,'light')
+                for name in ('region','connections','containers','media','privacy','display'):
+                    category(name)
+                    assert not driver.find_element('id','cfx-chromium-status').is_displayed(), (layout,name)
+            category('display')
             for width in (1280,848,600):
                 driver.set_window_size(width,1000)
                 assert driver.execute_script("return document.documentElement.scrollWidth <= innerWidth"), f'overflow at {width}'
