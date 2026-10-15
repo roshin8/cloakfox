@@ -95,3 +95,36 @@ reports are `cef-source-preflight-internal-20261015.json` and
 `cef-source-preflight-external-20261015.json`: macOS SDK 27.0, full Xcode absent,
 internal free space below the 128 GiB budget, external ExFAT volume with capacity.
 The native source patch and later integration milestones remain blocked/pending.
+
+## Experimental CLT configuration — 2026-10-15
+
+The earlier source preflight reports describe the standard upstream build path.
+Full Xcode is not proven categorically necessary for a custom source build.
+An opt-in, non-official Command Line Tools adaptation now exists for the pinned
+Chromium mac_sdk.gni. The patch uses installed CLT receipt version 27.0 and real
+SDK/compiler paths, without a fake Xcode bundle, xcodebuild wrapper, sign-in,
+license acceptance or system settings changes.
+
+The pinned-source patch and helper passed four focused tests. The real patched
+mac_sdk.gni passed an isolated GN generation test with explicit minimal surrounding
+imports; the default Xcode branch still fails on this CLT-only machine and CLT
+mode rejects official builds. Native Cocoa/Metal code compiled and executed using
+the paths produced by that GN branch. Evidence: `cef-clt-configuration-20261015.json`.
+Legacy xcode_version fields in this development mode encode the actual CLT toolset
+version; xcode_build explicitly identifies CLT. These are build compatibility
+fields, not evidence of a full Xcode installation.
+
+This is not a complete Chromium/CEF source build. The machine lacks ibtool,
+actool, metal and momc; targets requiring those tools remain unsupported by this
+adaptation. CEF nib-based sample applications explicitly use ibtool. Framework
+resource dependencies and the complete build graph remain unverified, as do
+native privacy patches. Available internal APFS space is still below the source
+build budget. Current regression checks: 15 engine Python tests, one C++ boundary
+test and 234 existing Gecko Node tests passed. No CEF browser binary or Gecko
+product code was changed.
+
+Focused review found two configuration regressions: the initial CLT branch did
+not enforce mac_sdk_min and silently ignored mac_sdk_path overrides. Both were
+reproduced as successful GN generations that should have failed, then repaired.
+The final GN probe now verifies rejection of too-old SDKs and unsupported custom
+SDK paths as well as official-build rejection and normal CLT configuration.

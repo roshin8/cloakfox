@@ -123,3 +123,54 @@ proceeding to Gecko launcher integration and a shared shell.
 CEF is a viable embedding candidate based on the measured prototype so far;
 it is not yet selected as Cloakfox's final architecture. See the roadmap and
 verification report for completed and pending work.
+
+## Experimental Command Line Tools source configuration
+
+An opt-in adaptation is available for Chromium **154.0.8037.98**. It uses the
+installed CLT receipt, compiler and SDK paths; it does not create a fake
+`Xcode.app`, replace `xcodebuild`, accept licenses, or alter system settings.
+Prepare an existing pinned Chromium source checkout:
+
+```sh
+python3 engines/chromium/prepare_clt_build.py --source-root /absolute/path/to/chromium/src
+# Include these in that checkout's GN arguments:
+# mac_use_command_line_tools=true
+# use_system_xcode=true
+# is_official_build=false
+```
+
+The preparer checks the upstream GN file SHA256, preserves its original beside
+it and refuses changed input or conflicting helper files. Repeating preparation
+is supported. To undo it, restore `build/config/mac/mac_sdk.gni.cloakfox-original`
+over `mac_sdk.gni` and remove the installed `build/config/apple/clt_sdk_info.py`.
+Normal GN builds still use upstream Xcode detection unless explicitly opted in.
+Official builds, non-system toolchains and explicit `mac_sdk_path` overrides
+reject CLT mode. The discovered SDK must satisfy Chromium's `mac_sdk_min`.
+
+Legacy GN `xcode_version` fields encode the installed **CLT toolset** version in
+this mode for existing build consumers. `xcode_build` is explicitly `CLT-<receipt
+version>`; no actual Xcode installation or release metadata is claimed. The
+native helper is macOS-only. Missing `ibtool`, `actool`, `metal` and `momc` remain
+unavailable; this mode does not emulate them or establish support for targets
+that need them (including CEF's nib-based sample applications).
+
+Measured on this machine: the real patched GN configuration works in an isolated
+fixture, rejects official builds, leaves default Xcode behavior intact, and its
+returned compiler/SDK paths compile and run Cocoa/Metal code. The fixture supplies
+minimal surrounding GN imports; it is **not the complete Chromium build graph**.
+A full CEF framework build, browser runtime, target-specific resource requirements
+and privacy patches remain unverified. The normal `source_preflight.py` still
+reports standard Xcode prerequisites and storage budget; it is not a validator
+for this experimental mode.
+
+To repeat the configuration probe, use a public standalone GN executable and a
+small source tree containing the pinned upstream `mac_sdk.gni`, `sdk_info.py` and
+`find_sdk.py` at their upstream paths:
+
+```sh
+python3 tests/engines/probe_clt_toolchain.py --gn /absolute/path/to/gn \
+  --upstream-root /absolute/path/to/pinned-source-files --report /tmp/clt-probe.json
+```
+
+The pinned upstream fixture in `tests/engines/fixtures/mac_sdk_154.gni` is covered
+by `THIRD_PARTY_LICENSES/Chromium-LICENSE.txt`.
