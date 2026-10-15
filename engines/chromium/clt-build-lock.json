@@ -2,6 +2,18 @@
   "chromiumVersion": "154.0.8037.98",
   "path": "build/config/mac/mac_sdk.gni",
   "originalSha256": "c8d20392804889087b6737bd1ffc10fdc1845e2a7d9a4218856ef248771bc8e9",
-  "patchedSha256": "ca37060be4e275522663c71880b58254e969700a2910247cb2cb1b5bbf02caa9",
-  "upstreamUrl": "https://raw.githubusercontent.com/chromium/chromium/154.0.8037.98/build/config/mac/mac_sdk.gni"
+  "patchedSha256": "088a2ab56796f9ef576bb3cda318697500218eafe303751bb3518e6a89689170",
+  "upstreamUrl": "https://raw.githubusercontent.com/chromium/chromium/154.0.8037.98/build/config/mac/mac_sdk.gni",
+  "additionalPatches": [
+    {
+      "path": "third_party/angle/src/libANGLE/renderer/metal/metal_backend.gni",
+      "originalSha256": "1465d2e8c4cc479f803fbd0cb0368b6e0c3b308383a070e547655348824aaf88",
+      "patchedSha256": "df2be985be86370814aca744aca36b663c5face926d20d5c2bb93093fc4b9b60",
+      "patch": "metal-runtime-compilation.patch"
+    }
+  ],
+  "legacySdkPreparation": {
+    "patchedSha256": "ca37060be4e275522663c71880b58254e969700a2910247cb2cb1b5bbf02caa9",
+    "helperSha256": "bb4022e279f42b7cc37c9623c1df24e5af2043fa50cfd05b06675e57ab35f611"
+  }
 }

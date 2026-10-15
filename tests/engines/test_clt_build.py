@@ -1,5 +1,4 @@
 """Exercise the optional CLT configuration against pinned upstream GN input."""
-import importlib.util
 import json
 from pathlib import Path
 import shutil
@@ -12,6 +11,8 @@ ROOT = Path(__file__).parents[2]
 PREPARE = ROOT / 'engines/chromium/prepare_clt_build.py'
 HELPER = ROOT / 'engines/chromium/clt_sdk_info.py'
 UPSTREAM = Path(__file__).with_name('fixtures') / 'mac_sdk_154.gni'
+METAL = Path('third_party/angle/src/libANGLE/renderer/metal/metal_backend.gni')
+METAL_UPSTREAM = Path(__file__).with_name('fixtures') / 'metal_backend_154.gni'
 
 
 class CltPatch(unittest.TestCase):
@@ -21,6 +22,8 @@ class CltPatch(unittest.TestCase):
         self.gni = self.root / 'build/config/mac/mac_sdk.gni'
         self.gni.parent.mkdir(parents=True)
         shutil.copyfile(UPSTREAM, self.gni)
+        (self.root / METAL).parent.mkdir(parents=True)
+        shutil.copyfile(METAL_UPSTREAM, self.root / METAL)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -34,10 +37,33 @@ class CltPatch(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotEqual(self.gni.read_bytes(), UPSTREAM.read_bytes())
         self.assertEqual(self.gni.with_suffix('.gni.cloakfox-original').read_bytes(), UPSTREAM.read_bytes())
+        self.assertNotEqual((self.root / METAL).read_bytes(), METAL_UPSTREAM.read_bytes())
         self.assertEqual((self.root / 'build/config/apple/clt_sdk_info.py').read_bytes(), HELPER.read_bytes())
         applied = self.gni.read_bytes()
         self.assertEqual(self.prepare().returncode, 0)
         self.assertEqual(self.gni.read_bytes(), applied)
+
+    def test_committed_sdk_only_preparation_upgrades(self):
+        fixtures = Path(__file__).resolve().with_name('fixtures')
+        subprocess.run(['git', 'apply', str(fixtures / 'command_line_tools_73143.patch')],
+                       cwd=self.root, check=True, capture_output=True)
+        self.gni.with_suffix('.gni.cloakfox-original').write_bytes(UPSTREAM.read_bytes())
+        helper = self.root / 'build/config/apple/clt_sdk_info.py'
+        helper.parent.mkdir(parents=True)
+        shutil.copyfile(fixtures / 'clt_sdk_info_73143.py', helper)
+        result = self.prepare()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(helper.read_bytes(), HELPER.read_bytes())
+        self.assertNotEqual((self.root / METAL).read_bytes(), METAL_UPSTREAM.read_bytes())
+        self.assertEqual(self.prepare().returncode, 0)
+
+    def test_existing_sdk_preparation_can_gain_the_metal_option(self):
+        self.assertEqual(self.prepare().returncode, 0)
+        (self.root / METAL).write_bytes(METAL_UPSTREAM.read_bytes())
+        (self.root / METAL).with_suffix('.gni.cloakfox-original').unlink()
+        result = self.prepare()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotEqual((self.root / METAL).read_bytes(), METAL_UPSTREAM.read_bytes())
 
     def test_changed_upstream_is_rejected_without_writing_anything(self):
         self.gni.write_text(self.gni.read_text() + '\n# changed upstream\n')
@@ -47,6 +73,31 @@ class CltPatch(unittest.TestCase):
         self.assertIn('Unsupported Chromium GN input', result.stderr)
         self.assertEqual(self.gni.read_bytes(), before)
         self.assertFalse((self.root / 'build/config/apple/clt_sdk_info.py').exists())
+
+    def test_changed_metal_input_rejects_preparation_without_patching_sdk(self):
+        (self.root / METAL).write_text(METAL_UPSTREAM.read_text() + '\n# changed\n')
+        result = self.prepare()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.gni.read_bytes(), UPSTREAM.read_bytes())
+        self.assertFalse((self.root / 'build/config/apple/clt_sdk_info.py').exists())
+
+    def test_source_archive_nested_in_another_git_checkout_is_actually_patched(self):
+        subprocess.run(['git', 'init', str(self.root)], check=True, capture_output=True)
+        (self.root / '.gitignore').write_text('nested/\n')
+        subprocess.run(['git', '-C', str(self.root), 'add', '.gitignore'], check=True, capture_output=True)
+        subprocess.run(['git', '-C', str(self.root), '-c', 'user.name=Fixture', '-c',
+                        'user.email=fixture@example.invalid', 'commit', '-m', 'fixture'],
+                       check=True, capture_output=True)
+        original = self.gni.read_bytes()
+        self.root = self.root / 'nested/source'
+        self.gni = self.root / 'build/config/mac/mac_sdk.gni'
+        self.gni.parent.mkdir(parents=True)
+        self.gni.write_bytes(original)
+        (self.root / METAL).parent.mkdir(parents=True)
+        shutil.copyfile(METAL_UPSTREAM, self.root / METAL)
+        result = self.prepare()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotEqual(self.gni.read_bytes(), original)
 
 
 @unittest.skipUnless(sys.platform == 'darwin', 'requires actual installed Apple tools')

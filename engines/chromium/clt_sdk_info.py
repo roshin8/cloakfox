@@ -54,6 +54,8 @@ def settings():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--minimum-sdk', default='15')
+    parser.add_argument('--create-symlink-at')
+    parser.add_argument('--root-build-dir', default='.')
     parser.add_argument('platform', choices=['macosx'])
     args = parser.parse_args()
     try:
@@ -64,6 +66,13 @@ def main():
             return tuple(int(part) for part in (value.split('.') + ['0', '0'])[:3])
         if version(values['sdk_version']) < version(args.minimum_sdk):
             raise ValueError('SDK is older than required minimum')
+        if args.create_symlink_at:
+            # Use Chromium's own build-local SDK aliasing. sdk_inputs declares
+            # SDK files as no-op outputs, so GN requires this output-root path.
+            from sdk_info import CreateXcodeSymlinkAt
+            for key in ('sdk_path', 'sdk_platform_path', 'toolchains_path'):
+                values[key] = CreateXcodeSymlinkAt(
+                    values[key], args.create_symlink_at, args.root_build_dir)
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         parser.exit(2, str(error) + '\n')
     for key, value in sorted(values.items()):

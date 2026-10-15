@@ -11,7 +11,7 @@
  
    # The SDK name as accepted by `xcodebuild`.
    mac_sdk_name = "macosx"
-@@ -109,6 +113,15 @@
+@@ -109,6 +113,20 @@
    ]
  }
  sdk_info_args += [ mac_sdk_name ]
@@ -22,12 +22,17 @@
 +         "CLT mode does not support mac_sdk_path overrides")
 +  script_name = "//build/config/apple/clt_sdk_info.py"
 +  sdk_info_args = []
-+  sdk_info_args = [ "--minimum-sdk", mac_sdk_min, mac_sdk_name ]
++  sdk_info_args = [
++    "--minimum-sdk", mac_sdk_min,
++    "--create-symlink-at", "sdk/clt_links",
++    "--root-build-dir", root_build_dir,
++    mac_sdk_name,
++  ]
 +}
  
  _mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
  xcode_version = _mac_sdk_result.xcode_version
-@@ -118,7 +131,12 @@
+@@ -118,7 +136,12 @@
    mac_sdk_path = _mac_sdk_result.sdk_path
  }
  

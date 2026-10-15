@@ -137,12 +137,15 @@ python3 engines/chromium/prepare_clt_build.py --source-root /absolute/path/to/ch
 # mac_use_command_line_tools=true
 # use_system_xcode=true
 # is_official_build=false
+# angle_precompile_internal_metal_shaders=false
 ```
 
-The preparer checks the upstream GN file SHA256, preserves its original beside
-it and refuses changed input or conflicting helper files. Repeating preparation
+The preparer checks both upstream GN file SHA256 hashes before writing, preserves
+the originals beside them and refuses changed input or conflicting helper files. Repeating preparation
 is supported. To undo it, restore `build/config/mac/mac_sdk.gni.cloakfox-original`
-over `mac_sdk.gni` and remove the installed `build/config/apple/clt_sdk_info.py`.
+over `mac_sdk.gni`, restore the matching `metal_backend.gni.cloakfox-original`
+under `third_party/angle/src/libANGLE/renderer/metal/`, and remove the installed
+`build/config/apple/clt_sdk_info.py`.
 Normal GN builds still use upstream Xcode detection unless explicitly opted in.
 Official builds, non-system toolchains and explicit `mac_sdk_path` overrides
 reject CLT mode. The discovered SDK must satisfy Chromium's `mac_sdk_min`.
@@ -151,7 +154,10 @@ Legacy GN `xcode_version` fields encode the installed **CLT toolset** version in
 this mode for existing build consumers. `xcode_build` is explicitly `CLT-<receipt
 version>`; no actual Xcode installation or release metadata is claimed. The
 native helper is macOS-only. Missing `ibtool`, `actool`, `metal` and `momc` remain
-unavailable; this mode does not emulate them or establish support for targets
+unavailable. `angle_precompile_internal_metal_shaders=false` uses ANGLE's existing
+runtime Metal shader compilation path instead of requiring `metal`/`metallib`;
+Metal rendering remains enabled. The option defaults to true, preserving normal
+builds. This mode does not emulate missing tools or establish support for targets
 that need them (including CEF's nib-based sample applications).
 
 Measured on this machine: the real patched GN configuration works in an isolated
@@ -174,3 +180,6 @@ python3 tests/engines/probe_clt_toolchain.py --gn /absolute/path/to/gn \
 
 The pinned upstream fixture in `tests/engines/fixtures/mac_sdk_154.gni` is covered
 by `THIRD_PARTY_LICENSES/Chromium-LICENSE.txt`.
+
+The pinned ANGLE fixture and build patch are covered by
+`THIRD_PARTY_LICENSES/ANGLE-LICENSE.txt`.

@@ -1,0 +1,21 @@
+--- a/third_party/angle/src/libANGLE/renderer/metal/metal_backend.gni
++++ b/third_party/angle/src/libANGLE/renderer/metal/metal_backend.gni
+@@ -92,6 +92,9 @@
+   # Set to precompile internal shaders for iOS or cross-compilation.
+   # Leave empty for default behavior.
+   angle_metal_toolchain_dir = ""
++
++  # CLT-only builds can compile internal shaders through Metal at runtime.
++  angle_precompile_internal_metal_shaders = true
+ }
+ 
+ # We can build the ANGLE internal shaders at build-time if we have access to the
+@@ -102,7 +105,7 @@
+ # precompiling the internal shaders anyway, which enables prebuilt internal
+ # shaders for iOS as well.
+ metal_internal_shader_compilation_supported =
+-    angle_has_build &&
++    angle_precompile_internal_metal_shaders && angle_has_build &&
+     (angle_metal_toolchain_dir != "" || (!is_ios && target_os == host_os))
+ 
+ metal_internal_shaders_header =

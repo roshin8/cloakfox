@@ -31,6 +31,9 @@ def probe(gn, upstream):
             destination = root / path
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(upstream / path, destination)
+        metal = root / 'third_party/angle/src/libANGLE/renderer/metal/metal_backend.gni'
+        metal.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / 'tests/engines/fixtures/metal_backend_154.gni', metal)
         prepared = run([sys.executable, ROOT / 'engines/chromium/prepare_clt_build.py', '--source-root', root])
         assert prepared['exitCode'] == 0, prepared
         # Deliberately minimal imports: this measures the actual patched GN
@@ -42,25 +45,45 @@ def probe(gn, upstream):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text('')
         (root / 'build/config/mac/mac_sdk_overrides.gni').write_text('declare_args() { mac_sdk_min = "15" }\n')
+        angle = root / 'third_party/angle/gni/angle.gni'
+        angle.parent.mkdir(parents=True)
+        angle.write_text('angle_has_build = true\nis_ios = false\n')
         (root / '.gn').write_text('buildconfig = "//BUILDCONFIG.gn"\nscript_executable = ' + json.dumps(sys.executable) + '\n')
         (root / 'BUILDCONFIG.gn').write_text('''declare_args() {
   use_system_xcode = true
   is_official_build = false
   is_chrome_branded = false
 }
+if (target_os == "") { target_os = host_os }
 set_default_toolchain("//:host")
 ''')
+        (root / 'noop.py').write_text('pass\n')
         (root / 'BUILD.gn').write_text('''import("//build/config/mac/mac_sdk.gni")
-write_file("$root_build_dir/discovered.txt", [mac_sdk_path, mac_bin_path, mac_sdk_version, xcode_build])
+import("//third_party/angle/src/libANGLE/renderer/metal/metal_backend.gni")
+write_file("$root_build_dir/discovered.txt", [rebase_path(mac_sdk_path, root_build_dir), rebase_path(mac_bin_path, root_build_dir), mac_sdk_version, xcode_build])
+write_file("$root_build_dir/metal-compilation.txt", ["$metal_internal_shader_compilation_supported"])
 toolchain("host") {
   tool("stamp") { command = "touch {{output}}" }
 }
-group("smoke") {}
+# Same SDK-input declaration as Chromium build/config/mac/BUILD.gn. The
+# no-op action does not write to the SDK; this probe only generates Ninja.
+action("sdk_inputs") {
+  script = "//noop.py"
+  outputs = [ "$mac_sdk_path/usr/include/mach/exc.defs" ]
+}
+group("smoke") { deps = [ ":sdk_inputs" ] }
 ''')
-        clt = run([gn, 'gen', 'out/clt', '--args=mac_use_command_line_tools=true'], root)
+        clt = run([gn, 'gen', 'out/clt', '--args=mac_use_command_line_tools=true angle_precompile_internal_metal_shaders=false'], root)
         report['checks']['cltGnGeneration'] = clt
         assert clt['exitCode'] == 0, clt
+        assert (root / 'out/clt/metal-compilation.txt').read_text().strip() == 'false', 'Offline Metal compilation still required'
+        default_metal = run([gn, 'gen', 'out/metal-default', '--args=mac_use_command_line_tools=true'], root)
+        report['checks']['defaultMetalPrecompilationPreserved'] = default_metal
+        assert default_metal['exitCode'] == 0, default_metal
+        assert (root / 'out/metal-default/metal-compilation.txt').read_text().strip() == 'true'
         sdk, binary, version, label = (root / 'out/clt/discovered.txt').read_text().splitlines()
+        sdk = str((root / 'out/clt' / sdk).resolve())
+        binary = str((root / 'out/clt' / binary).resolve())
         assert label.startswith('CLT-'), label
         report['discovered'] = {'sdk': sdk, 'binaryDirectory': binary, 'sdkVersion': version,
                                 'toolsetBuild': label}
