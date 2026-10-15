@@ -1,0 +1,52 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry
+{"canonical": false, "runtime": {"buildID": "20261015153234", "version": "158.0-beta.26"}, "editing": true, "animation": {"frames": 30, "pixel": [35, 69, 103, 255]}, "animationSeconds": 0.5237245419993997, "large": {"bytes": 8088748, "copied": [42, 104, 180, 255], "corner": [40, 102, 178, 255], "type": "image/png"}, "largeSeconds": 0.5539546660002088, "pass": true}
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_canvas_canonical_performance.py", line 86, in main
+    editing = edit.get_attribute('value') == 'ordinary editing 123'
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webelement.py", line 211, in get_attribute
+    attribute_value = self.parent.execute_script(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 617, in execute_script
+    return self.execute(command, {"script": script, "args": converted_args})["value"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 506, in execute
+    self.error_handler.check_response(response)
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.StaleElementReferenceException: Message: The element with the reference 6c57cbe9-c518-4335-af84-61ac12ba5d05 is not known in the current browsing context; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#staleelementreferenceexception
+Stacktrace:
+RemoteError@chrome://remote/content/shared/RemoteError.sys.mjs:14:8
+WebDriverError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:169:5
+NoSuchElementError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:538:5
+getKnownElement@chrome://remote/content/marionette/json.sys.mjs:394:11
+deserializeJSON@chrome://remote/content/marionette/json.sys.mjs:270:20
+cloneObject/result<@chrome://remote/content/marionette/json.sys.mjs:53:52
+cloneObject@chrome://remote/content/marionette/json.sys.mjs:53:25
+deserializeJSON@chrome://remote/content/marionette/json.sys.mjs:298:16
+cloneObject@chrome://remote/content/marionette/json.sys.mjs:59:24
+deserializeJSON@chrome://remote/content/marionette/json.sys.mjs:298:16
+json.deserialize@chrome://remote/content/marionette/json.sys.mjs:302:10
+receiveMessage@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:179:30
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_canvas_canonical_performance.py", line 109, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_canvas_canonical_performance.py", line 69, in main
+    with tempfile.TemporaryDirectory(prefix='cloakfox-canvas-load-') as profile:
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/tempfile.py", line 919, in __exit__
+    self.cleanup()
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/tempfile.py", line 923, in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/tempfile.py", line 903, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/shutil.py", line 775, in rmtree
+    onexc(os.rmdir, path, err)
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/shutil.py", line 773, in rmtree
+    os.rmdir(path, dir_fd=dir_fd)
+OSError: [Errno 66] Directory not empty: '/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-canvas-load-mu4fqc1z'

@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.0, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox
+collected 1 item
+
+tests/fingerprint/test_canvas_import_owner.py F                          [100%]
+
+=================================== FAILURES ===================================
+_________________ ImportOwner.test_actual_accumulation_policy __________________
+
+self = <test_canvas_import_owner.ImportOwner testMethod=test_actual_accumulation_policy>
+
+    def test_actual_accumulation_policy(self):
+     s=(ROOT/'firefox-src/dom/canvas/CanvasRenderingContext2D.cpp').read_text();a=s.index('void CanvasRenderingContext2D::AccumulateCanvasSource(');b=s.index('\n}',a)+2
+     body=s[a:b].replace('CanvasRenderingContext2D::','Context::')
+>    a=s.index('void CanvasRenderingContext2D::AccumulateCanvasFilterSources(');b=s.index('\n}',a)+2
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E    ValueError: substring not found
+
+tests/fingerprint/test_canvas_import_owner.py:9: ValueError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_import_owner.py::ImportOwner::test_actual_accumulation_policy
+============================== 1 failed in 0.04s ===============================

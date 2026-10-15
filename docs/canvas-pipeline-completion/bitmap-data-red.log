@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.0, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox
+collected 1 item
+
+tests/fingerprint/test_bitmap_data_policy.py F                           [100%]
+
+=================================== FAILURES ===================================
+_________ BitmapDataPolicy.test_actual_wrapper_preserves_pixel_policy __________
+
+self = <test_bitmap_data_policy.BitmapDataPolicy testMethod=test_actual_wrapper_preserves_pixel_policy>
+
+    def test_actual_wrapper_preserves_pixel_policy(self):
+>    s=(ROOT/'firefox-src/dom/canvas/ImageBitmap.cpp').read_text();a=s.index('static already_AddRefed<DataSourceSurface> CanvasDataSurface(');b=s.index('\n}',a)+2
+                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E    ValueError: substring not found
+
+tests/fingerprint/test_bitmap_data_policy.py:7: ValueError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_bitmap_data_policy.py::BitmapDataPolicy::test_actual_wrapper_preserves_pixel_policy
+============================== 1 failed in 0.04s ===============================

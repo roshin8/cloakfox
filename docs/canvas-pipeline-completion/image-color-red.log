@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.0, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox
+collected 1 item
+
+tests/fingerprint/test_canvas_image_color.py F                           [100%]
+
+=================================== FAILURES ===================================
+________________________ ImageColor.test_decode_policy _________________________
+
+self = <test_canvas_image_color.ImageColor testMethod=test_decode_policy>
+
+    def test_decode_policy(self):
+     s=(ROOT/'firefox-src/dom/canvas/CanvasUtils.cpp').read_text()
+>    a=s.index('uint32_t CanonicalImageDecodeFlags(');b=s.index('\n}',a)+2
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E    ValueError: substring not found
+
+tests/fingerprint/test_canvas_image_color.py:8: ValueError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_image_color.py::ImageColor::test_decode_policy
+============================== 1 failed in 0.04s ===============================

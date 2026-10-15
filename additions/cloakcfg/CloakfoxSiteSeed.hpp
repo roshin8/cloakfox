@@ -104,6 +104,31 @@ inline uint32_t Derive(uint32_t ucid, const char* vector,
   if (NS_FAILED(hmac.End(digest)) || digest.Length() != 32) return 0;
   return SeedFromDigest(digest.Elements());
 }
+inline std::optional<std::array<uint64_t, 2>> OwnerKey(
+    uint32_t ucid, nsICookieJarSettings* settings) {
+  if (!settings) return std::nullopt;
+  const auto cfg = ExactConfig(ucid);
+  auto secretValue = cfg.find("fingerprint:secret");
+  auto seedValue = cfg.find("canvas:seed");
+  if (secretValue == cfg.end() || !secretValue->is_string() ||
+      seedValue == cfg.end() || !seedValue->is_number_unsigned() ||
+      seedValue->get<uint64_t>() > UINT32_MAX) return std::nullopt;
+  const auto secret = secretValue->get<std::string>();
+  if (!ValidSecret(secret)) return std::nullopt;
+  nsAutoString partition;
+  if (NS_FAILED(settings->GetPartitionKey(partition))) return std::nullopt;
+  const auto message = CanvasOwnerMessage(seedValue->get<uint32_t>(),
+      std::string(NS_ConvertUTF16toUTF8(partition).get()));
+  if (message.empty()) return std::nullopt;
+  mozilla::HMAC hmac;
+  if (NS_FAILED(hmac.Begin(SEC_OID_SHA256,
+      mozilla::Span(reinterpret_cast<const uint8_t*>(secret.data()), secret.size()))) ||
+      NS_FAILED(hmac.Update(reinterpret_cast<const uint8_t*>(message.data()), message.size())))
+    return std::nullopt;
+  nsTArray<uint8_t> digest;
+  if (NS_FAILED(hmac.End(digest))) return std::nullopt;
+  return CanvasOwnerFromDigest(digest.Elements(), digest.Length());
+}
 inline uint32_t Configured(uint32_t ucid, const char* vector,
                            nsICookieJarSettings* settings) {
   return Derive(ucid, vector, settings);

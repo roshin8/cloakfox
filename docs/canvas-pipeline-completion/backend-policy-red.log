@@ -1,0 +1,39 @@
+✔ settings headline describes the active compatible profile without losing saved identity (3.181333ms)
+✔ opt-ins default off and reject malformed pref types (3.487ms)
+✔ authoritative flags override stale unknown overrides independently (0.657083ms)
+✔ backfill changes only owned fields, preserves identities, skips bad configs and is idempotent (0.877834ms)
+✔ startup and each opt-in notification synchronize persisted overlays (0.608083ms)
+✔ internal canonical pipeline is strict, independently authoritative, and preserves privacy fields (0.533875ms)
+✔ internal pipeline backfills a stale field even if public graphics fields are already current (0.4695ms)
+✖ complete pipeline atomically selects canonical 2D and GPU while preserving readback guards (1.872084ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.560458
+
+✖ failing tests:
+
+test at tests/fingerprint/test_graphics_optins.mjs:156:1
+✖ complete pipeline atomically selects canonical 2D and GPU while preserving readback guards (1.872084ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_graphics_optins.mjs:160:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

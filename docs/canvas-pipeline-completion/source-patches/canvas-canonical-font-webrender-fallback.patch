@@ -1,0 +1,18 @@
+--- a/gfx/thebes/gfxFont.cpp
++++ b/gfx/thebes/gfxFont.cpp
+@@ -2384,6 +2384,15 @@
+     return;
+   }
+ 
++  // WebRender's text collector only records serializable native glyphs. Our
++  // canonical font paints paths/bitmaps, which this fake DrawTarget cannot
++  // accept. Let the display item fall back to raster painting with this same
++  // canonical font; calling its path methods here would deliberately crash.
++  if (GetType() == FONT_TYPE_CANONICAL && aRunParams.textDrawer) {
++    aRunParams.textDrawer->FoundUnsupportedFeature();
++    return;
++  }
++
+   FontDrawParams fontParams;
+ 
+   if (aRunParams.drawOpts) {

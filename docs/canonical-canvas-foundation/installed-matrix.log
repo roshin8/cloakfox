@@ -1,0 +1,12 @@
+RUN installed-matrix off probe_canvas_consistency.py
+RESULT {'stage': 'installed-matrix', 'mode': 'off', 'probe': 'probe_canvas_consistency.py', 'exit': 0, 'seconds': 12.4, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed-matrix/off/probe_canvas_consistency'}
+RUN installed-matrix off probe_fingerprint_libraries.py
+RESULT {'stage': 'installed-matrix', 'mode': 'off', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 67.5, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed-matrix/off/probe_fingerprint_libraries'}
+RUN installed-matrix on probe_canvas_consistency.py
+RESULT {'stage': 'installed-matrix', 'mode': 'on', 'probe': 'probe_canvas_consistency.py', 'exit': 0, 'seconds': 14.3, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed-matrix/on/probe_canvas_consistency'}
+RUN installed-matrix on probe_fingerprint_libraries.py
+RESULT {'stage': 'installed-matrix', 'mode': 'on', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 67.9, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed-matrix/on/probe_fingerprint_libraries'}
+RUN installed-matrix all probe_canvas_consistency.py
+RESULT {'stage': 'installed-matrix', 'mode': 'all', 'probe': 'probe_canvas_consistency.py', 'exit': 0, 'seconds': 11.4, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed-matrix/all/probe_canvas_consistency'}
+RUN installed-matrix all probe_fingerprint_libraries.py
+RESULT {'stage': 'installed-matrix', 'mode': 'all', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 58.2, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed-matrix/all/probe_fingerprint_libraries'}

@@ -1,0 +1,33 @@
+PASS enabled capture copyTo completes
+PASS enabled canonical bitmap direct VideoFrame pixels remain exact
+PASS enabled canonical canvas direct VideoFrame pixels remain exact
+PASS enabled canonical repeated copyTo stable
+PASS enabled canonical alpha retained
+PASS enabled unknown bitmap direct VideoFrame copyTo denied
+PASS enabled unknown canvas direct VideoFrame copyTo denied
+PASS enabled unknown only unverified fullmode copy is refused
+PASS enabled qualifying authored capture remains exact
+PASS unknown source direct copyTo bypass is refused
+PASS disabled capture copyTo completes
+PASS disabled canonical bitmap direct VideoFrame pixels remain exact
+PASS disabled canonical canvas direct VideoFrame pixels remain exact
+PASS disabled canonical repeated copyTo stable
+PASS disabled canonical alpha retained
+PASS disabled unknown bitmap direct VideoFrame pixels remain exact
+PASS disabled unknown canvas direct VideoFrame pixels remain exact
+PASS disabled unknown repeated copyTo stable
+PASS disabled unknown alpha retained
+PASS disabled qualifying authored capture remains exact
+PASS disabled unknown capture remains native
+PASS legacy capture copyTo completes
+PASS legacy canonical bitmap direct VideoFrame pixels remain exact
+PASS legacy canonical canvas direct VideoFrame pixels remain exact
+PASS legacy canonical repeated copyTo stable
+PASS legacy canonical alpha retained
+PASS legacy unknown bitmap direct VideoFrame pixels remain exact
+PASS legacy unknown canvas direct VideoFrame pixels remain exact
+PASS legacy unknown repeated copyTo stable
+PASS legacy unknown alpha retained
+PASS legacy qualifying authored capture remains exact
+PASS legacy unknown capture remains native
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry

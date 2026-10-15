@@ -1,0 +1,593 @@
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -924,6 +924,35 @@
+           policy->is_boolean() && policy->get<bool>());
+     }
+     options.cloakfoxBackendProfile = *mCloakfoxBackendProfile;
++    if (mCloakfoxCanonicalGpu.isNothing()) {
++      const auto principal = PrincipalOrNull();
++      const bool content = principal && !principal->IsSystemPrincipal();
++      // The global native pref remains authoritative before persona config is
++      // ready. OffscreenCanvas transfers retain the originally captured policy.
++      mCloakfoxCanonicalGpu = Some(
++          content &&
++          (mOffscreenCanvas
++               ? mOffscreenCanvas->CanonicalCanvasBackingPolicy()
++               : StaticPrefs::cloakfox_enabled() &&
++                     StaticPrefs::cloakfox_experimental_canvas_pipeline()));
++      // Capture exactly once with policy, even when the owner is unavailable.
++      if (mOffscreenCanvas) {
++        mCloakfoxGpuPrivacyPolicy = mOffscreenCanvas->CanvasPrivacyPolicy();
++      } else if (const auto owner = CloakfoxSiteSeed::OwnerKey(
++                     GetUserContextId(), GetCookieJarSettings())) {
++        mCloakfoxGpuPrivacyPolicy = {
++            gfx::kCanvasPrivacyVersion, GetUserContextId(), (*owner)[0],
++            (*owner)[1], uint32_t(gfx::CanvasPixelSource::GPU)};
++      }
++    }
++    // An unused transferred canvas has no producer. Successful GPU creation
++    // establishes GPU as its initial producer; imports are tracked separately.
++    if (mCloakfoxGpuPrivacyPolicy.version == gfx::kCanvasPrivacyVersion) {
++      mCloakfoxGpuPrivacyPolicy.sources = uint32_t(gfx::CanvasPixelSource::GPU);
++    }
++    // Overwrite caller options, including on restoration. Only the frozen
++    // authoritative owning-container policy may select the internal backend.
++    options.cloakfoxCanonicalGpu = *mCloakfoxCanonicalGpu;
+     if (StaticPrefs::webgl_disable_fail_if_major_performance_caveat()) {
+       options.failIfMajorPerformanceCaveat = false;
+     }
+@@ -1223,7 +1252,20 @@
+ 
+ mozilla::ipc::IProtocol* ClientWebGLContext::SupportsSnapshotExternalCanvas()
+     const {
++  if (mNotLost && mNotLost->info.options.cloakfoxCanonicalGpu) {
++    return nullptr;
++  }
+   return GetChild();
++}
++
++gfx::CanvasPrivacyMetadata ClientWebGLContext::GetCanvasPrivacyMetadata() const {
++  auto metadata = mCloakfoxGpuPrivacyPolicy;
++  metadata.sources |= mCloakfoxGpuImportedSources;
++  metadata.sources |= uint32_t(gfx::CanvasPixelSource::GPU);
++  if (mNotLost && mNotLost->info.options.cloakfoxCanonicalGpu) {
++    metadata.sources |= uint32_t(gfx::CanvasPixelSource::CanonicalGPU);
++  }
++  return gfx::NormalizeCanvasPrivacyMetadata(metadata);
+ }
+ 
+ RefPtr<gfx::SourceSurface> ClientWebGLContext::GetFrontBufferSnapshot(
+@@ -1291,7 +1333,12 @@
+   }
+   // GPU pixels retain their producer even after CPU readback. A generic
+   // capability profile or platform software GL is not canonical rendering.
++  gfx::SetCanvasPrivacyMetadata(surf, GetCanvasPrivacyMetadata());
+   gfx::AddCanvasPixelSource(surf, gfx::CanvasPixelSource::GPU);
++  if (options.cloakfoxCanonicalGpu) {
++    // A surviving context with this option has passed forced CPU driver checks.
++    gfx::AddCanvasPixelSource(surf, gfx::CanvasPixelSource::CanonicalGPU);
++  }
+ 
+   return surf;
+ }
+@@ -1371,7 +1418,12 @@
+ 
+   // GPU pixels retain their producer even after CPU readback. A generic
+   // capability profile or platform software GL is not canonical rendering.
++  gfx::SetCanvasPrivacyMetadata(surf, GetCanvasPrivacyMetadata());
+   gfx::AddCanvasPixelSource(surf, gfx::CanvasPixelSource::GPU);
++  if (options.cloakfoxCanonicalGpu) {
++    // A surviving context with this option has passed forced CPU driver checks.
++    gfx::AddCanvasPixelSource(surf, gfx::CanvasPixelSource::CanonicalGPU);
++  }
+ 
+   return surf;
+ }
+@@ -5207,6 +5259,23 @@
+     return;
+   }
+ 
++  if (src.mImageBitmap || src.mImageData || src.mOffscreenCanvas ||
++      src.mVideoFrame || src.mDomElem) {
++    // A context-wide conservative union survives texture copies, shaders,
++    // framebuffer blits, overwrites, and context restoration.
++    const auto imported = gfx::NormalizeCanvasPrivacyMetadata(
++        gfx::GetCanvasPrivacyMetadata(desc->sourceSurf));
++    mCloakfoxGpuImportedSources |= imported.sources;
++    if (!gfx::CanExtractCanonicalCanvasPixels(imported) ||
++        imported.version != gfx::kCanvasPrivacyVersion ||
++        mCloakfoxGpuPrivacyPolicy.version != gfx::kCanvasPrivacyVersion ||
++        imported.userContextId != mCloakfoxGpuPrivacyPolicy.userContextId ||
++        imported.ownerHi != mCloakfoxGpuPrivacyPolicy.ownerHi ||
++        imported.ownerLo != mCloakfoxGpuPrivacyPolicy.ownerLo) {
++      mCloakfoxGpuImportedSources |= uint32_t(gfx::CanvasPixelSource::Unknown);
++    }
++  }
++
+   // -
+ 
+   const auto& rawUnpacking = State().mPixelUnpackState;
+@@ -5939,10 +6008,15 @@
+ // unprotected readbacks; explicit compatibility restores exact values. PBOs
+ // bypass CPU noise and obey the same policy. Invalid enums retain native errors.
+ static bool CloakfoxBlockPixelReadback(GLenum format, GLenum type, bool pbo,
+-                                      uint32_t userContextId) {
+-  if (!StaticPrefs::cloakfox_enabled() ||
+-      !MaskConfig::GetBool("webgl:typed_readback:disabled", userContextId)
+-           .value_or(true)) {
++                                      uint32_t userContextId, bool canonicalGpu) {
++  // A frozen canonical context retains strict extraction policy even when an
++  // asynchronous overlay is missing, stale, or explicitly opts out.
++  canonicalGpu |= StaticPrefs::cloakfox_enabled() &&
++                  StaticPrefs::cloakfox_experimental_canvas_pipeline();
++  if (!canonicalGpu &&
++      (!StaticPrefs::cloakfox_enabled() ||
++       !MaskConfig::GetBool("webgl:typed_readback:disabled", userContextId)
++            .value_or(true))) {
+     return false;
+   }
+   if (!webgl::PackingInfoInfo::For({format, type})) return false;
+@@ -5961,7 +6035,8 @@
+   if (!ValidateNonNegative("height", height)) return;
+   if (!ValidateNonNegative("offset", offset)) return;
+   if (aCallerType != dom::CallerType::System &&
+-      CloakfoxBlockPixelReadback(format, type, true, GetUserContextId())) {
++      CloakfoxBlockPixelReadback(format, type, true, GetUserContextId(),
++                                mCloakfoxCanonicalGpu.valueOr(false))) {
+     EnqueueError(LOCAL_GL_INVALID_OPERATION,
+                  "Pixel readback is disabled by browser policy.");
+     return;
+@@ -6008,7 +6083,8 @@
+   }
+ 
+   if (aCallerType != dom::CallerType::System &&
+-      CloakfoxBlockPixelReadback(format, type, false, GetUserContextId())) {
++      CloakfoxBlockPixelReadback(format, type, false, GetUserContextId(),
++                                mCloakfoxCanonicalGpu.valueOr(false))) {
+     EnqueueError(LOCAL_GL_INVALID_OPERATION,
+                  "Pixel readback is disabled by browser policy.");
+     return;
+@@ -6198,6 +6274,8 @@
+   const uint32_t noiseSeed =
+       CloakfoxSiteSeed::Derive(GetUserContextId(), "canvas:seed",
+           GetCookieJarSettings());
++  const auto gpuPrivacyPolicy = GetCanvasPrivacyMetadata();
++  const bool canonicalGpu = options.cloakfoxCanonicalGpu;
+   const size_t expectedSize = checkedByteSize.value();
+   const auto desc = webgl::ReadPixelsDesc{{0, 0}, size};
+ 
+@@ -6211,7 +6289,7 @@
+   ipcPromise->Then(
+       GetCurrentSerialEventTarget(), __func__,
+       [self = RefPtr{this}, promise, child, desc, size, surfaceFormat,
+-       expectedSize, noiseSeed](webgl::ReadPixelsResultIpc&& aReply) mutable {
++       expectedSize, noiseSeed, gpuPrivacyPolicy, canonicalGpu](webgl::ReadPixelsResultIpc&& aReply) mutable {
+         if (!aReply.byteStride || !aReply.shmem) {
+           promise->Reject(NS_ERROR_FAILURE, __func__);
+           return;
+@@ -6303,7 +6381,11 @@
+ 
+         // GPU pixels retain their producer even after CPU readback. A generic
+         // capability profile or platform software GL is not canonical rendering.
++        gfx::SetCanvasPrivacyMetadata(sourceSurface, gpuPrivacyPolicy);
+         gfx::AddCanvasPixelSource(sourceSurface, gfx::CanvasPixelSource::GPU);
++        if (canonicalGpu) {
++          gfx::AddCanvasPixelSource(sourceSurface, gfx::CanvasPixelSource::CanonicalGPU);
++        }
+ 
+         promise->Resolve(std::move(sourceSurface), __func__);
+       },
+--- a/dom/canvas/ClientWebGLContext.h
++++ b/dom/canvas/ClientWebGLContext.h
+@@ -18,6 +18,7 @@
+ #include "WebGLTypes.h"
+ #include "js/GCAPI.h"
+ #include "mozilla/Logging.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/MozPromise.h"
+ #include "mozilla/Range.h"
+ #include "mozilla/RefCounted.h"
+@@ -1024,6 +1025,7 @@
+   GetSurfaceSnapshotAsync() override;
+ 
+   mozilla::ipc::IProtocol* SupportsSnapshotExternalCanvas() const override;
++  gfx::CanvasPrivacyMetadata GetCanvasPrivacyMetadata() const override;
+ 
+   void SetOpaqueValueFromOpaqueAttr(bool) override {};
+   bool GetIsOpaque() override { return !mInitialOptions->alpha; }
+@@ -2467,6 +2469,9 @@
+   Maybe<const WebGLContextOptions> mInitialOptions;
+   // Frozen on first creation, including loss/restoration. Reload to change.
+   Maybe<bool> mCloakfoxBackendProfile;
++  Maybe<bool> mCloakfoxCanonicalGpu;
++  gfx::CanvasPrivacyMetadata mCloakfoxGpuPrivacyPolicy;
++  mutable uint32_t mCloakfoxGpuImportedSources = 0;
+   bool mXRCompatible = false;
+ };
+ 
+--- a/dom/canvas/WebGLContext.cpp
++++ b/dom/canvas/WebGLContext.cpp
+@@ -396,6 +396,23 @@
+   };
+ 
+   const auto newGL = [&]() -> RefPtr<gl::GLContext> {
++    if (mOptions.cloakfoxCanonicalGpu) {
++      if (mOptions.failIfMajorPerformanceCaveat) {
++        out_failReasons->push_back(WebGLContext::FailureReason(
++            "FEATURE_FAILURE_CANONICAL_GPU_PERFORMANCE_CAVEAT",
++            "Canonical CPU rendering is a major performance caveat."));
++        return nullptr;
++      }
++      nsCString failureId;
++      const RefPtr<gl::GLContext> canonical =
++          gl::GLContextProviderEGL::CreateHeadless({flags, true}, &failureId);
++      if (!canonical) {
++        out_failReasons->push_back(WebGLContext::FailureReason(
++            failureId, "canonical CPU Vulkan context required"));
++      }
++      // Canonical failure must never dispatch to a host renderer.
++      return canonical;
++    }
+     if (tryNativeGL) {
+       if (useEGL)
+         return fnCreate(&gl::GLContextProviderEGL::CreateHeadless, "useEGL");
+--- a/dom/canvas/WebGLTypes.h
++++ b/dom/canvas/WebGLTypes.h
+@@ -364,7 +364,8 @@
+   bool enableDebugRendererInfo = false;
+   // Internal creation policy; never populated from page context attributes.
+   bool cloakfoxBackendProfile = false;
+-  std::array<uint8_t, 3> _cloakfoxPadding = {};
++  bool cloakfoxCanonicalGpu = false;
++  std::array<uint8_t, 2> _cloakfoxPadding = {};
+ 
+   auto MutTiedFields() {
+     // clang-format off
+@@ -384,6 +385,7 @@
+       shouldResistFingerprinting,
+       enableDebugRendererInfo,
+       cloakfoxBackendProfile,
++      cloakfoxCanonicalGpu,
+       _cloakfoxPadding);
+     // clang-format on
+   }
+--- a/dom/canvas/nsICanvasRenderingContextInternal.cpp
++++ b/dom/canvas/nsICanvasRenderingContextInternal.cpp
+@@ -252,6 +252,7 @@
+           *out_alphaType =
+               GetIsOpaque() ? gfxAlphaType::Opaque : gfxAlphaType::Premult;
+         }
++        mozilla::gfx::SetCanvasPrivacyMetadata(surf, GetCanvasPrivacyMetadata());
+         return surf.forget();
+       }
+     }
+--- a/dom/canvas/nsICanvasRenderingContextInternal.h
++++ b/dom/canvas/nsICanvasRenderingContextInternal.h
+@@ -5,6 +5,7 @@
+ #ifndef nsICanvasRenderingContextInternal_h_
+ #define nsICanvasRenderingContextInternal_h_
+ 
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "gfxRect.h"
+ #include "mozilla/EventForwards.h"
+ #include "mozilla/Maybe.h"
+@@ -88,6 +89,11 @@
+ 
+   nsIPrincipal* PrincipalOrNull() const;
+ 
++  // Native immutable owner record; unknown until a concrete producer exists.
++  virtual mozilla::gfx::CanvasPrivacyMetadata GetCanvasPrivacyMetadata() const {
++    return {};
++  }
++
+   void SetOffscreenCanvas(mozilla::dom::OffscreenCanvas* aOffscreenCanvas) {
+     mOffscreenCanvas = aOffscreenCanvas;
+   }
+--- a/gfx/gl/GLContextProviderEGL.cpp
++++ b/gfx/gl/GLContextProviderEGL.cpp
+@@ -1257,7 +1257,11 @@
+       StaticPrefs::gl_allow_high_power();
+ 
+   std::shared_ptr<EglDisplay> display;
+-  if (useSoftwareDisplay) {
++  if (desc.canonicalGpu) {
++    const auto library = GLLibraryEGL::GetCanonical(out_failureId);
++    if (!library) return nullptr;
++    display = library->DefaultDisplay(out_failureId);
++  } else if (useSoftwareDisplay) {
+     display = CreateSoftwareEglDisplay(out_failureId);
+   } else if (useHighPowerDisplay) {
+     display = CreateHighPowerEglDisplay(out_failureId);
+@@ -1268,6 +1272,12 @@
+     return nullptr;
+   }
+   auto ret = GLContextEGL::CreateWithoutSurface(display, desc, out_failureId);
++  if (desc.canonicalGpu && ret &&
++      (ret->RendererString().Find("SwiftShader") == kNotFound ||
++       ret->RendererString().Find("Vulkan") == kNotFound)) {
++    *out_failureId = "FEATURE_FAILURE_CANONICAL_GPU_DEVICE"_ns;
++    return nullptr;
++  }
+   return ret.forget();
+ }
+ 
+--- a/gfx/gl/GLContextTypes.h
++++ b/gfx/gl/GLContextTypes.h
+@@ -40,6 +40,8 @@
+ 
+ struct GLContextCreateDesc {
+   CreateContextFlags flags = CreateContextFlags::NONE;
++  // Immutable internal creation policy, never a page context attribute.
++  bool canonicalGpu = false;
+ };
+ 
+ struct GLContextDesc final : public GLContextCreateDesc {
+--- a/gfx/gl/GLLibraryEGL.cpp
++++ b/gfx/gl/GLLibraryEGL.cpp
+@@ -3,6 +3,17 @@
+  * You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "GLLibraryEGL.h"
++#ifdef XP_MACOSX
++#  include "json.hpp"
++#  include <CommonCrypto/CommonDigest.h>
++#  include <fcntl.h>
++#  include <limits.h>
++#  include <sys/stat.h>
++#  include <unistd.h>
++#  include <cerrno>
++#  include <cstring>
++#  include <cstdlib>
++#endif
+ 
+ #include "gfxConfig.h"
+ #include "gfxCrashReporterUtils.h"
+@@ -51,6 +62,7 @@
+ 
+ StaticMutex GLLibraryEGL::sMutex;
+ StaticRefPtr<GLLibraryEGL> GLLibraryEGL::sInstance;
++StaticRefPtr<GLLibraryEGL> GLLibraryEGL::sCanonicalInstance;
+ 
+ // should match the order of EGLExtensions, and be null-terminated.
+ static const char* sEGLLibraryExtensionNames[] = {
+@@ -512,9 +524,168 @@
+   return sInstance;
+ }
+ 
++/* static */
++bool GLLibraryEGL::VerifyCanonicalLibraries(nsACString* const out_failureId) {
++  *out_failureId = "FEATURE_FAILURE_CANONICAL_GPU_INTEGRITY"_ns;
++#ifdef XP_MACOSX
++  nsAutoCString base{NS_ConvertUTF16toUTF8(gfx::gfxVars::GREDirectory())};
++  if (base.IsEmpty() || base.First() != '/') return false;
++  base.AppendLiteral("/canonical-gpu");
++  struct stat directory;
++  if (lstat(base.get(), &directory) || !S_ISDIR(directory.st_mode))
++    return false;
++  char resolvedBase[PATH_MAX];
++  if (!realpath(base.get(), resolvedBase)) return false;
++  const size_t baseLength = strlen(resolvedBase);
++  const auto openFile = [&](const char* name, off_t limit, off_t* size) {
++    nsAutoCString path(base);
++    path.Append('/');
++    path.Append(name);
++    // Only fixed caller-supplied names, never arbitrary manifest paths.
++    const int fd = open(path.get(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
++    if (fd < 0) return -1;
++    struct stat status;
++    char resolvedFile[PATH_MAX];
++    if (fstat(fd, &status) || !S_ISREG(status.st_mode) || status.st_size < 0 ||
++        status.st_size > limit || !realpath(path.get(), resolvedFile) ||
++        strncmp(resolvedFile, resolvedBase, baseLength) ||
++        resolvedFile[baseLength] != '/' ||
++        strchr(resolvedFile + baseLength + 1, '/')) {
++      close(fd);
++      return -1;
++    }
++    *size = status.st_size;
++    return fd;
++  };
++  off_t size = 0;
++  const int manifestFd = openFile("manifest.json", 4 * 1024 * 1024, &size);
++  if (manifestFd < 0) return false;
++  std::string content(static_cast<size_t>(size), '\0');
++  size_t offset = 0;
++  while (offset < content.size()) {
++    const auto n =
++        read(manifestFd, content.data() + offset, content.size() - offset);
++    if (n < 0 && errno == EINTR) continue;
++    if (n <= 0) {
++      close(manifestFd);
++      return false;
++    }
++    offset += static_cast<size_t>(n);
++  }
++  close(manifestFd);
++  const auto manifest = nlohmann::json::parse(content, nullptr, false);
++  if (!manifest.is_object()) return false;
++  const auto version = manifest.find("rendererVersion");
++  if (version == manifest.end() || !version->is_number_integer() ||
++      version->get<uint64_t>() != 1)
++    return false;
++  const auto revisions = manifest.find("revisions");
++  const auto files = manifest.find("files");
++  if (revisions == manifest.end() || !revisions->is_object() ||
++      files == manifest.end() || !files->is_object())
++    return false;
++  const auto stringMatches = [](const nlohmann::json& object, const char* key,
++                                const char* expected) {
++    const auto value = object.find(key);
++    return value != object.end() && value->is_string() &&
++           value->get_ref<const std::string&>() == expected;
++  };
++  if (!stringMatches(*revisions, ".",
++                     "464fd3e879d6bb72fe8210b3e58b59836f711951") ||
++      !stringMatches(*revisions, "third_party/SwiftShader",
++                     "a7c547b55474c3d8bde53711eae24ae0e28bbc0a"))
++    return false;
++  const char* names[] = {"libEGL_cloakfox_canonical.dylib",
++                         "libGLESv2_cloakfox_canonical.dylib",
++                         "libvk_swiftshader.dylib"};
++  for (const char* name : names) {
++    const auto expected = files->find(name);
++    if (expected == files->end() || !expected->is_string()) return false;
++    const auto& expectedHex = expected->get_ref<const std::string&>();
++    if (expectedHex.size() != 64) return false;
++    const int fd = openFile(name, 256 * 1024 * 1024, &size);
++    if (fd < 0) return false;
++    CC_SHA256_CTX digest;
++    if (!CC_SHA256_Init(&digest)) {
++      close(fd);
++      return false;
++    }
++    uint8_t bytes[16384];
++    off_t total = 0;
++    while (true) {
++      const auto n = read(fd, bytes, sizeof(bytes));
++      if (n < 0 && errno == EINTR) continue;
++      if (n < 0) {
++        close(fd);
++        return false;
++      }
++      if (!n) break;
++      total += n;
++      if (total > size ||
++          !CC_SHA256_Update(&digest, bytes, static_cast<CC_LONG>(n))) {
++        close(fd);
++        return false;
++      }
++    }
++    close(fd);
++    uint8_t hash[CC_SHA256_DIGEST_LENGTH];
++    if (total != size || !CC_SHA256_Final(hash, &digest)) return false;
++    static constexpr char hex[] = "0123456789abcdef";
++    for (size_t i = 0; i < sizeof(hash); ++i) {
++      if (expectedHex[2 * i] != hex[hash[i] >> 4] ||
++          expectedHex[2 * i + 1] != hex[hash[i] & 15])
++        return false;
++    }
++  }
++  out_failureId->Truncate();
++  return true;
++#else
++  return false;
++#endif
++}
++
++/* static */
++RefPtr<GLLibraryEGL> GLLibraryEGL::GetCanonical(
++    nsACString* const out_failureId) {
++  StaticMutexAutoLock lock(sMutex);
++  if (!sCanonicalInstance) {
++    if (!VerifyCanonicalLibraries(out_failureId)) return nullptr;
++    RefPtr<GLLibraryEGL> candidate = new GLLibraryEGL;
++    candidate->mCanonicalGpu = true;
++#ifdef XP_MACOSX
++    // A separate dispatch-library suffix prevents dyld from reusing the native
++    // ANGLE GLES implementation. Never use PATH, a system library or an env
++    // var.
++    const auto load = [](const char* name) -> PRLibrary* {
++      nsAutoCString path{NS_ConvertUTF16toUTF8(gfx::gfxVars::GREDirectory())};
++      if (path.IsEmpty() || path.First() != '/') return nullptr;
++      path.Append("/canonical-gpu/");
++      path.Append(name);
++      PRLibSpec spec;
++      spec.type = PR_LibSpec_Pathname;
++      spec.value.pathname = path.get();
++      return PR_LoadLibraryWithFlags(spec, PR_LD_NOW | PR_LD_LOCAL);
++    };
++    candidate->mGLLibrary = load("libGLESv2_cloakfox_canonical.dylib");
++    candidate->mEGLLibrary = load("libEGL_cloakfox_canonical.dylib");
++#endif
++    if (!candidate->mGLLibrary || !candidate->mEGLLibrary) {
++      *out_failureId = "FEATURE_FAILURE_CANONICAL_GPU_LIBRARY"_ns;
++      return nullptr;
++    }
++    if (!candidate->Init(out_failureId) || !candidate->IsANGLE()) {
++      *out_failureId = "FEATURE_FAILURE_CANONICAL_GPU_EGL"_ns;
++      return nullptr;
++    }
++    sCanonicalInstance = candidate;
++  }
++  return sCanonicalInstance;
++}
++
+ /* static */ void GLLibraryEGL::Shutdown() {
+   StaticMutexAutoLock lock(sMutex);
+   sInstance = nullptr;
++  sCanonicalInstance = nullptr;
+ }
+ 
+ bool GLLibraryEGL::Init(nsACString* const out_failureId) {
+@@ -964,6 +1135,23 @@
+ 
+   MOZ_ASSERT(!(aFlags.mForceAccel && aFlags.mForceSoftware),
+              "Cannot force accelerated and software display");
++
++  if (mCanonicalGpu) {
++    // EGL_ANGLE_platform_angle_vulkan + EGL_ANGLE_platform_angle_device_type.
++    // The pinned ANGLE ICD selection validates Google's Vulkan vendor/device
++    // ID and SwiftShader Device name; it never selects a hardware ICD here.
++    const EGLAttrib attrs[] = {
++        LOCAL_EGL_PLATFORM_ANGLE_TYPE_ANGLE,
++        0x3450,  // EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE
++        LOCAL_EGL_PLATFORM_ANGLE_DEVICE_TYPE_ANGLE,
++        0x3487,  // EGL_PLATFORM_ANGLE_DEVICE_TYPE_SWIFTSHADER_ANGLE
++        LOCAL_EGL_NONE};
++    const auto display = fGetPlatformDisplay(
++        LOCAL_EGL_PLATFORM_ANGLE_ANGLE, EGL_DEFAULT_DISPLAY, attrs);
++    if (display) ret = EglDisplay::Create(*this, display, false, aProofOfLock);
++    if (!ret) *out_failureId = "FEATURE_FAILURE_CANONICAL_GPU_DISPLAY"_ns;
++    return ret;
++  }
+ 
+   if (IsExtensionSupported(EGLLibExtension::ANGLE_platform_angle_d3d)) {
+     nsCString accelAngleFailureId;
+--- a/gfx/gl/GLLibraryEGL.h
++++ b/gfx/gl/GLLibraryEGL.h
+@@ -153,6 +153,7 @@
+   PRLibrary* mEGLLibrary = nullptr;
+   PRLibrary* mGLLibrary = nullptr;
+   bool mIsANGLE = false;
++  bool mCanonicalGpu = false;
+   bool mIsD3DANGLE = false;
+   std::bitset<UnderlyingValue(EGLLibExtension::Max)> mAvailableExtensions;
+   std::weak_ptr<EglDisplay> mDefaultDisplay;
+@@ -160,6 +161,8 @@
+ 
+  public:
+   static RefPtr<GLLibraryEGL> Get(nsACString* const out_failureId);
++  static RefPtr<GLLibraryEGL> GetCanonical(nsACString* const out_failureId);
++  static bool VerifyCanonicalLibraries(nsACString* const out_failureId);
+   static void Shutdown();
+ 
+  private:
+@@ -167,6 +170,7 @@
+ 
+   static StaticMutex sMutex;
+   static StaticRefPtr<GLLibraryEGL> sInstance MOZ_GUARDED_BY(sMutex);
++  static StaticRefPtr<GLLibraryEGL> sCanonicalInstance MOZ_GUARDED_BY(sMutex);
+ 
+   bool Init(nsACString* const out_failureId);
+   void InitLibExtensions();
+--- a/gfx/gl/SharedSurface.cpp
++++ b/gfx/gl/SharedSurface.cpp
+@@ -95,6 +95,9 @@
+ UniquePtr<SurfaceFactory> SurfaceFactory::Create(
+     GLContext* const pGl, const layers::TextureType consumerType) {
+   auto& gl = *pGl;
++  // CPU Vulkan has no Metal IOSurface/D3D/DMABuf interop contract. Returning
++  // no accelerated factory selects WebGL's existing CPU readback presentation.
++  if (gl.mDesc.canonicalGpu) return nullptr;
+ 
+   switch (consumerType) {
+     case layers::TextureType::D3D11:
+--- a/gfx/gl/moz.build
++++ b/gfx/gl/moz.build
+@@ -159,3 +159,6 @@
+ LOCAL_INCLUDES += [
+     "/gfx/cairo/cairo/src",
+ ]
++
++# Canonical GPU manifest/owning-policy JSON support.
++LOCAL_INCLUDES += ["/cloakcfg"]

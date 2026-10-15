@@ -1,0 +1,675 @@
+--- a/gfx/thebes/gfxFont.cpp
++++ b/gfx/thebes/gfxFont.cpp
+@@ -3,6 +3,8 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "gfxFont.h"
++#include "../../cloakcfg/CanvasProducerAudit.hpp"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ 
+ #include "COLRFonts.h"
+ #include "GreekCasing.h"
+@@ -2368,6 +2370,11 @@
+                    gfx::Point* aPt, TextRunDrawParams& aRunParams,
+                    imgDrawingParams& aImgParams,
+                    gfx::ShapedTextFlags aOrientation) {
++  Cloakfox::CanvasProducerAudit::Observe(
++      GetType() == FONT_TYPE_CANONICAL,
++      uint32_t(GetType() == FONT_TYPE_CANONICAL
++                   ? gfx::CanvasPixelSource::FixedFontOutline
++                   : gfx::CanvasPixelSource::HostText));
+   NS_ASSERTION(aRunParams.drawMode == DrawMode::GLYPH_PATH ||
+                    !(int(aRunParams.drawMode) & int(DrawMode::GLYPH_PATH)),
+                "GLYPH_PATH cannot be used with GLYPH_FILL, GLYPH_STROKE or "
+--- a/image/Decoder.cpp
++++ b/image/Decoder.cpp
+@@ -107,6 +107,14 @@
+     // CMSMode::Off so that the sRGB conversion actually happens.
+     mCMSMode = CMSMode::All;
+   }
++}
++
++int Decoder::GetCMSRenderingIntent() const {
++  // Authored profile intent is deterministic. A machine/user CMS preference
++  // must not change the fixed-sRGB decode variant's output.
++  return (mSurfaceFlags & SurfaceFlags::TO_SRGB_COLORSPACE)
++             ? -1
++             : gfxPlatform::GetRenderingIntent();
+ }
+ 
+ qcms_profile* Decoder::GetCMSOutputProfile() const {
+--- a/image/Decoder.h
++++ b/image/Decoder.h
+@@ -469,6 +469,7 @@
+   virtual nsresult FinishInternal();
+   virtual nsresult FinishWithErrorInternal();
+ 
++  int GetCMSRenderingIntent() const;
+   qcms_profile* GetCMSOutputProfile() const;
+   qcms_transform* GetCMSsRGBTransform(gfx::SurfaceFormat aFormat) const;
+ 
+--- a/image/FrameAnimator.cpp
++++ b/image/FrameAnimator.cpp
+@@ -28,7 +28,8 @@
+     bool aAllowInvalidation /* = true */) {
+   LookupResult result = SurfaceCache::Lookup(
+       ImageKey(aImage),
+-      RasterSurfaceKey(aSize, DefaultSurfaceFlags(), PlaybackType::eAnimated),
++      RasterSurfaceKey(aSize, aImage->CloakfoxAnimationSurfaceFlags(),
++                       PlaybackType::eAnimated),
+       /* aMarkUsed = */ false);
+ 
+   return UpdateStateInternal(result, aSize, aAllowInvalidation);
+@@ -79,6 +80,7 @@
+       // are fully decoded but aren't finished animating because before we paint
+       // the refresh driver will call into us to advance to the correct frame,
+       // and that will succeed because we have all the frames.
++      mColorPolicyRedecode = false;
+       if (mCompositedFrameInvalid) {
+         // Invalidate if we are marking the composited frame valid.
+         ret.SizeTo(aSize);
+@@ -86,7 +88,8 @@
+       mCompositedFrameInvalid = false;
+     } else {
+       if (mHasRequestedDecode) {
+-        MOZ_ASSERT(StaticPrefs::image_mem_animated_discardable_AtStartup());
++        MOZ_ASSERT(StaticPrefs::image_mem_animated_discardable_AtStartup() ||
++                   mColorPolicyRedecode);
+         mCompositedFrameInvalid = true;
+       }
+     }
+@@ -333,7 +336,8 @@
+   // state as well, if we still have one.
+   SurfaceCache::ResetAnimation(
+       ImageKey(mImage),
+-      RasterSurfaceKey(mSize, DefaultSurfaceFlags(), PlaybackType::eAnimated));
++      RasterSurfaceKey(mSize, mImage->CloakfoxAnimationSurfaceFlags(),
++                       PlaybackType::eAnimated));
+ 
+   // Calling Reset on the surface of the animation can cause discarding surface
+   // providers to throw out all their frames so refresh our state.
+@@ -366,7 +370,8 @@
+   // having the surface disappear at anytime.
+   LookupResult result = SurfaceCache::Lookup(
+       ImageKey(mImage),
+-      RasterSurfaceKey(mSize, DefaultSurfaceFlags(), PlaybackType::eAnimated),
++      RasterSurfaceKey(mSize, mImage->CloakfoxAnimationSurfaceFlags(),
++                       PlaybackType::eAnimated),
+       /* aMarkUsed = */ true);
+ 
+   ret.mDirtyRect = aState.UpdateStateInternal(result, mSize);
+@@ -447,7 +452,8 @@
+                                                bool aMarkUsed) {
+   LookupResult result = SurfaceCache::Lookup(
+       ImageKey(mImage),
+-      RasterSurfaceKey(mSize, DefaultSurfaceFlags(), PlaybackType::eAnimated),
++      RasterSurfaceKey(mSize, mImage->CloakfoxAnimationSurfaceFlags(),
++                       PlaybackType::eAnimated),
+       aMarkUsed);
+ 
+   if (result) {
+@@ -458,7 +464,8 @@
+   }
+ 
+   if (aState.mCompositedFrameInvalid) {
+-    MOZ_ASSERT(StaticPrefs::image_mem_animated_discardable_AtStartup());
++    MOZ_ASSERT(StaticPrefs::image_mem_animated_discardable_AtStartup() ||
++               aState.mColorPolicyRedecode);
+     MOZ_ASSERT(aState.GetHasRequestedDecode());
+     MOZ_ASSERT(!aState.GetIsCurrentlyDecoded());
+ 
+--- a/image/FrameAnimator.h
++++ b/image/FrameAnimator.h
+@@ -34,7 +34,8 @@
+         mHasRequestedDecode(false),
+         mIsCurrentlyDecoded(false),
+         mCompositedFrameInvalid(false),
+-        mDiscarded(false) {}
++        mDiscarded(false),
++        mColorPolicyRedecode(false) {}
+ 
+   /**
+    * Call this whenever a decode completes, a decode starts, or the image is
+@@ -56,6 +57,12 @@
+    */
+   void NotifyDecodeComplete();
+ 
++  void ResetDecoderStateForColorPolicy() {
++    mHasBeenDecoded = mHasRequestedDecode = mIsCurrentlyDecoded = false;
++    mCompositedFrameInvalid = mDiscarded = false;
++    mColorPolicyRedecode = true;
++  }
++
+   /**
+    * Returns true if this image has been fully decoded before.
+    */
+@@ -77,7 +84,8 @@
+    */
+   void SetCompositedFrameInvalid(bool aInvalid) {
+     MOZ_ASSERT(!aInvalid ||
+-               StaticPrefs::image_mem_animated_discardable_AtStartup());
++               StaticPrefs::image_mem_animated_discardable_AtStartup() ||
++               mColorPolicyRedecode);
+     mCompositedFrameInvalid = aInvalid;
+   }
+ 
+@@ -241,6 +249,7 @@
+   //! Whether this image is currently discarded. Only set to true after the
+   //! image has been decoded at least once.
+   bool mDiscarded;
++  bool mColorPolicyRedecode;
+ };
+ 
+ /**
+--- a/image/ISurfaceProvider.h
++++ b/image/ISurfaceProvider.h
+@@ -252,6 +252,11 @@
+     mProvider.forget(aOutProvider);
+   }
+ 
++  SurfaceFlags GetSurfaceFlags() const {
++    return mProvider ? mProvider->GetSurfaceKey().Flags()
++                     : DefaultSurfaceFlags();
++  }
++
+   explicit operator bool() const { return mHaveSurface; }
+   imgFrame* operator->() { return DrawableRef().get(); }
+ 
+--- a/image/RasterImage.cpp
++++ b/image/RasterImage.cpp
+@@ -5,6 +5,7 @@
+ // Must #include ImageLogging.h before any IPDL-generated files or other files
+ // that #include prlog.h
+ #include "RasterImage.h"
++#include "../cloakcfg/CanvasProducerAudit.hpp"
+ 
+ #include <stdint.h>
+ 
+@@ -30,6 +31,8 @@
+ #include "mozilla/RefPtr.h"
+ #include "mozilla/SizeOfState.h"
+ #include "mozilla/StaticPrefs_image.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/TimeStamp.h"
+ #include "mozilla/gfx/2D.h"
+ #include "mozilla/glean/ImageDecodersMetrics.h"
+@@ -61,6 +64,35 @@
+ NS_IMPL_ISUPPORTS(RasterImage, imgIContainer, imgIContainerDebug)
+ #endif
+ 
++// The exact color policy participates in the cache key before lookup and
++// decoder creation, including images drawn from inside SVG/filter documents.
++static uint32_t CloakfoxRasterDecodeFlags(uint32_t aFlags, bool aCanonical) {
++  if (aFlags & imgIContainer::FLAG_DECODE_NO_COLORSPACE_CONVERSION) {
++    return aFlags & ~imgIContainer::FLAG_DECODE_TO_SRGB_COLORSPACE;
++  }
++  return aCanonical ? aFlags | imgIContainer::FLAG_DECODE_TO_SRGB_COLORSPACE
++                    : aFlags;
++}
++// End Cloakfox raster producer policy.
++
++void RasterImage::RefreshCloakfoxDecodePolicy() {
++  MOZ_ASSERT(NS_IsMainThread());
++  const bool canonical = StaticPrefs::cloakfox_enabled() &&
++                         StaticPrefs::cloakfox_experimental_canvas_pipeline();
++  if (canonical != mCloakfoxCanonicalDecode) {
++    mCloakfoxCanonicalDecode = canonical;
++    mCloakfoxColorPolicyChanged = true;
++    // Animation providers use distinct color-policy cache keys. Retain timing
++    // and loop position but discard the bookkeeping for the previous decoder.
++    if (mAnimationState) mAnimationState->ResetDecoderStateForColorPolicy();
++  }
++}
++
++SurfaceFlags RasterImage::CloakfoxAnimationSurfaceFlags() const {
++  return mCloakfoxCanonicalDecode ? SurfaceFlags::TO_SRGB_COLORSPACE
++                                  : DefaultSurfaceFlags();
++}
++
+ //******************************************************************************
+ RasterImage::RasterImage(nsIURI* aURI /* = nullptr */)
+     : ImageResource(aURI),  // invoke superclass's constructor
+@@ -133,6 +165,7 @@
+ //******************************************************************************
+ NS_IMETHODIMP_(void)
+ RasterImage::RequestRefresh(const TimeStamp& aTime) {
++  RefreshCloakfoxDecodePolicy();
+   if (HadRecentRefresh(aTime)) {
+     return;
+   }
+@@ -301,8 +334,9 @@
+                                               bool aMarkUsed) {
+   if (mAnimationState && aPlaybackType == PlaybackType::eAnimated) {
+     MOZ_ASSERT(mFrameAnimator);
+-    MOZ_ASSERT(ToSurfaceFlags(aFlags) == DefaultSurfaceFlags(),
+-               "Can't composite frames with non-default surface flags");
++    if (ToSurfaceFlags(aFlags) != CloakfoxAnimationSurfaceFlags()) {
++      return LookupResult(MatchType::NOT_FOUND);
++    }
+     return mFrameAnimator->GetCompositedFrame(*mAnimationState, aMarkUsed);
+   }
+ 
+@@ -332,6 +366,9 @@
+                                       PlaybackType aPlaybackType,
+                                       bool aMarkUsed) {
+   MOZ_ASSERT(NS_IsMainThread());
++
++  RefreshCloakfoxDecodePolicy();
++  aFlags = CloakfoxRasterDecodeFlags(aFlags, mCloakfoxCanonicalDecode);
+ 
+   // If we're opaque, we don't need to care about premultiplied alpha, because
+   // that can only matter for frames with transparency.
+@@ -378,7 +415,8 @@
+     // yet.) Trigger decoding so it'll be available next time.
+     MOZ_ASSERT(aPlaybackType != PlaybackType::eAnimated ||
+                    StaticPrefs::image_mem_animated_discardable_AtStartup() ||
+-                   !mAnimationState || mAnimationState->KnownFrameCount() < 1,
++                   mCloakfoxColorPolicyChanged || !mAnimationState ||
++                   mAnimationState->KnownFrameCount() < 1,
+                "Animated frames should be locked");
+ 
+     // The surface cache may suggest the preferred size we are supposed to
+@@ -597,7 +635,21 @@
+     return nullptr;
+   }
+ 
+-  return result.Surface()->GetSourceSurface();
++  RefPtr<SourceSurface> surface = result.Surface()->GetSourceSurface();
++  const auto actualFlags = result.Surface().GetSurfaceFlags();
++  if (surface && result.Surface()->IsFinished() &&
++      bool(actualFlags & (SurfaceFlags::TO_SRGB_COLORSPACE |
++                          SurfaceFlags::NO_COLORSPACE_CONVERSION))) {
++    gfx::SetCanvasPrivacyMetadata(
++        surface, {0, 0, 0, 0,
++                  uint32_t(gfx::CanvasPixelSource::ExternalPixels) |
++                      uint32_t(gfx::CanvasPixelSource::CanonicalRaster)});
++  }
++  const auto policy = gfx::GetCanvasPrivacyMetadata(surface);
++  Cloakfox::CanvasProducerAudit::Observe(
++      gfx::CanImportCanonicalCanvasPixels(policy), policy.sources,
++      policy.userContextId, policy.ownerHi, policy.ownerLo);
++  return surface.forget();
+ }
+ 
+ NS_IMETHODIMP_(bool)
+@@ -1356,6 +1408,13 @@
+                                         const ImageRegion& aRegion,
+                                         SamplingFilter aSamplingFilter,
+                                         uint32_t aFlags, float aOpacity) {
++  const auto actualFlags = aSurface.GetSurfaceFlags();
++  Cloakfox::CanvasProducerAudit::Observe(
++      aSurface->IsFinished() &&
++          bool(actualFlags & (SurfaceFlags::TO_SRGB_COLORSPACE |
++                              SurfaceFlags::NO_COLORSPACE_CONVERSION)),
++      uint32_t(gfx::CanvasPixelSource::ExternalPixels) |
++          uint32_t(gfx::CanvasPixelSource::CanonicalRaster));
+   gfxContextMatrixAutoSaveRestore saveMatrix(aContext);
+   ImageRegion region(aRegion);
+   bool frameIsFinished = aSurface->IsFinished();
+@@ -1606,7 +1665,9 @@
+ 
+   OrientedIntRect invalidRect = aInvalidRect;
+ 
+-  if (!(aDecoderFlags & DecoderFlags::FIRST_FRAME_ONLY)) {
++  if (!(aDecoderFlags & DecoderFlags::FIRST_FRAME_ONLY) &&
++      (!mAnimationState || !aFrameCount ||
++       aSurfaceFlags == CloakfoxAnimationSurfaceFlags())) {
+     // We may have decoded new animation frames; update our animation state.
+     MOZ_ASSERT_IF(aFrameCount && *aFrameCount > 1, mAnimationState || mError);
+     if (mAnimationState && aFrameCount) {
+@@ -1638,6 +1699,12 @@
+     const OrientedIntRect& aInvalidRect, const Maybe<uint32_t>& aFrameCount,
+     DecoderFlags aDecoderFlags, SurfaceFlags aSurfaceFlags) {
+   MOZ_ASSERT(NS_IsMainThread());
++
++  if (!aStatus.mWasMetadataDecode && mAnimationState &&
++      !(aDecoderFlags & DecoderFlags::FIRST_FRAME_ONLY) &&
++      aSurfaceFlags != CloakfoxAnimationSurfaceFlags()) {
++    return;
++  }
+ 
+   // If the decoder detected an error, log it to the error console.
+   if (aStatus.mShouldReportError) {
+--- a/image/RasterImage.h
++++ b/image/RasterImage.h
+@@ -254,7 +254,11 @@
+     return spec;
+   }
+ 
++  // Color-policy key shared by every animation provider/animator lookup.
++  SurfaceFlags CloakfoxAnimationSurfaceFlags() const;
++
+  private:
++  void RefreshCloakfoxDecodePolicy();
+   nsresult Init(const char* aMimeType, uint32_t aFlags);
+ 
+   /**
+@@ -367,6 +371,8 @@
+ 
+   /// Animation timeline and other state for animation images.
+   Maybe<AnimationState> mAnimationState;
++  bool mCloakfoxCanonicalDecode = false;
++  bool mCloakfoxColorPolicyChanged = false;
+ 
+   // Image locking.
+   uint32_t mLockCount;
+--- a/image/VectorImage.cpp
++++ b/image/VectorImage.cpp
+@@ -3,6 +3,8 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "VectorImage.h"
++#include "../cloakcfg/CanvasProducerAudit.hpp"
++#include "../cloakcfg/CloakfoxSiteSeed.hpp"
+ 
+ #include "AutoRestoreSVGState.h"
+ #include "BlobSurfaceProvider.h"
+@@ -29,10 +31,14 @@
+ #include "mozilla/SVGObserverUtils.h"  // for SVGRenderingObserver
+ #include "mozilla/SVGUtils.h"
+ #include "mozilla/StaticPrefs_image.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
++#include "nsGkAtoms.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/DocumentInlines.h"
+ #include "mozilla/dom/Event.h"
+ #include "mozilla/dom/SVGDocument.h"
++#include "mozilla/dom/ShadowIncludingTreeIterator.h"
+ #include "mozilla/dom/SVGSVGElement.h"
+ #include "mozilla/gfx/2D.h"
+ #include "mozilla/image/Resolution.h"
+@@ -54,6 +60,9 @@
+ 
+ namespace image {
+ 
++static gfx::CanvasPrivacyMetadata CloakfoxSVGOwner(SVGDocumentWrapper*);
++static bool CloakfoxSVGHasUntrackedContent(SVGDocumentWrapper*);
++
+ // Helper-class: SVGRootRenderingObserver
+ class SVGRootRenderingObserver final : public SVGRenderingObserver {
+  public:
+@@ -257,6 +266,9 @@
+       nsPrintfCString("%dx%d %s", mSize.width, mSize.height,
+                       uri ? uri->GetSpecOrDefault().get() : "N/A"));
+ 
++  Cloakfox::CanvasProducerAudit::Observe(
++      aContext->GetDrawTarget()->GetBackendType() == BackendType::SKIA,
++      uint32_t(gfx::CanvasPixelSource::Software2D));
+   gfxContextAutoSaveRestore contextRestorer(aContext);
+ 
+   // Clip to aFillRect so that we don't paint outside.
+@@ -638,6 +650,7 @@
+ NS_IMETHODIMP_(already_AddRefed<SourceSurface>)
+ VectorImage::GetFrameAtSize(const IntSize& aSize, uint32_t aWhichFrame,
+                             uint32_t aFlags) {
++  RefreshCloakfoxRenderPolicy();
+   MOZ_ASSERT(aWhichFrame <= FRAME_MAX_VALUE);
+ 
+   AutoProfilerImagePaintMarker PROFILER_RAII(this);
+@@ -728,6 +741,7 @@
+                               const Maybe<ImageIntRegion>& aRegion,
+                               uint32_t aFlags,
+                               WebRenderImageProvider** aProvider) {
++  RefreshCloakfoxRenderPolicy();
+   MOZ_ASSERT(NS_IsMainThread());
+   MOZ_ASSERT(aRenderer);
+   MOZ_ASSERT(!(aFlags & FLAG_BYPASS_SURFACE_CACHE), "Unsupported flags");
+@@ -900,6 +914,7 @@
+                   SamplingFilter aSamplingFilter,
+                   const SVGImageContext& aSVGContext, uint32_t aFlags,
+                   float aOpacity) {
++  RefreshCloakfoxRenderPolicy();
+   if (aWhichFrame > FRAME_MAX_VALUE) {
+     return ImgDrawResult::BAD_ARGS;
+   }
+@@ -915,6 +930,14 @@
+   if (!mIsFullyLoaded) {
+     return ImgDrawResult::NOT_READY;
+   }
++
++  const auto ownPolicy = CloakfoxSVGOwner(mSVGDocumentWrapper);
++  Cloakfox::CanvasProducerAudit::Observe(
++      ownPolicy.version == gfx::kCanvasPrivacyVersion &&
++          aContext->GetDrawTarget()->GetBackendType() == BackendType::SKIA &&
++          !CloakfoxSVGHasUntrackedContent(mSVGDocumentWrapper),
++      uint32_t(gfx::CanvasPixelSource::Software2D), ownPolicy.userContextId,
++      ownPolicy.ownerHi, ownPolicy.ownerLo);
+ 
+   if (mAnimationConsumers == 0 && mHaveAnimations) {
+     SendOnUnlockedDraw(aFlags);
+@@ -1241,6 +1264,56 @@
+   return svgDrawable.forget();
+ }
+ 
++void VectorImage::RefreshCloakfoxRenderPolicy() {
++  MOZ_ASSERT(NS_IsMainThread());
++  const bool canonical = StaticPrefs::cloakfox_enabled() &&
++                         StaticPrefs::cloakfox_experimental_canvas_pipeline();
++  auto* doc =
++      mSVGDocumentWrapper ? mSVGDocumentWrapper->GetDocument() : nullptr;
++  auto* context = doc ? doc->GetPresContext() : nullptr;
++  const auto identity =
++      context ? context->GetCloakfoxFontIdentity() : Nothing();
++  const uint64_t fontIdentity = identity.valueOr(0);
++  if (mCloakfoxRenderPolicy && (*mCloakfoxRenderPolicy != canonical ||
++                                mCloakfoxFontIdentity != fontIdentity)) {
++    // VectorSurfaceKey predates renderer policies. Its cached pixels must not
++    // survive a producer change, even when the site's font seed is unchanged.
++    SurfaceCache::RemoveImage(ImageKey(this));
++  }
++  mCloakfoxRenderPolicy = Some(canonical);
++  mCloakfoxFontIdentity = fontIdentity;
++  if (doc) mSVGDocumentWrapper->FlushLayout();
++}
++
++static gfx::CanvasPrivacyMetadata CloakfoxSVGOwner(
++    SVGDocumentWrapper* wrapper) {
++  auto* doc = wrapper ? wrapper->GetDocument() : nullptr;
++  if (!StaticPrefs::cloakfox_enabled() ||
++      !StaticPrefs::cloakfox_experimental_canvas_pipeline() || !doc ||
++      doc->NodePrincipal()->IsSystemPrincipal())
++    return {};
++  const uint32_t context =
++      doc->NodePrincipal()->OriginAttributesRef().mUserContextId;
++  if (const auto owner =
++          CloakfoxSiteSeed::OwnerKey(context, doc->CookieJarSettings())) {
++    return {gfx::kCanvasPrivacyVersion, context, (*owner)[0], (*owner)[1], 0};
++  }
++  return {};
++}
++
++static bool CloakfoxSVGHasUntrackedContent(SVGDocumentWrapper* wrapper) {
++  auto* doc = wrapper ? wrapper->GetDocument() : nullptr;
++  if (!doc) return true;
++  for (nsINode* node : dom::ShadowIncludingTreeIterator(*doc)) {
++    // HTML subtrees can contain canvases, video, themed controls and other
++    // producers outside the SVG font/image observation hooks.
++    if (node->IsContent() &&
++        node->AsContent()->IsSVGElement(nsGkAtoms::foreignObject))
++      return true;
++  }
++  return false;
++}
++
+ std::tuple<RefPtr<SourceSurface>, IntSize> VectorImage::LookupCachedSurface(
+     const IntSize& aSize, const SVGImageContext& aSVGContext, uint32_t aFlags) {
+   // We can't use cached surfaces if we:
+@@ -1278,6 +1351,10 @@
+     return std::make_tuple(RefPtr<SourceSurface>(), rasterSize);
+   }
+ 
++  const auto policy = gfx::GetCanvasPrivacyMetadata(sourceSurface);
++  Cloakfox::CanvasProducerAudit::Observe(
++      gfx::CanImportCanonicalCanvasPixels(policy), policy.sources,
++      policy.userContextId, policy.ownerHi, policy.ownerLo);
+   return std::make_tuple(std::move(sourceSurface), rasterSize);
+ }
+ 
+@@ -1322,6 +1399,17 @@
+       aParams.context ? aParams.context->GetDrawTarget()->GetBackendType()
+                       : gfxPlatform::GetPlatform()->GetDefaultContentBackend();
+ 
++  auto policy = CloakfoxSVGOwner(mSVGDocumentWrapper);
++  const bool requested = mCloakfoxRenderPolicy.valueOr(false);
++  if (requested) backend = BackendType::SKIA;
++  Cloakfox::CanvasProducerAudit audit(policy.userContextId, policy.ownerHi,
++                                      policy.ownerLo);
++  Cloakfox::CanvasProducerAudit::Observe(
++      policy.version == gfx::kCanvasPrivacyVersion &&
++          backend == BackendType::SKIA &&
++          !CloakfoxSVGHasUntrackedContent(mSVGDocumentWrapper),
++      uint32_t(gfx::CanvasPixelSource::Software2D));
++
+   // Try to create an imgFrame, initializing the surface it contains by drawing
+   // our gfxDrawable into it. (We use FILTER_NEAREST since we never scale here.)
+   auto frame = MakeNotNull<RefPtr<imgFrame>>();
+@@ -1344,6 +1432,11 @@
+     aWillCache = false;
+     return nullptr;
+   }
++
++  policy.sources = audit.Sources();
++  if (!audit.Succeeded())
++    policy.sources |= uint32_t(gfx::CanvasPixelSource::Unknown);
++  gfx::SetCanvasPrivacyMetadata(surface, policy);
+ 
+   // We created the frame, but only because we had no context to draw to
+   // directly. All the caller wants is the surface in this case.
+--- a/image/VectorImage.h
++++ b/image/VectorImage.h
+@@ -72,6 +72,9 @@
+   virtual bool ShouldAnimate() override;
+ 
+  private:
++  void RefreshCloakfoxRenderPolicy();
++  Maybe<bool> mCloakfoxRenderPolicy;
++  uint64_t mCloakfoxFontIdentity = 0;
+   friend class SourceSurfaceBlobImage;
+ 
+   /**
+--- a/image/decoders/nsAVIFDecoder.cpp
++++ b/image/decoders/nsAVIFDecoder.cpp
+@@ -1795,12 +1795,12 @@
+   }
+ 
+   if (mInProfile && GetCMSOutputProfile() && !mTransform) {
+-    auto intent = static_cast<qcms_intent>(gfxPlatform::GetRenderingIntent());
++    auto intent = static_cast<qcms_intent>(GetCMSRenderingIntent());
+     qcms_data_type inType;
+     qcms_data_type outType;
+ 
+     // If we're not mandating an intent, use the one from the image.
+-    if (gfxPlatform::GetRenderingIntent() == -1) {
++    if (GetCMSRenderingIntent() == -1) {
+       intent = qcms_profile_get_rendering_intent(mInProfile);
+     }
+ 
+--- a/image/decoders/nsJPEGDecoder.cpp
++++ b/image/decoders/nsJPEGDecoder.cpp
+@@ -339,7 +339,7 @@
+ 
+           if (inputType) {
+             // Calculate rendering intent.
+-            int intent = gfxPlatform::GetRenderingIntent();
++            int intent = GetCMSRenderingIntent();
+             if (intent == -1) {
+               intent = qcms_profile_get_rendering_intent(mInProfile);
+             }
+--- a/image/decoders/nsJXLDecoder.cpp
++++ b/image/decoders/nsJXLDecoder.cpp
+@@ -700,7 +700,7 @@
+     return;
+   }
+ 
+-  auto intent = static_cast<qcms_intent>(gfxPlatform::GetRenderingIntent());
++  auto intent = static_cast<qcms_intent>(GetCMSRenderingIntent());
+   if (intent < QCMS_INTENT_MIN || intent > QCMS_INTENT_MAX) {
+     intent = qcms_profile_get_rendering_intent(mInProfile);
+   }
+--- a/image/decoders/nsPNGDecoder.cpp
++++ b/image/decoders/nsPNGDecoder.cpp
+@@ -654,7 +654,7 @@
+     uint32_t intent = -1;
+     bool sRGBTag = false;
+     if (decoder->mCMSMode != CMSMode::Off) {
+-      intent = gfxPlatform::GetRenderingIntent();
++      intent = decoder->GetCMSRenderingIntent();
+       uint32_t pIntent =
+           decoder->ReadColorProfile(png_ptr, info_ptr, color_type, &sRGBTag);
+       // If we're not mandating an intent, use the one from the image.
+--- a/image/decoders/nsWebPDecoder.cpp
++++ b/image/decoders/nsWebPDecoder.cpp
+@@ -339,7 +339,7 @@
+   }
+ 
+   // Calculate rendering intent.
+-  int intent = gfxPlatform::GetRenderingIntent();
++  int intent = GetCMSRenderingIntent();
+   if (intent == -1) {
+     intent = qcms_profile_get_rendering_intent(mInProfile);
+   }
+--- a/image/imgFrame.cpp
++++ b/image/imgFrame.cpp
+@@ -3,6 +3,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "imgFrame.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ 
+ #include <algorithm>  // for min, max
+ 
+@@ -333,8 +334,15 @@
+       return NS_ERROR_OUT_OF_MEMORY;
+     }
+ 
+-    target = gfxPlatform::CreateDrawTargetForData(
+-        mRawSurface->GetData(), mImageSize, mRawSurface->Stride(), mFormat);
++    if (aBackend == BackendType::SKIA && StaticPrefs::cloakfox_enabled() &&
++        StaticPrefs::cloakfox_experimental_canvas_pipeline()) {
++      target = Factory::CreateDrawTargetForData(
++          BackendType::SKIA, mRawSurface->GetData(), mImageSize,
++          mRawSurface->Stride(), mFormat);
++    } else {
++      target = gfxPlatform::CreateDrawTargetForData(
++          mRawSurface->GetData(), mImageSize, mRawSurface->Stride(), mFormat);
++    }
+   } else {
+     // We can't use data surfaces for content, so we'll create an offscreen
+     // surface instead.  This means if someone later calls RawAccessRef(), we
+--- a/layout/base/nsPresContext.cpp
++++ b/layout/base/nsPresContext.cpp
+@@ -334,6 +334,7 @@
+ static const char* gExactCallbackPrefs[] = {
+     "cloakfox.enabled",
+     "cloakfox.font_identity_epoch",
++    "cloakfox.experimental.canvas_pipeline",
+     "privacy.resistFingerprinting.letterboxing",
+     "dom.meta-viewport.enabled",
+     "image.animation_mode",
+@@ -550,16 +551,21 @@
+ 
+   nsDependentCString prefName(aPrefName);
+   if (prefName.EqualsLiteral("cloakfox.enabled") ||
+-      prefName.EqualsLiteral("cloakfox.font_identity_epoch")) {
++      prefName.EqualsLiteral("cloakfox.font_identity_epoch") ||
++      prefName.EqualsLiteral("cloakfox.experimental.canvas_pipeline")) {
+     const uint64_t oldIdentity = mCloakfoxFontIdentity;
+     RefreshCloakfoxFontIdentity();
+-    if (uint64_t(mCloakfoxFontIdentity) != oldIdentity) {
++    if (uint64_t(mCloakfoxFontIdentity) != oldIdentity ||
++        prefName.EqualsLiteral("cloakfox.enabled") ||
++        prefName.EqualsLiteral("cloakfox.experimental.canvas_pipeline")) {
+       FlushFontCache();
+       // Existing text runs already contain shaped advances. A rare identity
+       // change must discard those too, not merely change future word-cache keys.
+       RebuildAllStyleData(nsChangeHint_ReconstructFrame, RestyleHint::RecascadeSubtree());
+     }
+-    if (prefName.EqualsLiteral("cloakfox.font_identity_epoch")) return;
++    if (prefName.EqualsLiteral("cloakfox.font_identity_epoch") ||
++        prefName.EqualsLiteral("cloakfox.experimental.canvas_pipeline"))
++      return;
+   }
+   if (prefName.EqualsLiteral("cloakfox.enabled") ||
+       prefName.EqualsLiteral("privacy.resistFingerprinting.letterboxing")) {

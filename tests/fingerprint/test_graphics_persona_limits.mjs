@@ -20,3 +20,28 @@ test('every GPU class emits WebGL2 limits without exposing them on WebGL1', () =
     }
   }
 });
+
+test('uniform vector and component capacities describe the same storage', () => {
+  for (const renderer of ['NVIDIA GTX 980', 'AMD Radeon', 'Intel UHD', 'Apple M1', 'Generic GPU']) {
+    const keys = {};
+    context.fillWebGLKeys(keys, renderer);
+    const gl1 = keys['webGl:parameters'];
+    const gl2 = keys['webGl2:parameters'];
+    for (const [vectors, components] of [[36347, 35658], [36349, 35657]]) {
+      assert.equal(gl1[vectors], gl2[vectors], renderer);
+      assert.equal(gl2[vectors] * 4, gl2[components], renderer);
+      assert.equal(gl1[components], undefined, 'WebGL2 component enums remain invalid on WebGL1');
+    }
+  }
+});
+
+test('varying vectors follow Gecko fragment-input capacity without expanding vertex outputs', () => {
+  for (const renderer of ['NVIDIA GTX 980', 'AMD Radeon', 'Intel UHD', 'Apple M1', 'Generic GPU']) {
+    const keys = {};
+    context.fillWebGLKeys(keys, renderer);
+    const gl2 = keys['webGl2:parameters'];
+    assert.equal(gl2[36348] * 4, gl2[37157], renderer);
+    assert.equal(gl2[37154], undefined, 'vertex outputs retain backend capacity');
+    assert.equal(keys['webGl:parameters'][37157], undefined);
+  }
+});

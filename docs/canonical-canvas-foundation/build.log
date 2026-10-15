@@ -1,0 +1,41 @@
+ 0:00.50 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.50 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.68 Clobber not needed.
+ 0:01.13 W Adding make options from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:01.13 /usr/bin/make -f client.mk -j8 -s
+ 0:04.03 ./buildid.h.stub
+ 0:04.04 ./source-repo.h.stub
+ 0:04.35 ./application.ini.stub
+ 0:04.55 ./application.ini.h.stub
+ 0:05.52 ./buildid.h.stub
+ 0:05.53 ./source-repo.h.stub
+ 0:05.76 ./application.ini.stub
+ 0:06.38 dom/canvas
+ 0:06.74 dom/html
+ 0:06.75 ./application.ini.h.stub
+ 0:06.93 dom/bindings
+ 0:17.72 gfx/ipc
+ 0:24.62 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:38:
+ 0:24.62 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:410:8: error: use of undeclared identifier 'mCanonicalCanvasBacking'
+ 0:24.62 E   410 |       (mCanonicalCanvasBacking &&
+ 0:24.62 E       |        ^
+ 0:43.47 E 1 error generated.
+ 0:43.52 E make[4]: *** [Unified_cpp_dom_canvas0.o] Error 1
+ 0:43.52 E make[3]: *** [dom/canvas/target-objects] Error 2
+ 0:43.52 E make[3]: *** Waiting for unfinished jobs....
+ 1:00.83 E make[2]: *** [compile] Error 2
+ 1:00.83 E make[1]: *** [default] Error 2
+ 1:00.83 E make: *** [build] Error 2
+ 1:00.94 W 0 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_120435.json

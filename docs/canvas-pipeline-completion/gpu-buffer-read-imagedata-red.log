@@ -1,0 +1,27 @@
+...FF                                                                    [100%]
+=================================== FAILURES ===================================
+___ test_poisoned_canonical_gl_buffer_read_refuses_before_destination_access ___
+
+    def test_poisoned_canonical_gl_buffer_read_refuses_before_destination_access():
+        source=(ROOT/'dom/canvas/ClientWebGLContext.cpp').read_text()
+        start=source.index('void ClientWebGLContext::GetBufferSubData(')
+        block=source[start:source.index('\n////',start)]
+>       begin=block.index('  if (notLost->info.options.cloakfoxCanonicalGpu')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: substring not found
+
+tests/fingerprint/test_canvas_gpu_import_records.py:215: ValueError
+________ test_authored_imagedata_gets_proof_on_fresh_validated_wrapper _________
+
+    def test_authored_imagedata_gets_proof_on_fresh_validated_wrapper():
+        source=(ROOT/'dom/canvas/ClientWebGLContext.cpp').read_text()
+        start=source.index('if (src.mImageData) {')
+        block=source[start:source.index('if (src.mOffscreenCanvas)',start)]
+>       assert 'gfx::SetCanvasPrivacyMetadata(surf' in block
+E       AssertionError: assert 'gfx::SetCanvasPrivacyMetadata(surf' in 'if (src.mImageData) {\n      const auto& imageData = *src.mImageData;\n      dom::Uint8ClampedArray scopedArr;\n     ...      surf});\n            nogc.reset();  // Done with aData\n            return result;\n          });\n    }\n\n    '
+
+tests/fingerprint/test_canvas_gpu_import_records.py:256: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_gpu_import_records.py::test_poisoned_canonical_gl_buffer_read_refuses_before_destination_access
+FAILED tests/fingerprint/test_canvas_gpu_import_records.py::test_authored_imagedata_gets_proof_on_fresh_validated_wrapper
+2 failed, 3 passed in 0.51s

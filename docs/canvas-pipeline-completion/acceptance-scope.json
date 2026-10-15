@@ -1,0 +1,56 @@
+{
+  "platform": "macOS arm64",
+  "crossPlatformVerification": false,
+  "installedBinary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+  "status": "Mac implementation and installed acceptance complete",
+  "unitChecks": {
+    "node": 261,
+    "pythonPassed": 114,
+    "runtimeTestsSkippedInUnitRun": 14
+  },
+  "preflight": {
+    "canonicalFonts": 100,
+    "canonicalImagesValidIdentity": 15,
+    "codecFixtures": 28
+  },
+  "controls": [
+    "default-off",
+    "master-off",
+    "known authored inputs",
+    "unverified and foreign inputs",
+    "zero or unavailable extraction seed",
+    "missing and tampered GPU resources"
+  ],
+  "privacyBoundary": "fixed verified producers replace legacy noise; unknown 2D inputs retain fallback guards; unverified GPU ingress and exact video copies are refused",
+  "limitations": [
+    "single Mac cannot establish cross-host pixel equality",
+    "privacy software may still be recognizable",
+    "CPU rendering may affect performance and unsupported inputs may fail"
+  ],
+  "installed": {
+    "installed": "/Applications/Cloakfox.app",
+    "candidate": "/tmp/Cloakfox-canvas-verified.app",
+    "backup": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-before-complete-canvas-20261015-154317.app",
+    "applicationIniBuildID": "20261015154149",
+    "version": "158.0-beta.26",
+    "xulSHA256": "275455a276f84bc7f4f74802b18ab8df2ca206d0fb1bad91796be614d8555b42",
+    "signatureVerified": true,
+    "profilesModified": false,
+    "scope": "macOS arm64 only"
+  },
+  "runtimeBuildID": "20261015154131",
+  "installedChecks": {
+    "core": 944,
+    "coreProbes": 12,
+    "fingerprintLibraries": 448,
+    "libraryExecutions": 48,
+    "encoderExports": 31,
+    "codecFixtures": 28,
+    "coldLaunches": 4,
+    "legacyConsistency": 589,
+    "gpuResourceFailureControls": 54,
+    "loadModes": 2
+  },
+  "evidence": "verified-evidence.json",
+  "detectorObservations": "verified-detector-observations.json"
+}

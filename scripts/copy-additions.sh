@@ -44,50 +44,16 @@ run "cp -v '$REPO/patches/librewolf/pack_vs.py' build/vs/" || true
 # Copy ALL new files/folders from additions to source
 run "cp -r '$REPO/additions/'* ."
 
-# Cloakfox: stage the bundled open-substitute font pack into browser/fonts and
-# append a FINAL_TARGET_FILES.fonts install rule, so the pack is installed to
-# dist/bin/fonts and packaged into Contents/Resources/fonts (activated at
-# runtime by MOZ_BUNDLED_FONTS / ActivateBundledFonts). The Mac manifest entry
-# is added by patches/font-bundle-packaging.patch.
+# Verify pinned font bytes and refresh our owned install list, including new
+# assets when this script is repeated against an existing checkout.
 if ls "$REPO/bundle/fonts/macos/"*.ttf >/dev/null 2>&1; then
     run "python3 '$REPO/scripts/audit-font-pack.py' --check"
-    run "cp '$REPO/bundle/fonts/macos/'*.ttf browser/fonts/"
-    # Attribution and exact-byte manifest are release artifacts, not just repo
-    # documentation. Keep a separate idempotent install rule for older trees.
-    run "cp '$REPO/bundle/fonts/licenses/'*.txt browser/fonts/"
-    run "cp '$REPO/bundle/fonts/FONT-NOTICES.txt' '$REPO/bundle/fonts/font-manifest.json' browser/fonts/"
-    if ! grep -q "Cloakfox: bundled font license notices" browser/fonts/moz.build; then
-        {
-            echo ""
-            echo "# Cloakfox: bundled font license notices."
-            echo "FINAL_TARGET_FILES.fonts += ["
-            for f in "$REPO/bundle/fonts/licenses/"*.txt "$REPO/bundle/fonts/FONT-NOTICES.txt" "$REPO/bundle/fonts/font-manifest.json"; do
-                basename "$f"
-            done | LC_ALL=C sort -f | while IFS= read -r font_notice; do
-                echo "    \"$font_notice\","
-            done
-            echo "]"
-        } >> browser/fonts/moz.build
-    fi
-    # Idempotency guard: the standard flow runs this script twice (make setup
-    # bakes it into the `unpatched` tag, then make dir re-runs it), so appending
-    # unconditionally would duplicate the FINAL_TARGET_FILES.fonts entries and
-    # fail mozbuild with "Item already in manifest". Only append once.
-    if grep -q "Cloakfox: bundled open-substitute font pack" browser/fonts/moz.build; then
-        echo "Bundled font install rule already present in browser/fonts/moz.build; skipping append."
-    else
-        {
-            echo ""
-            echo "# Cloakfox: bundled open-substitute font pack (all platforms)."
-            echo 'DIST_SUBDIR = ""'
-            echo "FINAL_TARGET_FILES.fonts += ["
-            for f in "$REPO/bundle/fonts/macos/"*.ttf; do
-                echo "    \"$(basename "$f")\","
-            done
-            echo "]"
-        } >> browser/fonts/moz.build
-        echo "Staged $(ls "$REPO/bundle/fonts/macos/"*.ttf | wc -l | tr -d ' ') bundled fonts into browser/fonts/"
-    fi
+    run "python3 '$REPO/scripts/stage-font-resources.py' --bundle '$REPO/bundle/fonts' --target browser/fonts"
+fi
+
+# Stage the isolated renderer only after every pinned resource hash verifies.
+if [ -d "$REPO/bundle/canonical-gpu" ]; then
+    run "python3 '$REPO/scripts/stage-canonical-gpu.py' --bundle '$REPO/bundle/canonical-gpu' --target browser/canonical-gpu"
 fi
 
 # Override the firefox version

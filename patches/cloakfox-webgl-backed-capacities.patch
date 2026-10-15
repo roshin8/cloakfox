@@ -1,0 +1,259 @@
+diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -13,6 +13,7 @@
+ #include "nsPIDOMWindow.h"
+ #include <algorithm>
+ #include <cstddef>
++#include <cmath>
+ 
+ #include <fmt/format.h>
+ 
+@@ -2226,6 +2227,92 @@
+     ret.reset();
+   }
+   return ret;
++}
++
++// Cloakfox backend capacity policy. Only integer upper-bound capacities belong
++// here: never clamp minimum offsets, alignment requirements, timeouts or state.
++static bool CloakfoxIsUpperBoundCapacity(const GLenum pname) {
++  switch (pname) {
++    case LOCAL_GL_MAX_TEXTURE_SIZE:
++    case LOCAL_GL_MAX_CUBE_MAP_TEXTURE_SIZE:
++    case LOCAL_GL_MAX_RENDERBUFFER_SIZE:
++    case LOCAL_GL_MAX_VERTEX_ATTRIBS:
++    case LOCAL_GL_MAX_TEXTURE_IMAGE_UNITS:
++    case LOCAL_GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS:
++    case LOCAL_GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS:
++    case LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS:
++    case LOCAL_GL_MAX_FRAGMENT_UNIFORM_VECTORS:
++    case LOCAL_GL_MAX_VARYING_VECTORS:
++    case LOCAL_GL_MAX_3D_TEXTURE_SIZE:
++    case LOCAL_GL_MAX_ELEMENTS_VERTICES:
++    case LOCAL_GL_MAX_ELEMENTS_INDICES:
++    case LOCAL_GL_MAX_ARRAY_TEXTURE_LAYERS:
++    case LOCAL_GL_MAX_PROGRAM_TEXEL_OFFSET:
++    case LOCAL_GL_MAX_VERTEX_UNIFORM_BLOCKS:
++    case LOCAL_GL_MAX_FRAGMENT_UNIFORM_BLOCKS:
++    case LOCAL_GL_MAX_COMBINED_UNIFORM_BLOCKS:
++    case LOCAL_GL_MAX_UNIFORM_BUFFER_BINDINGS:
++    case LOCAL_GL_MAX_UNIFORM_BLOCK_SIZE:
++    case LOCAL_GL_MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS:
++    case LOCAL_GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS:
++    case LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS:
++    case LOCAL_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS:
++    case LOCAL_GL_MAX_VARYING_COMPONENTS:
++    case LOCAL_GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS:
++    case LOCAL_GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS:
++    case LOCAL_GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS:
++    case LOCAL_GL_MAX_SAMPLES:
++    case LOCAL_GL_MAX_ELEMENT_INDEX:
++    case LOCAL_GL_MAX_VERTEX_OUTPUT_COMPONENTS:
++    case LOCAL_GL_MAX_FRAGMENT_INPUT_COMPONENTS:
++    case LOCAL_GL_MAX_DRAW_BUFFERS:
++    case LOCAL_GL_MAX_COLOR_ATTACHMENTS:
++    case LOCAL_GL_MAX_VIEWS_OVR:
++      return true;
++    default:
++      return false;
++  }
++}
++
++static bool CloakfoxValidCapacity(const double configured) {
++  return std::isfinite(configured) && configured >= 0 &&
++         std::floor(configured) == configured;
++}
++
++static double CloakfoxBoundCapacity(const double native,
++                                   const double configured) {
++  if (!CloakfoxValidCapacity(configured)) return native;
++  return std::min(native, configured);
++}
++
++static std::optional<std::array<double, 2>> CloakfoxConfiguredPair(
++    const GLenum pname, const bool isWebGL2, const bool integer) {
++  const auto configured = MaskConfig::GetNested(
++      isWebGL2 ? "webGl2:parameters" : "webGl:parameters",
++      std::to_string(pname));
++  if (!configured || !configured->is_array() || configured->size() != 2) {
++    return std::nullopt;
++  }
++  std::array<double, 2> pair;
++  for (size_t i = 0; i < pair.size(); ++i) {
++    if (!(*configured)[i].is_number()) return std::nullopt;
++    pair[i] = (*configured)[i].get<double>();
++    if (!std::isfinite(pair[i]) || pair[i] < 0 ||
++        (integer && !CloakfoxValidCapacity(pair[i]))) {
++      return std::nullopt;
++    }
++  }
++  return pair;
++}
++
++static std::array<float, 2> CloakfoxBoundRange(
++    const std::array<float, 2>& native,
++    const std::array<double, 2>& configured) {
++  if (configured[0] > configured[1]) return native;
++  const double lower = std::max(double(native[0]), configured[0]);
++  const double upper = std::min(double(native[1]), configured[1]);
++  if (lower > upper) return native;
++  return {static_cast<float>(lower), static_cast<float>(upper)};
+ }
+ 
+ void ClientWebGLContext::GetParameter(JSContext* cx, GLenum pname,
+@@ -2304,7 +2391,94 @@
+   std::optional<
+       std::variant<int64_t, bool, double, std::string, std::nullptr_t>>
+       data;
+-  if (fromTable) data = MaskConfig::GLParam(pname, mIsWebGL2);
++  // These enums return typed arrays. Scalar masks must never change their
++  // return type or bypass complete-array validation below.
++  if (fromTable && pname != LOCAL_GL_MAX_VIEWPORT_DIMS &&
++      pname != LOCAL_GL_ALIASED_POINT_SIZE_RANGE &&
++      pname != LOCAL_GL_ALIASED_LINE_WIDTH_RANGE) {
++    data = MaskConfig::GLParam(pname, mIsWebGL2);
++  }
++
++  // A paired override also constrains a query with no own configured value.
++  GLenum companion = 0;
++  double scale = 1;
++  bool companionIsGL2 = false;
++  switch (pname) {
++    case LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS:
++      companion = LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS; scale = 0.25; companionIsGL2 = true; break;
++    case LOCAL_GL_MAX_FRAGMENT_UNIFORM_VECTORS:
++      companion = LOCAL_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS; scale = 0.25; companionIsGL2 = true; break;
++    case LOCAL_GL_MAX_VARYING_VECTORS:
++      companion = LOCAL_GL_MAX_FRAGMENT_INPUT_COMPONENTS; scale = 0.25; companionIsGL2 = true; break;
++    case LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS:
++      companion = LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS; scale = 4; break;
++    case LOCAL_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS:
++      companion = LOCAL_GL_MAX_FRAGMENT_UNIFORM_VECTORS; scale = 4; break;
++    case LOCAL_GL_MAX_FRAGMENT_INPUT_COMPONENTS:
++      companion = LOCAL_GL_MAX_VARYING_VECTORS; scale = 4; break;
++  }
++  const auto companionMask = companion
++      ? MaskConfig::GLParam(companion, mIsWebGL2 || companionIsGL2)
++      : decltype(data){};
++  if (fromTable && (data.has_value() || companionMask.has_value()) &&
++      CloakfoxIsUpperBoundCapacity(pname)) {
++    // Reporting a foreign capacity does not grant it to the actual backend.
++    // Intersect with this context's native capabilities. This reveals host
++    // ceilings already observable through allocation; it is not GPU emulation.
++    const auto native = [&]() -> Maybe<double> {
++      switch (pname) {
++        case LOCAL_GL_MAX_TEXTURE_SIZE: return Some(double(limits.maxTex2dSize));
++        case LOCAL_GL_MAX_CUBE_MAP_TEXTURE_SIZE: return Some(double(limits.maxTexCubeSize));
++        case LOCAL_GL_MAX_VERTEX_ATTRIBS: return Some(double(limits.maxVertexAttribs));
++        case LOCAL_GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS: return Some(double(limits.maxTexUnits));
++        case LOCAL_GL_MAX_3D_TEXTURE_SIZE: return Some(double(limits.maxTex3dSize));
++        case LOCAL_GL_MAX_ARRAY_TEXTURE_LAYERS: return Some(double(limits.maxTexArrayLayers));
++        case LOCAL_GL_MAX_UNIFORM_BUFFER_BINDINGS: return Some(double(limits.maxUniformBufferBindings));
++        case LOCAL_GL_MAX_DRAW_BUFFERS:
++        case LOCAL_GL_MAX_COLOR_ATTACHMENTS: return Some(double(limits.maxColorDrawBuffers));
++        case LOCAL_GL_MAX_VIEWS_OVR: return Some(double(limits.maxMultiviewLayers));
++        default: return GetNumber(pname);
++      }
++    }();
++    if (!native) return;
++    const auto asCapacity = [](const auto& mask) -> std::optional<double> {
++      if (!mask) return std::nullopt;
++      double number;
++      if (std::holds_alternative<int64_t>(*mask)) {
++        number = double(std::get<int64_t>(*mask));
++      } else if (std::holds_alternative<double>(*mask)) {
++        number = std::get<double>(*mask);
++      } else {
++        return std::nullopt;
++      }
++      if (!CloakfoxValidCapacity(number)) return std::nullopt;
++      return number;
++    };
++    const auto configured = asCapacity(data);
++    double result = configured ? CloakfoxBoundCapacity(*native, *configured) : *native;
++    const auto configuredCompanion = asCapacity(companionMask);
++    if (configured || configuredCompanion) {
++      // Keep paired vector/component getters coherent even when the profile
++      // or native backend is the smaller ceiling. Never query GL2-only native
++      // enums on WebGL1. Its configured component counterpart is still safe
++      // to read from the own-context GL2 table.
++      if (companion) {
++        if (configuredCompanion) {
++          result = std::min(result, *configuredCompanion * scale);
++        }
++        if (mIsWebGL2) {
++          if (const auto otherNative = GetNumber(companion)) {
++            result = std::min(result, *otherNative * scale);
++          }
++        }
++        // Components and vectors expose complete vec4 slots in this paired
++        // profile, including non-multiple-of-four custom component ceilings.
++        result = scale == 4 ? std::floor(result / 4) * 4 : std::floor(result);
++      }
++    }
++    retval.setNumber(result);
++    return;
++  }
+ 
+   if (data.has_value()) {
+     const auto& value = data.value();
+@@ -2437,21 +2611,23 @@
+           rv));
+       return;
+ 
+-    case LOCAL_GL_ALIASED_POINT_SIZE_RANGE:
+-      retval.set(Create<dom::Float32Array>(
+-          cx, this,
+-          MaskConfig::MParamGL<std::array<float, 2UL>>(
+-              pname, limits.pointSizeRange, mIsWebGL2),
+-          rv));
+-      return;
+-
+-    case LOCAL_GL_ALIASED_LINE_WIDTH_RANGE:
+-      retval.set(Create<dom::Float32Array>(
+-          cx, this,
+-          MaskConfig::MParamGL<std::array<float, 2UL>>(
+-              pname, limits.lineWidthRange, mIsWebGL2),
+-          rv));
+-      return;
++    case LOCAL_GL_ALIASED_POINT_SIZE_RANGE: {
++      auto range = limits.pointSizeRange;
++      if (const auto configured = CloakfoxConfiguredPair(pname, mIsWebGL2, false)) {
++        range = CloakfoxBoundRange(range, *configured);
++      }
++      retval.set(Create<dom::Float32Array>(cx, this, range, rv));
++      return;
++    }
++
++    case LOCAL_GL_ALIASED_LINE_WIDTH_RANGE: {
++      auto range = limits.lineWidthRange;
++      if (const auto configured = CloakfoxConfiguredPair(pname, mIsWebGL2, false)) {
++        range = CloakfoxBoundRange(range, *configured);
++      }
++      retval.set(Create<dom::Float32Array>(cx, this, range, rv));
++      return;
++    }
+ 
+     // 4 floats
+     case LOCAL_GL_COLOR_CLEAR_VALUE:
+@@ -2471,12 +2647,13 @@
+     // 2 ints
+     case LOCAL_GL_MAX_VIEWPORT_DIMS: {
+       auto maxViewportDim = BitwiseCast<int32_t>(limits.maxViewportDim);
+-      const auto dims = std::array<int32_t, 2>{maxViewportDim, maxViewportDim};
+-      retval.set(Create<dom::Int32Array>(
+-          cx, this,
+-          MaskConfig::MParamGL<std::array<int32_t, 2UL>>(pname, dims,
+-                                                         mIsWebGL2),
+-          rv));
++      auto dims = std::array<int32_t, 2>{maxViewportDim, maxViewportDim};
++      if (const auto configured = CloakfoxConfiguredPair(pname, mIsWebGL2, true)) {
++        for (size_t i = 0; i < dims.size(); ++i) {
++          dims[i] = static_cast<int32_t>(CloakfoxBoundCapacity(maxViewportDim, (*configured)[i]));
++        }
++      }
++      retval.set(Create<dom::Int32Array>(cx, this, dims, rv));
+       return;
+     }
+ 

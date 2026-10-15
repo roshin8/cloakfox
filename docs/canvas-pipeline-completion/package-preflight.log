@@ -1,0 +1,54 @@
+ 0:00.48 /usr/bin/make -C . -j8 -s -w package
+ 0:00.73 make: Entering directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin'
+ 0:00.74 make[1]: Entering directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:00.79 make[2]: Entering directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:00.79 make[3]: Entering directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:00.80 BUILDSTATUS@browser/installer START_file_generate multilocale.txt
+ 0:00.80 BUILDSTATUS@browser/installer START_make_sourcestamp_file --output ../../dist//cloakfox-158.0-beta.26.en-US.mac.txt --buildid-header ../../buildid.h
+ 0:00.80 BUILDSTATUS@browser/installer START_locale_manifest --output locale-manifest.in --base-path @RESPATH@ --locales  en-US --locale-entries @RESPATH@/browser/chrome/ @RESPATH@/chrome/
+ 0:00.89 BUILDSTATUS@browser/installer END_locale_manifest --output locale-manifest.in --base-path @RESPATH@ --locales  en-US --locale-entries @RESPATH@/browser/chrome/ @RESPATH@/chrome/
+ 0:00.95 BUILDSTATUS@browser/installer END_file_generate multilocale.txt
+ 0:00.96 BUILDSTATUS@browser/installer END_make_sourcestamp_file --output ../../dist//cloakfox-158.0-beta.26.en-US.mac.txt --buildid-header ../../buildid.h
+ 0:05.46 Generating XPT artifacts archive (cloakfox-158.0-beta.26.en-US.mac.xpt_artifacts.zip)
+ 0:05.46 BUILDSTATUS@browser/installer START_zip cloakfox-158.0-beta.26.en-US.mac.xpt_artifacts.zip
+ 0:05.79 BUILDSTATUS@browser/installer END_zip cloakfox-158.0-beta.26.en-US.mac.xpt_artifacts.zip
+ 0:05.79 Generating update-related macOS framework artifacts archive (cloakfox-158.0-beta.26.en-US.mac.update_framework_artifacts.zip)
+ 0:05.79 BUILDSTATUS@browser/installer START_zip cloakfox-158.0-beta.26.en-US.mac.update_framework_artifacts.zip
+ 0:05.89 BUILDSTATUS@browser/installer END_zip cloakfox-158.0-beta.26.en-US.mac.update_framework_artifacts.zip
+ 0:05.89 Compressing...
+ 0:05.89 BUILDSTATUS@browser/installer START_package DMG
+ 0:36.24 Creating hybrid image...
+ 0:39.55 
+ 0:39.59 Preparing imaging engine…
+ 0:39.59 Reading Driver Descriptor Map (DDM : 0)…
+ 0:39.61    (CRC32 $0A9E9521: Driver Descriptor Map (DDM : 0))
+ 0:39.61 Reading Apple (Apple_partition_map : 1)…
+ 0:39.61    (CRC32 $0D818021: Apple (Apple_partition_map : 1))
+ 0:39.61 Reading DiscRecording 9.0.3d5 (Apple_HFS : 2)…
+ 0:43.98    (CRC32 $5E0172C1: DiscRecording 9.0.3d5 (Apple_HFS : 2))
+ 0:43.98 Adding resources…
+ 0:43.99 Elapsed Time:  4.391s
+ 0:43.99 File size: 142427370 bytes, Checksum: CRC32 $24843C1E
+ 0:43.99 Sectors processed: 746036, 746033 compressed
+ 0:43.99 Speed: 83.0MB/s
+ 0:43.99 Savings: 62.7%
+ 0:43.99 created: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-158.0-beta.26.en-US.mac.dmghdiutil: WARNING: 'hdiutil convert -format ...' is deprecated. Please use 'diskutil image create from --format ...' instead.
+ 0:43.99 
+ 0:44.08 BUILDSTATUS@browser/installer END_package DMG
+ 0:44.13 make[3]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:44.16 make[3]: Entering directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:44.21 Making langpack
+ 0:44.22 make[4]: Entering directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:44.23 BUILDSTATUS@browser/locales START_l10n_stage --locale=en-US --manifest=../../l10n-manifest.json --merge-tree=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales/merge-dir/en-US --dest=../../dist/xpi-stage/locale-en-US --topsrcdir=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src --topobjdir=../..
+ 0:44.54 BUILDSTATUS@browser/locales END_l10n_stage --locale=en-US --manifest=../../l10n-manifest.json --merge-tree=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales/merge-dir/en-US --dest=../../dist/xpi-stage/locale-en-US --topsrcdir=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src --topobjdir=../..
+ 0:44.54 make[4]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:44.55 make[4]: Entering directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:44.56 BUILDSTATUS@browser/locales START_package_langpack --locale=en-US --xpi-stage=../../dist/xpi-stage/locale-en-US --metadata=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/browser/locales/en-US/langpack-metadata.ftl --output=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/mac/xpi/cloakfox-158.0-beta.26.en-US.langpack.xpi --eid=langpack-en-US@firefox.mozilla.org --app-version=158.0-beta.26 --max-app-ver=158.0-beta.26 --app-name=Cloakfox --l10n-basedir=/Users/zeus/.mozbuild/l10n-central --include=chrome --include=localization --include=browser --include=manifest.json
+ 0:44.82 BUILDSTATUS@browser/locales END_package_langpack --locale=en-US --xpi-stage=../../dist/xpi-stage/locale-en-US --metadata=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/browser/locales/en-US/langpack-metadata.ftl --output=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/mac/xpi/cloakfox-158.0-beta.26.en-US.langpack.xpi --eid=langpack-en-US@firefox.mozilla.org --app-version=158.0-beta.26 --max-app-ver=158.0-beta.26 --app-name=Cloakfox --l10n-basedir=/Users/zeus/.mozbuild/l10n-central --include=chrome --include=localization --include=browser --include=manifest.json
+ 0:44.82 make[4]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:44.82 make[3]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/locales'
+ 0:44.82 make[2]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:44.83 make[1]: Leaving directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/browser/installer'
+ 0:44.83 make: Leaving directory `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin'
+ 0:44.94 W Notification center failed: Install terminal-notifier to get a notification when the build finishes.
+ 0:44.95 Created package: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-158.0-beta.26.en-US.mac.dmg

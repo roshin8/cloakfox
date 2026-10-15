@@ -1,0 +1,16 @@
+RUN installed-matrix off probe_canvas_consistency.py
+RESULT {'stage': 'installed-matrix', 'mode': 'off', 'probe': 'probe_canvas_consistency.py', 'exit': 0, 'seconds': 9.8, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed-matrix/off/probe_canvas_consistency'}
+RUN installed-matrix off probe_fingerprint_libraries.py
+RESULT {'stage': 'installed-matrix', 'mode': 'off', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 38.3, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed-matrix/off/probe_fingerprint_libraries'}
+RUN installed-matrix canvas probe_canvas_consistency.py
+RESULT {'stage': 'installed-matrix', 'mode': 'canvas', 'probe': 'probe_canvas_consistency.py', 'exit': 0, 'seconds': 8.7, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed-matrix/canvas/probe_canvas_consistency'}
+RUN installed-matrix canvas probe_fingerprint_libraries.py
+RESULT {'stage': 'installed-matrix', 'mode': 'canvas', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 38.3, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed-matrix/canvas/probe_fingerprint_libraries'}
+RUN installed-matrix gpu probe_canvas_consistency.py
+RESULT {'stage': 'installed-matrix', 'mode': 'gpu', 'probe': 'probe_canvas_consistency.py', 'exit': 0, 'seconds': 8.8, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed-matrix/gpu/probe_canvas_consistency'}
+RUN installed-matrix gpu probe_fingerprint_libraries.py
+RESULT {'stage': 'installed-matrix', 'mode': 'gpu', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 38.5, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed-matrix/gpu/probe_fingerprint_libraries'}
+RUN installed-matrix both probe_canvas_consistency.py
+RESULT {'stage': 'installed-matrix', 'mode': 'both', 'probe': 'probe_canvas_consistency.py', 'exit': 0, 'seconds': 8.7, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed-matrix/both/probe_canvas_consistency'}
+RUN installed-matrix both probe_fingerprint_libraries.py
+RESULT {'stage': 'installed-matrix', 'mode': 'both', 'probe': 'probe_fingerprint_libraries.py', 'exit': 0, 'seconds': 37.1, 'report': '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed-matrix/both/probe_fingerprint_libraries'}

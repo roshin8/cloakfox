@@ -1,0 +1,1597 @@
+{
+  "status": "foundation implemented; full approved pipeline unfinished",
+  "installed": {
+    "installed": "/Applications/Cloakfox.app",
+    "backup": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-before-canonical-canvas-foundation-20261015-121236.app",
+    "version": "158.0-beta.26",
+    "applicationIniBuildID": "20261015120736",
+    "profilesModified": false,
+    "signatureVerified": true,
+    "externalSymlinks": [],
+    "xulSHA256": "02f2f03c0ffea78c98c4516ac9ca2ff74337cdb8f8c5d9c4b2e94891d9c16b03",
+    "browserArchiveSHA256": "c805ec0f68b3cd52fc713769d491afa0bc03a8dffb32945706445c0bb1c5af64",
+    "dmg": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-158.0-beta.26.en-US.mac.dmg",
+    "dmgSHA256": "c5f52d022229f7a89d3fcf06a7459bbd6baec0899a3aa2bb7d8f740f824f526d",
+    "status": "prototype tested then rolled back; full privacy acceptance not passed",
+    "testedAppRetainedAt": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-canonical-prototype-tested-20261015-121958.app",
+    "currentInstalledApp": "/Applications/Cloakfox.app",
+    "currentInstalledXulSHA256": "356322cd14637d05ae3a6bc3b4c4e32a208ff4522d9f6fe46637ea28ac100484",
+    "restoredPreviousApp": true
+  },
+  "unitTests": {
+    "node": 258,
+    "python": 58
+  },
+  "installedProbes": [
+    {
+      "probe": "probe_canvas_canonical_backing.py",
+      "exit": 0,
+      "seconds": 12.8,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed/probe_canvas_canonical_backing/run.log"
+    },
+    {
+      "probe": "probe_canvas_render_privacy.py",
+      "exit": 1,
+      "seconds": 10.6,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed/probe_canvas_render_privacy/run.log"
+    },
+    {
+      "probe": "probe_graphics_optins_settings.py",
+      "exit": 0,
+      "seconds": 11.6,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed/probe_graphics_optins_settings/run.log"
+    },
+    {
+      "probe": "probe_webgl_backend_profile.py",
+      "exit": 0,
+      "seconds": 14.1,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed/probe_webgl_backend_profile/run.log"
+    },
+    {
+      "probe": "probe_graphics_privacy.py",
+      "exit": 0,
+      "seconds": 12.9,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed/probe_graphics_privacy/run.log"
+    },
+    {
+      "probe": "probe_worker_canvas.py",
+      "exit": 0,
+      "seconds": 9.6,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed/probe_worker_canvas/run.log"
+    },
+    {
+      "probe": "probe_canvas_pipeline_baseline.py",
+      "exit": 0,
+      "seconds": 8.1,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed/probe_canvas_pipeline_baseline/run.log"
+    }
+  ],
+  "modeMatrix": {
+    "off": {
+      "canvasChecks": 589,
+      "canvasFailures": [],
+      "librarySummary": {
+        "cases": 8,
+        "repeats": 3,
+        "checks": 456,
+        "failures": [],
+        "libraryExecutions": 48
+      },
+      "libraryProvenance": {
+        "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": false,
+          "gpu_backend_profiles": false,
+          "canonical_2d": false
+        },
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "runtime": {
+          "buildID": "20261015120633",
+          "os": "Darwin",
+          "version": "158.0-beta.26"
+        }
+      },
+      "upstreamWarnings": [
+        {
+          "case": "default",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "B",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-return",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "native",
+          "protected": false,
+          "lies": {},
+          "trash": []
+        }
+      ]
+    },
+    "on": {
+      "canvasChecks": 589,
+      "canvasFailures": [],
+      "librarySummary": {
+        "cases": 8,
+        "repeats": 3,
+        "checks": 456,
+        "failures": [],
+        "libraryExecutions": 48
+      },
+      "libraryProvenance": {
+        "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": false,
+          "gpu_backend_profiles": false,
+          "canonical_2d": true
+        },
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "runtime": {
+          "buildID": "20261015120633",
+          "os": "Darwin",
+          "version": "158.0-beta.26"
+        }
+      },
+      "upstreamWarnings": [
+        {
+          "case": "default",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "B",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-return",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "native",
+          "protected": false,
+          "lies": {},
+          "trash": []
+        }
+      ]
+    },
+    "all": {
+      "canvasChecks": 589,
+      "canvasFailures": [],
+      "librarySummary": {
+        "cases": 8,
+        "repeats": 3,
+        "checks": 456,
+        "failures": [],
+        "libraryExecutions": 48
+      },
+      "libraryProvenance": {
+        "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": true,
+          "gpu_backend_profiles": true,
+          "canonical_2d": true
+        },
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "runtime": {
+          "buildID": "20261015120633",
+          "os": "Darwin",
+          "version": "158.0-beta.26"
+        }
+      },
+      "upstreamWarnings": [
+        {
+          "case": "default",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            }
+          ]
+        },
+        {
+          "case": "A",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "B",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-return",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "native",
+          "protected": false,
+          "lies": {},
+          "trash": []
+        }
+      ]
+    }
+  },
+  "unfinished": [
+    "canonical text/fonts/shaping/rasterization",
+    "image/SVG/media canonical producers",
+    "cross-API privacy provenance",
+    "canonical GPU rendering",
+    "cross-host acceptance",
+    "safe extraction cutover"
+  ],
+  "probe_canvas_canonical_backing": {
+    "checks": 12,
+    "failures": []
+  },
+  "probe_canvas_render_privacy": {
+    "checks": 40,
+    "failures": [
+      {
+        "pass": false,
+        "name": "html: wrong type selects legacy"
+      },
+      {
+        "pass": false,
+        "name": "html: new context follows changed policy"
+      }
+    ]
+  },
+  "probe_graphics_optins_settings": {
+    "checks": 13,
+    "failures": []
+  },
+  "probe_webgl_backend_profile": {
+    "checks": 42,
+    "failures": []
+  },
+  "privacyAcceptanceBaseline": {
+    "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+    "runtime": {
+      "buildID": "20261015120633",
+      "version": "158.0-beta.26"
+    },
+    "xulSHA256": "02f2f03c0ffea78c98c4516ac9ca2ff74337cdb8f8c5d9c4b2e94891d9c16b03",
+    "purpose": "diagnostic baseline, not privacy acceptance",
+    "canonicalExperiment": true,
+    "measurements": [
+      {
+        "mode": "legacy",
+        "realm": "html",
+        "knownColorModifiedChannels": 6084,
+        "nativeRasterRecoveryMismatches": 0,
+        "sampleChannels": 16384,
+        "nativeRasterRecoveredExactly": true
+      },
+      {
+        "mode": "legacy",
+        "realm": "offscreen",
+        "knownColorModifiedChannels": 6084,
+        "nativeRasterRecoveryMismatches": 0,
+        "sampleChannels": 16384,
+        "nativeRasterRecoveredExactly": true
+      },
+      {
+        "mode": "legacy",
+        "realm": "worker",
+        "knownColorModifiedChannels": 6084,
+        "nativeRasterRecoveryMismatches": 0,
+        "sampleChannels": 16384,
+        "nativeRasterRecoveredExactly": true
+      },
+      {
+        "mode": "glyph",
+        "realm": "html",
+        "knownColorModifiedChannels": 6084,
+        "nativeRasterRecoveryMismatches": 0,
+        "sampleChannels": 16384,
+        "nativeRasterRecoveredExactly": true
+      },
+      {
+        "mode": "glyph",
+        "realm": "offscreen",
+        "knownColorModifiedChannels": 6084,
+        "nativeRasterRecoveryMismatches": 0,
+        "sampleChannels": 16384,
+        "nativeRasterRecoveredExactly": true
+      },
+      {
+        "mode": "glyph",
+        "realm": "worker",
+        "knownColorModifiedChannels": 6084,
+        "nativeRasterRecoveryMismatches": 0,
+        "sampleChannels": 16384,
+        "nativeRasterRecoveredExactly": true
+      }
+    ]
+  },
+  "fullReleasePrivacyAcceptancePassed": false,
+  "nativeReplay": {
+    "patches": 139,
+    "targets": 353,
+    "drift": []
+  },
+  "initialProbeFailures": [
+    {
+      "probe": "probe_canvas_render_privacy.py",
+      "exit": 1,
+      "seconds": 10.6,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canonical-canvas-foundation/installed/probe_canvas_render_privacy/run.log"
+    }
+  ],
+  "glyphDiagnosticRerun": {
+    "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+    "checks": [
+      {
+        "pass": true,
+        "name": "off: probe completed"
+      },
+      {
+        "pass": true,
+        "name": "on: probe completed"
+      },
+      {
+        "pass": true,
+        "name": "on-repeat: probe completed"
+      },
+      {
+        "pass": true,
+        "name": "held-off: probe completed"
+      },
+      {
+        "pass": true,
+        "name": "wrong-type: probe completed"
+      },
+      {
+        "pass": true,
+        "name": "native-off: probe completed"
+      },
+      {
+        "pass": true,
+        "name": "native-on: probe completed"
+      },
+      {
+        "pass": true,
+        "name": "html: rendering opt-in changes glyph pixels"
+      },
+      {
+        "pass": true,
+        "name": "html: deterministic across reload"
+      },
+      {
+        "pass": true,
+        "name": "html: wrong type selects legacy"
+      },
+      {
+        "pass": true,
+        "name": "html: new context follows changed policy"
+      },
+      {
+        "pass": true,
+        "name": "html: master-off native rendering"
+      },
+      {
+        "pass": true,
+        "name": "html: metric privacy unchanged"
+      },
+      {
+        "pass": true,
+        "name": "html: same owning identity across realms"
+      },
+      {
+        "pass": true,
+        "name": "offscreen: rendering opt-in changes glyph pixels"
+      },
+      {
+        "pass": true,
+        "name": "offscreen: deterministic across reload"
+      },
+      {
+        "pass": true,
+        "name": "offscreen: wrong type selects legacy"
+      },
+      {
+        "pass": true,
+        "name": "offscreen: new context follows changed policy"
+      },
+      {
+        "pass": true,
+        "name": "offscreen: master-off native rendering"
+      },
+      {
+        "pass": true,
+        "name": "offscreen: metric privacy unchanged"
+      },
+      {
+        "pass": true,
+        "name": "offscreen: same owning identity across realms"
+      },
+      {
+        "pass": true,
+        "name": "worker: rendering opt-in changes glyph pixels"
+      },
+      {
+        "pass": true,
+        "name": "worker: deterministic across reload"
+      },
+      {
+        "pass": true,
+        "name": "worker: wrong type selects legacy"
+      },
+      {
+        "pass": true,
+        "name": "worker: new context follows changed policy"
+      },
+      {
+        "pass": true,
+        "name": "worker: master-off native rendering"
+      },
+      {
+        "pass": true,
+        "name": "worker: metric privacy unchanged"
+      },
+      {
+        "pass": true,
+        "name": "worker: same owning identity across realms"
+      },
+      {
+        "pass": true,
+        "name": "transferred: rendering opt-in changes glyph pixels"
+      },
+      {
+        "pass": true,
+        "name": "transferred: deterministic across reload"
+      },
+      {
+        "pass": true,
+        "name": "transferred: wrong type selects legacy"
+      },
+      {
+        "pass": true,
+        "name": "transferred: new context follows changed policy"
+      },
+      {
+        "pass": true,
+        "name": "transferred: master-off native rendering"
+      },
+      {
+        "pass": true,
+        "name": "transferred: metric privacy unchanged"
+      },
+      {
+        "pass": true,
+        "name": "transferred: same owning identity across realms"
+      },
+      {
+        "pass": true,
+        "name": "html-shape: non-text legacy behavior unchanged"
+      },
+      {
+        "pass": true,
+        "name": "offscreen-shape: non-text legacy behavior unchanged"
+      },
+      {
+        "pass": true,
+        "name": "existing context retains opt-in through bitmap reset"
+      },
+      {
+        "pass": true,
+        "name": "renderPrivacyUnusedHTML: unused context retains creation policy after toggle and bitmap reset"
+      },
+      {
+        "pass": true,
+        "name": "renderPrivacyUnusedOffscreen: unused context retains creation policy after toggle and bitmap reset"
+      }
+    ],
+    "results": {
+      "off": {
+        "results": {
+          "fontStatusAfterWait": "loaded",
+          "fontStatusBeforeWait": "loaded",
+          "held": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlAfterFonts": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlImmediateRepeat": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "transferred": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "worker": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          }
+        }
+      },
+      "on": {
+        "results": {
+          "fontStatusAfterWait": "loaded",
+          "fontStatusBeforeWait": "loaded",
+          "held": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlAfterFonts": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlImmediateRepeat": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "transferred": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "worker": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          }
+        }
+      },
+      "on-repeat": {
+        "results": {
+          "fontStatusAfterWait": "loaded",
+          "fontStatusBeforeWait": "loaded",
+          "held": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlAfterFonts": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlImmediateRepeat": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "transferred": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "worker": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          }
+        }
+      },
+      "held-off": {
+        "results": {
+          "fontStatusAfterWait": "loaded",
+          "fontStatusBeforeWait": "loaded",
+          "held": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlAfterFonts": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlImmediateRepeat": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "renderPrivacyUnusedHTML": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "renderPrivacyUnusedOffscreen": {
+            "hash": "7065a50f",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "transferred": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "worker": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          }
+        }
+      },
+      "wrong-type": {
+        "results": {
+          "fontStatusAfterWait": "loaded",
+          "fontStatusBeforeWait": "loaded",
+          "held": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "html-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlAfterFonts": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "htmlImmediateRepeat": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "offscreen-shape": {
+            "hash": "8fef8cc3",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "transferred": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          },
+          "worker": {
+            "hash": "be338250",
+            "metrics": [
+              63.89554973883647,
+              0.9804004426764862,
+              64.4414086188967
+            ]
+          }
+        }
+      },
+      "native-off": {
+        "results": {
+          "fontStatusAfterWait": "loaded",
+          "fontStatusBeforeWait": "loaded",
+          "held": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "html": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "html-shape": {
+            "hash": "203183c5",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "htmlAfterFonts": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "htmlImmediateRepeat": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "offscreen": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "offscreen-shape": {
+            "hash": "203183c5",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "transferred": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "worker": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          }
+        }
+      },
+      "native-on": {
+        "results": {
+          "fontStatusAfterWait": "loaded",
+          "fontStatusBeforeWait": "loaded",
+          "held": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "html": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "html-shape": {
+            "hash": "203183c5",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "htmlAfterFonts": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "htmlImmediateRepeat": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "offscreen": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "offscreen-shape": {
+            "hash": "203183c5",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "transferred": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          },
+          "worker": {
+            "hash": "847012cc",
+            "metrics": [
+              63.63333511352539,
+              0.98046875,
+              64.1958984375
+            ]
+          }
+        }
+      }
+    }
+  },
+  "unresolvedRenderingObservation": "First installed HTML glyph sample disagreed with later off/wrong-type samples; diagnostic rerun passed without reproducing cause. Not considered fixed."
+}

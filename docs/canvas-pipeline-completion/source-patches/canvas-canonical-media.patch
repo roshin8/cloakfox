@@ -1,0 +1,1198 @@
+--- a/gfx/ycbcr/YCbCrUtils.cpp
++++ b/gfx/ycbcr/YCbCrUtils.cpp
+@@ -6,9 +6,11 @@
+ 
+ #include <bit>
+ 
++#include "CanonicalYUV.h"
+ #include "gfx2DGlue.h"
+ #include "libyuv.h"
+ #include "mozilla/EndianUtils.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/gfx/Swizzle.h"
+ #include "ycbcr_to_rgb565.h"
+ #include "yuv_convert.h"
+@@ -289,10 +291,219 @@
+                              aRGB32Type);
+ }
+ 
++static canonical::ColorPolicy CanonicalColorPolicy(
++    const layers::PlanarYCbCrData& d) {
++  using namespace canonical;
++  ColorPolicy policy{canonical::Matrix::BT709, Primaries::SRGB, Transfer::BT709,
++                     d.mColorRange == ColorRange::FULL};
++  switch (d.mYUVColorSpace) {
++    case YUVColorSpace::BT601:
++      policy.matrix = canonical::Matrix::BT601;
++      break;
++    case YUVColorSpace::BT2020:
++      policy.matrix = canonical::Matrix::BT2020;
++      break;
++    case YUVColorSpace::Identity:
++      policy.matrix = canonical::Matrix::Identity;
++      break;
++    default:
++      break;
++  }
++  switch (d.mColorPrimaries) {
++    case ColorSpace2::BT601_525:
++      policy.primaries = Primaries::BT601_525;
++      break;
++    case ColorSpace2::DISPLAY_P3:
++      policy.primaries = Primaries::P3;
++      break;
++    case ColorSpace2::BT2020:
++      policy.primaries = Primaries::BT2020;
++      break;
++    case ColorSpace2::UNKNOWN:
++      if (d.mYUVColorSpace == YUVColorSpace::BT2020)
++        policy.primaries = Primaries::BT2020;
++      else if (d.mYUVColorSpace == YUVColorSpace::BT601)
++        policy.primaries = Primaries::BT601_525;
++      break;
++    default:
++      break;
++  }
++  switch (d.mTransferFunction) {
++    case TransferFunction::SRGB:
++      policy.transfer = Transfer::SRGB;
++      break;
++    case TransferFunction::PQ:
++      policy.transfer = Transfer::PQ;
++      break;
++    case TransferFunction::HLG:
++      policy.transfer = Transfer::HLG;
++      break;
++    case TransferFunction::LINEAR:
++      policy.transfer = Transfer::Linear;
++      break;
++    default:
++      break;
++  }
++  return policy;
++}
++
++static nsresult ConvertCanonicalYCbCr(const layers::PlanarYCbCrData& d,
++                                      SurfaceFormat format, IntSize size,
++                                      uint8_t* output, int32_t stride,
++                                      canonical::AlphaOperation alphaOperation) {
++  using namespace canonical;
++  const unsigned depth = BitDepthForColorDepth(d.mColorDepth);
++  const unsigned bytes = depth == 8 ? 1 : 2;
++  const bool rgb =
++      format == SurfaceFormat::R8G8B8A8 || format == SurfaceFormat::R8G8B8X8;
++  const bool alpha =
++      format == SurfaceFormat::R8G8B8A8 || format == SurfaceFormat::B8G8R8A8;
++  const bool rgb565 = format == SurfaceFormat::R5G6B5_UINT16;
++  const int64_t yStride = d.mYStride < 0 ? -int64_t(d.mYStride) : d.mYStride;
++  const int64_t uvStride =
++      d.mCbCrStride < 0 ? -int64_t(d.mCbCrStride) : d.mCbCrStride;
++  if ((!rgb565 && !rgb && format != SurfaceFormat::B8G8R8A8 &&
++       format != SurfaceFormat::B8G8R8X8) ||
++      !output || !d.mYChannel || size.width <= 0 || size.height <= 0 ||
++      size.width > layers::PlanarYCbCrImage::MAX_DIMENSION ||
++      size.height > layers::PlanarYCbCrImage::MAX_DIMENSION ||
++      d.mPictureRect.IsEmpty() || d.mPictureRect.x < 0 ||
++      d.mPictureRect.y < 0 ||
++      d.mPictureRect.XMost() > layers::PlanarYCbCrImage::MAX_DIMENSION ||
++      d.mPictureRect.YMost() > layers::PlanarYCbCrImage::MAX_DIMENSION ||
++      (depth != 8 && depth != 10 && depth != 12 && depth != 16) ||
++      d.mYSkip < 0 || d.mCbSkip < 0 || d.mCrSkip < 0 ||
++      int64_t(stride) < int64_t(size.width) * (rgb565 ? 2 : 4) ||
++      yStride < int64_t(d.mPictureRect.XMost()) * (int64_t(bytes) + d.mYSkip))
++    return NS_ERROR_INVALID_ARG;
++  const bool mono = !d.mCbChannel || !d.mCrChannel || d.mCbCrStride == 0;
++  const unsigned xShift =
++      d.mChromaSubsampling == ChromaSubsampling::FULL ? 0 : 1;
++  const unsigned yShift =
++      d.mChromaSubsampling == ChromaSubsampling::HALF_WIDTH_AND_HEIGHT ? 1 : 0;
++  const int64_t chromaWidth =
++      (d.mPictureRect.XMost() + (1u << xShift) - 1) >> xShift;
++  if ((!d.mCbChannel != !d.mCrChannel) ||
++      (!mono && (uvStride < chromaWidth * (int64_t(bytes) + d.mCbSkip) ||
++                 uvStride < chromaWidth * (int64_t(bytes) + d.mCrSkip))))
++    return NS_ERROR_INVALID_ARG;
++  if (d.mAlpha &&
++      (!d.mAlpha->mChannel || d.mAlpha->mSize.width < d.mPictureRect.XMost() ||
++       d.mAlpha->mSize.height < d.mPictureRect.YMost()))
++    return NS_ERROR_INVALID_ARG;
++  const auto policy = CanonicalColorPolicy(d);
++  const uint32_t center = 128u << (depth - 8);
++  for (int32_t y = 0; y < size.height; y++) {
++    const uint32_t sy = d.mPictureRect.y + uint64_t(2 * y + 1) *
++                                               d.mPictureRect.height /
++                                               (uint64_t(2) * size.height);
++    auto* row = output + size_t(y) * stride;
++    for (int32_t x = 0; x < size.width; x++) {
++      const uint32_t sx = d.mPictureRect.x + uint64_t(2 * x + 1) *
++                                                 d.mPictureRect.width /
++                                                 (uint64_t(2) * size.width);
++      auto encoded =
++          Decode(Sample(d.mYChannel, d.mYStride, sx, sy, depth, d.mYSkip),
++                  mono ? center
++                       : Sample(d.mCbChannel, d.mCbCrStride, sx >> xShift,
++                                sy >> yShift, depth, d.mCbSkip),
++                  mono ? center
++                       : Sample(d.mCrChannel, d.mCbCrStride, sx >> xShift,
++                                sy >> yShift, depth, d.mCrSkip),
++                  depth, policy);
++      uint8_t a = 255;
++      if (d.mAlpha) {
++        const unsigned ad = BitDepthForColorDepth(d.mAlpha->mDepth);
++        if (ad != 8 && ad != 10 && ad != 12 && ad != 16)
++          return NS_ERROR_INVALID_ARG;
++        a = uint8_t(
++            (uint64_t(Sample(d.mAlpha->mChannel, d.mYStride, sx, sy, ad, 0)) *
++                 255 +
++             ((1u << ad) - 1) / 2) /
++            ((1u << ad) - 1));
++      }
++      const bool sourcePremultiplied = d.mAlpha && d.mAlpha->mPremultiplied;
++      if (sourcePremultiplied) {
++        for (auto& channel : encoded)
++          channel = a ? channel * 255.0 / a : 0.0;
++      }
++      auto pixel = Transform(encoded[0], encoded[1], encoded[2], policy);
++      const bool outputPremultiplied =
++          alphaOperation == AlphaOperation::Premultiply ||
++          (alphaOperation == AlphaOperation::None && sourcePremultiplied);
++      if (outputPremultiplied)
++        for (auto& channel : pixel)
++          channel = (uint32_t(channel) * a + 127) / 255;
++      if (rgb565) {
++        const uint16_t packed = (uint16_t(pixel[0] >> 3) << 11) |
++                                (uint16_t(pixel[1] >> 2) << 5) |
++                                (pixel[2] >> 3);
++        memcpy(row + x * 2, &packed, sizeof(packed));
++      } else {
++        row[x * 4] = pixel[rgb ? 0 : 2];
++        row[x * 4 + 1] = pixel[1];
++        row[x * 4 + 2] = pixel[rgb ? 2 : 0];
++        row[x * 4 + 3] = alpha ? a : 255;
++      }
++    }
++  }
++  return NS_OK;
++}
++
++nsresult CanonicalizeRGBSurface(uint8_t* output, int32_t stride, IntSize size,
++                                SurfaceFormat format, ColorSpace2 primaries,
++                                TransferFunction transfer, bool premultiplied) {
++  const bool rgb =
++      format == SurfaceFormat::R8G8B8A8 || format == SurfaceFormat::R8G8B8X8;
++  const bool alpha =
++      format == SurfaceFormat::R8G8B8A8 || format == SurfaceFormat::B8G8R8A8;
++  if (!output || size.width <= 0 || size.height <= 0 ||
++      int64_t(stride) < int64_t(size.width) * 4 ||
++      (!rgb && format != SurfaceFormat::B8G8R8A8 &&
++       format != SurfaceFormat::B8G8R8X8))
++    return NS_ERROR_INVALID_ARG;
++  // Preserve byte-exact authored sRGB, including hidden RGB under zero alpha.
++  if ((primaries == ColorSpace2::UNKNOWN || primaries == ColorSpace2::SRGB ||
++       primaries == ColorSpace2::BT709) &&
++      transfer == TransferFunction::SRGB)
++    return NS_OK;
++  layers::PlanarYCbCrData d;
++  d.mYUVColorSpace = YUVColorSpace::Identity;
++  d.mColorPrimaries = primaries;
++  d.mTransferFunction = transfer;
++  d.mColorRange = ColorRange::FULL;
++  const auto policy = CanonicalColorPolicy(d);
++  for (int32_t y = 0; y < size.height; y++) {
++    auto* row = output + size_t(y) * stride;
++    for (int32_t x = 0; x < size.width; x++) {
++      auto* pixel = row + x * 4;
++      const uint8_t a = alpha ? pixel[3] : 255;
++      if (!a) continue;
++      const double denominator = premultiplied ? a : 255;
++      const auto transformed = canonical::Transform(
++          pixel[rgb ? 0 : 2] / denominator, pixel[1] / denominator,
++          pixel[rgb ? 2 : 0] / denominator, policy);
++      for (unsigned c = 0; c < 3; c++)
++        pixel[rgb ? c : 2 - c] =
++            premultiplied ? uint8_t((uint32_t(transformed[c]) * a + 127) / 255)
++                          : transformed[c];
++    }
++  }
++  return NS_OK;
++}
++
+ nsresult ConvertYCbCrToRGB(const layers::PlanarYCbCrData& aData,
+                            const SurfaceFormat& aDestFormat,
+                            const IntSize& aDestSize, unsigned char* aDestBuffer,
+-                           int32_t aStride) {
++                           int32_t aStride, bool* aOutCanonical) {
++  if (aOutCanonical) *aOutCanonical = false;
++  if (StaticPrefs::cloakfox_enabled() &&
++      StaticPrefs::cloakfox_experimental_canvas_pipeline()) {
++    const nsresult result = ConvertCanonicalYCbCr(aData, aDestFormat, aDestSize,
++                                                  aDestBuffer, aStride, canonical::AlphaOperation::None);
++    if (aOutCanonical) *aOutCanonical = NS_SUCCEEDED(result);
++    return result;
++  }
+   // ConvertYCbCrToRGB et al. assume the chroma planes are rounded up if the
+   // luma plane is odd sized. Monochrome images have 0-sized CbCr planes
+   YUVType yuvtype = GetYUVType(aData);
+@@ -354,7 +565,25 @@
+ nsresult ConvertYCbCrToRGB32(const layers::PlanarYCbCrData& aData,
+                              const SurfaceFormat& aDestFormat,
+                              unsigned char* aDestBuffer, int32_t aStride,
+-                             PremultFunc premultiplyAlphaOp) {
++                             PremultFunc premultiplyAlphaOp,
++                             bool* aOutCanonical) {
++  if (aOutCanonical) *aOutCanonical = false;
++  if (StaticPrefs::cloakfox_enabled() &&
++      StaticPrefs::cloakfox_experimental_canvas_pipeline() &&
++      (!premultiplyAlphaOp || premultiplyAlphaOp == libyuv::ARGBAttenuate ||
++       premultiplyAlphaOp == libyuv::ARGBUnattenuate)) {
++    const auto alphaOperation =
++        premultiplyAlphaOp == libyuv::ARGBAttenuate
++            ? canonical::AlphaOperation::Premultiply
++            : premultiplyAlphaOp == libyuv::ARGBUnattenuate
++                  ? canonical::AlphaOperation::Unpremultiply
++                  : canonical::AlphaOperation::None;
++    const nsresult result =
++        ConvertCanonicalYCbCr(aData, aDestFormat, aData.mPictureRect.Size(),
++                              aDestBuffer, aStride, alphaOperation);
++    if (aOutCanonical) *aOutCanonical = NS_SUCCEEDED(result);
++    return result;
++  }
+   MOZ_ASSERT(aDestFormat == SurfaceFormat::B8G8R8A8 ||
+              aDestFormat == SurfaceFormat::B8G8R8X8 ||
+              aDestFormat == SurfaceFormat::R8G8B8A8 ||
+--- a/gfx/ycbcr/YCbCrUtils.h
++++ b/gfx/ycbcr/YCbCrUtils.h
+@@ -17,24 +17,26 @@
+                                SurfaceFormat& aSuggestedFormat,
+                                IntSize& aSuggestedSize);
+ 
+-nsresult
+-ConvertYCbCrToRGB(const layers::PlanarYCbCrData& aData,
+-                  const SurfaceFormat& aDestFormat,
+-                  const IntSize& aDestSize,
+-                  unsigned char* aDestBuffer,
+-                  int32_t aStride);
++nsresult ConvertYCbCrToRGB(const layers::PlanarYCbCrData& aData,
++                           const SurfaceFormat& aDestFormat,
++                           const IntSize& aDestSize, unsigned char* aDestBuffer,
++                           int32_t aStride, bool* aOutCanonical = nullptr);
++
++// Canonical scalar source-color conversion; callers select this explicitly.
++nsresult CanonicalizeRGBSurface(uint8_t*, int32_t, IntSize, SurfaceFormat,
++                                ColorSpace2, TransferFunction,
++                                bool aPremultiplied);
+ 
+ using PremultFunc = int (*)(const uint8_t* src_argb, int src_stride_argb,
+                             uint8_t* dst_argb, int dst_stride_argb, int width,
+                             int height);
+ 
+ // Convert given YUV data w/ or w/out alpha into BGRA or BGRX data.
+-nsresult
+-ConvertYCbCrToRGB32(const layers::PlanarYCbCrData& aData,
+-                    const SurfaceFormat& aDestFormat,
+-                    unsigned char* aDestBuffer,
+-                    int32_t aStride,
+-                    PremultFunc premultiplyAlphaOp);
++nsresult ConvertYCbCrToRGB32(const layers::PlanarYCbCrData& aData,
++                             const SurfaceFormat& aDestFormat,
++                             unsigned char* aDestBuffer, int32_t aStride,
++                             PremultFunc premultiplyAlphaOp,
++                             bool* aOutCanonical = nullptr);
+ 
+ nsresult
+ ConvertI420AlphaToARGB(const uint8_t* aSrcY,
+--- a/gfx/ycbcr/moz.build
++++ b/gfx/ycbcr/moz.build
+@@ -9,7 +9,6 @@
+ UNIFIED_SOURCES += [
+     'scale_yuv_argb.cpp',
+     'ycbcr_to_rgb565.cpp',
+-    'YCbCrUtils.cpp',
+     'yuv_convert.cpp',
+     'yuv_row_c.cpp',
+     'yuv_row_table.cpp',
+@@ -79,3 +78,8 @@
+ LICENSED_UNDER += [
+     "chromium",
+ ]
++
++LOCAL_INCLUDES += ['/modules/fdlibm/src']
++USE_LIBS += ['fdlibm']
++SOURCES += ['YCbCrUtils.cpp']
++SOURCES['YCbCrUtils.cpp'].flags += ['-ffp-contract=off']
+--- a/gfx/layers/MacIOSurfaceHelpers.cpp
++++ b/gfx/layers/MacIOSurfaceHelpers.cpp
+@@ -7,6 +7,7 @@
+ #include "YCbCrUtils.h"
+ #include "libyuv.h"
+ #include "mozilla/ScopeExit.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/gfx/MacIOSurface.h"
+ 
+ namespace mozilla {
+@@ -19,10 +20,30 @@
+ #define ALIGNEDPTR_32(x) \
+   reinterpret_cast<uint8_t*>((reinterpret_cast<uintptr_t>(x) + 31) & ~31)
+ 
++// P010/P210 storage bits are not additional signal precision. Unpack before
++// range normalization so all transports of a logical 10-bit sample agree.
++static void CopyP010PlaneToPlanar10(const uint8_t* source, size_t stride,
++                                   uint16_t* dest, size_t width, size_t height,
++                                   size_t step, size_t offset) {
++  for (size_t y = 0; y < height; ++y) {
++    for (size_t x = 0; x < width; ++x) {
++      uint16_t sample;
++      memcpy(&sample, source + y * stride +
++                          (x * step + offset) * sizeof(sample), sizeof(sample));
++      *dest++ = sample >> 6;
++    }
++  }
++}
++
+ static nsresult CopyFromLockedMacIOSurface(MacIOSurface* aSurface,
+                                            uint8_t* aData, int32_t aStride,
+                                            const IntSize& aSize,
+-                                           SurfaceFormat aFormat) {
++                                           SurfaceFormat aFormat,
++                                           bool* aOutCanonical) {
++  if (aOutCanonical) *aOutCanonical = false;
++  const bool canonicalMode =
++      StaticPrefs::cloakfox_enabled() &&
++      StaticPrefs::cloakfox_experimental_canvas_pipeline();
+   size_t bytesPerRow = aSurface->GetBytesPerRow();
+   SurfaceFormat ioFormat = aSurface->GetFormat();
+ 
+@@ -69,67 +90,62 @@
+     data.mPictureRect = IntRect(IntPoint(0, 0), aSize);
+     data.mYUVColorSpace = aSurface->GetYUVColorSpace();
+     data.mColorPrimaries = aSurface->mColorPrimaries;
++    data.mTransferFunction = aSurface->GetTransferFunction();
+     data.mColorRange = aSurface->IsFullRange() ? gfx::ColorRange::FULL
+                                                : gfx::ColorRange::LIMITED;
+     data.mChromaSubsampling = ioFormat == SurfaceFormat::NV12
+                                   ? ChromaSubsampling::HALF_WIDTH_AND_HEIGHT
+                                   : ChromaSubsampling::HALF_WIDTH;
+ 
+-    nsresult result =
+-        ConvertYCbCrToRGB(data, SurfaceFormat::B8G8R8X8, aSize, aData, aStride);
++    nsresult result = ConvertYCbCrToRGB(data, SurfaceFormat::B8G8R8X8, aSize,
++                                        aData, aStride, aOutCanonical);
+     MOZ_ASSERT(NS_SUCCEEDED(result), "Failed to convert YUV into RGB data");
+     return result;
+   }
+ 
+   if (ioFormat == SurfaceFormat::P010 || ioFormat == SurfaceFormat::P210) {
+-    // P010 (4:2:0) and P210 (4:2:2) store 10-bit values in the high bits of
+-    // each uint16_t (shifted left by 6 via safeShift10BitBy6 on write).
+-    // We de-interleave the CbCr plane and pass ColorDepth::COLOR_16 so that
+-    // ConvertYCbCrToRGB uses scale=256, which correctly maps the high-bit
+-    // storage to 8-bit output.
++    // De-interleave and unpack the high ten bits into logical planar samples.
+     size_t cbCrStride = aSurface->GetBytesPerRow(1);
+     size_t cbCrWidth = aSurface->GetDevicePixelWidth(1);
+     size_t cbCrHeight = aSurface->GetDevicePixelHeight(1);
+-
++    auto yPlane = MakeUnique<uint16_t[]>(size_t(aSize.width) * aSize.height);
+     auto cbPlane = MakeUnique<uint16_t[]>(cbCrWidth * cbCrHeight);
+     auto crPlane = MakeUnique<uint16_t[]>(cbCrWidth * cbCrHeight);
+-
+-    uint8_t* src = (uint8_t*)aSurface->GetBaseAddressOfPlane(1);
+-    uint16_t* cbDest = cbPlane.get();
+-    uint16_t* crDest = crPlane.get();
+-
+-    for (size_t i = 0; i < cbCrHeight; i++) {
+-      uint16_t* rowSrc = reinterpret_cast<uint16_t*>(src + cbCrStride * i);
+-      for (size_t j = 0; j < cbCrWidth; j++) {
+-        *cbDest++ = *rowSrc++;
+-        *crDest++ = *rowSrc++;
+-      }
+-    }
++    CopyP010PlaneToPlanar10(
++        static_cast<const uint8_t*>(aSurface->GetBaseAddressOfPlane(0)),
++        aSurface->GetBytesPerRow(0), yPlane.get(), aSize.width, aSize.height, 1, 0);
++    const auto* src =
++        static_cast<const uint8_t*>(aSurface->GetBaseAddressOfPlane(1));
++    CopyP010PlaneToPlanar10(src, cbCrStride, cbPlane.get(), cbCrWidth,
++                          cbCrHeight, 2, 0);
++    CopyP010PlaneToPlanar10(src, cbCrStride, crPlane.get(), cbCrWidth,
++                          cbCrHeight, 2, 1);
+ 
+     PlanarYCbCrData data;
+-    data.mYChannel = (uint8_t*)aSurface->GetBaseAddressOfPlane(0);
+-    data.mYStride = aSurface->GetBytesPerRow(0);
++    data.mYChannel = reinterpret_cast<uint8_t*>(yPlane.get());
++    data.mYStride = aSize.width * sizeof(uint16_t);
+     data.mCbChannel = (uint8_t*)cbPlane.get();
+     data.mCrChannel = (uint8_t*)crPlane.get();
+     data.mCbCrStride = cbCrWidth * sizeof(uint16_t);
+     data.mPictureRect = IntRect(IntPoint(0, 0), aSize);
+     data.mYUVColorSpace = aSurface->GetYUVColorSpace();
+     data.mColorPrimaries = aSurface->mColorPrimaries;
++    data.mTransferFunction = aSurface->GetTransferFunction();
+     data.mColorRange = aSurface->IsFullRange() ? gfx::ColorRange::FULL
+                                                : gfx::ColorRange::LIMITED;
+     data.mChromaSubsampling = (ioFormat == SurfaceFormat::P010)
+                                   ? ChromaSubsampling::HALF_WIDTH_AND_HEIGHT
+                                   : ChromaSubsampling::HALF_WIDTH;
+-    data.mColorDepth = ColorDepth::COLOR_16;
+-
+-    nsresult result =
+-        ConvertYCbCrToRGB(data, SurfaceFormat::B8G8R8X8, aSize, aData, aStride);
++    data.mColorDepth = ColorDepth::COLOR_10;
++
++    nsresult result = ConvertYCbCrToRGB(data, SurfaceFormat::B8G8R8X8, aSize,
++                                        aData, aStride, aOutCanonical);
+     MOZ_ASSERT(NS_SUCCEEDED(result), "Failed to convert YUV into RGB data");
+     return result;
+   }
+ 
+   if (ioFormat == SurfaceFormat::YUY2) {
+-    if (aSize.width == ALIGNED_32(aSize.width)) {
++    if (aSize.width == ALIGNED_32(aSize.width) && !canonicalMode) {
+       // Optimization when width is aligned to 32.
+       libyuv::ConvertToARGB((uint8_t*)aSurface->GetBaseAddress(),
+                             0 /* not used */, aData, aStride, 0, 0, aSize.width,
+@@ -186,12 +202,13 @@
+       data.mPictureRect = IntRect(IntPoint(0, 0), aSize);
+       data.mYUVColorSpace = aSurface->GetYUVColorSpace();
+       data.mColorPrimaries = aSurface->mColorPrimaries;
++      data.mTransferFunction = aSurface->GetTransferFunction();
+       data.mColorRange = aSurface->IsFullRange() ? gfx::ColorRange::FULL
+                                                  : gfx::ColorRange::LIMITED;
+       data.mChromaSubsampling = ChromaSubsampling::HALF_WIDTH;
+ 
+       nsresult result = ConvertYCbCrToRGB(data, SurfaceFormat::B8G8R8X8, aSize,
+-                                          aData, aStride);
++                                          aData, aStride, aOutCanonical);
+       MOZ_ASSERT(NS_SUCCEEDED(result), "Failed to convert YUV into RGB data");
+       return result;
+     }
+@@ -203,11 +220,20 @@
+     }
+   }
+ 
++  if (canonicalMode) {
++    const nsresult result = CanonicalizeRGBSurface(
++        aData, aStride, aSize, aFormat, aSurface->mColorPrimaries,
++        aSurface->GetTransferFunction(), true);
++    if (aOutCanonical) *aOutCanonical = NS_SUCCEEDED(result);
++    return result;
++  }
+   return NS_OK;
+ }
+ 
+ already_AddRefed<SourceSurface> CreateSourceSurfaceFromMacIOSurface(
+-    MacIOSurface* aSurface, gfx::DataSourceSurface* aDataSurface) {
++    MacIOSurface* aSurface, gfx::DataSourceSurface* aDataSurface,
++    bool* aOutCanonical) {
++  if (aOutCanonical) *aOutCanonical = false;
+   if (NS_WARN_IF(!aSurface->Lock())) {
+     return nullptr;
+   }
+@@ -248,8 +274,8 @@
+     return nullptr;
+   }
+ 
+-  nsresult rv = CopyFromLockedMacIOSurface(aSurface, map.GetData(),
+-                                           map.GetStride(), size, format);
++  nsresult rv = CopyFromLockedMacIOSurface(
++      aSurface, map.GetData(), map.GetStride(), size, format, aOutCanonical);
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return nullptr;
+   }
+@@ -260,7 +286,9 @@
+ nsresult CreateSurfaceDescriptorBufferFromMacIOSurface(
+     MacIOSurface* aSurface, SurfaceDescriptorBuffer& aSdBuffer,
+     Image::BuildSdbFlags aFlags,
+-    const std::function<MemoryOrShmem(uint32_t)>& aAllocate) {
++    const std::function<MemoryOrShmem(uint32_t)>& aAllocate,
++    bool* aOutCanonical) {
++  if (aOutCanonical) *aOutCanonical = false;
+   if (NS_WARN_IF(!aSurface->Lock())) {
+     return NS_ERROR_FAILURE;
+   }
+@@ -287,7 +315,8 @@
+     return rv;
+   }
+ 
+-  return CopyFromLockedMacIOSurface(aSurface, buffer, stride, size, format);
++  return CopyFromLockedMacIOSurface(aSurface, buffer, stride, size, format,
++                                    aOutCanonical);
+ }
+ 
+ }  // namespace layers
+--- a/gfx/layers/MacIOSurfaceImage.cpp
++++ b/gfx/layers/MacIOSurfaceImage.cpp
+@@ -8,6 +8,7 @@
+ #include "YCbCrUtils.h"
+ #include "gfxPlatform.h"
+ #include "mozilla/StaticPrefs_layers.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/layers/CompositableClient.h"
+ #include "mozilla/layers/CompositableForwarder.h"
+ #include "mozilla/layers/MacIOSurfaceTextureClientOGL.h"
+@@ -37,14 +38,33 @@
+ }
+ 
+ already_AddRefed<SourceSurface> MacIOSurfaceImage::GetAsSourceSurface() {
+-  return CreateSourceSurfaceFromMacIOSurface(mSurface);
++  bool canonicalConversion = false;
++  RefPtr<SourceSurface> surface = CreateSourceSurfaceFromMacIOSurface(
++      mSurface, nullptr, &canonicalConversion);
++  gfx::SetCanvasPrivacyMetadata(surface, GetCanvasPrivacyMetadata());
++  gfx::AddCanvasPixelSource(surface, gfx::CanvasPixelSource::Media);
++  if (canonicalConversion)
++    gfx::AddCanvasPixelSource(surface,
++                              gfx::CanvasPixelSource::CanonicalColorConversion);
++  return surface.forget();
+ }
+ 
+ nsresult MacIOSurfaceImage::BuildSurfaceDescriptorBuffer(
+     SurfaceDescriptorBuffer& aSdBuffer, BuildSdbFlags aFlags,
+     const std::function<MemoryOrShmem(uint32_t)>& aAllocate) {
+-  return CreateSurfaceDescriptorBufferFromMacIOSurface(mSurface, aSdBuffer,
+-                                                       aFlags, aAllocate);
++  bool canonicalConversion = false;
++  nsresult result = CreateSurfaceDescriptorBufferFromMacIOSurface(
++      mSurface, aSdBuffer, aFlags, aAllocate, &canonicalConversion);
++  if (NS_SUCCEEDED(result)) {
++    aSdBuffer.canvasPrivacy() = GetCanvasPrivacyMetadata();
++    aSdBuffer.canvasPrivacy().sources |=
++        uint32_t(gfx::CanvasPixelSource::Media);
++    if (aSdBuffer.desc().type() == BufferDescriptor::TRGBDescriptor &&
++        canonicalConversion)
++      aSdBuffer.canvasPrivacy().sources |=
++          uint32_t(gfx::CanvasPixelSource::CanonicalColorConversion);
++  }
++  return result;
+ }
+ 
+ static inline uint16_t safeShift10BitBy6(const uint16_t& a10BitLSB) {
+--- a/dom/media/platforms/PDMFactory.cpp
++++ b/dom/media/platforms/PDMFactory.cpp
+@@ -25,6 +25,7 @@
+ #include "mozilla/RemoteMediaManagerChild.h"
+ #include "mozilla/SharedThreadPool.h"
+ #include "mozilla/StaticMutex.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_media.h"
+ #include "mozilla/SyncRunnable.h"
+ #include "mozilla/TaskQueue.h"
+@@ -349,6 +350,26 @@
+     return CreateDecoderWithPDM(mEMEPDM, aParams);
+   }
+ 
++#ifdef MOZ_APPLEMEDIA
++  // Keep the existing remote process boundary. Once inside a decoder process,
++  // common web codecs use the bundled implementation with no Apple fallback.
++  const auto& mime = aParams.mConfig.mMimeType;
++  if (!XRE_IsContentProcess() && aParams.mConfig.IsVideo() &&
++      StaticPrefs::cloakfox_enabled() &&
++      StaticPrefs::cloakfox_experimental_canvas_pipeline() &&
++      (MP4Decoder::IsH264(mime) || MP4Decoder::IsHEVC(mime) ||
++       AOMDecoder::IsAV1(mime))) {
++    RefPtr<PlatformDecoderModule> canonical =
++        FFVPXRuntimeLinker::CreateDecoder();
++    if (!canonical) {
++      return PlatformDecoderModule::CreateDecoderPromise::CreateAndReject(
++          MediaResult(NS_ERROR_DOM_MEDIA_FATAL_ERR,
++                      "Canonical video decoder unavailable"),
++          __func__);
++    }
++    return CreateDecoderWithPDM(canonical, aParams);
++  }
++#endif
+   return CheckAndMaybeCreateDecoder(CreateDecoderParamsForAsync(aParams), 0);
+ }
+ 
+--- a/dom/media/platforms/ffmpeg/FFmpegDecoderModule.h
++++ b/dom/media/platforms/ffmpeg/FFmpegDecoderModule.h
+@@ -14,6 +14,7 @@
+ #include "VPXDecoder.h"
+ #include "VideoUtils.h"
+ #include "mozilla/DataMutex.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_media.h"
+ #include "mozilla/gfx/gfxVars.h"
+ #include "prenv.h"
+@@ -161,15 +162,24 @@
+     if (Supports(SupportDecoderParams(aParams), nullptr).isEmpty()) {
+       return nullptr;
+     }
++    const bool canonicalDecoder = StaticPrefs::cloakfox_enabled() &&
++        StaticPrefs::cloakfox_experimental_canvas_pipeline();
++    if (canonicalDecoder) {
++      // FFmpeg DSP selection must not depend on the decoder host's SIMD ISA.
++      // Existing decoder contexts retain their already-selected function
++      // tables.
++      mLib->av_force_cpu_flags(0);
++    }
+     auto decoder = MakeRefPtr<FFmpegVideoDecoder<V>>(
+         mLib, aParams.VideoConfig(), aParams.mKnowsCompositor,
+         aParams.mImageContainer,
+         aParams.mOptions.contains(CreateDecoderParams::Option::LowLatency),
+         aParams.mOptions.contains(
+-            CreateDecoderParams::Option::HardwareDecoderNotAllowed),
++            CreateDecoderParams::Option::HardwareDecoderNotAllowed) ||
++            canonicalDecoder,
+         aParams.mOptions.contains(
+             CreateDecoderParams::Option::Output8BitPerChannel),
+-        aParams.mTrackingId, aParams.mCDM);
++        aParams.mTrackingId, aParams.mCDM, canonicalDecoder);
+ 
+ #ifdef XP_WIN
+     // Ensure that decoding is exclusively performed using HW decoding in
+@@ -329,6 +339,13 @@
+   }
+ 
+   bool IsSWDecodingSupported(const AVCodecID& aCodec) const {
++#if defined(FFVPX_VERSION) && defined(XP_MACOSX)
++    // Keep the established Apple decoder preference/capability when disabled.
++    if ((aCodec == AV_CODEC_ID_H264 || aCodec == AV_CODEC_ID_HEVC) &&
++        !(StaticPrefs::cloakfox_enabled() &&
++          StaticPrefs::cloakfox_experimental_canvas_pipeline()))
++      return false;
++#endif
+ #ifdef XP_WIN
+     // SW video decoding is not allowed in the GPU process.
+     if (IsVideoCodec(aCodec) && XRE_IsGPUProcess()) {
+--- a/dom/media/platforms/ffmpeg/FFmpegVideoDecoder.cpp
++++ b/dom/media/platforms/ffmpeg/FFmpegVideoDecoder.cpp
+@@ -14,6 +14,7 @@
+ #include "VALibWrapper.h"
+ #include "VPXDecoder.h"
+ #include "VideoUtils.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #if LIBAVCODEC_VERSION_MAJOR >= 58
+ #  include "libavutil/buffer.h"
+ #  include "libavutil/frame.h"
+@@ -983,7 +984,8 @@
+     const FFmpegLibWrapper* aLib, const VideoInfo& aConfig,
+     KnowsCompositor* aAllocator, ImageContainer* aImageContainer,
+     bool aLowLatency, bool aDisableHardwareDecoding, bool a8BitOutput,
+-    Maybe<TrackingId> aTrackingId, PRemoteCDMActor* aCDM)
++    Maybe<TrackingId> aTrackingId, PRemoteCDMActor* aCDM,
++    bool aCanonicalDecoder)
+     : FFmpegDataDecoder(aLib, GetCodecId(aConfig.mMimeType), aCDM),
+       mImageAllocator(aAllocator),
+       mImageContainer(aImageContainer),
+@@ -993,6 +995,11 @@
+           ShouldDisableHWDecoding(aDisableHardwareDecoding)),
+ #endif  // MOZ_USE_HWDECODE
+       mLowLatency(aLowLatency),
++#ifdef FFVPX_VERSION
++      mCanonicalDecoder(aCanonicalDecoder),
++#else
++      mCanonicalDecoder(false),
++#endif
+       mTrackingId(std::move(aTrackingId)),
+       // Value may be changed later when codec is known after initialization.
+       m8BitOutput(a8BitOutput) {
+@@ -1501,6 +1508,13 @@
+     }
+   }
+ 
++#ifdef FFVPX_VERSION
++  if (mCanonicalDecoder) {
++    mCodecContext->flags |= AV_CODEC_FLAG_BITEXACT;
++    mCodecContext->thread_count = 1;
++    mCodecContext->thread_type = 0;
++  }
++#endif
+   // FFmpeg will call back to this to negotiate a video pixel format.
+   mCodecContext->get_format = ChoosePixelFormat;
+ #ifdef CUSTOMIZED_BUFFER_ALLOCATION
+@@ -2194,6 +2208,13 @@
+     v = r.unwrap();
+   }
+   MOZ_ASSERT(v);
++  if (mCanonicalDecoder && v->mImage) {
++    auto provenance = v->mImage->GetCanvasPrivacyMetadata();
++    provenance.sources |=
++        uint32_t(gfx::CanvasPixelSource::Media) |
++        uint32_t(gfx::CanvasPixelSource::CanonicalMediaDecode);
++    v->mImage->SetCanvasPrivacyMetadata(provenance);
++  }
+   aResults.AppendElement(std::move(v));
+   return NS_OK;
+ }
+--- a/dom/media/platforms/ffmpeg/FFmpegLibWrapper.h
++++ b/dom/media/platforms/ffmpeg/FFmpegLibWrapper.h
+@@ -83,6 +83,7 @@
+   int mVersion;
+ 
+   // libavcodec
++  void (*av_force_cpu_flags)(int flags);
+   unsigned (*avcodec_version)();
+   int (*av_lockmgr_register)(int (*cb)(void** mutex, int op));
+   AVCodecContext* (*avcodec_alloc_context3)(const AVCodec* codec);
+--- a/dom/media/platforms/ffmpeg/FFmpegLibWrapper.cpp
++++ b/dom/media/platforms/ffmpeg/FFmpegLibWrapper.cpp
+@@ -232,6 +232,7 @@
+   AV_FUNC(avcodec_descriptor_get, AV_FUNC_AVCODEC_ALL)
+   AV_FUNC(av_log_set_callback, AV_FUNC_AVUTIL_ALL)
+   AV_FUNC(av_log_set_level, AV_FUNC_AVUTIL_ALL)
++  AV_FUNC(av_force_cpu_flags, AV_FUNC_AVUTIL_ALL)
+   AV_FUNC(av_malloc, AV_FUNC_AVUTIL_ALL)
+   AV_FUNC(av_mallocz, AV_FUNC_AVUTIL_ALL)
+   AV_FUNC(av_freep, AV_FUNC_AVUTIL_ALL)
+--- a/media/ffvpx/libavcodec/moz.build
++++ b/media/ffvpx/libavcodec/moz.build
+@@ -134,6 +134,8 @@
+         OS_LIBS += CONFIG['MOZ_SYSTEM_LIBDAV1D_LIBS']
+         OS_LIBS += CONFIG['MOZ_SYSTEM_LIBAOM_LIBS']
+     else:
++        if CONFIG['OS_TARGET'] == 'Darwin':
++            DEFINES['CLOAKFOX_BUNDLED_DAV1D'] = True
+         USE_LIBS += [
+             'dav1d',
+             'media_libdav1d_asm',
+@@ -210,3 +212,51 @@
+     OS_LIBS += ['android', 'mediandk']
+ 
+ include("../ffvpxcommon.mozbuild")
++
++# Exact FFmpeg 9.0.1 LGPL decoder subset, C implementations only.
++if CONFIG['OS_ARCH'] == 'Darwin' and not CONFIG['MOZ_FFVPX_AUDIOONLY']:
++    canonical_codec_sources = [
++        'ac3_parser.c',
++        'bswapdsp.c',
++        'cabac.c',
++        'dirac.c',
++        'dovi_rpu.c',
++        'dovi_rpudec.c',
++        'dv_profile.c',
++        'error_resilience.c',
++        'float_scalarproduct.c',
++        'h2645_parse.c',
++        'h2645_sei.c',
++        'h2645_vui.c',
++        'h2645data.c',
++        'h264_cabac.c',
++        'h264_cavlc.c',
++        'h264_direct.c',
++        'h264_loopfilter.c',
++        'h264_mb.c',
++        'h264_parse.c',
++        'h264_picture.c',
++        'h264_ps.c',
++        'h264_refs.c',
++        'h264_sei.c',
++        'h264_slice.c',
++        'h264chroma.c',
++        'h264data.c',
++        'h264dec.c',
++        'h264dsp.c',
++        'h264idct.c',
++        'h264qpel.c',
++        'h274.c',
++        'jni.c',
++        'me_cmp.c',
++        'mpeg12framerate.c',
++        'startcode.c',
++        'timecode_internal.c',
++    ]
++    DIRS += ['hevc']
++    SOURCES += canonical_codec_sources
++    for canonical_source in canonical_codec_sources:
++        SOURCES[canonical_source].flags += [
++            '-include', TOPSRCDIR + '/media/ffvpx/canonical_codec_config.h',
++            '-ffp-contract=off',
++        ]
+--- a/media/ffvpx/libavcodec/codec_list.c
++++ b/media/ffvpx/libavcodec/codec_list.c
+@@ -78,6 +78,12 @@
+ #if CONFIG_VP9_MEDIACODEC_DECODER
+     &ff_vp9_mediacodec_decoder,
+ #endif
++#if CONFIG_H264_DECODER
++    &ff_h264_decoder,
++#endif
++#if CONFIG_HEVC_DECODER
++    &ff_hevc_decoder,
++#endif
+ #if CONFIG_H264_MEDIACODEC_DECODER
+     &ff_h264_mediacodec_decoder,
+ #endif
+--- a/media/ffvpx/config_override.h
++++ b/media/ffvpx/config_override.h
+@@ -141,3 +141,47 @@
+ 
+ #define CONFIG_H264_MEDIACODEC_DECODER_EXTRADATA 0
+ #define CONFIG_HEVC_MEDIACODEC_DECODER_EXTRADATA 0
++
++// Bundled LGPL scalar H.264/HEVC for the opt-in canonical media pipeline.
++#if defined(XP_DARWIN) && !defined(MOZ_FFVPX_AUDIOONLY)
++#  undef CONFIG_ATSC_A53
++#  define CONFIG_ATSC_A53 1
++#  undef CONFIG_BSWAPDSP
++#  define CONFIG_BSWAPDSP 1
++#  undef CONFIG_CABAC
++#  define CONFIG_CABAC 1
++#  undef CONFIG_DOVI_RPUDEC
++#  define CONFIG_DOVI_RPUDEC 1
++#  undef CONFIG_ERROR_RESILIENCE
++#  define CONFIG_ERROR_RESILIENCE 1
++#  undef CONFIG_GOLOMB
++#  define CONFIG_GOLOMB 1
++#  undef CONFIG_H264CHROMA
++#  define CONFIG_H264CHROMA 1
++#  undef CONFIG_H264DSP
++#  define CONFIG_H264DSP 1
++#  undef CONFIG_H264PARSE
++#  define CONFIG_H264PARSE 1
++#  undef CONFIG_H264PRED
++#  define CONFIG_H264PRED 1
++#  undef CONFIG_H264QPEL
++#  define CONFIG_H264QPEL 1
++#  undef CONFIG_H264_SEI
++#  define CONFIG_H264_SEI 1
++#  undef CONFIG_HEVCPARSE
++#  define CONFIG_HEVCPARSE 1
++#  undef CONFIG_HEVC_SEI
++#  define CONFIG_HEVC_SEI 1
++#  undef CONFIG_ITUT_T35
++#  define CONFIG_ITUT_T35 1
++#  undef CONFIG_ME_CMP
++#  define CONFIG_ME_CMP 1
++#  undef CONFIG_STARTCODE
++#  define CONFIG_STARTCODE 1
++#  undef CONFIG_VIDEODSP
++#  define CONFIG_VIDEODSP 1
++#  undef CONFIG_H264_DECODER
++#  define CONFIG_H264_DECODER 1
++#  undef CONFIG_HEVC_DECODER
++#  define CONFIG_HEVC_DECODER 1
++#endif
+--- a/media/ffvpx/README_MOZILLA
++++ b/media/ffvpx/README_MOZILLA
+@@ -182,3 +182,12 @@
+   nasm cannot parse a relational operator inside parentheses until 2.15, and
+   our minimum supported nasm (used by the base-toolchains builds) is 2.14.02.
+   Drop this patch once that minimum is raised past 2.15.
++
++## Cloakfox Mac canonical decoder subset
++
++The optional complete canvas pipeline additionally builds the LGPL generic-C
++H.264 and HEVC decoders from this same FFmpeg 9.0.1 release. See
++canonical-codec-manifest.json for exact source/archive hashes and configuration,
++and the Cloakfox docs/canvas-pipeline-completion/canonical-media.md review.
++This does not enable optional GPL/nonfree components or Dolby Vision encoding.
++The Apple decoder remains preferred when the experiment is disabled.
+--- a/media/ffvpx/libavutil/moz.build
++++ b/media/ffvpx/libavutil/moz.build
+@@ -121,3 +121,12 @@
+     OS_LIBS += ['android']
+ 
+ include("../ffvpxcommon.mozbuild")
++
++if CONFIG['OS_ARCH'] == 'Darwin' and not CONFIG['MOZ_FFVPX_AUDIOONLY']:
++    SOURCES += [
++        'ambient_viewing_environment.c',
++        'dovi_meta.c',
++        'md5.c',
++        'stereo3d.c',
++        'tdrdi.c',
++    ]
+--- a/media/ffvpx/libavutil/avutil.symbols
++++ b/media/ffvpx/libavutil/avutil.symbols
+@@ -364,3 +364,28 @@
+ ff_emms_asm
+ #endif
+ ff_timecode_set_smpte
++
++#if defined(XP_DARWIN) && !defined(MOZ_FFVPX_AUDIOONLY)
++av_ambient_viewing_environment_alloc
++av_ambient_viewing_environment_create_side_data
++av_dovi_alloc
++av_dovi_metadata_alloc
++av_dovi_find_level
++av_md5_alloc
++av_md5_init
++av_md5_update
++av_md5_final
++av_md5_sum
++av_tdrdi_alloc
++av_stereo3d_create_side_data
++av_log_once
++av_refstruct_ref_c
++av_timecode_make_smpte_tc_string2
++av_timecode_get_smpte
++av_container_fifo_read
++av_container_fifo_can_read
++av_container_fifo_free
++av_container_fifo_alloc_avframe
++av_film_grain_params_select
++av_container_fifo_write
++#endif
+--- a/dom/media/platforms/apple/AppleDecoderModule.cpp
++++ b/dom/media/platforms/apple/AppleDecoderModule.cpp
+@@ -15,6 +15,7 @@
+ #include "VideoUtils.h"
+ #include "mozilla/Logging.h"
+ #include "mozilla/ScopeExit.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_media.h"
+ #include "mozilla/gfx/gfxVars.h"
+ 
+@@ -132,6 +133,13 @@
+     const SupportDecoderParams& aParams,
+     DecoderDoctorDiagnostics* aDiagnostics) const {
+   const auto& trackInfo = aParams.mConfig;
++  if (trackInfo.IsVideo() && !trackInfo.mCrypto.IsEncrypted() &&
++      StaticPrefs::cloakfox_enabled() &&
++      StaticPrefs::cloakfox_experimental_canvas_pipeline()) {
++    // Report the software module's capability instead of routing clear video
++    // through VideoToolbox (including Apple's host-dependent software decoder).
++    return {};
++  }
+   if (trackInfo.IsAudio()) {
+     return SupportsMimeType(trackInfo.mMimeType, aDiagnostics);
+   }
+--- a/dom/media/platforms/ffmpeg/FFmpegVideoDecoder.h
++++ b/dom/media/platforms/ffmpeg/FFmpegVideoDecoder.h
+@@ -95,7 +95,7 @@
+                      KnowsCompositor* aAllocator,
+                      ImageContainer* aImageContainer, bool aLowLatency,
+                      bool aDisableHardwareDecoding, bool a8BitOutput,
+-                     Maybe<TrackingId> aTrackingId, PRemoteCDMActor* aCDM);
++                     Maybe<TrackingId> aTrackingId, PRemoteCDMActor* aCDM, bool aCanonicalDecoder);
+ 
+   ~FFmpegVideoDecoder();
+ 
+@@ -396,6 +396,7 @@
+ #endif
+ 
+   const bool mLowLatency;
++  const bool mCanonicalDecoder;
+   const Maybe<TrackingId> mTrackingId;
+ 
+   void RecordFrame(const MediaRawData* aSample, const MediaData* aData);
+--- a/gfx/layers/ImageContainer.cpp
++++ b/gfx/layers/ImageContainer.cpp
+@@ -824,12 +824,20 @@
+       if (map.IsMapped() && SwizzleData(map.GetData(), map.GetStride(),
+                                         sourceSurface->GetFormat(), buffer,
+                                         stride, format, size)) {
++        aSdBuffer.canvasPrivacy() = gfx::MergeCanvasPrivacyMetadata(
++            aSdBuffer.canvasPrivacy(),
++            gfx::GetCanvasPrivacyMetadata(sourceSurface));
+         return NS_OK;
+       }
+     }
+ 
+-    rv = gfx::ConvertYCbCrToRGB(mData, format, size, buffer, stride);
++    bool canonicalConversion = false;
++    rv = gfx::ConvertYCbCrToRGB(mData, format, size, buffer, stride,
++                                &canonicalConversion);
+     MOZ_ASSERT(NS_SUCCEEDED(rv), "Failed to convert YUV into RGB data");
++    if (NS_SUCCEEDED(rv) && canonicalConversion)
++      aSdBuffer.canvasPrivacy().sources |=
++          uint32_t(gfx::CanvasPixelSource::CanonicalColorConversion);
+     return rv;
+   }
+ 
+@@ -1037,14 +1045,19 @@
+     return nullptr;
+   }
+ 
+-  if (NS_WARN_IF(NS_FAILED(gfx::ConvertYCbCrToRGB(
+-          mData, format, size, mapping.GetData(), mapping.GetStride())))) {
++  bool canonicalConversion = false;
++  if (NS_WARN_IF(NS_FAILED(
++          gfx::ConvertYCbCrToRGB(mData, format, size, mapping.GetData(),
++                                 mapping.GetStride(), &canonicalConversion)))) {
+     MOZ_ASSERT_UNREACHABLE("Failed to convert YUV into RGB data");
+     return nullptr;
+   }
+ 
+   gfx::SetCanvasPrivacyMetadata(surface, GetCanvasPrivacyMetadata());
+   gfx::AddCanvasPixelSource(surface, gfx::CanvasPixelSource::Media);
++  if (canonicalConversion)
++    gfx::AddCanvasPixelSource(surface,
++                              gfx::CanvasPixelSource::CanonicalColorConversion);
+   mSourceSurface.Set(surface);
+ 
+   return surface.forget();
+@@ -1141,13 +1154,18 @@
+     return nullptr;
+   }
+ 
+-  if (NS_WARN_IF(NS_FAILED(gfx::ConvertYCbCrToRGB(
+-          i420.mData, format, size, mapping.GetData(), mapping.GetStride())))) {
++  bool canonicalConversion = false;
++  if (NS_WARN_IF(NS_FAILED(
++          gfx::ConvertYCbCrToRGB(i420.mData, format, size, mapping.GetData(),
++                                 mapping.GetStride(), &canonicalConversion)))) {
+     return nullptr;
+   }
+ 
+   gfx::SetCanvasPrivacyMetadata(surface, GetCanvasPrivacyMetadata());
+   gfx::AddCanvasPixelSource(surface, gfx::CanvasPixelSource::Media);
++  if (canonicalConversion)
++    gfx::AddCanvasPixelSource(surface,
++                              gfx::CanvasPixelSource::CanonicalColorConversion);
+   mSourceSurface.Set(surface);
+ 
+   return surface.forget();
+@@ -1198,11 +1216,16 @@
+   aSdBuffer.canvasPrivacy().sources |= uint32_t(gfx::CanvasPixelSource::Media);
+ 
+   if (!sourceSurface) {
+-    rv = gfx::ConvertYCbCrToRGB(i420.mData, format, size, output, stride);
++    bool canonicalConversion = false;
++    rv = gfx::ConvertYCbCrToRGB(i420.mData, format, size, output, stride,
++                                &canonicalConversion);
+     if (NS_WARN_IF(NS_FAILED(rv))) {
+       MOZ_ASSERT_UNREACHABLE("Failed to convert YUV into RGB data");
+       return rv;
+     }
++    if (canonicalConversion)
++      aSdBuffer.canvasPrivacy().sources |=
++          uint32_t(gfx::CanvasPixelSource::CanonicalColorConversion);
+     return NS_OK;
+   }
+ 
+@@ -1216,6 +1239,8 @@
+     return NS_ERROR_FAILURE;
+   }
+ 
++  aSdBuffer.canvasPrivacy() = gfx::MergeCanvasPrivacyMetadata(
++      aSdBuffer.canvasPrivacy(), gfx::GetCanvasPrivacyMetadata(sourceSurface));
+   return NS_OK;
+ }
+ 
+--- a/dom/media/platforms/agnostic/VPXDecoder.cpp
++++ b/dom/media/platforms/agnostic/VPXDecoder.cpp
+@@ -17,6 +17,7 @@
+ #include "gfx2DGlue.h"
+ #include "gfxUtils.h"
+ #include "mozilla/PodOperations.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/SyncRunnable.h"
+ #include "mozilla/TaskQueue.h"
+ #include "nsError.h"
+@@ -86,6 +87,8 @@
+       mCodec(MimeTypeToCodec(aParams.VideoConfig().mMimeType)),
+       mLowLatency(
+           aParams.mOptions.contains(CreateDecoderParams::Option::LowLatency)),
++      mCanonicalDecoder(StaticPrefs::cloakfox_enabled() &&
++                        StaticPrefs::cloakfox_experimental_canvas_pipeline()),
+       mTrackingId(aParams.mTrackingId) {
+   MOZ_COUNT_CTOR(VPXDecoder);
+   PodZero(&mVPX);
+@@ -106,12 +109,14 @@
+ 
+ RefPtr<MediaDataDecoder::InitPromise> VPXDecoder::Init() {
+   AUTO_PROFILER_LABEL("VPXDecoder::Init", MEDIA_PLAYBACK);
+-  if (NS_FAILED(InitContext(&mVPX, mInfo, mCodec, mLowLatency))) {
++  if (NS_FAILED(InitContext(&mVPX, mInfo, mCodec,
++                            mLowLatency || mCanonicalDecoder))) {
+     return VPXDecoder::InitPromise::CreateAndReject(
+         NS_ERROR_DOM_MEDIA_FATAL_ERR, __func__);
+   }
+   if (mInfo.HasAlpha()) {
+-    if (NS_FAILED(InitContext(&mVPXAlpha, mInfo, mCodec, mLowLatency))) {
++    if (NS_FAILED(InitContext(&mVPXAlpha, mInfo, mCodec,
++                              mLowLatency || mCanonicalDecoder))) {
+       return VPXDecoder::InitPromise::CreateAndReject(
+           NS_ERROR_DOM_MEDIA_FATAL_ERR, __func__);
+     }
+@@ -265,6 +270,13 @@
+                                             __func__);
+     }
+     RefPtr<VideoData> v = videoDataResult.unwrap();
++    if (mCanonicalDecoder && v->mImage) {
++      auto provenance = v->mImage->GetCanvasPrivacyMetadata();
++      provenance.sources |=
++          uint32_t(gfx::CanvasPixelSource::Media) |
++          uint32_t(gfx::CanvasPixelSource::CanonicalMediaDecode);
++      v->mImage->SetCanvasPrivacyMetadata(provenance);
++    }
+ 
+     rec.apply([&](auto& aRec) {
+       return aRec.Record([&](DecodeStage& aStage) {
+--- a/dom/media/platforms/agnostic/VPXDecoder.h
++++ b/dom/media/platforms/agnostic/VPXDecoder.h
+@@ -198,6 +198,7 @@
+ 
+   const Codec mCodec;
+   const bool mLowLatency;
++  const bool mCanonicalDecoder;
+   const Maybe<TrackingId> mTrackingId;
+ };
+ 
+--- a/dom/media/webrtc/libwebrtcglue/WebrtcMediaDataDecoderCodec.cpp
++++ b/dom/media/webrtc/libwebrtcglue/WebrtcMediaDataDecoderCodec.cpp
+@@ -12,6 +12,7 @@
+ #include "PDMFactory.h"
+ #include "PDMFactorySupport.h"
+ #include "VideoUtils.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_media.h"
+ #include "mozilla/layers/ImageBridgeChild.h"
+ #include "mozilla/media/MediaUtils.h"
+@@ -25,6 +26,18 @@
+ 
+ /* static */
+ bool WebrtcMediaDataDecoder::IsCodecEnabled(webrtc::VideoCodecType aCodec) {
++  if (StaticPrefs::cloakfox_enabled() &&
++      StaticPrefs::cloakfox_experimental_canvas_pipeline()) {
++    switch (aCodec) {
++      case webrtc::VideoCodecType::kVideoCodecVP8:
++      case webrtc::VideoCodecType::kVideoCodecVP9:
++      case webrtc::VideoCodecType::kVideoCodecH264:
++      case webrtc::VideoCodecType::kVideoCodecAV1:
++        return true;
++      default:
++        break;
++    }
++  }
+   switch (aCodec) {
+     case webrtc::VideoCodecType::kVideoCodecVP8:
+     case webrtc::VideoCodecType::kVideoCodecVP9:
+--- a/gfx/layers/MacIOSurfaceHelpers.h
++++ b/gfx/layers/MacIOSurfaceHelpers.h
+@@ -22,12 +22,14 @@
+ // Unlike MacIOSurface::GetAsSurface, this also handles IOSurface formats
+ // with multiple planes and does YCbCr to RGB conversion, if necessary.
+ already_AddRefed<gfx::SourceSurface> CreateSourceSurfaceFromMacIOSurface(
+-    MacIOSurface* aSurface, gfx::DataSourceSurface* aDataSurface = nullptr);
++    MacIOSurface* aSurface, gfx::DataSourceSurface* aDataSurface = nullptr,
++    bool* aOutCanonical = nullptr);
+ 
+ nsresult CreateSurfaceDescriptorBufferFromMacIOSurface(
+     MacIOSurface* aSurface, SurfaceDescriptorBuffer& aSdBuffer,
+     Image::BuildSdbFlags aFlags,
+-    const std::function<MemoryOrShmem(uint32_t)>& aAllocate);
++    const std::function<MemoryOrShmem(uint32_t)>& aAllocate,
++    bool* aOutCanonical = nullptr);
+ 
+ }  // namespace layers
+ }  // namespace mozilla
+--- a/media/ffvpx/libavcodec/libdav1d.c
++++ b/media/ffvpx/libavcodec/libdav1d.c
+@@ -199,6 +199,11 @@
+     return 0;
+ }
+ 
++#ifdef CLOAKFOX_BUNDLED_DAV1D
++/* Internal bundled dav1d API; never linked against a system AV1 library. */
++void dav1d_set_cpu_flags_mask(unsigned mask);
++#endif
++
+ static av_cold int libdav1d_init(AVCodecContext *c)
+ {
+     Libdav1dContext *dav1d = c->priv_data;
+@@ -246,6 +251,11 @@
+     if (res < 0)
+         return res;
+ 
++#ifdef CLOAKFOX_BUNDLED_DAV1D
++    /* FFmpeg's CPU mask does not control dav1d's independently selected DSP. */
++    if (av_get_cpu_flags() == 0)
++        dav1d_set_cpu_flags_mask(0);
++#endif
+     res = dav1d_open(&dav1d->c, &s);
+     if (res < 0)
+         return AVERROR(ENOMEM);

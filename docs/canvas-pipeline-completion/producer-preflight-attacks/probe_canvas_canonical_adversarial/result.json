@@ -1,0 +1,84 @@
+{
+  "binary": "/tmp/Cloakfox-canvas-integrated-preflight.app/Contents/MacOS/cloakfox",
+  "checks": [
+    {
+      "pass": true,
+      "name": "native corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "legacy corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "canonical corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "canonical-repeat corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "html known-fill inversion does not recover native glyph raster"
+    },
+    {
+      "pass": true,
+      "name": "html repeated reads stable"
+    },
+    {
+      "pass": true,
+      "name": "html canonical reload stable"
+    },
+    {
+      "pass": true,
+      "name": "offscreen known-fill inversion does not recover native glyph raster"
+    },
+    {
+      "pass": true,
+      "name": "offscreen repeated reads stable"
+    },
+    {
+      "pass": true,
+      "name": "offscreen canonical reload stable"
+    },
+    {
+      "pass": true,
+      "name": "worker known-fill inversion does not recover native glyph raster"
+    },
+    {
+      "pass": true,
+      "name": "worker repeated reads stable"
+    },
+    {
+      "pass": true,
+      "name": "worker canonical reload stable"
+    },
+    {
+      "pass": true,
+      "name": "canonical font corpus agrees across realms"
+    }
+  ],
+  "scope": "installed macOS only; no cross-host assertion",
+  "runtime": {
+    "buildID": "20261015144358",
+    "version": "158.0-beta.26"
+  },
+  "recovery": {
+    "html": {
+      "nativeGlyphMismatches": 8196,
+      "channels": 98304,
+      "canonicalSHA256": "45dccb5508aebc40a5c7b1908fd27b51de17d8f33d332542ede8d771c4d1aafc"
+    },
+    "offscreen": {
+      "nativeGlyphMismatches": 8196,
+      "channels": 98304,
+      "canonicalSHA256": "45dccb5508aebc40a5c7b1908fd27b51de17d8f33d332542ede8d771c4d1aafc"
+    },
+    "worker": {
+      "nativeGlyphMismatches": 8196,
+      "channels": 98304,
+      "canonicalSHA256": "45dccb5508aebc40a5c7b1908fd27b51de17d8f33d332542ede8d771c4d1aafc"
+    }
+  },
+  "errors": {}
+}

@@ -1,0 +1,15 @@
+--- a/gfx/thebes/gfxPlatformFontList.cpp
++++ b/gfx/thebes/gfxPlatformFontList.cpp
+@@ -1541,8 +1541,12 @@
+             MaskedFontListBlocks(aFontVisibilityProvider, family.Key().AsString(SharedFontList()))) {
+           continue;
+         }
++        // A canvas bitmap cannot be repaired by the later font-list reflow.
++        // Resolve allowed content families on the first lookup, so the masked
++        // identity does not depend on whether fallback charmaps are warm.
+         if (!family.IsFullyInitialized() &&
+             StaticPrefs::gfx_font_rendering_fallback_async() &&
++            !MaskedFontListAppliesTo(aFontVisibilityProvider) &&
+             !XRE_IsParentProcess()) {
+           // Start loading all the missing charmaps; but this is async,
+           // so for now we just continue, ignoring this family.

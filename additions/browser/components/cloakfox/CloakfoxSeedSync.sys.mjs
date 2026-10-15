@@ -9,7 +9,7 @@ import {
   genericFontListUnion,
   migratePersonaVersion,
 } from "resource:///modules/CloakfoxPersonas.sys.mjs";
-import { applyOverrides } from "resource:///modules/CloakfoxOverrides.sys.mjs";
+import { applyOverrides, applyGraphicsPolicy } from "resource:///modules/CloakfoxOverrides.sys.mjs";
 // ContextualIdentityService must be imported explicitly: there is no
 // Services.contextualIdentityService getter. Reading it yields undefined, so
 // calling through it throws a TypeError — see ensureSeedsForAllContainers.
@@ -389,7 +389,8 @@ function publish() {
 // and transient network masks. Config-write notifications only publish below.
 function applyStrictGraphicsPolicy() {
   const disabled = Services.prefs.getBoolPref(
-    "cloakfox.opt.webgl_typed_readback_disabled", true);
+    "cloakfox.opt.webgl_typed_readback_disabled", true) ||
+      Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false);
   for (const pref of Services.prefs.getChildList("cloakfox.s.cloak_cfg_")) {
     if (!/^cloakfox\.s\.cloak_cfg_(?:0|[1-9]\d*)$/.test(pref)) continue;
     try {
@@ -402,11 +403,35 @@ function applyStrictGraphicsPolicy() {
   }
 }
 
+// Update only opt-in policy fields: rebuilding a persona here could replace
+// manual fields, network masks or seeds. Native contexts capture these choices
+// at creation; existing pages and workers need reloading/recreation.
+function applyGraphicsOptInPolicy() {
+  for (const pref of Services.prefs.getChildList("cloakfox.s.cloak_cfg_")) {
+    if (!/^cloakfox\.s\.cloak_cfg_(?:0|[1-9]\d*)$/.test(pref)) continue;
+    try {
+      const cfg = JSON.parse(Services.prefs.getStringPref(pref, ""));
+      if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) continue;
+      const updated = applyGraphicsPolicy(cfg);
+      if (cfg["canvas:render_privacy"] === updated["canvas:render_privacy"] &&
+          cfg["webGl:backend_profile"] === updated["webGl:backend_profile"] &&
+          cfg["canvas:canonical_2d"] === updated["canvas:canonical_2d"] &&
+          cfg["canvas:canonical_gpu"] === updated["canvas:canonical_gpu"] &&
+          cfg["webgl:typed_readback:disabled"] === updated["webgl:typed_readback:disabled"]) continue;
+      Services.prefs.setStringPref(pref, JSON.stringify(updated));
+    } catch (_e) { /* normal startup repair owns corrupt configurations */ }
+  }
+}
+
 const observer = {
   observe(_subject, topic, data) {
     if (topic !== "nsPref:changed" || data === "cloakfox.font_identity_epoch" ||
         data?.startsWith("cloakfox.language_identity_epoch.")) return;
-    if (data === "cloakfox.opt.webgl_typed_readback_disabled") applyStrictGraphicsPolicy();
+    if (data === "cloakfox.opt.webgl_typed_readback_disabled" ||
+        data === "cloakfox.experimental.canvas_pipeline") applyStrictGraphicsPolicy();
+    if (data === "cloakfox.opt.canvas_render_privacy" ||
+        data === "cloakfox.opt.gpu_backend_profiles" ||
+        data === "cloakfox.experimental.canvas_pipeline") applyGraphicsOptInPolicy();
     if (data?.startsWith("cloakfox.s.cloak_cfg_")) {
       const raw = Services.prefs.getStringPref(data, "");
       try {
@@ -502,6 +527,7 @@ export function initCloakfoxSeedSync() {
   // leak. Generated once at first launch and persisted in cloakfox.
   // container.<ucid>.<seed_name> string prefs.
   ensureSeedsForAllContainers();
+  applyGraphicsOptInPolicy();
   applyTimerQuantizationPref();
   // Initial snapshot.
   publish();

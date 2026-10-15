@@ -18,6 +18,7 @@ function harness(version = '155.0.1', hostOS = 'WINNT', sampler = () => ({ userA
     ContextualIdentityService: { getPublicIdentities: () => [{ userContextId: 7 }] },
     Services: { appinfo: {OS: hostOS},
       prefs: { getStringPref: get, getIntPref: get, getBoolPref: get,
+        getChildList: prefix => [...prefs.keys()].filter(k => k.startsWith(prefix)),
         setStringPref: (k,v) => prefs.set(k,v), setIntPref: (k,v) => prefs.set(k,v),
         setCharPref: (k,v) => prefs.set(k,v), setBoolPref: (k,v) => prefs.set(k,v),
         getBranch: prefix => ({ getChildList: () => [...prefs.keys()].filter(k => k.startsWith(prefix)).map(k => k.slice(prefix.length)) }),
@@ -37,7 +38,7 @@ function harness(version = '155.0.1', hostOS = 'WINNT', sampler = () => ({ userA
 // New region/policy metadata is validated by its own suite; this regression
 // verifies every pre-existing config field remains byte-for-byte intact.
 function legacyProjection(cfg) {
-  for (const key of ['timing:session_key_hi','timing:session_key_lo','mediaDevices:enabled','timezone','privacy:policy','locale:default','locale:all','navigator.languages','navigator.language']) delete cfg[key];
+  for (const key of ['canvas:canonical_gpu','canvas:canonical_2d','canvas:render_privacy','webGl:backend_profile','timing:session_key_hi','timing:session_key_lo','mediaDevices:enabled','timezone','privacy:policy','locale:default','locale:all','navigator.languages','navigator.language']) delete cfg[key];
   return cfg;
 }
 function setExisting(h, cfg) {
@@ -198,4 +199,52 @@ test('media exposure caps are editable without inventing devices or changing the
   h.context.clearOverride(7,'mediaDevices:micros');
   h.context.refreshContainerConfig(7);
   assert.equal(h.cfg()['mediaDevices:micros'],1);
+});
+
+// Snapshot the old emitted device tables independently of the new generator.
+function legacyGraphics(renderer) {
+  const base = {3379:16384,34076:16384,34024:16384,3386:[32767,32767],
+    34921:16,36347:4096,36348:30,36349:1024,34930:16,35660:16,
+    35661:32,33902:[1,1],33901:[1,1024],36183:4,7936:'Mozilla',7937:renderer};
+  if (/NVIDIA/.test(renderer)) Object.assign(base,{3386:[32768,32768],36183:8});
+  if (/AMD/.test(renderer)) Object.assign(base,{3386:[16384,16384],36183:8});
+  if (/Intel/.test(renderer)) Object.assign(base,{3386:[16384,16384]});
+  if (/Apple/.test(renderer)) Object.assign(base,{3386:[16384,16384],35661:80,36348:32});
+  return {'webGl:renderer':renderer, 'webGl:parameters':base,
+    'webGl2:parameters':{...base,35375:24,35380:256,32883:2048,35071:256}};
+}
+
+test('startup migrates only the exact generated legacy GPU profile without rotating identity', () => {
+  for (const renderer of ['NVIDIA GTX 980','AMD Radeon','Intel UHD','Apple M1','Generic GPU']) {
+    const h = harness(); const before = {...legacy(),...legacyGraphics(renderer)};
+    setExisting(h,before); h.prefs.set('cloakfox.container.7.override.canvas:seed',789);
+    h.start(); const after=h.cfg();
+    assert.equal(after['webGl:parameters'][36347],1024,renderer);
+    assert.equal(after['webGl2:parameters'][35658],4096,renderer);
+    assert.equal(after['webGl2:parameters'][35657],4096,renderer);
+    assert.equal(after['webGl2:parameters'][37157],renderer==='Apple M1'?128:120,renderer);
+    assert.equal(after['webGl:renderer'],renderer);
+    assert.equal(after['canvas:seed'],789,'explicit scalar override still wins');
+    assert.equal(after['audio:seed'],before['audio:seed']);
+    const saved=h.prefs.get('cloakfox.s.cloak_cfg_7'); h.start();
+    assert.equal(h.prefs.get('cloakfox.s.cloak_cfg_7'),saved,'migration is idempotent');
+    assert.equal(before['webGl:parameters'][36347],4096,'input was not mutated');
+  }
+});
+
+test('customized, partial, and renderer-mismatched legacy GPU tables survive migration', () => {
+  const variants = [
+    cfg=>cfg['webGl:parameters'][3379]=8192,
+    cfg=>cfg['webGl2:parameters'][3379]=8192,
+    cfg=>cfg['webGl2:parameters'].custom=1,
+    cfg=>delete cfg['webGl:parameters'][34921],
+    cfg=>delete cfg['webGl2:parameters'],
+    cfg=>cfg['webGl:renderer']='Other renderer',
+    cfg=>cfg['webGl:parameters'][33901]=[1,64],
+  ];
+  for(const change of variants) {
+    const h=harness(); const before={...legacy(),...legacyGraphics('NVIDIA GTX 980')};
+    change(before);setExisting(h,before);h.start(); const after=h.cfg();
+    for (const key of ['webGl:parameters','webGl2:parameters']) assert.deepEqual(after[key],before[key]);
+  }
 });

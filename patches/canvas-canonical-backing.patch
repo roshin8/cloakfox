@@ -1,0 +1,107 @@
+--- a/dom/canvas/CanvasRenderingContext2D.cpp
++++ b/dom/canvas/CanvasRenderingContext2D.cpp
+@@ -1663,11 +1663,15 @@
+   // acceleration, then we skip trying to use this provider so that it will be
+   // recreated by EnsureTarget later.
+   if (!mBufferProvider || mBufferProvider->RequiresRefresh() ||
++      (mCanonicalCanvasBacking &&
++       (mBufferProvider->IsAccelerated() || mBufferProvider->IsShared())) ||
+       (mBufferProvider->IsAccelerated() && UseSoftwareRendering())) {
+     return false;
+   }
+   mTarget = mBufferProvider->BorrowDrawTarget(aPersistedRect);
+-  if (!mTarget || !mTarget->IsValid()) {
++  if (!mTarget || !mTarget->IsValid() ||
++      (mCanonicalCanvasBacking &&
++       mTarget->GetBackendType() != BackendType::SKIA)) {
+     if (mTarget) {
+       mBufferProvider->ReturnDrawTarget(mTarget.forget());
+     }
+@@ -1757,6 +1761,27 @@
+   return false;
+ }
+ 
++// Cloakfox canonical policy. An experimental backing choice, not certification
++// of canonical fonts, image producers or GPU-derived pixels.
++static bool CloakfoxCanonicalCanvasPolicy(const nlohmann::json& aConfig,
++                                          bool aEnabled, bool aContent) {
++  const auto policy = aConfig.find("canvas:canonical_2d");
++  return aEnabled && aContent && policy != aConfig.end() &&
++         policy->is_boolean() && policy->get<bool>();
++}
++// End Cloakfox canonical policy.
++
++void CanvasRenderingContext2D::CaptureCanonicalCanvasPolicy() {
++  if (mCanonicalCanvasPolicyCaptured) return;
++  mCanonicalCanvasPolicyCaptured = true;
++  nsIPrincipal* principal = PrincipalOrNull();
++  if (!principal || principal->IsSystemPrincipal()) return;
++  mCanonicalCanvasBacking = CloakfoxCanonicalCanvasPolicy(
++      CloakfoxSiteSeed::ExactConfig(
++          principal->OriginAttributesRef().mUserContextId),
++      StaticPrefs::cloakfox_enabled(), true);
++}
++
+ // Experimental additive glyph protection. Extraction and metric privacy remain
+ // independent, including for unsupported non-text rendering operations.
+ static uint32_t CloakfoxGlyphPolicySeed(const nlohmann::json& aConfig,
+@@ -1806,6 +1831,7 @@
+                                             bool aWillClear,
+                                             bool aSkipTransform) {
+   CaptureGlyphPrivacyPolicy();
++  CaptureCanonicalCanvasPolicy();
+   if (HasErrorState(aError, false)) {
+     return false;
+   }
+@@ -1856,9 +1882,15 @@
+   RefPtr<DrawTarget> newTarget;
+   RefPtr<PersistentBufferProvider> newProvider;
+ 
+-  if (!TryAcceleratedTarget(newTarget, newProvider) &&
+-      !TrySharedTarget(newTarget, newProvider) &&
+-      !TryBasicTarget(newTarget, newProvider, aError)) {
++  // Cloakfox canonical allocation. A failed canonical allocation may never
++  // fall through to an accelerated/shared/platform-selected renderer.
++  const bool created = mCanonicalCanvasBacking
++      ? TryBasicTarget(newTarget, newProvider, aError)
++      : (TryAcceleratedTarget(newTarget, newProvider) ||
++         TrySharedTarget(newTarget, newProvider) ||
++         TryBasicTarget(newTarget, newProvider, aError));
++  // End Cloakfox canonical allocation.
++  if (!created) {
+     gfxCriticalError(
+         CriticalLog::DefaultOptions(Factory::ReasonableSurfaceSize(GetSize())))
+         << "Failed borrow shared and basic targets.";
+@@ -2107,8 +2139,10 @@
+     RefPtr<gfx::DrawTarget>& aOutDT,
+     RefPtr<layers::PersistentBufferProvider>& aOutProvider,
+     ErrorResult& aError) {
+-  aOutDT = gfxPlatform::GetPlatform()->CreateOffscreenCanvasDrawTarget(
+-      GetSize(), GetSurfaceFormat(), UseSoftwareRendering());
++  aOutDT = mCanonicalCanvasBacking
++      ? Factory::CreateDrawTarget(BackendType::SKIA, GetSize(), GetSurfaceFormat())
++      : gfxPlatform::GetPlatform()->CreateOffscreenCanvasDrawTarget(
++            GetSize(), GetSurfaceFormat(), UseSoftwareRendering());
+   if (!aOutDT) {
+     aError.ThrowInvalidStateError("Canvas could not create basic draw target.");
+     return false;
+@@ -2309,6 +2343,7 @@
+   // The owner is assigned before context options, including OffscreenCanvas.
+   // Capture even without explicit options or any drawing/target allocation.
+   CaptureGlyphPrivacyPolicy();
++  CaptureCanonicalCanvasPolicy();
+   if (aOptions.isNullOrUndefined()) {
+     return NS_OK;
+   }
+--- a/dom/canvas/CanvasRenderingContext2D.h
++++ b/dom/canvas/CanvasRenderingContext2D.h
+@@ -819,6 +819,9 @@
+    */
+   void ClearTarget(int32_t aWidth = -1, int32_t aHeight = -1);
+ 
++  void CaptureCanonicalCanvasPolicy();
++  bool mCanonicalCanvasPolicyCaptured = false;
++  bool mCanonicalCanvasBacking = false;
+   void CaptureGlyphPrivacyPolicy();
+   bool mGlyphPrivacyPolicyCaptured = false;
+   uint32_t mGlyphPrivacySeed = 0;

@@ -1,0 +1,10 @@
+/tmp/cloakfox-canvas-failure-controls/missing.app: replacing existing signature
+missing /tmp/cloakfox-canvas-failure-controls/missing.app
+/tmp/cloakfox-canvas-failure-controls/tampered.app/Contents/Resources/canonical-gpu/libGLESv2_cloakfox_canonical.dylib: replacing existing signature
+/tmp/cloakfox-canvas-failure-controls/tampered.app/Contents/Resources/canonical-gpu/libGLESv2_cloakfox_canonical.dylib: main executable failed strict validation
+Traceback (most recent call last):
+  File "/tmp/cloakfox-gpu-failure-copies.py", line 10, in <module>
+    subprocess.run(['codesign','--force','--sign','-','--preserve-metadata=entitlements,flags',str(lib)],check=True)
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['codesign', '--force', '--sign', '-', '--preserve-metadata=entitlements,flags', '/tmp/cloakfox-canvas-failure-controls/tampered.app/Contents/Resources/canonical-gpu/libGLESv2_cloakfox_canonical.dylib']' returned non-zero exit status 1.

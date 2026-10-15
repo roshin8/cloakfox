@@ -1,0 +1,1519 @@
+{
+  "completePipelineAccepted": false,
+  "publicCompleteToggleReleased": false,
+  "internalToggle": "cloakfox.experimental.canvas_pipeline",
+  "internalToggleDefault": false,
+  "existingExtractionGuardsRemoved": false,
+  "sourceReviewFindingsFixed": [
+    "paint coordinates",
+    "bitmap/canvas import contributor union",
+    "ordinary bitmap clone metadata",
+    "policy capture union",
+    "Gecko Unicode callbacks"
+  ],
+  "stages": {
+    "candidate": {
+      "matrix": [
+        {
+          "mode": "off",
+          "probe": "probe_canvas_consistency",
+          "checks": 589,
+          "passed": 589
+        },
+        {
+          "mode": "off",
+          "probe": "probe_fingerprint_libraries",
+          "checks": 456,
+          "passed": 456
+        },
+        {
+          "mode": "on",
+          "probe": "probe_canvas_consistency",
+          "checks": 589,
+          "passed": 589
+        },
+        {
+          "mode": "on",
+          "probe": "probe_fingerprint_libraries",
+          "checks": 456,
+          "passed": 456
+        },
+        {
+          "mode": "all",
+          "probe": "probe_canvas_consistency",
+          "checks": 589,
+          "passed": 589
+        },
+        {
+          "mode": "all",
+          "probe": "probe_fingerprint_libraries",
+          "checks": 456,
+          "passed": 456
+        }
+      ],
+      "coldGlyphRegression": {
+        "coldStarts": 4,
+        "passed": 4
+      },
+      "creepWarnings": [
+        {
+          "mode": "off",
+          "case": "default",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "A",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "B",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "A-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "Chrome",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "Chrome-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "A-return",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "native",
+          "canvasLied": false,
+          "textMetricsFlag": null,
+          "lieDetails": {},
+          "gpu": {
+            "compressedGPU": "Apple M1, or similar",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "Apple, Apple M1",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "default",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "A",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "B",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "A-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "Chrome",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "Chrome-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "A-return",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "native",
+          "canvasLied": false,
+          "textMetricsFlag": null,
+          "lieDetails": {},
+          "gpu": {
+            "compressedGPU": "Apple M1, or similar",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "Apple, Apple M1",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "default",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "A",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "B",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "A-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "Chrome",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "Chrome-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "A-return",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "native",
+          "canvasLied": false,
+          "textMetricsFlag": null,
+          "lieDetails": {},
+          "gpu": {
+            "compressedGPU": "Apple M1, or similar",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "Apple, Apple M1",
+            "warnings": []
+          }
+        }
+      ],
+      "knownFillAttack": {
+        "binary": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/Cloakfox.app/Contents/MacOS/cloakfox",
+        "runtime": {
+          "buildID": "20261015123853",
+          "version": "158.0-beta.26"
+        },
+        "xulSHA256": "fdc8744f9e1da04d9f0e5c11410f1a6792965f65d6448973b69095473a341d16",
+        "purpose": "diagnostic baseline, not privacy acceptance",
+        "canonicalExperiment": true,
+        "measurements": [
+          {
+            "mode": "legacy",
+            "realm": "html",
+            "knownColorModifiedChannels": 6156,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "legacy",
+            "realm": "offscreen",
+            "knownColorModifiedChannels": 6156,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "legacy",
+            "realm": "worker",
+            "knownColorModifiedChannels": 6156,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "glyph",
+            "realm": "html",
+            "knownColorModifiedChannels": 6156,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "glyph",
+            "realm": "offscreen",
+            "knownColorModifiedChannels": 6156,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "glyph",
+            "realm": "worker",
+            "knownColorModifiedChannels": 6156,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          }
+        ]
+      },
+      "otherProbes": [
+        {
+          "probe": "probe_canvas_canonical_backing.py",
+          "exit": 0,
+          "seconds": 9.8,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/candidate/probe_canvas_canonical_backing/run.log"
+        },
+        {
+          "probe": "probe_graphics_optins_settings.py",
+          "exit": 0,
+          "seconds": 8.8,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/candidate/probe_graphics_optins_settings/run.log"
+        },
+        {
+          "probe": "probe_webgl_backend_profile.py",
+          "exit": 0,
+          "seconds": 10.9,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/candidate/probe_webgl_backend_profile/run.log"
+        },
+        {
+          "probe": "probe_graphics_privacy.py",
+          "exit": 0,
+          "seconds": 12.0,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/candidate/probe_graphics_privacy/run.log"
+        },
+        {
+          "probe": "probe_worker_canvas.py",
+          "exit": 0,
+          "seconds": 8.4,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/candidate/probe_worker_canvas/run.log"
+        },
+        {
+          "probe": "probe_canvas_pipeline_baseline.py",
+          "exit": 0,
+          "seconds": 6.8,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/candidate/probe_canvas_pipeline_baseline/run.log"
+        }
+      ]
+    },
+    "installed": {
+      "matrix": [
+        {
+          "mode": "off",
+          "probe": "probe_canvas_consistency",
+          "checks": 589,
+          "passed": 589
+        },
+        {
+          "mode": "off",
+          "probe": "probe_fingerprint_libraries",
+          "checks": 456,
+          "passed": 456
+        },
+        {
+          "mode": "on",
+          "probe": "probe_canvas_consistency",
+          "checks": 589,
+          "passed": 589
+        },
+        {
+          "mode": "on",
+          "probe": "probe_fingerprint_libraries",
+          "checks": 456,
+          "passed": 456
+        },
+        {
+          "mode": "all",
+          "probe": "probe_canvas_consistency",
+          "checks": 589,
+          "passed": 589
+        },
+        {
+          "mode": "all",
+          "probe": "probe_fingerprint_libraries",
+          "checks": 456,
+          "passed": 456
+        }
+      ],
+      "coldGlyphRegression": {
+        "coldStarts": 4,
+        "passed": 4
+      },
+      "creepWarnings": [
+        {
+          "mode": "off",
+          "case": "default",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "A",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "B",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "A-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "Chrome",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "Chrome-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "A-return",
+          "canvasLied": true,
+          "textMetricsFlag": null,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "off",
+          "case": "native",
+          "canvasLied": false,
+          "textMetricsFlag": null,
+          "lieDetails": {},
+          "gpu": {
+            "compressedGPU": "Apple M1, or similar",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "Apple, Apple M1",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "default",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "A",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "B",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "A-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "Chrome",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "Chrome-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "A-return",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "NVIDIA, NVIDIA GeForce GTX 900s",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "ANGLE, Direct3D, GeForce, NVIDIA",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "on",
+          "case": "native",
+          "canvasLied": false,
+          "textMetricsFlag": null,
+          "lieDetails": {},
+          "gpu": {
+            "compressedGPU": "Apple M1, or similar",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "Apple, Apple M1",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "default",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "A",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "B",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "A-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "Chrome",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "Chrome-other-site",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "A-return",
+          "canvasLied": true,
+          "textMetricsFlag": true,
+          "lieDetails": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "CanvasRenderingContext2D.measureText": [
+              "metric noise detected"
+            ],
+            "Element.getClientRects": [
+              "unknown rotate dimensions",
+              "unknown ghost dimensions"
+            ]
+          },
+          "gpu": {
+            "compressedGPU": "WebGL",
+            "confidence": "low",
+            "gibbers": "",
+            "grade": "F",
+            "parts": "",
+            "warnings": []
+          }
+        },
+        {
+          "mode": "all",
+          "case": "native",
+          "canvasLied": false,
+          "textMetricsFlag": null,
+          "lieDetails": {},
+          "gpu": {
+            "compressedGPU": "Apple M1, or similar",
+            "confidence": "high",
+            "gibbers": "",
+            "grade": "A",
+            "parts": "Apple, Apple M1",
+            "warnings": []
+          }
+        }
+      ],
+      "knownFillAttack": {
+        "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+        "runtime": {
+          "buildID": "20261015123853",
+          "version": "158.0-beta.26"
+        },
+        "xulSHA256": "5152fbae7614d1fdd98495f12ea853631328d9342a176ad0a5b5aae9fdd24af9",
+        "purpose": "diagnostic baseline, not privacy acceptance",
+        "canonicalExperiment": true,
+        "measurements": [
+          {
+            "mode": "legacy",
+            "realm": "html",
+            "knownColorModifiedChannels": 6129,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "legacy",
+            "realm": "offscreen",
+            "knownColorModifiedChannels": 6129,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "legacy",
+            "realm": "worker",
+            "knownColorModifiedChannels": 6129,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "glyph",
+            "realm": "html",
+            "knownColorModifiedChannels": 6129,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "glyph",
+            "realm": "offscreen",
+            "knownColorModifiedChannels": 6129,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          },
+          {
+            "mode": "glyph",
+            "realm": "worker",
+            "knownColorModifiedChannels": 6129,
+            "nativeRasterRecoveryMismatches": 0,
+            "sampleChannels": 16384,
+            "nativeRasterRecoveredExactly": true
+          }
+        ]
+      },
+      "otherProbes": [
+        {
+          "probe": "probe_canvas_canonical_text.py",
+          "exit": 0,
+          "seconds": 11.6,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/installed/probe_canvas_canonical_text/run.log"
+        },
+        {
+          "probe": "probe_canvas_pixel_transfers.py",
+          "exit": 0,
+          "seconds": 5.6,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/installed/probe_canvas_pixel_transfers/run.log"
+        },
+        {
+          "probe": "probe_canvas_canonical_backing.py",
+          "exit": 0,
+          "seconds": 12.8,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/installed/probe_canvas_canonical_backing/run.log"
+        },
+        {
+          "probe": "probe_graphics_optins_settings.py",
+          "exit": 0,
+          "seconds": 11.4,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/installed/probe_graphics_optins_settings/run.log"
+        },
+        {
+          "probe": "probe_webgl_backend_profile.py",
+          "exit": 0,
+          "seconds": 13.4,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/installed/probe_webgl_backend_profile/run.log"
+        },
+        {
+          "probe": "probe_graphics_privacy.py",
+          "exit": 0,
+          "seconds": 10.5,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/installed/probe_graphics_privacy/run.log"
+        },
+        {
+          "probe": "probe_worker_canvas.py",
+          "exit": 0,
+          "seconds": 7.5,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/installed/probe_worker_canvas/run.log"
+        },
+        {
+          "probe": "probe_canvas_pipeline_baseline.py",
+          "exit": 0,
+          "seconds": 5.0,
+          "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/canvas-producers-and-provenance/installed/probe_canvas_pipeline_baseline/run.log"
+        }
+      ]
+    }
+  },
+  "remaining": [
+    "complex/custom/color font shaping and rasterization",
+    "canonical SVG/image/media producers",
+    "common software GPU renderer",
+    "complete cross-process provenance",
+    "macOS/Linux/Windows differential pixel corpus",
+    "extraction cutover and adversarial acceptance",
+    "complete capture/color/performance/accessibility corpus validation"
+  ],
+  "installation": {
+    "installed": "/Applications/Cloakfox.app",
+    "backup": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-before-canvas-producers-and-provenance-20261015-124517.app",
+    "version": "158.0-beta.26",
+    "applicationIniBuildID": "20261015123934",
+    "profilesModified": false,
+    "signatureVerified": true,
+    "externalSymlinks": [],
+    "xulSHA256": "5152fbae7614d1fdd98495f12ea853631328d9342a176ad0a5b5aae9fdd24af9",
+    "browserArchiveSHA256": "c805ec0f68b3cd52fc713769d491afa0bc03a8dffb32945706445c0bb1c5af64",
+    "dmg": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-158.0-beta.26.en-US.mac.dmg",
+    "dmgSHA256": "ce7cc3ac39f018422e7652a8b81a3c01839de17392dbb2f00c679304e1448baa",
+    "activeCandidate": false,
+    "testedCandidateRetained": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-canvas-producers-tested-20261015-124945.app",
+    "priorAppRestored": true,
+    "restoredXulSHA256": "356322cd14637d05ae3a6bc3b4c4e32a208ff4522d9f6fe46637ea28ac100484",
+    "releaseGate": "failed: complete producers/GPU/cross-host coverage and extraction replacement remain incomplete"
+  }
+}

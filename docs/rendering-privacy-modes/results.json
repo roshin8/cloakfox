@@ -1,0 +1,1007 @@
+{
+  "installed": {
+    "installed": "/Applications/Cloakfox.app",
+    "backup": "/Users/zeus/Library/Application Support/cloakfox/app-backups/Cloakfox-before-rendering-privacy-modes-20261015-111734.app",
+    "version": "158.0-beta.26",
+    "applicationIniBuildID": "20261015111550",
+    "profilesModified": false,
+    "signatureVerified": true,
+    "externalSymlinks": [],
+    "xulSHA256": "356322cd14637d05ae3a6bc3b4c4e32a208ff4522d9f6fe46637ea28ac100484",
+    "browserArchiveSHA256": "e70a278dbd8aeccdd01c9094a7bf8330d0620627be1a116a6809336aaf6ca6f4",
+    "dmg": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/cloakfox-158.0-beta.26.en-US.mac.dmg",
+    "dmgSHA256": "c93dad192e5684851c88b2b9b341e94d31428aa38c2c10617312811069596785"
+  },
+  "unitTests": {
+    "node": 256,
+    "python": 55
+  },
+  "modeMatrix": {
+    "off": {
+      "canvasChecks": 589,
+      "canvasFailures": [],
+      "librarySummary": {
+        "cases": 8,
+        "repeats": 3,
+        "checks": 456,
+        "failures": [],
+        "libraryExecutions": 48
+      },
+      "libraryProvenance": {
+        "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": false,
+          "gpu_backend_profiles": false
+        },
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "runtime": {
+          "buildID": "20261015111523",
+          "os": "Darwin",
+          "version": "158.0-beta.26"
+        }
+      },
+      "upstreamWarnings": [
+        {
+          "case": "default",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "B",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-return",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "native",
+          "protected": false,
+          "lies": {},
+          "trash": []
+        }
+      ]
+    },
+    "canvas": {
+      "canvasChecks": 589,
+      "canvasFailures": [],
+      "librarySummary": {
+        "cases": 8,
+        "repeats": 3,
+        "checks": 456,
+        "failures": [],
+        "libraryExecutions": 48
+      },
+      "libraryProvenance": {
+        "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": true,
+          "gpu_backend_profiles": false
+        },
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "runtime": {
+          "buildID": "20261015111523",
+          "os": "Darwin",
+          "version": "158.0-beta.26"
+        }
+      },
+      "upstreamWarnings": [
+        {
+          "case": "default",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "B",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-return",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "native",
+          "protected": false,
+          "lies": {},
+          "trash": []
+        }
+      ]
+    },
+    "gpu": {
+      "canvasChecks": 589,
+      "canvasFailures": [],
+      "librarySummary": {
+        "cases": 8,
+        "repeats": 3,
+        "checks": 456,
+        "failures": [],
+        "libraryExecutions": 48
+      },
+      "libraryProvenance": {
+        "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": false,
+          "gpu_backend_profiles": true
+        },
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "runtime": {
+          "buildID": "20261015111523",
+          "os": "Darwin",
+          "version": "158.0-beta.26"
+        }
+      },
+      "upstreamWarnings": [
+        {
+          "case": "default",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "B",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-return",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "native",
+          "protected": false,
+          "lies": {},
+          "trash": []
+        }
+      ]
+    },
+    "both": {
+      "canvasChecks": 589,
+      "canvasFailures": [],
+      "librarySummary": {
+        "cases": 8,
+        "repeats": 3,
+        "checks": 456,
+        "failures": [],
+        "libraryExecutions": 48
+      },
+      "libraryProvenance": {
+        "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": true,
+          "gpu_backend_profiles": true
+        },
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "runtime": {
+          "buildID": "20261015111523",
+          "os": "Darwin",
+          "version": "158.0-beta.26"
+        }
+      },
+      "upstreamWarnings": [
+        {
+          "case": "default",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "B",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "Chrome-other-site",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ],
+            "WorkerGlobalScope": [
+              "SpiderMonkey JS runtime and V8 user agent do not match"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "A-return",
+          "protected": true,
+          "lies": {
+            "CanvasRenderingContext2D.getImageData": [
+              "pixel data modified"
+            ],
+            "Element.getClientRects": [
+              "unknown ghost dimensions",
+              "unknown rotate dimensions"
+            ]
+          },
+          "trash": [
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious gpu"
+            },
+            {
+              "name": "WebGLRenderingContext.getParameter",
+              "value": "suspicious capabilities"
+            },
+            {
+              "name": "CanvasRenderingContext2D.getImageData",
+              "value": "suspicious pixel data"
+            }
+          ]
+        },
+        {
+          "case": "native",
+          "protected": false,
+          "lies": {},
+          "trash": []
+        }
+      ]
+    }
+  },
+  "installedProbes": [
+    {
+      "probe": "probe_canvas_render_privacy.py",
+      "exit": 0,
+      "seconds": 9.3,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed/probe_canvas_render_privacy/run.log"
+    },
+    {
+      "probe": "probe_webgl_backend_profile.py",
+      "exit": 0,
+      "seconds": 6.8,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed/probe_webgl_backend_profile/run.log"
+    },
+    {
+      "probe": "probe_graphics_optins_settings.py",
+      "exit": 0,
+      "seconds": 5.3,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed/probe_graphics_optins_settings/run.log"
+    },
+    {
+      "probe": "probe_webgl_consistency.py",
+      "exit": 0,
+      "seconds": 6.0,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed/probe_webgl_consistency/run.log"
+    },
+    {
+      "probe": "probe_graphics_privacy.py",
+      "exit": 0,
+      "seconds": 8.0,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed/probe_graphics_privacy/run.log"
+    },
+    {
+      "probe": "probe_worker_canvas.py",
+      "exit": 0,
+      "seconds": 5.0,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed/probe_worker_canvas/run.log"
+    },
+    {
+      "probe": "probe_webgl_tables.py",
+      "exit": 0,
+      "seconds": 16.7,
+      "log": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/reports/rendering-privacy-modes/installed/probe_webgl_tables/run.log"
+    }
+  ],
+  "nativeReplay": {
+    "patches": 138,
+    "pristineTargets": 314,
+    "drift": []
+  },
+  "review": "review.md",
+  "probe_canvas_render_privacy": {
+    "checks": 40,
+    "failures": []
+  },
+  "probe_webgl_backend_profile": {
+    "checks": 42,
+    "failures": []
+  },
+  "probe_graphics_optins_settings": {
+    "checks": 13,
+    "failures": []
+  },
+  "probe_webgl_consistency": {
+    "checks": 30,
+    "failures": []
+  }
+}

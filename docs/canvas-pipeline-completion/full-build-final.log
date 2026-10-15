@@ -1,0 +1,128 @@
+ 0:00.28 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.28 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.38 Clobber not needed.
+ 0:06.56 W Adding make options from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:06.56 /usr/bin/make -f client.mk -j4 -s
+ 0:07.81 ./buildid.h.stub
+ 0:07.81 ./source-repo.h.stub
+ 0:09.91 ./application.ini.stub
+ 0:10.02 ./application.ini.h.stub
+ 0:10.59 accessible/html
+ 0:10.60 accessible/generic
+ 0:10.60 accessible/base
+ 0:10.61 accessible/ipc
+ 0:10.61 accessible/pdf
+ 0:10.61 ./buildid.h.stub
+ 0:10.61 ./source-repo.h.stub
+ 0:10.62 accessible/xul
+ 0:10.62 accessible/xpcom
+ 0:11.78 browser/components/about
+ 0:18.35 caps
+ 0:18.72 chrome
+ 0:19.83 docshell/base
+ 0:19.90 devtools/shared/heapsnapshot
+ 0:23.49 docshell/shistory
+ 0:23.78 dom/animation
+ 0:28.66 dom/broadcastchannel
+ 0:28.87 dom/bindings
+ 0:31.44 dom/cache
+ 0:32.57 dom/canvas
+ 0:34.82 dom/clients/manager
+ 0:54.83 dom/cookiestore
+ 1:36.15 dom/documentpip
+ 2:00.18 dom/events
+ 2:02.44 dom/fetch
+ 2:16.13 dom/file/ipc
+ 2:26.71 dom/file
+ 2:40.51 dom/file/uri
+ 2:41.44 dom/filesystem
+ 3:02.15 dom/fs/api
+ 3:10.92 dom/fs/child
+ 3:14.39 dom/fs/parent/datamodel
+ 3:14.74 dom/fs/parent
+ 3:17.25 dom/gamepad
+ 3:17.47 dom/geolocation
+ 3:22.64 dom/html
+ 3:33.91 dom/indexedDB
+ 3:35.27 dom/ipc/jsactor
+ 3:44.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/geolocation/Unified_mm_dom_geolocation0.mm:2:
+ 3:44.53 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/geolocation/GeolocationSystemMac.mm:130:10: warning: @available does not guard availability here; use if (@available) instead [-Wunsupported-availability-guard]
+ 3:44.53 W   130 |     if (!@available(macOS 15.0, *)) {
+ 3:44.53 W       |          ^
+ 3:46.98 W 1 warning generated.
+ 3:52.88 dom/ipc
+ 3:58.67 dom/jsurl
+ 4:06.86 dom/localstorage
+ 4:12.10 dom/locks
+ 4:14.02 dom/media/autoplay
+ 4:17.69 dom/media/bridge
+ 4:28.01 dom/media/eme
+ 4:28.46 dom/media/encoder
+ 4:43.14 dom/media/gmp
+ 4:44.46 dom/media/imagecapture
+ 4:47.61 dom/media/ipc
+ 4:59.66 dom/media/mediacontrol
+ 5:02.41 dom/media/mediaelement
+ 5:04.70 dom/media/mediasink
+ 5:12.39 dom/media/mediasource
+ 5:21.21 dom/media/ogg
+ 5:31.10 dom/media/platforms/agnostic/eme
+ 5:31.19 dom/media/platforms/agnostic/gmp
+ 5:33.81 dom/media/platforms/ffmpeg/ffmpeg57
+ 5:34.00 dom/media/platforms/ffmpeg/ffmpeg58
+ 5:35.34 dom/media/platforms/ffmpeg/ffmpeg59
+ 5:39.41 dom/media/platforms/ffmpeg/ffmpeg60
+ 5:41.80 dom/media/platforms/ffmpeg/ffmpeg61
+ 5:42.39 dom/media/platforms/ffmpeg/ffmpeg62
+ 5:45.03 dom/media/platforms/ffmpeg/ffmpeg63
+ 5:45.82 dom/media/platforms/ffmpeg/ffvpx
+ 5:46.88 dom/media/platforms/ffmpeg/libav53
+ 5:48.32 dom/media/platforms/ffmpeg/libav54
+ 5:49.78 dom/media/platforms/ffmpeg/libav55
+ 5:52.18 dom/media/platforms/omx
+ 5:52.37 dom/media/platforms
+ 5:55.48 dom/media/systemservices
+ 5:58.15 dom/media
+ 6:00.57 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/platforms/Unified_cpp_dom_media_platforms1.cpp:29:
+ 6:00.67 dom/media/webaudio
+ 6:05.50 dom/media/webcodecs
+ 6:07.17 W 1 warning generated.
+ 6:07.27 dom/media/webm
+ 6:14.78 dom/media/webrtc/jsapi
+ 6:21.80 dom/media/webrtc/libwebrtcglue
+ 6:22.36 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webcodecs/Unified_cpp_dom_media_webcodecs1.cpp:2:
+ 6:22.36 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/media/webcodecs/VideoFrame.cpp:1126:70: error: 'IsYUV' is a private member of 'mozilla::dom::VideoFrame::Format'
+ 6:22.36 E  1126 |       StaticPrefs::cloakfox_experimental_canvas_pipeline() && format.IsYUV())
+ 6:22.36 E       |                                                                      ^
+ 6:22.36 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/media/webcodecs/VideoFrame.h:226:10: note: declared private here
+ 6:22.36 E   226 |     bool IsYUV() const;
+ 6:22.36 E       |          ^
+ 6:25.54 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi1.cpp:29:
+ 6:25.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi1.cpp:29:
+ 6:26.38 E 1 error generated.
+ 6:26.40 E make[4]: *** [Unified_cpp_dom_media_webcodecs1.o] Error 1
+ 6:26.40 E make[3]: *** [dom/media/webcodecs/target-objects] Error 2
+ 6:26.40 E make[3]: *** Waiting for unfinished jobs....
+ 6:27.24 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:92:
+ 6:27.33 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:110:
+ 6:30.30 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/libwebrtcglue/Unified_cpp_libwebrtcglue0.cpp:83:
+ 6:40.29 W 2 warnings generated.
+ 6:41.16 W 1 warning generated.
+ 6:42.46 W 2 warnings generated.
+ 6:46.35 E make[2]: *** [compile] Error 2
+ 6:46.35 E make[1]: *** [default] Error 2
+ 6:46.35 E make: *** [build] Error 2
+ 6:46.45 W 7 compiler warnings present.
+ 6:46.50 W Notification center failed: Install terminal-notifier to get a notification when the build finishes.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_143634.json

@@ -1,0 +1,113 @@
+--- a/gni/angle.gni
++++ b/gni/angle.gni
+@@ -168,7 +168,7 @@
+ }
+ 
+ if (!defined(angle_shared_libvulkan_on_mac)) {
+-  angle_shared_libvulkan_on_mac = false
++  angle_shared_libvulkan_on_mac = true
+ }
+ 
+ declare_args() {
+--- a/src/common/vulkan/libvulkan_loader.cpp
++++ b/src/common/vulkan/libvulkan_loader.cpp
+@@ -10,6 +10,7 @@
+ #include "common/vulkan/libvulkan_loader.h"
+ 
+ #include "common/system_utils.h"
++#include <dlfcn.h>
+ 
+ namespace angle
+ {
+@@ -17,43 +18,19 @@
+ {
+ void *OpenLibVulkan()
+ {
+-    constexpr const char *kLibVulkanNames[] = {
+-#if defined(ANGLE_PLATFORM_WINDOWS)
+-        "vulkan-1.dll",
+-#elif defined(ANGLE_PLATFORM_APPLE)
+-        "libvulkan.dylib", "libvulkan.1.dylib", "libMoltenVK.dylib",
+-        // Fallback paths for static macOS builds where the Vulkan loader is bundled
+-        // in the "Libraries/" subdirectory but the host module (containing ANGLE)
+-        // is in the parent directory.
+-        "Libraries/libvulkan.dylib", "Libraries/libvulkan.1.dylib", "Libraries/libMoltenVK.dylib"
+-#else
+-        "libvulkan.so",
+-        "libvulkan.so.1",
+-#endif
+-    };
++    // Cloakfox canonical-only build: direct CPU ICD, without the generic
++    // loader, environment-variable driver selection or system-library fallback.
++    static const char anchor = 0;
++    Dl_info location = {};
++    if (!dladdr(&anchor, &location) || !location.dli_fname || location.dli_fname[0] != '/')
++    {
++        return nullptr;
++    }
++    std::string path(location.dli_fname);
++    path.resize(path.find_last_of('/') + 1);
++    path += "libvk_swiftshader.dylib";
++    return dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+ 
+-    constexpr SearchType kSearchTypes[] = {
+-// On Android and Fuchsia we use the system libvulkan.
+-#if defined(ANGLE_USE_CUSTOM_LIBVULKAN)
+-        SearchType::ModuleDir,
+-#else
+-        SearchType::SystemDir,
+-#endif  // defined(ANGLE_USE_CUSTOM_LIBVULKAN)
+-    };
+-
+-    for (angle::SearchType searchType : kSearchTypes)
+-    {
+-        for (const char *libraryName : kLibVulkanNames)
+-        {
+-            void *library = OpenSystemLibraryWithExtension(libraryName, searchType);
+-            if (library)
+-            {
+-                return library;
+-            }
+-        }
+-    }
+-
+-    return nullptr;
+ }
+ }  // namespace vk
+ }  // namespace angle
+--- a/src/libANGLE/renderer/vulkan/vk_renderer.cpp
++++ b/src/libANGLE/renderer/vulkan/vk_renderer.cpp
+@@ -2503,12 +2503,13 @@
+                                          "ANGLE_ENABLE_VULKAN_API_DUMP_LAYER",
+                                          "debug.angle.enable_vulkan_api_dump_layer") == "1";
+ 
+-    bool loadLayers = (useDebugLayers != UseDebugLayers::No) || enableApiDumpLayer;
+-    angle::vk::ScopedVkLoaderEnvironment scopedEnvironment(loadLayers, desiredICD);
+-    bool debugLayersLoaded  = scopedEnvironment.canEnableDebugLayers();
+-    mEnableValidationLayers = debugLayersLoaded;
+-    enableApiDumpLayer      = enableApiDumpLayer && debugLayersLoaded;
+-    mEnabledICD             = scopedEnvironment.getEnabledICD();
++    // This separately named Cloakfox library is a CPU-only producer. Loading
++    // the ICD directly avoids process-global Vulkan environment/CWD changes.
++    ANGLE_VK_CHECK(context, desiredICD == angle::vk::ICD::SwiftShader,
++                   VK_ERROR_INITIALIZATION_FAILED);
++    mEnableValidationLayers = false;
++    enableApiDumpLayer = false;
++    mEnabledICD = desiredICD;
+ 
+     // Gather global layer properties.
+     uint32_t instanceLayerCount = 0;
+--- a/src/libANGLE/renderer/vulkan/BUILD.gn
++++ b/src/libANGLE/renderer/vulkan/BUILD.gn
+@@ -62,6 +62,11 @@
+ 
+ config("angle_vulkan_backend_config") {
+   defines = [ "ANGLE_ENABLE_VULKAN" ]
++  if (is_mac) {
++    # Vulkan's Mac WSI translation unit requires these even when the separate
++    # ANGLE Metal renderer is disabled. The selected device remains CPU Vulkan.
++    frameworks = [ "IOSurface.framework", "QuartzCore.framework" ]
++  }
+   if (angle_enable_swiftshader) {
+     defines += [ "ANGLE_ENABLE_SWIFTSHADER" ]
+   }

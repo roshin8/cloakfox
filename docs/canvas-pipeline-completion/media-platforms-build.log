@@ -1,0 +1,46 @@
+ 0:00.66 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.66 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.80 Clobber not needed.
+ 0:00.91 /usr/bin/make -C dom/media/platforms -j8 -s
+ 0:02.53 ./buildid.h.stub
+ 0:02.53 ./source-repo.h.stub
+ 0:03.04 ./application.ini.stub
+ 0:04.35 ./application.ini.h.stub
+ 0:29.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/platforms/ffmpeg/libav53/Unified_cpp_ffmpeg_libav530.cpp:56:
+ 0:29.34 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/media/platforms/ffmpeg/FFmpegVideoDecoder.cpp:1512:29: error: use of undeclared identifier 'AV_CODEC_FLAG_BITEXACT'
+ 0:29.34 E  1512 |     mCodecContext->flags |= AV_CODEC_FLAG_BITEXACT;
+ 0:29.34 E       |                             ^
+ 0:30.76 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/platforms/ffmpeg/libav54/Unified_cpp_ffmpeg_libav540.cpp:56:
+ 0:30.76 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/media/platforms/ffmpeg/FFmpegVideoDecoder.cpp:1512:29: error: use of undeclared identifier 'AV_CODEC_FLAG_BITEXACT'; did you mean 'AV_CODEC_ID_TEXT'?
+ 0:30.76 E  1512 |     mCodecContext->flags |= AV_CODEC_FLAG_BITEXACT;
+ 0:30.76 E       |                             ^~~~~~~~~~~~~~~~~~~~~~
+ 0:30.76 E       |                             AV_CODEC_ID_TEXT
+ 0:30.76 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/media/platforms/ffmpeg/libav54/include/libavcodec/avcodec.h:416:5: note: 'AV_CODEC_ID_TEXT' declared here
+ 0:30.76 E   416 |     AV_CODEC_ID_TEXT,  ///< raw UTF-8 text
+ 0:30.76 E       |     ^
+ 0:31.84 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/platforms/ffmpeg/libav55/Unified_cpp_ffmpeg_libav550.cpp:56:
+ 0:31.84 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/media/platforms/ffmpeg/FFmpegVideoDecoder.cpp:1512:29: error: use of undeclared identifier 'AV_CODEC_FLAG_BITEXACT'; did you mean 'AV_CODEC_ID_TEXT'?
+ 0:31.84 E  1512 |     mCodecContext->flags |= AV_CODEC_FLAG_BITEXACT;
+ 0:31.84 E       |                             ^~~~~~~~~~~~~~~~~~~~~~
+ 0:31.84 E       |                             AV_CODEC_ID_TEXT
+ 0:31.84 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/media/platforms/ffmpeg/libav55/include/libavcodec/avcodec.h:440:5: note: 'AV_CODEC_ID_TEXT' declared here
+ 0:31.84 E   440 |     AV_CODEC_ID_TEXT,  ///< raw UTF-8 text
+ 0:31.84 E       |     ^
+ 0:32.03 E 1 error generated.
+ 0:32.04 E make[4]: *** [Unified_cpp_ffmpeg_libav530.o] Error 1
+ 0:32.04 E make[3]: *** [dom/media/platforms/ffmpeg/libav53/target-objects] Error 2
+ 0:32.04 E make[3]: *** Waiting for unfinished jobs....
+ 0:33.23 E 1 error generated.
+ 0:33.25 E make[4]: *** [Unified_cpp_ffmpeg_libav540.o] Error 1
+ 0:33.25 E make[3]: *** [dom/media/platforms/ffmpeg/libav54/target-objects] Error 2
+ 0:34.05 E 1 error generated.
+ 0:34.07 E make[4]: *** [Unified_cpp_ffmpeg_libav550.o] Error 1
+ 0:34.07 E make[3]: *** [dom/media/platforms/ffmpeg/libav55/target-objects] Error 2
+ 0:41.63 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/platforms/Unified_cpp_dom_media_platforms1.cpp:29:
+ 0:53.00 W 1 warning generated.
+ 0:54.12 E make[2]: *** [compile] Error 2
+ 0:54.13 E make[1]: *** [compile] Error 2
+ 0:54.13 E make: *** [default] Error 2
+ 0:54.33 W 1 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_135742.json
+Hey! Builds initiated with `mach build $A_SPECIFIC_TARGET` may not always work, even if the code being built is correct. Consider doing a bare `mach build` instead.

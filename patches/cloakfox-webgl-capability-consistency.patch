@@ -1,0 +1,46 @@
+diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -6696,6 +6696,12 @@
+     return false;
+   }
+ 
++  // A persona can restrict backend support, never manufacture it.
++  const auto& limits = Limits();
++  if (!limits.supportedExtensions[ext]) {
++    return false;
++  }
++
+   if (std::vector<std::string> maskValues =
+           MaskConfig::GetStringList(mIsWebGL2 ? "webGl2:supportedExtensions"
+                                               : "webGl:supportedExtensions");
+@@ -6707,8 +6713,7 @@
+     return false;
+   }
+ 
+-  const auto& limits = Limits();
+-  return limits.supportedExtensions[ext];
++  return true;
+ }
+ 
+ void ClientWebGLContext::GetSupportedExtensions(
+@@ -6722,17 +6727,8 @@
+ 
+   auto& retarr = retval.SetValue();
+ 
+-  // Implement separately to prevent O(n^2) timing
+-  if (std::vector<std::string> maskValues =
+-          MaskConfig::GetStringList(mIsWebGL2 ? "webGl2:supportedExtensions"
+-                                              : "webGl:supportedExtensions");
+-      !maskValues.empty()) {
+-    for (const auto& ext : maskValues) {
+-      retarr.AppendElement(NS_ConvertUTF8toUTF16(ext));
+-    }
+-    return;
+-  }
+-
++  // Use the same policy as getExtension, including caller restrictions and
++  // real backend support. Unknown/duplicate configured names cannot leak out.
+   for (const auto i : MakeEnumeratedRange(WebGLExtensionID::Max)) {
+     if (!IsSupported(i, callerType)) continue;
+ 

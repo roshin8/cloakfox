@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class CanvasNoise(unittest.TestCase):
     def test_each_channel_and_exact_empty_pixels(self):
         source = (ROOT / "firefox-src/dom/base/CanvasFingerprintManager.cpp").read_text()
-        start = source.index("void CanvasFingerprintManager::ApplyCanvasNoise")
+        start = source.index("static void ApplyCanvasNoiseBytes")
         end = source.index("void CanvasFingerprintManager::DisableFunction", start)
         function = source[start:end].replace("CanvasFingerprintManager::", "")
         harness = r'''
@@ -61,9 +61,49 @@ int main() {
             subprocess.run([os.environ.get("CXX", "c++"), "-std=c++17", str(cpp), "-o", str(exe)], check=True)
             subprocess.run([str(exe)], check=True)
 
+    def test_canvas_crop_uses_source_coordinates_and_preserves_padding(self):
+        source = (ROOT / "firefox-src/dom/base/CanvasFingerprintManager.cpp").read_text()
+        start = source.index("static void ApplyCanvasNoiseBytes")
+        end = source.index("void CanvasFingerprintManager::DisableFunction", start)
+        functions = source[start:end].replace("CanvasFingerprintManager::", "")
+        harness = r'''
+int main() {
+  constexpr uint32_t width=23,height=17,stride=44;
+  std::vector<uint8_t> source(width*height*4);
+  for(size_t i=0;i<source.size();++i) source[i]=uint8_t((i*37+23)%256);
+  // The last seed advances to zero after its first pixel. That is a valid
+  // PRNG state, not a disabled policy for a cropped row starting there.
+  for(uint32_t seed : {111111u,999999u,634785765u}) {
+    auto whole=source;
+    ApplyCanvasNoise(whole.data(),whole.size(),seed);
+    for(uint32_t sx : {1u,7u}) for(uint32_t sy : {0u,5u}) {
+      std::vector<uint8_t> crop(stride*6,88),expected=crop;
+      for(uint32_t y=0;y<6;++y) for(uint32_t x=0;x<9;++x) for(uint32_t c=0;c<4;++c) {
+        crop[y*stride+x*4+c]=source[((sy+y)*width+sx+x)*4+c];
+        expected[y*stride+x*4+c]=whole[((sy+y)*width+sx+x)*4+c];
+      }
+      ApplyCanvasNoiseRect(crop.data(),9,6,stride,width,sx,sy,seed);
+      assert(crop==expected && "source pixels match full read, padding stays exact");
+    }
+  }
+  std::vector<uint8_t> untouched(128,88),invalid=untouched;
+  ApplyCanvasNoiseRect(invalid.data(),UINT32_MAX,1,16,width,0,0,111111);
+  ApplyCanvasNoiseRect(invalid.data(),1,1,16,width,width,0,111111);
+  ApplyCanvasNoiseRect(invalid.data(),2,1,4,width,0,0,111111);
+  ApplyCanvasNoiseRect(invalid.data(),1,1,16,width,0,0,0);
+  assert(invalid==untouched && "invalid geometry and disabled policy do not write");
+}
+'''
+        with tempfile.TemporaryDirectory() as temporary:
+            cpp = Path(temporary) / "crop.cpp"
+            exe = Path(temporary) / "crop"
+            cpp.write_text("#include <algorithm>\n#include <cstdint>\n#include <vector>\n#include <cassert>\n" + functions + harness)
+            subprocess.run([os.environ.get("CXX", "c++"), "-std=c++17", str(cpp), "-o", str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
+
     def test_readback_only_touches_written_pixel_rows(self):
         canvas = (ROOT / "firefox-src/dom/base/CanvasFingerprintManager.cpp").read_text()
-        begin = canvas.index("void CanvasFingerprintManager::ApplyCanvasNoise")
+        begin = canvas.index("static void ApplyCanvasNoiseBytes")
         end = canvas.index("void CanvasFingerprintManager::DisableFunction", begin)
         apply = canvas[begin:end].replace("CanvasFingerprintManager::", "")
         webgl = (ROOT / "firefox-src/dom/canvas/ClientWebGLContext.cpp").read_text()

@@ -1,0 +1,1094 @@
+ 0:00.39 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.39 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.50 Clobber not needed.
+ 0:00.88 W Adding make options from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:00.88 /usr/bin/make -f client.mk -j8 -s
+ 0:03.71 ./buildid.h.stub
+ 0:03.71 ./source-repo.h.stub
+ 0:03.91 ./application.ini.stub
+ 0:04.05 ./application.ini.h.stub
+ 0:04.78 ./buildid.h.stub
+ 0:04.78 ./source-repo.h.stub
+ 0:05.29 ./application.ini.stub
+ 0:05.33 dom/canvas
+ 0:05.47 ./application.ini.h.stub
+ 0:05.59 dom/bindings
+ 0:05.84 dom/gamepad
+ 0:06.11 dom/html
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/DrawTargetWebgl.cpp:11:
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:10.34 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextDesc>()'
+ 0:10.34 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:10.34 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:10.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextDesc>' requested here
+ 0:10.34 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:10.34 W       |                          ^
+ 0:10.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:243:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextDesc>' requested here
+ 0:10.34 W   243 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextDesc> {};
+ 0:10.34 W       |              ^
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/DrawTargetWebgl.cpp:11:
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:10.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:10.35 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:10.35 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextDesc)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:10.35 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:10.35 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:10.35 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '29 == 32'
+ 0:10.35 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:10.35 E       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:10.37 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextResult>()'
+ 0:10.37 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:10.37 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:10.37 W       |                          ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:10.37 W       |              ^
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/DrawTargetWebgl.cpp:11:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:10.37 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 5, 47, std::array<unsigned char, 2>, 49, mozilla::webgl::Limits, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:10.37 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:10.37 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 5>::Fn' requested here
+ 0:10.37 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:10.37 W       |                                                                            ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:10.37 W   134 |                                    num_fields - 1>::Fn();
+ 0:10.37 W       |                                                     ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:10.37 W       |                          ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:10.37 W       |              ^
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/DrawTargetWebgl.cpp:11:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:10.37 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 6, 49, mozilla::webgl::Limits, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:10.37 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:10.37 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:10.37 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:10.37 W       |                                                                            ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:10.37 W   134 |                                    num_fields - 1>::Fn();
+ 0:10.37 W       |                                                     ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:10.37 W       |                          ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:10.37 W       |              ^
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/DrawTargetWebgl.cpp:11:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:10.37 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 7, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 145, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>, std::equal_to<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<const std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat>>>, 64>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:10.37 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:10.37 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:10.37 W   134 |                                    num_fields - 1>::Fn();
+ 0:10.37 W       |                                                     ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:10.37 W       |                          ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:10.37 W       |              ^
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/DrawTargetWebgl.cpp:11:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:10.37 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:10.37 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextResult)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:10.37 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:10.37 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:10.37 W       |                          ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:10.37 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:10.37 W       |              ^
+ 0:10.37 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '209 == 216'
+ 0:10.37 W   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:10.37 W       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/OffscreenCanvasDisplayHelper.cpp:11:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerRunnable.h:12:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:12.09 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextDesc>()'
+ 0:12.09 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:12.09 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:12.09 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextDesc>' requested here
+ 0:12.09 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:12.09 W       |                          ^
+ 0:12.09 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:243:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextDesc>' requested here
+ 0:12.09 W   243 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextDesc> {};
+ 0:12.09 W       |              ^
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/OffscreenCanvasDisplayHelper.cpp:11:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerRunnable.h:12:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:12.09 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:12.09 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextDesc)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:12.09 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:12.09 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:12.09 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '29 == 32'
+ 0:12.09 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:12.09 E       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:12.13 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextResult>()'
+ 0:12.13 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:12.13 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:12.13 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:12.13 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:12.13 W       |                          ^
+ 0:12.13 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:12.13 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:12.13 W       |              ^
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/OffscreenCanvasDisplayHelper.cpp:11:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerRunnable.h:12:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:12.13 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 5, 47, std::array<unsigned char, 2>, 49, mozilla::webgl::Limits, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:12.13 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:12.13 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:12.13 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 5>::Fn' requested here
+ 0:12.13 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:12.13 W       |                                                                            ^
+ 0:12.13 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:12.13 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:12.13 W   134 |                                    num_fields - 1>::Fn();
+ 0:12.13 W       |                                                     ^
+ 0:12.13 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:12.13 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:12.13 W       |                          ^
+ 0:12.13 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:12.13 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:12.13 W       |              ^
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/OffscreenCanvasDisplayHelper.cpp:11:
+ 0:12.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerRunnable.h:12:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:12.14 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 6, 49, mozilla::webgl::Limits, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:12.14 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:12.14 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:12.14 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:12.14 W       |                                                                            ^
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:12.14 W   134 |                                    num_fields - 1>::Fn();
+ 0:12.14 W       |                                                     ^
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:12.14 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:12.14 W       |                          ^
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:12.14 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:12.14 W       |              ^
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/OffscreenCanvasDisplayHelper.cpp:11:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerRunnable.h:12:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:12.14 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 7, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 145, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>, std::equal_to<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<const std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat>>>, 64>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:12.14 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:12.14 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:12.14 W   134 |                                    num_fields - 1>::Fn();
+ 0:12.14 W       |                                                     ^
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:12.14 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:12.14 W       |                          ^
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:12.14 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:12.14 W       |              ^
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/OffscreenCanvasDisplayHelper.cpp:11:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerRunnable.h:12:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:12.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:12.14 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextResult)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:12.14 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:12.14 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:12.14 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:12.14 W       |                          ^
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:12.14 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:12.14 W       |              ^
+ 0:12.14 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '209 == 216'
+ 0:12.14 W   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:12.14 W       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:12.49 E 7 errors generated.
+ 0:12.52 E make[4]: *** [DrawTargetWebgl.o] Error 1
+ 0:12.52 E make[4]: *** Waiting for unfinished jobs....
+ 0:13.16 E 7 errors generated.
+ 0:13.18 E make[4]: *** [OffscreenCanvasDisplayHelper.o] Error 1
+ 0:13.50 dom/ipc
+ 0:13.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas2.cpp:2:
+ 0:13.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContextExtensions.cpp:5:
+ 0:13.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLExtensions.h:8:
+ 0:13.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLContext.h:15:
+ 0:13.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLChild.h:12:
+ 0:13.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PWebGLChild.h:24:
+ 0:13.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:8:
+ 0:13.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.90 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextDesc>()'
+ 0:13.90 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:13.90 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.91 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextDesc>' requested here
+ 0:13.91 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.91 W       |                          ^
+ 0:13.91 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:243:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextDesc>' requested here
+ 0:13.91 W   243 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextDesc> {};
+ 0:13.91 W       |              ^
+ 0:13.91 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas2.cpp:2:
+ 0:13.91 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContextExtensions.cpp:5:
+ 0:13.91 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLExtensions.h:8:
+ 0:13.91 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLContext.h:15:
+ 0:13.91 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLChild.h:12:
+ 0:13.91 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PWebGLChild.h:24:
+ 0:13.91 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:8:
+ 0:13.91 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.91 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextDesc)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:13.91 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:13.91 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.91 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '29 == 32'
+ 0:13.91 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:13.91 E       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas1.cpp:2:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.cpp:5:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.92 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextDesc>()'
+ 0:13.92 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:13.92 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.92 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextDesc>' requested here
+ 0:13.92 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.92 W       |                          ^
+ 0:13.92 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:243:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextDesc>' requested here
+ 0:13.92 W   243 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextDesc> {};
+ 0:13.92 W       |              ^
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas1.cpp:2:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.cpp:5:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:13.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.92 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextDesc)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:13.92 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:13.92 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.92 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '29 == 32'
+ 0:13.92 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:13.92 E       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:13.92 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextResult>()'
+ 0:13.92 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:13.92 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.92 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.93 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.93 W       |                          ^
+ 0:13.93 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.93 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.93 W       |              ^
+ 0:13.93 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas2.cpp:2:
+ 0:13.93 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContextExtensions.cpp:5:
+ 0:13.93 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLExtensions.h:8:
+ 0:13.93 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLContext.h:15:
+ 0:13.93 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLChild.h:12:
+ 0:13.93 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PWebGLChild.h:24:
+ 0:13.93 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:8:
+ 0:13.93 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.93 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 5, 47, std::array<unsigned char, 2>, 49, mozilla::webgl::Limits, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:13.93 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:13.93 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.94 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 5>::Fn' requested here
+ 0:13.94 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:13.94 W       |                                                                            ^
+ 0:13.94 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:13.94 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:13.94 W   134 |                                    num_fields - 1>::Fn();
+ 0:13.94 W       |                                                     ^
+ 0:13.94 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.94 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.94 W       |                          ^
+ 0:13.94 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.94 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.94 W       |              ^
+ 0:13.94 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas2.cpp:2:
+ 0:13.94 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContextExtensions.cpp:5:
+ 0:13.94 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLExtensions.h:8:
+ 0:13.94 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLContext.h:15:
+ 0:13.94 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLChild.h:12:
+ 0:13.94 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PWebGLChild.h:24:
+ 0:13.94 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:8:
+ 0:13.94 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.94 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 6, 49, mozilla::webgl::Limits, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:13.94 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:13.94 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.94 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:13.95 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:13.95 W       |                                                                            ^
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:13.95 W   134 |                                    num_fields - 1>::Fn();
+ 0:13.95 W       |                                                     ^
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.95 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.95 W       |                          ^
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.95 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.95 W       |              ^
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas2.cpp:2:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContextExtensions.cpp:5:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLExtensions.h:8:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLContext.h:15:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLChild.h:12:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PWebGLChild.h:24:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:8:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.95 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 7, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 145, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>, std::equal_to<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<const std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat>>>, 64>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:13.95 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:13.95 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:13.95 W   134 |                                    num_fields - 1>::Fn();
+ 0:13.95 W       |                                                     ^
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.95 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.95 W       |                          ^
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.95 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.95 W       |              ^
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas2.cpp:2:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContextExtensions.cpp:5:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLExtensions.h:8:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLContext.h:15:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLChild.h:12:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PWebGLChild.h:24:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:8:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.95 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextResult)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:13.95 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:13.95 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.95 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.95 W       |                          ^
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.95 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.95 W       |              ^
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '209 == 216'
+ 0:13.95 W   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:13.95 W       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:13.95 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextResult>()'
+ 0:13.95 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:13.95 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.95 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.95 W       |                          ^
+ 0:13.95 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.95 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.95 W       |              ^
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas1.cpp:2:
+ 0:13.95 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.cpp:5:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.96 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 5, 47, std::array<unsigned char, 2>, 49, mozilla::webgl::Limits, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:13.96 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:13.96 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.96 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 5>::Fn' requested here
+ 0:13.96 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:13.96 W       |                                                                            ^
+ 0:13.96 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:13.96 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:13.96 W   134 |                                    num_fields - 1>::Fn();
+ 0:13.96 W       |                                                     ^
+ 0:13.96 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.96 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.96 W       |                          ^
+ 0:13.96 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.96 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.96 W       |              ^
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas1.cpp:2:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.cpp:5:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:13.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.96 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 6, 49, mozilla::webgl::Limits, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:13.96 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:13.96 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.96 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:13.97 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:13.97 W       |                                                                            ^
+ 0:13.97 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:13.97 W   134 |                                    num_fields - 1>::Fn();
+ 0:13.97 W       |                                                     ^
+ 0:13.97 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.97 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.97 W       |                          ^
+ 0:13.97 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.97 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.97 W       |              ^
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas1.cpp:2:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.cpp:5:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.97 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 7, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 145, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>, std::equal_to<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<const std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat>>>, 64>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:13.97 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:13.97 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.97 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:13.97 W   134 |                                    num_fields - 1>::Fn();
+ 0:13.97 W       |                                                     ^
+ 0:13.97 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.97 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.97 W       |                          ^
+ 0:13.97 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.97 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.97 W       |              ^
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas1.cpp:2:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.cpp:5:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGL2Context.h:8:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLContext.h:17:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/TexUnpackBlob.h:12:
+ 0:13.97 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLTypes.h:28:
+ 0:13.98 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextResult)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:13.98 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:13.98 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:13.98 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:13.98 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:13.98 W       |                          ^
+ 0:13.98 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:13.98 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:13.98 W       |              ^
+ 0:13.98 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '209 == 216'
+ 0:13.98 W   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:13.98 W       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/html/Unified_cpp_dom_html0.cpp:20:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/html/EditContext.cpp:12:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/events/IMEStateManager.h:12:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserParent.h:15:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserBridgeParent.h:9:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridgeParent.h:9:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridge.h:23:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/embedding/PPrintingTypes.h:25:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/SideVariant.h:11:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.19 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextDesc>()'
+ 0:14.19 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:14.19 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.19 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextDesc>' requested here
+ 0:14.19 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.19 W       |                          ^
+ 0:14.19 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:243:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextDesc>' requested here
+ 0:14.19 W   243 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextDesc> {};
+ 0:14.19 W       |              ^
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/html/Unified_cpp_dom_html0.cpp:20:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/html/EditContext.cpp:12:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/events/IMEStateManager.h:12:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserParent.h:15:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserBridgeParent.h:9:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridgeParent.h:9:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridge.h:23:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/embedding/PPrintingTypes.h:25:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/SideVariant.h:11:
+ 0:14.19 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.19 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextDesc)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:14.19 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:14.19 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.19 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '29 == 32'
+ 0:14.19 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:14.19 E       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:14.23 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextResult>()'
+ 0:14.23 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:14.23 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.23 W       |                          ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.23 W       |              ^
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/html/Unified_cpp_dom_html0.cpp:20:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/html/EditContext.cpp:12:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/events/IMEStateManager.h:12:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserParent.h:15:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserBridgeParent.h:9:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridgeParent.h:9:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridge.h:23:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/embedding/PPrintingTypes.h:25:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/SideVariant.h:11:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.23 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 5, 47, std::array<unsigned char, 2>, 49, mozilla::webgl::Limits, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:14.23 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:14.23 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 5>::Fn' requested here
+ 0:14.23 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:14.23 W       |                                                                            ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:14.23 W   134 |                                    num_fields - 1>::Fn();
+ 0:14.23 W       |                                                     ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.23 W       |                          ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.23 W       |              ^
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/html/Unified_cpp_dom_html0.cpp:20:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/html/EditContext.cpp:12:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/events/IMEStateManager.h:12:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserParent.h:15:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserBridgeParent.h:9:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridgeParent.h:9:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridge.h:23:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/embedding/PPrintingTypes.h:25:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/SideVariant.h:11:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.23 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 6, 49, mozilla::webgl::Limits, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:14.23 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:14.23 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:14.23 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:14.23 W       |                                                                            ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:14.23 W   134 |                                    num_fields - 1>::Fn();
+ 0:14.23 W       |                                                     ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.23 W       |                          ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.23 W       |              ^
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/html/Unified_cpp_dom_html0.cpp:20:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/html/EditContext.cpp:12:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/events/IMEStateManager.h:12:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserParent.h:15:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserBridgeParent.h:9:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridgeParent.h:9:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridge.h:23:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/embedding/PPrintingTypes.h:25:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/SideVariant.h:11:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.23 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 7, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 145, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>, std::equal_to<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<const std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat>>>, 64>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:14.23 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:14.23 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:14.23 W   134 |                                    num_fields - 1>::Fn();
+ 0:14.23 W       |                                                     ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.23 W       |                          ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.23 W       |              ^
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/html/Unified_cpp_dom_html0.cpp:20:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/html/EditContext.cpp:12:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/events/IMEStateManager.h:12:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserParent.h:15:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserBridgeParent.h:9:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridgeParent.h:9:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserBridge.h:23:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/embedding/PPrintingTypes.h:25:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/SideVariant.h:11:
+ 0:14.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.23 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextResult)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:14.23 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:14.23 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.23 W       |                          ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.23 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.23 W       |              ^
+ 0:14.23 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '209 == 216'
+ 0:14.23 W   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:14.23 W       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:38:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:1:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/cloakcfg/CloakfoxSiteSeed.hpp:7:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.64 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextDesc>()'
+ 0:14.64 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:14.64 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.64 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextDesc>' requested here
+ 0:14.64 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.64 W       |                          ^
+ 0:14.64 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:243:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextDesc>' requested here
+ 0:14.64 W   243 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextDesc> {};
+ 0:14.64 W       |              ^
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:38:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:1:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/cloakcfg/CloakfoxSiteSeed.hpp:7:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:14.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:14.65 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:14.65 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:14.65 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:14.65 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:14.65 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.65 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextDesc)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:14.65 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:14.65 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.65 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '29 == 32'
+ 0:14.65 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:14.65 E       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:14.69 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextResult>()'
+ 0:14.69 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:14.69 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.69 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.70 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.70 W       |                          ^
+ 0:14.70 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.71 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.71 W       |              ^
+ 0:14.71 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:38:
+ 0:14.71 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:1:
+ 0:14.71 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/cloakcfg/CloakfoxSiteSeed.hpp:7:
+ 0:14.71 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:14.72 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:14.72 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:14.72 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:14.72 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:14.72 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:14.72 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.72 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 5, 47, std::array<unsigned char, 2>, 49, mozilla::webgl::Limits, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:14.72 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:14.72 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.72 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 5>::Fn' requested here
+ 0:14.73 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:14.73 W       |                                                                            ^
+ 0:14.73 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:14.73 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:14.73 W   134 |                                    num_fields - 1>::Fn();
+ 0:14.73 W       |                                                     ^
+ 0:14.73 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.73 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.73 W       |                          ^
+ 0:14.73 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.73 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.73 W       |              ^
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:38:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:1:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/cloakcfg/CloakfoxSiteSeed.hpp:7:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:14.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.73 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 6, 49, mozilla::webgl::Limits, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:14.73 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:14.74 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.74 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:14.74 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:14.74 W       |                                                                            ^
+ 0:14.74 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:14.74 W   134 |                                    num_fields - 1>::Fn();
+ 0:14.74 W       |                                                     ^
+ 0:14.74 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.74 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.74 W       |                          ^
+ 0:14.74 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.74 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.74 W       |              ^
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:38:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:1:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/cloakcfg/CloakfoxSiteSeed.hpp:7:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 7, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 145, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>, std::equal_to<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<const std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat>>>, 64>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:14.74 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:14.74 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.74 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:14.74 W   134 |                                    num_fields - 1>::Fn();
+ 0:14.74 W       |                                                     ^
+ 0:14.74 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.74 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.74 W       |                          ^
+ 0:14.74 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.74 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.74 W       |              ^
+ 0:14.74 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:38:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/CanvasRenderingContext2D.cpp:1:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/cloakcfg/CloakfoxSiteSeed.hpp:7:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerPrivate.h:33:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h:9:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PRemoteWorkerNonLifeCycleOpController.h:22:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/RemoteWorkerTypes.h:24:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/origin-trials/OriginTrialsIPCUtils.h:9:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtilsSpecializations.h:15:
+ 0:14.75 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:14.75 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextResult)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:14.75 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:14.75 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:14.75 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:14.75 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:14.75 W       |                          ^
+ 0:14.75 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:14.75 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:14.75 W       |              ^
+ 0:14.75 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '209 == 216'
+ 0:14.75 W   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:14.75 W       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:16.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/canvas/Unified_cpp_dom_canvas0.cpp:65:
+ 0:16.73 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/ClientWebGLContext.cpp:910:34: error: no member named 'GetOwnerGlobal' in 'mozilla::dom::HTMLCanvasElement'
+ 0:16.73 E   910 |         global = mCanvasElement->GetOwnerGlobal();
+ 0:16.73 E       |                  ~~~~~~~~~~~~~~~~^
+ 0:17.20 E 7 errors generated.
+ 0:17.23 E make[4]: *** [Unified_cpp_dom_canvas2.o] Error 1
+ 0:17.26 E 7 errors generated.
+ 0:17.28 E make[4]: *** [Unified_cpp_dom_html0.o] Error 1
+ 0:17.29 E make[3]: *** [dom/html/target-objects] Error 2
+ 0:17.29 E make[3]: *** Waiting for unfinished jobs....
+ 0:20.25 E 7 errors generated.
+ 0:20.29 E make[4]: *** [Unified_cpp_dom_canvas1.o] Error 1
+ 0:20.54 E 8 errors generated.
+ 0:20.59 E make[4]: *** [Unified_cpp_dom_canvas0.o] Error 1
+ 0:20.59 E make[3]: *** [dom/canvas/target-objects] Error 2
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings17.cpp:41:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/NotificationEvent.cpp:10:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/NotificationEvent.h:15:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/serviceworkers/ServiceWorkerEvents.h:12:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/FetchEventBinding.h:13:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/Request.h:9:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalRequest.h:12:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalResponse.h:10:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/FetchTypes.h:38:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/ipc/PBackgroundSharedTypes.h:25:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/BackgroundUtils.h:8:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:22.53 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextDesc>()'
+ 0:22.53 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:22.53 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:22.53 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextDesc>' requested here
+ 0:22.53 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:22.53 W       |                          ^
+ 0:22.53 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:243:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextDesc>' requested here
+ 0:22.53 W   243 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextDesc> {};
+ 0:22.53 W       |              ^
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings17.cpp:41:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/NotificationEvent.cpp:10:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/NotificationEvent.h:15:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/serviceworkers/ServiceWorkerEvents.h:12:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/FetchEventBinding.h:13:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/Request.h:9:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalRequest.h:12:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalResponse.h:10:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/FetchTypes.h:38:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/ipc/PBackgroundSharedTypes.h:25:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/BackgroundUtils.h:8:
+ 0:22.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:22.53 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextDesc)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:22.53 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:22.53 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:22.53 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '29 == 32'
+ 0:22.53 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:22.53 E       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:22.55 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextResult>()'
+ 0:22.55 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:22.55 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:22.55 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:22.55 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:22.55 W       |                          ^
+ 0:22.55 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:22.55 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:22.55 W       |              ^
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings17.cpp:41:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/NotificationEvent.cpp:10:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/NotificationEvent.h:15:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/serviceworkers/ServiceWorkerEvents.h:12:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/FetchEventBinding.h:13:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/Request.h:9:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalRequest.h:12:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalResponse.h:10:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/FetchTypes.h:38:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/ipc/PBackgroundSharedTypes.h:25:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/BackgroundUtils.h:8:
+ 0:22.55 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:22.55 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 5, 47, std::array<unsigned char, 2>, 49, mozilla::webgl::Limits, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:22.55 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:22.55 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:22.55 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 5>::Fn' requested here
+ 0:22.55 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:22.55 W       |                                                                            ^
+ 0:22.55 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:22.55 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:22.55 W   134 |                                    num_fields - 1>::Fn();
+ 0:22.55 W       |                                                     ^
+ 0:22.55 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:22.56 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:22.56 W       |                          ^
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:22.56 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:22.56 W       |              ^
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings17.cpp:41:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/NotificationEvent.cpp:10:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/NotificationEvent.h:15:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/serviceworkers/ServiceWorkerEvents.h:12:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/FetchEventBinding.h:13:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/Request.h:9:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalRequest.h:12:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalResponse.h:10:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/FetchTypes.h:38:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/ipc/PBackgroundSharedTypes.h:25:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/BackgroundUtils.h:8:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:22.56 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 6, 49, mozilla::webgl::Limits, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:22.56 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:22.56 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:22.56 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:22.56 W       |                                                                            ^
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:22.56 W   134 |                                    num_fields - 1>::Fn();
+ 0:22.56 W       |                                                     ^
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:22.56 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:22.56 W       |                          ^
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:22.56 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:22.56 W       |              ^
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings17.cpp:41:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/NotificationEvent.cpp:10:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/NotificationEvent.h:15:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/serviceworkers/ServiceWorkerEvents.h:12:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/FetchEventBinding.h:13:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/Request.h:9:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalRequest.h:12:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalResponse.h:10:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/FetchTypes.h:38:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/ipc/PBackgroundSharedTypes.h:25:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/BackgroundUtils.h:8:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:22.56 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 7, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 145, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>, std::equal_to<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<const std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat>>>, 64>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:22.56 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:22.56 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:22.56 W   134 |                                    num_fields - 1>::Fn();
+ 0:22.56 W       |                                                     ^
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:22.56 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:22.56 W       |                          ^
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:22.56 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:22.56 W       |              ^
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings17.cpp:41:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/NotificationEvent.cpp:10:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/NotificationEvent.h:15:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/serviceworkers/ServiceWorkerEvents.h:12:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/include/mozilla/dom/FetchEventBinding.h:13:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/Request.h:9:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalRequest.h:12:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/fetch/InternalResponse.h:10:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/FetchTypes.h:38:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/ipc/PBackgroundSharedTypes.h:25:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/BackgroundUtils.h:8:
+ 0:22.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:22.56 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextResult)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:22.56 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:22.56 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:22.56 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:22.56 W       |                          ^
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:22.56 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:22.56 W       |              ^
+ 0:22.56 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '209 == 216'
+ 0:22.56 W   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:22.56 W       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:26.12 E 7 errors generated.
+ 0:26.15 E make[4]: *** [UnifiedBindings17.o] Error 1
+ 0:26.15 E make[4]: *** Waiting for unfinished jobs....
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings29.cpp:41:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/ViewTransitionBinding.cpp:26:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/view-transitions/ViewTransition.h:10:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/wr/IpcResourceUpdateQueue.h:9:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/client/TextureClient.h:20:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/IdType.h:8:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:27.31 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextDesc>()'
+ 0:27.31 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:27.31 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:27.31 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextDesc>' requested here
+ 0:27.31 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:27.31 W       |                          ^
+ 0:27.31 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:243:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextDesc>' requested here
+ 0:27.31 W   243 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextDesc> {};
+ 0:27.31 W       |              ^
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings29.cpp:41:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/ViewTransitionBinding.cpp:26:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/view-transitions/ViewTransition.h:10:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/wr/IpcResourceUpdateQueue.h:9:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/client/TextureClient.h:20:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/IdType.h:8:
+ 0:27.31 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:27.32 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextDesc)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:27.32 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:27.32 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:27.32 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '29 == 32'
+ 0:27.32 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:27.32 E       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:27.34 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:128:17: error: static assertion failed due to requirement 'AreAllBytesTiedFields<mozilla::webgl::InitContextResult>()'
+ 0:27.34 E   128 |   static_assert(AreAllBytesTiedFields<StructT>());
+ 0:27.34 E       |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:27.34 W       |                          ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:27.34 W       |              ^
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings29.cpp:41:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/ViewTransitionBinding.cpp:26:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/view-transitions/ViewTransition.h:10:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/wr/IpcResourceUpdateQueue.h:9:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/client/TextureClient.h:20:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/IdType.h:8:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:27.34 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 5, 47, std::array<unsigned char, 2>, 49, mozilla::webgl::Limits, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:27.34 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:27.34 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 5>::Fn' requested here
+ 0:27.34 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:27.34 W       |                                                                            ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:27.34 W   134 |                                    num_fields - 1>::Fn();
+ 0:27.34 W       |                                                     ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:27.34 W       |                          ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:27.34 W       |              ^
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings29.cpp:41:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/ViewTransitionBinding.cpp:26:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/view-transitions/ViewTransition.h:10:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/wr/IpcResourceUpdateQueue.h:9:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/client/TextureClient.h:20:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/IdType.h:8:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:27.34 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 6, 49, mozilla::webgl::Limits, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:27.34 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:27.34 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:95:76: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 6>::Fn' requested here
+ 0:27.34 W    95 |         TightlyPackedFieldEndOffsetT<StructT, TupleOfFields, FieldId - 1>::Fn();
+ 0:27.34 W       |                                                                            ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:27.34 W   134 |                                    num_fields - 1>::Fn();
+ 0:27.34 W       |                                                     ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:27.34 W       |                          ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:27.34 W       |              ^
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings29.cpp:41:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/ViewTransitionBinding.cpp:26:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/view-transitions/ViewTransition.h:10:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/wr/IpcResourceUpdateQueue.h:9:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/client/TextureClient.h:20:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/IdType.h:8:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:27.34 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:102:19: error: static assertion failed due to requirement 'FieldDebugInfoT<mozilla::webgl::InitContextResult, 7, 137, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type>, 145, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>, std::equal_to<std::tuple<unsigned int, unsigned int>>, std::allocator<std::pair<const std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat>>>, 64>, 8>::IsTightlyPacked()': This field was not tightly packed. Is there padding between it and its predecessor?
+ 0:27.34 E   102 |     static_assert(FieldDebugInfoT::IsTightlyPacked(),
+ 0:27.34 E       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:134:53: note: in instantiation of member function 'mozilla::TightlyPackedFieldEndOffsetT<mozilla::webgl::InitContextResult, std::tuple<mozilla::webgl::Padded<std::string, 32> &, mozilla::WebGLContextOptions &, mozilla::gl::GLVendor &, mozilla::webgl::OptionalRenderableFormatBits &, std::array<unsigned char, 2> &, mozilla::webgl::Limits &, mozilla::webgl::EnumMask<mozilla::layers::SurfaceDescriptor::Type> &, mozilla::webgl::Padded<std::unordered_map<std::tuple<unsigned int, unsigned int>, mozilla::webgl::ShaderPrecisionFormat, mozilla::webgl::TupleStdHash<std::tuple<unsigned int, unsigned int>>>, 64> &>, 7>::Fn' requested here
+ 0:27.34 W   134 |                                    num_fields - 1>::Fn();
+ 0:27.34 W       |                                                     ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:27.34 W       |                          ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:27.34 W       |              ^
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/UnifiedBindings29.cpp:41:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/bindings/ViewTransitionBinding.cpp:26:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/view-transitions/ViewTransition.h:10:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/wr/IpcResourceUpdateQueue.h:9:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/client/TextureClient.h:20:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/IdType.h:8:
+ 0:27.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:14:
+ 0:27.34 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:7: error: static assertion failed due to requirement 'end_offset_of_last_field == sizeof(mozilla::webgl::InitContextResult)': Incorrect field list in MutTiedFields()? (or not tightly-packed?)
+ 0:27.34 E   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:27.34 E       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/ipc/glue/IPCMessageUtils.h:135:26: note: in instantiation of function template specialization 'mozilla::AssertTiedFieldsAreExhaustive<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   135 |   static_assert(mozilla::AssertTiedFieldsAreExhaustive<T>());
+ 0:27.34 W       |                          ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/canvas/WebGLIpdl.h:273:14: note: in instantiation of template class 'IPC::ParamTraits_TiedFields<mozilla::webgl::InitContextResult>' requested here
+ 0:27.34 W   273 |     : public ParamTraits_TiedFields<mozilla::webgl::InitContextResult> {};
+ 0:27.34 W       |              ^
+ 0:27.34 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mfbt/TiedFields.h:136:32: note: expression evaluates to '209 == 216'
+ 0:27.34 W   136 |       end_offset_of_last_field == sizeof(StructT),
+ 0:27.34 W       |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+ 0:32.47 E 7 errors generated.
+ 0:32.50 E make[4]: *** [UnifiedBindings29.o] Error 1
+ 0:33.96 E make[3]: *** [dom/bindings/target-objects] Error 2
+ 0:35.02 E make[2]: *** [compile] Error 2
+ 0:35.02 E make[1]: *** [default] Error 2
+ 0:35.02 E make: *** [build] Error 2
+ 0:35.13 W 0 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_105808.json

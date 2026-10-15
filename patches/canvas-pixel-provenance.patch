@@ -1,0 +1,214 @@
+--- a/gfx/2d/moz.build
++++ b/gfx/2d/moz.build
+@@ -18,6 +18,7 @@
+     "BezierUtils.h",
+     "Blur.h",
+     "BorrowedContext.h",
++    "CanvasPrivacy.h",
+     "Coord.h",
+     "CriticalSection.h",
+     "DataSourceSurfaceWrapper.h",
+@@ -138,6 +139,7 @@
+     "Blur.cpp",
+     "BufferEdgePad.cpp",
+     "BufferUnrotate.cpp",
++    "CanvasPrivacy.cpp",
+     "ConvolutionFilter.cpp",
+     "DataSourceSurface.cpp",
+     "DataSurfaceHelpers.cpp",
+--- a/dom/canvas/ImageBitmap.cpp
++++ b/dom/canvas/ImageBitmap.cpp
+@@ -29,6 +29,7 @@
+ #include "mozilla/dom/WorkerRef.h"
+ #include "mozilla/dom/WorkerRunnable.h"
+ #include "mozilla/gfx/2D.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/Logging.h"
+ #include "mozilla/gfx/Scale.h"
+ #include "mozilla/gfx/Swizzle.h"
+@@ -813,6 +814,8 @@
+ 
+   // If we have a surface, then it is already cropped and premultiplied.
+   if (mSurface) {
++    gfx::AddCanvasPixelSource(mSurface,
++        static_cast<gfx::CanvasPixelSource>(mCanvasPixelSources));
+     return do_AddRef(mSurface);
+   }
+ 
+@@ -942,6 +945,8 @@
+   if (!mSurface) {
+     mSurface = std::move(surface);
+   }
++  gfx::AddCanvasPixelSource(mSurface,
++      static_cast<gfx::CanvasPixelSource>(mCanvasPixelSources));
+   return do_AddRef(mSurface);
+ }
+ 
+@@ -976,6 +981,10 @@
+   result->mAlphaType = mAlphaType;
+   result->mSurface = std::move(dataSurface);
+   result->mWriteOnly = mWriteOnly;
++  result->mCanvasPixelSources = gfx::NormalizeCanvasPixelSources(
++      mCanvasPixelSources | gfx::GetCanvasPixelSources(surface));
++  gfx::AddCanvasPixelSource(result->mSurface,
++      static_cast<gfx::CanvasPixelSource>(result->mCanvasPixelSources));
+   return result;
+ }
+ 
+@@ -985,6 +994,7 @@
+   RefPtr<layers::Image> data = CreateImageFromSurface(aSource);
+   RefPtr<ImageBitmap> ret =
+       new ImageBitmap(aGlobal, data, true, false /* writeOnly */);
++  ret->mCanvasPixelSources = gfx::GetCanvasPixelSources(aSource);
+   return ret.forget();
+ }
+ 
+@@ -996,6 +1006,9 @@
+   RefPtr<ImageBitmap> ret = new ImageBitmap(
+       aGlobal, data, true, aData->mWriteOnly, aData->mAlphaType);
+ 
++  ret->mCanvasPixelSources = gfx::NormalizeCanvasPixelSources(aData->mCanvasPixelSources);
++  gfx::AddCanvasPixelSource(aData->mSurface,
++      static_cast<gfx::CanvasPixelSource>(ret->mCanvasPixelSources));
+   ErrorResult rv;
+   ret->SetPictureRect(aData->mPictureRect, rv);
+   return ret.forget();
+@@ -1024,6 +1037,7 @@
+ 
+   RefPtr<ImageBitmap> ret = new ImageBitmap(aGlobal, data, true, writeOnly);
+ 
++  ret->mCanvasPixelSources = gfx::GetCanvasPixelSources(surface);
+   return ret.forget();
+ }
+ 
+@@ -1138,6 +1152,8 @@
+     }
+   }
+ 
++  // Preserve the original contributors through crop, alpha and resize copies.
++  gfx::MergeCanvasPixelSources(surface, aSurface);
+   // Create an Image from the SourceSurface.
+   RefPtr<layers::Image> data = CreateImageFromSurface(surface);
+   RefPtr<ImageBitmap> ret = new ImageBitmap(
+@@ -1146,6 +1162,7 @@
+   // Set the picture rectangle.
+   ret->SetPictureRect(cropRect, aRv);
+ 
++  ret->mCanvasPixelSources = gfx::GetCanvasPixelSources(aSurface);
+   return ret.forget();
+ }
+ 
+@@ -1524,6 +1541,8 @@
+     }
+   }
+ 
++  gfx::AddCanvasPixelSource(surface,
++      static_cast<gfx::CanvasPixelSource>(aImageBitmap.mCanvasPixelSources));
+   return CreateImageBitmapInternal(
+       aGlobal, surface, Some(cropRect), aOptions, aImageBitmap.mWriteOnly,
+       needToReportMemoryAllocation, false, alphaType, aRv);
+@@ -1925,6 +1944,7 @@
+     RefPtr<layers::Image> img = CreateImageFromSurface(aClonedSurfaces[aIndex]);
+     RefPtr<ImageBitmap> imageBitmap =
+         new ImageBitmap(aParent, img, true, !!writeOnly, alphaType);
++    imageBitmap->mCanvasPixelSources = gfx::GetCanvasPixelSources(aClonedSurfaces[aIndex]);
+ 
+     ErrorResult error;
+     imageBitmap->SetPictureRect(
+@@ -2007,6 +2027,8 @@
+     return aRv.ThrowDataCloneError("Cannot clone ImageBitmap, out of memory");
+   }
+   Factory::CopyDataSourceSurface(snapshot, dstDataSurface);
++  gfx::AddCanvasPixelSource(dstDataSurface, static_cast<gfx::CanvasPixelSource>(
++      aImageBitmap->mCanvasPixelSources | gfx::GetCanvasPixelSources(surface)));
+   aClonedSurfaces.AppendElement(dstDataSurface);
+ }
+ 
+--- a/dom/canvas/ImageBitmap.h
++++ b/dom/canvas/ImageBitmap.h
+@@ -62,6 +62,7 @@
+   gfx::IntRect mPictureRect;
+   gfxAlphaType mAlphaType;
+   bool mWriteOnly;
++  uint32_t mCanvasPixelSources = 1; // Unknown; independent of origin taint.
+ };
+ 
+ /*
+@@ -148,6 +149,7 @@
+ 
+   bool IsWriteOnly() const { return mWriteOnly; }
+   bool IsClosed() const { return !mData; };
++  uint32_t CanvasPixelSources() const { return mCanvasPixelSources; }
+ 
+  protected:
+   /*
+@@ -248,6 +250,7 @@
+    */
+   RefPtr<layers::Image> mData;
+   RefPtr<gfx::SourceSurface> mSurface;
++  uint32_t mCanvasPixelSources = 1;
+ 
+   /*
+    * The mPictureRect is the size of the source image in default, however, if
+--- a/dom/canvas/ImageBitmapRenderingContext.cpp
++++ b/dom/canvas/ImageBitmapRenderingContext.cpp
+@@ -3,6 +3,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "ImageBitmapRenderingContext.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ 
+ #include "ImageContainer.h"
+ #include "gfx2DGlue.h"
+@@ -73,6 +74,7 @@
+   ResetBitmap();
+ 
+   if (aImageBitmap) {
++    mCanvasPixelSources = aImageBitmap->CanvasPixelSources();
+     mImage = aImageBitmap->TransferAsImage();
+ 
+     if (!mImage) {
+@@ -160,6 +162,9 @@
+       gfx::IntRect(0, 0, surface->GetSize().width, surface->GetSize().height),
+       gfx::IntPoint(0, 0));
+ 
++  gfx::AddCanvasPixelSource(temp,
++      static_cast<gfx::CanvasPixelSource>(mCanvasPixelSources));
++  gfx::MergeCanvasPixelSources(temp, surface);
+   return temp.forget();
+ }
+ 
+@@ -253,9 +258,12 @@
+   }
+ 
+   if (surface->GetSize() != gfx::IntSize(mWidth, mHeight)) {
+-    return MatchWithIntrinsicSize();
+-  }
+-
++    surface = MatchWithIntrinsicSize();
++    gfx::AddCanvasPixelSource(surface, gfx::CanvasPixelSource::Unknown);
++  }
++
++  gfx::AddCanvasPixelSource(surface,
++      static_cast<gfx::CanvasPixelSource>(mCanvasPixelSources));
+   return surface.forget();
+ }
+ 
+@@ -272,6 +280,7 @@
+   }
+ 
+   mImage = nullptr;
++  mCanvasPixelSources = static_cast<uint32_t>(gfx::CanvasPixelSource::Unknown);
+   mFrameCaptureState = FrameCaptureState::CLEAN;
+ }
+ 
+--- a/dom/canvas/ImageBitmapRenderingContext.h
++++ b/dom/canvas/ImageBitmapRenderingContext.h
+@@ -108,6 +108,7 @@
+   int32_t mHeight;
+ 
+   RefPtr<layers::Image> mImage;
++  uint32_t mCanvasPixelSources = 1;
+ 
+   /**
+    * Flag to avoid unnecessary surface copies to FrameCaptureListeners in the

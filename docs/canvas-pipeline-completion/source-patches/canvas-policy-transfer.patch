@@ -1,0 +1,697 @@
+--- a/dom/canvas/ImageBitmap.h
++++ b/dom/canvas/ImageBitmap.h
+@@ -13,6 +13,7 @@
+ #include "mozilla/dom/ImageBitmapBinding.h"
+ #include "mozilla/dom/ImageBitmapSource.h"
+ #include "mozilla/dom/TypedArray.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/Rect.h"
+ #include "nsCycleCollectionParticipant.h"
+ 
+@@ -62,7 +63,8 @@
+   gfx::IntRect mPictureRect;
+   gfxAlphaType mAlphaType;
+   bool mWriteOnly;
+-  uint32_t mCanvasPixelSources = 1; // Unknown; independent of origin taint.
++  gfx::CanvasPrivacyMetadata
++      mCanvasPrivacyMetadata;  // Independent of origin taint.
+ };
+ 
+ /*
+@@ -149,7 +151,10 @@
+ 
+   bool IsWriteOnly() const { return mWriteOnly; }
+   bool IsClosed() const { return !mData; };
+-  uint32_t CanvasPixelSources() const { return mCanvasPixelSources; }
++  uint32_t CanvasPixelSources() const { return mCanvasPrivacyMetadata.sources; }
++  const gfx::CanvasPrivacyMetadata& CanvasPrivacy() const {
++    return mCanvasPrivacyMetadata;
++  }
+ 
+  protected:
+   /*
+@@ -250,7 +255,7 @@
+    */
+   RefPtr<layers::Image> mData;
+   RefPtr<gfx::SourceSurface> mSurface;
+-  uint32_t mCanvasPixelSources = 1;
++  gfx::CanvasPrivacyMetadata mCanvasPrivacyMetadata;
+ 
+   /*
+    * The mPictureRect is the size of the source image in default, however, if
+--- a/dom/canvas/ImageBitmap.cpp
++++ b/dom/canvas/ImageBitmap.cpp
+@@ -667,6 +667,7 @@
+       mAllocatedImageData(aAllocatedImageData),
+       mWriteOnly(aWriteOnly) {
+   MOZ_ASSERT(aData, "aData is null in ImageBitmap constructor.");
++  mCanvasPrivacyMetadata = aData->GetCanvasPrivacyMetadata();
+ 
+   StaticMutexAutoLock lock(sShutdownMutex);
+   if (!sShutdownObserver &&
+@@ -814,12 +815,12 @@
+ 
+   // If we have a surface, then it is already cropped and premultiplied.
+   if (mSurface) {
+-    gfx::AddCanvasPixelSource(mSurface,
+-        static_cast<gfx::CanvasPixelSource>(mCanvasPixelSources));
++    gfx::SetCanvasPrivacyMetadata(mSurface, mCanvasPrivacyMetadata);
+     return do_AddRef(mSurface);
+   }
+ 
+   RefPtr<gfx::SourceSurface> surface = mData->GetAsSourceSurface();
++  gfx::SetCanvasPrivacyMetadata(surface, mCanvasPrivacyMetadata);
+   if (NS_WARN_IF(!surface)) {
+     return nullptr;
+   }
+@@ -945,13 +946,13 @@
+   if (!mSurface) {
+     mSurface = std::move(surface);
+   }
+-  gfx::AddCanvasPixelSource(mSurface,
+-      static_cast<gfx::CanvasPixelSource>(mCanvasPixelSources));
++  gfx::SetCanvasPrivacyMetadata(mSurface, mCanvasPrivacyMetadata);
+   return do_AddRef(mSurface);
+ }
+ 
+ already_AddRefed<layers::Image> ImageBitmap::TransferAsImage() {
+   RefPtr<layers::Image> image = mData;
++  if (image) image->SetCanvasPrivacyMetadata(mCanvasPrivacyMetadata);
+   Close();
+   return image.forget();
+ }
+@@ -963,6 +964,7 @@
+   }
+ 
+   RefPtr<SourceSurface> surface = mData->GetAsSourceSurface();
++  gfx::SetCanvasPrivacyMetadata(surface, mCanvasPrivacyMetadata);
+   if (!surface) {
+     // It might just not be possible to get/map the surface. (e.g. from another
+     // process)
+@@ -981,10 +983,10 @@
+   result->mAlphaType = mAlphaType;
+   result->mSurface = std::move(dataSurface);
+   result->mWriteOnly = mWriteOnly;
+-  result->mCanvasPixelSources = gfx::NormalizeCanvasPixelSources(
+-      mCanvasPixelSources | gfx::GetCanvasPixelSources(surface));
+-  gfx::AddCanvasPixelSource(result->mSurface,
+-      static_cast<gfx::CanvasPixelSource>(result->mCanvasPixelSources));
++  result->mCanvasPrivacyMetadata = gfx::MergeCanvasPrivacyMetadata(
++      mCanvasPrivacyMetadata, gfx::GetCanvasPrivacyMetadata(surface));
++  gfx::SetCanvasPrivacyMetadata(result->mSurface,
++                                result->mCanvasPrivacyMetadata);
+   return result;
+ }
+ 
+@@ -994,7 +996,7 @@
+   RefPtr<layers::Image> data = CreateImageFromSurface(aSource);
+   RefPtr<ImageBitmap> ret =
+       new ImageBitmap(aGlobal, data, true, false /* writeOnly */);
+-  ret->mCanvasPixelSources = gfx::GetCanvasPixelSources(aSource);
++  ret->mCanvasPrivacyMetadata = gfx::GetCanvasPrivacyMetadata(aSource);
+   return ret.forget();
+ }
+ 
+@@ -1006,9 +1008,9 @@
+   RefPtr<ImageBitmap> ret = new ImageBitmap(
+       aGlobal, data, true, aData->mWriteOnly, aData->mAlphaType);
+ 
+-  ret->mCanvasPixelSources = gfx::NormalizeCanvasPixelSources(aData->mCanvasPixelSources);
+-  gfx::AddCanvasPixelSource(aData->mSurface,
+-      static_cast<gfx::CanvasPixelSource>(ret->mCanvasPixelSources));
++  ret->mCanvasPrivacyMetadata =
++      gfx::NormalizeCanvasPrivacyMetadata(aData->mCanvasPrivacyMetadata);
++  gfx::SetCanvasPrivacyMetadata(aData->mSurface, ret->mCanvasPrivacyMetadata);
+   ErrorResult rv;
+   ret->SetPictureRect(aData->mPictureRect, rv);
+   return ret.forget();
+@@ -1037,7 +1039,7 @@
+ 
+   RefPtr<ImageBitmap> ret = new ImageBitmap(aGlobal, data, true, writeOnly);
+ 
+-  ret->mCanvasPixelSources = gfx::GetCanvasPixelSources(surface);
++  ret->mCanvasPrivacyMetadata = gfx::GetCanvasPrivacyMetadata(surface);
+   return ret.forget();
+ }
+ 
+@@ -1162,7 +1164,7 @@
+   // Set the picture rectangle.
+   ret->SetPictureRect(cropRect, aRv);
+ 
+-  ret->mCanvasPixelSources = gfx::GetCanvasPixelSources(aSurface);
++  ret->mCanvasPrivacyMetadata = gfx::GetCanvasPrivacyMetadata(aSurface);
+   return ret.forget();
+ }
+ 
+@@ -1541,8 +1543,7 @@
+     }
+   }
+ 
+-  gfx::AddCanvasPixelSource(surface,
+-      static_cast<gfx::CanvasPixelSource>(aImageBitmap.mCanvasPixelSources));
++  gfx::SetCanvasPrivacyMetadata(surface, aImageBitmap.mCanvasPrivacyMetadata);
+   return CreateImageBitmapInternal(
+       aGlobal, surface, Some(cropRect), aOptions, aImageBitmap.mWriteOnly,
+       needToReportMemoryAllocation, false, alphaType, aRv);
+@@ -1944,7 +1945,8 @@
+     RefPtr<layers::Image> img = CreateImageFromSurface(aClonedSurfaces[aIndex]);
+     RefPtr<ImageBitmap> imageBitmap =
+         new ImageBitmap(aParent, img, true, !!writeOnly, alphaType);
+-    imageBitmap->mCanvasPixelSources = gfx::GetCanvasPixelSources(aClonedSurfaces[aIndex]);
++    imageBitmap->mCanvasPrivacyMetadata =
++        gfx::GetCanvasPrivacyMetadata(aClonedSurfaces[aIndex]);
+ 
+     ErrorResult error;
+     imageBitmap->SetPictureRect(
+@@ -2000,6 +2002,7 @@
+   }
+ 
+   RefPtr<SourceSurface> surface = aImageBitmap->mData->GetAsSourceSurface();
++  gfx::SetCanvasPrivacyMetadata(surface, aImageBitmap->mCanvasPrivacyMetadata);
+   if (NS_WARN_IF(!surface)) {
+     return aRv.ThrowDataCloneError("Cannot clone ImageBitmap, no surface");
+   }
+@@ -2027,8 +2030,10 @@
+     return aRv.ThrowDataCloneError("Cannot clone ImageBitmap, out of memory");
+   }
+   Factory::CopyDataSourceSurface(snapshot, dstDataSurface);
+-  gfx::AddCanvasPixelSource(dstDataSurface, static_cast<gfx::CanvasPixelSource>(
+-      aImageBitmap->mCanvasPixelSources | gfx::GetCanvasPixelSources(surface)));
++  gfx::SetCanvasPrivacyMetadata(
++      dstDataSurface,
++      gfx::MergeCanvasPrivacyMetadata(aImageBitmap->mCanvasPrivacyMetadata,
++                                      gfx::GetCanvasPrivacyMetadata(surface)));
+   aClonedSurfaces.AppendElement(dstDataSurface);
+ }
+ 
+--- a/dom/canvas/ImageBitmapRenderingContext.h
++++ b/dom/canvas/ImageBitmapRenderingContext.h
+@@ -108,7 +108,7 @@
+   int32_t mHeight;
+ 
+   RefPtr<layers::Image> mImage;
+-  uint32_t mCanvasPixelSources = 1;
++  gfx::CanvasPrivacyMetadata mCanvasPrivacyMetadata;
+ 
+   /**
+    * Flag to avoid unnecessary surface copies to FrameCaptureListeners in the
+--- a/dom/canvas/ImageBitmapRenderingContext.cpp
++++ b/dom/canvas/ImageBitmapRenderingContext.cpp
+@@ -44,6 +44,7 @@
+     surface = MatchWithIntrinsicSize();
+   } else {
+     surface = mImage->GetAsSourceSurface();
++    gfx::SetCanvasPrivacyMetadata(surface, mCanvasPrivacyMetadata);
+   }
+   if (!surface) {
+     return nullptr;
+@@ -74,7 +75,7 @@
+   ResetBitmap();
+ 
+   if (aImageBitmap) {
+-    mCanvasPixelSources = aImageBitmap->CanvasPixelSources();
++    mCanvasPrivacyMetadata = aImageBitmap->CanvasPrivacy();
+     mImage = aImageBitmap->TransferAsImage();
+ 
+     if (!mImage) {
+@@ -132,6 +133,7 @@
+ already_AddRefed<gfx::DataSourceSurface>
+ ImageBitmapRenderingContext::MatchWithIntrinsicSize() {
+   RefPtr<gfx::SourceSurface> surface = mImage->GetAsSourceSurface();
++  gfx::SetCanvasPrivacyMetadata(surface, mCanvasPrivacyMetadata);
+   if (!surface) {
+     return nullptr;
+   }
+@@ -162,8 +164,7 @@
+       gfx::IntRect(0, 0, surface->GetSize().width, surface->GetSize().height),
+       gfx::IntPoint(0, 0));
+ 
+-  gfx::AddCanvasPixelSource(temp,
+-      static_cast<gfx::CanvasPixelSource>(mCanvasPixelSources));
++  gfx::SetCanvasPrivacyMetadata(temp, mCanvasPrivacyMetadata);
+   gfx::MergeCanvasPixelSources(temp, surface);
+   return temp.forget();
+ }
+@@ -179,6 +180,7 @@
+   }
+ 
+   RefPtr<gfx::SourceSurface> surface = mImage->GetAsSourceSurface();
++  gfx::SetCanvasPrivacyMetadata(surface, mCanvasPrivacyMetadata);
+   if (!surface) {
+     return nullptr;
+   }
+@@ -253,6 +255,7 @@
+   }
+ 
+   RefPtr<gfx::SourceSurface> surface = mImage->GetAsSourceSurface();
++  gfx::SetCanvasPrivacyMetadata(surface, mCanvasPrivacyMetadata);
+   if (!surface) {
+     return nullptr;
+   }
+@@ -262,8 +265,7 @@
+     gfx::AddCanvasPixelSource(surface, gfx::CanvasPixelSource::Unknown);
+   }
+ 
+-  gfx::AddCanvasPixelSource(surface,
+-      static_cast<gfx::CanvasPixelSource>(mCanvasPixelSources));
++  gfx::SetCanvasPrivacyMetadata(surface, mCanvasPrivacyMetadata);
+   return surface.forget();
+ }
+ 
+@@ -280,7 +282,7 @@
+   }
+ 
+   mImage = nullptr;
+-  mCanvasPixelSources = static_cast<uint32_t>(gfx::CanvasPixelSource::Unknown);
++  mCanvasPrivacyMetadata = {};
+   mFrameCaptureState = FrameCaptureState::CLEAN;
+ }
+ 
+--- a/dom/canvas/OffscreenCanvas.h
++++ b/dom/canvas/OffscreenCanvas.h
+@@ -14,6 +14,7 @@
+ #include "mozilla/dom/CanvasRenderingContextHelper.h"
+ #include "mozilla/dom/ImageEncoder.h"
+ #include "mozilla/dom/OffscreenCanvasDisplayHelper.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/layers/LayersTypes.h"
+ #include "nsCycleCollectionParticipant.h"
+ 
+@@ -59,6 +60,8 @@
+   bool mNeutered;
+   bool mIsWriteOnly;
+   RefPtr<nsIPrincipal> mExpandedReader;
++  gfx::CanvasPrivacyMetadata mCanvasPrivacyPolicy;
++  bool mCanonicalCanvasBackingPolicy = false;
+ };
+ 
+ class OffscreenCanvas final : public DOMEventTargetHelper,
+@@ -94,6 +97,13 @@
+ 
+   void ClearResources();
+ 
++  // Frozen at canvas creation, before a context exists or a worker handoff.
++  const gfx::CanvasPrivacyMetadata& CanvasPrivacyPolicy() const {
++    return mCanvasPrivacyPolicy;
++  }
++  bool CanonicalCanvasBackingPolicy() const {
++    return mCanonicalCanvasBackingPolicy;
++  }
+   uint32_t Width() const { return mWidth; }
+   uint32_t Height() const { return mHeight; }
+   void SetWidth(uint32_t aWidth, ErrorResult& aRv);
+@@ -190,6 +200,9 @@
+     UpdateContext(nullptr, JS::NullHandleValue, dummy);
+   }
+ 
++  void CaptureCanvasPrivacyPolicy();
++  gfx::CanvasPrivacyMetadata mCanvasPrivacyPolicy;
++  bool mCanonicalCanvasBackingPolicy = false;
+   bool mNeutered = false;
+   bool mIsWriteOnly = false;
+ 
+--- a/dom/canvas/OffscreenCanvas.cpp
++++ b/dom/canvas/OffscreenCanvas.cpp
+@@ -7,6 +7,7 @@
+ #include "CanvasRenderingContext2D.h"
+ #include "CanvasUtils.h"
+ #include "ClientWebGLContext.h"
++#include "CloakfoxSiteSeed.hpp"
+ #include "GLContext.h"
+ #include "GLScreenBuffer.h"
+ #include "ImageBitmap.h"
+@@ -15,6 +16,7 @@
+ #include "mozilla/Atomics.h"
+ #include "mozilla/CheckedInt.h"
+ #include "mozilla/Logging.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/dom/BlobImpl.h"
+ #include "mozilla/dom/DocumentInlines.h"
+ #include "mozilla/dom/OffscreenCanvasBinding.h"
+@@ -57,7 +59,9 @@
+     : DOMEventTargetHelper(aGlobal),
+       mWidth(aWidth),
+       mHeight(aHeight),
+-      mFontVisibility(ComputeFontVisibility()) {}
++      mFontVisibility(ComputeFontVisibility()) {
++  CaptureCanvasPrivacyPolicy();
++}
+ 
+ OffscreenCanvas::OffscreenCanvas(
+     nsIGlobalObject* aGlobal, uint32_t aWidth, uint32_t aHeight,
+@@ -69,7 +73,28 @@
+       mCompositorBackendType(aCompositorBackend),
+       mDisplay(aDisplay),
+       mLang(aLang),
+-      mFontVisibility(ComputeFontVisibility()) {}
++      mFontVisibility(ComputeFontVisibility()) {
++  CaptureCanvasPrivacyPolicy();
++}
++
++void OffscreenCanvas::CaptureCanvasPrivacyPolicy() {
++  if (!StaticPrefs::cloakfox_enabled()) return;
++  nsIPrincipal* principal =
++      GetRelevantGlobal() ? GetRelevantGlobal()->PrincipalOrNull() : nullptr;
++  if (!principal || principal->IsSystemPrincipal()) return;
++  const uint32_t userContextId =
++      principal->OriginAttributesRef().mUserContextId;
++  const auto owner =
++      CloakfoxSiteSeed::OwnerKey(userContextId, GetCookieJarSettings());
++  if (!owner) return;
++  const auto config = CloakfoxSiteSeed::ExactConfig(userContextId);
++  const auto policy = config.find("canvas:canonical_2d");
++  mCanonicalCanvasBackingPolicy =
++      policy != config.end() && policy->is_boolean() && policy->get<bool>();
++  mCanvasPrivacyPolicy = {gfx::kCanvasPrivacyVersion, userContextId,
++                          (*owner)[0], (*owner)[1],
++                          uint32_t(gfx::CanvasPixelSource::Unknown)};
++}
+ 
+ OffscreenCanvas::~OffscreenCanvas() {
+   Destroy();
+@@ -387,6 +412,8 @@
+   auto cloneData = MakeUnique<OffscreenCanvasCloneData>(
+       mDisplay, mLang, mWidth, mHeight, mCompositorBackendType, mNeutered,
+       mIsWriteOnly, mExpandedReader);
++  cloneData->mCanvasPrivacyPolicy = mCanvasPrivacyPolicy;
++  cloneData->mCanonicalCanvasBackingPolicy = mCanonicalCanvasBackingPolicy;
+   SetNeutered();
+   return cloneData;
+ }
+@@ -636,6 +663,9 @@
+   RefPtr<OffscreenCanvas> wc = new OffscreenCanvas(
+       aGlobal, aData->mWidth, aData->mHeight, aData->mCompositorBackendType,
+       aData->mDisplay.forget(), aData->mLang);
++  wc->mCanvasPrivacyPolicy =
++      gfx::NormalizeCanvasPrivacyMetadata(aData->mCanvasPrivacyPolicy);
++  wc->mCanonicalCanvasBackingPolicy = aData->mCanonicalCanvasBackingPolicy;
+   if (aData->mNeutered) {
+     wc->SetNeutered();
+   }
+--- a/gfx/layers/ipc/LayersSurfaces.ipdlh
++++ b/gfx/layers/ipc/LayersSurfaces.ipdlh
+@@ -19,6 +19,7 @@
+ using mozilla::gfx::ColorSpace2 from "mozilla/gfx/Types.h";
+ using mozilla::gfx::TransferFunction from "mozilla/gfx/Types.h";
+ using mozilla::gfx::HDRMetadata from "mozilla/gfx/Types.h";
++using mozilla::gfx::CanvasPrivacyMetadata from "mozilla/gfx/CanvasPrivacy.h";
+ using mozilla::gfx::SurfaceFormat from "mozilla/gfx/Types.h";
+ using mozilla::gfx::IntRect from "mozilla/gfx/Rect.h";
+ using mozilla::gfx::IntSize from "mozilla/gfx/Point.h";
+@@ -198,6 +199,7 @@
+ [Comparable] struct SurfaceDescriptorBuffer {
+   BufferDescriptor desc;
+   MemoryOrShmem data;
++  CanvasPrivacyMetadata canvasPrivacy;
+ };
+ 
+ struct SurfaceDescriptorShared
+@@ -206,6 +208,7 @@
+   int32_t stride;
+   SurfaceFormat format;
+   ReadOnlySharedMemoryHandle handle;
++  CanvasPrivacyMetadata canvasPrivacy;
+ };
+ 
+ [Comparable] struct SurfaceDescriptorExternalImage
+--- a/gfx/ipc/GfxMessageUtils.h
++++ b/gfx/ipc/GfxMessageUtils.h
+@@ -23,6 +23,7 @@
+ #include "ipc/EnumSerializer.h"
+ #include "ipc/IPCMessageUtilsSpecializations.h"
+ #include "mozilla/EnumTypeTraits.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/CrossProcessPaint.h"
+ #include "mozilla/gfx/FileHandleWrapper.h"
+ #include "mozilla/gfx/Matrix.h"
+@@ -666,6 +667,27 @@
+   }
+ };
+ 
++// Canvas privacy wire data contains only engine-supplied provenance. Rejecting
++// ownership means conservative Unknown; it never changes origin
++// taint/authority.
++template <>
++struct ParamTraits<mozilla::gfx::CanvasPrivacyMetadata> {
++  using paramType = mozilla::gfx::CanvasPrivacyMetadata;
++  static void Write(MessageWriter* aWriter, const paramType& aParam) {
++    const auto p = mozilla::gfx::NormalizeCanvasPrivacyMetadata(aParam);
++    WriteParams(aWriter, p.version, p.userContextId, p.ownerHi, p.ownerLo,
++                p.sources);
++  }
++  static bool Read(MessageReader* aReader, paramType* aResult) {
++    paramType p;
++    if (!ReadParams(aReader, p.version, p.userContextId, p.ownerHi, p.ownerLo,
++                    p.sources))
++      return false;
++    *aResult = mozilla::gfx::NormalizeCanvasPrivacyMetadata(p);
++    return true;
++  }
++};
++
+ }  // namespace IPC
+ 
+ #endif /* GFXMESSAGEUTILS_H_ */
+--- a/gfx/layers/ImageContainer.cpp
++++ b/gfx/layers/ImageContainer.cpp
+@@ -218,6 +218,8 @@
+     return NS_ERROR_INVALID_ARG;
+   }
+ 
++  // Replacing the pixel payload must not retain an earlier descriptor's owner.
++  aSdBuffer.canvasPrivacy() = gfx::CanvasPrivacyMetadata{};
+   aStride = stride.value();
+ 
+   aSdBuffer.desc() = RGBDescriptor(aSize, aFormat, gfx::ColorSpace2::SRGB,
+@@ -273,6 +275,8 @@
+     return NS_ERROR_FAILURE;
+   }
+ 
++  aSdBuffer.canvasPrivacy() = gfx::MergeCanvasPrivacyMetadata(
++      GetCanvasPrivacyMetadata(), gfx::GetCanvasPrivacyMetadata(surface));
+   return NS_OK;
+ }
+ 
+@@ -790,6 +794,8 @@
+ nsresult PlanarYCbCrImage::BuildSurfaceDescriptorBuffer(
+     SurfaceDescriptorBuffer& aSdBuffer, BuildSdbFlags aFlags,
+     const std::function<MemoryOrShmem(uint32_t)>& aAllocate) {
++  aSdBuffer.canvasPrivacy() = GetCanvasPrivacyMetadata();
++  aSdBuffer.canvasPrivacy().sources |= uint32_t(gfx::CanvasPixelSource::Media);
+   const PlanarYCbCrData* pdata = GetData();
+   MOZ_ASSERT(pdata, "must have PlanarYCbCrData");
+   MOZ_ASSERT(pdata->mYSkip == 0 && pdata->mCbSkip == 0 && pdata->mCrSkip == 0,
+@@ -807,6 +813,8 @@
+     if (NS_WARN_IF(NS_FAILED(rv))) {
+       return rv;
+     }
++    aSdBuffer.canvasPrivacy() = GetCanvasPrivacyMetadata();
++    aSdBuffer.canvasPrivacy().sources |= uint32_t(gfx::CanvasPixelSource::Media);
+ 
+     // If we can copy directly from the surface, let's do that to avoid the YUV
+     // to RGB conversion.
+@@ -1035,6 +1043,8 @@
+     return nullptr;
+   }
+ 
++  gfx::SetCanvasPrivacyMetadata(surface, GetCanvasPrivacyMetadata());
++  gfx::AddCanvasPixelSource(surface, gfx::CanvasPixelSource::Media);
+   mSourceSurface.Set(surface);
+ 
+   return surface.forget();
+@@ -1136,6 +1146,8 @@
+     return nullptr;
+   }
+ 
++  gfx::SetCanvasPrivacyMetadata(surface, GetCanvasPrivacyMetadata());
++  gfx::AddCanvasPixelSource(surface, gfx::CanvasPixelSource::Media);
+   mSourceSurface.Set(surface);
+ 
+   return surface.forget();
+@@ -1144,6 +1156,8 @@
+ nsresult NVImage::BuildSurfaceDescriptorBuffer(
+     SurfaceDescriptorBuffer& aSdBuffer, BuildSdbFlags aFlags,
+     const std::function<MemoryOrShmem(uint32_t)>& aAllocate) {
++  aSdBuffer.canvasPrivacy() = GetCanvasPrivacyMetadata();
++  aSdBuffer.canvasPrivacy().sources |= uint32_t(gfx::CanvasPixelSource::Media);
+   // Convert the current NV12 or NV21 data to YUV420P so that we can follow the
+   // logics in PlanarYCbCrImage::GetAsSourceSurface().
+   RefPtr<gfx::DataSourceSurface> sourceSurface = mSourceSurface.Get();
+@@ -1180,6 +1194,8 @@
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return rv;
+   }
++  aSdBuffer.canvasPrivacy() = GetCanvasPrivacyMetadata();
++  aSdBuffer.canvasPrivacy().sources |= uint32_t(gfx::CanvasPixelSource::Media);
+ 
+   if (!sourceSurface) {
+     rv = gfx::ConvertYCbCrToRGB(i420.mData, format, size, output, stride);
+@@ -1261,13 +1277,17 @@
+     : Image(nullptr, ImageFormat::MOZ2D_SURFACE),
+       mSize(aSize),
+       mSourceSurface(aSourceSurface),
+-      mTextureFlags(TextureFlags::DEFAULT) {}
++      mTextureFlags(TextureFlags::DEFAULT) {
++  SetCanvasPrivacyMetadata(gfx::GetCanvasPrivacyMetadata(aSourceSurface));
++}
+ 
+ SourceSurfaceImage::SourceSurfaceImage(gfx::SourceSurface* aSourceSurface)
+     : Image(nullptr, ImageFormat::MOZ2D_SURFACE),
+       mSize(aSourceSurface->GetSize()),
+       mSourceSurface(aSourceSurface),
+-      mTextureFlags(TextureFlags::DEFAULT) {}
++      mTextureFlags(TextureFlags::DEFAULT) {
++  SetCanvasPrivacyMetadata(gfx::GetCanvasPrivacyMetadata(aSourceSurface));
++}
+ 
+ SourceSurfaceImage::~SourceSurfaceImage() {
+   NS_ReleaseOnMainThread("SourceSurfaceImage::mSourceSurface",
+--- a/gfx/layers/ipc/SharedSurfacesChild.cpp
++++ b/gfx/layers/ipc/SharedSurfacesChild.cpp
+@@ -9,6 +9,7 @@
+ #include "mozilla/PresShell.h"
+ #include "mozilla/SchedulerGroup.h"
+ #include "mozilla/StaticPrefs_image.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/layers/CompositorBridgeChild.h"
+ #include "mozilla/layers/CompositorManagerParent.h"
+ #include "mozilla/layers/IpcResourceUpdateQueue.h"
+@@ -256,7 +257,8 @@
+   manager->SendAddSharedSurface(
+       data->Id(),
+       SurfaceDescriptorShared(aSurface->GetSize(), aSurface->Stride(), format,
+-                              std::move(handle)));
++                              std::move(handle),
++                              gfx::GetCanvasPrivacyMetadata(aSurface)));
+   *aUserData = data;
+   return NS_OK;
+ }
+--- a/gfx/layers/ipc/SharedSurfacesParent.cpp
++++ b/gfx/layers/ipc/SharedSurfacesParent.cpp
+@@ -6,6 +6,7 @@
+ 
+ #include "mozilla/DebugOnly.h"
+ #include "mozilla/StaticPrefs_image.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/GPUProcessManager.h"
+ #include "mozilla/gfx/Logging.h"
+ #include "mozilla/gfx/gfxVars.h"
+@@ -259,6 +260,7 @@
+   // Note that the surface wrapper maps in the given handle as read only.
+   surface->Init(aDesc.size(), aDesc.stride(), aDesc.format(),
+                 std::move(aDesc.handle()), aPid);
++  gfx::SetCanvasPrivacyMetadata(surface, aDesc.canvasPrivacy());
+ 
+   StaticMutexAutoLock lock(sMutex);
+   if (!sInstance) {
+--- a/dom/media/ipc/RemoteImageHolder.cpp
++++ b/dom/media/ipc/RemoteImageHolder.cpp
+@@ -10,6 +10,7 @@
+ #include "mozilla/RemoteMediaManagerChild.h"
+ #include "mozilla/RemoteMediaManagerParent.h"
+ #include "mozilla/ToString.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/SourceSurfaceRawData.h"
+ #include "mozilla/gfx/Swizzle.h"
+ #include "mozilla/layers/ImageDataSerializer.h"
+@@ -146,6 +147,7 @@
+       return nullptr;
+     }
+ 
++    image->SetCanvasPrivacyMetadata(sdBuffer.canvasPrivacy());
+     return image.forget();
+   }
+ 
+@@ -185,6 +187,7 @@
+       return nullptr;
+     }
+ 
++    gfx::SetCanvasPrivacyMetadata(surface, sdBuffer.canvasPrivacy());
+     return MakeAndAddRef<SourceSurfaceImage>(descriptor.size(), surface);
+   }
+ 
+--- a/gfx/layers/ImageContainer.h
++++ b/gfx/layers/ImageContainer.h
+@@ -22,6 +22,7 @@
+ #include "mozilla/TypedEnumBits.h"
+ #include "mozilla/UniquePtr.h"
+ #include "mozilla/gfx/2D.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/Point.h"  // For IntSize
+ #include "mozilla/gfx/Rect.h"
+ #include "mozilla/gfx/Types.h"  // For ColorDepth
+@@ -109,6 +110,19 @@
+   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(Image)
+ 
+  public:
++  // Ownership travels with the image even when its platform surface is rebuilt.
++  // This record never confers origin-clean status or extraction permission.
++  gfx::CanvasPrivacyMetadata GetCanvasPrivacyMetadata() const {
++    auto metadata = mCanvasPrivacyMetadata.Lock();
++    return metadata->valueOr(gfx::CanvasPrivacyMetadata{});
++  }
++  void SetCanvasPrivacyMetadata(const gfx::CanvasPrivacyMetadata& aMetadata) {
++    auto metadata = mCanvasPrivacyMetadata.Lock();
++    *metadata =
++        Some(metadata->isSome()
++                 ? gfx::MergeCanvasPrivacyMetadata(metadata->ref(), aMetadata)
++                 : gfx::NormalizeCanvasPrivacyMetadata(aMetadata));
++  }
+   ImageFormat GetFormat() const { return mFormat; }
+   void* GetImplData() const { return mImplData; }
+ 
+@@ -214,6 +228,8 @@
+                            size_t(mozilla::layers::LayersBackend::LAYERS_LAST)>
+       mBackendData;
+ 
++  mutable DataMutex<Maybe<gfx::CanvasPrivacyMetadata>> mCanvasPrivacyMetadata{
++      "Image::mCanvasPrivacyMetadata"};
+   void* mImplData;
+   int32_t mSerial;
+   ImageFormat mFormat;
+--- a/gfx/layers/BufferTexture.cpp
++++ b/gfx/layers/BufferTexture.cpp
+@@ -476,7 +476,8 @@
+   }
+ 
+   uintptr_t ptr = reinterpret_cast<uintptr_t>(mBuffer);
+-  aOutDescriptor = SurfaceDescriptorBuffer(mDescriptor, MemoryOrShmem(ptr));
++  aOutDescriptor = SurfaceDescriptorBuffer(mDescriptor, MemoryOrShmem(ptr),
++                                           gfx::CanvasPrivacyMetadata{});
+ 
+   return true;
+ }
+@@ -567,7 +568,8 @@
+   }
+ 
+   aOutDescriptor = SurfaceDescriptorBuffer(
+-      mDescriptor, MemoryOrShmem(mShmemHolder->GetShmem()));
++      mDescriptor, MemoryOrShmem(mShmemHolder->GetShmem()),
++      gfx::CanvasPrivacyMetadata{});
+ 
+   return true;
+ }
+--- a/dom/media/ipc/RemoteMediaManagerChild.cpp
++++ b/dom/media/ipc/RemoteMediaManagerChild.cpp
+@@ -24,6 +24,7 @@
+ #include "mozilla/SyncRunnable.h"
+ #include "mozilla/dom/ContentChild.h"  // for launching RDD w/ ContentChild
+ #include "mozilla/gfx/2D.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/DataSurfaceHelpers.h"
+ #include "mozilla/ipc/BackgroundChild.h"
+ #include "mozilla/ipc/Endpoint.h"
+@@ -1058,8 +1059,11 @@
+     return nullptr;
+   }
+ 
+-  return gfx::Factory::CreateWrappingDataSourceSurface(
+-      shmem.get<uint8_t>(), *stride, rgb.size(), rgb.format());
++  RefPtr<gfx::DataSourceSurface> surface =
++      gfx::Factory::CreateWrappingDataSourceSurface(
++          shmem.get<uint8_t>(), *stride, rgb.size(), rgb.format());
++  gfx::SetCanvasPrivacyMetadata(surface, sdb.canvasPrivacy());
++  return surface.forget();
+ }
+ 
+ static void DestroySurfaceDescriptor(ipc::IShmemAllocator* aAllocator,

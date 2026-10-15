@@ -1,0 +1,22 @@
+# MPL-2.0. Separate directory keeps HEVC object basenames distinct.
+SOURCES += [
+    'cabac.c',
+    'data.c',
+    'dsp.c',
+    'filter.c',
+    'hevcdec.c',
+    'mvs.c',
+    'parse.c',
+    'pred.c',
+    'ps.c',
+    'refs.c',
+    'sei.c',
+]
+for canonical_source in SOURCES:
+    SOURCES[canonical_source].flags += [
+        '-include', TOPSRCDIR + '/media/ffvpx/canonical_codec_config.h',
+        '-ffp-contract=off',
+    ]
+LOCAL_INCLUDES += ['/media/ffvpx/libavcodec']
+FINAL_LIBRARY = 'mozavcodec'
+include('/media/ffvpx/ffvpxcommon.mozbuild')

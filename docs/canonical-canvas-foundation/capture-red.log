@@ -1,0 +1,15 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ CanonicalBacking.test_unused_context_captures_exact_owner_and_freezes_policy _
+
+self = <test_canvas_canonical_backing.CanonicalBacking testMethod=test_unused_context_captures_exact_owner_and_freezes_policy>
+
+    def test_unused_context_captures_exact_owner_and_freezes_policy(self):
+     s=NATIVE.read_text();name='void CanvasRenderingContext2D::CaptureCanonicalCanvasPolicy()'
+>    self.assertTrue(name in s,'creation capture not implemented')
+E    AssertionError: False is not true : creation capture not implemented
+
+tests/fingerprint/test_canvas_canonical_backing.py:81: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_canonical_backing.py::CanonicalBacking::test_unused_context_captures_exact_owner_and_freezes_policy
+1 failed in 0.05s

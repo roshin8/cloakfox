@@ -1,0 +1,45 @@
+{
+  "checks": [
+    {
+      "pass": true,
+      "name": "owner-transfer corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "source authored pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "same top-level site preserves transferred producer ownership"
+    },
+    {
+      "pass": false,
+      "name": "different top-level site cannot borrow transferred owner proof"
+    }
+  ],
+  "runtime": {
+    "buildID": "20261015144358",
+    "version": "158.0-beta.26"
+  },
+  "result": {
+    "foreign": {
+      "id": "foreign",
+      "messageError": true
+    },
+    "same": {
+      "id": "same",
+      "pixels": [
+        128,
+        112,
+        96,
+        255
+      ]
+    },
+    "source": [
+      128,
+      112,
+      96,
+      255
+    ]
+  }
+}

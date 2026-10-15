@@ -1,0 +1,75 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.0, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox
+collected 111 items
+
+tests/fingerprint/test_avif_planar_skips.py .                            [  0%]
+tests/fingerprint/test_bitmap_data_policy.py .                           [  1%]
+tests/fingerprint/test_camoufox_followup.py ......                       [  7%]
+tests/fingerprint/test_canonical_font_policy.py .                        [  8%]
+tests/fingerprint/test_canonical_gpu_manifest.py ....                    [ 11%]
+tests/fingerprint/test_canonical_raster_producer.py ...                  [ 14%]
+tests/fingerprint/test_canvas_canonical_backing.py ...                   [ 17%]
+tests/fingerprint/test_canvas_canonical_gpu_backend.py ............      [ 27%]
+tests/fingerprint/test_canvas_canonical_media.py ......                  [ 33%]
+tests/fingerprint/test_canvas_canonical_text.py .                        [ 34%]
+tests/fingerprint/test_canvas_canonical_webgpu_backend.py .......        [ 40%]
+tests/fingerprint/test_canvas_capture_fallback.py .                      [ 41%]
+tests/fingerprint/test_canvas_capture_metadata.py .                      [ 42%]
+tests/fingerprint/test_canvas_extraction_policy.py ..                    [ 44%]
+tests/fingerprint/test_canvas_first_glyph_fallback.py .                  [ 45%]
+tests/fingerprint/test_canvas_frozen_owner.py .                          [ 45%]
+tests/fingerprint/test_canvas_gpu_boundary.py .                          [ 46%]
+tests/fingerprint/test_canvas_gpu_import_records.py .                    [ 47%]
+tests/fingerprint/test_canvas_image_color.py .                           [ 48%]
+tests/fingerprint/test_canvas_import_owner.py .                          [ 49%]
+tests/fingerprint/test_canvas_pixel_provenance.py ..                     [ 51%]
+tests/fingerprint/test_canvas_producer_audit.py .                        [ 52%]
+tests/fingerprint/test_canvas_render_privacy.py ...                      [ 54%]
+tests/fingerprint/test_canvas_scale_metadata.py .                        [ 55%]
+tests/fingerprint/test_cpp_first_worker_cache.py .                       [ 56%]
+tests/fingerprint/test_font_resource_staging.py .                        [ 57%]
+tests/fingerprint/test_graphics_native_noise.py ...                      [ 60%]
+tests/fingerprint/test_h2_profile.py ssss                                [ 63%]
+tests/fingerprint/test_h3_profile.py sssss                               [ 68%]
+tests/fingerprint/test_hover_retention.py .                              [ 69%]
+tests/fingerprint/test_library_fixture_safety.py .....                   [ 73%]
+tests/fingerprint/test_math_constants.py ssss                            [ 77%]
+tests/fingerprint/test_offscreen_font_owner.py .                         [ 78%]
+tests/fingerprint/test_sec_ch_ua.py s                                    [ 79%]
+tests/fingerprint/test_stage_canonical_gpu.py ..                         [ 81%]
+tests/fingerprint/test_svg_renderer_policy.py .                          [ 81%]
+tests/fingerprint/test_timing_native.py ..                               [ 83%]
+tests/fingerprint/test_turn_proxy_routes.py ..                           [ 85%]
+tests/fingerprint/test_upstream_hardening.py ...F.                       [ 90%]
+tests/fingerprint/test_webgl_async_readback.py ..                        [ 91%]
+tests/fingerprint/test_webgl_backend_profile.py ......                   [ 97%]
+tests/fingerprint/test_webgl_capacity_bounds.py .                        [ 98%]
+tests/fingerprint/test_webgl_extension_support.py .                      [ 99%]
+tests/fingerprint/test_worker_math_site_cache.py .                       [100%]
+
+=================================== FAILURES ===================================
+_ UpstreamHardening.test_glyph_noise_preserves_shaping_offsets_in_both_directions _
+
+self = <test_upstream_hardening.UpstreamHardening testMethod=test_glyph_noise_preserves_shaping_offsets_in_both_directions>
+
+    def test_glyph_noise_preserves_shaping_offsets_in_both_directions(self):
+        source = (SRC / "gfx/thebes/gfxHarfBuzzShaper.cpp").read_text()
+>       body = block(source[source.index("hb_shape(mHBFont"):], "if (seed != 0)")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/fingerprint/test_upstream_hardening.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+source = 'hb_shape(mHBFont, mBuffer, features.Elements(), features.Length());\n\n  // Resolve seed from manager using user cont...sClusterStart(), false);\n    }\n\n    glyphStart = glyphEnd;\n    charStart = charEnd;\n  }\n\n  return NS_OK;\n}\n\n'
+marker = 'if (seed != 0)'
+
+    def block(source, marker):
+>       start = source.index(marker)
+                ^^^^^^^^^^^^^^^^^^^^
+E       ValueError: substring not found
+
+tests/fingerprint/test_upstream_hardening.py:17: ValueError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_upstream_hardening.py::UpstreamHardening::test_glyph_noise_preserves_shaping_offsets_in_both_directions
+================== 1 failed, 96 passed, 14 skipped in 43.41s ===================

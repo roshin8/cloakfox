@@ -1,0 +1,34 @@
+✖ settings headline describes the active compatible profile without losing saved identity (3.4ms)
+✔ opt-ins default off and reject malformed pref types (2.018333ms)
+✔ authoritative flags override stale unknown overrides independently (0.578209ms)
+✔ backfill changes only owned fields, preserves identities, skips bad configs and is idempotent (0.7675ms)
+✔ startup and each opt-in notification synchronize persisted overlays (0.541625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 105.506
+
+✖ failing tests:
+
+test at tests/fingerprint/test_graphics_optins.mjs:12:1
+✖ settings headline describes the active compatible profile without losing saved identity (3.4ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /WebGL compatible profile/. Input:
+  
+  'Windows · ?×?@?x · ?-core · Saved NVIDIA renderer'
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_graphics_optins.mjs:19:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Windows · ?×?@?x · ?-core · Saved NVIDIA renderer',
+    expected: /WebGL compatible profile/,
+    operator: 'match',
+    diff: 'simple'
+  }

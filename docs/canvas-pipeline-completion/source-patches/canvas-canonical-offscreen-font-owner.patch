@@ -1,0 +1,60 @@
+--- a/dom/canvas/OffscreenCanvas.h
++++ b/dom/canvas/OffscreenCanvas.h
+@@ -62,6 +62,7 @@
+   RefPtr<nsIPrincipal> mExpandedReader;
+   gfx::CanvasPrivacyMetadata mCanvasPrivacyPolicy;
+   bool mCanonicalCanvasBackingPolicy = false;
++  Maybe<uint64_t> mCloakfoxFontIdentity;
+ };
+ 
+ class OffscreenCanvas final : public DOMEventTargetHelper,
+@@ -76,6 +77,9 @@
+   IMPL_EVENT_HANDLER(contextrestored);
+ 
+   FONT_VISIBILITY_PROVIDER_IMPL
++  Maybe<uint64_t> GetCloakfoxFontIdentity() const override {
++    return mCloakfoxFontIdentity;
++  }
+ 
+   OffscreenCanvas(nsIGlobalObject* aGlobal, uint32_t aWidth, uint32_t aHeight);
+ 
+@@ -203,6 +207,7 @@
+   void CaptureCanvasPrivacyPolicy();
+   gfx::CanvasPrivacyMetadata mCanvasPrivacyPolicy;
+   bool mCanonicalCanvasBackingPolicy = false;
++  Maybe<uint64_t> mCloakfoxFontIdentity;
+   bool mNeutered = false;
+   bool mIsWriteOnly = false;
+ 
+--- a/dom/canvas/OffscreenCanvas.cpp
++++ b/dom/canvas/OffscreenCanvas.cpp
+@@ -84,6 +84,13 @@
+   if (!principal || principal->IsSystemPrincipal()) return;
+   const uint32_t userContextId =
+       principal->OriginAttributesRef().mUserContextId;
++  // Font selection must use the sending canvas owner even if an unused
++  // OffscreenCanvas crosses workers before any text context is requested.
++  // This is the same derivation used by nsPresContext for HTML/SVG fonts.
++  auto* settings = GetCookieJarSettings();
++  const uint32_t fontSeed = CloakfoxSiteSeed::Derive(
++      userContextId, "fonts:spacing_seed", settings);
++  mCloakfoxFontIdentity = Some((uint64_t(userContextId) << 32) | fontSeed);
+   // Freeze the requested renderer before config/owner readiness. Missing
+   // ownership keeps provenance unknown; it must never select a host renderer.
+   mCanonicalCanvasBackingPolicy =
+@@ -414,6 +421,7 @@
+       mIsWriteOnly, mExpandedReader);
+   cloneData->mCanvasPrivacyPolicy = mCanvasPrivacyPolicy;
+   cloneData->mCanonicalCanvasBackingPolicy = mCanonicalCanvasBackingPolicy;
++  cloneData->mCloakfoxFontIdentity = mCloakfoxFontIdentity;
+   SetNeutered();
+   return cloneData;
+ }
+@@ -666,6 +674,7 @@
+   wc->mCanvasPrivacyPolicy =
+       gfx::NormalizeCanvasPrivacyMetadata(aData->mCanvasPrivacyPolicy);
+   wc->mCanonicalCanvasBackingPolicy = aData->mCanonicalCanvasBackingPolicy;
++  wc->mCloakfoxFontIdentity = aData->mCloakfoxFontIdentity;
+   if (aData->mNeutered) {
+     wc->SetNeutered();
+   }

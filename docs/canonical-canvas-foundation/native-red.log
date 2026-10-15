@@ -1,0 +1,15 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ CanonicalBacking.test_creation_gates_and_allocation_cannot_fall_back _____
+
+self = <test_canvas_canonical_backing.CanonicalBacking testMethod=test_creation_gates_and_allocation_cannot_fall_back>
+
+    def test_creation_gates_and_allocation_cannot_fall_back(self):
+     s=(ROOT/'firefox-src/dom/canvas/CanvasRenderingContext2D.cpp').read_text()
+>    self.assertIn('// Cloakfox canonical policy.',s,'canonical policy not implemented')
+E    AssertionError: '// Cloakfox canonical policy.' not found in '#include "CloakfoxSiteSeed.hpp"\n/* This Source Code Form is subject to the terms of the Mozilla Public\n * License, v. 2.0. If a copy of the MPL was not distributed with this\n * file, You can obtain one at http://mozilla.org/MPL/2.0/. */\n\n#include "CanvasRenderingContext2D.h"\n\n#include <algorithm>\n#include <numbers>\n\n#include "MaskConfig.hpp"\n#include "CanvasImageCache.h"\n#include "CanvasFingerprintManager.h"\n#include "nsPIDOMWindow.h"\n#include "mozilla/dom/WorkerPrivate.h"\n#include "mozilla/dom/WorkerScope.h"\n#include "CanvasUtils.h"\n#include "GeckoBindings.h"\n#include "ImageEncoder.h"\n#include "ImageRegion.h"\n#include "LayerUserData.h"\n#include "PseudoStyleType.h"\n#include "Units.h"\n#include "WindowR [source dump omitted]
+
+tests/fingerprint/test_canvas_canonical_backing.py:8: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_canonical_backing.py::CanonicalBacking::test_creation_gates_and_allocation_cannot_fall_back
+1 failed in 0.04s

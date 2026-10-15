@@ -1,0 +1,145 @@
+"""Compile actual capacity policy helpers against scalar, enum and array cases."""
+import pathlib
+import re
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
+class CapacityBounds(unittest.TestCase):
+    def test_configured_capacities_cannot_exceed_backend(self):
+        compiler = shutil.which('clang++') or shutil.which('g++')
+        native = ROOT / 'firefox-src/dom/canvas/ClientWebGLContext.cpp'
+        if not compiler or not native.exists():
+            self.skipTest('compiler and applied Firefox source required')
+        source = native.read_text()
+        start = source.find('// Cloakfox backend capacity policy.')
+        end = source.find('void ClientWebGLContext::GetParameter(', max(start, 0))
+        functions = source[start:end] if start >= 0 else ''
+        branch_start = source.find('  // A paired override also constrains')
+        if branch_start < 0:
+            branch_start=source.index('  if (data.has_value() && CloakfoxIsUpperBoundCapacity(pname))')
+        branch_end = source.index('  if (data.has_value()) {', branch_start)
+        branch = source[branch_start:branch_end]
+        names = set(re.findall(r'LOCAL_GL_[A-Z0-9_]+', functions + branch))
+        names.update(['LOCAL_GL_MAX_TEXTURE_SIZE','LOCAL_GL_MAX_SAMPLES','LOCAL_GL_MAX_VIEWPORT_DIMS',
+                      'LOCAL_GL_MIN_PROGRAM_TEXEL_OFFSET','LOCAL_GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT',
+                      'LOCAL_GL_COLOR_CLEAR_VALUE','LOCAL_GL_VIEWPORT'])
+        constants = (ROOT / 'firefox-src/gfx/gl/GLConsts.h').read_text()
+        defines = '\n'.join(line for line in constants.splitlines()
+                            if any(line.startswith('#define '+name+' ') for name in names))
+        harness = '#include <algorithm>\n#include <cmath>\n#include <cassert>\n#include <limits>\n#include <optional>\n#include <variant>\n#include <map>\n#include <string>\n#include <cstdint>\n#include <array>\n#include \"'+str(ROOT / 'additions/cloakcfg/json.hpp')+'\"\nusing GLenum=unsigned int;\n'+defines+'\n'+r'''
+template<class T> using Maybe = std::optional<T>;
+template<class T> Maybe<T> Some(T value) { return value; }
+namespace MaskConfig {
+using Value = std::variant<int64_t,bool,double,std::string,std::nullptr_t>;
+std::map<std::pair<GLenum,bool>,Value> values;
+std::map<std::pair<GLenum,bool>,nlohmann::json> pairs;
+std::optional<nlohmann::json> GetNested(const char* table,const std::string& key) {
+ auto found=pairs.find({static_cast<GLenum>(std::stoul(key)),std::string(table)=="webGl2:parameters"});
+ if(found==pairs.end())return std::nullopt;return found->second;
+}
+std::optional<Value> GLParam(GLenum pname, bool gl2) {
+ const auto found = values.find({pname,gl2});
+ if(found==values.end())return std::nullopt;
+ return found->second;
+}
+}
+''' + r'''
+auto CloakfoxWebGLNested(uint32_t,const char* table,const std::string& key) {return MaskConfig::GetNested(table,key);}
+auto CloakfoxGLParam(uint32_t,GLenum pname,bool gl2) {return MaskConfig::GLParam(pname,gl2);}
+''' +functions+r'''
+struct Context {
+ bool mIsWebGL2 = true;
+ uint32_t GetUserContextId()const{return 0;}
+ struct Caps { unsigned maxTex2dSize=8192,maxTexCubeSize=8192,maxVertexAttribs=16,
+  maxTexUnits=32,maxTex3dSize=2048,maxTexArrayLayers=256,maxUniformBufferBindings=24,
+  maxColorDrawBuffers=8,maxMultiviewLayers=2; } limits;
+ std::map<GLenum,double> backing;
+ struct Result { std::optional<double> value; void setNumber(double v) {value=v;} } retval;
+ Maybe<double> GetNumber(GLenum pname) {
+  // A GL1 request for a GL2-only companion would have queued INVALID_ENUM.
+  if(!mIsWebGL2) assert(pname!=LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS &&
+    pname!=LOCAL_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS && pname!=LOCAL_GL_MAX_FRAGMENT_INPUT_COMPONENTS);
+  auto found=backing.find(pname);if(found==backing.end())return {};return found->second;
+ }
+ void query(GLenum pname) {
+  retval.value.reset();auto data=MaskConfig::GLParam(pname,mIsWebGL2);bool fromTable=true;
+'''+branch+r'''
+ }
+};
+''' + r'''
+int main() {
+ assert(CloakfoxIsUpperBoundCapacity(LOCAL_GL_MAX_TEXTURE_SIZE));
+ assert(CloakfoxIsUpperBoundCapacity(LOCAL_GL_MAX_SAMPLES));
+ assert(!CloakfoxIsUpperBoundCapacity(LOCAL_GL_MIN_PROGRAM_TEXEL_OFFSET));
+ assert(!CloakfoxIsUpperBoundCapacity(LOCAL_GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT));
+ assert(!CloakfoxIsUpperBoundCapacity(LOCAL_GL_COLOR_CLEAR_VALUE));
+ assert(!CloakfoxIsUpperBoundCapacity(LOCAL_GL_VIEWPORT));
+ assert(CloakfoxBoundCapacity(8192,16384)==8192);
+ assert(CloakfoxBoundCapacity(16384,8192)==8192);
+ assert(CloakfoxBoundCapacity(4,8)==4);
+ assert(CloakfoxBoundCapacity(8,4)==4);
+ assert(CloakfoxBoundCapacity(8192,-1)==8192);
+ assert(CloakfoxBoundCapacity(8192,1.5)==8192);
+ assert(CloakfoxBoundCapacity(8192,std::numeric_limits<double>::infinity())==8192);
+ assert(CloakfoxBoundCapacity(8192,std::numeric_limits<double>::quiet_NaN())==8192);
+ // The same clamp runs per viewport dimension; it never increases a backing cap.
+ assert(CloakfoxBoundCapacity(16384,32768)==16384);
+ auto pair=[](nlohmann::json value,bool integer=true){
+   MaskConfig::pairs[{LOCAL_GL_MAX_VIEWPORT_DIMS,true}]=value;
+   return CloakfoxConfiguredPair(LOCAL_GL_MAX_VIEWPORT_DIMS,true,integer,0);
+ };
+ assert(!pair(16384));
+ assert(!pair({100,-1}));
+ assert(!pair({100,1.5}));
+ assert(!pair({100,"wrong"}));
+ assert(!pair({100}));
+ assert(pair({32768,32768}));
+ const auto bounded=CloakfoxBoundRange({1,64},{1,1024});
+ assert(bounded[0]==1 && bounded[1]==64);
+ const auto narrowed=CloakfoxBoundRange({1,64},{2,32});
+ assert(narrowed[0]==2 && narrowed[1]==32);
+ const auto empty=CloakfoxBoundRange({1,64},{128,1024});
+ assert(empty[0]==1 && empty[1]==64);
+ const auto reversed=CloakfoxBoundRange({1,64},{32,2});
+ assert(reversed[0]==1 && reversed[1]==64);
+ Context ctx;
+ ctx.backing={{LOCAL_GL_MAX_SAMPLES,4},{LOCAL_GL_MAX_RENDERBUFFER_SIZE,8192},
+  {LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS,1024},{LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS,4096}};
+ auto set=[](GLenum p,double v,bool gl2=true){MaskConfig::values[{p,gl2}]=v;};
+ set(LOCAL_GL_MAX_TEXTURE_SIZE,16384);ctx.query(LOCAL_GL_MAX_TEXTURE_SIZE);assert(*ctx.retval.value==8192);
+ set(LOCAL_GL_MAX_TEXTURE_SIZE,4096);ctx.query(LOCAL_GL_MAX_TEXTURE_SIZE);assert(*ctx.retval.value==4096);
+ set(LOCAL_GL_MAX_TEXTURE_SIZE,1.5);ctx.query(LOCAL_GL_MAX_TEXTURE_SIZE);assert(*ctx.retval.value==8192);
+ MaskConfig::values[{LOCAL_GL_MAX_TEXTURE_SIZE,true}]=std::string("wrong type");
+ ctx.query(LOCAL_GL_MAX_TEXTURE_SIZE);assert(*ctx.retval.value==8192);
+ set(LOCAL_GL_MAX_SAMPLES,8);ctx.query(LOCAL_GL_MAX_SAMPLES);assert(*ctx.retval.value==4);
+ set(LOCAL_GL_MAX_RENDERBUFFER_SIZE,16384);ctx.query(LOCAL_GL_MAX_RENDERBUFFER_SIZE);assert(*ctx.retval.value==8192);
+ set(LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS,4095);set(LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS,1024);
+ ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS);assert(*ctx.retval.value==4092);
+ ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS);assert(*ctx.retval.value==1023);
+ ctx.backing[LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS]=2048;
+ ctx.backing[LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS]=512;
+ ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS);assert(*ctx.retval.value==2048);
+ ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS);assert(*ctx.retval.value==512);
+ ctx.mIsWebGL2=false;set(LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS,1024,false);
+ ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS);assert(*ctx.retval.value==512);
+ MaskConfig::values.clear();ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS);assert(!ctx.retval.value);
+ ctx.mIsWebGL2=true;
+ set(LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS,13);
+ ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS);assert(*ctx.retval.value==52);
+ MaskConfig::values.clear();set(LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS,51);
+ ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS);assert(*ctx.retval.value==12);
+ ctx.query(LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS);assert(*ctx.retval.value==48);
+}
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            cpp = pathlib.Path(directory)/'capacity.cpp';cpp.write_text(harness)
+            binary = pathlib.Path(directory)/'capacity'
+            compiled = subprocess.run([compiler,'-std=c++17',str(cpp),'-o',str(binary)],capture_output=True,text=True)
+            self.assertEqual(compiled.returncode,0,compiled.stderr)
+            result = subprocess.run([str(binary)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)

@@ -1,0 +1,84 @@
+{
+  "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+  "checks": [
+    {
+      "pass": true,
+      "name": "native corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "legacy corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "canonical corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "canonical-repeat corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "html known-fill inversion does not recover native glyph raster"
+    },
+    {
+      "pass": true,
+      "name": "html repeated reads stable"
+    },
+    {
+      "pass": true,
+      "name": "html canonical reload stable"
+    },
+    {
+      "pass": true,
+      "name": "offscreen known-fill inversion does not recover native glyph raster"
+    },
+    {
+      "pass": true,
+      "name": "offscreen repeated reads stable"
+    },
+    {
+      "pass": true,
+      "name": "offscreen canonical reload stable"
+    },
+    {
+      "pass": true,
+      "name": "worker known-fill inversion does not recover native glyph raster"
+    },
+    {
+      "pass": true,
+      "name": "worker repeated reads stable"
+    },
+    {
+      "pass": true,
+      "name": "worker canonical reload stable"
+    },
+    {
+      "pass": true,
+      "name": "canonical font corpus agrees across realms"
+    }
+  ],
+  "scope": "installed macOS only; no cross-host assertion",
+  "runtime": {
+    "buildID": "20261015154131",
+    "version": "158.0-beta.26"
+  },
+  "recovery": {
+    "html": {
+      "nativeGlyphMismatches": 10925,
+      "channels": 98304,
+      "canonicalSHA256": "2f8d687d14aef8af44e98bb21011ef31850347b9b514ded093ef71bc45f11899"
+    },
+    "offscreen": {
+      "nativeGlyphMismatches": 10925,
+      "channels": 98304,
+      "canonicalSHA256": "2f8d687d14aef8af44e98bb21011ef31850347b9b514ded093ef71bc45f11899"
+    },
+    "worker": {
+      "nativeGlyphMismatches": 10925,
+      "channels": 98304,
+      "canonicalSHA256": "2f8d687d14aef8af44e98bb21011ef31850347b9b514ded093ef71bc45f11899"
+    }
+  },
+  "errors": {}
+}

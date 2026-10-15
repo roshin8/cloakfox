@@ -1,0 +1,18 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______ test_actual_strip_policy_uses_original_source_for_pinned_libraries ______
+
+    def test_actual_strip_policy_uses_original_source_for_pinned_libraries():
+     p=ROOT/'firefox-src/python/mozbuild/mozpack/executables.py';tree=ast.parse(p.read_text());node=next(n for n in tree.body if isinstance(n,ast.FunctionDef)and n.name=='may_strip');module=ast.Module(body=[node],type_ignores=[])
+     old=sys.modules.get('buildconfig');sys.modules['buildconfig']=types.SimpleNamespace(substs={'PKG_STRIP':True})
+     try:
+      env={'os':__import__('os')};exec(compile(module,str(p),'exec'),env);policy=env['may_strip']
+      for name in ['libEGL_cloakfox_canonical.dylib','libGLESv2_cloakfox_canonical.dylib','libvk_swiftshader.dylib']:
+>      assert not policy('/verified/app/Contents/Resources/canonical-gpu/'+name)
+E      AssertionError: assert not True
+E       +  where True = <function may_strip at 0x1069fbce0>(('/verified/app/Contents/Resources/canonical-gpu/' + 'libEGL_cloakfox_canonical.dylib'))
+
+tests/fingerprint/test_canonical_gpu_packager.py:11: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canonical_gpu_packager.py::test_actual_strip_policy_uses_original_source_for_pinned_libraries
+1 failed in 0.03s

@@ -105,6 +105,7 @@ def main():
     try:
         with tempfile.TemporaryDirectory(prefix='cloakfox-graphics-') as temp:
             options=Options();options.binary_location=os.environ['CLOAKFOX_BIN'];options.add_argument('-headless')
+            options.set_preference('cloakfox.experimental.canvas_pipeline',os.environ.get('CLOAKFOX_TEST_CANVAS_PIPELINE','0')=='1')
             options.add_argument('-profile');options.add_argument(temp);options.add_argument('-purgecaches')
             Path(temp,'user.js').write_text('user_pref("cloakfox.enabled",true);\n')
             d=webdriver.Firefox(options=options,service=Service(service_args=['--allow-system-access'],log_output=temp+'/gecko.log'))

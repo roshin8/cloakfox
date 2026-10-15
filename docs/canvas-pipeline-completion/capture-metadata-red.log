@@ -1,0 +1,133 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ CaptureMetadata.test_native_capture_copy_retains_owner_before_image_wrapper __
+
+self = <test_canvas_capture_metadata.CaptureMetadata testMethod=test_native_capture_copy_retains_owner_before_image_wrapper>
+
+     def test_native_capture_copy_retains_owner_before_image_wrapper(self):
+      s=(ROOT/'firefox-src/dom/html/HTMLCanvasElement.cpp').read_text();a=s.index('  static already_AddRefed<DataSourceSurface> CopySurface(');b=s.index('  void SetReturnPlaceholderData(',a);copy=s[a:b]
+      implementation='\n'.join(x for x in (ROOT/'firefox-src/gfx/2d/CanvasPrivacy.cpp').read_text().splitlines() if not x.startswith('#include'))
+      harness=r'''
+    #include <cassert>
+    #include <cstdint>
+    #include <cstring>
+    #include <map>
+    #include <mutex>
+    #include <vector>
+    #include "CanvasPrivacy.h"
+    #define MOZ_ASSERT assert
+    namespace mozilla{using StaticMutex=std::mutex;using StaticMutexAutoLock=std::lock_guard<std::mutex>;}
+    template<class T>class RefPtr{T*p=nullptr;public:RefPtr(){}RefPtr(T*a):p(a){}T*operator->()const{return p;}operator T*()const{return p;}T*forget(){auto*r=p;p=nullptr;return r;}};
+    template<class T>using already_AddRefed=T*;
+    namespace mozilla::gfx{
+    struct UserDataKey{};struct Size{int width=2,height=2;bool operator==(const Size&o)const{return width==o.width&&height==o.height;}};
+    class SourceSurface{std::map<UserDataKey*,std::pair<void*,void(*)(void*)>>data;
+    public:std::vector<uint8_t>bytes=std::vector<uint8_t>(16,87);Size size;int stride=8,format=4;enum MapType{READ,WRITE};
+     ~SourceSurface(){for(auto&v:data)v.second.second(v.second.first);}
+     void*GetUserData(UserDataKey*k)const{auto i=data.find(k);return i==data.end()?nullptr:i->second.first;}
+     void AddUserData(UserDataKey*k,void*v,void(*d)(void*)){assert(!data.count(k));data[k]={v,d};}
+     SourceSurface*GetDataSurface(){return this;}Size GetSize(){return size;}int GetFormat(){return format;}int GetStride(){return stride;}
+     struct ScopedMap{SourceSurface*s;ScopedMap(RefPtr<SourceSurface>a,MapType):s(a){}bool IsMapped(){return true;}int GetStride(){return s->stride;}uint8_t*GetData(){return s->bytes.data();}};
+    };
+    using DataSourceSurface=SourceSurface;
+    struct Factory{static SourceSurface*CreateDataSourceSurfaceWithStride(Size s,int f,int stride){auto*p=new SourceSurface;p->size=s;p->format=f;p->stride=stride;return p;}};
+    }
+    '''+implementation+r'''
+    using namespace mozilla::gfx;
+    namespace gfx=mozilla::gfx;
+    void GeneratePlaceholderCanvasData(size_t n,uint8_t*p){memset(p,0x5a,n);}
+    '''+copy+r'''
+    int main(){
+     SourceSurface source;CanvasPrivacyMetadata owner{1,7,19,23,2};SetCanvasPrivacyMetadata(&source,owner);
+     RefPtr<SourceSurface> src(&source);auto*copied=CopySurface(src,false);assert(copied&&copied->bytes==source.bytes);assert(GetCanvasPrivacyMetadata(copied)==owner);
+     auto*placeholder=CopySurface(src,true);assert(GetCanvasPrivacyMetadata(placeholder).version==0);assert(placeholder->bytes[0]==0x5a);
+     SourceSurface native;RefPtr<SourceSurface> n(&native);auto*unknown=CopySurface(n,false);assert(GetCanvasPrivacyMetadata(unknown).version==0);
+     delete copied;delete placeholder;delete unknown;
+    }
+    '''
+      with tempfile.TemporaryDirectory()as d:
+>      p=Path(d)/'capture.cpp';p.write_text(harness);exe=Path(d)/'capture';subprocess.run(['c++','-std=c++17','-I',str(ROOT/'firefox-src/gfx/2d'),str(p),'-o',str(exe)],check=True);subprocess.run([str(exe)],check=True)
+                                                                                                                                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/fingerprint/test_canvas_capture_metadata.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = False, timeout = None, check = True
+popenargs = (['/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmpkfgtq1c0/capture'],)
+kwargs = {}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout is given, and the process takes too long, a TimeoutExpired
+        exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmpkfgtq1c0/capture']' died with <Signals.SIGABRT: 6>.
+
+/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/subprocess.py:571: CalledProcessError
+----------------------------- Captured stderr call -----------------------------
+Assertion failed: (GetCanvasPrivacyMetadata(copied)==owner), function main, file capture.cpp, line 157.
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_capture_metadata.py::CaptureMetadata::test_native_capture_copy_retains_owner_before_image_wrapper
+1 failed in 0.83s

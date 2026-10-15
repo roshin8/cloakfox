@@ -583,7 +583,9 @@ function updateHeadline(cfg, seedB64) {
   const density = cfg["window.devicePixelRatio"];
   const dpr = typeof density === "number" ? Number(density.toFixed(2)) : "?";
   const hwc = cfg["navigator.hardwareConcurrency"] ?? "?";
-  const renderer = (cfg["webGl:renderer"] || "?").slice(0, 50);
+  const renderer = cfg["webGl:backend_profile"] === true
+    ? "WebGL compatible profile"
+    : (cfg["webGl:renderer"] || "?").slice(0, 50);
   const tag = shortSeedTag(seedB64);
   el.textContent = `${platform} · ${w}×${h}@${dpr}x · ${hwc}-core · ${renderer}${tag ? "  " + tag : ""}`;
 }
@@ -1037,8 +1039,26 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("change", () => {
       Services.prefs.setBoolPref(pref, el.checked);
       if (pref === "cloakfox.compat.screen_management") updateChromiumCompatibility();
+      if (pref === "cloakfox.opt.gpu_backend_profiles") {
+        const ucid = parseInt(selectEl.value, 10) || 0;
+        updateHeadline(getCloakCfg(ucid), Services.prefs.getStringPref(masterSeedPref(ucid), ""));
+      }
     });
   }
+  const canonicalRenderer = document.querySelector('input[data-pref="cloakfox.experimental.canvas_pipeline"]');
+  const syncCanonicalDependencies = () => {
+    const full = canonicalRenderer.checked;
+    for (const pref of ["cloakfox.opt.gpu_backend_profiles", "cloakfox.opt.webgl_typed_readback_disabled"]) {
+      const control = document.querySelector(`input[data-pref="${pref}"]`);
+      control.disabled = full;
+      control.checked = full || Services.prefs.getBoolPref(pref, false);
+    }
+    const ucid = parseInt(selectEl.value, 10) || 0;
+    updateHeadline(getCloakCfg(ucid), Services.prefs.getStringPref(masterSeedPref(ucid), ""));
+  };
+  canonicalRenderer.addEventListener("change", syncCanonicalDependencies);
+  syncCanonicalDependencies();
+
   initAppearanceControls().catch(error => {
     document.getElementById("cfx-appearance-status").textContent = `Could not read application appearance: ${error.message}`;
   });

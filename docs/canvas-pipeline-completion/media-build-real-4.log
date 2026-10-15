@@ -1,0 +1,70 @@
+ 0:00.60 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.60 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.75 Clobber not needed.
+ 0:00.82 /usr/bin/make -C media/ffvpx -j8 -s
+ 0:01.73 W 2 warnings generated.
+ 0:01.73 ./buildid.h.stub
+ 0:01.74 ./source-repo.h.stub
+ 0:02.26 media/ffvpx/libavutil/libmozavutil.dylib
+ 0:02.38 ./application.ini.stub
+ 0:02.84 W 2 warnings generated.
+ 0:02.95 W 3 warnings generated.
+ 0:03.56 ./application.ini.h.stub
+ 0:03.89 W 2 warnings generated.
+ 0:04.11 W 2 warnings generated.
+ 0:04.38 W 2 warnings generated.
+ 0:05.05 W 2 warnings generated.
+ 0:05.24 W 2 warnings generated.
+ 0:05.39 W 2 warnings generated.
+ 0:05.50 W 2 warnings generated.
+ 0:05.58 W 2 warnings generated.
+ 0:05.86 W 2 warnings generated.
+ 0:06.35 W 2 warnings generated.
+ 0:06.45 W 2 warnings generated.
+ 0:07.06 W 2 warnings generated.
+ 0:07.89 W 2 warnings generated.
+ 0:08.02 W 2 warnings generated.
+ 0:11.96 media/ffvpx/libavcodec/libmozavcodec.dylib
+ 0:12.10 E ld64.lld: error: undefined symbol: av_stereo3d_create_side_data
+ 0:12.10 E >>> referenced by h2645_sei.o:(symbol ff_h2645_sei_to_frame+0x78)
+ 0:12.10 E >>> referenced by hevc/refs.o:(symbol alloc_frame+0x2d4)
+ 0:12.10 E ld64.lld: error: undefined symbol: av_log_once
+ 0:12.10 E >>> referenced by h264_ps.o:(symbol ff_h264_decode_seq_parameter_set+0xacc)
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol decode_nal_units+0x2474)
+ 0:12.10 E ld64.lld: error: undefined symbol: av_refstruct_ref_c
+ 0:12.10 E >>> referenced by h264_ps.o:(symbol ff_h264_decode_picture_parameter_set+0x194)
+ 0:12.10 E >>> referenced by h264_slice.o:(symbol h264_frame_start+0x5a0)
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol hevc_update_thread_context+0x124)
+ 0:12.10 E >>> referenced 6 more times
+ 0:12.10 E ld64.lld: error: undefined symbol: av_timecode_make_smpte_tc_string2
+ 0:12.10 E >>> referenced by h264_slice.o:(symbol ff_h264_queue_decode_slice+0x26e0)
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol decode_nal_units+0x2310)
+ 0:12.10 E ld64.lld: error: undefined symbol: av_timecode_get_smpte
+ 0:12.10 E >>> referenced by h264_slice.o:(symbol ff_h264_queue_decode_slice+0x26b8)
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol decode_nal_units+0x22e8)
+ 0:12.10 E ld64.lld: error: undefined symbol: ff_dovi_rpu_generate
+ 0:12.10 E >>> referenced by libaomenc.o:(symbol aom_encode+0x204)
+ 0:12.10 E ld64.lld: error: undefined symbol: ff_dovi_configure
+ 0:12.10 E >>> referenced by libaomenc.o:(symbol aom_init+0xad4)
+ 0:12.10 E ld64.lld: error: undefined symbol: av_container_fifo_read
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol hevc_receive_frame+0x58)
+ 0:12.10 E ld64.lld: error: undefined symbol: av_container_fifo_can_read
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol hevc_receive_frame+0x44)
+ 0:12.10 E ld64.lld: error: undefined symbol: av_container_fifo_free
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol hevc_decode_free+0x80)
+ 0:12.10 E ld64.lld: error: undefined symbol: av_container_fifo_alloc_avframe
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol hevc_init_context+0x4c)
+ 0:12.10 E ld64.lld: error: undefined symbol: av_film_grain_params_select
+ 0:12.10 E >>> referenced by hevc/hevcdec.o:(symbol decode_nal_units+0x2678)
+ 0:12.11 E >>> referenced by hevc/hevcdec.o:(symbol decode_nal_units+0x244c)
+ 0:12.11 E ld64.lld: error: undefined symbol: av_container_fifo_write
+ 0:12.11 E >>> referenced by hevc/refs.o:(symbol ff_hevc_output_frames+0x11c)
+ 0:12.11 E clang++: error: linker command failed with exit code 1 (use -v to see invocation)
+ 0:12.11 E make[4]: *** [../../../dist/bin/libmozavcodec.dylib] Error 1
+ 0:12.11 E make[3]: *** [media/ffvpx/libavcodec/target] Error 2
+ 0:12.11 E make[2]: *** [compile] Error 2
+ 0:12.11 E make[1]: *** [compile] Error 2
+ 0:12.11 E make: *** [default] Error 2
+ 0:12.21 W 3 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_134504.json
+Hey! Builds initiated with `mach build $A_SPECIFIC_TARGET` may not always work, even if the code being built is correct. Consider doing a bare `mach build` instead.

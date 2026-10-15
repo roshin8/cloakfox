@@ -1,0 +1,20 @@
+..F                                                                      [100%]
+=================================== FAILURES ===================================
+_______ test_poisoned_canonical_webgpu_direct_encoders_refuse_raw_pixels _______
+
+    def test_poisoned_canonical_webgpu_direct_encoders_refuse_raw_pixels():
+        metadata=(ROOT/'gfx/2d/CanvasPrivacy.cpp').read_text()
+        metadata=metadata[metadata.index('CanvasPrivacyMetadata NormalizeCanvasPrivacyMetadata('):metadata.index('void AddCanvasPixelSource(')]
+        source=(ROOT/'dom/webgpu/CanvasContext.cpp').read_text()
+        sections=[]
+        for signature in ['mozilla::UniquePtr<uint8_t[]> CanvasContext::GetImageBuffer(', 'NS_IMETHODIMP CanvasContext::GetInputStream(']:
+            start=source.index(signature)
+            body=source[source.index('{',start)+1:source.index('  gfxAlphaType any;',start)]
+            guard=body[body.find('  if ('):]
+>           assert 'CanExtractCanonicalCanvasPixels(GetCanvasPrivacyMetadata())' in guard
+E           AssertionError: assert 'CanExtractCanonicalCanvasPixels(GetCanvasPrivacyMetadata())' in '\n'
+
+tests/fingerprint/test_canvas_gpu_import_records.py:165: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_gpu_import_records.py::test_poisoned_canonical_webgpu_direct_encoders_refuse_raw_pixels
+1 failed, 2 passed in 0.42s

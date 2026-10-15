@@ -62,6 +62,11 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     binary = os.environ.get('CLOAKFOX_BIN', '/Applications/Cloakfox.app/Contents/MacOS/cloakfox')
+    graphics_modes = {
+        'canvas_render_privacy': os.environ.get('LIBRARY_CANVAS_RENDER_PRIVACY', '0') == '1',
+        'gpu_backend_profiles': os.environ.get('LIBRARY_GPU_BACKEND_PROFILES', '0') == '1',
+        'canonical_2d': os.environ.get('CLOAKFOX_TEST_CANVAS_PIPELINE', '0') == '1',
+    }
     out = Path(os.environ.get('REPORT_DIR', ROOT / 'tests/fingerprint/reports/fingerprint-libraries'))
     out.mkdir(parents=True, exist_ok=True)
     repeats = int(os.environ.get('LIBRARY_REPEATS', '3'))
@@ -74,7 +79,8 @@ def main():
     assert not subprocess.check_output(['git', '-C', str(CREEP), 'status', '--porcelain', '--untracked-files=normal'], text=True).strip(), 'CreepJS fixture is modified'
     package = json.loads((FP_BUNDLE.parents[1] / 'package.json').read_text())
     assert package['version'] == MANIFEST['fingerprintjs']['version']
-    provenance = {'binary': binary, 'creepjsCommit': commit, 'fingerprintjsVersion': package['version'],
+    provenance = {'binary': binary, 'graphicsModes': graphics_modes,
+                  'creepjsCommit': commit, 'fingerprintjsVersion': package['version'],
                   'creepjsBundleSHA256': hashlib.sha256((CREEP / 'docs/creep.js').read_bytes()).hexdigest(),
                   'fingerprintjsBundleSHA256': hashlib.sha256(FP_BUNDLE.read_bytes()).hexdigest()}
     assert provenance['creepjsBundleSHA256'] == MANIFEST['creepjs']['bundleSHA256'], 'CreepJS bundle checksum mismatch'
@@ -106,6 +112,8 @@ def main():
                 options.set_preference('remote.prefs.recommended', False)
                 options.set_preference('cloakfox.enabled', enabled)
                 options.set_preference('privacy.resistFingerprinting', False)
+                for name, value in graphics_modes.items():
+                    options.set_preference('cloakfox.experimental.canvas_pipeline' if name == 'canonical_2d' else 'cloakfox.opt.' + name, value)
                 driver = webdriver.Firefox(options=options, service=Service(
                     '/opt/homebrew/bin/geckodriver', service_args=['--allow-system-access'],
                     log_output=str(out / ('protected-gecko.log' if enabled else 'native-gecko.log'))))
@@ -144,6 +152,13 @@ def main():
                         driver.switch_to.window(handle)
                         case = {'case': label, 'container': container, 'host': host, 'protected': enabled, 'libraries': {}}
                         cases.append(case)
+                        if enabled:
+                            case['graphicsModes'] = chrome('''const cfg=JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_'+arguments[0]));
+                              return {canvas_render_privacy:cfg['canvas:render_privacy']===true,
+                                      gpu_backend_profiles:cfg['webGl:backend_profile']===true,
+                                      canonical_2d:cfg['canvas:canonical_2d']===true}''', container)
+                            check(case['graphicsModes'] == {**graphics_modes,'gpu_backend_profiles':graphics_modes['gpu_backend_profiles'] or graphics_modes['canonical_2d']},
+                                  label + ': requested graphics policy reaches owning container')
                         for library, path, ready, result in [
                             ('fingerprintjs', '/fp.html', 'return !!window.libraryResult', 'return window.libraryResult'),
                             ('creepjs', '/index.html', 'return !!window.Fingerprint&&!!window.Creep', 'return {fingerprint:window.Fingerprint,creep:window.Creep}')]:
@@ -203,11 +218,19 @@ def main():
                 b = by_name[right]['libraries']['fingerprintjs'][0]
                 av = a['rawCanvas'] if component == 'canvas' else a['components'][component]['value']
                 bv = b['rawCanvas'] if component == 'canvas' else b['components'][component]['value']
-                check(av != bv, f'{left}/{right}: FingerprintJS {component} isolation')
+                standardized=graphics_modes['canonical_2d'] and component=='canvas'
+                if standardized:
+                    provenance.setdefault('canonicalCrossScopePixels', []).append({'pair':[left,right], 'library':'fingerprintjs', 'equal':av==bv})
+                else:
+                    check(av!=bv, f'{left}/{right}: FingerprintJS {component} isolation')
             for component, field in [('canvas2d', 'dataURI'), ('offlineAudioContext', '$hash')]:
                 a=by_name[left]['libraries']['creepjs'][0]['fingerprint'][component][field]
                 b=by_name[right]['libraries']['creepjs'][0]['fingerprint'][component][field]
-                check(a != b, f'{left}/{right}: CreepJS {component} isolation')
+                standardized=graphics_modes['canonical_2d'] and component=='canvas2d'
+                if standardized:
+                    provenance.setdefault('canonicalCrossScopePixels', []).append({'pair':[left,right], 'library':'creepjs', 'equal':a==b})
+                else:
+                    check(a!=b, f'{left}/{right}: CreepJS {component} isolation')
         for library in ['fingerprintjs', 'creepjs']:
             a=by_name['A']['libraries'][library][0];b=by_name['A-return']['libraries'][library][0]
             if library=='fingerprintjs':

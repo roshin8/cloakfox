@@ -1,0 +1,37 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry
+PASS saved legacy GPU tables migrate on browser restart
+PASS migration preserves secrets, unrelated fields, and explicit scalar override
+PASS webgl available
+PASS webgl enumeration agrees with getExtension
+PASS webgl extensions stay within persona and real backend support
+PASS webgl mutable GL state remains live
+PASS WebGL1 rejects WebGL2-only component enum
+FAIL webgl every configured integer upper-bound capacity stays within backend
+FAIL webgl advertised maximum texture width allocates as a bounded single row
+FAIL webgl advertised texture/cube/renderbuffer/sample/viewport capacities stay within backend
+FAIL webgl point/line ranges stay within native range
+PASS webgl2 available
+PASS webgl2 enumeration agrees with getExtension
+PASS webgl2 extensions stay within persona and real backend support
+PASS webgl2 mutable GL state remains live
+PASS WebGL2 uniform/varying component relationships agree
+FAIL webgl2 every configured integer upper-bound capacity stays within backend
+FAIL webgl2 advertised maximum texture width allocates as a bounded single row
+FAIL webgl2 advertised texture/cube/renderbuffer/sample/viewport capacities stay within backend
+FAIL webgl2 point/line ranges stay within native range
+FAIL oversized paired uniform/varying and viewport config clamps to native ceilings
+FAIL invalid capacity -1 falls back to working native texture ceiling
+FAIL invalid capacity 1.5 falls back to working native texture ceiling
+FAIL malformed viewport/range 16384 retains native typed arrays
+FAIL malformed viewport/range [100, -1] retains native typed arrays
+FAIL malformed viewport/range [100, 1.5] retains native typed arrays
+Report: tests/fingerprint/reports/canvas-gpu-consistency/capacity-baseline
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_webgl_consistency.py", line 257, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_webgl_consistency.py", line 221, in main
+    for a,b in zip(fallback,native)),
+               ^^^^^^^^^^^^^^^^^^^^
+TypeError: 'NoneType' object is not iterable

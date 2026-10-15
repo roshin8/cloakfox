@@ -1,0 +1,90 @@
+{
+  "checks": [
+    {
+      "pass": true,
+      "name": "pref-off SVG image and surface cache initialized"
+    },
+    {
+      "pass": true,
+      "name": "canonical image corpus completes"
+    },
+    {
+      "pass": false,
+      "name": "native context cannot inherit canonical producer proof from a tiny import"
+    },
+    {
+      "pass": true,
+      "name": "native held canvas and downstream import retain the same fallback guard"
+    },
+    {
+      "pass": true,
+      "name": "pref-off held PNG surface is decoded with fixed policy"
+    },
+    {
+      "pass": true,
+      "name": "same PNG URL reuses only matching fixed decode variant"
+    },
+    {
+      "pass": true,
+      "name": "same SVG URL cache remains consistent after toggle"
+    },
+    {
+      "pass": true,
+      "name": "verified raster proof preserves cross-origin taint"
+    },
+    {
+      "pass": false,
+      "name": "untracked foreignObject retains fallback extraction guard"
+    },
+    {
+      "pass": true,
+      "name": "canonical PNG encode/decode/draw/read remains exact"
+    },
+    {
+      "pass": true,
+      "name": "PNG Blob ImageBitmap default color option remains exact"
+    },
+    {
+      "pass": true,
+      "name": "PNG Blob ImageBitmap none color option remains exact"
+    },
+    {
+      "pass": true,
+      "name": "pref-off cached SVG agrees with freshly loaded canonical SVG"
+    },
+    {
+      "pass": true,
+      "name": "verified SVG exact opaque fill avoids fallback noise"
+    },
+    {
+      "pass": true,
+      "name": "animated common raster compositor uses fixed decoded frames"
+    }
+  ],
+  "runtime": {
+    "buildID": "20261015144358",
+    "version": "158.0-beta.26"
+  },
+  "results": {
+    "animation": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "bitmaps": {
+      "default": true,
+      "none": true
+    },
+    "cors": true,
+    "foreignObjectFallback": false,
+    "nativeHeldGuard": false,
+    "nativeHeldStableGuard": true,
+    "png": true,
+    "rasterOldCache": true,
+    "rasterSameURL": true,
+    "svgExactFill": true,
+    "svgOldCache": true,
+    "svgSameURL": true
+  }
+}

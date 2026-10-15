@@ -1,0 +1,20 @@
+--- a/browser/installer/package-manifest.in
++++ b/browser/installer/package-manifest.in
+@@ -43,6 +43,7 @@
+ @RESPATH@/firefox.icns
+ @RESPATH@/document.icns
+ @RESPATH@/Assets.car
++@RESPATH@/canonical-gpu/**
+ #ifdef MOZ_BUNDLED_FONTS
+ @RESPATH@/fonts/*
+ #endif
+--- a/browser/moz.build
++++ b/browser/moz.build
+@@ -14,6 +14,7 @@
+     "actors",
+     "base",
+     "components",
++    "canonical-gpu",
+     "fonts",
+     "fxr",
+     "locales",

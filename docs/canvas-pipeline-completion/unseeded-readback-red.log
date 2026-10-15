@@ -1,0 +1,14 @@
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_________ test_fullmode_unverified_unseeded_2d_readbacks_refuse_output _________
+
+    def test_fullmode_unverified_unseeded_2d_readbacks_refuse_output():
+     s=(ROOT/'firefox-src/dom/canvas/CanvasRenderingContext2D.cpp').read_text()
+     a=s.index('CanvasRenderingContext2D::GetImageBuffer(');b=s.index('CanvasRenderingContext2D::GetInputStream(',a)
+>    assert 'if (mCanonicalCanvasBacking && canvasSeed == 0) return nullptr;' in s[a:b]
+E    AssertionError: assert 'if (mCanonicalCanvasBacking && canvasSeed == 0) return nullptr;' in 'CanvasRenderingContext2D::GetImageBuffer(\n    mozilla::CanvasUtils::ImageExtraction aExtractionBehavior,\n    int32_...height, stride,\n          out_imageSize->width, 0, 0, canvasSeed);\n    }\n  }\n\n  return ret;\n}\n\nNS_IMETHODIMP\n'
+
+tests/fingerprint/test_canvas_extraction_cutover.py:27: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_extraction_cutover.py::test_fullmode_unverified_unseeded_2d_readbacks_refuse_output
+1 failed, 1 passed in 0.34s

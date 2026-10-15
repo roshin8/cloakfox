@@ -4,6 +4,25 @@
 
 # Fingerprint tests
 
+## Canvas and GPU API consistency
+
+Install `tests/fingerprint/requirements-canvas.txt` into a virtual environment.
+With geckodriver on PATH and `CLOAKFOX_BIN` set to the installed app:
+
+```bash
+python tests/fingerprint/probe_canvas_consistency.py
+python tests/fingerprint/probe_webgl_consistency.py
+```
+
+These local disposable-profile probes check cropped/serialized pixels against
+an independent PNG decoder, HTML/OffscreenCanvas including dedicated workers
+and transferred canvases, glyph metric invariants, site/container isolation,
+saved GPU migration, actual allocation at reported limits, extension support,
+malformed settings, mutable state and native controls. Canvas results default to
+`/tmp/cloakfox-canvas-consistency.json` (`CANVAS_CONSISTENCY_REPORT` overrides);
+WebGL uses `REPORT_DIR` or a fresh temporary directory.
+Neither probe requires membership in fingerprint-library reference tables.
+
 ## Letterboxing / native window geometry
 
 ```bash
@@ -577,3 +596,25 @@ lifecycle scripts are disabled. See `libraries/upstreams.json` and
 `docs/fingerprint-repairs/library-validation.md`. This optional audit is excluded
 from `run_all.py` until explicitly invoked; no library detector warnings are
 suppressed or treated as proof of undetectability.
+
+Canonical canvas foundation (experimental, complete pipeline unfinished):
+`CLOAKFOX_TEST_CANVAS_PIPELINE=1` enables the internal backing experiment in the
+canvas consistency, glyph, graphics, worker, GPU and library probes. It requires
+`cloakfox.experimental.canvas_pipeline` support in the chosen binary. The new
+`probe_canvas_canonical_backing.py` checks central policy/persistence and retained
+readback behavior; `test_canvas_canonical_backing.py` compiles actual native
+creation/allocation/provider branches. No content-facing backend diagnostic exists.
+
+`probe_canvas_pipeline_baseline.py` is an adversarial diagnostic: exit0 means
+measurement collection succeeded, not that privacy passed. The current known-fill
+recovery attack succeeds and is a failed full-release gate. See
+`docs/canonical-canvas-foundation/README.md` for the tested-prototype rollback and
+unresolved first HTML glyph result. Do not describe this as a complete pipeline.
+
+The internal producer candidate adds `probe_canvas_canonical_text.py` (packaged
+font outlines and author-space paint in HTML/Offscreen/worker contexts),
+`probe_canvas_first_glyph.py` (cold fallback regression without retries), and
+`probe_canvas_pixel_transfers.py` (bitmap/clone/worker round trips). Set
+`CLOAKFOX_BIN` to the binary under test and `REPORT_DIR` for the text/transfer
+probe output; first-glyph output uses `--report`. These test scoped behavior;
+they do not certify the complete privacy pipeline or cross-host normalization.

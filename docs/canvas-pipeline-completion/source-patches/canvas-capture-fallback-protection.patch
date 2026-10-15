@@ -1,0 +1,105 @@
+--- a/dom/html/HTMLCanvasElement.cpp
++++ b/dom/html/HTMLCanvasElement.cpp
+@@ -6,6 +6,8 @@
+ 
+ #include "ActiveLayerTracker.h"
+ #include "CanvasUtils.h"
++#include "CanvasFingerprintManager.h"
++#include "../../cloakcfg/CloakfoxSiteSeed.hpp"
+ #include "ClientWebGLContext.h"
+ #include "ImageEncoder.h"
+ #include "MediaTrackGraph.h"
+@@ -23,6 +25,7 @@
+ #include "mozilla/ProfilerLabels.h"
+ #include "mozilla/ProfilerMarkers.h"
+ #include "mozilla/StaticPrefs_privacy.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/dom/BlobImpl.h"
+ #include "mozilla/dom/CanvasCaptureMediaStream.h"
+ #include "mozilla/dom/CanvasRenderingContext2D.h"
+@@ -37,6 +40,7 @@
+ #include "mozilla/dom/VideoStreamTrack.h"
+ #include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/Rect.h"
++#include "mozilla/gfx/Swizzle.h"
+ #include "mozilla/layers/CanvasRenderer.h"
+ #include "mozilla/layers/WebRenderCanvasRenderer.h"
+ #include "mozilla/layers/WebRenderUserData.h"
+@@ -75,10 +79,21 @@
+         mWatchManager(this, AbstractThread::MainThread()),
+         mPendingThrottledCapture(false) {
+     MOZ_ASSERT(mOwningElement);
++    // Capture on the owning main thread before asynchronous snapshots. Neither
++    // the receiver of the frame nor a later active document chooses this seed.
++    nsIPrincipal* principal = mOwningElement->NodePrincipal();
++    if (StaticPrefs::cloakfox_enabled() &&
++        StaticPrefs::cloakfox_experimental_canvas_pipeline() && principal &&
++        !principal->IsSystemPrincipal()) {
++      mFallbackSeed = CloakfoxSiteSeed::Derive(
++          principal->OriginAttributesRef().mUserContextId, "canvas:seed",
++          mOwningElement->OwnerDoc()->CookieJarSettings());
++    }
+   }
+ 
+   static already_AddRefed<DataSourceSurface> CopySurface(
+-      const RefPtr<SourceSurface>& aSurface, bool aReturnPlaceholderData) {
++      const RefPtr<SourceSurface>& aSurface, bool aReturnPlaceholderData,
++      uint32_t aFallbackSeed = 0) {
+     RefPtr<DataSourceSurface> data = aSurface->GetDataSurface();
+     if (!data) {
+       return nullptr;
+@@ -111,9 +126,35 @@
+     } else {
+       memcpy(write.GetData(), read.GetData(),
+              write.GetStride() * copy->GetSize().height);
+-      // Retain the sending context policy before wrapping/queuing this frame.
++      const auto policy = gfx::GetCanvasPrivacyMetadata(aSurface);
++      if (aFallbackSeed && !gfx::CanExtractCanonicalCanvasPixels(policy)) {
++        // Capture consumers can read VideoFrame planes without another canvas
++        // extraction. Protect this outgoing copy in straight RGBA, matching
++        // typed canvas readback, then restore the native premultiplied format.
++        const auto size = copy->GetSize();
++        const auto format = copy->GetFormat();
++        const auto stride = write.GetStride();
++        auto* pixels = write.GetData();
++        const bool opaque = gfx::IsOpaque(format);
++        const bool converted = opaque
++            ? gfx::SwizzleData(pixels, stride, format, pixels, stride,
++                               SurfaceFormat::R8G8B8A8, size)
++            : gfx::UnpremultiplyData(pixels, stride, format, pixels, stride,
++                                     SurfaceFormat::R8G8B8A8, size);
++        if (!converted) return nullptr;
++        CanvasFingerprintManager::ApplyCanvasNoiseRect(
++            pixels, size.width, size.height, stride, size.width, 0, 0,
++            aFallbackSeed);
++        const bool restored = opaque
++            ? gfx::SwizzleData(pixels, stride, SurfaceFormat::R8G8B8A8,
++                               pixels, stride, format, size)
++            : gfx::PremultiplyData(pixels, stride, SurfaceFormat::R8G8B8A8,
++                                   pixels, stride, format, size);
++        if (!restored) return nullptr;
++      }
++      // Protection does not certify an unknown producer or change ownership.
+       // Placeholder pixels intentionally remain an unknown independent source.
+-      gfx::SetCanvasPrivacyMetadata(copy, gfx::GetCanvasPrivacyMetadata(aSurface));
++      gfx::SetCanvasPrivacyMetadata(copy, policy);
+     }
+ 
+     return copy.forget();
+@@ -271,7 +312,7 @@
+     {
+       AUTO_PROFILER_MARKER_TEXT("Canvas CaptureStream", MEDIA_RT, {},
+                                 "CopySurface"_ns);
+-      copy = CopySurface(aSurface, mReturnPlaceholderData);
++      copy = CopySurface(aSurface, mReturnPlaceholderData, mFallbackSeed);
+       if (!copy) {
+         PROFILER_MARKER_TEXT("Canvas CaptureStream", MEDIA_RT, {},
+                              "Abort: copy failed"_ns);
+@@ -371,6 +412,7 @@
+   bool mRegistered;
+   bool mWatching;
+   bool mReturnPlaceholderData;
++  uint32_t mFallbackSeed = 0;
+   const WeakPtr<HTMLCanvasElement> mOwningElement;
+   RefPtr<nsRefreshDriver> mRefreshDriver;
+   WatchManager<RequestedFrameRefreshObserver> mWatchManager;

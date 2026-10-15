@@ -1,0 +1,43 @@
+PASS default: requested graphics policy reaches owning container
+RUN default/fingerprintjs/0
+PASS default/fingerprintjs/0 completes
+RUN default/fingerprintjs/1
+PASS default/fingerprintjs/1 completes
+RUN default/fingerprintjs/2
+PASS default/fingerprintjs/2 completes
+PASS default: FingerprintJS audio is a real sample
+PASS default: FingerprintJS raw canvas images collected
+PASS default: FingerprintJS raw canvas reload stability
+PASS default: FingerprintJS visitor IDs are populated
+PASS default: FingerprintJS visitor ID reload stability
+PASS default: FingerprintJS canvas successful value
+PASS default: FingerprintJS canvas reload stability
+PASS default: FingerprintJS audio successful value
+PASS default: FingerprintJS audio reload stability
+PASS default: FingerprintJS timezone successful value
+PASS default: FingerprintJS timezone reload stability
+PASS default: FingerprintJS platform successful value
+PASS default: FingerprintJS platform reload stability
+PASS default: FingerprintJS screenResolution successful value
+PASS default: FingerprintJS screenResolution reload stability
+RUN default/creepjs/0
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_fingerprint_libraries.py", line 257, in <module>
+    main()
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_fingerprint_libraries.py", line 171, in main
+    WebDriverWait(driver, 60).until(lambda d: d.current_url == url and d.execute_script(ready))
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/support/wait.py", line 112, in until
+    value = method(self._driver)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/probe_fingerprint_libraries.py", line 171, in <lambda>
+    WebDriverWait(driver, 60).until(lambda d: d.current_url == url and d.execute_script(ready))
+                                              ^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 641, in current_url
+    return self.execute(Command.GET_CURRENT_URL)["value"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 506, in execute
+    self.error_handler.check_response(response)
+  File "/tmp/cloakfox158-wire-venv/lib/python3.12/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.WebDriverException: Message: Failed to decode response from marionette
+

@@ -1,0 +1,15 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ CanvasProvenance.test_conservative_copy_and_concurrent_contributors ______
+
+self = <test_canvas_pixel_provenance.CanvasProvenance testMethod=test_conservative_copy_and_concurrent_contributors>
+
+    def test_conservative_copy_and_concurrent_contributors(self):
+     h=ROOT/'firefox-src/gfx/2d/CanvasPrivacy.h';p=ROOT/'firefox-src/gfx/2d/CanvasPrivacy.cpp'
+>    self.assertTrue(h.exists() and p.exists(),'producer metadata not implemented')
+E    AssertionError: False is not true : producer metadata not implemented
+
+tests/fingerprint/test_canvas_pixel_provenance.py:8: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_pixel_provenance.py::CanvasProvenance::test_conservative_copy_and_concurrent_contributors
+1 failed in 0.03s

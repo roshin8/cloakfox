@@ -1,0 +1,43 @@
+{
+  "checks": [
+    {
+      "pass": true,
+      "name": "zero-seed corpus completes"
+    },
+    {
+      "pass": true,
+      "name": "qualified authored fill remains exact with zero legacy seed"
+    },
+    {
+      "pass": true,
+      "name": "unverified 2D reads and encoders fail closed"
+    },
+    {
+      "pass": true,
+      "name": "canonical GL creates with zero legacy seed"
+    },
+    {
+      "pass": true,
+      "name": "unverified GL read refuses before modifying destination and encoder refuses"
+    }
+  ],
+  "runtime": {
+    "buildID": "20261015153234",
+    "version": "158.0-beta.26"
+  },
+  "result": {
+    "encodeDenied": true,
+    "gl": true,
+    "glEncodeDenied": true,
+    "glReadError": 1282,
+    "glReadUntouched": true,
+    "known": [
+      128,
+      112,
+      96,
+      255
+    ],
+    "readDenied": true,
+    "readError": "NS_ERROR_NOT_AVAILABLE"
+  }
+}

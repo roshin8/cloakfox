@@ -129,6 +129,7 @@ def main(binary: str) -> int:
             (profile / 'user.js').write_text('\n'.join(prefs) + '\n')
             options = Options()
             options.binary_location = binary
+            options.set_preference('cloakfox.experimental.canvas_pipeline',os.environ.get('CLOAKFOX_TEST_CANVAS_PIPELINE','0')=='1')
             options.add_argument('--headless')
             options.add_argument('-profile')
             options.add_argument(str(profile))

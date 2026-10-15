@@ -1,0 +1,46 @@
+ 0:00.51 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.51 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.64 Clobber not needed.
+ 0:00.69 /usr/bin/make -C gfx/ycbcr -j8 -s
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ycbcr/YCbCrUtils.cpp:296:22: error: reference to 'Matrix' is ambiguous
+ 0:02.74 E   296 |   ColorPolicy policy{Matrix::BT709, Primaries::SRGB, Transfer::BT709,
+ 0:02.74 E       |                      ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/2d/Matrix.h:499:27: note: candidate found by name lookup is 'mozilla::gfx::Matrix'
+ 0:02.74 E   499 | typedef BaseMatrix<Float> Matrix;
+ 0:02.74 E       |                           ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ycbcr/CanonicalYUV.h:16:12: note: candidate found by name lookup is 'mozilla::gfx::canonical::Matrix'
+ 0:02.74 E    16 | enum class Matrix { BT601, BT709, BT2020, Identity };
+ 0:02.74 E       |            ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ycbcr/YCbCrUtils.cpp:299:46: error: reference to 'Matrix' is ambiguous
+ 0:02.74 E   299 |     case YUVColorSpace::BT601: policy.matrix=Matrix::BT601;break;
+ 0:02.74 E       |                                              ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/2d/Matrix.h:499:27: note: candidate found by name lookup is 'mozilla::gfx::Matrix'
+ 0:02.74 E   499 | typedef BaseMatrix<Float> Matrix;
+ 0:02.74 E       |                           ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ycbcr/CanonicalYUV.h:16:12: note: candidate found by name lookup is 'mozilla::gfx::canonical::Matrix'
+ 0:02.74 E    16 | enum class Matrix { BT601, BT709, BT2020, Identity };
+ 0:02.74 E       |            ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ycbcr/YCbCrUtils.cpp:300:47: error: reference to 'Matrix' is ambiguous
+ 0:02.74 E   300 |     case YUVColorSpace::BT2020: policy.matrix=Matrix::BT2020;break;
+ 0:02.74 E       |                                               ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/2d/Matrix.h:499:27: note: candidate found by name lookup is 'mozilla::gfx::Matrix'
+ 0:02.74 E   499 | typedef BaseMatrix<Float> Matrix;
+ 0:02.74 E       |                           ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ycbcr/CanonicalYUV.h:16:12: note: candidate found by name lookup is 'mozilla::gfx::canonical::Matrix'
+ 0:02.74 E    16 | enum class Matrix { BT601, BT709, BT2020, Identity };
+ 0:02.74 E       |            ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ycbcr/YCbCrUtils.cpp:301:49: error: reference to 'Matrix' is ambiguous
+ 0:02.74 E   301 |     case YUVColorSpace::Identity: policy.matrix=Matrix::Identity;break;
+ 0:02.74 E       |                                                 ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/2d/Matrix.h:499:27: note: candidate found by name lookup is 'mozilla::gfx::Matrix'
+ 0:02.74 E   499 | typedef BaseMatrix<Float> Matrix;
+ 0:02.74 E       |                           ^
+ 0:02.74 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ycbcr/CanonicalYUV.h:16:12: note: candidate found by name lookup is 'mozilla::gfx::canonical::Matrix'
+ 0:02.74 E    16 | enum class Matrix { BT601, BT709, BT2020, Identity };
+ 0:02.74 E       |            ^
+ 0:02.94 E 4 errors generated.
+ 0:02.95 E make[1]: *** [YCbCrUtils.o] Error 1
+ 0:02.95 E make: *** [default] Error 2
+ 0:03.05 W 0 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_134516.json
+Hey! Builds initiated with `mach build $A_SPECIFIC_TARGET` may not always work, even if the code being built is correct. Consider doing a bare `mach build` instead.

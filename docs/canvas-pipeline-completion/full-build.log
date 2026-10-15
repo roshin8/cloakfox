@@ -1,0 +1,550 @@
+ 0:00.72 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.72 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.88 Clobber not needed.
+ 0:00.92 /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/moz.build
+ 0:00.92 Build configuration changed. Regenerating backend.
+ 0:00.92 /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051/_virtualenvs/build/bin/python /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Finished reading 2453 moz.build files in 4.07s
+Read 58 gyp files in parallel contributing 0.00s to total wall time
+Processed into 19164 build config descriptors in 4.09s
+RecursiveMake backend executed in 2.86s
+  5297 total backend files; 0 created; 1 updated; 5296 unchanged; 0 deleted; 13 -> 1995 Makefile
+FasterMake backend executed in 0.20s
+  89 total backend files; 0 created; 0 updated; 89 unchanged; 0 deleted
+Clangd backend executed in 1.13s
+  1255 total backend files; 0 created; 1 updated; 1254 unchanged; 0 deleted
+Total wall time: 12.80s; CPU time: 7.71s; Efficiency: 60%; Untracked: 0.45s
+ 0:15.05 W Adding make options from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:15.05 /usr/bin/make -f client.mk -j4 -s
+ 0:16.76 Elapsed: 0.73s; From dist/bin: Kept 3386 existing; Added/updated 85; Removed 0 files and 0 directories.
+ 0:17.20 ./buildid.h.stub
+ 0:17.21 ./source-repo.h.stub
+ 0:17.58 ./application.ini.stub
+ 0:17.77 ./application.ini.h.stub
+ 0:18.55 memory/build
+ 0:18.55 build/pure_virtual
+ 0:18.57 memory/mozalloc
+ 0:18.58 mozglue/baseprofiler
+ 0:18.58 mfbt
+ 0:18.67 mozglue/misc
+ 0:18.88 ./buildid.h.stub
+ 0:18.89 ./source-repo.h.stub
+ 0:18.98 toolkit/library/rust/libgkrust.a
+ 0:19.52 ./application.ini.stub
+ 0:19.76 ./application.ini.h.stub
+ 0:19.93 third_party/fmt
+ 0:20.70 xpcom/glue/standalone
+ 0:21.18 config/external/mozinference/libmozinference.dylib.symbols.stub
+ 0:21.73 ipc/app/plugin-container.Info.plist.stub
+ 0:21.74 ipc/app/media-plugin-helper.Info.plist.stub
+ 0:22.03 ipc/app/gpu-helper.Info.plist.stub
+ 0:22.54 security/libnss3.dylib.symbols.stub
+ 0:22.60 config/external/nspr/ds
+ 0:22.78 config/external/nspr/libc
+ 0:22.94 config/external/nspr/pr
+ 0:23.04 W 1 warning generated.
+ 0:23.06 W 1 warning generated.
+ 0:23.21 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr0.c:11:
+ 0:23.21 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr0.c:29:
+ 0:23.23 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr0.c:74:
+ 0:23.25 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr0.c:137:
+ 0:23.69 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr1.c:65:
+ 0:24.04 W 10 warnings generated.
+ 0:24.39 W 2 warnings generated.
+ 0:24.48 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:2:
+ 0:24.52 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:38:
+ 0:24.54 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:56:
+ 0:24.54 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config/external/nspr/pr/Unified_c_external_nspr_pr2.c:65:
+ 0:24.64 third_party/sqlite3/ext
+ 0:24.68 third_party/sqlite3/src
+ 0:24.87 toolkit/library/build/XUL.symbols.stub
+ 0:25.16 accessible/aom
+ 0:25.80 W 45 warnings generated.
+ 0:25.84 accessible/basetypes
+ 0:25.84 accessible/base
+ 0:27.13 W 19 warnings generated.
+ 0:27.20 accessible/generic
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.50 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: swgl@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51 W warning: mozglue-static@0.1.0: Inherited flag "-fembed-bitcode=all" is not supported by the currently used CC
+ 0:27.51    Compiling style v0.0.1 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/servo/components/style)
+ 0:29.68 W 1 warning generated.
+ 0:29.74 accessible/html
+ 0:32.68 accessible/ipc
+ 0:32.72 accessible/pdf
+ 0:43.14 accessible/xpcom
+ 0:49.69 accessible/xul
+ 0:51.23 W 4 warnings generated.
+ 0:51.28 browser/components/about
+ 0:51.29 browser/components/migration
+ 0:54.57 browser/components/shell
+ 0:54.60 caps
+ 0:56.05 chrome
+ 0:58.31 config/external/gkcodecs/libgkcodecs.dylib.symbols.stub
+ 1:00.08 media/libaom
+ 1:01.18 W 10 warnings generated.
+ 1:01.22 media/libogg
+ 1:02.10 media/libopus
+ 1:02.16 media/libvorbis
+ 1:02.45 W 1 warning generated.
+ 1:02.64 W 1 warning generated.
+ 1:04.09 media/libvpx
+ 1:07.42 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/media/libopus/Unified_c_media_libopus1.c:29:
+ 1:07.60 config/external/icu/common
+ 1:08.52 W 1 warning generated.
+ 1:08.58 config/external/icu/data/icu_data.o
+ 1:10.06 config/external/icu/i18n
+ 1:10.23 media/libopus/celt_neon_aarch64.o
+ 1:10.69 W 2 warnings generated.
+ 1:11.52 W 2 warnings generated.
+ 1:11.98 W 2 warnings generated.
+ 1:12.47 media/libopus/celt_tx_neon.o
+ 1:12.75 media/libsoundtouch/src
+ 1:13.25 W 2 warnings generated.
+ 1:14.13 W 2 warnings generated.
+ 1:14.29 config/external/rlbox
+ 1:14.50 W 2 warnings generated.
+ 1:15.58 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/media/libsoundtouch/src/Unified_cpp_libsoundtouch_src0.cpp:47:
+ 1:16.30 W 1 warning generated.
+ 1:16.82 W 2 warnings generated.
+ 1:17.83 W 2 warnings generated.
+ 1:18.26 devtools/shared/heapsnapshot
+ 1:18.91 W 2 warnings generated.
+ 1:19.18 docshell/base
+ 1:19.39 W 2 warnings generated.
+ 1:19.55 W 2 warnings generated.
+ 1:19.67 W 2 warnings generated.
+ 1:20.30 W 3 warnings generated.
+ 1:21.61 W 2 warnings generated.
+ 1:22.70 W 2 warnings generated.
+ 1:22.70 W 2 warnings generated.
+ 1:23.63 W 2 warnings generated.
+ 1:24.02 W 2 warnings generated.
+ 1:25.46 W 2 warnings generated.
+ 1:26.35 W 2 warnings generated.
+ 1:26.57 W 2 warnings generated.
+ 1:27.23 W 2 warnings generated.
+ 1:28.75 W 2 warnings generated.
+ 1:30.05 W 2 warnings generated.
+ 1:30.47 W 2 warnings generated.
+ 1:30.89 W 2 warnings generated.
+ 1:30.97 W 2 warnings generated.
+ 1:31.43 W 2 warnings generated.
+ 1:31.65 W 2 warnings generated.
+ 1:31.92 W 2 warnings generated.
+ 1:32.25 W 2 warnings generated.
+ 1:32.37 W 2 warnings generated.
+ 1:32.77 W 2 warnings generated.
+ 1:33.02 W 2 warnings generated.
+ 1:33.27 W 2 warnings generated.
+ 1:33.69 W 2 warnings generated.
+ 1:33.78 W 2 warnings generated.
+ 1:34.45 W 2 warnings generated.
+ 1:34.49 W 2 warnings generated.
+ 1:36.12 W 2 warnings generated.
+ 1:39.52 W 2 warnings generated.
+ 1:41.25 docshell/build
+ 1:42.87 W 2 warnings generated.
+ 1:44.22 W 2 warnings generated.
+ 1:44.85 W 2 warnings generated.
+ 1:46.15 W 2 warnings generated.
+ 1:46.23 W 2 warnings generated.
+ 1:46.64 docshell/shistory
+ 1:47.08 W 2 warnings generated.
+ 1:47.74 dom/abort
+ 1:50.19 W 2 warnings generated.
+ 1:50.84 W 2 warnings generated.
+ 1:51.35 W 2 warnings generated.
+ 1:51.67 W 2 warnings generated.
+ 1:52.88 W 2 warnings generated.
+ 1:54.40    Compiling geckoservo v0.0.1 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/servo/ports/geckolib)
+ 1:55.26 W 2 warnings generated.
+ 1:56.06 W 2 warnings generated.
+ 1:56.22 dom/animation
+ 1:58.15 W 2 warnings generated.
+ 1:58.94 W 2 warnings generated.
+ 1:59.74 W 2 warnings generated.
+ 2:00.44 W 2 warnings generated.
+ 2:01.06 W 2 warnings generated.
+ 2:01.27 dom/audiochannel
+ 2:02.26 W 2 warnings generated.
+ 2:03.49 W 2 warnings generated.
+ 2:05.54    Compiling gkrust-shared v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/toolkit/library/rust/shared)
+ 2:05.57 W 2 warnings generated.
+ 2:06.61 W 2 warnings generated.
+ 2:08.03 W 2 warnings generated.
+ 2:08.17 dom/battery
+ 2:08.70 W 2 warnings generated.
+ 2:09.11 W 2 warnings generated.
+ 2:09.46 W 2 warnings generated.
+ 2:11.41 W 2 warnings generated.
+ 2:13.19 W 2 warnings generated.
+ 2:13.73 W 2 warnings generated.
+ 2:14.85 W 2 warnings generated.
+ 2:15.35 dom/bindings
+ 2:15.58 dom/broadcastchannel
+ 2:16.55 W 2 warnings generated.
+ 2:17.05 dom/cache
+ 2:17.18 W 2 warnings generated.
+ 2:18.46 W 3 warnings generated.
+ 2:19.22 W 2 warnings generated.
+ 2:20.59 W 2 warnings generated.
+ 2:21.27 W 2 warnings generated.
+ 2:23.50 W 2 warnings generated.
+ 2:24.31 W 2 warnings generated.
+ 2:24.87 W 2 warnings generated.
+ 2:26.16 W 2 warnings generated.
+ 2:27.72 W 2 warnings generated.
+ 2:28.72 W 2 warnings generated.
+ 2:30.09 dom/canvas
+ 2:34.89 W 2 warnings generated.
+ 2:35.24 W 2 warnings generated.
+ 2:37.14 W 2 warnings generated.
+ 2:52.80 dom/clients/api
+ 2:55.02 dom/clients/manager
+ 2:58.20 dom/closewatcher
+ 3:36.45 dom/commandhandler
+ 3:39.72 dom/compression
+ 3:44.16 dom/console
+ 3:56.04 dom/cookiestore
+ 4:01.79    Compiling gkrust v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/toolkit/library/rust)
+ 4:12.94 dom/credentialmanagement/digital
+ 4:13.28 dom/credentialmanagement/identity
+ 4:19.87 dom/credentialmanagement
+ 4:20.60 dom/crypto
+ 4:24.69 dom/debugger
+ 4:27.51 dom/documentpip
+ 4:28.71 dom/encoding
+ 4:30.57 dom/events
+ 4:31.24 dom/fetch
+ 4:35.80 dom/file/ipc
+ 4:53.46 dom/file
+ 5:03.55 dom/file/uri
+ 5:14.41 dom/filesystem/compat
+ 5:28.11 dom/filesystem
+ 5:36.09 dom/flex
+ 5:38.60 dom/fs/api
+ 5:42.44 dom/fs/child
+ 6:07.75 dom/fs/parent/datamodel
+ 6:11.77 dom/fs/parent
+ 6:14.98 dom/fs/shared
+ 6:17.08 dom/gamepad
+ 6:18.14 dom/geolocation
+ 6:28.21 dom/grid
+ 6:32.57 dom/html
+ 6:34.92 dom/indexedDB
+ 6:35.74 dom/ipc/jsactor
+ 6:40.47 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/geolocation/Unified_mm_dom_geolocation0.mm:2:
+ 6:40.47 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/geolocation/GeolocationSystemMac.mm:130:10: warning: @available does not guard availability here; use if (@available) instead [-Wunsupported-availability-guard]
+ 6:40.47 W   130 |     if (!@available(macOS 15.0, *)) {
+ 6:40.47 W       |          ^
+ 6:43.77 W 1 warning generated.
+ 6:44.05 dom/ipc
+ 7:02.71 dom/jsurl
+ 7:16.63 dom/l10n
+ 7:19.38 dom/localstorage
+ 7:24.15 dom/locks
+ 7:30.32 dom/mathml
+ 7:32.56 dom/media/autoplay
+ 7:34.52 dom/media/bridge
+ 7:37.32 dom/media/doctor
+ 7:40.08 dom/media/eme
+ 7:42.27 dom/media/encoder
+ 7:47.47 dom/media/flac
+ 7:48.70 dom/media/gmp
+ 7:54.13 dom/media/imagecapture
+ 8:00.61 dom/media/ipc
+ 8:11.09 dom/media/mediacapabilities
+ 8:14.03 dom/media/mediacontrol
+ 8:15.36 dom/media/mediaelement
+ 8:16.40 dom/media/mediasession
+ 8:25.00 dom/media/mediasink
+ 8:30.95 dom/media/mediasource
+ 8:32.78 dom/media/mp3
+ 8:40.75 dom/media/mp4
+ 8:41.55 dom/media/ogg
+ 8:51.96 dom/media/platforms/agnostic/eme
+ 8:54.04 dom/media/platforms/agnostic/gmp
+ 8:55.88 dom/media/platforms/ffmpeg/ffmpeg57
+ 9:05.25 dom/media/platforms/ffmpeg/ffmpeg58
+ 9:06.28 dom/media/platforms/ffmpeg/ffmpeg59
+ 9:07.09 dom/media/platforms/ffmpeg/ffmpeg60
+ 9:09.90 dom/media/platforms/ffmpeg/ffmpeg61
+ 9:21.15 dom/media/platforms/ffmpeg/ffmpeg62
+ 9:22.10 dom/media/platforms/ffmpeg/ffmpeg63
+ 9:25.37 dom/media/platforms/ffmpeg/ffvpx
+ 9:32.60 dom/media/platforms/ffmpeg/libav53
+ 9:32.79 dom/media/platforms/ffmpeg/libav54
+ 9:33.72 dom/media/platforms/ffmpeg/libav55
+ 9:37.00 dom/media/platforms/ffmpeg
+ 9:37.57 dom/media/platforms/omx
+ 9:41.76 dom/media/platforms
+ 9:44.13 dom/media/systemservices
+ 9:44.22 dom/media
+ 9:47.83 dom/media/utils
+ 9:49.81 dom/media/wave
+ 9:51.18 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/platforms/Unified_cpp_dom_media_platforms1.cpp:29:
+10:01.02 W 1 warning generated.
+10:01.46 dom/media/webaudio/blink
+10:02.67 dom/media/webaudio
+10:23.28 dom/media/webcodecs
+10:25.72 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/systemservices/Unified_mm_systemservices0.mm:20:
+10:25.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/systemservices/Unified_mm_systemservices0.mm:20:
+10:25.73 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/systemservices/Unified_mm_systemservices0.mm:20:
+10:28.11 W 3 warnings generated.
+10:35.49 dom/media/webm
+10:48.39 dom/media/webrtc/common
+10:49.15 dom/media/webrtc/jsapi
+10:51.79 dom/media/webrtc/jsep
+10:51.96 dom/media/webrtc/libwebrtcglue
+10:54.06 dom/media/webrtc
+10:54.39 dom/media/webrtc/transport/build
+10:57.75 dom/media/webrtc/transport/ipc
+11:04.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi1.cpp:29:
+11:04.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi1.cpp:29:
+11:04.58 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/libwebrtcglue/Unified_cpp_libwebrtcglue0.cpp:83:
+11:08.10 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:92:
+11:08.24 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:110:
+11:18.88 dom/media/webrtc/transportbridge
+11:22.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/Unified_cpp_dom_media_webrtc0.cpp:47:
+11:22.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/Unified_cpp_dom_media_webrtc0.cpp:47:
+11:26.18 W 1 warning generated.
+11:30.07 dom/media/webspeech/recognition
+11:30.59 W 2 warnings generated.
+11:30.74 dom/media/webspeech/synth/cocoa
+11:36.16 dom/media/webspeech/synth
+11:37.24 W 2 warnings generated.
+11:37.32 dom/media/webvtt
+11:38.53 dom/messagechannel
+11:40.06 W 2 warnings generated.
+11:40.15 dom/midi
+11:40.52 dom/mls
+11:55.39 dom/modelcontext
+11:55.44 dom/navigation
+11:56.06 dom/network
+11:56.22 dom/notification
+11:58.45 dom/onnx
+12:01.24 dom/payments/ipc
+12:07.40 dom/payments
+12:09.18 dom/performance
+12:15.18 dom/permission
+12:17.95 dom/power
+12:18.14 dom/promise
+12:21.87 dom/prototype
+12:23.43 dom/push
+12:27.50 dom/quota
+12:31.40 dom/reporting
+12:31.54 dom/script
+12:32.38 dom/security/permissionspolicy
+12:33.45 dom/security/sanitizer
+12:34.50 dom/security
+12:34.53 dom/security/trusted-types
+12:44.28 dom/serializers
+12:46.71 dom/serviceworkers
+12:48.19 dom/simpledb
+12:55.06 dom/smil
+13:02.92 dom/storage
+13:16.62 dom/streams
+13:23.69 dom/svg
+13:28.75 dom/system/mac
+13:31.99 dom/system
+13:40.41 dom/url
+13:40.60 dom/view-transitions
+13:41.03 dom/vr
+13:48.02 dom/webauthn
+13:55.76 dom/webbrowserpersist
+14:04.22 dom/webgpu
+14:04.85 dom/webscheduling
+14:07.36 dom/webserial
+14:14.48 dom/websocket
+14:24.92 dom/webtransport/api
+14:26.12 dom/webtransport/child
+14:26.65 dom/webtransport/parent
+14:28.45 dom/webtransport/shared
+14:30.18 dom/workers/loader
+14:30.81 dom/workers/remoteworkers
+14:31.13 dom/workers/sharedworkers
+14:39.31 dom/workers
+14:48.33 dom/worklet/loader
+14:51.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/workers/remoteworkers/Unified_cpp_remoteworkers2.cpp:20:
+14:51.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/RemoteWorkerTypes.cpp:21:
+14:51.96 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ipc/GfxMessageUtils.h:26:
+14:51.96 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/2d/CanvasPrivacy.h:14:25: error: redefinition of enumerator 'CanonicalRaster'
+14:51.96 E    14 |   CanonicalRaster=1024, CanonicalRaster=1024
+14:51.96 E       |                         ^
+14:51.96 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/2d/CanvasPrivacy.h:14:3: note: previous definition is here
+14:51.96 E    14 |   CanonicalRaster=1024, CanonicalRaster=1024
+14:51.96 E       |   ^
+14:52.44 dom/worklet
+14:52.61 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/workers/Unified_cpp_dom_workers1.cpp:2:
+14:52.61 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/workers/WorkerLoadInfo.cpp:12:
+14:52.61 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/ipc/BrowserChild.h:18:
+14:52.61 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/ipdl/_ipdlheaders/mozilla/dom/PBrowserChild.h:60:
+14:52.61 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/WidgetMessageUtils.h:13:
+14:52.61 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/ipc/GfxMessageUtils.h:26:
+14:52.61 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/2d/CanvasPrivacy.h:14:25: error: redefinition of enumerator 'CanonicalRaster'
+14:52.61 E    14 |   CanonicalRaster=1024, CanonicalRaster=1024
+14:52.61 E       |                         ^
+14:52.61 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/2d/CanvasPrivacy.h:14:3: note: previous definition is here
+14:52.61 E    14 |   CanonicalRaster=1024, CanonicalRaster=1024
+14:52.61 E       |   ^
+14:54.14 dom/xhr
+14:56.50 dom/xml
+14:56.58 E 1 error generated.
+14:56.61 E make[4]: *** [Unified_cpp_remoteworkers2.o] Error 1
+14:56.61 E make[4]: *** Waiting for unfinished jobs....
+14:56.65 dom/xslt/base
+14:58.39 dom/xslt/xml
+14:58.47 E make[3]: *** [dom/workers/remoteworkers/target-objects] Error 2
+14:58.47 E make[3]: *** Waiting for unfinished jobs....
+15:02.93 E 1 error generated.
+15:02.97 E make[4]: *** [Unified_cpp_dom_workers1.o] Error 1
+15:02.97 E make[3]: *** [dom/workers/target-objects] Error 2
+15:47.55     Finished `release` profile [optimized] target(s) in 15m 28s
+15:48.44 E make[2]: *** [compile] Error 2
+15:48.44 E make[1]: *** [default] Error 2
+15:48.44 E make: *** [build] Error 2
+15:48.55 W 113 compiler warnings present.
+15:48.61 W Notification center failed: Install terminal-notifier to get a notification when the build finishes.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_140522.json

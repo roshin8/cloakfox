@@ -1,0 +1,178 @@
+diff --git a/dom/base/CanvasFingerprintManager.cpp b/dom/base/CanvasFingerprintManager.cpp
+--- a/dom/base/CanvasFingerprintManager.cpp
++++ b/dom/base/CanvasFingerprintManager.cpp
+@@ -26,18 +26,18 @@
+   return 0;
+ }
+ 
+-void CanvasFingerprintManager::ApplyCanvasNoise(uint8_t* data, uint32_t length,
+-                                                 uint32_t seed) {
+-  if (seed == 0 || length == 0 || !data) return;
++static void ApplyCanvasNoiseBytes(uint8_t* data, uint32_t length,
++                                  uint32_t seed) {
++  if (length == 0 || !data) return;
+   uint32_t state = seed;
+   for (uint32_t i = 0; i + 3 < length; i += 4) {
+     state = (state * 1664525u + 1013904223u);
+     // High bits keep seeds separated by 1024 from sharing a noise mask.
+     if (state & 0x40000000) {
+       // Protect every usable RGB channel, retaining alpha and exact zeroes.
+-      // This is format-agnostic: works for both RGBA (getImageData) and
+-      // BGRA (GetImageBuffer/toDataURL). Skipping zero channels preserves
+-      // clearRect transparency and avoids the CreepJS post-clear trap.
++      // Callers provide byte RGB channels with unchanged alpha. Canonical
++      // straight RGBA keeps 2D exports and typed readback consistent.
++      // Skipping zero channels preserves exact clears.
+       for (uint32_t c = 0; c < 3; c++) {
+         int32_t val = static_cast<int32_t>(data[i + c]);
+         if (val == 0) continue;
+@@ -45,6 +45,44 @@
+             (state & 0x80000000) ? std::min(val + 1, 255) : std::max(val - 1, 1));
+       }
+     }
++  }
++}
++
++void CanvasFingerprintManager::ApplyCanvasNoise(uint8_t* data, uint32_t length,
++                                                 uint32_t seed) {
++  if (seed) ApplyCanvasNoiseBytes(data, length, seed);
++}
++
++// The LCG has period 2^32, so source indices can wrap modulo 2^32.
++static uint32_t AdvanceCanvasNoiseSeed(uint32_t seed, uint32_t pixels) {
++  uint32_t multiplier = 1664525u, increment = 1013904223u;
++  while (pixels) {
++    if (pixels & 1) seed = seed * multiplier + increment;
++    increment *= multiplier + 1;
++    multiplier *= multiplier;
++    pixels >>= 1;
++  }
++  return seed;
++}
++
++void CanvasFingerprintManager::ApplyCanvasNoiseRect(
++    uint8_t* data, uint32_t width, uint32_t height, uint32_t stride,
++    uint32_t canvasWidth, uint32_t sourceX, uint32_t sourceY, uint32_t seed) {
++  if (!seed || !data || !width || !height || !canvasWidth ||
++      sourceX >= canvasWidth || width > canvasWidth - sourceX ||
++      uint64_t(width) * 4 > stride) {
++    return;
++  }
++  // Callers own the allocation and validate the written rectangle. Use a wide
++  // source index before reducing to the PRNG period; never advance through
++  // destination padding or clipped-out pixels.
++  for (uint32_t row = 0; row < height; ++row) {
++    const uint32_t firstPixel = uint32_t(
++        (uint64_t(sourceY) + row) * canvasWidth + sourceX);
++    // A valid nonzero canvas seed can advance to state zero. Only the
++    // original seed selects disabled policy; zero is valid inside the LCG.
++    ApplyCanvasNoiseBytes(data + size_t(row) * stride, width * 4,
++                          AdvanceCanvasNoiseSeed(seed, firstPixel));
+   }
+ }
+ 
+diff --git a/dom/base/CanvasFingerprintManager.h b/dom/base/CanvasFingerprintManager.h
+--- a/dom/base/CanvasFingerprintManager.h
++++ b/dom/base/CanvasFingerprintManager.h
+@@ -15,6 +15,12 @@
+   static void SetSeed(uint32_t aUserContextId, uint32_t aSeed);
+   static uint32_t GetSeed(uint32_t aUserContextId);
+   static void ApplyCanvasNoise(uint8_t* data, uint32_t length, uint32_t seed);
++  // Noise a written rectangle using positions in its owning canvas. The
++  // destination may have padding; coordinates describe source pixels only.
++  static void ApplyCanvasNoiseRect(uint8_t* data, uint32_t width,
++                                   uint32_t height, uint32_t stride,
++                                   uint32_t canvasWidth, uint32_t sourceX,
++                                   uint32_t sourceY, uint32_t seed);
+   static void DisableFunction(uint32_t aId);
+   static bool IsFunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj);
+  private:
+diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderingContext2D.cpp
+--- a/dom/canvas/CanvasRenderingContext2D.cpp
++++ b/dom/canvas/CanvasRenderingContext2D.cpp
+@@ -2345,9 +2345,22 @@
+     uint32_t canvasSeed = CloakfoxSiteSeed::Derive(userContextId, "canvas:seed",
+         GetCookieJarSettings());
+     if (canvasSeed != 0) {
+-      CanvasFingerprintManager::ApplyCanvasNoise(
+-          ret.get(), out_imageSize->width * out_imageSize->height * 4,
+-          canvasSeed);
++      // Export the same straight RGBA bytes exposed by getImageData. Applying
++      // noise to premultiplied BGRA amplifies changes at low alpha and gives
++      // serializers a different pixel representation from typed readback.
++      const int32_t stride = out_imageSize->width * 4;
++      if (mOpaque) {
++        SwizzleData(ret.get(), stride, SurfaceFormat::X8R8G8B8_UINT32,
++                    ret.get(), stride, SurfaceFormat::R8G8B8A8, *out_imageSize);
++      } else {
++        UnpremultiplyData(ret.get(), stride, SurfaceFormat::A8R8G8B8_UINT32,
++                          ret.get(), stride, SurfaceFormat::R8G8B8A8,
++                          *out_imageSize);
++      }
++      *out_format = imgIEncoder::INPUT_FORMAT_RGBA;
++      CanvasFingerprintManager::ApplyCanvasNoiseRect(
++          ret.get(), out_imageSize->width, out_imageSize->height, stride,
++          out_imageSize->width, 0, 0, canvasSeed);
+     }
+   }
+ 
+@@ -5442,28 +5455,26 @@
+     // direction, so its sign is reversed from our usual physical coordinates.
+     double actualBoundingBoxLeft = offsetX - processor.mBoundingBox.X();
+     double actualBoundingBoxRight = processor.mBoundingBox.XMost() - offsetX;
++    // Scale glyph geometry together, retaining zero ink and advance values.
++    // Font/em metrics and baseline anchors describe the font coordinate system
++    // and stay native. Vertical ink is scaled relative to that coordinate
++    // system before the selected native baseline translation is applied.
++    double metricScale = 1.0;
++    if (uint32_t seed = CloakfoxSiteSeed::Geometry(
++            PrincipalOrNull()
++                ? PrincipalOrNull()->OriginAttributesRef().mUserContextId
++                : 0,
++            "canvas:seed", GetCookieJarSettings())) {
++      const uint32_t state = seed * 1664525u + 1013904223u;
++      metricScale += (static_cast<double>(state) / 4294967295.0 - 0.5) * 0.0004;
++    }
+     double actualBoundingBoxAscent =
+-        -processor.mBoundingBox.Y() - baselineAnchor;
++        -processor.mBoundingBox.Y() * metricScale - baselineAnchor;
+     double actualBoundingBoxDescent =
+-        processor.mBoundingBox.YMost() + baselineAnchor;
+-    // Cloakfox: add deterministic sub-pixel noise to text metrics using
+-    // canvas:seed so measureText is not a reliable font fingerprint.
+-    if (auto seed = std::optional<uint32_t>(CloakfoxSiteSeed::Geometry(
+-        PrincipalOrNull() ? PrincipalOrNull()->OriginAttributesRef().mUserContextId : 0,
+-        "canvas:seed", GetCookieJarSettings())); seed.value_or(0)) {
+-      uint32_t s = seed.value();
+-      auto noise = [&s]() {
+-        s = s * 1664525u + 1013904223u;
+-        return (static_cast<double>(s) / 4294967295.0 - 0.5) * 0.4;
+-      };
+-      totalWidth += noise();
+-      actualBoundingBoxLeft += noise();
+-      actualBoundingBoxRight += noise();
+-      actualBoundingBoxAscent += noise();
+-      actualBoundingBoxDescent += noise();
+-    }
++        processor.mBoundingBox.YMost() * metricScale + baselineAnchor;
+     return MakeUnique<TextMetrics>(
+-        totalWidth, actualBoundingBoxLeft, actualBoundingBoxRight,
++        totalWidth * metricScale, actualBoundingBoxLeft * metricScale,
++        actualBoundingBoxRight * metricScale,
+         fontMetrics.maxAscent - baselineAnchor,   // fontBBAscent
+         fontMetrics.maxDescent + baselineAnchor,  // fontBBDescent
+         actualBoundingBoxAscent, actualBoundingBoxDescent,
+@@ -6956,8 +6967,11 @@
+       bool isShared2;
+       uint8_t* pixelData =
+           JS_GetUint8ClampedArrayData(darray, &isShared2, nogc2);
+-      CanvasFingerprintManager::ApplyCanvasNoise(pixelData, len.value(),
+-                                                  canvasSeed);
++      uint8_t* written = pixelData +
++          (size_t(dstWriteRect.y) * aWidth + dstWriteRect.x) * 4;
++      CanvasFingerprintManager::ApplyCanvasNoiseRect(
++          written, dstWriteRect.width, dstWriteRect.height, aWidth * 4,
++          mWidth, srcReadRect.x, srcReadRect.y, canvasSeed);
+     }
+   }
+ 

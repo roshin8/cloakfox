@@ -1,0 +1,100 @@
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:5:9: error: use of undeclared identifier 'CanvasOwnerMessage'
+    5 |  assert(CanvasOwnerMessage(0,"(https,example.com,f)")=="cloakfox-canvas-owner-v1\n0\n(https,example.com)");
+      |         ^~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:6:9: error: use of undeclared identifier 'CanvasOwnerMessage'
+    6 |  assert(CanvasOwnerMessage(1,"(https,example.com)")!=CanvasOwnerMessage(0,"(https,example.com)"));
+      |         ^~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:6:54: error: use of undeclared identifier 'CanvasOwnerMessage'
+    6 |  assert(CanvasOwnerMessage(1,"(https,example.com)")!=CanvasOwnerMessage(0,"(https,example.com)"));
+      |                                                      ^~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:7:9: error: use of undeclared identifier 'CanvasOwnerMessage'
+    7 |  assert(CanvasOwnerMessage(0,"(http,example.com)")!=CanvasOwnerMessage(0,"(https,example.com)"));
+      |         ^~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:7:53: error: use of undeclared identifier 'CanvasOwnerMessage'
+    7 |  assert(CanvasOwnerMessage(0,"(http,example.com)")!=CanvasOwnerMessage(0,"(https,example.com)"));
+      |                                                     ^~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:8:9: error: use of undeclared identifier 'CanvasOwnerMessage'
+    8 |  assert(CanvasOwnerMessage(0,"https://frame.example.com").empty());
+      |         ^~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:10:13: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+   10 |  auto owner=CanvasOwnerFromDigest(digest,sizeof(digest));assert(owner);
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:12:30: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+   12 |  uint8_t zero[32]={};assert(!CanvasOwnerFromDigest(zero,32));assert(!CanvasOwnerFromDigest(nullptr,32));assert(!CanvasOwnerFromDigest(digest,8));
+      |                              ^~~~~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:12:70: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+   12 |  uint8_t zero[32]={};assert(!CanvasOwnerFromDigest(zero,32));assert(!CanvasOwnerFromDigest(nullptr,32));assert(!CanvasOwnerFromDigest(digest,8));
+      |                                                                      ^~~~~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:12:113: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+   12 |  uint8_t zero[32]={};assert(!CanvasOwnerFromDigest(zero,32));assert(!CanvasOwnerFromDigest(nullptr,32));assert(!CanvasOwnerFromDigest(digest,8));
+      |                                                                                                                 ^~~~~~~~~~~~~~~~~~~~~
+/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:13:42: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+   13 |  uint8_t other[32]={};other[15]=1;assert(CanvasOwnerFromDigest(other,32));
+      |                                          ^~~~~~~~~~~~~~~~~~~~~
+11 errors generated.
+✖ native canvas owner token preserves 128 bits and separates disabled seed and canonical top site (398.150292ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 550.400833
+
+✖ failing tests:
+
+test at tests/fingerprint/test_canvas_owner_key.mjs:8:1
+✖ native canvas owner token preserves 128 bits and separates disabled seed and canonical top site (398.150292ms)
+  Error: Command failed: c++ -std=c++17 -I /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/additions/cloakcfg /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp -o /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:5:9: error: use of undeclared identifier 'CanvasOwnerMessage'
+      5 |  assert(CanvasOwnerMessage(0,"(https,example.com,f)")=="cloakfox-canvas-owner-v1\n0\n(https,example.com)");
+        |         ^~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:6:9: error: use of undeclared identifier 'CanvasOwnerMessage'
+      6 |  assert(CanvasOwnerMessage(1,"(https,example.com)")!=CanvasOwnerMessage(0,"(https,example.com)"));
+        |         ^~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:6:54: error: use of undeclared identifier 'CanvasOwnerMessage'
+      6 |  assert(CanvasOwnerMessage(1,"(https,example.com)")!=CanvasOwnerMessage(0,"(https,example.com)"));
+        |                                                      ^~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:7:9: error: use of undeclared identifier 'CanvasOwnerMessage'
+      7 |  assert(CanvasOwnerMessage(0,"(http,example.com)")!=CanvasOwnerMessage(0,"(https,example.com)"));
+        |         ^~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:7:53: error: use of undeclared identifier 'CanvasOwnerMessage'
+      7 |  assert(CanvasOwnerMessage(0,"(http,example.com)")!=CanvasOwnerMessage(0,"(https,example.com)"));
+        |                                                     ^~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:8:9: error: use of undeclared identifier 'CanvasOwnerMessage'
+      8 |  assert(CanvasOwnerMessage(0,"https://frame.example.com").empty());
+        |         ^~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:10:13: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+     10 |  auto owner=CanvasOwnerFromDigest(digest,sizeof(digest));assert(owner);
+        |             ^~~~~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:12:30: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+     12 |  uint8_t zero[32]={};assert(!CanvasOwnerFromDigest(zero,32));assert(!CanvasOwnerFromDigest(nullptr,32));assert(!CanvasOwnerFromDigest(digest,8));
+        |                              ^~~~~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:12:70: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+     12 |  uint8_t zero[32]={};assert(!CanvasOwnerFromDigest(zero,32));assert(!CanvasOwnerFromDigest(nullptr,32));assert(!CanvasOwnerFromDigest(digest,8));
+        |                                                                      ^~~~~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:12:113: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+     12 |  uint8_t zero[32]={};assert(!CanvasOwnerFromDigest(zero,32));assert(!CanvasOwnerFromDigest(nullptr,32));assert(!CanvasOwnerFromDigest(digest,8));
+        |                                                                                                                 ^~~~~~~~~~~~~~~~~~~~~
+  /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/canvas-owner-h1rSPc/owner.cpp:13:42: error: use of undeclared identifier 'CanvasOwnerFromDigest'
+     13 |  uint8_t other[32]={};other[15]=1;assert(CanvasOwnerFromDigest(other,32));
+        |                                          ^~~~~~~~~~~~~~~~~~~~~
+  11 errors generated.
+  
+      at genericNodeError (node:internal/errors:998:15)
+      at wrappedFn (node:internal/errors:543:14)
+      at checkExecSyncError (node:child_process:925:11)
+      at execFileSync (node:child_process:961:15)
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_canvas_owner_key.mjs:26:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    status: 1,
+    signal: null,
+    output: [ null, <Buffer >, <Buffer 2f 76 61 72 2f 66 6f 6c 64 65 72 73 2f 66 74 2f 37 36 66 39 79 67 35 6e 34 35 78 33 62 76 63 72 62 62 37 6b 70 36 79 63 30 30 30 30 67 6e 2f 54 2f 63 ... 3505 more bytes> ],
+    pid: 55490,
+    stdout: <Buffer >,
+    stderr: <Buffer 2f 76 61 72 2f 66 6f 6c 64 65 72 73 2f 66 74 2f 37 36 66 39 79 67 35 6e 34 35 78 33 62 76 63 72 62 62 37 6b 70 36 79 63 30 30 30 30 67 6e 2f 54 2f 63 ... 3505 more bytes>
+  }

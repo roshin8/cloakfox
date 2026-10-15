@@ -1,6 +1,8 @@
 /* MPL-2.0: protocol shared by the native and privileged actor site seeds. */
 #pragma once
 #include <cstdint>
+#include <array>
+#include <optional>
 #include <string>
 
 namespace CloakfoxSiteSeed {
@@ -35,5 +37,22 @@ inline uint32_t SeedFromDigest(const uint8_t* digest) {
   const auto seed = (uint32_t(digest[0]) << 24) | (uint32_t(digest[1]) << 16) |
                     (uint32_t(digest[2]) << 8) | uint32_t(digest[3]);
   return seed ? seed : 1;
+}
+// Owner tokens are internal surface policy identifiers, not page-visible seeds.
+// A disabled extraction seed still needs an unambiguous scope identity.
+inline std::string CanvasOwnerMessage(uint32_t baseSeed,
+                                      const std::string& partitionKey) {
+  const auto site = CanonicalSiteKey(partitionKey);
+  return site.empty() ? std::string() : "cloakfox-canvas-owner-v1\n" +
+      std::to_string(baseSeed) + "\n" + site;
+}
+inline std::optional<std::array<uint64_t, 2>> CanvasOwnerFromDigest(
+    const uint8_t* digest, size_t length) {
+  if (!digest || length != 32) return std::nullopt;
+  std::array<uint64_t, 2> owner{};
+  for (size_t i = 0; i < 16; ++i) owner[i / 8] =
+      (owner[i / 8] << 8) | uint64_t(digest[i]);
+  if (!owner[0] && !owner[1]) return std::nullopt;
+  return owner;
 }
 } // namespace CloakfoxSiteSeed

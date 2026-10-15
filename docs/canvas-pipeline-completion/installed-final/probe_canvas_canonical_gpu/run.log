@@ -1,0 +1,68 @@
+PASS native webgl creates actual context/device
+PASS native webgl shader/texture/readback has no GL error
+PASS native webgl authored ImageData upload succeeds
+PASS native webgl repeated readback stable
+PASS native webgl texture shader and canvas roundtrip contain pixels
+PASS native webgl2 creates actual context/device
+PASS native webgl2 shader/texture/readback has no GL error
+PASS native webgl2 authored ImageData upload succeeds
+PASS native webgl2 repeated readback stable
+PASS native webgl2 texture shader and canvas roundtrip contain pixels
+PASS native GL2 unverified input refused before upload
+PASS native authored GL2 buffer readback remains exact
+PASS native poisoned GL2 buffer readback follows canonical policy
+PASS native poisoned GL2 readback leaves destination unchanged
+FAIL native webgpu creates actual context/device
+PASS legacy webgl creates actual context/device
+PASS legacy webgl shader/texture/readback has no GL error
+PASS legacy webgl authored ImageData upload succeeds
+PASS legacy webgl repeated readback stable
+PASS legacy webgl texture shader and canvas roundtrip contain pixels
+PASS legacy webgl2 creates actual context/device
+PASS legacy webgl2 shader/texture/readback has no GL error
+PASS legacy webgl2 authored ImageData upload succeeds
+PASS legacy webgl2 repeated readback stable
+PASS legacy webgl2 texture shader and canvas roundtrip contain pixels
+PASS legacy GL2 unverified input refused before upload
+PASS legacy authored GL2 buffer readback remains exact
+PASS legacy poisoned GL2 buffer readback follows canonical policy
+PASS legacy poisoned GL2 readback leaves destination unchanged
+PASS legacy strict precise typed readback denied
+PASS legacy strict PBO readback denied
+FAIL legacy webgpu creates actual context/device
+PASS canonical webgl creates actual context/device
+PASS canonical webgl shader/texture/readback has no GL error
+PASS canonical webgl authored ImageData upload succeeds
+PASS canonical webgl repeated readback stable
+PASS canonical webgl texture shader and canvas roundtrip contain pixels
+PASS canonical webgl2 creates actual context/device
+PASS canonical webgl2 shader/texture/readback has no GL error
+PASS canonical webgl2 authored ImageData upload succeeds
+PASS canonical webgl2 repeated readback stable
+PASS canonical webgl2 texture shader and canvas roundtrip contain pixels
+PASS canonical GL2 unverified input refused before upload
+PASS canonical authored GL2 buffer readback remains exact
+PASS canonical poisoned GL2 buffer readback follows canonical policy
+PASS canonical poisoned GL2 readback leaves destination unchanged
+PASS canonical strict precise typed readback denied
+PASS canonical strict PBO readback denied
+FAIL canonical webgpu creates actual context/device
+PASS canonical-repeat webgl creates actual context/device
+PASS canonical-repeat webgl shader/texture/readback has no GL error
+PASS canonical-repeat webgl authored ImageData upload succeeds
+PASS canonical-repeat webgl repeated readback stable
+PASS canonical-repeat webgl texture shader and canvas roundtrip contain pixels
+PASS canonical-repeat webgl2 creates actual context/device
+PASS canonical-repeat webgl2 shader/texture/readback has no GL error
+PASS canonical-repeat webgl2 authored ImageData upload succeeds
+PASS canonical-repeat webgl2 repeated readback stable
+PASS canonical-repeat webgl2 texture shader and canvas roundtrip contain pixels
+PASS canonical-repeat GL2 unverified input refused before upload
+PASS canonical-repeat authored GL2 buffer readback remains exact
+PASS canonical-repeat poisoned GL2 buffer readback follows canonical policy
+PASS canonical-repeat poisoned GL2 readback leaves destination unchanged
+PASS canonical-repeat strict precise typed readback denied
+PASS canonical-repeat strict PBO readback denied
+FAIL canonical-repeat webgpu creates actual context/device
+PASS canonical corpus stable across reload
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry

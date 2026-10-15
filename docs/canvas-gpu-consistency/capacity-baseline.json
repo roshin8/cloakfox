@@ -1,0 +1,101 @@
+{
+  "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+  "stage": "API repairs before backed-capacity fix",
+  "checks": [
+    {
+      "label": "saved legacy GPU tables migrate on browser restart",
+      "pass": true
+    },
+    {
+      "label": "migration preserves secrets, unrelated fields, and explicit scalar override",
+      "pass": true
+    },
+    {
+      "label": "webgl available",
+      "pass": true
+    },
+    {
+      "label": "webgl enumeration agrees with getExtension",
+      "pass": true
+    },
+    {
+      "label": "webgl extensions stay within persona and real backend support",
+      "pass": true
+    },
+    {
+      "label": "webgl mutable GL state remains live",
+      "pass": true
+    },
+    {
+      "label": "WebGL1 rejects WebGL2-only component enum",
+      "pass": true
+    },
+    {
+      "label": "webgl every configured integer upper-bound capacity stays within backend",
+      "pass": false
+    },
+    {
+      "label": "webgl advertised maximum texture width allocates as a bounded single row",
+      "pass": false
+    },
+    {
+      "label": "webgl advertised texture/cube/renderbuffer/sample/viewport capacities stay within backend",
+      "pass": false
+    },
+    {
+      "label": "webgl point/line ranges stay within native range",
+      "pass": false
+    },
+    {
+      "label": "webgl2 available",
+      "pass": true
+    },
+    {
+      "label": "webgl2 enumeration agrees with getExtension",
+      "pass": true
+    },
+    {
+      "label": "webgl2 extensions stay within persona and real backend support",
+      "pass": true
+    },
+    {
+      "label": "webgl2 mutable GL state remains live",
+      "pass": true
+    },
+    {
+      "label": "WebGL2 uniform/varying component relationships agree",
+      "pass": true
+    },
+    {
+      "label": "webgl2 every configured integer upper-bound capacity stays within backend",
+      "pass": false
+    },
+    {
+      "label": "webgl2 advertised maximum texture width allocates as a bounded single row",
+      "pass": false
+    },
+    {
+      "label": "webgl2 advertised texture/cube/renderbuffer/sample/viewport capacities stay within backend",
+      "pass": false
+    },
+    {
+      "label": "webgl2 point/line ranges stay within native range",
+      "pass": false
+    },
+    {
+      "label": "oversized paired uniform/varying and viewport config clamps to native ceilings",
+      "pass": false
+    },
+    {
+      "label": "invalid capacity -1 falls back to working native texture ceiling",
+      "pass": false
+    },
+    {
+      "label": "invalid capacity 1.5 falls back to working native texture ceiling",
+      "pass": false
+    }
+  ],
+  "note": "Baseline stopped at unsafe legacy malformed-array handling. Only completed non-malformed checks retained; cross-realm instanceof assertion was corrected before final validation.",
+  "passed": 12,
+  "failed": 11
+}

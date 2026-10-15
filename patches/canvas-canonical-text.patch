@@ -1,0 +1,320 @@
+--- a/dom/canvas/CanvasRenderingContext2D.cpp
++++ b/dom/canvas/CanvasRenderingContext2D.cpp
+@@ -4,6 +4,11 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "CanvasRenderingContext2D.h"
++#include "CanonicalCanvasText.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
++#include "mozilla/gfx/gfxVars.h"
++#include "nsIFile.h"
++#include "prio.h"
+ 
+ #include <algorithm>
+ #include <numbers>
+@@ -307,6 +312,8 @@
+           gradient->mCenter, gradient->mAngle, 0, 1,
+           gradient->GetGradientStopsForTarget(aRT));
+     } else if (state.patternStyles[aStyle]) {
++      aCtx->mCanvasPixelSources |= gfx::GetCanvasPixelSources(
++          state.patternStyles[aStyle]->mSurface);
+       aCtx->DoSecurityCheck(state.patternStyles[aStyle]->mPrincipal,
+                             state.patternStyles[aStyle]->mForceWriteOnly,
+                             state.patternStyles[aStyle]->mCORSUsed);
+@@ -1780,6 +1787,9 @@
+       CloakfoxSiteSeed::ExactConfig(
+           principal->OriginAttributesRef().mUserContextId),
+       StaticPrefs::cloakfox_enabled(), true);
++  if (mCanonicalCanvasBacking) {
++    mCanvasPixelSources |= static_cast<uint32_t>(CanvasPixelSource::Software2D);
++  }
+ }
+ 
+ // Experimental additive glyph protection. Extraction and metric privacy remain
+@@ -2499,6 +2509,9 @@
+   RefPtr<SourceSurface> snapshot = mBufferProvider->BorrowSnapshot(aTarget);
+   RefPtr<SourceSurface> retSurface = snapshot;
+   mBufferProvider->ReturnSnapshot(snapshot.forget());
++  gfx::AddCanvasPixelSource(retSurface,
++      static_cast<gfx::CanvasPixelSource>(
++          gfx::NormalizeCanvasPixelSources(mCanvasPixelSources)));
+   return retSurface.forget();
+ }
+ 
+@@ -2762,6 +2775,10 @@
+ already_AddRefed<CanvasPattern> CanvasRenderingContext2D::CreatePattern(
+     const CanvasImageSource& aSource, const nsAString& aRepeat,
+     ErrorResult& aError) {
++  mCanvasPixelSources |= uint32_t(gfx::CanvasPixelSource::ExternalPixels);
++  if (aSource.IsHTMLVideoElement() || aSource.IsVideoFrame()) {
++    mCanvasPixelSources |= uint32_t(gfx::CanvasPixelSource::Media);
++  }
+   CanvasPattern::RepeatMode repeatMode = CanvasPattern::RepeatMode::NOREPEAT;
+ 
+   if (aRepeat.IsEmpty() || aRepeat.EqualsLiteral("repeat")) {
+@@ -2801,6 +2818,7 @@
+     if (srcCanvas) {
+       // This might not be an Azure canvas!
+       RefPtr<SourceSurface> srcSurf = srcCanvas->GetSurfaceSnapshot();
++      mCanvasPixelSources |= gfx::GetCanvasPixelSources(srcSurf);
+       if (!srcSurf) {
+         aError.ThrowInvalidStateError(
+             "CanvasRenderingContext2D.createPattern() failed to snapshot source"
+@@ -2843,6 +2861,7 @@
+         offscreenCanvas->GetContext();
+     if (srcCanvas) {
+       RefPtr<SourceSurface> srcSurf = srcCanvas->GetSurfaceSnapshot();
++      mCanvasPixelSources |= gfx::GetCanvasPixelSources(srcSurf);
+       if (!srcSurf) {
+         aError.ThrowInvalidStateError(
+             "Passed-in canvas failed to create snapshot");
+@@ -2877,6 +2896,8 @@
+     MOZ_ASSERT(IsTargetValid());
+ 
+     RefPtr<SourceSurface> srcSurf = imgBitmap.PrepareForDrawTarget(mTarget);
++    mCanvasPixelSources |= imgBitmap.CanvasPixelSources() |
++                           gfx::GetCanvasPixelSources(srcSurf);
+     if (!srcSurf) {
+       aError.ThrowInvalidStateError(
+           "Passed-in ImageBitmap has been transferred");
+@@ -2932,6 +2953,7 @@
+   }
+ 
+   RefPtr<SourceSurface> surface = res.GetSourceSurface();
++  mCanvasPixelSources |= gfx::GetCanvasPixelSources(surface);
+   if (!surface) {
+     return nullptr;
+   }
+@@ -5309,6 +5331,53 @@
+   bool mIgnoreSetText = false;
+ };
+ 
++extern "C" hb_unicode_funcs_t* mozilla_harfbuzz_glue_set_up_unicode_funcs();
++
++// Load only the shipped face. No font-list lookup, host fallback or platform
++// scaled-font object participates in this producer. Failed loads keep the
++// existing protected text path, including on sandboxed workers.
++CanonicalCanvasText* CanvasRenderingContext2D::GetCanonicalCanvasText() {
++  if (mCanonicalTextLoadAttempted) return mCanonicalText.get();
++  mCanonicalTextLoadAttempted = true;
++  const nsString& gre = gfxVars::GREDirectory();
++  if (gre.IsEmpty()) return nullptr;
++  nsCOMPtr<nsIFile> file;
++  if (NS_FAILED(NS_NewLocalFile(gre, getter_AddRefs(file))) ||
++      NS_FAILED(file->Append(u"fonts"_ns)) ||
++      NS_FAILED(file->Append(u"DejaVuSans.ttf"_ns))) return nullptr;
++  int64_t size = 0;
++  if (NS_FAILED(file->GetFileSize(&size)) || size <= 0 || size > 16 * 1024 * 1024)
++    return nullptr;
++  PRFileDesc* descriptor = nullptr;
++  if (NS_FAILED(file->OpenNSPRFileDesc(PR_RDONLY, 0, &descriptor))) return nullptr;
++  std::vector<char> bytes(static_cast<size_t>(size));
++  size_t done = 0;
++  while (done < bytes.size()) {
++    int32_t n = PR_Read(descriptor, bytes.data() + done,
++                        static_cast<int32_t>(bytes.size() - done));
++    if (n <= 0) break;
++    done += n;
++  }
++  PR_Close(descriptor);
++  if (done != bytes.size()) return nullptr;
++  static hb_unicode_funcs_t* unicode =
++      mozilla_harfbuzz_glue_set_up_unicode_funcs();
++  mCanonicalText = MakeUnique<CanonicalCanvasText>(bytes.data(), bytes.size(), unicode);
++  return mCanonicalText.get();
++}
++
++// Restrict v1 to an unstyled generic family. Author FontFace names and CSS
++// feature/variation/caps/spacing/vertical/bidi cases stay on guarded fallback.
++static bool CanonicalCanvasSimpleFont(const nsCString& aFont) {
++  constexpr auto suffix = "px sans-serif"_ns;
++  if (!StringEndsWith(aFont, suffix) || aFont.Length() == suffix.Length())
++    return false;
++  for (size_t i = 0; i < aFont.Length() - suffix.Length(); ++i) {
++    if ((aFont[i] < '0' || aFont[i] > '9') && aFont[i] != '.') return false;
++  }
++  return true;
++}
++
+ UniquePtr<TextMetrics> CanvasRenderingContext2D::DrawOrMeasureText(
+     const nsAString& aText, float aX, float aY,
+     const Optional<double>& aMaxWidth, TextDrawOperation aOp,
+@@ -5400,6 +5469,103 @@
+     return nullptr;
+   }
+ 
++  // Canonical ASCII text shares one HB shaping result and one outline path
++  // between metrics and rasterization. Every unsupported case falls through to
++  // the existing protected native implementation below; this is partial coverage.
++  CaptureCanonicalCanvasPolicy();
++  const bool horizontal = !canvasStyle ||
++      canvasStyle->StyleVisibility()->mWritingMode == StyleWritingModeProperty::HorizontalTb;
++  if (mCanonicalCanvasBacking && !isRTL && horizontal &&
++      CanonicalCanvasSimpleFont(state.resolvedFont) &&
++      state.fontKerning == CanvasFontKerning::Auto &&
++      state.fontWidth == CanvasFontStretch::Normal &&
++      state.fontVariantCaps == CanvasFontVariantCaps::Normal &&
++      state.letterSpacing == 0 && state.wordSpacing == 0 &&
++      state.fontFont.fontFeatureSettings.IsEmpty() &&
++      state.fontFont.fontVariationSettings.IsEmpty() &&
++      state.textRendering == CanvasTextRendering::Auto) {
++    if (auto* canonical = GetCanonicalCanvasText()) {
++      double metricScale = 1.0;
++      if (uint32_t seed = CloakfoxSiteSeed::Geometry(
++              PrincipalOrNull()
++                  ? PrincipalOrNull()->OriginAttributesRef().mUserContextId : 0,
++              "canvas:seed", GetCookieJarSettings())) {
++        const uint32_t random = seed * 1664525u + 1013904223u;
++        metricScale += (static_cast<double>(random) / 4294967295.0 - 0.5) * 0.0004;
++      }
++      CanonicalCanvasText::Run run;
++      if (canonical->Shape(textToDraw.get(), textToDraw.Length(),
++                           currentFontStyle->GetStyle()->size * metricScale, run)) {
++        // SKIA's path builder is used even by measureText; measuring never asks
++        // a platform font API for glyph extents or a native scaled font.
++        RefPtr<PathBuilder> builder = Factory::CreatePathBuilder(
++            BackendType::SKIA, FillRule::FILL_WINDING);
++        if (builder) {
++          for (const auto& command : run.commands) {
++            const float* p = command.p;
++            switch (command.kind) {
++              case CanonicalCanvasText::Command::Kind::Move: builder->MoveTo(Point(p[0], p[1])); break;
++              case CanonicalCanvasText::Command::Kind::Line: builder->LineTo(Point(p[0], p[1])); break;
++              case CanonicalCanvasText::Command::Kind::Quadratic:
++                builder->QuadraticBezierTo(Point(p[0], p[1]), Point(p[2], p[3])); break;
++              case CanonicalCanvasText::Command::Kind::Cubic:
++                builder->BezierTo(Point(p[0], p[1]), Point(p[2], p[3]), Point(p[4], p[5])); break;
++              case CanonicalCanvasText::Command::Kind::Close: builder->Close(); break;
++            }
++          }
++          RefPtr<Path> path = builder->Finish();
++          const gfx::Rect ink = path->GetBounds();
++          double anchor = (state.textAlign == CanvasTextAlign::Center) ? .5 :
++              (state.textAlign == CanvasTextAlign::Right || state.textAlign == CanvasTextAlign::End) ? 1 : 0;
++          double offset = anchor * run.advance;
++          double baseline = 0;
++          switch (state.textBaseline) {
++            case CanvasTextBaseline::Top: baseline = run.ascent; break;
++            case CanvasTextBaseline::Hanging: baseline = run.ascent * .8; break;
++            case CanvasTextBaseline::Middle: baseline = (run.ascent - run.descent) * .5; break;
++            case CanvasTextBaseline::Alphabetic: break;
++            case CanvasTextBaseline::Ideographic:
++            case CanvasTextBaseline::Bottom: baseline = -run.descent; break;
++          }
++          if (aOp == TextDrawOperation::MEASURE) {
++            aError = NS_OK;
++            return MakeUnique<TextMetrics>(
++                run.advance, offset - ink.X(), ink.XMost() - offset,
++                run.ascent - baseline, run.descent + baseline,
++                -ink.Y() - baseline, ink.YMost() + baseline,
++                run.ascent - baseline, run.descent + baseline,
++                run.ascent * .8 - baseline, -baseline, -run.descent - baseline);
++          }
++          if (!EnsureTarget(aError)) return nullptr;
++          mCanvasPixelSources |= static_cast<uint32_t>(CanvasPixelSource::FixedFontOutline);
++          Matrix transform;
++          transform.PreTranslate(aX, aY);
++          if (aMaxWidth.WasPassed() && run.advance > aMaxWidth.Value() &&
++              aMaxWidth.Value() > 0) {
++            transform.PreScale(aMaxWidth.Value() / run.advance, 1);
++          }
++          transform.PreTranslate(-offset, baseline);
++          // Keep the existing optional additive glyph guard. Device-space offset
++          // is applied after user transforms, matching the native text path.
++          // Position geometry in author space; gradients/patterns keep the
++          // caller transform. Apply the device-space glyph guard separately.
++          RefPtr<PathBuilder> positioned = path->TransformedCopyToBuilder(transform);
++          if (!positioned) { aError = NS_ERROR_FAILURE; return nullptr; }
++          path = positioned->Finish();
++          AutoRestoreTransform restore(mTarget);
++          mTarget->SetTransform(mTarget->GetTransform().PostTranslate(GlyphPrivacyOffset()));
++          if (aOp == TextDrawOperation::FILL) FillImpl(*path);
++          else StrokeImpl(*path);
++          aError = NS_OK;
++          return nullptr;
++        }
++      }
++    }
++  }
++
++  if (mCanonicalCanvasBacking && aOp != TextDrawOperation::MEASURE) {
++    mCanvasPixelSources |= static_cast<uint32_t>(CanvasPixelSource::HostText);
++  }
+   CanvasBidiProcessor processor(mPaletteCache);
+ 
+   // If we don't have a ComputedStyle, we can't set up vertical-text flags
+@@ -6169,6 +6335,7 @@
+                                          double aDw, double aDh,
+                                          uint8_t aOptional_argc,
+                                          ErrorResult& aError) {
++  mCanvasPixelSources |= uint32_t(gfx::CanvasPixelSource::ExternalPixels);
+   MOZ_ASSERT(aOptional_argc == 0 || aOptional_argc == 2 || aOptional_argc == 6);
+ 
+   if (!ValidateRect(aDx, aDy, aDw, aDh, true)) {
+@@ -6214,6 +6381,7 @@
+ 
+     srcSurf = offscreenCanvas->GetSurfaceSnapshot();
+     if (srcSurf) {
++      mCanvasPixelSources |= gfx::GetCanvasPixelSources(srcSurf);
+       imgSize = intrinsicImgSize = srcSurf->GetSize();
+     }
+ 
+@@ -6223,6 +6391,7 @@
+   } else if (aImage.IsImageBitmap()) {
+     ImageBitmap& imageBitmap = aImage.GetAsImageBitmap();
+     srcSurf = imageBitmap.PrepareForDrawTarget(mTarget);
++    mCanvasPixelSources |= imageBitmap.CanvasPixelSources();
+ 
+     if (!srcSurf) {
+       if (imageBitmap.IsClosed()) {
+@@ -6336,6 +6505,10 @@
+     }
+   }
+ 
++  mCanvasPixelSources |= gfx::GetCanvasPixelSources(srcSurf);
++  if (aImage.IsHTMLVideoElement() || aImage.IsVideoFrame()) {
++    mCanvasPixelSources |= uint32_t(gfx::CanvasPixelSource::Media);
++  }
+   double clipOriginX, clipOriginY, clipWidth, clipHeight;
+   if (cropRect) {
+     clipOriginX = cropRect.ref().X();
+--- a/dom/canvas/CanvasRenderingContext2D.h
++++ b/dom/canvas/CanvasRenderingContext2D.h
+@@ -61,6 +61,7 @@
+ class CanvasGradient;
+ class CanvasPath;
+ class CanvasPattern;
++class CanonicalCanvasText;
+ 
+ extern const mozilla::gfx::Float SIGMA_MAX;
+ 
+@@ -822,6 +823,10 @@
+   void CaptureCanonicalCanvasPolicy();
+   bool mCanonicalCanvasPolicyCaptured = false;
+   bool mCanonicalCanvasBacking = false;
++  uint32_t mCanvasPixelSources = 0;
++  CanonicalCanvasText* GetCanonicalCanvasText();
++  UniquePtr<CanonicalCanvasText> mCanonicalText;
++  bool mCanonicalTextLoadAttempted = false;
+   void CaptureGlyphPrivacyPolicy();
+   bool mGlyphPrivacyPolicyCaptured = false;
+   uint32_t mGlyphPrivacySeed = 0;
+--- a/dom/canvas/moz.build
++++ b/dom/canvas/moz.build
+@@ -101,6 +101,7 @@
+ ]
+ 
+ SOURCES += [
++    "CanonicalCanvasText.cpp",
+     "DrawTargetWebgl.cpp",  # Isolate Skia
+     "FilterNodeWebgl.cpp",
+     "ImageUtils.cpp",
+@@ -183,7 +184,7 @@
+ # WorkerPrivate.h for OffscreenCanvas worker context support
+ LOCAL_INCLUDES += ["/dom/workers"]
+ 
+-LOCAL_INCLUDES += ["/cloakcfg"]
++LOCAL_INCLUDES += ["/cloakcfg", "/gfx/harfbuzz/src"]
+ LOCAL_INCLUDES += ["/dom/base"]
+ LOCAL_INCLUDES += ["/dom/workers"]
+ 

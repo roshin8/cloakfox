@@ -1,0 +1,125 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.0, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox
+collected 1 item
+
+tests/fingerprint/test_canvas_import_owner.py F                          [100%]
+
+=================================== FAILURES ===================================
+_________________ ImportOwner.test_actual_accumulation_policy __________________
+
+self = <test_canvas_import_owner.ImportOwner testMethod=test_actual_accumulation_policy>
+
+     def test_actual_accumulation_policy(self):
+      s=(ROOT/'firefox-src/dom/canvas/CanvasRenderingContext2D.cpp').read_text();a=s.index('void CanvasRenderingContext2D::AccumulateCanvasSource(');b=s.index('\n}',a)+2
+      body=s[a:b].replace('CanvasRenderingContext2D::','Context::')
+      cp=(ROOT/'firefox-src/gfx/2d/CanvasPrivacy.cpp').read_text()
+      core=cp[cp.index('CanvasPrivacyMetadata NormalizeCanvasPrivacyMetadata('):cp.index('CanvasPrivacyMetadata MergeCanvasPrivacyMetadata(')]
+      body='namespace mozilla::gfx{'+core+'}\n'+body
+      a=s.index('void CanvasRenderingContext2D::AccumulateCanvasFilterSources(');b=s.index('\n}',a)+2
+      body+='\n'+s[a:b].replace('CanvasRenderingContext2D::','Context::')
+      use=s[s.index('~AdjustedTargetForFilter()'):s.index('DrawTarget* DT()')]
+      self.assertLess(use.index('AccumulateCanvasFilterSources()'),use.index('RenderFilterDescription('))
+      fixture=r'''#include <cassert>
+    #include <vector>
+    #include "CanvasPrivacy.h"
+    namespace gfx=mozilla::gfx;
+    using gfx::CanvasPixelSource;
+    namespace mozilla::gfx{class SourceSurface{public:CanvasPrivacyMetadata metadata;};CanvasPrivacyMetadata GetCanvasPrivacyMetadata(SourceSurface*s){return s?s->metadata:CanvasPrivacyMetadata{};}}
+    struct Context{gfx::CanvasPrivacyMetadata mCanvasPrivacyPolicy{1,7,11,13,2};uint32_t mCanvasPixelSources=2;void AccumulateCanvasSource(gfx::SourceSurface*);void AccumulateCanvasFilterSources();struct State{std::vector<gfx::SourceSurface*>filterAdditionalImages;}state;State&CurrentState(){return state;}};
+    '''+body+r'''
+    int main(){gfx::SourceSurface same;same.metadata={1,7,11,13,2};Context a;a.AccumulateCanvasSource(&same);assert(a.mCanvasPixelSources==2);assert(a.mCanvasPrivacyPolicy.ownerHi==11);
+    gfx::SourceSurface foreign;foreign.metadata={1,8,17,19,2};Context b;b.AccumulateCanvasSource(&foreign);assert(b.mCanvasPixelSources&1);assert(b.mCanvasPrivacyPolicy.ownerHi==11);
+    gfx::SourceSurface unowned;Context c;c.AccumulateCanvasSource(&unowned);assert(c.mCanvasPixelSources&1);
+    Context d;d.AccumulateCanvasSource(nullptr);assert(d.mCanvasPixelSources&1);
+    Context filtered;filtered.state.filterAdditionalImages={&same,&foreign};filtered.AccumulateCanvasFilterSources();assert(filtered.mCanvasPixelSources&1);
+    gfx::SourceSurface cpu,gpu;cpu.metadata={1,7,11,13,64|512};gpu.metadata={1,7,11,13,64};Context laundering;laundering.AccumulateCanvasSource(&cpu);assert(!(laundering.mCanvasPixelSources&1));laundering.AccumulateCanvasSource(&gpu);assert(laundering.mCanvasPixelSources&1);
+    gfx::SourceSurface decode,color;decode.metadata={1,7,11,13,2|32|128};color.metadata={1,7,11,13,2|32|256};Context media;media.AccumulateCanvasSource(&decode);media.AccumulateCanvasSource(&color);assert(media.mCanvasPixelSources&1);
+    }
+    '''
+      with tempfile.TemporaryDirectory()as d:
+>      p=Path(d)/'import.cpp';p.write_text(fixture);exe=Path(d)/'import';subprocess.run(['c++','-std=c++17','-I',str(ROOT/'firefox-src/gfx/2d'),str(p),'-o',str(exe)],check=True);subprocess.run([str(exe)],check=True)
+                                                                                                                                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/fingerprint/test_canvas_import_owner.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = False, timeout = None, check = True
+popenargs = (['/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmpt34qoahm/import'],)
+kwargs = {}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout is given, and the process takes too long, a TimeoutExpired
+        exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmpt34qoahm/import']' died with <Signals.SIGABRT: 6>.
+
+/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/subprocess.py:571: CalledProcessError
+----------------------------- Captured stderr call -----------------------------
+Assertion failed: (laundering.mCanvasPixelSources&1), function main, file import.cpp, line 60.
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_import_owner.py::ImportOwner::test_actual_accumulation_policy
+============================== 1 failed in 0.82s ===============================

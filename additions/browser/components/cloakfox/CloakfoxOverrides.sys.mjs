@@ -153,12 +153,38 @@ export function readOverrides(ucid) {
   return out;
 }
 
+// Graphics opt-ins are global policy, not per-field identity overrides. Apply
+// last so stale imported override keys cannot enable or disable a mode.
+// Missing or malformed preferences select the existing protected behavior.
+export function applyGraphicsPolicy(config) {
+  const result = { ...config };
+  for (const [name, key] of [
+    ["cloakfox.opt.canvas_render_privacy", "canvas:render_privacy"],
+    ["cloakfox.opt.gpu_backend_profiles", "webGl:backend_profile"],
+    ["cloakfox.experimental.canvas_pipeline", "canvas:canonical_2d"],
+    ["cloakfox.experimental.canvas_pipeline", "canvas:canonical_gpu"],
+  ]) {
+    let enabled = false;
+    try {
+      enabled = Services.prefs.getBoolPref(name, false) === true;
+    } catch (_e) { /* invalid preference type keeps the opt-in disabled */ }
+    result[key] = enabled;
+  }
+  // A CPU shader backend must not advertise the saved hardware profile.
+  if (result["canvas:canonical_gpu"]) {
+    result["webGl:backend_profile"] = true;
+    result["webgl:typed_readback:disabled"] = true;
+  }
+  return result;
+}
+
 /**
  * Apply user overrides on top of a base cloak_cfg object. Override
- * values are spread last so they win. Returns a new object.
+ * values win over persona fields; global graphics policy is applied last.
+ * Returns a new object.
  */
 export function applyOverrides(ucid, baseObj, overrides = readOverrides(ucid)) {
-  return applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides }));
+  return applyGraphicsPolicy(applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides })));
 }
 
 /**

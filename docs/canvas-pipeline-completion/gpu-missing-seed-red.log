@@ -1,0 +1,31 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+___________________ test_actual_missing_seed_readback_policy ___________________
+
+    def test_actual_missing_seed_readback_policy():
+        source=(ROOT/'dom/canvas/ClientWebGLContext.cpp').read_text()
+>       start=source.index('static bool CloakfoxRejectUnprotectedCanonicalReadback(')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: substring not found
+
+tests/fingerprint/test_canvas_gpu_missing_seed.py:11: ValueError
+_____ test_missing_seed_guards_run_before_pixels_or_ipc_and_reuse_capture ______
+
+    def test_missing_seed_guards_run_before_pixels_or_ipc_and_reuse_capture():
+        source=(ROOT/'dom/canvas/ClientWebGLContext.cpp').read_text()
+        for signature,end,action in [
+            ('UniquePtr<uint8_t[]> ClientWebGLContext::GetImageBuffer(', 'ClientWebGLContext::GetInputStream(', 'GetSurfaceSnapshot(&any)'),
+            ('bool ClientWebGLContext::DoReadPixels(', 'ClientWebGLContext::DoReadPixelsAsync()', 'child->FlushPendingCmds()'),
+            ('ClientWebGLContext::DoReadPixelsAsync()', '// ----------------', 'child->FlushPendingCmds()')]:
+            start=source.index(signature)
+            if signature=='ClientWebGLContext::DoReadPixelsAsync()':block=source[start:]
+            else:block=source[start:source.index(end,start+len(signature))]
+>           assert block.index('CloakfoxRejectUnprotectedCanonicalReadback(')<block.index(action)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           ValueError: substring not found
+
+tests/fingerprint/test_canvas_gpu_missing_seed.py:46: ValueError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_gpu_missing_seed.py::test_actual_missing_seed_readback_policy
+FAILED tests/fingerprint/test_canvas_gpu_missing_seed.py::test_missing_seed_guards_run_before_pixels_or_ipc_and_reuse_capture
+2 failed in 0.03s

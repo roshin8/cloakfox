@@ -1,0 +1,22 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ FontStaging.test_updates_owned_lists_without_duplicate_or_unrelated_changes __
+
+self = <test_font_resource_staging.FontStaging testMethod=test_updates_owned_lists_without_duplicate_or_unrelated_changes>
+
+    def test_updates_owned_lists_without_duplicate_or_unrelated_changes(self):
+     with tempfile.TemporaryDirectory() as d:
+      root=Path(d);pack=root/'pack';target=root/'source';(pack/'macos').mkdir(parents=True);(pack/'licenses').mkdir();target.mkdir()
+      (pack/'macos/A.ttf').write_bytes(b'font-a');(pack/'macos/NotoColorEmoji.ttf').write_bytes(b'emoji');(pack/'licenses/Emoji.txt').write_text('license');(pack/'FONT-NOTICES.txt').write_text('notices')
+      def record(rel):return {'file':rel,'sha256':hashlib.sha256((pack/rel).read_bytes()).hexdigest()}
+      data={'version':1,'fonts':[record('macos/A.ttf'),record('macos/NotoColorEmoji.ttf')],'licenses':[record('licenses/Emoji.txt')],'notices':[record('FONT-NOTICES.txt')]};(pack/'font-manifest.json').write_text(json.dumps(data))
+      old='''# upstream rule stays\nFINAL_TARGET_FILES.fonts += ["Upstream.ttf"]\n\n# Cloakfox: bundled open-substitute font pack (all platforms).\nDIST_SUBDIR = ""\nFINAL_TARGET_FILES.fonts += [\n    "A.ttf",\n]\n''';(target/'moz.build').write_text(old)
+      cmd=[sys.executable,str(ROOT/'scripts/stage-font-resources.py'),'--bundle',str(pack),'--target',str(target)]
+>     p=subprocess.run(cmd,capture_output=True,text=True);self.assertEqual(p.returncode,0,p.stderr)
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     AssertionError: 2 != 0 : /tmp/cloakfox158-wire-venv/bin/python: can't open file '/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/scripts/stage-font-resources.py': [Errno 2] No such file or directory
+
+tests/fingerprint/test_font_resource_staging.py:14: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_font_resource_staging.py::FontStaging::test_updates_owned_lists_without_duplicate_or_unrelated_changes
+1 failed in 0.05s

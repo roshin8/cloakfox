@@ -1,0 +1,66 @@
+✔ settings headline describes the active compatible profile without losing saved identity (4.868667ms)
+✔ opt-ins default off and reject malformed pref types (2.281583ms)
+✔ authoritative flags override stale unknown overrides independently (1.514917ms)
+✔ backfill changes only owned fields, preserves identities, skips bad configs and is idempotent (1.708125ms)
+✔ startup and each opt-in notification synchronize persisted overlays (1.209959ms)
+✖ internal canonical pipeline is strict, independently authoritative, and preserves privacy fields (2.512042ms)
+✖ internal pipeline backfills a stale field even if public graphics fields are already current (2.676042ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 5
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 194.578083
+
+✖ failing tests:
+
+test at tests/fingerprint/test_graphics_optins.mjs:131:1
+✖ internal canonical pipeline is strict, independently authoritative, and preserves privacy fields (2.512042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_graphics_optins.mjs:137:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/fingerprint/test_graphics_optins.mjs:148:1
+✖ internal pipeline backfills a stale field even if public graphics fields are already current (2.676042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  +   'canvas:canonical_2d': false,
+  -   'canvas:canonical_2d': true,
+      'canvas:render_privacy': false,
+      'canvas:seed': 19,
+      'webGl:backend_profile': false
+    }
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/fingerprint/test_graphics_optins.mjs:152:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { 'canvas:render_privacy': false, 'webGl:backend_profile': false, 'canvas:canonical_2d': false, 'canvas:seed': 19 },
+    expected: { 'canvas:render_privacy': false, 'webGl:backend_profile': false, 'canvas:canonical_2d': true, 'canvas:seed': 19 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

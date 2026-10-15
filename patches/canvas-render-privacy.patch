@@ -1,0 +1,153 @@
+--- a/dom/canvas/CanvasRenderingContext2D.cpp
++++ b/dom/canvas/CanvasRenderingContext2D.cpp
+@@ -56,6 +56,7 @@
+ #include "mozilla/ServoCSSParser.h"
+ #include "mozilla/ServoStyleSet.h"
+ #include "mozilla/StaticPrefs_browser.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/StaticPrefs_gfx.h"
+ #include "mozilla/TimeStamp.h"
+ #include "mozilla/UniquePtr.h"
+@@ -1756,10 +1757,55 @@
+   return false;
+ }
+ 
++// Experimental additive glyph protection. Extraction and metric privacy remain
++// independent, including for unsupported non-text rendering operations.
++static uint32_t CloakfoxGlyphPolicySeed(const nlohmann::json& aConfig,
++                                       uint32_t aSeed) {
++  const auto policy = aConfig.find("canvas:render_privacy");
++  return policy != aConfig.end() && policy->is_boolean() &&
++                 policy->get<bool>()
++             ? aSeed
++             : 0;
++}
++
++static double CloakfoxGlyphOffset(uint32_t aSeed, uint32_t aAxis) {
++  if (!aSeed) return 0.0;
++  uint32_t mixed = aSeed ^ (0x9e3779b9u * (aAxis + 1));
++  mixed ^= mixed >> 16;
++  mixed *= 0x7feb352du;
++  mixed ^= mixed >> 15;
++  mixed *= 0x846ca68bu;
++  mixed ^= mixed >> 16;
++  const double magnitude = double(8 + (mixed & 7)) / 128.0;
++  return mixed & 8 ? magnitude : -magnitude;
++}
++
++void CanvasRenderingContext2D::CaptureGlyphPrivacyPolicy() {
++  if (mGlyphPrivacyPolicyCaptured) return;
++  mGlyphPrivacyPolicyCaptured = true;
++  nsIPrincipal* principal = PrincipalOrNull();
++  if (!principal || principal->IsSystemPrincipal()) return;
++  const uint32_t userContextId =
++      principal->OriginAttributesRef().mUserContextId;
++  const auto config = CloakfoxSiteSeed::ExactConfig(userContextId);
++  mGlyphPrivacySeed = CloakfoxGlyphPolicySeed(
++      config, CloakfoxSiteSeed::Derive(userContextId, "canvas:seed",
++                                     GetCookieJarSettings()));
++}
++
++gfx::Point CanvasRenderingContext2D::GlyphPrivacyOffset() const {
++  // A live master-off always wins; opt-in and identity remain frozen for this
++  // context through bitmap resets, save/restore and worker ownership.
++  if (!StaticPrefs::cloakfox_enabled()) return gfx::Point();
++  return gfx::Point(CloakfoxGlyphOffset(mGlyphPrivacySeed, 0),
++                    CloakfoxGlyphOffset(mGlyphPrivacySeed, 1));
++}
++
+ bool CanvasRenderingContext2D::EnsureTarget(ErrorResult& aError,
+                                             const gfx::Rect* aCoveredRect,
+                                             bool aWillClear,
+                                             bool aSkipTransform) {
++  CaptureGlyphPrivacyPolicy();
+   if (HasErrorState(aError, false)) {
+     return false;
+   }
+@@ -2260,6 +2306,9 @@
+ CanvasRenderingContext2D::SetContextOptions(JSContext* aCx,
+                                             JS::Handle<JS::Value> aOptions,
+                                             ErrorResult& aRvForDictionaryInit) {
++  // The owner is assigned before context options, including OffscreenCanvas.
++  // Capture even without explicit options or any drawing/target allocation.
++  CaptureGlyphPrivacyPolicy();
+   if (aOptions.isNullOrUndefined()) {
+     return NS_OK;
+   }
+@@ -5093,6 +5142,7 @@
+                       : Style::STROKE;
+     const ContextState& state = mCtx->CurrentState();
+ 
++    const gfx::Point glyphOffset = mCtx->GlyphPrivacyOffset();
+     gfx::Rect bounds;
+     if (needBounds) {
+       bounds = ToRect(mBoundingBox);
+@@ -5101,6 +5151,9 @@
+         bounds.Inflate(state.lineWidth / 2.0);
+       }
+       bounds = mDrawTarget->GetTransform().TransformBounds(bounds);
++      // Device-space translation is below 1/8 px on either axis. Include a
++      // full pixel for rasterization rounding before filter/shadow allocation.
++      if (glyphOffset != gfx::Point()) bounds.Inflate(1.0f);
+     }
+ 
+     AdjustedTarget target(mCtx, bounds.IsEmpty() ? nullptr : &bounds, false);
+@@ -5108,6 +5161,13 @@
+       return;
+     }
+ 
++    // Restore before AdjustedTarget composites intermediate filter/shadow
++    // surfaces, including every early return below. Existing device clips stay
++    // fixed; only glyph rasterization receives the subpixel translation.
++    AutoRestoreTransform restoreGlyphTransform(target);
++    if (glyphOffset != gfx::Point()) {
++      target->SetTransform(target->GetTransform().PostTranslate(glyphOffset));
++    }
+     gfxContext thebes(target, /* aPreserveTransform */ true);
+     gfxTextRun::DrawParams params(&thebes, mPaletteCache);
+ 
+@@ -5504,11 +5564,13 @@
+   MOZ_ASSERT(IsTargetValid());
+ 
+   Matrix oldTransform = mTarget->GetTransform();
++  AutoRestoreTransform restoreTextTransformOnError;
+   bool restoreTransform = false;
+   // if text is over aMaxWidth, then scale the text horizontally such that its
+   // width is precisely aMaxWidth
+   if (aMaxWidth.WasPassed() && aMaxWidth.Value() > 0 &&
+       totalWidth > aMaxWidth.Value()) {
++    restoreTextTransformOnError.Init(mTarget);
+     Matrix newTransform = oldTransform;
+ 
+     // Translate so that the anchor point is at 0,0, then scale and then
+@@ -5543,7 +5605,7 @@
+   }
+ 
+   if (aOp == CanvasRenderingContext2D::TextDrawOperation::FILL &&
+-      !doCalculateBounds) {
++      !doCalculateBounds && GlyphPrivacyOffset() == gfx::Point()) {
+     RedrawUser(boundingBox);
+   } else {
+     Redraw();
+--- a/dom/canvas/CanvasRenderingContext2D.h
++++ b/dom/canvas/CanvasRenderingContext2D.h
+@@ -521,6 +521,8 @@
+ 
+   virtual void SetOpaqueValueFromOpaqueAttr(bool aOpaqueAttrValue) override;
+   bool GetIsOpaque() override { return mOpaque; }
++  // Frozen experimental glyph policy; the master switch remains live.
++  gfx::Point GlyphPrivacyOffset() const;
+   void ResetBitmap(bool aFreeBuffer);
+   void ResetBitmap() override { ResetBitmap(true); }
+ 
+@@ -816,6 +818,10 @@
+    * existing dimensions will be left unchanged.
+    */
+   void ClearTarget(int32_t aWidth = -1, int32_t aHeight = -1);
++
++  void CaptureGlyphPrivacyPolicy();
++  bool mGlyphPrivacyPolicyCaptured = false;
++  uint32_t mGlyphPrivacySeed = 0;
+ 
+   /*
+    * Returns the target to the buffer provider. i.e. this will queue a frame for

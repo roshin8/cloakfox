@@ -1,0 +1,95 @@
+ 0:00.63 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.63 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.87 Clobber not needed.
+ 0:00.90 /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/webgpu/moz.build
+ 0:00.90 Build configuration changed. Regenerating backend.
+ 0:00.91 /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051/_virtualenvs/build/bin/python /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Finished reading 2453 moz.build files in 3.07s
+Read 58 gyp files in parallel contributing 0.29s to total wall time
+Processed into 19164 build config descriptors in 1.80s
+RecursiveMake backend executed in 3.64s
+  5297 total backend files; 0 created; 1 updated; 5296 unchanged; 0 deleted; 13 -> 1995 Makefile
+FasterMake backend executed in 0.34s
+  89 total backend files; 0 created; 0 updated; 89 unchanged; 0 deleted
+Clangd backend executed in 1.31s
+  1255 total backend files; 0 created; 1 updated; 1254 unchanged; 0 deleted
+Total wall time: 10.79s; CPU time: 6.97s; Efficiency: 65%; Untracked: 0.62s
+ 0:13.09 /usr/bin/make -C media/ffvpx -j8 -s
+ 0:14.06 ./buildid.h.stub
+ 0:14.06 ./source-repo.h.stub
+ 0:14.11 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:93:9: error: use of undeclared identifier 'CONFIG_VVC_SEI'
+ 0:14.11 E    93 |     if (IS_H264(codec_id)) {
+ 0:14.11 E       |         ^
+ 0:14.11 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:45:67: note: expanded from macro 'IS_H264'
+ 0:14.11 E    45 | #define IS_H264(codec_id) (CONFIG_H264_SEI && (CONFIG_HEVC_SEI || CONFIG_VVC_SEI ) ? codec_id == AV_CODEC_ID_H264 : CONFIG_H264_SEI)
+ 0:14.11 E       |                                                                   ^
+ 0:14.11 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:145:13: error: use of undeclared identifier 'CONFIG_VVC_SEI'
+ 0:14.11 E   145 |         if (IS_H264(codec_id))
+ 0:14.11 E       |             ^
+ 0:14.11 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:45:67: note: expanded from macro 'IS_H264'
+ 0:14.11 E    45 | #define IS_H264(codec_id) (CONFIG_H264_SEI && (CONFIG_HEVC_SEI || CONFIG_VVC_SEI ) ? codec_id == AV_CODEC_ID_H264 : CONFIG_H264_SEI)
+ 0:14.11 E       |                                                                   ^
+ 0:14.11 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:229:14: error: use of undeclared identifier 'CONFIG_VVC_SEI'
+ 0:14.12 E   229 |         if (!IS_H264(codec_id))
+ 0:14.12 E       |              ^
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:45:67: note: expanded from macro 'IS_H264'
+ 0:14.12 E    45 | #define IS_H264(codec_id) (CONFIG_H264_SEI && (CONFIG_HEVC_SEI || CONFIG_VVC_SEI ) ? codec_id == AV_CODEC_ID_H264 : CONFIG_H264_SEI)
+ 0:14.12 E       |                                                                   ^
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:370:9: error: use of undeclared identifier 'CONFIG_VVC_SEI'
+ 0:14.12 E   370 |     if (IS_H264(codec_id))
+ 0:14.12 E       |         ^
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:45:67: note: expanded from macro 'IS_H264'
+ 0:14.12 E    45 | #define IS_H264(codec_id) (CONFIG_H264_SEI && (CONFIG_HEVC_SEI || CONFIG_VVC_SEI ) ? codec_id == AV_CODEC_ID_H264 : CONFIG_H264_SEI)
+ 0:14.12 E       |                                                                   ^
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:648:13: error: use of undeclared identifier 'CONFIG_VVC_SEI'
+ 0:14.12 E   648 |         if (IS_VVC(codec_id) || fgc->separate_colour_description_present_flag) {
+ 0:14.12 E       |             ^
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:47:28: note: expanded from macro 'IS_VVC'
+ 0:14.12 E    47 | #define IS_VVC(codec_id)  (CONFIG_VVC_SEI  && (CONFIG_H264_SEI || CONFIG_HEVC_SEI) ? codec_id == AV_CODEC_ID_VVC  : CONFIG_VVC_SEI )
+ 0:14.12 E       |                            ^
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:648:13: error: use of undeclared identifier 'CONFIG_VVC_SEI'
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:47:117: note: expanded from macro 'IS_VVC'
+ 0:14.12 E    47 | #define IS_VVC(codec_id)  (CONFIG_VVC_SEI  && (CONFIG_H264_SEI || CONFIG_HEVC_SEI) ? codec_id == AV_CODEC_ID_VVC  : CONFIG_VVC_SEI )
+ 0:14.12 E       |                                                                                                                     ^
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:682:13: error: use of undeclared identifier 'CONFIG_VVC_SEI'
+ 0:14.12 E   682 |         if (IS_H264(codec_id))
+ 0:14.12 E       |             ^
+ 0:14.12 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/h2645_sei.c:45:67: note: expanded from macro 'IS_H264'
+ 0:14.12 E    45 | #define IS_H264(codec_id) (CONFIG_H264_SEI && (CONFIG_HEVC_SEI || CONFIG_VVC_SEI ) ? codec_id == AV_CODEC_ID_H264 : CONFIG_H264_SEI)
+ 0:14.12 E       |                                                                   ^
+ 0:14.12 E 2 warnings and 7 errors generated.
+ 0:14.14 E make[4]: *** [h2645_sei.o] Error 1
+ 0:14.14 E make[3]: *** [media/ffvpx/libavcodec/target-objects] Error 2
+ 0:14.14 E make[3]: *** Waiting for unfinished jobs....
+ 0:14.14 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/hevc/hevcdec.c:573:33: error: use of undeclared identifier 'CONFIG_HEVC_D3D12VA_HWACCEL'
+ 0:14.15 E   573 |     enum AVPixelFormat pix_fmts[HWACCEL_MAX + 3], *fmt = pix_fmts;
+ 0:14.15 E       |                                 ^
+ 0:14.15 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/hevc/hevcdec.c:567:22: note: expanded from macro 'HWACCEL_MAX'
+ 0:14.15 E   567 |                      CONFIG_HEVC_D3D12VA_HWACCEL + \
+ 0:14.15 E       |                      ^
+ 0:14.15 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/hevc/hevcdec.c:573:55: error: expected ';' at end of declaration
+ 0:14.15 E   573 |     enum AVPixelFormat pix_fmts[HWACCEL_MAX + 3], *fmt = pix_fmts;
+ 0:14.15 E       |                                                       ^
+ 0:14.15 E       |                                                       ;
+ 0:14.15 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/hevc/hevcdec.c:702:10: error: use of undeclared identifier 'fmt'
+ 0:14.15 E   702 |         *fmt++ = alpha_fmt;
+ 0:14.15 E       |          ^
+ 0:14.15 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/hevc/hevcdec.c:703:6: error: use of undeclared identifier 'fmt'
+ 0:14.15 E   703 |     *fmt++ = sps->pix_fmt;
+ 0:14.15 E       |      ^
+ 0:14.15 E /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/media/ffvpx/libavcodec/hevc/hevcdec.c:704:6: error: use of undeclared identifier 'fmt'
+ 0:14.15 E   704 |     *fmt = AV_PIX_FMT_NONE;
+ 0:14.15 E       |      ^
+ 0:14.16 E 2 warnings and 5 errors generated.
+ 0:14.16 E make[4]: *** [hevcdec.o] Error 1
+ 0:14.16 E make[4]: *** Waiting for unfinished jobs....
+ 0:14.49 ./application.ini.stub
+ 0:14.72 ./application.ini.h.stub
+ 0:16.28 E make[3]: *** [media/ffvpx/libavcodec/hevc/target-objects] Error 2
+ 0:16.28 E make[2]: *** [compile] Error 2
+ 0:16.28 E make[1]: *** [compile] Error 2
+ 0:16.28 E make: *** [default] Error 2
+ 0:16.38 W 2 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_134431.json
+Hey! Builds initiated with `mach build $A_SPECIFIC_TARGET` may not always work, even if the code being built is correct. Consider doing a bare `mach build` instead.

@@ -1,0 +1,555 @@
+diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -903,6 +903,26 @@
+     }
+ 
+     auto options = *mInitialOptions;
++    if (mCloakfoxBackendProfile.isNothing()) {
++      nsIGlobalObject* global = nullptr;
++      nsIPrincipal* principal = nullptr;
++      if (mCanvasElement) {
++        global = mCanvasElement->OwnerDoc()->GetScopeObject();
++        principal = mCanvasElement->NodePrincipal();
++      } else if (mOffscreenCanvas) {
++        global = mOffscreenCanvas->GetRelevantGlobal();
++        if (global) principal = global->PrincipalOrNull();
++      }
++      // Chrome/system globals and ChromeWorkers keep native behavior. Exact
++      // ownership also avoids MaskConfig's legacy ambient-container-zero path.
++      const auto cfg = CloakfoxSiteSeed::ExactConfig(GetUserContextId());
++      const auto policy = cfg.find("webGl:backend_profile");
++      mCloakfoxBackendProfile = Some(
++          StaticPrefs::cloakfox_enabled() && global && principal &&
++          !principal->IsSystemPrincipal() && policy != cfg.end() &&
++          policy->is_boolean() && policy->get<bool>());
++    }
++    options.cloakfoxBackendProfile = *mCloakfoxBackendProfile;
+     if (StaticPrefs::webgl_disable_fail_if_major_performance_caveat()) {
+       options.failIfMajorPerformanceCaveat = false;
+     }
+@@ -2228,6 +2248,61 @@
+   }
+   return ret;
+ }
++
++// Cloakfox exact-owner WebGL config. Legacy MaskConfig nested getters infer
++// ctx0 on worker threads; GPU tables must follow the context's actual owner.
++static std::optional<nlohmann::json> CloakfoxWebGLValue(
++    uint32_t owner, const std::string& key) {
++  if (!StaticPrefs::cloakfox_enabled()) return std::nullopt;
++  const auto cfg = CloakfoxSiteSeed::ExactConfig(owner);
++  if (const auto value = cfg.find(key); value != cfg.end()) return *value;
++  const auto& base = MaskConfig::GetJson();
++  if (const auto value = base.find(key); value != base.end()) return *value;
++  return std::nullopt;
++}
++static std::vector<std::string> CloakfoxWebGLStringList(
++    uint32_t owner, const std::string& key) {
++  std::vector<std::string> out;
++  if (const auto values = CloakfoxWebGLValue(owner, key); values && values->is_array()) {
++    for (const auto& value : *values) {
++      if (value.is_string()) out.push_back(value.get<std::string>());
++    }
++  }
++  return out;
++}
++static std::optional<std::string> CloakfoxWebGLString(
++    uint32_t owner, const std::string& key) {
++  const auto value = CloakfoxWebGLValue(owner, key);
++  if (value && value->is_string()) return value->get<std::string>();
++  return std::nullopt;
++}
++static std::optional<nlohmann::json> CloakfoxWebGLNested(
++    uint32_t owner, const std::string& domain, const std::string& key) {
++  if (!StaticPrefs::cloakfox_enabled()) return std::nullopt;
++  const auto cfg = CloakfoxSiteSeed::ExactConfig(owner);
++  const auto lookup = [&](const nlohmann::json& source) -> std::optional<nlohmann::json> {
++    const auto table = source.find(domain);
++    if (table == source.end() || !table->is_object()) return std::nullopt;
++    const auto value = table->find(key);
++    if (value == table->end()) return std::nullopt;
++    return *value;
++  };
++  if (const auto value = lookup(cfg)) return value;
++  return lookup(MaskConfig::GetJson());
++}
++static decltype(MaskConfig::GLParam(0, false)) CloakfoxGLParam(
++    uint32_t owner, uint32_t pname, bool gl2) {
++  const auto value = CloakfoxWebGLNested(owner,
++      gl2 ? "webGl2:parameters" : "webGl:parameters", std::to_string(pname));
++  if (!value) return std::nullopt;
++  if (value->is_null()) return nullptr;
++  if (value->is_number_integer()) return value->get<int64_t>();
++  if (value->is_boolean()) return value->get<bool>();
++  if (value->is_number_float()) return value->get<double>();
++  if (value->is_string()) return value->get<std::string>();
++  return std::nullopt;
++}
++// End Cloakfox exact-owner WebGL config.
+ 
+ // Cloakfox backend capacity policy. Only integer upper-bound capacities belong
+ // here: never clamp minimum offsets, alignment requirements, timeouts or state.
+@@ -2286,8 +2361,9 @@
+ }
+ 
+ static std::optional<std::array<double, 2>> CloakfoxConfiguredPair(
+-    const GLenum pname, const bool isWebGL2, const bool integer) {
+-  const auto configured = MaskConfig::GetNested(
++    const GLenum pname, const bool isWebGL2, const bool integer,
++    const uint32_t owner) {
++  const auto configured = CloakfoxWebGLNested(owner,
+       isWebGL2 ? "webGl2:parameters" : "webGl:parameters",
+       std::to_string(pname));
+   if (!configured || !configured->is_array() || configured->size() != 2) {
+@@ -2327,9 +2403,65 @@
+   const auto& limits = Limits();
+   const auto& state = State();
+ 
++  // One generic identity for the standardized cohort. This never exposes
++  // model/vendor and never borrows an unrelated card from a persona table.
++  if (ActualContextParameters().cloakfoxBackendProfile) {
++    const bool unmasked =
++        pname == dom::WEBGL_debug_renderer_info_Binding::UNMASKED_VENDOR_WEBGL ||
++        pname == dom::WEBGL_debug_renderer_info_Binding::UNMASKED_RENDERER_WEBGL;
++    if (unmasked && !IsExtensionEnabled(WebGLExtensionID::WEBGL_debug_renderer_info)) {
++      EnqueueError_ArgEnum("pname", pname);
++      return;
++    }
++    if (pname == LOCAL_GL_VENDOR ||
++        pname == dom::WEBGL_debug_renderer_info_Binding::UNMASKED_VENDOR_WEBGL) {
++      retval.set(StringValue(cx, "Mozilla", rv));
++      return;
++    }
++    if (pname == LOCAL_GL_RENDERER ||
++        pname == dom::WEBGL_debug_renderer_info_Binding::UNMASKED_RENDERER_WEBGL) {
++      retval.set(StringValue(cx, "WebGL", rv));
++      return;
++    }
++  }
++
+   // Only fixed device limits come from captured tables. Mutable state,
+   // framebuffer-dependent values and strings retain native validation.
+-  const bool fromTable = [&]() {
++  const bool backendProfile = ActualContextParameters().cloakfoxBackendProfile;
++  const bool profileControlled = backendProfile && [&]() {
++    switch (pname) {
++      case LOCAL_GL_MAX_TEXTURE_SIZE:
++      case LOCAL_GL_MAX_CUBE_MAP_TEXTURE_SIZE:
++      case LOCAL_GL_MAX_RENDERBUFFER_SIZE:
++      case LOCAL_GL_MAX_VIEWPORT_DIMS:
++      case LOCAL_GL_ALIASED_POINT_SIZE_RANGE:
++      case LOCAL_GL_ALIASED_LINE_WIDTH_RANGE:
++      case LOCAL_GL_MAX_VERTEX_ATTRIBS:
++      case LOCAL_GL_MAX_TEXTURE_IMAGE_UNITS:
++      case LOCAL_GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS:
++      case LOCAL_GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS:
++      case LOCAL_GL_MAX_VERTEX_UNIFORM_VECTORS:
++      case LOCAL_GL_MAX_FRAGMENT_UNIFORM_VECTORS:
++      case LOCAL_GL_MAX_VARYING_VECTORS:
++        return true;
++      case LOCAL_GL_MAX_3D_TEXTURE_SIZE:
++      case LOCAL_GL_MAX_ARRAY_TEXTURE_LAYERS:
++      case LOCAL_GL_MAX_UNIFORM_BUFFER_BINDINGS:
++      case LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS:
++      case LOCAL_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS:
++      case LOCAL_GL_MAX_VERTEX_OUTPUT_COMPONENTS:
++      case LOCAL_GL_MAX_FRAGMENT_INPUT_COMPONENTS:
++      case LOCAL_GL_MAX_VARYING_COMPONENTS:
++      case LOCAL_GL_MAX_DRAW_BUFFERS:
++      case LOCAL_GL_MAX_COLOR_ATTACHMENTS:
++        return mIsWebGL2;
++      default:
++        return false;
++    }
++  }();
++  // Keep the existing bounded mask for uncontrolled capabilities. Selecting
++  // this cohort must not restore richer native samples/UBO/TF/texel surfaces.
++  const bool fromTable = !profileControlled && [&]() {
+     switch (pname) {
+       case LOCAL_GL_MAX_TEXTURE_SIZE:
+       case LOCAL_GL_MAX_VIEWPORT_DIMS:
+@@ -2396,7 +2528,7 @@
+   if (fromTable && pname != LOCAL_GL_MAX_VIEWPORT_DIMS &&
+       pname != LOCAL_GL_ALIASED_POINT_SIZE_RANGE &&
+       pname != LOCAL_GL_ALIASED_LINE_WIDTH_RANGE) {
+-    data = MaskConfig::GLParam(pname, mIsWebGL2);
++    data = CloakfoxGLParam(GetUserContextId(), pname, mIsWebGL2);
+   }
+ 
+   // A paired override also constrains a query with no own configured value.
+@@ -2417,8 +2549,8 @@
+     case LOCAL_GL_MAX_FRAGMENT_INPUT_COMPONENTS:
+       companion = LOCAL_GL_MAX_VARYING_VECTORS; scale = 4; break;
+   }
+-  const auto companionMask = companion
+-      ? MaskConfig::GLParam(companion, mIsWebGL2 || companionIsGL2)
++  const auto companionMask = fromTable && companion
++      ? CloakfoxGLParam(GetUserContextId(), companion, mIsWebGL2 || companionIsGL2)
+       : decltype(data){};
+   if (fromTable && (data.has_value() || companionMask.has_value()) &&
+       CloakfoxIsUpperBoundCapacity(pname)) {
+@@ -2613,7 +2745,7 @@
+ 
+     case LOCAL_GL_ALIASED_POINT_SIZE_RANGE: {
+       auto range = limits.pointSizeRange;
+-      if (const auto configured = CloakfoxConfiguredPair(pname, mIsWebGL2, false)) {
++      if (const auto configured = !backendProfile ? CloakfoxConfiguredPair(pname, mIsWebGL2, false, GetUserContextId()) : std::nullopt) {
+         range = CloakfoxBoundRange(range, *configured);
+       }
+       retval.set(Create<dom::Float32Array>(cx, this, range, rv));
+@@ -2622,7 +2754,7 @@
+ 
+     case LOCAL_GL_ALIASED_LINE_WIDTH_RANGE: {
+       auto range = limits.lineWidthRange;
+-      if (const auto configured = CloakfoxConfiguredPair(pname, mIsWebGL2, false)) {
++      if (const auto configured = !backendProfile ? CloakfoxConfiguredPair(pname, mIsWebGL2, false, GetUserContextId()) : std::nullopt) {
+         range = CloakfoxBoundRange(range, *configured);
+       }
+       retval.set(Create<dom::Float32Array>(cx, this, range, rv));
+@@ -2648,7 +2780,7 @@
+     case LOCAL_GL_MAX_VIEWPORT_DIMS: {
+       auto maxViewportDim = BitwiseCast<int32_t>(limits.maxViewportDim);
+       auto dims = std::array<int32_t, 2>{maxViewportDim, maxViewportDim};
+-      if (const auto configured = CloakfoxConfiguredPair(pname, mIsWebGL2, true)) {
++      if (const auto configured = !backendProfile ? CloakfoxConfiguredPair(pname, mIsWebGL2, true, GetUserContextId()) : std::nullopt) {
+         for (size_t i = 0; i < dims.size(); ++i) {
+           dims[i] = static_cast<int32_t>(CloakfoxBoundCapacity(maxViewportDim, (*configured)[i]));
+         }
+@@ -2872,7 +3004,7 @@
+                 break;
+               }
+             }
+-            if (auto value = MaskConfig::GetString("webGl:renderer")) {
++            if (auto value = CloakfoxWebGLString(GetUserContextId(), "webGl:renderer")) {
+               ret = Some(value.value());
+               break;
+             }
+@@ -2895,7 +3027,7 @@
+                 break;
+               }
+             }
+-            if (auto value = MaskConfig::GetString("webGl:vendor")) {
++            if (auto value = CloakfoxWebGLString(GetUserContextId(), "webGl:vendor")) {
+               ret = Some(value.value());
+               break;
+             }
+@@ -3392,36 +3524,35 @@
+   }
+ }
+ 
++// Cloakfox validated precision tuple. Unsupported/invalid configured fields
++// fall through to the configured missing-value policy. Legacy mode preserves
++// its valid configured mask verbatim;
++// clipping it to native precision would expose a new backend-dependent signal.
++static std::optional<webgl::ShaderPrecisionFormat> CloakfoxConfiguredPrecision(
++    const webgl::ShaderPrecisionFormat&, const nlohmann::json& configured) {
++  if (!configured.is_object()) return std::nullopt;
++  std::array<uint8_t, 3> values;
++  const char* names[] = {"rangeMin", "rangeMax", "precision"};
++  for (size_t i = 0; i < values.size(); ++i) {
++    const auto value = configured.find(names[i]);
++    if (value == configured.end() || !value->is_number_integer() ||
++        *value < 0 || *value > 255) return std::nullopt;
++    values[i] = value->get<uint8_t>();
++  }
++  return webgl::ShaderPrecisionFormat{values[0], values[1], values[2]};
++}
++// End Cloakfox validated precision tuple.
++
+ already_AddRefed<WebGLShaderPrecisionFormatJS>
+ ClientWebGLContext::GetShaderPrecisionFormat(const GLenum shadertype,
+                                              const GLenum precisiontype) {
+   const FuncScope funcScope(*this, "getShaderPrecisionFormat");
+   RefPtr<webgl::NotLostData> notLost(mNotLost);
+-  if (!notLost) {
+-    return nullptr;
+-  }
+-
+-  // Check for spoofed value
+-  if (auto value =
+-          MaskConfig::MShaderData(shadertype, precisiontype, mIsWebGL2)) {
+-    const auto& format = value.value();
+-    const auto spoofed = webgl::ShaderPrecisionFormat{
+-        static_cast<uint8_t>(format[0]),  // rangeMin
+-        static_cast<uint8_t>(format[1]),  // rangeMax
+-        static_cast<uint8_t>(format[2])   // precision
+-    };
+-    return AsAddRefed(new WebGLShaderPrecisionFormatJS(spoofed));
+-  }
+-  // Check if block if not defined is on
+-  if (MaskConfig::CheckBool(
+-          mIsWebGL2 ? "webGl2:shaderPrecisionFormats:blockIfNotDefined"
+-                    : "webGl:shaderPrecisionFormats:blockIfNotDefined")) {
+-    return nullptr;
+-  }
+-
++  if (!notLost) return nullptr;
++
++  // Validate enums/support before consulting any configured precision fields.
+   const auto& shaderPrecisions = *notLost->info.shaderPrecisions;
+-  const auto args =
+-      webgl::GetShaderPrecisionFormatArgs{shadertype, precisiontype};
++  const auto args = webgl::GetShaderPrecisionFormatArgs{shadertype, precisiontype};
+   const auto found = MaybeFind(shaderPrecisions, args);
+   if (!found) {
+     EnqueueError(
+@@ -3429,7 +3560,23 @@
+         EnumString(shadertype).c_str(), EnumString(precisiontype).c_str());
+     return nullptr;
+   }
+-
++  if (ActualContextParameters().cloakfoxBackendProfile) {
++    // Host already validated the whole fixed tuple against backend support.
++    return AsAddRefed(new WebGLShaderPrecisionFormatJS(*found));
++  }
++  if (const auto configured = CloakfoxWebGLNested(GetUserContextId(),
++          mIsWebGL2 ? "webGl2:shaderPrecisionFormats" : "webGl:shaderPrecisionFormats",
++          std::to_string(shadertype) + "," + std::to_string(precisiontype))) {
++    if (const auto valid = CloakfoxConfiguredPrecision(*found, *configured)) {
++      return AsAddRefed(new WebGLShaderPrecisionFormatJS(*valid));
++    }
++  }
++  const char* blockKey = mIsWebGL2 ? "webGl2:shaderPrecisionFormats:blockIfNotDefined"
++                                 : "webGl:shaderPrecisionFormats:blockIfNotDefined";
++  const auto block = CloakfoxWebGLValue(GetUserContextId(), blockKey);
++  if (block && block->is_boolean() && block->get<bool>()) {
++    return nullptr;
++  }
+   return AsAddRefed(new WebGLShaderPrecisionFormatJS(*found));
+ }
+ 
+@@ -6879,8 +7026,10 @@
+     return false;
+   }
+ 
++  if (ActualContextParameters().cloakfoxBackendProfile) return true;
++
+   if (std::vector<std::string> maskValues =
+-          MaskConfig::GetStringList(mIsWebGL2 ? "webGl2:supportedExtensions"
++          CloakfoxWebGLStringList(GetUserContextId(), mIsWebGL2 ? "webGl2:supportedExtensions"
+                                               : "webGl:supportedExtensions");
+       !maskValues.empty()) {
+     if (std::find(maskValues.begin(), maskValues.end(),
+diff --git a/dom/canvas/ClientWebGLContext.h b/dom/canvas/ClientWebGLContext.h
+--- a/dom/canvas/ClientWebGLContext.h
++++ b/dom/canvas/ClientWebGLContext.h
+@@ -2465,6 +2465,8 @@
+ 
+   mutable bool mResetLayer = true;
+   Maybe<const WebGLContextOptions> mInitialOptions;
++  // Frozen on first creation, including loss/restoration. Reload to change.
++  Maybe<bool> mCloakfoxBackendProfile;
+   bool mXRCompatible = false;
+ };
+ 
+diff --git a/dom/canvas/WebGL2ContextState.cpp b/dom/canvas/WebGL2ContextState.cpp
+--- a/dom/canvas/WebGL2ContextState.cpp
++++ b/dom/canvas/WebGL2ContextState.cpp
+@@ -21,6 +21,23 @@
+   //     case LOCAL_GL_DRAW_BUFFERi:
+ 
+   if (IsContextLost()) return Nothing();
++
++  if (mOptions.cloakfoxBackendProfile) {
++    // These scalar companions describe the same normalized shader resources.
++    switch (pname) {
++      case LOCAL_GL_MAX_VERTEX_UNIFORM_COMPONENTS:
++        return Some(4 * mGLMaxVertexUniformVectors);
++      case LOCAL_GL_MAX_FRAGMENT_UNIFORM_COMPONENTS:
++        return Some(4 * mGLMaxFragmentUniformVectors);
++      case LOCAL_GL_MAX_VERTEX_OUTPUT_COMPONENTS:
++        return Some(4 * mGLMaxVertexOutputVectors);
++      case LOCAL_GL_MAX_FRAGMENT_INPUT_COMPONENTS:
++      case LOCAL_GL_MAX_VARYING_COMPONENTS:
++        return Some(4 * mGLMaxFragmentInputVectors);
++      default:
++        break;
++    }
++  }
+ 
+   switch (pname) {
+     /* GLboolean */
+diff --git a/dom/canvas/WebGLContext.cpp b/dom/canvas/WebGLContext.cpp
+--- a/dom/canvas/WebGLContext.cpp
++++ b/dom/canvas/WebGLContext.cpp
+@@ -518,6 +518,23 @@
+   return webgl::FormatUsageAuthority::CreateForWebGL1(gl);
+ }
+ 
++// Cloakfox backend precision baseline. Desktop Gecko itself conservatively
++// reports integer range24/24 via GetShaderPrecisionFormatNonES2; require only
++// this shared floor, never a larger synthetic31/30 tuple unsupported by Gecko.
++static bool CloakfoxPrecisionBaseline(
++    const webgl::ShaderPrecisionFormat& native, const bool isFloat,
++    webgl::ShaderPrecisionFormat* out) {
++  const webgl::ShaderPrecisionFormat baseline = isFloat
++      ? webgl::ShaderPrecisionFormat{127, 127, 23}
++      : webgl::ShaderPrecisionFormat{24, 24, 0};
++  if (native.rangeMin < baseline.rangeMin ||
++      native.rangeMax < baseline.rangeMax ||
++      native.precision < baseline.precision) return false;
++  *out = baseline;
++  return true;
++}
++// End Cloakfox backend precision baseline.
++
+ /*static*/
+ RefPtr<WebGLContext> WebGLContext::Create(HostWebGLContext* host,
+                                           const webgl::InitContextDesc& desc,
+@@ -644,6 +661,15 @@
+       spf.rangeMax = LazyAssertedCast(range[1]);
+       spf.precision = LazyAssertedCast(precision);
+ 
++      if (desc.options.cloakfoxBackendProfile) {
++        const bool isFloat = precisionType == LOCAL_GL_LOW_FLOAT ||
++                             precisionType == LOCAL_GL_MEDIUM_FLOAT ||
++                             precisionType == LOCAL_GL_HIGH_FLOAT;
++        if (!CloakfoxPrecisionBaseline(spf, isFloat, &spf)) {
++          out->error = std::string{"Backend cannot support the protected shader precision baseline"};
++          return nullptr;
++        }
++      }
+       out->shaderPrecisions->insert({{shaderType, precisionType}, spf});
+     }
+   }
+diff --git a/dom/canvas/WebGLContextGL.cpp b/dom/canvas/WebGLContextGL.cpp
+--- a/dom/canvas/WebGLContextGL.cpp
++++ b/dom/canvas/WebGLContextGL.cpp
+@@ -1552,7 +1552,7 @@
+ 
+   mLineWidth = width;
+ 
+-  if (gl->IsCoreProfile() && width > 1.0) {
++  if ((gl->IsCoreProfile() || mOptions.cloakfoxBackendProfile) && width > 1.0) {
+     width = 1.0;
+   }
+ 
+diff --git a/dom/canvas/WebGLContextValidate.cpp b/dom/canvas/WebGLContextValidate.cpp
+--- a/dom/canvas/WebGLContextValidate.cpp
++++ b/dom/canvas/WebGLContextValidate.cpp
+@@ -187,6 +187,21 @@
+   for (const auto i : IntegerRange(UnderlyingValue(WebGLExtensionID::Max))) {
+     const auto ext = WebGLExtensionID(i);
+     limits.supportedExtensions[ext] = webgl.IsExtensionSupported(ext);
++    if (webgl.Options().cloakfoxBackendProfile) {
++      // Conservative allowlist, intersected with real support above. Exclude
++      // debug shader sources, timers and vendor compressed texture formats.
++      bool allowed = ext == WebGLExtensionID::WEBGL_debug_renderer_info ||
++                     ext == WebGLExtensionID::WEBGL_lose_context;
++      if (!webgl.IsWebGL2()) {
++        allowed |= ext == WebGLExtensionID::ANGLE_instanced_arrays ||
++                   ext == WebGLExtensionID::EXT_blend_minmax ||
++                   ext == WebGLExtensionID::OES_element_index_uint ||
++                   ext == WebGLExtensionID::OES_standard_derivatives ||
++                   ext == WebGLExtensionID::OES_vertex_array_object ||
++                   ext == WebGLExtensionID::WEBGL_depth_texture;
++      }
++      if (!allowed) limits.supportedExtensions[ext] = false;
++    }
+   }
+ 
+   // -
+@@ -399,7 +414,43 @@
+ 
+   ////////////////
+ 
+-  if (StaticPrefs::webgl_min_capability_mode()) {
++  // Cloakfox standardized backend cohort. Restrict actual validation and
++  // shader translator resources, not only reported getters. Unsupported whole
++  // baselines fail creation; never raise a backend capacity to meet this table.
++  if (mOptions.cloakfoxBackendProfile) {
++    const bool gl2 = IsWebGL2();
++    bool ok = true;
++    ok &= RestrictCap(&limits.maxTex2dSize, uint32_t{2048});
++    ok &= RestrictCap(&limits.maxTexCubeSize, uint32_t{2048});
++    ok &= RestrictCap(&mGLMaxRenderbufferSize, uint32_t{2048});
++    ok &= RestrictCap(&limits.maxViewportDim, uint32_t{4096});
++    ok &= RestrictCap(&limits.maxVertexAttribs, uint32_t{16u});
++    ok &= RestrictCap(&limits.maxTexUnits, uint32_t{32u});
++    ok &= RestrictCap(&mGLMaxVertexTextureImageUnits, uint32_t{16u});
++    ok &= RestrictCap(&mGLMaxFragmentTextureImageUnits, uint32_t{16u});
++    ok &= RestrictCap(&mGLMaxVertexUniformVectors, uint32_t{256u});
++    ok &= RestrictCap(&mGLMaxFragmentUniformVectors, uint32_t{224u});
++    ok &= RestrictCap(&mGLMaxVertexOutputVectors, uint32_t{16u});
++    ok &= RestrictCap(&mGLMaxFragmentInputVectors, uint32_t{15u});
++    if (gl2) {
++      ok &= RestrictCap(&limits.maxTex3dSize, uint32_t{256});
++      ok &= RestrictCap(&limits.maxTexArrayLayers, uint32_t{256});
++      ok &= RestrictCap(&limits.maxUniformBufferBindings, uint32_t{24});
++      ok &= RestrictCap(&limits.maxColorDrawBuffers, uint32_t{4});
++    }
++    ok &= limits.lineWidthRange[0] <= 1 && limits.lineWidthRange[1] >= 1;
++    ok &= limits.pointSizeRange[0] <= 1 && limits.pointSizeRange[1] >= 63;
++    if (!ok) {
++      *out_failReason = {"FEATURE_FAILURE_CLOAKFOX_GPU_BASELINE",
++                         "Backend cannot support the protected WebGL baseline"};
++      return false;
++    }
++    limits.lineWidthRange = {1, 1};
++    limits.pointSizeRange = {1, 63};
++  }
++  // End Cloakfox standardized backend cohort.
++
++  if (!mOptions.cloakfoxBackendProfile && StaticPrefs::webgl_min_capability_mode()) {
+     bool ok = true;
+ 
+     ok &= RestrictCap(&mGLMaxVertexTextureImageUnits,
+@@ -430,7 +481,7 @@
+     }
+ 
+     mDisableFragHighP = true;
+-  } else if (mResistFingerprinting) {
++  } else if (!mOptions.cloakfoxBackendProfile && mResistFingerprinting) {
+     bool ok = true;
+ 
+     ok &= RestrictCap(&limits.maxTex2dSize, kCommonMaxTextureSize);
+diff --git a/dom/canvas/WebGLShaderValidator.cpp b/dom/canvas/WebGLShaderValidator.cpp
+--- a/dom/canvas/WebGLShaderValidator.cpp
++++ b/dom/canvas/WebGLShaderValidator.cpp
+@@ -234,6 +234,12 @@
+   // -
+ 
+   auto compileOptions = webgl::ChooseValidatorCompileOptions(resources, gl);
++  if (mOptions.cloakfoxBackendProfile) {
++    // Match the advertised cohort range in translated vertex shader output.
++    resources.MinPointSize = 1.0f;
++    resources.MaxPointSize = 63.0f;
++    compileOptions.clampPointSize = true;
++  }
+ 
+   // NOTE: This is needed for `Max{,Total}PrivateVariableSizeInBytes`
+   // enforcement we specify above!
+diff --git a/dom/canvas/WebGLTypes.h b/dom/canvas/WebGLTypes.h
+--- a/dom/canvas/WebGLTypes.h
++++ b/dom/canvas/WebGLTypes.h
+@@ -362,6 +362,9 @@
+   bool forceSoftwareRendering = false;
+   bool shouldResistFingerprinting = true;
+   bool enableDebugRendererInfo = false;
++  // Internal creation policy; never populated from page context attributes.
++  bool cloakfoxBackendProfile = false;
++  std::array<uint8_t, 3> _cloakfoxPadding = {};
+ 
+   auto MutTiedFields() {
+     // clang-format off
+@@ -379,7 +382,9 @@
+       powerPreference,
+       forceSoftwareRendering,
+       shouldResistFingerprinting,
+-      enableDebugRendererInfo);
++      enableDebugRendererInfo,
++      cloakfoxBackendProfile,
++      _cloakfoxPadding);
+     // clang-format on
+   }
+ 
+@@ -762,7 +767,7 @@
+   WebGLContextOptions options;
+   gl::GLVendor vendor;
+   OptionalRenderableFormatBits optionalRenderableFormatBits;
+-  std::array<uint8_t, 2> _padding = {};
++  std::array<uint8_t, 6> _padding = {};
+   Limits limits;
+   EnumMask<layers::SurfaceDescriptor::Type> uploadableSdTypes;
+   // Padded because of "Android 5.0 ARMv7" builds:

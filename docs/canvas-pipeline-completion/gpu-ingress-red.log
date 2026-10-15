@@ -1,0 +1,16 @@
+........F                                                                [100%]
+=================================== FAILURES ===================================
+___ test_canonical_ingress_is_checked_before_external_upload_or_cache_reuse ____
+
+    def test_canonical_ingress_is_checked_before_external_upload_or_cache_reuse():
+        queue=(ROOT/'dom/webgpu/Queue.cpp').read_text()
+        start=queue.index('void Queue::CopyExternalImageToTexture(')
+        block=queue[start:]
+>       assert block.index('AcceptExternalGpuInput')<block.index('dataSurface->GetSize()')
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: substring not found
+
+tests/fingerprint/test_canvas_canonical_webgpu_backend.py:81: ValueError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_canonical_webgpu_backend.py::test_canonical_ingress_is_checked_before_external_upload_or_cache_reuse
+1 failed, 8 passed in 0.06s

@@ -1,0 +1,13 @@
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+________ test_external_print_target_cannot_inherit_canvas_backing_proof ________
+
+    def test_external_print_target_cannot_inherit_canvas_backing_proof():
+     s=(ROOT/'firefox-src/dom/canvas/CanvasRenderingContext2D.cpp').read_text();a=s.index('CanvasRenderingContext2D::InitializeWithDrawTarget(');b=s.index('\n}',a);body=s[a:b]
+>    assert 'mCanvasPixelSources |= uint32_t(CanvasPixelSource::Unknown);' in body
+E    AssertionError: assert 'mCanvasPixelSources |= uint32_t(CanvasPixelSource::Unknown);' in 'CanvasRenderingContext2D::InitializeWithDrawTarget(\n    nsIDocShell* aShell, NotNull<gfx::DrawTarget*> aTarget) {\n ...fferProvider = new PersistentBufferProviderBasic(aTarget);\n\n  RestoreClipsAndTransformToTarget();\n\n  return NS_OK;'
+
+tests/fingerprint/test_canvas_native_snapshot_proof.py:24: AssertionError
+=========================== short test summary info ============================
+FAILED tests/fingerprint/test_canvas_native_snapshot_proof.py::test_external_print_target_cannot_inherit_canvas_backing_proof
+1 failed, 1 passed in 0.29s

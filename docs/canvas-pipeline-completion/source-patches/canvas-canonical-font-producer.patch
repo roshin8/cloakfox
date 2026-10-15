@@ -1,0 +1,1089 @@
+--- a/gfx/2d/2D.h
++++ b/gfx/2d/2D.h
+@@ -1384,6 +1384,12 @@
+ 
+   virtual FontType GetType() const = 0;
+   virtual Float GetSize() const = 0;
++  // Canonical OpenType fonts supply paths/PNG glyphs without a platform
++  // ScaledFont or native SkTypeface. A handled draw may never fall back.
++  virtual bool IsCanonicalFont() const { return false; }
++  virtual bool DrawCanonicalGlyphs(DrawTarget*, const GlyphBuffer&, const Pattern&,
++      const StrokeOptions*, const DrawOptions&) { return false; }
++  virtual Maybe<Rect> GetCanonicalGlyphBounds(const GlyphBuffer&) { return Nothing(); }
+   virtual AntialiasMode GetDefaultAAMode() { return AntialiasMode::DEFAULT; }
+ 
+   static uint32_t DeletionCounter() { return sDeletionCounter; }
+--- a/gfx/2d/DrawTargetSkia.cpp
++++ b/gfx/2d/DrawTargetSkia.cpp
+@@ -1293,6 +1293,11 @@
+                                 const StrokeOptions* aStrokeOptions,
+                                 const DrawOptions& aOptions,
+                                 SkShader* aShader) {
++  if (aFont->IsCanonicalFont()) {
++    MarkChanged();
++    aFont->DrawCanonicalGlyphs(this, aBuffer, aPattern, aStrokeOptions, aOptions);
++    return;
++  }
+   if (!CanDrawFont(aFont)) {
+     return;
+   }
+@@ -1401,6 +1406,11 @@
+ Maybe<Rect> DrawTargetSkia::GetGlyphLocalBounds(
+     ScaledFont* aFont, const GlyphBuffer& aBuffer, const Pattern& aPattern,
+     const StrokeOptions* aStrokeOptions, const DrawOptions& aOptions) {
++  if (aFont->IsCanonicalFont()) {
++    auto bounds = aFont->GetCanonicalGlyphBounds(aBuffer);
++    if (bounds && aStrokeOptions) bounds->Inflate(aStrokeOptions->mLineWidth / 2);
++    return bounds;
++  }
+   if (!CanDrawFont(aFont)) {
+     return Nothing();
+   }
+--- a/gfx/2d/DrawTargetRecording.cpp
++++ b/gfx/2d/DrawTargetRecording.cpp
+@@ -353,6 +353,11 @@
+                                      const DrawOptions& aOptions,
+                                      const StrokeOptions* aStrokeOptions) {
+   if (!aFont) {
++    return;
++  }
++
++  if (aFont->IsCanonicalFont()) {
++    aFont->DrawCanonicalGlyphs(this, aBuffer, aPattern, aStrokeOptions, aOptions);
+     return;
+   }
+ 
+--- a/gfx/thebes/gfxFont.h
++++ b/gfx/thebes/gfxFont.h
+@@ -129,6 +129,10 @@
+ 
+   // The logical size of the font, in pixels
+   gfxFloat size;
++  // Canonical groups scale both OpenType metrics and glyph geometry once.
++  // Variant clones carry this marker so the same identity scale is not doubled.
++  bool canonicalRendering = false;
++  double canonicalScale = 1.0;
+ 
+   // The optical size value to apply (if supported); negative means none.
+   float autoOpticalSize = -1.0f;
+@@ -241,6 +245,8 @@
+ 
+   bool Equals(const gfxFontStyle& other) const {
+     return mozilla::NumbersAreBitwiseIdentical(size, other.size) &&
++           (canonicalRendering == other.canonicalRendering) &&
++           mozilla::NumbersAreBitwiseIdentical(canonicalScale, other.canonicalScale) &&
+            (style == other.style) && (weight == other.weight) &&
+            (width == other.width) && (variantCaps == other.variantCaps) &&
+            (variantSubSuper == other.variantSubSuper) &&
+@@ -2007,7 +2013,8 @@
+     FONT_TYPE_MAC,
+     FONT_TYPE_OS2,
+     FONT_TYPE_CAIRO,
+-    FONT_TYPE_FONTCONFIG
++    FONT_TYPE_FONTCONFIG,
++    FONT_TYPE_CANONICAL
+   } FontType;
+ 
+   virtual FontType GetType() const = 0;
+--- a/gfx/thebes/gfxFont.cpp
++++ b/gfx/thebes/gfxFont.cpp
+@@ -1912,6 +1912,15 @@
+   }
+ 
+   // Render the buffered glyphs to the draw target.
++  void FillGlyphBuffer(const gfx::GlyphBuffer& aBuffer, const Pattern& aPattern) {
++    if (mFontParams.scaledFont->IsCanonicalFont()) {
++      mFontParams.scaledFont->DrawCanonicalGlyphs(mRunParams.dt,aBuffer,aPattern,
++          nullptr,mFontParams.drawOptions);
++    } else {
++      mRunParams.dt->FillGlyphs(mFontParams.scaledFont,aBuffer,aPattern,mFontParams.drawOptions);
++    }
++  }
++
+   void FlushGlyphs() {
+     gfx::GlyphBuffer buf;
+     buf.mGlyphs = mBuffer;
+@@ -1952,13 +1961,10 @@
+         }
+ 
+         if (pat) {
+-          mRunParams.dt->FillGlyphs(mFontParams.scaledFont, buf, *pat,
+-                                    mFontParams.drawOptions);
++          FillGlyphBuffer(buf,*pat);
+         }
+       } else {
+-        mRunParams.dt->FillGlyphs(mFontParams.scaledFont, buf,
+-                                  ColorPattern(state.color),
+-                                  mFontParams.drawOptions);
++        FillGlyphBuffer(buf,ColorPattern(state.color));
+       }
+     }
+ 
+@@ -1993,6 +1999,11 @@
+   }
+ 
+   void FlushStroke(gfx::GlyphBuffer& aBuf, const Pattern& aPattern) {
++    if (mFontParams.scaledFont->IsCanonicalFont()) {
++      mFontParams.scaledFont->DrawCanonicalGlyphs(mRunParams.dt,aBuf,aPattern,
++          mRunParams.strokeOpts,mFontParams.drawOptions);
++      return;
++    }
+     mRunParams.dt->StrokeGlyphs(mFontParams.scaledFont, aBuf, aPattern,
+                                 *mRunParams.strokeOpts,
+                                 mFontParams.drawOptions);
+@@ -5010,7 +5021,7 @@
+                       : mozilla::HashBytes(variationSettings.Elements(),
+                                            variationSettings.Length() *
+                                                sizeof(gfxFontVariation));
+-  return mozilla::AddToHash(hash, systemFont, style.Raw(), width.Raw(),
++  return mozilla::AddToHash(hash, systemFont, canonicalRendering, canonicalScale, style.Raw(), width.Raw(),
+                             weight.Raw(), size, int32_t(sizeAdjust * 1000.0f));
+ }
+ 
+--- a/gfx/thebes/gfxHarfBuzzShaper.cpp
++++ b/gfx/thebes/gfxHarfBuzzShaper.cpp
+@@ -1238,7 +1238,15 @@
+   bool isCFF =
+       mFont->GetFontEntry()->HasFontTable(TRUETYPE_TAG('C', 'F', 'F', ' '));
+   auto* funcs = isCFF ? sNominalGlyphFunc : sHBFontFuncs;
+-  mHBFont = CreateHBFont(mFont, funcs, this, isCFF);
++  if (mFont->GetType() == gfxFont::FONT_TYPE_CANONICAL) {
++    // Canonical fonts use the complete OpenType funcs, including HVAR/VVAR,
++    // extents and vertical origins. Do not install callbacks that can query
++    // native glyph widths or platform font metrics.
++    mHBFont = CreateHBFont(mFont);
++    hb_ot_font_set_funcs(mHBFont);
++  } else {
++    mHBFont = CreateHBFont(mFont, funcs, this, isCFF);
++  }
+ 
+   MOZ_POP_THREAD_SAFETY
+ 
+@@ -1492,7 +1500,7 @@
+   // seed == 0 means no perturbation (consistent with AudioFingerprintManager).
+   uint32_t seed = aShapedText ? aShapedText->GetSiteSeed() : 0;
+ 
+-  if (seed != 0) {
++  if (seed != 0 && mFont->GetType() != gfxFont::FONT_TYPE_CANONICAL) {
+     // Generate a random float [0, 0.1] to offset the letter spacing
+     seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+     float randomFloat = (static_cast<float>(seed) / 2147483647.0f) * 0.1f;
+--- a/gfx/thebes/gfxTextRun.h
++++ b/gfx/thebes/gfxTextRun.h
+@@ -961,6 +961,7 @@
+ 
+   const gfxFontStyle* GetStyle() const { return &mStyle; }
+   uint32_t GetUserContextId() const { return mUserContextId; }
++  bool UsesCanonicalFonts() const { return mCanonicalFonts; }
+   uint32_t GetSiteSeed() const;
+ 
+   // Get the presContext for which this fontGroup was constructed. This may be
+@@ -1399,6 +1400,7 @@
+   // Code should be careful about addressing this array directly.
+   nsTArray<FamilyFace> mFonts;
+ 
++  bool mCanonicalFonts = false;
+   RefPtr<gfxFont> mDefaultFont;
+   gfxFontStyle mStyle;
+ 
+--- a/gfx/thebes/gfxTextRun.cpp
++++ b/gfx/thebes/gfxTextRun.cpp
+@@ -4,6 +4,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "gfxTextRun.h"
++#include "gfxCanonicalFont.h"
+ 
+ #include "SharedFontList-impl.h"
+ #include "TextDrawTarget.h"
+@@ -24,6 +25,7 @@
+ #include "mozilla/ServoStyleSetInlines.h"
+ #include "mozilla/Sprintf.h"
+ #include "mozilla/StaticPresData.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/UniquePtr.h"
+ #include "mozilla/Utf16.h"
+ #include "mozilla/dom/WorkerCommon.h"
+@@ -1860,6 +1862,63 @@
+ }
+ #endif
+ 
++// Cloakfox canonical font policy. Captured per font group from its owning
++// visibility provider; chrome, unowned providers and disabled modes stay
++// native.
++static bool CloakfoxCanonicalFontPolicy(const nlohmann::json& /* aConfig */,
++                                        bool aEnabled, bool aOwnedContent,
++                                        bool aAuthoritativeRequest = false) {
++  // The native pref is authoritative even while asynchronous configuration
++  // updates still carry the previous value.
++  return aEnabled && aOwnedContent && aAuthoritativeRequest;
++}
++// End Cloakfox canonical font policy.
++
++static constexpr const char* kCanonicalFallbackFiles[] = {
++    "NotoColorEmoji.ttf",   "DejaVuSans.ttf",     "NotoSans.ttf",
++    "NotoSansArabic.ttf",   "NotoSansHebrew.ttf", "NotoSansDevanagari.ttf",
++    "NotoSansBengali.ttf",  "NotoSansThai.ttf",   "NotoSansArmenian.ttf",
++    "NotoSansGeorgian.ttf", "NotoSansSC.ttf"};
++
++// A finite file map prevents CSS names becoming filesystem paths. Unknown
++// names use the next CSS family or the fixed canonical generic fallback.
++static nsCString CanonicalFontFile(const nsACString& aFamily) {
++  nsAutoCString name(aFamily);
++  ToLowerCase(name);
++  struct FontFile {
++    const char* name;
++    const char* file;
++  };
++  static constexpr FontFile files[] = {
++      {"arial", "Arial.ttf"},
++      {"calibri", "Calibri.ttf"},
++      {"cambria", "Cambria.ttf"},
++      {"comic sans ms", "ComicSansMS.ttf"},
++      {"consolas", "Consolas.ttf"},
++      {"courier", "Courier.ttf"},
++      {"courier new", "CourierNew.ttf"},
++      {"dejavu sans", "DejaVuSans.ttf"},
++      {"dejavu sans mono", "DejaVuSansMono.ttf"},
++      {"dejavu serif", "DejaVuSerif.ttf"},
++      {"georgia", "Georgia.ttf"},
++      {"helvetica", "Helvetica.ttf"},
++      {"helvetica neue", "HelveticaNeue.ttf"},
++      {"impact", "Impact.ttf"},
++      {"menlo", "Menlo.ttf"},
++      {"monaco", "Monaco.ttf"},
++      {"noto sans", "NotoSans.ttf"},
++      {"noto color emoji", "NotoColorEmoji.ttf"},
++      {"segoe ui", "SegoeUI.ttf"},
++      {"tahoma", "Tahoma.ttf"},
++      {"times", "Times.ttf"},
++      {"times new roman", "TimesNewRoman.ttf"},
++      {"trebuchet ms", "TrebuchetMS.ttf"},
++      {"verdana", "Verdana.ttf"}};
++  for (const auto& font : files)
++    if (name.EqualsASCII(font.name)) return nsCString(font.file);
++  return nsCString();
++}
++
+ gfxFontGroup::gfxFontGroup(FontVisibilityProvider* aFontVisibilityProvider,
+                            const StyleFontFamilyList& aFontFamilyList,
+                            const gfxFontStyle* aStyle, nsAtom* aLanguage,
+@@ -1884,8 +1943,10 @@
+ 
+   // Resolve container identity on the owning thread. Worker documents can only
+   // be accessed on the main thread, so use the worker origin attributes there.
+-  const auto preparedIdentity = mFontVisibilityProvider
+-      ? mFontVisibilityProvider->GetCloakfoxFontIdentity() : Nothing();
++  const auto preparedIdentity =
++      mFontVisibilityProvider
++          ? mFontVisibilityProvider->GetCloakfoxFontIdentity()
++          : Nothing();
+   if (preparedIdentity) {
+     mUserContextId = uint32_t(*preparedIdentity >> 32);
+   } else if (!NS_IsMainThread()) {
+@@ -1901,6 +1962,31 @@
+       }
+     }
+   }
++  mCanonicalFonts = CloakfoxCanonicalFontPolicy(
++      CloakfoxSiteSeed::ExactConfig(mUserContextId),
++      StaticPrefs::cloakfox_enabled(),
++      preparedIdentity.isSome() && mFontVisibilityProvider &&
++          !mFontVisibilityProvider->IsChrome(),
++      StaticPrefs::cloakfox_experimental_canvas_pipeline());
++  if (mCanonicalFonts && !mExplicitLanguage) {
++    // Author language is meaningful shaping input; the host OS default is
++    // not. HTML, disconnected Offscreen and workers share an explicit neutral
++    // shaping language when no author language was provided.
++    mLanguage = NS_Atomize("und"_ns);
++    mPageLang = gfxPlatformFontList::GetFontPrefLangFor(mLanguage);
++  }
++  const double unscaledSize = mStyle.canonicalRendering
++                                  ? mStyle.size / mStyle.canonicalScale
++                                  : mStyle.size;
++  mStyle.canonicalRendering = mCanonicalFonts;
++  mStyle.canonicalScale = 1.0;
++  if (mCanonicalFonts) {
++    if (const uint32_t seed = GetSiteSeed()) {
++      const uint32_t random = seed * 1664525u + 1013904223u;
++      mStyle.canonicalScale += (double(random) / 4294967295.0 - .5) * .0004;
++    }
++  }
++  mStyle.size = unscaledSize * mStyle.canonicalScale;
+ }
+ 
+ uint32_t gfxFontGroup::GetSiteSeed() const {
+@@ -1983,6 +2069,38 @@
+     NS_DispatchToMainThread(new DeferredClearResolvedFonts(std::move(mFonts)));
+   } else {
+     mFonts.Clear();
++  }
++
++  if (mCanonicalFonts) {
++    auto appendFile = [&](const nsACString& file, StyleGenericFontFamily generic) {
++      if (RefPtr<gfxCanonicalFontEntry> entry=gfxCanonicalFontEntry::Bundled(file))
++        mFonts.AppendElement(FamilyFace(static_cast<gfxFontFamily*>(nullptr),entry,generic));
++    };
++    for (const auto& family:mFamilyList.list.AsSpan()) {
++      if (family.IsFamilyName()) {
++        nsAtomCString name(family.AsFamilyName().name.AsAtom());
++        if (mUserFontSet) {
++          if (RefPtr<gfxFontFamily> user=mUserFontSet->LookupFamily(name)) {
++            AddFamilyToFontList(user,StyleGenericFontFamily::None);
++            continue;
++          }
++        }
++        // Preserve the existing masked local-font visibility contract.
++        if (!gfxPlatformFontList::MaskedFontListBlocks(mFontVisibilityProvider,name)) {
++          nsCString file=CanonicalFontFile(name);
++          if (!file.IsEmpty()) appendFile(file,StyleGenericFontFamily::None);
++        }
++      } else {
++        const auto generic=family.AsGeneric();
++        appendFile(generic==StyleGenericFontFamily::Serif ? "DejaVuSerif.ttf"_ns :
++            generic==StyleGenericFontFamily::Monospace ? "DejaVuSansMono.ttf"_ns :
++            "DejaVuSans.ttf"_ns,generic);
++      }
++    }
++    for(const char* file:kCanonicalFallbackFiles)
++      appendFile(nsDependentCString(file),StyleGenericFontFamily::SansSerif);
++    mFontListGeneration=pfl->GetGeneration();mResolvedFonts=true;
++    return;
+   }
+ 
+   // (Re-)build the list of fonts.
+@@ -2147,6 +2265,15 @@
+         return nullptr;
+       }
+     }
++    if (mCanonicalFonts && !fe->IsCanonicalFontEntry()) {
++      if (fe->IsUserFont() && !fe->IsLocalUserFont()) {
++        fe=gfxCanonicalFontEntry::Author(fe);
++      } else {
++        nsCString file=CanonicalFontFile(fe->FamilyName());
++        fe=file.IsEmpty()?nullptr:gfxCanonicalFontEntry::Bundled(file);
++      }
++      if (!fe) return nullptr;
++    }
+     font = fe->FindOrMakeFont(&mStyle, unicodeRangeMap);
+     if (!font || !font->Valid()) {
+       ff.SetInvalid();
+@@ -2207,6 +2334,11 @@
+ }
+ 
+ already_AddRefed<gfxFont> gfxFontGroup::GetDefaultFont() {
++  if (mCanonicalFonts) {
++    RefPtr<gfxCanonicalFontEntry> entry=gfxCanonicalFontEntry::Bundled("DejaVuSans.ttf"_ns);
++    MOZ_RELEASE_ASSERT(entry,"canonical bundled fallback font unavailable");
++    return entry->FindOrMakeFont(&mStyle);
++  }
+   if (mDefaultFont) {
+     return do_AddRef(mDefaultFont);
+   }
+@@ -3144,6 +3276,7 @@
+ already_AddRefed<gfxFont> gfxFontGroup::FindFallbackFaceForChar(
+     gfxFontFamily* aFamily, uint32_t aCh, uint32_t aNextCh,
+     FontPresentation aPresentation) {
++  if (mCanonicalFonts) return nullptr;
+   GlobalFontMatch data(aCh, aNextCh, mStyle, aPresentation);
+   aFamily->SearchAllFontsForChar(&data);
+   gfxFontEntry* fe = data.mBestMatch;
+@@ -3156,6 +3289,7 @@
+ already_AddRefed<gfxFont> gfxFontGroup::FindFallbackFaceForChar(
+     fontlist::Family* aFamily, uint32_t aCh, uint32_t aNextCh,
+     FontPresentation aPresentation) {
++  if (mCanonicalFonts) return nullptr;
+   auto* pfl = gfxPlatformFontList::PlatformFontList();
+   auto* list = pfl->SharedFontList();
+ 
+@@ -3180,6 +3314,7 @@
+ already_AddRefed<gfxFont> gfxFontGroup::FindFallbackFaceForChar(
+     const FamilyFace& aFamily, uint32_t aCh, uint32_t aNextCh,
+     FontPresentation aPresentation) {
++  if (mCanonicalFonts) return nullptr;
+   if (aFamily.IsSharedFamily()) {
+     return FindFallbackFaceForChar(aFamily.SharedFamily(), aCh, aNextCh,
+                                    aPresentation);
+@@ -4042,6 +4177,7 @@
+ 
+ already_AddRefed<gfxFont> gfxFontGroup::WhichPrefFontSupportsChar(
+     uint32_t aCh, uint32_t aNextCh, FontPresentation aPresentation) {
++  if (mCanonicalFonts) return nullptr;
+   eFontPrefLang charLang;
+   gfxPlatformFontList* pfl = gfxPlatformFontList::PlatformFontList();
+ 
+@@ -4148,6 +4284,12 @@
+ already_AddRefed<gfxFont> gfxFontGroup::WhichSystemFontSupportsChar(
+     uint32_t aCh, uint32_t aNextCh, Script aRunScript,
+     FontPresentation aPresentation) {
++  if (mCanonicalFonts) {
++    // Every fixed fallback was already tried in the canonical group. An
++    // unsupported glyph is handled by Gecko's missing-glyph path, never by
++    // a host-font search whose results could vary across machines.
++    return nullptr;
++  }
+   FontVisibility visibility;
+   return gfxPlatformFontList::PlatformFontList()->SystemFindFontForChar(
+       mFontVisibilityProvider, aCh, aNextCh, aRunScript, aPresentation, &mStyle,
+--- a/gfx/thebes/moz.build
++++ b/gfx/thebes/moz.build
+@@ -207,6 +207,7 @@
+     "gfxAlphaRecovery.cpp",
+     "gfxBaseSharedMemorySurface.cpp",
+     "gfxBlur.cpp",
++    "gfxCanonicalFont.cpp",
+     "gfxContext.cpp",
+     "gfxFont.cpp",
+     "gfxFontEntry.cpp",
+--- a/gfx/thebes/gfxFontEntry.h
++++ b/gfx/thebes/gfxFontEntry.h
+@@ -223,6 +223,7 @@
+   // (This is only to be used for system fonts in the platform font list,
+   // not user fonts.)
+   virtual gfxFontEntry* Clone() const = 0;
++  virtual bool IsCanonicalFontEntry() const { return false; }
+ 
+   // unique name for the face, *not* the family; not necessarily the
+   // "real" or user-friendly name, may be an internal identifier
+--- a/dom/canvas/CanvasRenderingContext2D.cpp
++++ b/dom/canvas/CanvasRenderingContext2D.cpp
+@@ -5,6 +5,10 @@
+ 
+ #include "CanvasRenderingContext2D.h"
+ #include "CanonicalCanvasText.h"
++#include "mozilla/intl/Bidi.h"
++#include "ImageOps.h"
++#include "nsStringStream.h"
++#include "mozilla/intl/UnicodeProperties.h"
+ #include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/gfx/gfxVars.h"
+ #include "nsIFile.h"
+@@ -12,6 +16,9 @@
+ 
+ #include <algorithm>
+ #include <numbers>
++#include <map>
++#include <string>
++#include "mozilla/StaticMutex.h"
+ 
+ #include "MaskConfig.hpp"
+ #include "CanvasImageCache.h"
+@@ -5333,23 +5340,38 @@
+ 
+ extern "C" hb_unicode_funcs_t* mozilla_harfbuzz_glue_set_up_unicode_funcs();
+ 
+-// Load only the shipped face. No font-list lookup, host fallback or platform
+-// scaled-font object participates in this producer. Failed loads keep the
+-// existing protected text path, including on sandboxed workers.
+-CanonicalCanvasText* CanvasRenderingContext2D::GetCanonicalCanvasText() {
+-  if (mCanonicalTextLoadAttempted) return mCanonicalText.get();
+-  mCanonicalTextLoadAttempted = true;
++// Fonts are read from the application bundle, never from host font directories.
++static UniquePtr<CanonicalCanvasText> LoadCanonicalCanvasFont(
++    const char16_t* aName) {
++  // Font bytes and immutable HB faces are shared per content process. A page
++  // creating many contexts must not duplicate the 17 MB CJK/10 MB emoji assets.
++  static StaticMutex mutex;
++  StaticMutexAutoLock lock(mutex);
++  static std::map<std::u16string, UniquePtr<CanonicalCanvasText>> cache;
++  const std::u16string name(aName);
++  static hb_unicode_funcs_t* unicode =
++      mozilla_harfbuzz_glue_set_up_unicode_funcs();
++  if (auto found = cache.find(name); found != cache.end()) {
++    if (!found->second) return nullptr;
++    hb_face_t* face = found->second->ReferenceFace();
++    auto font = MakeUnique<CanonicalCanvasText>(face, unicode);
++    hb_face_destroy(face);
++    return font;
++  }
+   const nsString& gre = gfxVars::GREDirectory();
+   if (gre.IsEmpty()) return nullptr;
+   nsCOMPtr<nsIFile> file;
+   if (NS_FAILED(NS_NewLocalFile(gre, getter_AddRefs(file))) ||
+       NS_FAILED(file->Append(u"fonts"_ns)) ||
+-      NS_FAILED(file->Append(u"DejaVuSans.ttf"_ns))) return nullptr;
++      NS_FAILED(file->Append(nsDependentString(aName))))
++    return nullptr;
+   int64_t size = 0;
+-  if (NS_FAILED(file->GetFileSize(&size)) || size <= 0 || size > 16 * 1024 * 1024)
++  if (NS_FAILED(file->GetFileSize(&size)) || size <= 0 ||
++      size > 32 * 1024 * 1024)
+     return nullptr;
+   PRFileDesc* descriptor = nullptr;
+-  if (NS_FAILED(file->OpenNSPRFileDesc(PR_RDONLY, 0, &descriptor))) return nullptr;
++  if (NS_FAILED(file->OpenNSPRFileDesc(PR_RDONLY, 0, &descriptor)))
++    return nullptr;
+   std::vector<char> bytes(static_cast<size_t>(size));
+   size_t done = 0;
+   while (done < bytes.size()) {
+@@ -5360,20 +5382,149 @@
+   }
+   PR_Close(descriptor);
+   if (done != bytes.size()) return nullptr;
+-  static hb_unicode_funcs_t* unicode =
+-      mozilla_harfbuzz_glue_set_up_unicode_funcs();
+-  mCanonicalText = MakeUnique<CanonicalCanvasText>(bytes.data(), bytes.size(), unicode);
++  auto cached =
++      MakeUnique<CanonicalCanvasText>(bytes.data(), bytes.size(), unicode);
++  hb_face_t* face = cached->ReferenceFace();
++  cache.emplace(name, std::move(cached));
++  if (!face) return nullptr;
++  auto font = MakeUnique<CanonicalCanvasText>(face, unicode);
++  hb_face_destroy(face);
++  return font;
++}
++
++CanonicalCanvasText* CanvasRenderingContext2D::GetCanonicalCanvasText() {
++  if (mCanonicalTextLoadAttempted) return mCanonicalText.get();
++  mCanonicalTextLoadAttempted = true;
++  mCanonicalText = LoadCanonicalCanvasFont(u"DejaVuSans.ttf");
++  // Stable, versioned fallback order. This is independent of the platform font
++  // list and applies to workers as well as document-backed contexts.
++  for (const char16_t* name :
++       {u"NotoColorEmoji.ttf", u"NotoSans.ttf", u"NotoSansArabic.ttf",
++        u"NotoSansHebrew.ttf", u"NotoSansDevanagari.ttf",
++        u"NotoSansBengali.ttf", u"NotoSansThai.ttf", u"NotoSansArmenian.ttf",
++        u"NotoSansGeorgian.ttf", u"NotoSansSC.ttf"}) {
++    mCanonicalTextFallbacks.AppendElement(LoadCanonicalCanvasFont(name));
++  }
+   return mCanonicalText.get();
+ }
+ 
+-// Restrict v1 to an unstyled generic family. Author FontFace names and CSS
+-// feature/variation/caps/spacing/vertical/bidi cases stay on guarded fallback.
+-static bool CanonicalCanvasSimpleFont(const nsCString& aFont) {
+-  constexpr auto suffix = "px sans-serif"_ns;
+-  if (!StringEndsWith(aFont, suffix) || aFont.Length() == suffix.Length())
++// Mozilla's Unicode bidi implementation owns visual ordering; HarfBuzz owns
++// script shaping and advances from font tables. No platform shaper
++// participates.
++static bool ShapeCanonicalCanvasParagraph(
++    const nsString& aText, float aSize, bool aRTL,
++    CanonicalCanvasText* aPrimary,
++    const nsTArray<UniquePtr<CanonicalCanvasText>>& aFallbacks,
++    bool aAuthorFace, const CanonicalCanvasText::ShapeOptions& aStyleOptions,
++    CanonicalCanvasText::Run& aResult) {
++  using namespace mozilla::intl;
++  aResult = {};
++  if (aText.IsEmpty())
++    return aPrimary && aPrimary->Shape(u"", 0, aSize, aResult);
++  if (aText.Length() > 4096 || !aPrimary) return false;
++  Bidi bidi;
++  if (bidi.SetParagraph(
++              Span(aText.BeginReading(), aText.Length()),
++              aRTL ? BidiEmbeddingLevel::RTL() : BidiEmbeddingLevel::LTR())
++          .isErr())
+     return false;
+-  for (size_t i = 0; i < aFont.Length() - suffix.Length(); ++i) {
+-    if ((aFont[i] < '0' || aFont[i] > '9') && aFont[i] != '.') return false;
++  auto runs = bidi.CountRuns();
++  if (runs.isErr()) return false;
++  struct Segment {
++    uint32_t start, length;
++    hb_script_t script;
++    bool emoji;
++  };
++  auto* hbUnicode = mozilla_harfbuzz_glue_set_up_unicode_funcs();
++  for (int32_t visual = 0; visual < runs.unwrap(); ++visual) {
++    int32_t start, length;
++    const auto direction = bidi.GetVisualRun(visual, &start, &length);
++    std::vector<Segment> segments;
++    for (uint32_t i = start; i < uint32_t(start + length);) {
++      const uint32_t offset = i;
++      uint32_t ch = aText[i++];
++      if (ch >= 0xd800 && ch <= 0xdbff && i < aText.Length() &&
++          aText[i] >= 0xdc00 && aText[i] <= 0xdfff) {
++        ch = 0x10000 + ((ch - 0xd800) << 10) + aText[i++] - 0xdc00;
++      }
++      hb_script_t script = hb_unicode_script(hbUnicode, ch);
++      bool emoji = UnicodeProperties::HasBinaryProperty(
++          ch, UnicodeProperties::BinaryProperty::EmojiPresentation);
++      if (i < aText.Length()) {
++        if (aText[i] == 0xfe0f || aText[i] == 0x20e3) emoji = true;
++        if (aText[i] == 0xfe0e) emoji = false;
++      }
++      // Joining controls, inherited marks and variation selectors stay with
++      // their cluster, preserving ZWJ ligatures and combining-mark attachment.
++      if (!segments.empty() &&
++          (script == HB_SCRIPT_INHERITED || ch == 0x200d ||
++           UnicodeProperties::HasBinaryProperty(
++               ch,
++               UnicodeProperties::BinaryProperty::DefaultIgnorableCodePoint) ||
++           (ch >= 0x1f3fb && ch <= 0x1f3ff))) {
++        script = segments.back().script;
++        emoji = segments.back().emoji;
++      } else if (script == HB_SCRIPT_COMMON && !emoji && !segments.empty()) {
++        script = segments.back().script;
++      }
++      if (segments.empty() || segments.back().script != script ||
++          segments.back().emoji != emoji) {
++        segments.push_back({offset, i - offset, script, emoji});
++      } else {
++        segments.back().length += i - offset;
++      }
++    }
++    if (direction == BidiDirection::RTL)
++      std::reverse(segments.begin(), segments.end());
++    for (const auto& segment : segments) {
++      CanonicalCanvasText::ShapeOptions options = aStyleOptions;
++      options.direction =
++          direction == BidiDirection::RTL ? HB_DIRECTION_RTL : HB_DIRECTION_LTR;
++      options.script = segment.script;
++      // An explicit language prevents HarfBuzz consulting process locale.
++      if (options.language == HB_LANGUAGE_INVALID)
++        options.language = hb_language_from_string("und", -1);
++      CanonicalCanvasText::Run run;
++      auto shape = [&](CanonicalCanvasText* font) {
++        return font && font->Shape(aText.get() + segment.start, segment.length,
++                                   aSize, run, options);
++      };
++      // Authors' downloaded/buffer FontFace bytes take priority. Emoji defaults
++      // select the pinned color face before a monochrome outline fallback.
++      bool shaped = false;
++      if (segment.emoji && !aAuthorFace && !aFallbacks.IsEmpty())
++        shaped = shape(aFallbacks[0].get());
++      if (!shaped) shaped = shape(aPrimary);
++      for (const auto& font : aFallbacks) {
++        if (shaped) break;
++        shaped = shape(font.get());
++      }
++      if (!shaped) {
++        aResult = {};
++        return false;
++      }
++      const float x = aResult.advance;
++      const size_t commandOffset = aResult.commands.size();
++      for (auto command : run.commands) {
++        if (command.kind != CanonicalCanvasText::Command::Kind::Close) {
++          command.p[0] += x;
++          if (command.kind == CanonicalCanvasText::Command::Kind::Quadratic ||
++              command.kind == CanonicalCanvasText::Command::Kind::Cubic)
++            command.p[2] += x;
++          if (command.kind == CanonicalCanvasText::Command::Kind::Cubic)
++            command.p[4] += x;
++        }
++        aResult.commands.push_back(command);
++      }
++      for (auto& image : run.images) {
++        image.x += x;
++        image.commandOffset += commandOffset;
++        aResult.images.push_back(std::move(image));
++      }
++      aResult.advance += run.advance;
++      aResult.ascent = std::max(aResult.ascent, run.ascent);
++      aResult.descent = std::max(aResult.descent, run.descent);
++    }
+   }
+   return true;
+ }
+@@ -5469,102 +5620,298 @@
+     return nullptr;
+   }
+ 
+-  // Canonical ASCII text shares one HB shaping result and one outline path
+-  // between metrics and rasterization. Every unsupported case falls through to
+-  // the existing protected native implementation below; this is partial coverage.
++  // Byte-based OpenType shaping feeds the same metrics, paths and PNG color
++  // glyphs in every realm. Unsupported formats/state stay on guarded native
++  // rendering and retain the HostText provenance below.
+   CaptureCanonicalCanvasPolicy();
+-  const bool horizontal = !canvasStyle ||
+-      canvasStyle->StyleVisibility()->mWritingMode == StyleWritingModeProperty::HorizontalTb;
+-  if (mCanonicalCanvasBacking && !isRTL && horizontal &&
+-      CanonicalCanvasSimpleFont(state.resolvedFont) &&
+-      state.fontKerning == CanvasFontKerning::Auto &&
+-      state.fontWidth == CanvasFontStretch::Normal &&
++  const bool horizontal =
++      !canvasStyle || canvasStyle->StyleVisibility()->mWritingMode ==
++                          StyleWritingModeProperty::HorizontalTb;
++  if (mCanonicalCanvasBacking && !currentFontStyle->UsesCanonicalFonts() &&
++      horizontal && state.fontWidth == CanvasFontStretch::Normal &&
+       state.fontVariantCaps == CanvasFontVariantCaps::Normal &&
+-      state.letterSpacing == 0 && state.wordSpacing == 0 &&
+-      state.fontFont.fontFeatureSettings.IsEmpty() &&
+-      state.fontFont.fontVariationSettings.IsEmpty() &&
+       state.textRendering == CanvasTextRendering::Auto) {
+-    if (auto* canonical = GetCanonicalCanvasText()) {
+-      double metricScale = 1.0;
+-      if (uint32_t seed = CloakfoxSiteSeed::Geometry(
+-              PrincipalOrNull()
+-                  ? PrincipalOrNull()->OriginAttributesRef().mUserContextId : 0,
+-              "canvas:seed", GetCookieJarSettings())) {
+-        const uint32_t random = seed * 1664525u + 1013904223u;
+-        metricScale += (static_cast<double>(random) / 4294967295.0 - 0.5) * 0.0004;
+-      }
+-      CanonicalCanvasText::Run run;
+-      if (canonical->Shape(textToDraw.get(), textToDraw.Length(),
+-                           currentFontStyle->GetStyle()->size * metricScale, run)) {
+-        // SKIA's path builder is used even by measureText; measuring never asks
+-        // a platform font API for glyph extents or a native scaled font.
+-        RefPtr<PathBuilder> builder = Factory::CreatePathBuilder(
+-            BackendType::SKIA, FillRule::FILL_WINDING);
+-        if (builder) {
+-          for (const auto& command : run.commands) {
+-            const float* p = command.p;
+-            switch (command.kind) {
+-              case CanonicalCanvasText::Command::Kind::Move: builder->MoveTo(Point(p[0], p[1])); break;
+-              case CanonicalCanvasText::Command::Kind::Line: builder->LineTo(Point(p[0], p[1])); break;
+-              case CanonicalCanvasText::Command::Kind::Quadratic:
+-                builder->QuadraticBezierTo(Point(p[0], p[1]), Point(p[2], p[3])); break;
+-              case CanonicalCanvasText::Command::Kind::Cubic:
+-                builder->BezierTo(Point(p[0], p[1]), Point(p[2], p[3]), Point(p[4], p[5])); break;
+-              case CanonicalCanvasText::Command::Kind::Close: builder->Close(); break;
++    do {
++      if (auto* canonical = GetCanonicalCanvasText()) {
++        UniquePtr<CanonicalCanvasText> authorFont;
++        RefPtr<gfxFont> selectedFont = currentFontStyle->GetFirstValidFont();
++        if (selectedFont && selectedFont->GetFontEntry()->IsUserFont() &&
++            !selectedFont->GetFontEntry()->IsLocalUserFont()) {
++          // GetHBFace references Gecko's already-sanitized downloaded/buffer
++          // tables, including FontFace(ArrayBuffer). Never use native
++          // ScaledFont.
++          auto face = selectedFont->GetFontEntry()->GetHBFace();
++          authorFont = MakeUnique<CanonicalCanvasText>(
++              face, mozilla_harfbuzz_glue_set_up_unicode_funcs());
++          canonical = authorFont.get();
++        }
++        if ((!authorFont && !currentFontStyle->GetStyle()->IsNormalStyle()) ||
++            (authorFont && selectedFont &&
++             (selectedFont->ApplySyntheticBold() ||
++              selectedFont->SkewForSyntheticOblique() != 0)))
++          break;
++        CanonicalCanvasText::ShapeOptions shapeOptions;
++        shapeOptions.letterSpacing = state.letterSpacing;
++        shapeOptions.wordSpacing = state.wordSpacing;
++        if (nsAtom* language = currentFontStyle->Language()) {
++          nsAutoCString languageTag;
++          language->ToUTF8String(languageTag);
++          shapeOptions.language =
++              hb_language_from_string(languageTag.get(), languageTag.Length());
++        }
++        nsTArray<gfxFontFeature> fontFeatures;
++        nsCString family;
++        if (authorFont) {
++          auto* entry = selectedFont->GetFontEntry();
++          fontFeatures = entry->mFeatureSettings.Clone();
++          family = entry->FamilyName();
++          nsTArray<gfxFontVariation> variations;
++          entry->GetVariationsForStyle(variations,
++                                       *currentFontStyle->GetStyle());
++          for (const auto& variation : variations)
++            shapeOptions.variations.push_back({variation.tag, variation.value});
++        }
++        gfxFontShaper::MergeFontFeatures(
++            currentFontStyle->GetStyle(), fontFeatures,
++            state.letterSpacing != 0, family, false,
++            [](uint32_t tag, uint32_t value, void* data) {
++              auto* options =
++                  static_cast<CanonicalCanvasText::ShapeOptions*>(data);
++              options->features.push_back({tag, value, 0, unsigned(-1)});
++            },
++            &shapeOptions);
++        if (state.fontKerning == CanvasFontKerning::None)
++          shapeOptions.features.push_back(
++              {HB_TAG('k', 'e', 'r', 'n'), 0, 0, unsigned(-1)});
++        double metricScale = 1.0;
++        if (!currentFontStyle->UsesCanonicalFonts()) {
++          if (uint32_t seed = CloakfoxSiteSeed::Geometry(
++                  PrincipalOrNull()
++                      ? PrincipalOrNull()->OriginAttributesRef().mUserContextId
++                      : 0,
++                  "canvas:seed", GetCookieJarSettings())) {
++            const uint32_t random = seed * 1664525u + 1013904223u;
++            metricScale +=
++                (static_cast<double>(random) / 4294967295.0 - 0.5) * 0.0004;
++          }
++        }
++        CanonicalCanvasText::Run run;
++        if (ShapeCanonicalCanvasParagraph(
++                textToDraw, currentFontStyle->GetStyle()->size * metricScale,
++                isRTL, canonical, mCanonicalTextFallbacks, bool(authorFont),
++                shapeOptions, run)) {
++          // SKIA's path builder is used even by measureText; measuring never
++          // asks a platform font API for glyph extents or a native scaled font.
++          RefPtr<PathBuilder> builder = Factory::CreatePathBuilder(
++              BackendType::SKIA, FillRule::FILL_WINDING);
++          if (builder) {
++            for (const auto& command : run.commands) {
++              const float* p = command.p;
++              switch (command.kind) {
++                case CanonicalCanvasText::Command::Kind::Move:
++                  builder->MoveTo(Point(p[0], p[1]));
++                  break;
++                case CanonicalCanvasText::Command::Kind::Line:
++                  builder->LineTo(Point(p[0], p[1]));
++                  break;
++                case CanonicalCanvasText::Command::Kind::Quadratic:
++                  builder->QuadraticBezierTo(Point(p[0], p[1]),
++                                             Point(p[2], p[3]));
++                  break;
++                case CanonicalCanvasText::Command::Kind::Cubic:
++                  builder->BezierTo(Point(p[0], p[1]), Point(p[2], p[3]),
++                                    Point(p[4], p[5]));
++                  break;
++                case CanonicalCanvasText::Command::Kind::Close:
++                  builder->Close();
++                  break;
++              }
+             }
++            RefPtr<Path> path = builder->Finish();
++            gfx::Rect ink = path->GetBounds();
++            nsTArray<RefPtr<SourceSurface>> canonicalImages;
++            bool imagesValid = true;
++            for (const auto& image : run.images) {
++              ink = ink.Union(
++                  gfx::Rect(image.x, image.y, image.width, image.height));
++              nsCOMPtr<nsIInputStream> stream;
++              if (NS_FAILED(NS_NewByteInputStream(
++                      getter_AddRefs(stream),
++                      Span(reinterpret_cast<const char*>(image.png.data()),
++                           image.png.size()),
++                      NS_ASSIGNMENT_DEPEND))) {
++                imagesValid = false;
++                break;
++              }
++              RefPtr<SourceSurface> decoded = image::ImageOps::DecodeToSurface(
++                  stream.forget(), "image/png"_ns,
++                  imgIContainer::FLAG_DECODE_TO_SRGB_COLORSPACE);
++              if (!decoded) {
++                imagesValid = false;
++                break;
++              }
++              canonicalImages.AppendElement(std::move(decoded));
++            }
++            if (!imagesValid ||
++                (aOp == TextDrawOperation::STROKE && !run.images.empty())) {
++              // Atomic failure: no partial glyphs were drawn. Keep the guarded
++              // native producer and its HostText contributor on the fallback.
++              break;
++            }
++            double anchor =
++                (state.textAlign == CanvasTextAlign::Center) ? .5
++                : (state.textAlign == CanvasTextAlign::Right ||
++                   (state.textAlign == CanvasTextAlign::End && !isRTL) ||
++                   (state.textAlign == CanvasTextAlign::Start && isRTL))
++                    ? 1
++                    : 0;
++            double offset = anchor * run.advance;
++            double baseline = 0;
++            switch (state.textBaseline) {
++              case CanvasTextBaseline::Top:
++                baseline = run.ascent;
++                break;
++              case CanvasTextBaseline::Hanging:
++                baseline = run.ascent * .8;
++                break;
++              case CanvasTextBaseline::Middle:
++                baseline = (run.ascent - run.descent) * .5;
++                break;
++              case CanvasTextBaseline::Alphabetic:
++                break;
++              case CanvasTextBaseline::Ideographic:
++              case CanvasTextBaseline::Bottom:
++                baseline = -run.descent;
++                break;
++            }
++            if (aOp == TextDrawOperation::MEASURE) {
++              aError = NS_OK;
++              return MakeUnique<TextMetrics>(
++                  run.advance, offset - ink.X(), ink.XMost() - offset,
++                  run.ascent - baseline, run.descent + baseline,
++                  -ink.Y() - baseline, ink.YMost() + baseline,
++                  run.ascent - baseline, run.descent + baseline,
++                  run.ascent * .8 - baseline, -baseline,
++                  -run.descent - baseline);
++            }
++            if (!EnsureTarget(aError)) return nullptr;
++            mCanvasPixelSources |=
++                static_cast<uint32_t>(CanvasPixelSource::FixedFontOutline);
++            Matrix transform;
++            transform.PreTranslate(aX, aY);
++            if (aMaxWidth.WasPassed() && run.advance > aMaxWidth.Value() &&
++                aMaxWidth.Value() > 0) {
++              transform.PreScale(aMaxWidth.Value() / run.advance, 1);
++            }
++            transform.PreTranslate(-offset, baseline);
++            // Keep the existing optional additive glyph guard. Device-space
++            // offset is applied after user transforms, matching the native text
++            // path. Position geometry in author space; gradients/patterns keep
++            // the caller transform. Apply the device-space glyph guard
++            // separately.
++            RefPtr<PathBuilder> positioned =
++                path->TransformedCopyToBuilder(transform);
++            if (!positioned) {
++              aError = NS_ERROR_FAILURE;
++              return nullptr;
++            }
++            path = positioned->Finish();
++            AutoRestoreTransform restore(mTarget);
++            mTarget->SetTransform(
++                mTarget->GetTransform().PostTranslate(GlyphPrivacyOffset()));
++            if (run.images.empty()) {
++              if (aOp == TextDrawOperation::FILL)
++                FillImpl(*path);
++              else
++                StrokeImpl(*path);
++            } else {
++              // A single adjusted target owns the complete text operation so
++              // shadows, filters, clipping, alpha and composition keep their
++              // normal canvas behavior across outline and bitmap glyphs.
++              gfx::Rect imageBounds = mTarget->GetTransform().TransformBounds(
++                  transform.TransformBounds(ink));
++              AdjustedTarget target(this, &imageBounds, false);
++              if (!target) {
++                aError = NS_ERROR_FAILURE;
++                return nullptr;
++              }
++              size_t command = 0;
++              for (size_t i = 0; i <= run.images.size(); ++i) {
++                const size_t limit = i < run.images.size()
++                                         ? run.images[i].commandOffset
++                                         : run.commands.size();
++                if (command < limit) {
++                  RefPtr<PathBuilder> part = Factory::CreatePathBuilder(
++                      BackendType::SKIA, FillRule::FILL_WINDING);
++                  if (!part) {
++                    aError = NS_ERROR_FAILURE;
++                    return nullptr;
++                  }
++                  for (; command < limit; ++command) {
++                    const auto& cmd = run.commands[command];
++                    const float* p = cmd.p;
++                    switch (cmd.kind) {
++                      case CanonicalCanvasText::Command::Kind::Move:
++                        part->MoveTo(Point(p[0], p[1]));
++                        break;
++                      case CanonicalCanvasText::Command::Kind::Line:
++                        part->LineTo(Point(p[0], p[1]));
++                        break;
++                      case CanonicalCanvasText::Command::Kind::Quadratic:
++                        part->QuadraticBezierTo(Point(p[0], p[1]),
++                                                Point(p[2], p[3]));
++                        break;
++                      case CanonicalCanvasText::Command::Kind::Cubic:
++                        part->BezierTo(Point(p[0], p[1]), Point(p[2], p[3]),
++                                       Point(p[4], p[5]));
++                        break;
++                      case CanonicalCanvasText::Command::Kind::Close:
++                        part->Close();
++                        break;
++                    }
++                  }
++                  RefPtr<Path> outline = part->Finish();
++                  RefPtr<PathBuilder> located =
++                      outline->TransformedCopyToBuilder(transform);
++                  if (!located) {
++                    aError = NS_ERROR_FAILURE;
++                    return nullptr;
++                  }
++                  outline = located->Finish();
++                  target.Fill(
++                      outline,
++                      CanvasGeneralPattern().ForStyle(this, Style::FILL,
++                                                      mTarget),
++                      DrawOptions(state.globalAlpha, target.UsedOperation()));
++                }
++                if (i == run.images.size()) break;
++                const auto& image = run.images[i];
++                SourceSurface* surface = canonicalImages[i];
++                AutoRestoreTransform imageTransform(target);
++                target->ConcatTransform(transform);
++                target.DrawSurface(
++                    surface,
++                    gfx::Rect(image.x, image.y, image.width, image.height),
++                    gfx::Rect(0, 0, surface->GetSize().width,
++                              surface->GetSize().height),
++                    DrawSurfaceOptions(SamplingFilter::LINEAR),
++                    DrawOptions(state.globalAlpha, target.UsedOperation()));
++              }
++              Redraw();
++            }
++            aError = NS_OK;
++            return nullptr;
+           }
+-          RefPtr<Path> path = builder->Finish();
+-          const gfx::Rect ink = path->GetBounds();
+-          double anchor = (state.textAlign == CanvasTextAlign::Center) ? .5 :
+-              (state.textAlign == CanvasTextAlign::Right || state.textAlign == CanvasTextAlign::End) ? 1 : 0;
+-          double offset = anchor * run.advance;
+-          double baseline = 0;
+-          switch (state.textBaseline) {
+-            case CanvasTextBaseline::Top: baseline = run.ascent; break;
+-            case CanvasTextBaseline::Hanging: baseline = run.ascent * .8; break;
+-            case CanvasTextBaseline::Middle: baseline = (run.ascent - run.descent) * .5; break;
+-            case CanvasTextBaseline::Alphabetic: break;
+-            case CanvasTextBaseline::Ideographic:
+-            case CanvasTextBaseline::Bottom: baseline = -run.descent; break;
+-          }
+-          if (aOp == TextDrawOperation::MEASURE) {
+-            aError = NS_OK;
+-            return MakeUnique<TextMetrics>(
+-                run.advance, offset - ink.X(), ink.XMost() - offset,
+-                run.ascent - baseline, run.descent + baseline,
+-                -ink.Y() - baseline, ink.YMost() + baseline,
+-                run.ascent - baseline, run.descent + baseline,
+-                run.ascent * .8 - baseline, -baseline, -run.descent - baseline);
+-          }
+-          if (!EnsureTarget(aError)) return nullptr;
+-          mCanvasPixelSources |= static_cast<uint32_t>(CanvasPixelSource::FixedFontOutline);
+-          Matrix transform;
+-          transform.PreTranslate(aX, aY);
+-          if (aMaxWidth.WasPassed() && run.advance > aMaxWidth.Value() &&
+-              aMaxWidth.Value() > 0) {
+-            transform.PreScale(aMaxWidth.Value() / run.advance, 1);
+-          }
+-          transform.PreTranslate(-offset, baseline);
+-          // Keep the existing optional additive glyph guard. Device-space offset
+-          // is applied after user transforms, matching the native text path.
+-          // Position geometry in author space; gradients/patterns keep the
+-          // caller transform. Apply the device-space glyph guard separately.
+-          RefPtr<PathBuilder> positioned = path->TransformedCopyToBuilder(transform);
+-          if (!positioned) { aError = NS_ERROR_FAILURE; return nullptr; }
+-          path = positioned->Finish();
+-          AutoRestoreTransform restore(mTarget);
+-          mTarget->SetTransform(mTarget->GetTransform().PostTranslate(GlyphPrivacyOffset()));
+-          if (aOp == TextDrawOperation::FILL) FillImpl(*path);
+-          else StrokeImpl(*path);
+-          aError = NS_OK;
+-          return nullptr;
+         }
+       }
+-    }
++    } while (false);
+   }
+ 
+   if (mCanonicalCanvasBacking && aOp != TextDrawOperation::MEASURE) {
+-    mCanvasPixelSources |= static_cast<uint32_t>(CanvasPixelSource::HostText);
++    mCanvasPixelSources |=
++        static_cast<uint32_t>(currentFontStyle->UsesCanonicalFonts()
++                                  ? CanvasPixelSource::FixedFontOutline
++                                  : CanvasPixelSource::HostText);
+   }
+   CanvasBidiProcessor processor(mPaletteCache);
+ 
+@@ -5721,6 +6068,7 @@
+     // and stay native. Vertical ink is scaled relative to that coordinate
+     // system before the selected native baseline translation is applied.
+     double metricScale = 1.0;
++    if (!currentFontStyle->UsesCanonicalFonts()) {
+     if (uint32_t seed = CloakfoxSiteSeed::Geometry(
+             PrincipalOrNull()
+                 ? PrincipalOrNull()->OriginAttributesRef().mUserContextId
+@@ -5728,6 +6076,7 @@
+             "canvas:seed", GetCookieJarSettings())) {
+       const uint32_t state = seed * 1664525u + 1013904223u;
+       metricScale += (static_cast<double>(state) / 4294967295.0 - 0.5) * 0.0004;
++    }
+     }
+     double actualBoundingBoxAscent =
+         -processor.mBoundingBox.Y() * metricScale - baselineAnchor;
+--- a/dom/canvas/CanvasRenderingContext2D.h
++++ b/dom/canvas/CanvasRenderingContext2D.h
+@@ -826,6 +826,7 @@
+   uint32_t mCanvasPixelSources = 0;
+   CanonicalCanvasText* GetCanonicalCanvasText();
+   UniquePtr<CanonicalCanvasText> mCanonicalText;
++  nsTArray<UniquePtr<CanonicalCanvasText>> mCanonicalTextFallbacks;
+   bool mCanonicalTextLoadAttempted = false;
+   void CaptureGlyphPrivacyPolicy();
+   bool mGlyphPrivacyPolicyCaptured = false;

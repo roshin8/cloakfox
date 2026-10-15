@@ -1,0 +1,35 @@
+✔ settings headline describes the active compatible profile without losing saved identity (4.909333ms)
+✔ opt-ins default off and reject malformed pref types (2.844667ms)
+✔ authoritative flags override stale unknown overrides independently (0.65225ms)
+✔ backfill changes only owned fields, preserves identities, skips bad configs and is idempotent (0.938292ms)
+✔ startup and each opt-in notification synchronize persisted overlays (0.608375ms)
+✔ internal canonical pipeline is strict, independently authoritative, and preserves privacy fields (0.474833ms)
+✔ internal pipeline backfills a stale field even if public graphics fields are already current (1.448625ms)
+✔ complete pipeline atomically selects canonical 2D and GPU while preserving readback guards (1.327833ms)
+✔ fresh cfg derives Firefox major from 155.0.1 (13.09275ms)
+✔ fresh cfg derives Firefox major from 156.0a1 (4.299375ms)
+✔ fresh cfg derives Firefox major from 157.0b3 (1.907125ms)
+✔ fresh cfg derives Firefox major from 155.2.0esr (1.719416ms)
+✔ startup migrates legacy identity only and keeps seeds and unrelated cfg (3.473417ms)
+✔ explicit identity overrides remain pinned while other generated fields migrate (2.767375ms)
+✔ unrecognized direct cfg identity is preserved (4.371166ms)
+✔ explicit Firefox-shaped UA and header overrides remain on their chosen version (3.829792ms)
+✔ font-key upgrade also migrates identity without losing existing values (2.154416ms)
+✔ startup repairs a saved macOS identity carrying Linux fonts (2.391625ms)
+✔ corrupt cfg rebuilds from persisted seeds with current identity (3.835916ms)
+✔ divergent navigator and HTTP overrides each retain the explicit choice (2.332459ms)
+✔ first master seed selects mixed OS mode; existing seeded identity remains legacy (3.240709ms)
+✔ host mode flows through generated keys, pinned keys, preview labels and summary (10.747959ms)
+✔ saved 146 OS/hardware filters survive the port and invalid strings keep the legacy path (1.542375ms)
+✔ timing keys vary by launch salt and seed, and preserve explicit media choices (4.310417ms)
+✔ media exposure caps are editable without inventing devices or changing the identity (4.148208ms)
+✔ startup migrates only the exact generated legacy GPU profile without rotating identity (21.750625ms)
+✔ customized, partial, and renderer-mismatched legacy GPU tables survive migration (31.982208ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 289.281625

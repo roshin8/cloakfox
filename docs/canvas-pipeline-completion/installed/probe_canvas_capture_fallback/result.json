@@ -1,0 +1,238 @@
+{
+  "checks": [
+    {
+      "pass": true,
+      "name": "enabled capture copyTo completes"
+    },
+    {
+      "pass": true,
+      "name": "enabled canonical bitmap direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "enabled canonical canvas direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "enabled canonical repeated copyTo stable"
+    },
+    {
+      "pass": true,
+      "name": "enabled canonical alpha retained"
+    },
+    {
+      "pass": true,
+      "name": "enabled unknown bitmap direct VideoFrame copyTo denied"
+    },
+    {
+      "pass": true,
+      "name": "enabled unknown canvas direct VideoFrame copyTo denied"
+    },
+    {
+      "pass": true,
+      "name": "enabled unknown only unverified fullmode copy is refused"
+    },
+    {
+      "pass": true,
+      "name": "enabled qualifying authored capture remains exact"
+    },
+    {
+      "pass": true,
+      "name": "unknown source direct copyTo bypass is refused"
+    },
+    {
+      "pass": true,
+      "name": "disabled capture copyTo completes"
+    },
+    {
+      "pass": true,
+      "name": "disabled canonical bitmap direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "disabled canonical canvas direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "disabled canonical repeated copyTo stable"
+    },
+    {
+      "pass": true,
+      "name": "disabled canonical alpha retained"
+    },
+    {
+      "pass": true,
+      "name": "disabled unknown bitmap direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "disabled unknown canvas direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "disabled unknown repeated copyTo stable"
+    },
+    {
+      "pass": true,
+      "name": "disabled unknown alpha retained"
+    },
+    {
+      "pass": true,
+      "name": "disabled qualifying authored capture remains exact"
+    },
+    {
+      "pass": true,
+      "name": "disabled unknown capture remains native"
+    },
+    {
+      "pass": true,
+      "name": "legacy capture copyTo completes"
+    },
+    {
+      "pass": true,
+      "name": "legacy canonical bitmap direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "legacy canonical canvas direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "legacy canonical repeated copyTo stable"
+    },
+    {
+      "pass": true,
+      "name": "legacy canonical alpha retained"
+    },
+    {
+      "pass": true,
+      "name": "legacy unknown bitmap direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "legacy unknown canvas direct VideoFrame pixels remain exact"
+    },
+    {
+      "pass": true,
+      "name": "legacy unknown repeated copyTo stable"
+    },
+    {
+      "pass": true,
+      "name": "legacy unknown alpha retained"
+    },
+    {
+      "pass": true,
+      "name": "legacy qualifying authored capture remains exact"
+    },
+    {
+      "pass": true,
+      "name": "legacy unknown capture remains native"
+    }
+  ],
+  "runtime": {
+    "buildID": "20261015150404",
+    "version": "158.0-beta.26"
+  },
+  "enabled": {
+    "canonical": {
+      "format": "BGRA",
+      "rawMismatches": 0,
+      "referenceMismatches": 0,
+      "copyDenied": false,
+      "direct": {
+        "bitmap": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        },
+        "canvas": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        }
+      }
+    },
+    "unknown": {
+      "format": null,
+      "rawMismatches": 0,
+      "referenceMismatches": 0,
+      "copyDenied": true,
+      "direct": {
+        "bitmap": {
+          "copyDenied": true,
+          "rawMismatches": 0
+        },
+        "canvas": {
+          "copyDenied": true,
+          "rawMismatches": 0
+        }
+      }
+    }
+  },
+  "disabled": {
+    "canonical": {
+      "format": "BGRA",
+      "rawMismatches": 0,
+      "referenceMismatches": 0,
+      "copyDenied": false,
+      "direct": {
+        "bitmap": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        },
+        "canvas": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        }
+      }
+    },
+    "unknown": {
+      "format": "BGRA",
+      "rawMismatches": 0,
+      "referenceMismatches": 0,
+      "copyDenied": false,
+      "direct": {
+        "bitmap": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        },
+        "canvas": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        }
+      }
+    }
+  },
+  "legacy": {
+    "canonical": {
+      "format": "BGRA",
+      "rawMismatches": 0,
+      "referenceMismatches": 4605,
+      "copyDenied": false,
+      "direct": {
+        "bitmap": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        },
+        "canvas": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        }
+      }
+    },
+    "unknown": {
+      "format": "BGRA",
+      "rawMismatches": 0,
+      "referenceMismatches": 4605,
+      "copyDenied": false,
+      "direct": {
+        "bitmap": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        },
+        "canvas": {
+          "copyDenied": false,
+          "rawMismatches": 0
+        }
+      }
+    }
+  }
+}

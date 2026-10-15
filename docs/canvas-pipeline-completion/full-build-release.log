@@ -1,0 +1,1346 @@
+ 0:00.43 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.43 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.56 Clobber not needed.
+ 0:00.86 /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/backend.RecursiveMakeBackend is out of date with respect to /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/python/mozbuild/mozpack/executables.py
+ 0:00.86 Build configuration changed. Regenerating backend.
+ 0:00.86 /Users/zeus/.mozbuild/srcdirs/firefox-src-c7511f7e2051/_virtualenvs/build/bin/python /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/config.status
+Reticulating splines...
+Finished reading 2453 moz.build files in 2.14s
+Read 58 gyp files in parallel contributing 0.00s to total wall time
+Processed into 19164 build config descriptors in 2.05s
+RecursiveMake backend executed in 2.19s
+  5297 total backend files; 0 created; 0 updated; 5297 unchanged; 0 deleted; 13 -> 1995 Makefile
+FasterMake backend executed in 0.13s
+  89 total backend files; 0 created; 0 updated; 89 unchanged; 0 deleted
+Clangd backend executed in 0.91s
+  1255 total backend files; 0 created; 1 updated; 1254 unchanged; 0 deleted
+Total wall time: 7.67s; CPU time: 6.11s; Efficiency: 80%; Untracked: 0.25s
+ 0:09.60 W Adding make options from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j8
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:09.60 /usr/bin/make -f client.mk -j6 -s
+ 0:11.51 ./mozilla-config.h.stub
+ 0:11.52 ./buildid.h.stub
+ 0:11.52 ./source-repo.h.stub
+ 0:11.52 ./RelationType.h.stub
+ 0:11.53 ./stl.sentinel.stub
+ 0:11.53 ./Role.h.stub
+ 0:11.53 ./MacSelectorMap.h.stub
+ 0:11.59 ./xpcAccEvents.h.stub
+ 0:11.60 ./buildconfig.rs.stub
+ 0:11.98 ./fficonfig.h.stub
+ 0:11.99 ./ffi.h.stub
+ 0:12.03 ./cbindgen-metadata.json.stub
+ 0:12.06 ./UseCounterList.h.stub
+ 0:12.19 ./UseCounterWorkerList.h.stub
+ 0:12.20 ./CSSStyleProperties.webidl.stub
+ 0:12.22 ./CSSPageDescriptors.webidl.stub
+ 0:12.34 ./CSSPositionTryDescriptors.webidl.stub
+ 0:12.37 ./CSSFontFaceDescriptors.webidl.stub
+ 0:12.47 ./CSSCounterStyleRule.webidl.stub
+ 0:12.47 ./SpeechRecognitionModels.h.stub
+ 0:12.57 ./BaseChars.h.stub
+ 0:12.68 ./IsCombiningDiacritic.h.stub
+ 0:12.85 ./js-confdefs.h.stub
+ 0:12.93 ./js-config.h.stub
+ 0:13.00 ./PrefsGenerated.h.stub
+ 0:13.06 ./ProfilingCategoryList.h.stub
+ 0:13.17 ./ReservedWordsGenerated.h.stub
+ 0:13.20 ./StatsPhasesGenerated.h.stub
+ 0:13.30 ./ABIFunctionTypeGenerated.h.stub
+ 0:13.33 ./MIROpsGenerated.h.stub
+ 0:13.46 ./LIROpsGenerated.h.stub
+ 0:13.54 ./CacheIROpsGenerated.h.stub
+ 0:13.59 ./AtomicOperationsGenerated.h.stub
+ 0:13.59 ./WasmBuiltinModuleGenerated.h.stub
+ 0:13.69 ./FrameIdList.h.stub
+ 0:13.84 ./FrameTypeList.h.stub
+ 0:13.95 ./NonCustomCSSPropertyId.h.stub
+ 0:13.98 ./ServoCSSPropList.h.stub
+ 0:14.14 ./PseudoStyleTypeList.h.stub
+ 0:14.15 ./CompositorAnimatableProperties.h.stub
+ 0:14.16 ./CountedUnknownProperties.h.stub
+ 0:14.17 ./StaticPrefListAll.h.stub
+ 0:14.26 ./angle_commit.h.stub
+ 0:14.26 ./ANGLEShaderProgramVersion.h.rsp.stub
+ 0:14.35 ./registered_field_trials.h.stub
+ 0:14.46 ./GeckoTraceEvents.h.stub
+ 0:14.48 ./glean_adapter.rs.stub
+ 0:14.49 ./metrics_yamls.cached.stub
+ 0:14.50 ./pings_yamls.cached.stub
+ 0:14.55 ./NimbusFeatureManifest.h.stub
+ 0:14.70 ./TelemetryHistogramEnums.h.stub
+ 0:14.85 ./TelemetryHistogramNameMap.h.stub
+ 0:14.95 ./TelemetryScalarData.h.stub
+ 0:14.95 ./TelemetryScalarEnums.h.stub
+ 0:14.95 ./TelemetryEventData.h.stub
+ 0:15.09 ./TelemetryEventEnums.h.stub
+ 0:15.30 ./TelemetryProcessEnums.h.stub
+ 0:15.36 ./TelemetryProcessData.h.stub
+ 0:15.37 ./TelemetryUserInteractionData.h.stub
+ 0:15.47 ./TelemetryUserInteractionNameMap.h.stub
+ 0:15.47 ./validated.yaml.stub
+ 0:15.54 ./profiling_categories.rs.stub
+ 0:15.58 ./ErrorList.h.stub
+ 0:15.60 ./ErrorNamesInternal.h.stub
+ 0:15.69 ./error_list.rs.stub
+ 0:15.69 ./extra_xpc_msg.h.stub
+ 0:15.83 ./Components.h.stub
+ 0:15.89 ./static_atoms.rs.stub
+ 0:15.91 ./StaticAtomList.h.stub
+ 0:15.93 ./StaticAtoms.h.stub
+ 0:15.96 ./xpidl.stub.stub
+ 0:16.10 ./application.ini.stub
+ 0:16.12 ./selfhosted.out.h.stub
+ 0:16.18 ./ANGLEShaderProgramVersion.h.stub
+ 0:16.19 ./GleanPings.h.stub
+ 0:16.24 ./CrashAnnotations.h.stub
+ 0:16.40 ./application.ini.h.stub
+ 0:16.76 xpcom/build/GeckoProcessTypes.inc.stub
+ 0:16.89 config/makefiles/xpidl/Bits.xpt
+ 0:16.89 config/makefiles/xpidl/SiteCategories.xpt
+ 0:16.90 config/makefiles/xpidl/accessibility.xpt
+ 0:16.91 config/makefiles/xpidl/alerts.xpt
+ 0:16.91 config/makefiles/xpidl/appshell.xpt
+ 0:16.97 config/makefiles/xpidl/appstartup.xpt
+ 0:17.23 config/makefiles/xpidl/autocomplete.xpt
+ 0:17.26 config/makefiles/xpidl/autoplay.xpt
+ 0:17.32 config/makefiles/xpidl/backgroundhangmonitor.xpt
+ 0:17.39 config/makefiles/xpidl/browsercompsbase.xpt
+ 0:17.53 config/makefiles/xpidl/caps.xpt
+ 0:17.54 config/makefiles/xpidl/captivedetect.xpt
+ 0:17.54 config/makefiles/xpidl/cascade_bindings.xpt
+ 0:17.55 config/makefiles/xpidl/chrome.xpt
+ 0:17.68 config/makefiles/xpidl/commandhandler.xpt
+ 0:17.76 config/makefiles/xpidl/commandlines.xpt
+ 0:17.79 config/makefiles/xpidl/composer.xpt
+ 0:17.79 config/makefiles/xpidl/content-classifier.xpt
+ 0:17.90 config/makefiles/xpidl/content_events.xpt
+ 0:17.90 config/makefiles/xpidl/content_geckomediaplugins.xpt
+ 0:18.01 config/makefiles/xpidl/contextualidentity.xpt
+ 0:18.04 config/makefiles/xpidl/dap.xpt
+ 0:18.05 config/makefiles/xpidl/docshell.xpt
+ 0:18.11 config/makefiles/xpidl/dom.xpt
+ 0:18.18 config/makefiles/xpidl/dom_audiochannel.xpt
+ 0:18.28 config/makefiles/xpidl/dom_base.xpt
+ 0:18.42 config/makefiles/xpidl/dom_bindings.xpt
+ 0:18.42 config/makefiles/xpidl/dom_events.xpt
+ 0:18.44 config/makefiles/xpidl/dom_geolocation.xpt
+ 0:18.53 config/makefiles/xpidl/dom_identitycredential.xpt
+ 0:18.58 config/makefiles/xpidl/dom_indexeddb.xpt
+ 0:18.61 config/makefiles/xpidl/dom_localstorage.xpt
+ 0:18.66 config/makefiles/xpidl/dom_media.xpt
+ 0:18.69 config/makefiles/xpidl/dom_modelcontext.xpt
+ 0:18.80 config/makefiles/xpidl/dom_network.xpt
+ 0:18.90 config/makefiles/xpidl/dom_notification.xpt
+ 0:18.93 config/makefiles/xpidl/dom_payments.xpt
+ 0:18.93 config/makefiles/xpidl/dom_permission.xpt
+ 0:18.95 config/makefiles/xpidl/dom_power.xpt
+ 0:19.03 config/makefiles/xpidl/dom_push.xpt
+ 0:19.03 config/makefiles/xpidl/dom_quota.xpt
+ 0:19.16 config/makefiles/xpidl/dom_security.xpt
+ 0:19.18 config/makefiles/xpidl/dom_serializers.xpt
+ 0:19.20 config/makefiles/xpidl/dom_sidebar.xpt
+ 0:19.27 config/makefiles/xpidl/dom_simpledb.xpt
+ 0:19.33 config/makefiles/xpidl/dom_storage.xpt
+ 0:19.43 config/makefiles/xpidl/dom_system.xpt
+ 0:19.45 config/makefiles/xpidl/dom_webauthn.xpt
+ 0:19.45 config/makefiles/xpidl/dom_webspeechsynth.xpt
+ 0:19.46 config/makefiles/xpidl/dom_workers.xpt
+ 0:19.49 config/makefiles/xpidl/dom_xslt.xpt
+ 0:19.63 config/makefiles/xpidl/dom_xul.xpt
+ 0:19.68 config/makefiles/xpidl/downloads.xpt
+ 0:19.69 config/makefiles/xpidl/editor.xpt
+ 0:19.71 config/makefiles/xpidl/enterprisepolicies.xpt
+ 0:19.72 config/makefiles/xpidl/extensions.xpt
+ 0:19.73 config/makefiles/xpidl/exthandler.xpt
+ 0:19.77 ./GleanMetrics.h.stub
+ 0:19.77 ./GleanJSMetricsLookup.cpp.stub
+ 0:19.98 config/makefiles/xpidl/fastfind.xpt
+ 0:19.99 config/makefiles/xpidl/fog.xpt
+ 0:20.04 config/makefiles/xpidl/gfx.xpt
+ 0:20.07 ./metrics.rs.stub
+ 0:20.11 ./factory.rs.stub
+ 0:20.12 config/makefiles/xpidl/html5.xpt
+ 0:20.27 config/makefiles/xpidl/htmlparser.xpt
+ 0:20.31 config/makefiles/xpidl/http-sfv.xpt
+ 0:20.32 config/makefiles/xpidl/imglib2.xpt
+ 0:20.37 config/makefiles/xpidl/inspector.xpt
+ 0:20.58 config/makefiles/xpidl/intl.xpt
+ 0:20.59 config/makefiles/xpidl/jar.xpt
+ 0:20.69 config/makefiles/xpidl/jsdevtools.xpt
+ 0:20.73 config/makefiles/xpidl/kvstore.xpt
+ 0:20.85 config/makefiles/xpidl/layout_base.xpt
+ 0:20.85 config/makefiles/xpidl/layout_style.xpt
+ 0:20.98 config/makefiles/xpidl/layout_xul_tree.xpt
+ 0:21.06 config/makefiles/xpidl/locale.xpt
+ 0:21.06 config/makefiles/xpidl/lockstore.xpt
+ 0:21.12 config/makefiles/xpidl/loginmgr.xpt
+ 0:21.13 config/makefiles/xpidl/migration.xpt
+ 0:21.23 config/makefiles/xpidl/mimetype.xpt
+ 0:21.36 config/makefiles/xpidl/ml.xpt
+ 0:21.36 config/makefiles/xpidl/mozfind.xpt
+ 0:21.40 config/makefiles/xpidl/mozintl.xpt
+ 0:21.41 config/makefiles/xpidl/necko.xpt
+ 0:21.44 ./GeneratedElementDocumentState.h.stub
+ 0:21.45 config/makefiles/xpidl/necko_about.xpt
+ 0:21.46 ./speculationrules_ffi_generated.h.stub
+ 0:21.65 config/makefiles/xpidl/necko_cache2.xpt
+ 0:21.67 config/makefiles/xpidl/necko_cookie.xpt
+ 0:21.69 config/makefiles/xpidl/necko_dns.xpt
+ 0:21.70 ./fragmentdirectives_ffi_generated.h.stub
+ 0:21.72 config/makefiles/xpidl/necko_file.xpt
+ 0:21.73 config/makefiles/xpidl/necko_http.xpt
+ 0:21.92 ./data_encoding_ffi_generated.h.stub
+ 0:21.95 config/makefiles/xpidl/necko_res.xpt
+ 0:21.98 ./mime_guess_ffi_generated.h.stub
+ 0:21.98 ./audioipc2_client_ffi_generated.h.stub
+ 0:22.00 config/makefiles/xpidl/necko_socket.xpt
+ 0:22.06 config/makefiles/xpidl/necko_strconv.xpt
+ 0:22.18 config/makefiles/xpidl/necko_viewsource.xpt
+ 0:22.22 ./audioipc2_server_ffi_generated.h.stub
+ 0:22.25 ./RsdparsaSdpInc.h.stub
+ 0:22.28 ./midir_impl_ffi_generated.h.stub
+ 0:22.35 config/makefiles/xpidl/necko_websocket.xpt
+ 0:22.38 ./origin_trials_ffi_generated.h.stub
+ 0:22.48 ./dom_push_rust_generated.h.stub
+ 0:22.53 ./webrender_ffi_generated.h.stub
+ 0:22.56 ./wgpu_ffi_generated.h.stub
+ 0:22.63 config/makefiles/xpidl/necko_webtransport.xpt
+ 0:22.66 ./jxl_decoder_ffi.h.stub
+ 0:22.72 ./unicode_bidi_ffi_generated.h.stub
+ 0:22.73 config/makefiles/xpidl/necko_wifi.xpt
+ 0:22.80 ./mapped_hyph.h.stub
+ 0:22.85 ./fluent_ffi_generated.h.stub
+ 0:22.96 config/makefiles/xpidl/parentalcontrols.xpt
+ 0:23.03 ./l10nregistry_ffi_generated.h.stub
+ 0:23.04 config/makefiles/xpidl/peerconnection.xpt
+ 0:23.05 config/makefiles/xpidl/permissions.xpt
+ 0:23.09 ./localization_ffi_generated.h.stub
+ 0:23.11 ./fluent_langneg_ffi_generated.h.stub
+ 0:23.21 config/makefiles/xpidl/pipnss.xpt
+ 0:23.31 config/makefiles/xpidl/places.xpt
+ 0:23.37 config/makefiles/xpidl/pref.xpt
+ 0:23.38 config/makefiles/xpidl/prefetch.xpt
+ 0:23.41 config/makefiles/xpidl/profiler.xpt
+ 0:23.46 config/makefiles/xpidl/remote.xpt
+ 0:23.50 config/makefiles/xpidl/reputationservice.xpt
+ 0:23.55 ./locale_service_glue_generated.h.stub
+ 0:23.68 ./oxilangtag_ffi_generated.h.stub
+ 0:23.93 ./unic_langid_ffi_generated.h.stub
+ 0:23.99 ./collator_glue.h.stub
+ 0:24.01 config/makefiles/xpidl/sandbox.xpt
+ 0:24.01 config/makefiles/xpidl/satchel.xpt
+ 0:24.01 ./Locale.h.stub
+ 0:24.01 ./normalizer_glue.h.stub
+ 0:24.01 config/makefiles/xpidl/services.xpt
+ 0:24.02 ./properties_glue.h.stub
+ 0:24.37 ./ServoStyleConsts.h.stub
+ 0:24.38 config/makefiles/xpidl/sessionstore.xpt
+ 0:24.40 ./mp4parse_ffi_generated.h.stub
+ 0:24.42 config/makefiles/xpidl/shellservice.xpt
+ 0:24.44 config/makefiles/xpidl/shistory.xpt
+ 0:24.45 config/makefiles/xpidl/spellchecker.xpt
+ 0:24.49 config/makefiles/xpidl/startupcache.xpt
+ 0:24.66 ./http_sfv_ffi_generated.h.stub
+ 0:24.74 config/makefiles/xpidl/storage.xpt
+ 0:24.75 ./idna_glue.h.stub
+ 0:24.84 config/makefiles/xpidl/telemetry.xpt
+ 0:24.90 config/makefiles/xpidl/thumbnails.xpt
+ 0:24.90 ./MozURL_ffi.h.stub
+ 0:24.97 ./rust_helper.h.stub
+ 0:24.98 config/makefiles/xpidl/toolkit_antitracking.xpt
+ 0:24.99 ./uritemplate_glue.h.stub
+ 0:25.10 ./urlpattern_glue.h.stub
+ 0:25.15 config/makefiles/xpidl/toolkit_asyncshutdown.xpt
+ 0:25.16 config/makefiles/xpidl/toolkit_cleardata.xpt
+ 0:25.25 config/makefiles/xpidl/toolkit_contentanalysis.xpt
+ 0:25.29 ./happy_eyeballs_glue.h.stub
+ 0:25.40 config/makefiles/xpidl/toolkit_crashservice.xpt
+ 0:25.42 config/makefiles/xpidl/toolkit_finalizationwitness.xpt
+ 0:25.44 config/makefiles/xpidl/toolkit_geolocation.xpt
+ 0:25.52 ./neqo_glue_ffi_generated.h.stub
+ 0:25.61 config/makefiles/xpidl/toolkit_media.xpt
+ 0:25.63 config/makefiles/xpidl/toolkit_modules.xpt
+ 0:25.64 ./signature_cache_ffi.h.stub
+ 0:25.65 config/makefiles/xpidl/toolkit_processtools.xpt
+ 0:25.71 ./lockstore_ffi_generated.h.stub
+ 0:25.71 config/makefiles/xpidl/toolkit_resistfingerprinting.xpt
+ 0:25.80 ./mozilla_abridged_certs_generated.h.stub
+ 0:25.81 ./pdf_trust_anchors_ffi_generated.h.stub
+ 0:25.86 ./qwac_trust_anchors_ffi_generated.h.stub
+ 0:25.90 ./mls_gk_ffi_generated.h.stub
+ 0:25.90 config/makefiles/xpidl/toolkit_shell.xpt
+ 0:25.94 config/makefiles/xpidl/toolkit_terminator.xpt
+ 0:25.97 ./content_classifier_ffi.h.stub
+ 0:25.99 ./dap_ffi_generated.h.stub
+ 0:26.09 ./fog_ffi_generated.h.stub
+ 0:26.16 ./jog_ffi_generated.h.stub
+ 0:26.16 ./profiler_ffi_generated.h.stub
+ 0:26.19 ./gk_rust_utils_ffi_generated.h.stub
+ 0:26.32 config/makefiles/xpidl/toolkit_xulstore.xpt
+ 0:26.33 config/makefiles/xpidl/toolkitprofile.xpt
+ 0:26.42 config/makefiles/xpidl/toolkitremote.xpt
+ 0:26.43 config/makefiles/xpidl/txmgr.xpt
+ 0:26.43 config/makefiles/xpidl/txtsvc.xpt
+ 0:26.45 config/makefiles/xpidl/uconv.xpt
+ 0:26.48 config/makefiles/xpidl/update.xpt
+ 0:26.59 config/makefiles/xpidl/uriloader.xpt
+ 0:26.59 config/makefiles/xpidl/url-classifier.xpt
+ 0:26.65 config/makefiles/xpidl/urlformatter.xpt
+ 0:26.65 config/makefiles/xpidl/webBrowser_core.xpt
+ 0:26.68 config/makefiles/xpidl/webbrowserpersist.xpt
+ 0:26.70 config/makefiles/xpidl/webextensions.xpt
+ 0:26.75 config/makefiles/xpidl/webvtt.xpt
+ 0:26.75 config/makefiles/xpidl/widget.xpt
+ 0:26.85 config/makefiles/xpidl/windowcreator.xpt
+ 0:26.91 config/makefiles/xpidl/windowwatcher.xpt
+ 0:26.98 config/makefiles/xpidl/xpcom_base.xpt
+ 0:27.01 config/makefiles/xpidl/xpcom_components.xpt
+ 0:27.05 config/makefiles/xpidl/xpcom_ds.xpt
+ 0:27.23 config/makefiles/xpidl/xpcom_io.xpt
+ 0:27.24 config/makefiles/xpidl/xpcom_system.xpt
+ 0:27.25 config/makefiles/xpidl/xpcom_threads.xpt
+ 0:27.26 config/makefiles/xpidl/xpconnect.xpt
+ 0:27.39 config/makefiles/xpidl/xul.xpt
+ 0:27.45 config/makefiles/xpidl/xulapp.xpt
+ 0:27.52 config/makefiles/xpidl/zipwriter.xpt
+ 0:27.92 config/makefiles/xpidl/xptdata.stub
+ 0:28.86 config/external/mozinference/libmozinference.dylib.symbols.stub
+ 0:28.87 third_party/llama.cpp/ggml-metal-embed.s.stub
+ 0:28.91 ipc/app/plugin-container.Info.plist.stub
+ 0:28.91 security/libnss3.dylib.symbols.stub
+ 0:28.91 toolkit/library/rust/libgkrust.a
+ 0:28.91 ipc/app/media-plugin-helper.Info.plist.stub
+ 0:28.97 ipc/app/gpu-helper.Info.plist.stub
+ 0:29.04 Generated ggml-metal-embed.s with embedded Metal shader source (609663 bytes)
+ 0:29.11 ./buildid.h.stub
+ 0:29.12 ./source-repo.h.stub
+ 0:29.24 toolkit/library/build/XUL.symbols.stub
+ 0:29.28 accessible/basetypes
+ 0:29.28 accessible/aom
+ 0:29.33 accessible/base
+ 0:29.34 accessible/generic
+ 0:29.38 accessible/html
+ 0:29.62 accessible/ipc
+ 0:29.70 ./application.ini.stub
+ 0:29.94 ./application.ini.h.stub
+ 0:31.49 accessible/mac/MacSelectorMap.mm.stub
+ 0:31.73 accessible/pdf
+ 0:35.65 accessible/xpcom
+ 0:36.46    Compiling static_prefs v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/modules/libpref/init/static_prefs)
+ 0:37.05    Compiling style v0.0.1 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/servo/components/style)
+ 0:41.50 accessible/xul
+ 0:45.41    Compiling happy_eyeballs_glue v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/netwerk/protocol/http/happy_eyeballs_glue)
+ 0:48.86    Compiling lockstore_ffi v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/security/lockstore/lockstore_ffi)
+ 0:49.83    Compiling neqo_glue v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/netwerk/socket/neqo_glue)
+ 0:50.34    Compiling qwac-trust-anchors v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/security/manager/ssl/qwac_trust_anchors)
+ 0:50.53    Compiling pdf-trust-anchors v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/security/manager/ssl/pdf_trust_anchors)
+ 0:50.92    Compiling wgpu_bindings v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/wgpu_bindings)
+ 0:51.27    Compiling mls_gk v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/security/mls/mls_gk)
+ 0:52.57    Compiling webrender_bindings v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/webrender_bindings)
+ 0:52.81    Compiling cert_storage v0.0.1 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/security/manager/ssl/cert_storage)
+ 0:54.61 browser/components/about
+ 0:55.53    Compiling authrs_bridge v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/webauthn/authrs_bridge)
+ 0:55.59    Compiling jxl_decoder v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/image/rust/jxl)
+ 0:55.78    Compiling fog_control v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/toolkit/components/glean)
+ 0:56.90    Compiling sitecategories v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/toolkit/components/sitecategories)
+ 0:57.42 browser/components/migration
+ 0:57.86 browser/components/shell
+ 0:58.40 caps
+ 1:02.77 W 10 warnings generated.
+ 1:02.84 chrome
+ 1:04.26 config/external/gkcodecs/libgkcodecs.dylib.symbols.stub
+ 1:05.06 docshell/base
+ 1:05.08 devtools/shared/heapsnapshot
+ 1:05.35 docshell/build
+ 1:10.68 docshell/shistory
+ 1:15.29 dom/abort
+ 1:17.31 dom/animation
+ 1:23.81 dom/audiochannel
+ 1:28.78 dom/base/UseCounterMetrics.cpp.stub
+ 1:28.90 dom/battery
+ 1:29.69 dom/bindings
+ 1:30.30 dom/broadcastchannel
+ 1:32.90 dom/cache
+ 1:37.80 dom/canvas
+ 1:53.07    Compiling geckoservo v0.0.1 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/servo/ports/geckolib)
+ 1:55.16 dom/clients/api
+ 2:00.60 dom/clients/manager
+ 2:01.00    Compiling gkrust-shared v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/toolkit/library/rust/shared)
+ 2:01.72 dom/closewatcher
+ 2:01.93 dom/commandhandler
+ 2:05.24 dom/compression
+ 2:05.82 dom/console
+ 2:33.27 dom/cookiestore
+ 2:35.62 dom/credentialmanagement/digital
+ 2:45.84 dom/credentialmanagement/identity
+ 2:48.81 dom/credentialmanagement
+ 2:55.37 dom/crypto
+ 3:00.93 dom/debugger
+ 3:03.08 dom/documentpip
+ 3:04.21 dom/encoding
+ 3:04.52 dom/events
+ 3:12.98 dom/fetch
+ 3:27.09    Compiling gkrust v0.1.0 (/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/toolkit/library/rust)
+ 3:35.31 dom/file/ipc
+ 3:38.34 dom/file
+ 3:43.78 dom/file/uri
+ 3:43.79 dom/filesystem/compat
+ 3:46.42 dom/filesystem
+ 3:46.70 dom/flex
+ 3:47.55 dom/fs/api
+ 3:49.25 dom/fs/child
+ 3:50.20 dom/fs/parent/datamodel
+ 3:55.77 dom/fs/parent
+ 3:56.69 dom/fs/shared
+ 3:57.91 dom/gamepad
+ 4:00.07 dom/geolocation
+ 4:00.26 dom/grid
+ 4:01.81 dom/html/input
+ 4:02.91 dom/html
+ 4:04.89 dom/indexedDB
+ 4:05.30 dom/ipc/jsactor
+ 4:07.62 dom/ipc
+ 4:08.47 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/geolocation/Unified_mm_dom_geolocation0.mm:2:
+ 4:08.47 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/geolocation/GeolocationSystemMac.mm:130:10: warning: @available does not guard availability here; use if (@available) instead [-Wunsupported-availability-guard]
+ 4:08.47 W   130 |     if (!@available(macOS 15.0, *)) {
+ 4:08.47 W       |          ^
+ 4:09.53 W 1 warning generated.
+ 4:09.60 dom/jsurl
+ 4:18.16 dom/l10n
+ 4:18.98 dom/localstorage
+ 4:25.10 dom/locks
+ 4:30.32 dom/mathml
+ 4:34.14 dom/media/autoplay
+ 4:35.93 dom/media/bridge
+ 4:44.97 dom/media/doctor
+ 4:48.27 dom/media/eme
+ 4:51.29 dom/media/encoder
+ 4:54.35 dom/media/flac
+ 4:59.39 dom/media/gmp
+ 5:00.93 dom/media/imagecapture
+ 5:08.26 dom/media/ipc
+ 5:09.39 dom/media/mediacapabilities
+ 5:13.80 dom/media/mediacontrol
+ 5:17.20 dom/media/mediaelement
+ 5:21.94 dom/media/mediasession
+ 5:21.97 dom/media/mediasink
+ 5:25.69 dom/media/mediasource
+ 5:26.92 dom/media/mp3
+ 5:27.32 dom/media/mp4
+ 5:29.76 dom/media/ogg
+ 5:32.26 dom/media/platforms/agnostic/bytestreams
+ 5:34.75 dom/media/platforms/agnostic/eme
+ 5:35.59 dom/media/platforms/agnostic/gmp
+ 5:37.17 dom/media/platforms/ffmpeg/ffmpeg57
+ 5:38.20 dom/media/platforms/ffmpeg/ffmpeg58
+ 5:40.85 dom/media/platforms/ffmpeg/ffmpeg59
+ 5:41.68 dom/media/platforms/ffmpeg/ffmpeg60
+ 5:42.88 dom/media/platforms/ffmpeg/ffmpeg61
+ 5:46.95 dom/media/platforms/ffmpeg/ffmpeg62
+ 5:49.47 dom/media/platforms/ffmpeg/ffmpeg63
+ 5:52.52 dom/media/platforms/ffmpeg/ffvpx
+ 5:56.72 dom/media/platforms/ffmpeg/libav53
+ 5:57.03 dom/media/platforms/ffmpeg/libav54
+ 5:59.47 dom/media/platforms/ffmpeg/libav55
+ 5:59.85 dom/media/platforms/ffmpeg
+ 6:04.37 dom/media/platforms/omx
+ 6:04.69 dom/media/platforms
+ 6:05.00 dom/media/systemservices
+ 6:06.11 dom/media
+ 6:07.81 dom/media/utils
+ 6:13.33 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/platforms/Unified_cpp_dom_media_platforms1.cpp:29:
+ 6:19.63 W 1 warning generated.
+ 6:20.28 dom/media/wave
+ 6:24.29 dom/media/webaudio/blink
+ 6:27.52 dom/media/webaudio
+ 6:32.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/systemservices/Unified_mm_systemservices0.mm:20:
+ 6:32.88 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/systemservices/Unified_mm_systemservices0.mm:20:
+ 6:32.88 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/systemservices/Unified_mm_systemservices0.mm:20:
+ 6:33.77 W 3 warnings generated.
+ 6:33.82 dom/media/webcodecs
+ 6:34.12 dom/media/webm
+ 6:37.59 dom/media/webrtc/common
+ 6:38.76 dom/media/webrtc/jsapi
+ 6:38.87 dom/media/webrtc/jsep
+ 6:41.21 dom/media/webrtc/libwebrtcglue
+ 6:41.27 dom/media/webrtc
+ 6:46.51 dom/media/webrtc/transport/build
+ 6:48.82 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/libwebrtcglue/Unified_cpp_libwebrtcglue0.cpp:83:
+ 6:50.81 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:92:
+ 6:50.90 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi0.cpp:110:
+ 6:51.21 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi1.cpp:29:
+ 6:51.22 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/jsapi/Unified_cpp_media_webrtc_jsapi1.cpp:29:
+ 6:51.96 dom/media/webrtc/transport/ipc
+ 6:54.15 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/Unified_cpp_dom_media_webrtc0.cpp:47:
+ 6:54.15 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dom/media/webrtc/Unified_cpp_dom_media_webrtc0.cpp:47:
+ 6:59.46 dom/media/webrtc/transportbridge
+ 7:01.37 W 1 warning generated.
+ 7:01.50 dom/media/webspeech/recognition
+ 7:03.55 dom/media/webspeech/synth/cocoa
+ 7:05.44 W 2 warnings generated.
+ 7:05.59 dom/media/webspeech/synth
+ 7:07.06 W 2 warnings generated.
+ 7:08.59 W 2 warnings generated.
+ 7:08.67 dom/media/webvtt
+ 7:10.92 dom/messagechannel
+ 7:13.79 dom/midi
+ 7:15.31 dom/mls
+ 7:16.83 dom/modelcontext
+ 7:19.23 dom/navigation
+ 7:19.67 dom/network
+ 7:22.87 dom/notification
+ 7:23.81 dom/onnx
+ 7:26.02 dom/origin-trials/keys.inc.stub
+ 7:26.27 dom/payments/ipc
+ 7:27.01 dom/payments
+ 7:28.41 dom/performance
+ 7:31.98 dom/permission
+ 7:32.07 dom/power
+ 7:34.26 dom/promise
+ 7:37.17 dom/prototype
+ 7:38.77 dom/push
+ 7:42.47 dom/quota
+ 7:42.52 dom/reporting
+ 7:42.72 dom/script
+ 7:43.53 dom/security/permissionspolicy
+ 7:45.05 dom/security/sanitizer
+ 7:46.51 dom/security
+ 7:50.29 dom/security/trusted-types
+ 7:53.50 dom/serializers
+ 7:59.43 dom/serviceworkers
+ 8:04.32 dom/simpledb
+ 8:08.10 dom/smil
+ 8:21.29 dom/storage
+ 8:21.33 dom/streams
+ 8:21.42 dom/svg
+ 8:33.46 dom/system/mac
+ 8:35.27 dom/system
+ 8:36.65 dom/url
+ 8:41.50 dom/view-transitions
+ 8:45.64 dom/vr
+ 8:51.72 dom/webauthn
+ 8:53.55 dom/webbrowserpersist
+ 8:59.63 dom/webgpu
+ 9:02.11 dom/webscheduling
+ 9:06.72 dom/webserial
+ 9:07.66 dom/websocket
+ 9:07.94 dom/webtransport/api
+ 9:09.60 dom/webtransport/child
+ 9:13.15 dom/webtransport/parent
+ 9:16.84 dom/webtransport/shared
+ 9:17.16 dom/workers/loader
+ 9:17.20 dom/workers/remoteworkers
+ 9:19.50 dom/workers/sharedworkers
+ 9:19.82 dom/workers
+ 9:23.12 dom/worklet/loader
+ 9:23.83 dom/worklet
+ 9:24.76 dom/xhr
+ 9:27.63 dom/xml
+ 9:27.90 dom/xslt/base
+ 9:31.96 dom/xslt/xml
+ 9:31.99 dom/xslt/xpath
+ 9:32.11 dom/xslt/xslt
+ 9:34.90 dom/xul
+ 9:40.13 editor/composer
+ 9:42.16 editor/libeditor
+ 9:43.68 editor/spellchecker
+ 9:47.37 editor/txmgr
+ 9:48.33 extensions/auth
+ 9:50.66 extensions/permissions
+ 9:51.13 extensions/pref/autoconfig/src
+ 9:52.54 extensions/spellcheck/hunspell/glue
+ 9:55.25 extensions/spellcheck/ipc
+ 9:55.44 extensions/spellcheck/src
+ 9:58.62 gfx/2d
+10:06.59 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/2d/Unified_cpp_gfx_2d1.cpp:29:
+10:06.60 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/2d/Unified_cpp_gfx_2d1.cpp:29:
+10:06.73 gfx/config
+10:08.55 gfx/gl
+10:12.67 W 2 warnings generated.
+10:12.74 gfx/ipc
+10:14.16 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/gl/GLContextProviderCGL.mm:6:
+10:14.16 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/gl/GLContextProviderCGL.mm:6:
+10:14.16 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/gl/GLContextProviderCGL.mm:6:
+10:14.97 gfx/layers
+10:15.28 W 34 warnings generated.
+10:16.06 gfx/src
+10:16.91 gfx/thebes
+10:23.06 gfx/vr/service
+10:31.20 gfx/vr
+10:32.79 gfx/webrender_bindings
+10:37.00 gfx/ycbcr
+10:42.13 hal
+10:52.00 image/build
+10:53.31 image/decoders/icon/mac
+11:03.83 image/decoders/icon
+11:04.53 image/decoders
+11:07.03 image/encoders/png
+11:10.47 image/remote
+11:13.14 image
+11:18.16 intl/hyphenation/glue
+11:23.16     Finished `release` profile [optimized] target(s) in 10m 54s
+11:29.02 intl/l10n
+11:31.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/layers/Unified_mm_gfx_layers0.mm:2:
+11:31.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/NativeLayerCA.mm:23:
+11:31.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/layers/Unified_mm_gfx_layers0.mm:2:
+11:31.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/NativeLayerCA.mm:23:
+11:31.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/layers/Unified_mm_gfx_layers0.mm:2:
+11:31.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/gfx/layers/NativeLayerCA.mm:23:
+11:32.05 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/layers/Unified_mm_gfx_layers0.mm:2:
+11:32.05 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/layers/Unified_mm_gfx_layers0.mm:2:
+11:32.05 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/layers/Unified_mm_gfx_layers0.mm:2:
+11:32.05 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/gfx/layers/Unified_mm_gfx_layers0.mm:2:
+11:34.90 intl/locale
+11:35.60 W 7 warnings generated.
+11:37.13 intl/strres
+11:37.27 intl/unicharutil/util
+11:37.30 ipc/chromium
+11:37.94 ipc/glue
+11:38.77 ipc/testshell
+11:40.21 js/loader
+11:42.79 js/src/gc/StatsPhasesGenerated.inc.stub
+11:43.44 js/xpconnect/loader
+11:43.64 js/xpconnect/src
+11:47.34 js/xpconnect/wrappers
+11:48.85 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/ipc/glue/Unified_mm_ipc_glue0.mm:11:
+11:49.29 W 1 warning generated.
+11:49.36 layout/base
+11:50.59 layout/build
+11:52.12 layout/forms
+11:53.98 layout/generic
+11:57.40 layout/inspector
+11:58.02 layout/ipc
+11:58.71 layout/mathml
+12:01.55 layout/painting
+12:03.57 layout/printing
+12:04.36 layout/style/nsComputedDOMStyleGenerated.inc.stub
+12:04.36 layout/style/nsCSSPropsGenerated.inc.stub
+12:04.58 layout/style/typedom
+12:04.74 layout/svg
+12:04.77 layout/tables
+12:09.46 layout
+12:11.07 layout/xul
+12:12.08 layout/xul/tree
+12:12.40 media/libdav1d/16bd_cdef_apply_tmpl.c.stub
+12:12.40 media/libdav1d/8bd_cdef_apply_tmpl.c.stub
+12:12.54 media/libdav1d/16bd_cdef_tmpl.c.stub
+12:12.68 media/libdav1d/8bd_cdef_tmpl.c.stub
+12:12.82 media/libdav1d/16bd_fg_apply_tmpl.c.stub
+12:12.95 media/libdav1d/8bd_fg_apply_tmpl.c.stub
+12:13.08 media/libdav1d/16bd_filmgrain_tmpl.c.stub
+12:13.22 media/libdav1d/8bd_filmgrain_tmpl.c.stub
+12:13.35 media/libdav1d/16bd_ipred_prepare_tmpl.c.stub
+12:13.49 media/libdav1d/8bd_ipred_prepare_tmpl.c.stub
+12:13.63 media/libdav1d/16bd_ipred_tmpl.c.stub
+12:13.76 media/libdav1d/8bd_ipred_tmpl.c.stub
+12:13.88 media/libdav1d/16bd_itx_tmpl.c.stub
+12:13.90 media/libdav1d/8bd_itx_tmpl.c.stub
+12:14.03 media/libdav1d/16bd_lf_apply_tmpl.c.stub
+12:14.05 media/libdav1d/8bd_lf_apply_tmpl.c.stub
+12:14.07 media/libdav1d/16bd_loopfilter_tmpl.c.stub
+12:14.17 media/libdav1d/8bd_loopfilter_tmpl.c.stub
+12:14.18 media/libdav1d/16bd_looprestoration_tmpl.c.stub
+12:14.20 media/libdav1d/8bd_looprestoration_tmpl.c.stub
+12:14.30 media/libdav1d/16bd_lr_apply_tmpl.c.stub
+12:14.31 media/libdav1d/8bd_lr_apply_tmpl.c.stub
+12:14.34 media/libdav1d/16bd_mc_tmpl.c.stub
+12:14.44 media/libdav1d/8bd_mc_tmpl.c.stub
+12:14.45 media/libdav1d/16bd_recon_tmpl.c.stub
+12:14.47 media/libdav1d/8bd_recon_tmpl.c.stub
+12:14.60 modules/libjar
+12:14.63 modules/libjar/zipwriter
+12:14.73 modules/libpref
+12:16.11 netwerk/base/mozurl
+12:16.15 netwerk/base/ascii_pac_utils.inc.stub
+12:16.31 netwerk/base/urlpattern_glue
+12:17.14 netwerk/build
+12:17.17 netwerk/cache2
+12:17.50 netwerk/cookie
+12:17.82 netwerk/dns/etld_data.inc.stub
+12:17.96 netwerk/ipc
+12:17.96 netwerk/protocol/about
+12:17.99 netwerk/protocol/data
+12:18.17 netwerk/protocol/file
+12:20.31 netwerk/protocol/http
+12:22.09 netwerk/protocol/res
+12:22.84 netwerk/protocol/viewsource
+12:23.31 netwerk/protocol/websocket
+12:25.08 netwerk/protocol/webtransport
+12:27.95 netwerk/sctp/datachannel
+12:30.99 netwerk/socket/neqo_glue
+12:31.99 netwerk/socket
+12:33.54 netwerk/streamconv/converters
+12:36.20 netwerk/system/mac
+12:36.85 netwerk/url-classifier
+12:38.14 netwerk/wifi
+12:38.21 parser/html
+12:41.40 parser/htmlparser
+12:44.14 parser/prototype
+12:44.61 security/certverifier
+12:45.21 security/ct
+12:45.27 security/lockstore
+12:45.37 security/manager/ssl/nsSTSPreloadListGenerated.inc.stub
+12:45.37 security/manager/ssl/xpcshell.inc.stub
+12:46.02 security/sandbox/common
+12:46.18 services/application-services/components/viaduct-necko
+12:46.48 startupcache
+12:46.83 storage
+12:46.94 security/manager/ssl/addons-public.inc.stub
+12:47.09 security/manager/ssl/addons-public-intermediate.inc.stub
+12:47.27 security/manager/ssl/addons-stage.inc.stub
+12:47.42 security/manager/ssl/addons-stage-intermediate.inc.stub
+12:47.59 security/manager/ssl/content-signature-prod.inc.stub
+12:47.74 security/manager/ssl/content-signature-stage.inc.stub
+12:47.86 security/manager/ssl/content-signature-dev.inc.stub
+12:47.88 security/manager/ssl/content-signature-local.inc.stub
+12:48.48 third_party/angle/angle_version_info_gn
+12:48.74 third_party/libwebrtc/api/field_trials_registry_gn
+12:49.78 toolkit/components/alerts
+12:49.79 toolkit/components/antitracking/scopedprefs
+12:49.79 toolkit/components/autocomplete
+12:49.79 toolkit/components/antitracking/bouncetrackingprotection
+12:49.80 toolkit/components/backgroundhangmonitor
+12:49.80 toolkit/components/browser
+12:49.80 toolkit/components/antitracking
+12:50.21 toolkit/components/build
+12:51.48 toolkit/components/clearsitedata
+12:51.85 toolkit/components/commandlines
+12:52.41 toolkit/components/content-classifier/content_classifier_engine
+12:53.12 toolkit/components/content-classifier
+12:53.46 toolkit/components/contentanalysis
+12:54.27 toolkit/components/credentialmanagement
+12:54.53 toolkit/components/dap
+12:54.54 toolkit/components/downloads
+12:55.09 toolkit/components/extensions
+12:55.26 toolkit/components/extensions/webidl-api
+12:56.13 toolkit/components/extensions/webrequest
+12:57.07 toolkit/components/find
+12:57.36 toolkit/components/formautofill
+12:58.04 toolkit/components/geolocation
+12:59.58 toolkit/components/glean/EventGIFFTMap.cpp.stub
+12:59.58 toolkit/components/glean/HistogramGIFFTMap.cpp.stub
+12:59.84 toolkit/components/glean/xpcom
+12:59.89 toolkit/components/glean/ScalarGIFFTMap.cpp.stub
+13:00.37 toolkit/components/mediasniffer
+13:00.44 toolkit/components/ml/backends/llama
+13:00.93 toolkit/components/ml/ipc
+13:01.75 toolkit/components/places
+13:02.13 toolkit/components/printingui/ipc
+13:02.65 toolkit/components/processtools
+13:03.66 toolkit/components/reputationservice
+13:03.89 toolkit/components/resistfingerprinting
+13:04.03 toolkit/components/satchel
+13:05.92 toolkit/components/sessionstore
+13:06.14 toolkit/components/startup
+13:06.40 toolkit/components/telemetry/TelemetryHistogramData.inc.stub
+13:06.62 toolkit/components/typeaheadfind
+13:08.15 toolkit/components/uniffi-js
+13:08.34 toolkit/components/url-classifier
+13:08.53 toolkit/components/windowwatcher
+13:08.54 toolkit/crashreporter
+13:10.16 toolkit/library/buildid.cpp.stub
+13:10.32 toolkit/mozapps/extensions
+13:10.40 toolkit/mozapps/macos-frameworks
+13:11.68 toolkit/profile
+13:11.82 toolkit/system/commonproxy
+13:12.13 toolkit/system/osxproxy
+13:13.14 toolkit/xre
+13:13.69 tools/performance
+13:14.10 tools/profiler
+13:14.21 uriloader/base
+13:14.36 uriloader/exthandler
+13:18.67 uriloader/prefetch
+13:19.22 W 2 warnings generated.
+13:19.64 uriloader/preload
+13:20.03 widget/cocoa
+13:20.46 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:11:
+13:21.07 widget/headless
+13:21.57 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+13:21.57 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+13:21.57 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+13:21.57 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+13:21.57 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+13:21.57 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+13:21.57 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/uriloader/exthandler/Unified_mm_uriloader_exthandler0.mm:20:
+13:21.91 widget
+13:22.03 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/toolkit/xre/Unified_mm_toolkit_xre0.mm:20:
+13:22.03 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/toolkit/xre/Unified_mm_toolkit_xre0.mm:20:
+13:22.08 W 8 warnings generated.
+13:22.16 xpcom/base
+13:22.69 W 2 warnings generated.
+13:22.75 xpcom/components
+13:23.96 xpcom/ds
+13:25.51 xpcom/io
+13:26.20 xpcom/ioutils
+13:28.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.13 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:28.14 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io0.cpp:128:
+13:29.04 W 24 warnings generated.
+13:29.40 xpcom/reflect/xptinfo
+13:30.67 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io1.cpp:74:
+13:30.67 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io1.cpp:74:
+13:30.67 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io1.cpp:74:
+13:30.67 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io1.cpp:74:
+13:30.67 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/xpcom/io/Unified_cpp_xpcom_io1.cpp:74:
+13:32.34 W 5 warnings generated.
+13:33.43 xpcom/threads
+13:34.35 xpfe/appshell
+13:37.03 media/ffvpx/libavcodec/libmozavcodec.dylib.symbols.stub
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/cocoa/MacOSNotificationCenter.mm:5:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/cocoa/MacOSNotificationCenter.mm:5:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.86 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:37.87 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa0.mm:38:
+13:40.63 media/ffvpx/libavutil/libmozavutil.dylib.symbols.stub
+13:42.00 W 26 warnings generated.
+13:42.36 security/nss/lib/freebl/out.freebl.def.stub
+13:42.63 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:2:
+13:42.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:2:
+13:42.64 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:2:
+13:42.66 security/nss/lib/softoken/out.softokn.def.stub
+13:42.69 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+13:42.69 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/cocoa/nsCocoaWindow.mm:8:
+13:42.69 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+13:42.69 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/cocoa/nsCocoaWindow.mm:8:
+13:42.69 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+13:42.69 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/cocoa/nsCocoaWindow.mm:8:
+13:43.04 toolkit/mozapps/dmgInstallHelper/dmgInstallHelper-Info.plist.stub
+13:43.09 browser/app/Info.plist.stub
+13:43.34 accessible/mac
+13:43.53 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+13:43.56 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+13:43.78 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:11:
+13:43.92 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:29:
+13:43.94 dom/base
+13:43.99 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+13:43.99 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+13:43.99 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+13:43.99 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+13:44.00 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+13:44.00 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+13:44.00 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:47:
+13:44.04 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:74:
+13:44.04 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/cocoa/nsMacPermissionMonitor.mm:112:8: warning: @available does not guard availability here; use if (@available) instead [-Wunsupported-availability-guard]
+13:44.04 W   112 |   if (!@available(macOS 11.0, *)) {
+13:44.04 W       |        ^
+13:44.04 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:83:
+13:44.05 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:83:
+13:44.05 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:101:
+13:44.05 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa1.mm:101:
+13:45.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa2.mm:128:
+13:45.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/cocoa/nsWidgetFactory.mm:29:
+13:45.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/widget/cocoa/Unified_mm_widget_cocoa2.mm:128:
+13:45.34 W In file included from /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/widget/cocoa/nsWidgetFactory.mm:29:
+13:45.66 dom/origin-trials
+13:46.69 W 2 warnings generated.
+13:47.27 W 22 warnings generated.
+13:47.42 layout/style
+13:49.06 netwerk/base
+13:49.78 netwerk/dns
+13:51.18 W /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/dom/base/NavigatorManager.cpp:12:17: warning: unused function 'GetUserContextId' [-Wunused-function]
+13:51.18 W    12 | static uint32_t GetUserContextId(JSObject* aObj) {
+13:51.18 W       |                 ^~~~~~~~~~~~~~~~
+13:51.21 W 1 warning generated.
+13:55.97 security/manager/ssl
+14:05.01 toolkit/components/glean
+14:05.74 toolkit/components/telemetry
+14:06.77 toolkit/library/buildid.cpp.stub
+14:06.92 toolkit/library
+14:07.03 xpcom/build
+14:13.35 browser/app
+14:13.48 third_party/angle/translator_gn/libtranslator_gn.a
+14:14.93 browser/app/cloakfox
+14:15.39 third_party/angle/libGLESv2_gn/libGLESv2.dylib
+14:35.83 toolkit/library/build/XUL
+14:38.94 ./InfoPlist.strings.stub
+14:38.94 ./MacOS-files.txt.stub
+14:38.94 ./license.html.stub
+14:38.94 ./runtime-metrics-157.json.stub
+14:38.94 ./runtime-metrics-156.json.stub
+14:38.94 ./runtime-metrics-155.json.stub
+14:39.08 ./supported-locales.json.stub
+14:39.10 ./newtab-sources.stamp.stub
+14:39.11 ./run.js.stub
+14:39.13 ./bug1081239-cmbchina.com.js.stub
+14:39.13 ./bug1280834-bankofamerica.com.js.stub
+14:39.15 ./bug1448747-FastClick_breakage.js.stub
+14:39.21 ./bug1579159-m.tailieu.vn.js.stub
+14:39.21 ./bug1610046-diverse.direct-fix_image_flickering.css.stub
+14:39.26 ./bug1610344-directv.com.co-hide_browser_notice.css.stub
+14:39.31 ./bug1709653-Office_365_email_handling_prompt.js.stub
+14:39.33 ./bug1718366-smugmug.com-fix_image_flickering.css.stub
+14:39.34 ./bug1724868-news.yahoo.co.jp-1.js.stub
+14:39.39 ./bug1724868-news.yahoo.co.jp.js.stub
+14:39.40 ./bug1729435-milkbarstore.com-fix_cart_quantities.css.stub
+14:39.41 ./bug1741234-patient.alphalabs.ca-unhide_continue_button.css.stub
+14:39.45 ./bug1769762-tiktok.com_broken_comments.js.stub
+14:39.49 ./bug1770962-coldwellbankerhomes.com-fix_stretched_property_images.css.stub
+14:39.52 ./bug1774005-Sites_relying_on_window.InstallTrigger.js.stub
+14:39.53 ./bug1779908-play.google.com-hide_extra_scrollbars.css.stub
+14:39.57 ./bug1799968-www.samsung.com_scrolling_fix.js.stub
+14:39.59 ./bug1815733-Office_365_Outlook_locations.js.stub
+14:39.60 ./bug1815836-All_international_Nintendo_domains.js.stub
+14:39.63 ./bug1818818-FastClick_breakage_legacy.js.stub
+14:39.68 ./bug1830307-cnn.com-fix_blank_pages_when_printing.css.stub
+14:39.71 ./bug1836872-docs.google.com-fix_inaccessible_menus.css.stub
+14:39.71 ./bug1841730-www.korg.com.js.stub
+14:39.76 ./bug1842437-YouTube_back_forward_fix.js.stub
+14:39.78 ./bug1845299-Google_Slides-hide_extra_scrollbars.css.stub
+14:39.79 ./bug1848849-theaa.com-fix_blank_print_preview.css.stub
+14:39.81 ./bug1854165-Sites_relying_on_there_being_no_window.InstallTrigger.js.stub
+14:39.87 ./bug1860417-www.samsung.com_images_fix.js.stub
+14:39.89 ./bug1873166-nsandi.com-hide_browser_notice.css.stub
+14:39.90 ./bug1886293-Future_PLC_websites-fix_trending_scrollbar.css.stub
+14:39.95 ./bug1886566-quezoncity.gov.ph-fix_invisible_iframe.css.stub
+14:39.98 ./bug1886616-www.six-group.com-unhide_selected_inputs.css.stub
+14:39.98 ./bug1891016-usps.com-fix_terms_and_conditions_checkboxes.css.stub
+14:39.99 ./bug1895051-www.zhihu.com-fix_unclickable_directory_buttons.css.stub
+14:40.06 ./bug1896571-gracobaby.ca-unlock-scrolling.css.stub
+14:40.09 ./bug1898915-locator.dhl.com-hide_browser_notice.css.stub
+14:40.09 ./bug1898929-app.sessionlinkpro.com.js.stub
+14:40.13 ./bug1898946-transcrib.io.js.stub
+14:40.17 ./bug1898951-hexagame.io.js.stub
+14:40.17 ./bug1898952-digits.t-mobile.com.js.stub
+14:40.18 ./bug1898983-elibrary.ferc.gov.js.stub
+14:40.24 ./bug1898996-oculus.com_and_meta.com.js.stub
+14:40.28 ./bug1899053-www.free4talk.com.js.stub
+14:40.28 ./bug1899054-icorrectproof.com.js.stub
+14:40.31 ./bug1899059-bankmandiri.co.id.js.stub
+14:40.35 ./bug1899063-onlinestep.pgc.edu-hide_browser_notice.css.stub
+14:40.36 ./bug1899829-animeflv.net-fix-premiere-labels.css.stub
+14:40.36 ./bug1899930-africanews.com-hide_browser_notice.css.stub
+14:40.43 ./bug1902379-adl.edu.tw.js.stub
+14:40.47 ./bug1902385-bithumb.com-hide_browser_notice.css.stub
+14:40.47 ./bug1902388-clinic.platomedical.com-hide_browser_notice.css.stub
+14:40.50 ./bug1902398-cloud-login.sigmacare.com-hide_browser_notice.css.stub
+14:40.53 ./bug1902399-recochoku.jp.js.stub
+14:40.56 ./bug1902405-soffice.11st.co.kr-hide_browser_notice.css.stub
+14:40.56 ./bug1902406-sp.hi.co.kr.js.stub
+14:40.61 ./bug1902407-www.sigadoc.mt.gov.br.js.stub
+14:40.65 ./bug1902415-kaigetsu.staysee.jp.js.stub
+14:40.65 ./bug1902416-acionafacil.com.br.js.stub
+14:40.67 ./bug1902419-jamsune.com.js.stub
+14:40.72 ./bug1902520-www.keisan.nta.go.jp.js.stub
+14:40.74 ./bug1903480-ace7.acecombat.jp.js.stub
+14:40.75 ./bug1905069-one.geekie.com.br.js.stub
+14:40.79 ./bug1910292-ssd.skhynix.com-fix_image_flickering.css.stub
+14:40.83 ./bug1911243-tsu-results.rf.gd-fix-table-headers.css.stub
+14:40.85 ./bug1911253-qq.com-unhide-checkboxes.css.stub
+14:40.86 ./bug1913668-workbench.researchallofus.org-hide-browser-notice.css.stub
+14:40.90 ./bug1918604-g1.globo.com_Caca_Palavras-fix_clipped_buttons.css.stub
+14:40.93 ./bug1918995-calculator.net-hide-copypaste-ui-for-buttons.css.stub
+14:40.94 ./bug1919263-www.nbcsports.com.js.stub
+14:40.97 ./bug1922498-ilgeniodellapizza.com.js.stub
+14:41.03 ./bug1924334-neopets.com-fix_content_width.css.stub
+14:41.03 ./bug1925508-developer.apple.com-fallback_for_css_zoom.css.stub
+14:41.05 ./bug1928605-votermaps.org-center-map-icons.css.stub
+14:41.08 ./bug1928941-oasis.decart.ai.js.stub
+14:41.12 ./bug1931538-buzzfeed.com-card_game_fix.css.stub
+14:41.12 ./bug1934534-thnet.gov.cn.js.stub
+14:41.14 ./bug1934567-port8.fi-fix_scrolling.css.stub
+14:41.22 ./bug1934908-www.cbsnews.com.js.stub
+14:41.22 ./bug1936429-diadora.com-hide-extra-scrollbars.css.stub
+14:41.23 ./bug1939248-rosasthai.com.js.stub
+14:41.26 ./bug1940173-bambulab.com-fix_image_flickering.css.stub
+14:41.31 ./bug1942292-beterbed.nl-hide_extra_scrollbars.css.stub
+14:41.32 ./bug1943987-andisearch.com-fix-offscreen-elements.css.stub
+14:41.33 ./bug1944518-app.powerbi.com-hide_extra_scrollbars.css.stub
+14:41.41 ./bug1944518-app.powerbi.com.js.stub
+14:41.41 ./bug1944727-linkedin.com-fix-dark-overlay.css.stub
+14:41.42 ./bug1945019-order.mealkeyway.com.js.stub
+14:41.44 ./bug1945438-tiktok.com_extra_scrollbars-hide-extra-scrollbars.css.stub
+14:41.50 ./bug1946409-www.lush.com-fix_cookie_banner.css.stub
+14:41.50 ./bug1947105-pexels.com-nudge_thanks_popup_onscreen.css.stub
+14:41.52 ./bug1947979-www.shazam.com-hide_extra_scrollbars.css.stub
+14:41.60 ./bug1949466-lapalabradeldia.com-fix-vanishing-letters.css.stub
+14:41.60 ./bug1950053-omegleapp.me-fix_scrollbars.css.stub
+14:41.61 ./bug1950282-f1tv.formula1.com-1.js.stub
+14:41.63 ./bug1950282-f1tv.formula1.com.js.stub
+14:41.68 ./bug1951055-calcoastcu.org-hide_browser_notice.css.stub
+14:41.69 ./bug1953077-Nintendo_movie_guidebook-fix_blank_movie_guidebook.css.stub
+14:41.71 ./bug1954002-advancedmd.com.js.stub
+14:41.80 ./bug1954144-td.com-fix_scrollbars.css.stub
+14:41.80 ./bug1955932-coopvoce.it-fix_broken_radio_buttons.css.stub
+14:41.80 ./bug1959598-signal-tech.com.js.stub
+14:41.82 ./bug1960294-firstenergycorp.com-hide_browser_notice.css.stub
+14:41.86 ./bug1963270-app.kosmi.io.js.stub
+14:41.88 ./bug1966330-salling.dk-fix_mobile_filter_scrolling.css.stub
+14:41.90 ./bug1966377-nvidia.com-fix_overflowing_layout.css.stub
+14:41.99 ./bug1966585-hiskin.care-unhide_missing_content.css.stub
+14:41.99 ./bug1970810-camper-van-week-end.fr.js.stub
+14:42.00 ./bug1973976-iweather.gov.vn-fix_narrow_interface.css.stub
+14:42.01 ./bug1975651-comic.k-manga.jp.js.stub
+14:42.05 ./bug1977440-firesmoke.ca-fix_image_flickering.css.stub
+14:42.07 ./bug1978572-store.renishaw.com-fix_range_sliders.css.stub
+14:42.09 ./bug1980382-www.fidrec.com.sg-fix_radio_buttons.css.stub
+14:42.19 ./bug1981995-mygeha.com-fix_location_section_layout.css.stub
+14:42.20 ./bug1982295-hall.ssjj.cn-fix_layout.css.stub
+14:42.20 ./bug1983538-incontrol.landrover.com.js.stub
+14:42.20 ./bug1986438-gamma.app.js.stub
+14:42.23 ./bug1993452-www.lee.in-fix_product_image_hover_zoom.css.stub
+14:42.26 ./bug1993453-www.dockers.in-fix_product_image_hover_zoom.css.stub
+14:42.30 ./bug1993454-www.wrangler.in-fix_product_image_hover_zoom.css.stub
+14:42.44 ./bug1994062-managetrips.jetblue.com-fix_only_one_page_printing.css.stub
+14:42.45 ./bug1994704-avlguest.justice.nsw.gov.au.js.stub
+14:42.46 ./bug1995452-polymarket.com-hide_extra_scrollbars.css.stub
+14:42.47 ./bug1997575-perplexity.ai.js.stub
+14:42.48 ./bug1998361-doctolib.de-hide_browser_notice.css.stub
+14:42.51 ./bug1999770-configuraraparelhos.claro.com.br-unhide_phone_description.css.stub
+14:42.56 ./bug2000558-www.jal.co.jp-fix_table_rendering.css.stub
+14:42.67 ./bug2000906-teams.microsoft.com.js.stub
+14:42.67 ./bug2003019-jw.org-fix_ruby_text_linebreaks.css.stub
+14:42.68 ./bug2003826-tjoy.jp-fix_broken_zoom.css.stub
+14:42.70 ./bug2004610-character.ai-fix_broken_italics.css.stub
+14:42.70 ./bug2005520-portal.adtpulse.com-hide_browser_notice.css.stub
+14:42.73 ./bug2006036-fbo.fubon.com.js.stub
+14:42.86 ./bug2009187-deadpixeltest.org-fix_popup_position.css.stub
+14:42.95 ./bug2009358-stgguaiba.com.br-fix_table_layout.css.stub
+14:42.99 ./bug2009389-anyto.imyfone.com-fix_table_of_contents_height.css.stub
+14:42.99 ./bug2010102-osmosis.org-center_pages.css.stub
+14:42.99 ./bug2011819-ogcrush.com-fix_slick_slide_height.css.stub
+14:42.99 ./bug2011862-copilot.zenwork.com.js.stub
+14:42.99 ./bug2011898-vanguard.com-fix_obscured_inputs.css.stub
+14:43.10 ./bug2012708-myordbok.com-fix_layout.css.stub
+14:43.19 ./bug2012760-snowplowmap.a2gov.org-fix_ticker_performance.css.stub
+14:43.21 ./bug2012789-zoopla.co.uk.js.stub
+14:43.23 ./bug2015406-tiktok.com-fix_reply_button.css.stub
+14:43.24 ./bug2015962-usbank.com-fix_minimum_font_size.css.stub
+14:43.24 ./bug2016030-prodamus.ru-fix_hidden_content.css.stub
+14:43.24 ./bug2018892-museumofpragueai.com-hide_mic_icon.css.stub
+14:43.33 ./bug2018892-museumofpragueai.com.js.stub
+14:43.40 ./bug2020285-Eurocontrol_Network_Operations_Portal.js.stub
+14:43.47 ./bug2021019-rudder.taleez.com-fix_overlapping_content.css.stub
+14:43.48 ./bug2025249-infyspringboard.onwingspan.com-hide_browser_notice.css.stub
+14:43.48 ./bug2029246-discord.com-fix_scrollbars.css.stub
+14:43.48 ./bug2031646-www.interview.micro1.ai.js.stub
+14:43.49 ./bug2034409-www.wanyiwan.top.js.stub
+14:43.59 ./bug2038272-wowow.co.jp-fix_partly_offscreen_searchbar.css.stub
+14:43.67 ./bug2040371-keywords.smarthr.jp-hide_browser_notice.css.stub
+14:43.76 ./bug2041215-vitra.com.tr-fix_zero_width_product_images.css.stub
+14:43.76 ./bug2044288-www.kuaishou.com-fix_missing_video_thumbnails.css.stub
+14:43.77 ./bug2045731-resultadosegundavuelta.onpe.gob.pe.js.stub
+14:43.80 ./bug2046741-mylabmastering.pearson.com-hide_unsupported_modal.css.stub
+14:43.81 ./bug2051501-community.acer.com-fix_clipped_tables.css.stub
+14:43.86 ./bug2051291-customers.extend-hide_preloader.css.stub
+14:43.91 ./bug2053077-jobs.abbott-restore_otp_inputs.css.stub
+14:44.01 ./bug2057149-patreon.com.js.stub
+14:44.02 ./bug2058162-the-image-editor.com-allow_body_scrollbar.css.stub
+14:44.03 ./bug2059742-13coins.toast.site-vertically_shrink_menuitems.css.stub
+14:44.04 ./bug2060224-alreadyordered.no.js.stub
+14:44.07 ./run.js.stub
+14:44.11 ./bug1081239-cmbchina.com.js.stub
+14:44.19 ./bug1280834-bankofamerica.com.js.stub
+14:44.32 ./bug1448747-FastClick_breakage.js.stub
+14:44.32 ./bug1579159-m.tailieu.vn.js.stub
+14:44.32 ./bug1610046-diverse.direct-fix_image_flickering.css.stub
+14:44.33 ./bug1610344-directv.com.co-hide_browser_notice.css.stub
+14:44.34 ./bug1709653-Office_365_email_handling_prompt.js.stub
+14:44.41 ./bug1718366-smugmug.com-fix_image_flickering.css.stub
+14:44.53 ./bug1724868-news.yahoo.co.jp-1.js.stub
+14:44.53 ./bug1724868-news.yahoo.co.jp.js.stub
+14:44.54 ./bug1729435-milkbarstore.com-fix_cart_quantities.css.stub
+14:44.54 ./bug1741234-patient.alphalabs.ca-unhide_continue_button.css.stub
+14:44.56 ./bug1769762-tiktok.com_broken_comments.js.stub
+14:44.63 ./bug1770962-coldwellbankerhomes.com-fix_stretched_property_images.css.stub
+14:44.74 ./bug1774005-Sites_relying_on_window.InstallTrigger.js.stub
+14:44.74 ./bug1779908-play.google.com-hide_extra_scrollbars.css.stub
+14:44.74 ./bug1799968-www.samsung.com_scrolling_fix.js.stub
+14:44.75 ./bug1815733-Office_365_Outlook_locations.js.stub
+14:44.78 ./bug1815836-All_international_Nintendo_domains.js.stub
+14:44.91 ./bug1818818-FastClick_breakage_legacy.js.stub
+14:45.04 ./bug1830307-cnn.com-fix_blank_pages_when_printing.css.stub
+14:45.10 ./bug1836872-docs.google.com-fix_inaccessible_menus.css.stub
+14:45.10 ./bug1841730-www.korg.com.js.stub
+14:45.12 ./bug1842437-YouTube_back_forward_fix.js.stub
+14:45.13 ./bug1845299-Google_Slides-hide_extra_scrollbars.css.stub
+14:45.13 ./bug1848849-theaa.com-fix_blank_print_preview.css.stub
+14:45.20 ./bug1854165-Sites_relying_on_there_being_no_window.InstallTrigger.js.stub
+14:45.35 ./bug1860417-www.samsung.com_images_fix.js.stub
+14:45.40 ./bug1873166-nsandi.com-hide_browser_notice.css.stub
+14:45.40 ./bug1886293-Future_PLC_websites-fix_trending_scrollbar.css.stub
+14:45.41 ./bug1886566-quezoncity.gov.ph-fix_invisible_iframe.css.stub
+14:45.42 ./bug1886616-www.six-group.com-unhide_selected_inputs.css.stub
+14:45.42 ./bug1891016-usps.com-fix_terms_and_conditions_checkboxes.css.stub
+14:45.45 ./bug1895051-www.zhihu.com-fix_unclickable_directory_buttons.css.stub
+14:45.57 ./bug1896571-gracobaby.ca-unlock-scrolling.css.stub
+14:45.61 ./bug1898915-locator.dhl.com-hide_browser_notice.css.stub
+14:45.62 ./bug1898929-app.sessionlinkpro.com.js.stub
+14:45.63 ./bug1898946-transcrib.io.js.stub
+14:45.63 ./bug1898951-hexagame.io.js.stub
+14:45.63 ./bug1898952-digits.t-mobile.com.js.stub
+14:45.65 ./bug1898983-elibrary.ferc.gov.js.stub
+14:45.75 ./bug1898996-oculus.com_and_meta.com.js.stub
+14:45.80 ./bug1899053-www.free4talk.com.js.stub
+14:45.80 ./bug1899054-icorrectproof.com.js.stub
+14:45.82 ./bug1899059-bankmandiri.co.id.js.stub
+14:45.82 ./bug1899063-onlinestep.pgc.edu-hide_browser_notice.css.stub
+14:45.83 ./bug1899829-animeflv.net-fix-premiere-labels.css.stub
+14:45.84 ./bug1899930-africanews.com-hide_browser_notice.css.stub
+14:45.94 ./bug1902379-adl.edu.tw.js.stub
+14:45.99 ./bug1902385-bithumb.com-hide_browser_notice.css.stub
+14:45.99 ./bug1902388-clinic.platomedical.com-hide_browser_notice.css.stub
+14:46.00 ./bug1902398-cloud-login.sigmacare.com-hide_browser_notice.css.stub
+14:46.02 ./bug1902399-recochoku.jp.js.stub
+14:46.02 ./bug1902405-soffice.11st.co.kr-hide_browser_notice.css.stub
+14:46.03 ./bug1902406-sp.hi.co.kr.js.stub
+14:46.12 ./bug1902407-www.sigadoc.mt.gov.br.js.stub
+14:46.18 ./bug1902415-kaigetsu.staysee.jp.js.stub
+14:46.18 ./bug1902416-acionafacil.com.br.js.stub
+14:46.20 ./bug1902419-jamsune.com.js.stub
+14:46.21 ./bug1902520-www.keisan.nta.go.jp.js.stub
+14:46.21 ./bug1903480-ace7.acecombat.jp.js.stub
+14:46.22 ./bug1905069-one.geekie.com.br.js.stub
+14:46.31 ./bug1910292-ssd.skhynix.com-fix_image_flickering.css.stub
+14:46.38 ./bug1911243-tsu-results.rf.gd-fix-table-headers.css.stub
+14:46.38 ./bug1911253-qq.com-unhide-checkboxes.css.stub
+14:46.39 ./bug1913668-workbench.researchallofus.org-hide-browser-notice.css.stub
+14:46.41 ./bug1918604-g1.globo.com_Caca_Palavras-fix_clipped_buttons.css.stub
+14:46.41 ./bug1918995-calculator.net-hide-copypaste-ui-for-buttons.css.stub
+14:46.41 ./bug1919263-www.nbcsports.com.js.stub
+14:46.50 ./bug1922498-ilgeniodellapizza.com.js.stub
+14:46.56 ./bug1924334-neopets.com-fix_content_width.css.stub
+14:46.57 ./bug1925508-developer.apple.com-fallback_for_css_zoom.css.stub
+14:46.58 ./bug1928605-votermaps.org-center-map-icons.css.stub
+14:46.59 ./bug1928941-oasis.decart.ai.js.stub
+14:46.60 ./bug1931538-buzzfeed.com-card_game_fix.css.stub
+14:46.60 ./bug1934534-thnet.gov.cn.js.stub
+14:46.69 ./bug1934567-port8.fi-fix_scrolling.css.stub
+14:46.74 ./bug1934908-www.cbsnews.com.js.stub
+14:46.77 ./bug1936429-diadora.com-hide-extra-scrollbars.css.stub
+14:46.77 ./bug1939248-rosasthai.com.js.stub
+14:46.79 ./bug1940173-bambulab.com-fix_image_flickering.css.stub
+14:46.79 ./bug1942292-beterbed.nl-hide_extra_scrollbars.css.stub
+14:46.79 ./bug1943987-andisearch.com-fix-offscreen-elements.css.stub
+14:46.88 ./bug1944518-app.powerbi.com-hide_extra_scrollbars.css.stub
+14:46.92 ./bug1944518-app.powerbi.com.js.stub
+14:46.95 ./bug1944727-linkedin.com-fix-dark-overlay.css.stub
+14:46.96 ./bug1945019-order.mealkeyway.com.js.stub
+14:46.97 ./bug1945438-tiktok.com_extra_scrollbars-hide-extra-scrollbars.css.stub
+14:46.98 ./bug1946409-www.lush.com-fix_cookie_banner.css.stub
+14:46.99 ./bug1947105-pexels.com-nudge_thanks_popup_onscreen.css.stub
+14:47.08 ./bug1947979-www.shazam.com-hide_extra_scrollbars.css.stub
+14:47.13 ./bug1949466-lapalabradeldia.com-fix-vanishing-letters.css.stub
+14:47.19 ./bug1950053-omegleapp.me-fix_scrollbars.css.stub
+14:47.19 ./bug1950282-f1tv.formula1.com-1.js.stub
+14:47.19 ./bug1950282-f1tv.formula1.com.js.stub
+14:47.20 ./bug1951055-calcoastcu.org-hide_browser_notice.css.stub
+14:47.23 ./bug1953077-Nintendo_movie_guidebook-fix_blank_movie_guidebook.css.stub
+14:47.32 ./bug1954002-advancedmd.com.js.stub
+14:47.34 ./bug1954144-td.com-fix_scrollbars.css.stub
+14:47.39 ./bug1955932-coopvoce.it-fix_broken_radio_buttons.css.stub
+14:47.40 ./bug1959598-signal-tech.com.js.stub
+14:47.42 ./bug1960294-firstenergycorp.com-hide_browser_notice.css.stub
+14:47.42 ./bug1963270-app.kosmi.io.js.stub
+14:47.45 ./bug1966330-salling.dk-fix_mobile_filter_scrolling.css.stub
+14:47.54 ./bug1966377-nvidia.com-fix_overflowing_layout.css.stub
+14:47.55 ./bug1966585-hiskin.care-unhide_missing_content.css.stub
+14:47.61 ./bug1970810-camper-van-week-end.fr.js.stub
+14:47.62 ./bug1973976-iweather.gov.vn-fix_narrow_interface.css.stub
+14:47.62 ./bug1975651-comic.k-manga.jp.js.stub
+14:47.66 ./bug1977440-firesmoke.ca-fix_image_flickering.css.stub
+14:47.68 ./bug1978572-store.renishaw.com-fix_range_sliders.css.stub
+14:47.77 ./bug1980382-www.fidrec.com.sg-fix_radio_buttons.css.stub
+14:47.79 ./bug1981995-mygeha.com-fix_location_section_layout.css.stub
+14:47.83 ./bug1982295-hall.ssjj.cn-fix_layout.css.stub
+14:47.85 ./bug1983538-incontrol.landrover.com.js.stub
+14:47.86 ./bug1986438-gamma.app.js.stub
+14:47.89 ./bug1993452-www.lee.in-fix_product_image_hover_zoom.css.stub
+14:47.91 ./bug1993453-www.dockers.in-fix_product_image_hover_zoom.css.stub
+14:47.98 ./bug1993454-www.wrangler.in-fix_product_image_hover_zoom.css.stub
+14:48.00 ./bug1994062-managetrips.jetblue.com-fix_only_one_page_printing.css.stub
+14:48.05 ./bug1994704-avlguest.justice.nsw.gov.au.js.stub
+14:48.06 ./bug1995452-polymarket.com-hide_extra_scrollbars.css.stub
+14:48.07 ./bug1997575-perplexity.ai.js.stub
+14:48.10 ./bug1998361-doctolib.de-hide_browser_notice.css.stub
+14:48.11 ./bug1999770-configuraraparelhos.claro.com.br-unhide_phone_description.css.stub
+14:48.22 ./bug2000558-www.jal.co.jp-fix_table_rendering.css.stub
+14:48.22 ./bug2000906-teams.microsoft.com.js.stub
+14:48.28 ./bug2003019-jw.org-fix_ruby_text_linebreaks.css.stub
+14:48.29 ./bug2003826-tjoy.jp-fix_broken_zoom.css.stub
+14:48.33 ./bug2004610-character.ai-fix_broken_italics.css.stub
+14:48.36 ./bug2005520-portal.adtpulse.com-hide_browser_notice.css.stub
+14:48.38 ./bug2006036-fbo.fubon.com.js.stub
+14:48.46 ./bug2009187-deadpixeltest.org-fix_popup_position.css.stub
+14:48.48 ./bug2009358-stgguaiba.com.br-fix_table_layout.css.stub
+14:48.53 ./bug2009389-anyto.imyfone.com-fix_table_of_contents_height.css.stub
+14:48.54 ./bug2010102-osmosis.org-center_pages.css.stub
+14:48.56 ./bug2011819-ogcrush.com-fix_slick_slide_height.css.stub
+14:48.59 ./bug2011862-copilot.zenwork.com.js.stub
+14:48.63 ./bug2011898-vanguard.com-fix_obscured_inputs.css.stub
+14:48.72 ./bug2012708-myordbok.com-fix_layout.css.stub
+14:48.74 ./bug2012760-snowplowmap.a2gov.org-fix_ticker_performance.css.stub
+14:48.79 ./bug2012789-zoopla.co.uk.js.stub
+14:48.80 ./bug2015406-tiktok.com-fix_reply_button.css.stub
+14:48.80 ./bug2015962-usbank.com-fix_minimum_font_size.css.stub
+14:48.82 ./bug2016030-prodamus.ru-fix_hidden_content.css.stub
+14:48.86 ./bug2018892-museumofpragueai.com-hide_mic_icon.css.stub
+14:48.93 ./bug2018892-museumofpragueai.com.js.stub
+14:48.94 ./bug2020285-Eurocontrol_Network_Operations_Portal.js.stub
+14:49.01 ./bug2021019-rudder.taleez.com-fix_overlapping_content.css.stub
+14:49.01 ./bug2025249-infyspringboard.onwingspan.com-hide_browser_notice.css.stub
+14:49.01 ./bug2029246-discord.com-fix_scrollbars.css.stub
+14:49.03 ./bug2031646-www.interview.micro1.ai.js.stub
+14:49.06 ./bug2034409-www.wanyiwan.top.js.stub
+14:49.12 ./bug2038272-wowow.co.jp-fix_partly_offscreen_searchbar.css.stub
+14:49.14 ./bug2040371-keywords.smarthr.jp-hide_browser_notice.css.stub
+14:49.20 ./bug2041215-vitra.com.tr-fix_zero_width_product_images.css.stub
+14:49.20 ./bug2044288-www.kuaishou.com-fix_missing_video_thumbnails.css.stub
+14:49.21 ./bug2045731-resultadosegundavuelta.onpe.gob.pe.js.stub
+14:49.23 ./bug2046741-mylabmastering.pearson.com-hide_unsupported_modal.css.stub
+14:49.24 ./bug2051501-community.acer.com-fix_clipped_tables.css.stub
+14:49.34 ./bug2051291-customers.extend-hide_preloader.css.stub
+14:49.35 ./bug2053077-jobs.abbott-restore_otp_inputs.css.stub
+14:49.43 ./bug2057149-patreon.com.js.stub
+14:49.43 ./bug2058162-the-image-editor.com-allow_body_scrollbar.css.stub
+14:49.44 ./bug2059742-13coins.toast.site-vertically_shrink_menuitems.css.stub
+14:49.48 ./bug2060224-alreadyordered.no.js.stub
+14:49.58 ./manifest.json.stub
+14:49.65 ./manifest.json.stub
+14:49.65 ./manifest.json.stub
+14:49.80 ./node.stub.stub
+14:49.82 ./node.stub.stub
+14:49.82 ./node.stub.stub
+14:49.85 ./node.stub.stub
+14:49.87 ./node.stub.stub
+14:49.93 ./node.stub.stub
+14:49.95 ./node.stub.stub
+14:50.11 ./node.stub.stub
+14:50.23 ./node.stub.stub
+14:50.27 ./node.stub.stub
+14:50.28 ./node.stub.stub
+14:50.32 ./node.stub.stub
+14:50.35 ./node.stub.stub
+14:50.36 ./node.stub.stub
+14:50.36 ./node.stub.stub
+14:50.54 ./node.stub.stub
+14:50.56 ./node.stub.stub
+14:50.57 ./node.stub.stub
+14:50.64 ./node.stub.stub
+14:50.68 ./node.stub.stub
+14:50.75 ./node.stub.stub
+14:50.78 ./node.stub.stub
+14:50.94 ./node.stub.stub
+14:50.99 ./node.stub.stub
+14:50.99 ./node.stub.stub
+14:51.10 ./node.stub.stub
+14:51.13 ./node.stub.stub
+14:51.16 ./node.stub.stub
+14:51.20 ./node.stub.stub
+14:51.26 ./node.stub.stub
+14:51.27 ./node.stub.stub
+14:51.43 ./node.stub.stub
+14:51.49 ./node.stub.stub
+14:51.49 ./node.stub.stub
+14:51.49 ./node.stub.stub
+14:51.60 ./event-list.json.stub
+14:51.69 ./reserved-js-words.js.stub
+14:51.74 Successfully generated event list for DevTools
+14:51.74 ./SpeechRecognitionModelDisplayInfo.sys.mjs.stub
+14:51.76 ./plugin-container.InfoPlist.strings.stub
+14:51.77 ./media-plugin-helper.InfoPlist.strings.stub
+14:51.85 ./gpu-helper.InfoPlist.strings.stub
+14:52.02 ./last_modified.json.stub
+14:52.08 ./aboutNetErrorCodes.js.stub
+14:52.10 ./lib.gecko.glean.d.ts.stub
+14:52.10 ./FeatureManifest.sys.mjs.stub
+14:52.10 ./PromiseWorker.js.stub
+14:52.10 ./PromiseWorker.mjs.stub
+14:52.13 ./RFPTargetConstants.sys.mjs.stub
+14:52.16 ./ScalarArtifactDefinitions.json.stub
+14:52.17 ./EventArtifactDefinitions.json.stub
+14:52.25 ./license.html.stub
+14:52.25 ./dependentlibs.list.stub
+14:52.27 ./multilocale.txt.stub
+14:52.30 ./built_in_addons.json.stub
+14:52.38 ./error_list.json.stub
+14:52.46 ./buildid.h.stub
+14:52.46 ./source-repo.h.stub
+14:52.69 ./application.ini.stub
+14:53.35 ./application.ini.h.stub
+14:54.66 toolkit/locales/default.locale.stub
+14:56.21 ./buildid.h.stub
+14:56.21 ./source-repo.h.stub
+14:56.34 ./application.ini.stub
+14:56.45 ./application.ini.h.stub
+14:56.58 browser/app/Info.plist.stub
+15:01.72 W 149 compiler warnings present.
+15:01.84 W Overall system resources - Wall time: 901s; CPU: 96%; Read bytes: 22796444160; Write bytes: 7634363904; Read time: 1722104; Write time: 2471731
+15:01.85 W Swap in/out (MB): 26274.421875/170.890625
+15:01.85 W (suppressed 10 warnings in browser/components/shell)
+15:01.85 W (suppressed 1 warnings in dom/media/platforms/apple)
+15:01.85 W (suppressed 3 warnings in dom/media/systemservices/objc_video_capture)
+15:01.85 W (suppressed 1 warnings in dom/media/webrtc)
+15:01.85 W (suppressed 4 warnings in dom/media/webrtc/jsapi)
+15:01.85 W (suppressed 1 warnings in dom/media/webrtc/libwebrtcglue)
+15:01.85 W (suppressed 2 warnings in gfx/2d)
+15:01.85 W (suppressed 34 warnings in gfx/gl)
+15:01.85 W (suppressed 4 warnings in gfx/layers)
+15:01.85 W (suppressed 1 warnings in ipc/glue)
+15:01.85 W (suppressed 4 warnings in toolkit/xre)
+15:01.85 W (suppressed 8 warnings in uriloader/exthandler/mac)
+15:01.85 W (suppressed 44 warnings in widget/cocoa)
+15:01.85 W (suppressed 29 warnings in xpcom/io)
+15:01.85 W warning: dom/base/NavigatorManager.cpp:12:17 [-Wunused-function] unused function 'GetUserContextId'
+15:01.85 W warning: dom/geolocation/GeolocationSystemMac.mm:130:10 [-Wunsupported-availability-guard] @available does not guard availability here; use if (@available) instead
+15:01.85 W warning: widget/cocoa/nsMacPermissionMonitor.mm:112:8 [-Wunsupported-availability-guard] @available does not guard availability here; use if (@available) instead
+15:01.85 W Notification center failed: Install terminal-notifier to get a notification when the build finishes.
+15:01.86 To view a profile of the build, run |mach resource-usage|.
+15:01.86 Your build was successful!
+15:01.86 To take your build for a test drive, run: |mach run|
+15:01.86 For more information on what to do now, see https://firefox-source-docs.mozilla.org/setup/contributing_code.html
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261015_150335.json

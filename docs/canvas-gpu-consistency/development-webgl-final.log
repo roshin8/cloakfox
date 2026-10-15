@@ -1,0 +1,33 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry
+PASS saved legacy GPU tables migrate on browser restart
+PASS migration preserves secrets, unrelated fields, and explicit scalar override
+PASS webgl available
+PASS webgl enumeration agrees with getExtension
+PASS webgl extensions stay within persona and real backend support
+PASS webgl mutable GL state remains live
+PASS WebGL1 rejects WebGL2-only component enum
+PASS webgl every configured integer upper-bound capacity stays within backend
+PASS webgl advertised maximum texture width allocates as a bounded single row
+PASS webgl advertised texture/cube/renderbuffer/sample/viewport capacities stay within backend
+PASS webgl point/line ranges stay within native range
+PASS webgl2 available
+PASS webgl2 enumeration agrees with getExtension
+PASS webgl2 extensions stay within persona and real backend support
+PASS webgl2 mutable GL state remains live
+PASS WebGL2 uniform/varying component relationships agree
+PASS webgl2 every configured integer upper-bound capacity stays within backend
+PASS webgl2 advertised maximum texture width allocates as a bounded single row
+PASS webgl2 advertised texture/cube/renderbuffer/sample/viewport capacities stay within backend
+PASS webgl2 point/line ranges stay within native range
+PASS oversized paired uniform/varying and viewport config clamps to native ceilings
+PASS invalid capacity -1 falls back to working native texture ceiling
+PASS invalid capacity 1.5 falls back to working native texture ceiling
+PASS malformed viewport/range 16384 retains native typed arrays
+PASS malformed viewport/range [100, -1] retains native typed arrays
+PASS malformed viewport/range [100, 1.5] retains native typed arrays
+PASS malformed viewport/range ["wrong", 100] retains native typed arrays
+PASS one-sided vector override keeps paired getters coherent
+PASS one-sided component override keeps paired getters coherent
+PASS master-off retains native GPU getters and extensions
+Report: tests/fingerprint/reports/canvas-gpu-consistency/development-webgl-final

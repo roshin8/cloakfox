@@ -173,7 +173,7 @@ const GL_BASE = {
   [GL.MAX_RENDERBUFFER_SIZE]: 16384,
   [GL.MAX_VIEWPORT_DIMS]: [32767, 32767],
   [GL.MAX_VERTEX_ATTRIBS]: 16,
-  [GL.MAX_VERTEX_UNIFORM_VECTORS]: 4096,
+  [GL.MAX_VERTEX_UNIFORM_VECTORS]: 1024,
   [GL.MAX_VARYING_VECTORS]: 30,
   [GL.MAX_FRAGMENT_UNIFORM_VECTORS]: 1024,
   [GL.MAX_TEXTURE_IMAGE_UNITS]: 16,
@@ -205,8 +205,9 @@ function gpuClass(renderer) {
 }
 
 // Extensions exposed by a modern desktop Firefox. Acts as an ALLOWLIST: the
-// C++ IsSupported hook returns true only for names in this list, so the real
-// driver's extension set (and its ordering, itself a signal) never shows.
+// C++ hooks intersect these names with the backend's supported/permitted set.
+// This avoids promising functionality the driver cannot supply. The resulting
+// subset can vary by backend; these lists reduce exposure, not emulate support.
 const GL1_EXTENSIONS = [
   "ANGLE_instanced_arrays", "EXT_blend_minmax", "EXT_color_buffer_half_float",
   "EXT_float_blend", "EXT_frag_depth", "EXT_shader_texture_lod",
@@ -261,9 +262,16 @@ export function fillWebGLKeys(keys, renderer) {
 
   keys["webGl:parameters"] = table;
   // WebGL2-only pnames must not become valid queries on a WebGL1 context.
-  // Conservative desktop limits common to the supported GPU classes.
+  // Pair vector queries with their WebGL2 scalar-component queries. These
+  // describe one profile; leaving components native mixed unrelated devices.
+  // Gecko derives varying vectors from fragment inputs, independently of
+  // vertex outputs and MAX_VARYING_COMPONENTS. This does not change backend
+  // allocation/validation limits: the static profile is not a capability grant.
   keys["webGl2:parameters"] = {
     ...table,
+    35658: 4 * params[GL.MAX_VERTEX_UNIFORM_VECTORS],
+    35657: 4 * params[GL.MAX_FRAGMENT_UNIFORM_VECTORS],
+    37157: 4 * params[GL.MAX_VARYING_VECTORS], // MAX_FRAGMENT_INPUT_COMPONENTS
     35375: 24,   // MAX_UNIFORM_BUFFER_BINDINGS
     35380: 256,  // UNIFORM_BUFFER_OFFSET_ALIGNMENT
     32883: 2048, // MAX_3D_TEXTURE_SIZE
@@ -274,6 +282,43 @@ export function fillWebGLKeys(keys, renderer) {
   const prec = shaderPrecision();
   keys["webGl:shaderPrecisionFormats"] = prec;
   keys["webGl2:shaderPrecisionFormats"] = prec;
+}
+
+// Repair saved generated tables only when BOTH versions exactly match the old
+// emitter for this renderer class. Any customized/unknown/missing field opts
+// the entire tuple out. Independent scalar override prefs are applied later by
+// SeedSync, so their existing precedence is preserved.
+function migrateGeneratedWebGLProfile(keys) {
+  const renderer = keys["webGl:renderer"];
+  if (typeof renderer !== "string" || !renderer) return keys;
+  const generated = {};
+  fillWebGLKeys(generated, renderer);
+  // Immutable pre-repair emitter snapshot: deriving this from today's table
+  // would silently widen/change the migration whenever new profiles evolve.
+  const legacy1 = {
+    7936: "Mozilla", 7937: renderer,
+    3379: 16384, 34076: 16384, 34024: 16384, 3386: [32767, 32767],
+    34921: 16, 36347: 4096, 36348: 30, 36349: 1024,
+    34930: 16, 35660: 16, 35661: 32,
+    33902: [1, 1], 33901: [1, 1024], 36183: 4,
+  };
+  switch (gpuClass(renderer)) {
+    case "nvidia": Object.assign(legacy1, { 3386: [32768, 32768], 36183: 8 }); break;
+    case "amd": Object.assign(legacy1, { 3386: [16384, 16384], 36183: 8 }); break;
+    case "intel": Object.assign(legacy1, { 3386: [16384, 16384] }); break;
+    case "apple": Object.assign(legacy1, { 3386: [16384, 16384], 35661: 80, 36348: 32 }); break;
+  }
+  const legacy2 = { ...legacy1, 35375: 24, 35380: 256, 32883: 2048, 35071: 256 };
+  const matches = (actual, expected) => actual && typeof actual === "object" &&
+    !Array.isArray(actual) && Object.keys(actual).length === Object.keys(expected).length &&
+    Object.keys(expected).every(key => Object.hasOwn(actual, key) &&
+      JSON.stringify(actual[key]) === JSON.stringify(expected[key]));
+  if (!matches(keys["webGl:parameters"], legacy1) ||
+      !matches(keys["webGl2:parameters"], legacy2)) return keys;
+  return { ...keys,
+    "webGl:parameters": generated["webGl:parameters"],
+    "webGl2:parameters": generated["webGl2:parameters"],
+  };
 }
 
 // Per-OS CSS generic-font mapping. Each value must be in that OS's
@@ -339,7 +384,7 @@ function normalizeUA(ua) {
 // Custom identity strings are left alone; explicit override prefs are applied
 // last by SeedSync, even when they contain the same shape as generated values.
 export function migratePersonaVersion(keys) {
-  const out = { ...keys };
+  const out = { ...migrateGeneratedWebGLProfile(keys) };
   const generatedUA = /^(?:Mozilla\/)?5\.0 \((?:Windows NT|Macintosh;|X11;|Linux )[^)]*; rv:\d+\.\d+\) Gecko\/20100101 Firefox\/\d+\.\d+$/;
   for (const key of ["navigator.userAgent", "headers.User-Agent", "navigator.appVersion"]) {
     if (typeof out[key] === "string" && generatedUA.test(out[key])) {
@@ -634,6 +679,19 @@ export function fillPersonaKeys(seedB64, ucid = null, constraints = null) {
   // Precise/PBO GPU readbacks bypass canvas noise. Explicit opt-out preserves
   // compute compatibility; never perturb numerical application buffers.
   keys["webgl:typed_readback:disabled"] = userOpt("webgl_typed_readback_disabled", true);
+  keys["canvas:render_privacy"] = userOpt("canvas_render_privacy") === true;
+  keys["webGl:backend_profile"] = userOpt("gpu_backend_profiles") === true;
+  // Internal foundation experiment; existing readback guards remain enabled.
+  keys["canvas:canonical_2d"] = false;
+  try {
+    keys["canvas:canonical_2d"] = Services.prefs.getBoolPref(
+        "cloakfox.experimental.canvas_pipeline", false) === true;
+  } catch (_e) { /* malformed preference keeps the experiment disabled */ }
+  keys["canvas:canonical_gpu"] = keys["canvas:canonical_2d"];
+  if (keys["canvas:canonical_gpu"]) {
+    keys["webGl:backend_profile"] = true;
+    keys["webgl:typed_readback:disabled"] = true;
+  }
 
   // ── User opt-in dangerous-disable flags (unchanged from prior impl) ──
   if (userOpt("window_name_disabled"))   keys["window:name:disabled"] = true;

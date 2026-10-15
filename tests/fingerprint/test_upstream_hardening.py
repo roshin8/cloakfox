@@ -41,12 +41,14 @@ def cpp(code):
 class UpstreamHardening(unittest.TestCase):
     def test_glyph_noise_preserves_shaping_offsets_in_both_directions(self):
         source = (SRC / "gfx/thebes/gfxHarfBuzzShaper.cpp").read_text()
-        body = block(source[source.index("hb_shape(mHBFont"):], "if (seed != 0)")
+        body = block(source[source.index("hb_shape(mHBFont"):], "if (seed != 0 && mFont->GetType() != gfxFont::FONT_TYPE_CANONICAL)")
         cpp(r"""
 #include <cassert>
 #include <cstdint>
 using hb_position_t = int;
 struct hb_glyph_position_t { int x_advance, y_advance, x_offset, y_offset; };
+struct gfxFont { enum { FONT_TYPE_CANONICAL }; int type=1; int GetType(){return type;} } font;
+gfxFont* mFont=&font;
 hb_glyph_position_t positions[3];
 void* mBuffer = nullptr;
 hb_glyph_position_t* hb_buffer_get_glyph_positions(void*, uint32_t* count) {

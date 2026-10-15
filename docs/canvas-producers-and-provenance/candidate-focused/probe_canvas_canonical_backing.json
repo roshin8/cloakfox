@@ -1,0 +1,59 @@
+{
+  "binary": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/Cloakfox.app/Contents/MacOS/cloakfox",
+  "runtime": {
+    "buildID": "20261015123853",
+    "version": "158.0-beta.26"
+  },
+  "xulSHA256": "fdc8744f9e1da04d9f0e5c11410f1a6792965f65d6448973b69095473a341d16",
+  "scope": "internal backing foundation only",
+  "checks": [
+    {
+      "pass": true,
+      "name": "internal experiment defaults off"
+    },
+    {
+      "pass": true,
+      "name": "toggle changes only authoritative owned field"
+    },
+    {
+      "pass": true,
+      "name": "known-color extraction protection remains unchanged"
+    },
+    {
+      "pass": true,
+      "name": "experimental backing does not remove RGB extraction guard"
+    },
+    {
+      "pass": true,
+      "name": "opaque author alpha remains exact"
+    },
+    {
+      "pass": true,
+      "name": "protected pixels remain deterministic on reload"
+    },
+    {
+      "pass": true,
+      "name": "new containers inherit internal policy"
+    },
+    {
+      "pass": true,
+      "name": "restart repairs stale internal flag without changing identity or sentinel"
+    },
+    {
+      "pass": true,
+      "name": "policy and masked pixels survive browser restart"
+    },
+    {
+      "pass": true,
+      "name": "preference service rejects wrong-type writes without changing policy"
+    },
+    {
+      "pass": true,
+      "name": "turning experiment off restores only policy field"
+    },
+    {
+      "pass": true,
+      "name": "new master-off context uses native readback"
+    }
+  ]
+}

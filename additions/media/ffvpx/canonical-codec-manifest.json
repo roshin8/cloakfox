@@ -1,0 +1,606 @@
+{
+  "upstream": "https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz",
+  "release": "9.0.1",
+  "archiveSHA256": "cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635",
+  "configure": "--disable-all --disable-autodetect --disable-asm --disable-runtime-cpudetect --enable-avcodec --enable-decoder=h264,hevc --enable-pthreads --disable-programs --disable-doc --enable-shared --disable-static",
+  "license": "LGPL-2.1-or-later; no --enable-gpl or --enable-nonfree",
+  "files": [
+    "libavcodec/aac_ac3_parser.h",
+    "libavcodec/aarch64/cabac.h",
+    "libavcodec/ac3_parser.c",
+    "libavcodec/ac3_parser.h",
+    "libavcodec/ac3_parser_internal.h",
+    "libavcodec/ac3defs.h",
+    "libavcodec/ac3tab.h",
+    "libavcodec/arm/cabac.h",
+    "libavcodec/bswapdsp.c",
+    "libavcodec/bswapdsp.h",
+    "libavcodec/cabac.c",
+    "libavcodec/cabac.h",
+    "libavcodec/cabac_functions.h",
+    "libavcodec/copy_block.h",
+    "libavcodec/dirac.c",
+    "libavcodec/dirac.h",
+    "libavcodec/dovi_rpu.c",
+    "libavcodec/dovi_rpu.h",
+    "libavcodec/dovi_rpudec.c",
+    "libavcodec/dv_profile.c",
+    "libavcodec/dv_profile.h",
+    "libavcodec/dv_profile_internal.h",
+    "libavcodec/error_resilience.c",
+    "libavcodec/float_scalarproduct.c",
+    "libavcodec/h264.h",
+    "libavcodec/h2645_parse.c",
+    "libavcodec/h2645_parse.h",
+    "libavcodec/h2645_sei.c",
+    "libavcodec/h2645_sei.h",
+    "libavcodec/h2645_vui.c",
+    "libavcodec/h2645_vui.h",
+    "libavcodec/h2645data.c",
+    "libavcodec/h2645data.h",
+    "libavcodec/h264_cabac.c",
+    "libavcodec/h264_cavlc.c",
+    "libavcodec/h264_direct.c",
+    "libavcodec/h264_loopfilter.c",
+    "libavcodec/h264_mb.c",
+    "libavcodec/h264_mb_template.c",
+    "libavcodec/h264_mc_template.c",
+    "libavcodec/h264_mvpred.h",
+    "libavcodec/h264_parse.c",
+    "libavcodec/h264_parse.h",
+    "libavcodec/h264_picture.c",
+    "libavcodec/h264_ps.c",
+    "libavcodec/h264_ps.h",
+    "libavcodec/h264_refs.c",
+    "libavcodec/h264_sei.c",
+    "libavcodec/h264_sei.h",
+    "libavcodec/h264_slice.c",
+    "libavcodec/h264addpx_template.c",
+    "libavcodec/h264chroma.c",
+    "libavcodec/h264chroma_template.c",
+    "libavcodec/h264data.c",
+    "libavcodec/h264data.h",
+    "libavcodec/h264dec.c",
+    "libavcodec/h264dec.h",
+    "libavcodec/h264dsp.c",
+    "libavcodec/h264dsp_template.c",
+    "libavcodec/h264idct.c",
+    "libavcodec/h264idct.h",
+    "libavcodec/h264idct_template.c",
+    "libavcodec/h264qpel.c",
+    "libavcodec/h264qpel.h",
+    "libavcodec/h264qpel_template.c",
+    "libavcodec/h26x/h2656_deblock_template.c",
+    "libavcodec/h26x/h2656_inter_template.c",
+    "libavcodec/h26x/h2656_sao_template.c",
+    "libavcodec/h274.c",
+    "libavcodec/h274.h",
+    "libavcodec/hevc/cabac.c",
+    "libavcodec/hevc/data.c",
+    "libavcodec/hevc/data.h",
+    "libavcodec/hevc/dsp.c",
+    "libavcodec/hevc/dsp.h",
+    "libavcodec/hevc/dsp_template.c",
+    "libavcodec/hevc/filter.c",
+    "libavcodec/hevc/hevc.h",
+    "libavcodec/hevc/hevcdec.c",
+    "libavcodec/hevc/hevcdec.h",
+    "libavcodec/hevc/mvs.c",
+    "libavcodec/hevc/parse.c",
+    "libavcodec/hevc/parse.h",
+    "libavcodec/hevc/pred.c",
+    "libavcodec/hevc/pred.h",
+    "libavcodec/hevc/pred_template.c",
+    "libavcodec/hevc/ps.c",
+    "libavcodec/hevc/ps.h",
+    "libavcodec/hevc/refs.c",
+    "libavcodec/hevc/sei.c",
+    "libavcodec/hevc/sei.h",
+    "libavcodec/hpel_template.c",
+    "libavcodec/jni.c",
+    "libavcodec/jni.h",
+    "libavcodec/loongarch/cabac.h",
+    "libavcodec/loongarch/h264_cabac.c",
+    "libavcodec/me_cmp.c",
+    "libavcodec/mips/cabac.h",
+    "libavcodec/mpeg12.h",
+    "libavcodec/mpeg12framerate.c",
+    "libavcodec/mpegvideoenc.h",
+    "libavcodec/pel_template.c",
+    "libavcodec/sei.h",
+    "libavcodec/startcode.c",
+    "libavcodec/timecode_internal.c",
+    "libavcodec/vvc.h",
+    "libavcodec/x86/cabac.h",
+    "libavcodec/x86/h264_cabac.c",
+    "libavutil/ambient_viewing_environment.h",
+    "libavutil/dovi_meta.h",
+    "libavutil/md5.h",
+    "libavutil/mips/asmdefs.h",
+    "libavutil/mips/mmiutils.h",
+    "libavutil/tdrdi.h",
+    "libavutil/ambient_viewing_environment.c",
+    "libavutil/dovi_meta.c",
+    "libavutil/md5.c",
+    "libavutil/tdrdi.c"
+  ],
+  "signingKeyFingerprint": "FCF986EA15E6E293A5644F10B4322F04D67658D8",
+  "signatureVerified": true,
+  "localModifications": {
+    "libavcodec/dovi_rpu.h": "Retain Gecko no-op ff_dovi_configure/ff_dovi_rpu_generate encoder helpers; actual decoder declarations and structures from upstream. No optional Dolby Vision encoder imported."
+  },
+  "sourceHashes": {
+    "libavcodec/aac_ac3_parser.h": {
+      "upstreamSHA256": "37ae1a018485ebb59455589c8d0eeddd39149e15238f40ff8961fbf4c51cefc2",
+      "importedSHA256": "37ae1a018485ebb59455589c8d0eeddd39149e15238f40ff8961fbf4c51cefc2"
+    },
+    "libavcodec/aarch64/cabac.h": {
+      "upstreamSHA256": "dbdd8c42738f14d04b5c54a9b3224f9f1fced4bfcb7b385e5e9ec85fd0c30ee1",
+      "importedSHA256": "dbdd8c42738f14d04b5c54a9b3224f9f1fced4bfcb7b385e5e9ec85fd0c30ee1"
+    },
+    "libavcodec/ac3_parser.c": {
+      "upstreamSHA256": "e941da6033e6b390b115b80c0302410bb7d8ddcc3b494b8175eca6ae120e4873",
+      "importedSHA256": "e941da6033e6b390b115b80c0302410bb7d8ddcc3b494b8175eca6ae120e4873"
+    },
+    "libavcodec/ac3_parser.h": {
+      "upstreamSHA256": "200c6d2e96975196e8ba5f5716223dc9dda999d51578dabce2fca93175a05252",
+      "importedSHA256": "200c6d2e96975196e8ba5f5716223dc9dda999d51578dabce2fca93175a05252"
+    },
+    "libavcodec/ac3_parser_internal.h": {
+      "upstreamSHA256": "264ed9c8d064ceb50b9f68d228b7b2232f2156d434bf111a2325d55526fefc65",
+      "importedSHA256": "264ed9c8d064ceb50b9f68d228b7b2232f2156d434bf111a2325d55526fefc65"
+    },
+    "libavcodec/ac3defs.h": {
+      "upstreamSHA256": "0e731a62a166cfdc9982cafd0842b0ffdc12661493014d5cc2a80415593c3fea",
+      "importedSHA256": "0e731a62a166cfdc9982cafd0842b0ffdc12661493014d5cc2a80415593c3fea"
+    },
+    "libavcodec/ac3tab.h": {
+      "upstreamSHA256": "aa5706b1f95c5a151b96a6f0c1a3022871022a68c457a94f4c839cf4970bf487",
+      "importedSHA256": "aa5706b1f95c5a151b96a6f0c1a3022871022a68c457a94f4c839cf4970bf487"
+    },
+    "libavcodec/arm/cabac.h": {
+      "upstreamSHA256": "8aa0e559b04eca11e01d72e2f050a8b70527fd4b29ab69dc78ddecc76246301a",
+      "importedSHA256": "8aa0e559b04eca11e01d72e2f050a8b70527fd4b29ab69dc78ddecc76246301a"
+    },
+    "libavcodec/bswapdsp.c": {
+      "upstreamSHA256": "831b6d08e429f880b0ea5d6d6799ebfe7cc9acc624f6e33de3e315bd0f700a37",
+      "importedSHA256": "831b6d08e429f880b0ea5d6d6799ebfe7cc9acc624f6e33de3e315bd0f700a37"
+    },
+    "libavcodec/bswapdsp.h": {
+      "upstreamSHA256": "73cc969b1c6ca35068eb715b210df9e18e9bbfb33c35e0d51fb990e8fcc630b7",
+      "importedSHA256": "73cc969b1c6ca35068eb715b210df9e18e9bbfb33c35e0d51fb990e8fcc630b7"
+    },
+    "libavcodec/cabac.c": {
+      "upstreamSHA256": "2071685aebb034f27df24f950526bf5de883797331327a1c8deea5d5b203ff89",
+      "importedSHA256": "2071685aebb034f27df24f950526bf5de883797331327a1c8deea5d5b203ff89"
+    },
+    "libavcodec/cabac.h": {
+      "upstreamSHA256": "7a15d32fc3405bf51872eaa32e8dcc7e55ae1329464bf2a836554199d62a1711",
+      "importedSHA256": "7a15d32fc3405bf51872eaa32e8dcc7e55ae1329464bf2a836554199d62a1711"
+    },
+    "libavcodec/cabac_functions.h": {
+      "upstreamSHA256": "cc7e8859774f27740d7f12cf1e2ced58162f7e0582a8924f9c7987452d73e750",
+      "importedSHA256": "cc7e8859774f27740d7f12cf1e2ced58162f7e0582a8924f9c7987452d73e750"
+    },
+    "libavcodec/copy_block.h": {
+      "upstreamSHA256": "47726c44d6d7fba0ade8017e487dc1aa2bf7e045f2af1aa99c38f153ba46b2f2",
+      "importedSHA256": "47726c44d6d7fba0ade8017e487dc1aa2bf7e045f2af1aa99c38f153ba46b2f2"
+    },
+    "libavcodec/dirac.c": {
+      "upstreamSHA256": "4c80b95a25cc1076255b5cfcdc825749bcad8a0e1907a73fd137f20d92cd1ac5",
+      "importedSHA256": "4c80b95a25cc1076255b5cfcdc825749bcad8a0e1907a73fd137f20d92cd1ac5"
+    },
+    "libavcodec/dirac.h": {
+      "upstreamSHA256": "09fd1f670422ee61713568abd90fdf371b30e6fe35bc6fb8213f1ad32b45cf56",
+      "importedSHA256": "09fd1f670422ee61713568abd90fdf371b30e6fe35bc6fb8213f1ad32b45cf56"
+    },
+    "libavcodec/dovi_rpu.c": {
+      "upstreamSHA256": "3979e6d60c35510f8e8275497d5f2980e794ac126452d1b5c1cb6e9e8e18e177",
+      "importedSHA256": "3979e6d60c35510f8e8275497d5f2980e794ac126452d1b5c1cb6e9e8e18e177"
+    },
+    "libavcodec/dovi_rpu.h": {
+      "upstreamSHA256": "cc91857f1913e2c1d47989a77ac2eb18bec9a97b94ab386a868b8ecaae20745a",
+      "importedSHA256": "b2347a7d6d1b55686130d833d23d064bfd9eab50cc246f432507c8a5ac8c0f08"
+    },
+    "libavcodec/dovi_rpudec.c": {
+      "upstreamSHA256": "3f3a216998130facec334528fd30026fa588cb1afca9d88e2a9b06801aac85c0",
+      "importedSHA256": "3f3a216998130facec334528fd30026fa588cb1afca9d88e2a9b06801aac85c0"
+    },
+    "libavcodec/dv_profile.c": {
+      "upstreamSHA256": "e2f6c064d9a8ade4d73128f4bc8b4220757a5479a5499afa24cfc838c7e612ed",
+      "importedSHA256": "e2f6c064d9a8ade4d73128f4bc8b4220757a5479a5499afa24cfc838c7e612ed"
+    },
+    "libavcodec/dv_profile.h": {
+      "upstreamSHA256": "19f59e0b20ac583de4bfd76d18889d334bf0b6cdf7b5356723a33f3874738466",
+      "importedSHA256": "19f59e0b20ac583de4bfd76d18889d334bf0b6cdf7b5356723a33f3874738466"
+    },
+    "libavcodec/dv_profile_internal.h": {
+      "upstreamSHA256": "e7bf67f99f5d9fd24d15857fa5ad6a892ea00cddb7a36d8f3e10a3a829e0d500",
+      "importedSHA256": "e7bf67f99f5d9fd24d15857fa5ad6a892ea00cddb7a36d8f3e10a3a829e0d500"
+    },
+    "libavcodec/error_resilience.c": {
+      "upstreamSHA256": "1f3427357825b18fa3d66c4692da40b8a41c7dbe0369c84ad78fe5741228fcf4",
+      "importedSHA256": "1f3427357825b18fa3d66c4692da40b8a41c7dbe0369c84ad78fe5741228fcf4"
+    },
+    "libavcodec/float_scalarproduct.c": {
+      "upstreamSHA256": "5724cc22e1d327f1f922dc22249b302004c01cfd79f2d5f46493858bd714ed1f",
+      "importedSHA256": "5724cc22e1d327f1f922dc22249b302004c01cfd79f2d5f46493858bd714ed1f"
+    },
+    "libavcodec/h264.h": {
+      "upstreamSHA256": "1b6a3724e55b2d5dac875bed666f9499ed33f404c14b37a560433bc34bde64c1",
+      "importedSHA256": "1b6a3724e55b2d5dac875bed666f9499ed33f404c14b37a560433bc34bde64c1"
+    },
+    "libavcodec/h2645_parse.c": {
+      "upstreamSHA256": "6a4cade0f22e2320db8f958df87d4af24f6e2f9b84d0fc70802e1012d27f6fac",
+      "importedSHA256": "6a4cade0f22e2320db8f958df87d4af24f6e2f9b84d0fc70802e1012d27f6fac"
+    },
+    "libavcodec/h2645_parse.h": {
+      "upstreamSHA256": "526b8a277e7fc370854b7b007f90ab7ca65738cd20903a5196c82c756874ebaf",
+      "importedSHA256": "526b8a277e7fc370854b7b007f90ab7ca65738cd20903a5196c82c756874ebaf"
+    },
+    "libavcodec/h2645_sei.c": {
+      "upstreamSHA256": "901f11202b2d76b77bdb5bb1eb86970435eb21f67522a2ebbd6bc7a0b4262dc8",
+      "importedSHA256": "901f11202b2d76b77bdb5bb1eb86970435eb21f67522a2ebbd6bc7a0b4262dc8"
+    },
+    "libavcodec/h2645_sei.h": {
+      "upstreamSHA256": "2ea43f7177010664c59f9140697e89faef0eb08401cef6ac2efe9a556b8c4a6c",
+      "importedSHA256": "2ea43f7177010664c59f9140697e89faef0eb08401cef6ac2efe9a556b8c4a6c"
+    },
+    "libavcodec/h2645_vui.c": {
+      "upstreamSHA256": "04f4928555fb8acea5e27f42d3d9fcd7abd00caac6b077daa39456b49624fd02",
+      "importedSHA256": "04f4928555fb8acea5e27f42d3d9fcd7abd00caac6b077daa39456b49624fd02"
+    },
+    "libavcodec/h2645_vui.h": {
+      "upstreamSHA256": "1c01d4d0fc618235a407dfaf83311d76d834d07273ef1ea41d6713fc5bf5d8fc",
+      "importedSHA256": "1c01d4d0fc618235a407dfaf83311d76d834d07273ef1ea41d6713fc5bf5d8fc"
+    },
+    "libavcodec/h2645data.c": {
+      "upstreamSHA256": "436ff2474d4538982857ecd46ced67c4609ea157ebab8dcd16b0557581887333",
+      "importedSHA256": "436ff2474d4538982857ecd46ced67c4609ea157ebab8dcd16b0557581887333"
+    },
+    "libavcodec/h2645data.h": {
+      "upstreamSHA256": "fd8587eb73a22407f40b0177e4762125b21da50f5e5801c81bc14cc0c8e47f0a",
+      "importedSHA256": "fd8587eb73a22407f40b0177e4762125b21da50f5e5801c81bc14cc0c8e47f0a"
+    },
+    "libavcodec/h264_cabac.c": {
+      "upstreamSHA256": "c9f735f1f9497c162aa1621df6234f90a6a3f978bb015c607a4585ff30188f48",
+      "importedSHA256": "c9f735f1f9497c162aa1621df6234f90a6a3f978bb015c607a4585ff30188f48"
+    },
+    "libavcodec/h264_cavlc.c": {
+      "upstreamSHA256": "c5f4ebca91ace08eabf4b9b79477ec9b46b3978405289873b312a70e294bd669",
+      "importedSHA256": "c5f4ebca91ace08eabf4b9b79477ec9b46b3978405289873b312a70e294bd669"
+    },
+    "libavcodec/h264_direct.c": {
+      "upstreamSHA256": "e3702fd2a91983087a96cdd3903b08668bbf837a58f027f447f09b7d33264902",
+      "importedSHA256": "e3702fd2a91983087a96cdd3903b08668bbf837a58f027f447f09b7d33264902"
+    },
+    "libavcodec/h264_loopfilter.c": {
+      "upstreamSHA256": "e1a6b01f8845cdf81474c5359f84b5999914683dfafa53a63ab7383e83413874",
+      "importedSHA256": "e1a6b01f8845cdf81474c5359f84b5999914683dfafa53a63ab7383e83413874"
+    },
+    "libavcodec/h264_mb.c": {
+      "upstreamSHA256": "b1fd65694d2d334623201523257fe578e790ff5b759dac88e83fd76156f25ae4",
+      "importedSHA256": "b1fd65694d2d334623201523257fe578e790ff5b759dac88e83fd76156f25ae4"
+    },
+    "libavcodec/h264_mb_template.c": {
+      "upstreamSHA256": "a36ef4cbdd82987a2b918bf6667f9e9d6abe6670e2658dfc5937bb0b704b18dc",
+      "importedSHA256": "a36ef4cbdd82987a2b918bf6667f9e9d6abe6670e2658dfc5937bb0b704b18dc"
+    },
+    "libavcodec/h264_mc_template.c": {
+      "upstreamSHA256": "bbfbaf9144e7129402d4511a5ffc7084c2eab11312a3e8db1a8cbc8e9715e23b",
+      "importedSHA256": "bbfbaf9144e7129402d4511a5ffc7084c2eab11312a3e8db1a8cbc8e9715e23b"
+    },
+    "libavcodec/h264_mvpred.h": {
+      "upstreamSHA256": "f5682a4d3db35fe3f0d1fd6b158126ccb3489b74add7e22fb8bfebf242213fc2",
+      "importedSHA256": "f5682a4d3db35fe3f0d1fd6b158126ccb3489b74add7e22fb8bfebf242213fc2"
+    },
+    "libavcodec/h264_parse.c": {
+      "upstreamSHA256": "6da29f6f210cb787b5aa2fd4550a17580669db5a458f315b6c428b7cec8a34c3",
+      "importedSHA256": "6da29f6f210cb787b5aa2fd4550a17580669db5a458f315b6c428b7cec8a34c3"
+    },
+    "libavcodec/h264_parse.h": {
+      "upstreamSHA256": "dbd4a9696df41472b97d2b36bb0b5172a891962292f939791a00e83725131a47",
+      "importedSHA256": "dbd4a9696df41472b97d2b36bb0b5172a891962292f939791a00e83725131a47"
+    },
+    "libavcodec/h264_picture.c": {
+      "upstreamSHA256": "8161ffbe961a3c7d2f304c99f73625af93861b84c99175037c29d4c17975a911",
+      "importedSHA256": "8161ffbe961a3c7d2f304c99f73625af93861b84c99175037c29d4c17975a911"
+    },
+    "libavcodec/h264_ps.c": {
+      "upstreamSHA256": "bdc4866c3f3b9aea1759c8bf2655a8706bd9e297600ed1982a31d6e9f608d3a9",
+      "importedSHA256": "bdc4866c3f3b9aea1759c8bf2655a8706bd9e297600ed1982a31d6e9f608d3a9"
+    },
+    "libavcodec/h264_ps.h": {
+      "upstreamSHA256": "d36e2371ebf164e6fae1bd27d1ff863c827df44649bc915a8f1976d9aa7b1bf7",
+      "importedSHA256": "d36e2371ebf164e6fae1bd27d1ff863c827df44649bc915a8f1976d9aa7b1bf7"
+    },
+    "libavcodec/h264_refs.c": {
+      "upstreamSHA256": "cac1dd61ef06b2a6287973d3c0856e3208751c0d830c971668c85da0f542c8fc",
+      "importedSHA256": "cac1dd61ef06b2a6287973d3c0856e3208751c0d830c971668c85da0f542c8fc"
+    },
+    "libavcodec/h264_sei.c": {
+      "upstreamSHA256": "ded8bd1360871f474ac6554dfcfedebc6d10fa20fe71f1f9a1b5aa922cc78669",
+      "importedSHA256": "ded8bd1360871f474ac6554dfcfedebc6d10fa20fe71f1f9a1b5aa922cc78669"
+    },
+    "libavcodec/h264_sei.h": {
+      "upstreamSHA256": "d09c4aa8d0b48a4b3e88f340e55fd04315d3d88584615023a5a7069a35528c24",
+      "importedSHA256": "d09c4aa8d0b48a4b3e88f340e55fd04315d3d88584615023a5a7069a35528c24"
+    },
+    "libavcodec/h264_slice.c": {
+      "upstreamSHA256": "386deea8632bf336d0a204ed8e595fa5d3574bb997b23e92cb97e616748e9b52",
+      "importedSHA256": "386deea8632bf336d0a204ed8e595fa5d3574bb997b23e92cb97e616748e9b52"
+    },
+    "libavcodec/h264addpx_template.c": {
+      "upstreamSHA256": "5cad7f0c7afc7292511453f33d73ef6d47af0902b219b679057d9703826d1213",
+      "importedSHA256": "5cad7f0c7afc7292511453f33d73ef6d47af0902b219b679057d9703826d1213"
+    },
+    "libavcodec/h264chroma.c": {
+      "upstreamSHA256": "0c9608aa463c5a6ed0b8bb427a11a5c2c78df5d31a3ec960714d324de9a198ea",
+      "importedSHA256": "0c9608aa463c5a6ed0b8bb427a11a5c2c78df5d31a3ec960714d324de9a198ea"
+    },
+    "libavcodec/h264chroma_template.c": {
+      "upstreamSHA256": "7fe0d4c4115a17bcef9cb2a196227c41464768f2e98db0b6890e5d2cdced8791",
+      "importedSHA256": "7fe0d4c4115a17bcef9cb2a196227c41464768f2e98db0b6890e5d2cdced8791"
+    },
+    "libavcodec/h264data.c": {
+      "upstreamSHA256": "04731d87e1a6a208c8746e36136c96e216dc12cd4fc665655ca35dc02ff54da3",
+      "importedSHA256": "04731d87e1a6a208c8746e36136c96e216dc12cd4fc665655ca35dc02ff54da3"
+    },
+    "libavcodec/h264data.h": {
+      "upstreamSHA256": "a2e981853e8e2d084217a4941fe5b0d77c626fcfe1d0d9226a3a96466a4e2271",
+      "importedSHA256": "a2e981853e8e2d084217a4941fe5b0d77c626fcfe1d0d9226a3a96466a4e2271"
+    },
+    "libavcodec/h264dec.c": {
+      "upstreamSHA256": "e78a93bc5ebc01e31f8d18c2a8e045391da525e768b34204f8f3c3a63f6148ac",
+      "importedSHA256": "e78a93bc5ebc01e31f8d18c2a8e045391da525e768b34204f8f3c3a63f6148ac"
+    },
+    "libavcodec/h264dec.h": {
+      "upstreamSHA256": "c158c63c39493d19f0b2aae804e5db89230bba3aaca2e2e85592f65231d5f12e",
+      "importedSHA256": "c158c63c39493d19f0b2aae804e5db89230bba3aaca2e2e85592f65231d5f12e"
+    },
+    "libavcodec/h264dsp.c": {
+      "upstreamSHA256": "d4481e57e317b149aa2d6a5ba6a37f1a9be241f9cf3a5c2eb45274e4f90b0978",
+      "importedSHA256": "d4481e57e317b149aa2d6a5ba6a37f1a9be241f9cf3a5c2eb45274e4f90b0978"
+    },
+    "libavcodec/h264dsp_template.c": {
+      "upstreamSHA256": "f4fee93f12b36ec9127c1f6f93b89faeb7461c1404a915f53a2c16dc9fc7c011",
+      "importedSHA256": "f4fee93f12b36ec9127c1f6f93b89faeb7461c1404a915f53a2c16dc9fc7c011"
+    },
+    "libavcodec/h264idct.c": {
+      "upstreamSHA256": "f9c2a5c05a821b8d2ff2c340028c72cf6235498c0643d3724e6c59f5cd9a1d84",
+      "importedSHA256": "f9c2a5c05a821b8d2ff2c340028c72cf6235498c0643d3724e6c59f5cd9a1d84"
+    },
+    "libavcodec/h264idct.h": {
+      "upstreamSHA256": "27bec18845a66834776c77d1d7353a7b3d2cdc06358ead3b8dd375e1f1a4964d",
+      "importedSHA256": "27bec18845a66834776c77d1d7353a7b3d2cdc06358ead3b8dd375e1f1a4964d"
+    },
+    "libavcodec/h264idct_template.c": {
+      "upstreamSHA256": "13b6d5b4fc41f4c22350c84209970af86aac7d445e867b362a8808f076487735",
+      "importedSHA256": "13b6d5b4fc41f4c22350c84209970af86aac7d445e867b362a8808f076487735"
+    },
+    "libavcodec/h264qpel.c": {
+      "upstreamSHA256": "357014ac498d0ea5942e5e4a6b954c1f9985f9a2b69dca3b13715807cb8d1bfe",
+      "importedSHA256": "357014ac498d0ea5942e5e4a6b954c1f9985f9a2b69dca3b13715807cb8d1bfe"
+    },
+    "libavcodec/h264qpel.h": {
+      "upstreamSHA256": "a4e721d8709b15043b514d3b0265199d4fa47c924eda96a38176fe9de588b4f2",
+      "importedSHA256": "a4e721d8709b15043b514d3b0265199d4fa47c924eda96a38176fe9de588b4f2"
+    },
+    "libavcodec/h264qpel_template.c": {
+      "upstreamSHA256": "f16285bc9c1281a1042238a895e28fabcfa83101a1a102fcc09779d7ccf5bf79",
+      "importedSHA256": "f16285bc9c1281a1042238a895e28fabcfa83101a1a102fcc09779d7ccf5bf79"
+    },
+    "libavcodec/h26x/h2656_deblock_template.c": {
+      "upstreamSHA256": "ac53e6ca018187aa7e70bcc77678249973789ac207f684f9eaf7291a8a48c38e",
+      "importedSHA256": "ac53e6ca018187aa7e70bcc77678249973789ac207f684f9eaf7291a8a48c38e"
+    },
+    "libavcodec/h26x/h2656_inter_template.c": {
+      "upstreamSHA256": "ce8e47d45d1cf55c1dea4bb43b6a9675cf49760dd4dc530c4ee35dbe0ec1df27",
+      "importedSHA256": "ce8e47d45d1cf55c1dea4bb43b6a9675cf49760dd4dc530c4ee35dbe0ec1df27"
+    },
+    "libavcodec/h26x/h2656_sao_template.c": {
+      "upstreamSHA256": "6a3f1ba79a8ada282ffb9b17d9d92e0fcec713e9582c47f2238289ba606d7f3d",
+      "importedSHA256": "6a3f1ba79a8ada282ffb9b17d9d92e0fcec713e9582c47f2238289ba606d7f3d"
+    },
+    "libavcodec/h274.c": {
+      "upstreamSHA256": "d6033f6bdab7a85708995fa03498c764ff1befe960a77a250721ac08cddf2052",
+      "importedSHA256": "d6033f6bdab7a85708995fa03498c764ff1befe960a77a250721ac08cddf2052"
+    },
+    "libavcodec/h274.h": {
+      "upstreamSHA256": "29c39cee0800bf87bd8a582e7d0b7cbad91c6314f38af8a856541c8ff448ecfb",
+      "importedSHA256": "29c39cee0800bf87bd8a582e7d0b7cbad91c6314f38af8a856541c8ff448ecfb"
+    },
+    "libavcodec/hevc/cabac.c": {
+      "upstreamSHA256": "3c61400de61fe8283886d12f09afd8bb4d473265306f0103406021b48f1dd79d",
+      "importedSHA256": "3c61400de61fe8283886d12f09afd8bb4d473265306f0103406021b48f1dd79d"
+    },
+    "libavcodec/hevc/data.c": {
+      "upstreamSHA256": "bf01a0bb88a25383eba3ab87e0f1ff7efa49a8433a71c960664ab5e70359f59b",
+      "importedSHA256": "bf01a0bb88a25383eba3ab87e0f1ff7efa49a8433a71c960664ab5e70359f59b"
+    },
+    "libavcodec/hevc/data.h": {
+      "upstreamSHA256": "d5f47f304539e7a8c7e5bea9e829b995b743eebe185b8be5505ab53402222e91",
+      "importedSHA256": "d5f47f304539e7a8c7e5bea9e829b995b743eebe185b8be5505ab53402222e91"
+    },
+    "libavcodec/hevc/dsp.c": {
+      "upstreamSHA256": "af6aba392f82f537ade0d1879755207aff12e691aae2ef759aa8bb8976ca2985",
+      "importedSHA256": "af6aba392f82f537ade0d1879755207aff12e691aae2ef759aa8bb8976ca2985"
+    },
+    "libavcodec/hevc/dsp.h": {
+      "upstreamSHA256": "6542d4c06ae20af1de53c4123f8f60a8ffb25cc0943f7c425c161797cb8a1b34",
+      "importedSHA256": "6542d4c06ae20af1de53c4123f8f60a8ffb25cc0943f7c425c161797cb8a1b34"
+    },
+    "libavcodec/hevc/dsp_template.c": {
+      "upstreamSHA256": "beb2f5951647b066f8543ec816df129de511b2679456b10fc261a1fd7fd2ef98",
+      "importedSHA256": "beb2f5951647b066f8543ec816df129de511b2679456b10fc261a1fd7fd2ef98"
+    },
+    "libavcodec/hevc/filter.c": {
+      "upstreamSHA256": "26bdfa7a87cfdaf7bd3f7c342bf88610fd0734848e49cff60bf798cda6534492",
+      "importedSHA256": "26bdfa7a87cfdaf7bd3f7c342bf88610fd0734848e49cff60bf798cda6534492"
+    },
+    "libavcodec/hevc/hevc.h": {
+      "upstreamSHA256": "9d1e603585c4086cb3090e8894338d9ed4d7bd00f434df1b560f7acf68db1893",
+      "importedSHA256": "9d1e603585c4086cb3090e8894338d9ed4d7bd00f434df1b560f7acf68db1893"
+    },
+    "libavcodec/hevc/hevcdec.c": {
+      "upstreamSHA256": "d4b5bb9e7690008ecf299cd24f7d7c1f0dfa188655fa51835add2a52da5eb297",
+      "importedSHA256": "d4b5bb9e7690008ecf299cd24f7d7c1f0dfa188655fa51835add2a52da5eb297"
+    },
+    "libavcodec/hevc/hevcdec.h": {
+      "upstreamSHA256": "8702d174fc97001cfb38323ee34a2bb8e3a34eaceb0ff63c9ff4d0212d2d088d",
+      "importedSHA256": "8702d174fc97001cfb38323ee34a2bb8e3a34eaceb0ff63c9ff4d0212d2d088d"
+    },
+    "libavcodec/hevc/mvs.c": {
+      "upstreamSHA256": "5d1de8a68a0e9635a577d04a31a51aae337e7f17c7cd59f919d5bbd058ab625d",
+      "importedSHA256": "5d1de8a68a0e9635a577d04a31a51aae337e7f17c7cd59f919d5bbd058ab625d"
+    },
+    "libavcodec/hevc/parse.c": {
+      "upstreamSHA256": "e328058cf9b791d317becead9df1c2464d406cf4a201fc3affa6f6d13cfaf263",
+      "importedSHA256": "e328058cf9b791d317becead9df1c2464d406cf4a201fc3affa6f6d13cfaf263"
+    },
+    "libavcodec/hevc/parse.h": {
+      "upstreamSHA256": "fdef4ff416b98b53359eb80ea420d5e068406248ee7a6b928bd5b7893e45f2b5",
+      "importedSHA256": "fdef4ff416b98b53359eb80ea420d5e068406248ee7a6b928bd5b7893e45f2b5"
+    },
+    "libavcodec/hevc/pred.c": {
+      "upstreamSHA256": "d12ff6c38f9b67baa9c89024bc3b0c23db7513e8704bc6f73e33e3723f1a0b04",
+      "importedSHA256": "d12ff6c38f9b67baa9c89024bc3b0c23db7513e8704bc6f73e33e3723f1a0b04"
+    },
+    "libavcodec/hevc/pred.h": {
+      "upstreamSHA256": "3da507dd0bddeb05084f39c2ff494fd92c84fd3a7ae84f7ab46a4743fa3afa5c",
+      "importedSHA256": "3da507dd0bddeb05084f39c2ff494fd92c84fd3a7ae84f7ab46a4743fa3afa5c"
+    },
+    "libavcodec/hevc/pred_template.c": {
+      "upstreamSHA256": "62e3c1752dac1fe99cb21b8d0b6bcbb76d9bb46abf7ed17072367d1faa4feae9",
+      "importedSHA256": "62e3c1752dac1fe99cb21b8d0b6bcbb76d9bb46abf7ed17072367d1faa4feae9"
+    },
+    "libavcodec/hevc/ps.c": {
+      "upstreamSHA256": "f81eeb1536b4a7209ae914adc609853090bf0a18df5cc1793e2510688892fb99",
+      "importedSHA256": "f81eeb1536b4a7209ae914adc609853090bf0a18df5cc1793e2510688892fb99"
+    },
+    "libavcodec/hevc/ps.h": {
+      "upstreamSHA256": "7d3277c34aae6572b7abf92721e9a57b3cb212bd389627a350079b8910e8a75f",
+      "importedSHA256": "7d3277c34aae6572b7abf92721e9a57b3cb212bd389627a350079b8910e8a75f"
+    },
+    "libavcodec/hevc/refs.c": {
+      "upstreamSHA256": "9f31686986b528abd579d41d7380fb6344955d2ef574372e9e83d1cb8cdf0dd2",
+      "importedSHA256": "9f31686986b528abd579d41d7380fb6344955d2ef574372e9e83d1cb8cdf0dd2"
+    },
+    "libavcodec/hevc/sei.c": {
+      "upstreamSHA256": "62c4bfbca01e110826f5c8056be20e855e8edd5cab154ec345e7e6678b5e70d0",
+      "importedSHA256": "62c4bfbca01e110826f5c8056be20e855e8edd5cab154ec345e7e6678b5e70d0"
+    },
+    "libavcodec/hevc/sei.h": {
+      "upstreamSHA256": "8d1651ac16a656dd34cf1f6f680c60a9e05dd69ba427767bc02024e9b7ab3d19",
+      "importedSHA256": "8d1651ac16a656dd34cf1f6f680c60a9e05dd69ba427767bc02024e9b7ab3d19"
+    },
+    "libavcodec/hpel_template.c": {
+      "upstreamSHA256": "4b4df428e93521b08dec304d7ecb16e0c14825f0fd85e7b0e77206a9a223f94e",
+      "importedSHA256": "4b4df428e93521b08dec304d7ecb16e0c14825f0fd85e7b0e77206a9a223f94e"
+    },
+    "libavcodec/jni.c": {
+      "upstreamSHA256": "db5e8957778a29c2090d59b7e315ed2d778724117d9bc11517cdb96ba51eb227",
+      "importedSHA256": "db5e8957778a29c2090d59b7e315ed2d778724117d9bc11517cdb96ba51eb227"
+    },
+    "libavcodec/jni.h": {
+      "upstreamSHA256": "f98405ffb7ba26665cde92daef33bc4371c91aa6c85b522b36864ed289600ebc",
+      "importedSHA256": "f98405ffb7ba26665cde92daef33bc4371c91aa6c85b522b36864ed289600ebc"
+    },
+    "libavcodec/loongarch/cabac.h": {
+      "upstreamSHA256": "d1740957370685e41c0e94e613a11891599e662f39cceaa02a1f5e1ddd28e594",
+      "importedSHA256": "d1740957370685e41c0e94e613a11891599e662f39cceaa02a1f5e1ddd28e594"
+    },
+    "libavcodec/loongarch/h264_cabac.c": {
+      "upstreamSHA256": "2bb911093e0a670259e969db40d0e4cb0ad1d81b36938227dc3ed462693d1a03",
+      "importedSHA256": "2bb911093e0a670259e969db40d0e4cb0ad1d81b36938227dc3ed462693d1a03"
+    },
+    "libavcodec/me_cmp.c": {
+      "upstreamSHA256": "359cdc5ec8ea0b4141a449656b56d2c83fcde35db381aed158ed86b6f04a7fc3",
+      "importedSHA256": "359cdc5ec8ea0b4141a449656b56d2c83fcde35db381aed158ed86b6f04a7fc3"
+    },
+    "libavcodec/mips/cabac.h": {
+      "upstreamSHA256": "388ec5ed62daeee4dd197e564036316f3c0c0499327f2ab13fc419fa2314f9b6",
+      "importedSHA256": "388ec5ed62daeee4dd197e564036316f3c0c0499327f2ab13fc419fa2314f9b6"
+    },
+    "libavcodec/mpeg12.h": {
+      "upstreamSHA256": "cfbe84a53fd6c6d74839b88eb0ab4c4be7556b14a0ec1cac86746303e255f720",
+      "importedSHA256": "cfbe84a53fd6c6d74839b88eb0ab4c4be7556b14a0ec1cac86746303e255f720"
+    },
+    "libavcodec/mpeg12framerate.c": {
+      "upstreamSHA256": "3ff63c91cc77e9ae7d40d0aab4ade809874bb614b18adf1a69b0079001bea7d1",
+      "importedSHA256": "3ff63c91cc77e9ae7d40d0aab4ade809874bb614b18adf1a69b0079001bea7d1"
+    },
+    "libavcodec/mpegvideoenc.h": {
+      "upstreamSHA256": "279f98b25c02dd48d41d692976128bd65cf93d5478a66ff5d0fbf52e3583f94c",
+      "importedSHA256": "279f98b25c02dd48d41d692976128bd65cf93d5478a66ff5d0fbf52e3583f94c"
+    },
+    "libavcodec/pel_template.c": {
+      "upstreamSHA256": "bb36d5048f91d87b5b2c98ee18a6cb49339f57425811f8cfb0d33c50c45ab178",
+      "importedSHA256": "bb36d5048f91d87b5b2c98ee18a6cb49339f57425811f8cfb0d33c50c45ab178"
+    },
+    "libavcodec/sei.h": {
+      "upstreamSHA256": "537585dac2bc5e4dbdc1ac71c1463f31860ad98d71c56e3517f264c982f40d50",
+      "importedSHA256": "537585dac2bc5e4dbdc1ac71c1463f31860ad98d71c56e3517f264c982f40d50"
+    },
+    "libavcodec/startcode.c": {
+      "upstreamSHA256": "c3d8b98d90fbeebbff0dd92b19f02249886723c3e0765d60ea4b7850d8a1f35c",
+      "importedSHA256": "c3d8b98d90fbeebbff0dd92b19f02249886723c3e0765d60ea4b7850d8a1f35c"
+    },
+    "libavcodec/timecode_internal.c": {
+      "upstreamSHA256": "301e0cc7ec5c9b7c60db7ae8d9b070e3685f0045161fc00ecfae6e9f592d860d",
+      "importedSHA256": "301e0cc7ec5c9b7c60db7ae8d9b070e3685f0045161fc00ecfae6e9f592d860d"
+    },
+    "libavcodec/vvc.h": {
+      "upstreamSHA256": "501ebb796d3befc1b3c8715390eb2a4c75fe7e6bb4770281faf385ac7c35af85",
+      "importedSHA256": "501ebb796d3befc1b3c8715390eb2a4c75fe7e6bb4770281faf385ac7c35af85"
+    },
+    "libavcodec/x86/cabac.h": {
+      "upstreamSHA256": "782bdbd760f2a84153886130386837b672d112555b031d9a1f6cd35dcfe5ceb0",
+      "importedSHA256": "782bdbd760f2a84153886130386837b672d112555b031d9a1f6cd35dcfe5ceb0"
+    },
+    "libavcodec/x86/h264_cabac.c": {
+      "upstreamSHA256": "25e7dae1dd574d5d8c99e07a6c5a254dad0d9f95a1c3615216368bb7ca060dd7",
+      "importedSHA256": "25e7dae1dd574d5d8c99e07a6c5a254dad0d9f95a1c3615216368bb7ca060dd7"
+    },
+    "libavutil/ambient_viewing_environment.c": {
+      "upstreamSHA256": "1c28b7cfc29d9bbe266a307c04e517ff49fae31e52ef8508085423412f486e88",
+      "importedSHA256": "1c28b7cfc29d9bbe266a307c04e517ff49fae31e52ef8508085423412f486e88"
+    },
+    "libavutil/ambient_viewing_environment.h": {
+      "upstreamSHA256": "00135de08089f8c711bb113588f80575a1d26e86d50b6dac5928a27a0ff9a8c7",
+      "importedSHA256": "00135de08089f8c711bb113588f80575a1d26e86d50b6dac5928a27a0ff9a8c7"
+    },
+    "libavutil/dovi_meta.c": {
+      "upstreamSHA256": "e504b834735e11b3a3524408a82d42330571619c5729ca9dee4d2e2f5c7ba4a0",
+      "importedSHA256": "e504b834735e11b3a3524408a82d42330571619c5729ca9dee4d2e2f5c7ba4a0"
+    },
+    "libavutil/dovi_meta.h": {
+      "upstreamSHA256": "e0ca4be00b203f35ceff50b53c92f448450c823eb24df7f01db0cd0d6c9077cb",
+      "importedSHA256": "e0ca4be00b203f35ceff50b53c92f448450c823eb24df7f01db0cd0d6c9077cb"
+    },
+    "libavutil/md5.c": {
+      "upstreamSHA256": "7ceb20c8686c46737b76baef58b216c53448a45d191b597ebfcefcc8d38187a6",
+      "importedSHA256": "7ceb20c8686c46737b76baef58b216c53448a45d191b597ebfcefcc8d38187a6"
+    },
+    "libavutil/md5.h": {
+      "upstreamSHA256": "5b42de1758d289f78b4d20c47686f443e4ea8a5a6411c0deb357f709d2ef34d7",
+      "importedSHA256": "5b42de1758d289f78b4d20c47686f443e4ea8a5a6411c0deb357f709d2ef34d7"
+    },
+    "libavutil/mips/asmdefs.h": {
+      "upstreamSHA256": "0cd4226ee1e767bc6ebcbb7d5eb60ff28cee63765cfdfa67cc03b5f8b00e31de",
+      "importedSHA256": "0cd4226ee1e767bc6ebcbb7d5eb60ff28cee63765cfdfa67cc03b5f8b00e31de"
+    },
+    "libavutil/mips/mmiutils.h": {
+      "upstreamSHA256": "53ad75f399e52a2ab51a996fc7d2b726d8a2eaa44a7ad1927d1aee5cb6ad57f6",
+      "importedSHA256": "53ad75f399e52a2ab51a996fc7d2b726d8a2eaa44a7ad1927d1aee5cb6ad57f6"
+    },
+    "libavutil/tdrdi.c": {
+      "upstreamSHA256": "62bc45f5205a9304e427e31689a2a1ee36195f9ff5f535315f0d804bd761ec23",
+      "importedSHA256": "62bc45f5205a9304e427e31689a2a1ee36195f9ff5f535315f0d804bd761ec23"
+    },
+    "libavutil/tdrdi.h": {
+      "upstreamSHA256": "9b7ac5326cadef9f3956470e22cdb9ba751c0da90b39f9df4562bffc8e4115a3",
+      "importedSHA256": "9b7ac5326cadef9f3956470e22cdb9ba751c0da90b39f9df4562bffc8e4115a3"
+    }
+  }
+}

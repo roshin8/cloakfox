@@ -1,0 +1,64 @@
+--- a/dom/canvas/WebGLContext.cpp
++++ b/dom/canvas/WebGLContext.cpp
+@@ -28,6 +28,7 @@
+ #include "gfxCrashReporterUtils.h"
+ #include "gfxEnv.h"
+ #include "gfxPattern.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/EnumeratedArrayCycleCollection.h"
+ #include "mozilla/Preferences.h"
+ #include "mozilla/ProcessPriorityManager.h"
+@@ -1712,6 +1713,10 @@
+     }
+   }
+ 
++  // GPU pixels retain their producer even after CPU readback. A generic
++  // capability profile or platform software GL is not canonical rendering.
++  gfx::AddCanvasPixelSource(dataSurf, gfx::CanvasPixelSource::GPU);
++
+   return dataSurf.forget();
+ }
+ 
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -7,6 +7,7 @@
+ #include "MaskConfig.hpp"
+ #include "CanvasFingerprintManager.h"
+ #include "WebGLParamsManager.h"
++#include "mozilla/gfx/CanvasPrivacy.h"
+ #include "mozilla/dom/BrowsingContext.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/WorkerPrivate.h"
+@@ -1288,6 +1289,10 @@
+       MOZ_RELEASE_ASSERT(rv, "SwizzleData failed!");
+     }
+   }
++  // GPU pixels retain their producer even after CPU readback. A generic
++  // capability profile or platform software GL is not canonical rendering.
++  gfx::AddCanvasPixelSource(surf, gfx::CanvasPixelSource::GPU);
++
+   return surf;
+ }
+ 
+@@ -1363,6 +1368,10 @@
+         pixels.data(), stride, gfx::SurfaceFormat::R8G8B8A8, pixels.data(),
+         stride, gfx::SurfaceFormat::B8G8R8A8, {size.x, size.y}));
+   }
++
++  // GPU pixels retain their producer even after CPU readback. A generic
++  // capability profile or platform software GL is not canonical rendering.
++  gfx::AddCanvasPixelSource(surf, gfx::CanvasPixelSource::GPU);
+ 
+   return surf;
+ }
+@@ -6292,6 +6301,10 @@
+               {size.x, size.y}));
+         }
+ 
++        // GPU pixels retain their producer even after CPU readback. A generic
++        // capability profile or platform software GL is not canonical rendering.
++        gfx::AddCanvasPixelSource(sourceSurface, gfx::CanvasPixelSource::GPU);
++
+         promise->Resolve(std::move(sourceSurface), __func__);
+       },
+ 
