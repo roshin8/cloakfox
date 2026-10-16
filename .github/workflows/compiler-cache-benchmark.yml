@@ -1,0 +1,54 @@
+name: Chromium compiler cache comparison (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/firefox-158-port]
+    paths:
+      - .github/workflows/compiler-cache-benchmark.yml
+      - tests/ci/benchmark_chromium_cache.py
+      - tests/ci/fetch_benchmark_clang.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compiler-cache-benchmark-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Install both compiler cache candidates
+        run: brew install ccache sccache
+      - name: Fetch exact Chromium-pinned arm64 compiler with DEPS integrity
+        run: python3 tests/ci/fetch_benchmark_clang.py --destination "$RUNNER_TEMP/cache-benchmark/clang"
+      - name: Compare cold, warm and header invalidation with reversed order
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          cp "$RUNNER_TEMP/cache-benchmark/compiler-provenance.json" reports/
+          for standard in c++20 c++23; do
+            python3 tests/ci/benchmark_chromium_cache.py \
+              --clang "$RUNNER_TEMP/cache-benchmark/clang/bin/clang++" \
+              --ccache "$(command -v ccache)" --sccache "$(command -v sccache)" \
+              --cxx-standard "$standard" --output "reports/$standard-sccache-first.json"
+            python3 tests/ci/benchmark_chromium_cache.py \
+              --clang "$RUNNER_TEMP/cache-benchmark/clang/bin/clang++" \
+              --ccache "$(command -v ccache)" --sccache "$(command -v sccache)" \
+              --cxx-standard "$standard" --ccache-first --output "reports/$standard-ccache-first.json"
+          done
+      - name: Preserve actual comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-cache-comparison
+          path: reports/
+          if-no-files-found: error
+          retention-days: 7
