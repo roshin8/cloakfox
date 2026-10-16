@@ -1,0 +1,748 @@
+{
+  "fixtureRoot": "/tmp/cloakfox-cache-comparison-ler4l_gr",
+  "scope": "Synthetic Chromium-style C/C++/Objective-C++ fixture with pinned compiler and real macOS SDK; local cache backends only, not full Chromium or remote GHA cache performance",
+  "githubRun": "38972153962",
+  "gitSha": "43aede189510fe56f98744bd7ecf11f894445285",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "compiler": "clang version 24.0.0git (https://chromium.googlesource.com/a/external/github.com/llvm/llvm-project 9fca3cf47d011a0af295d4252d70f16f8693d6a2)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Users/runner/work/_temp/cache-benchmark/clang/bin\n",
+  "versions": {
+    "ccache": "ccache version 4.14",
+    "sccache": "sccache 0.17.0"
+  },
+  "commands": [
+    [
+      "/Users/runner/work/_temp/cache-benchmark/clang/bin/clang",
+      "-x",
+      "c++",
+      "--target=arm64-apple-macos",
+      "-isysroot",
+      "/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-mmacosx-version-min=13.0",
+      "-O2",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fvisibility=hidden",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-fcolor-diagnostics",
+      "-MMD",
+      "-std=c++20",
+      "-MF",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture0.cc.d",
+      "-c",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture0.cc",
+      "-o",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture0.cc.o"
+    ],
+    [
+      "/Users/runner/work/_temp/cache-benchmark/clang/bin/clang",
+      "-x",
+      "c++",
+      "--target=arm64-apple-macos",
+      "-isysroot",
+      "/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-mmacosx-version-min=13.0",
+      "-O2",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fvisibility=hidden",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-fcolor-diagnostics",
+      "-MMD",
+      "-std=c++20",
+      "-MF",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture1.cc.d",
+      "-c",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture1.cc",
+      "-o",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture1.cc.o"
+    ],
+    [
+      "/Users/runner/work/_temp/cache-benchmark/clang/bin/clang",
+      "-x",
+      "c++",
+      "--target=arm64-apple-macos",
+      "-isysroot",
+      "/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-mmacosx-version-min=13.0",
+      "-O2",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fvisibility=hidden",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-fcolor-diagnostics",
+      "-MMD",
+      "-std=c++20",
+      "-MF",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture2.cc.d",
+      "-c",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture2.cc",
+      "-o",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture2.cc.o"
+    ],
+    [
+      "/Users/runner/work/_temp/cache-benchmark/clang/bin/clang",
+      "-x",
+      "c++",
+      "--target=arm64-apple-macos",
+      "-isysroot",
+      "/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-mmacosx-version-min=13.0",
+      "-O2",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fvisibility=hidden",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-fcolor-diagnostics",
+      "-MMD",
+      "-std=c++20",
+      "-MF",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture3.cc.d",
+      "-c",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture3.cc",
+      "-o",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture3.cc.o"
+    ],
+    [
+      "/Users/runner/work/_temp/cache-benchmark/clang/bin/clang",
+      "-x",
+      "c++",
+      "--target=arm64-apple-macos",
+      "-isysroot",
+      "/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-mmacosx-version-min=13.0",
+      "-O2",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fvisibility=hidden",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-fcolor-diagnostics",
+      "-MMD",
+      "-std=c++20",
+      "-MF",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture4.cc.d",
+      "-c",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture4.cc",
+      "-o",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture4.cc.o"
+    ],
+    [
+      "/Users/runner/work/_temp/cache-benchmark/clang/bin/clang",
+      "-x",
+      "c++",
+      "--target=arm64-apple-macos",
+      "-isysroot",
+      "/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-mmacosx-version-min=13.0",
+      "-O2",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fvisibility=hidden",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-fcolor-diagnostics",
+      "-MMD",
+      "-std=c++20",
+      "-MF",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture5.cc.d",
+      "-c",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture5.cc",
+      "-o",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture5.cc.o"
+    ],
+    [
+      "/Users/runner/work/_temp/cache-benchmark/clang/bin/clang",
+      "-x",
+      "objective-c++",
+      "--target=arm64-apple-macos",
+      "-isysroot",
+      "/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-mmacosx-version-min=13.0",
+      "-O2",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fvisibility=hidden",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-fcolor-diagnostics",
+      "-MMD",
+      "-std=c++20",
+      "-MF",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture.mm.d",
+      "-c",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture.mm",
+      "-o",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture.mm.o"
+    ],
+    [
+      "/Users/runner/work/_temp/cache-benchmark/clang/bin/clang",
+      "-x",
+      "c",
+      "--target=arm64-apple-macos",
+      "-isysroot",
+      "/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-mmacosx-version-min=13.0",
+      "-O2",
+      "-fno-exceptions",
+      "-fvisibility=hidden",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-fcolor-diagnostics",
+      "-MMD",
+      "-std=c11",
+      "-MF",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture.c.d",
+      "-c",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture.c",
+      "-o",
+      "/tmp/cloakfox-cache-comparison-ler4l_gr/fixture.c.o"
+    ]
+  ],
+  "cold": {
+    "plain": {
+      "wallSeconds": 4.243114167000002,
+      "objects": [
+        {
+          "seconds": 2.188051540999993,
+          "objectSha256": "f763b8218068f38f826ea80f6ead33aa8b1093287686b0754b9cbd62baeff261",
+          "depSha256": "d650cb7d21bbe8f64834ebb87551ee414cfb87308df21586022c7ad45031ee23"
+        },
+        {
+          "seconds": 2.190051875000009,
+          "objectSha256": "53def5f1a6a9fae62433b3e89a249e39e1f9362d19a392a6e0f63bf7ebd32a4e",
+          "depSha256": "f442c720620ea93a9cbecd8c35f962e5e7bc5b78ed48487bc4f3adae9c182f18"
+        },
+        {
+          "seconds": 2.1873777079999996,
+          "objectSha256": "5465c8b9662cc277b7e3841fc515e048e7b728078494d3a8db76e665097b46aa",
+          "depSha256": "80b81ccc98c2c62d57bc553017dddbe08bbe61cd3f094ca6edf75a2b559495ae"
+        },
+        {
+          "seconds": 0.7400002920000048,
+          "objectSha256": "a50b491edd033883edae97dc33c047e16ecfc7c6ed89d9022cbeb8efa34c0054",
+          "depSha256": "c91beb5606c5940c8e0f4573fe46b6ef4786b3f0faa82b4e0d5e064ecc073210"
+        },
+        {
+          "seconds": 0.7256722919999987,
+          "objectSha256": "8463af473f3df5c510a4cd289e184859c1a20cc3f9387e23d4e73b0e07061ab1",
+          "depSha256": "90e7353820435848c03262283118da451b6a37865c71e3e6b193fdac57b006e1"
+        },
+        {
+          "seconds": 0.7288317499999977,
+          "objectSha256": "bedfd571599943175a5f9ff29d065b61df815069c66d78591114430bbf3d455d",
+          "depSha256": "007f77f881b1fde8b012df3e07861d7e61751413a7b57bfbdfc9e08f06a82a5e"
+        },
+        {
+          "seconds": 1.3075687500000015,
+          "objectSha256": "c1fe999b8844ea5c5823904137f12b8e7125ba4ddaa17fc79f5ded766313c0c6",
+          "depSha256": "589b262ada80957e44ec1a2d5b31f6c4852fdf275b2a8ba65283903c43209604"
+        },
+        {
+          "seconds": 0.033970582999998555,
+          "objectSha256": "51a51710c6887ce62d306290d54fbec09e5ee3913bf49d4a869506fda5df01f7",
+          "depSha256": "becb349df520fc82030ef3ce00ae94a24b53d2f2139047617df349ef6755b037"
+        }
+      ]
+    },
+    "sccache": {
+      "wallSeconds": 3.929922000000005,
+      "objects": [
+        {
+          "seconds": 1.495215250000001,
+          "objectSha256": "f763b8218068f38f826ea80f6ead33aa8b1093287686b0754b9cbd62baeff261",
+          "depSha256": "d650cb7d21bbe8f64834ebb87551ee414cfb87308df21586022c7ad45031ee23"
+        },
+        {
+          "seconds": 1.5839827920000005,
+          "objectSha256": "53def5f1a6a9fae62433b3e89a249e39e1f9362d19a392a6e0f63bf7ebd32a4e",
+          "depSha256": "f442c720620ea93a9cbecd8c35f962e5e7bc5b78ed48487bc4f3adae9c182f18"
+        },
+        {
+          "seconds": 1.5222356250000075,
+          "objectSha256": "5465c8b9662cc277b7e3841fc515e048e7b728078494d3a8db76e665097b46aa",
+          "depSha256": "80b81ccc98c2c62d57bc553017dddbe08bbe61cd3f094ca6edf75a2b559495ae"
+        },
+        {
+          "seconds": 1.1680145419999945,
+          "objectSha256": "a50b491edd033883edae97dc33c047e16ecfc7c6ed89d9022cbeb8efa34c0054",
+          "depSha256": "c91beb5606c5940c8e0f4573fe46b6ef4786b3f0faa82b4e0d5e064ecc073210"
+        },
+        {
+          "seconds": 1.1410038749999956,
+          "objectSha256": "8463af473f3df5c510a4cd289e184859c1a20cc3f9387e23d4e73b0e07061ab1",
+          "depSha256": "90e7353820435848c03262283118da451b6a37865c71e3e6b193fdac57b006e1"
+        },
+        {
+          "seconds": 1.1437702090000101,
+          "objectSha256": "bedfd571599943175a5f9ff29d065b61df815069c66d78591114430bbf3d455d",
+          "depSha256": "007f77f881b1fde8b012df3e07861d7e61751413a7b57bfbdfc9e08f06a82a5e"
+        },
+        {
+          "seconds": 1.265331291999999,
+          "objectSha256": "c1fe999b8844ea5c5823904137f12b8e7125ba4ddaa17fc79f5ded766313c0c6",
+          "depSha256": "589b262ada80957e44ec1a2d5b31f6c4852fdf275b2a8ba65283903c43209604"
+        },
+        {
+          "seconds": 0.06693429099999548,
+          "objectSha256": "51a51710c6887ce62d306290d54fbec09e5ee3913bf49d4a869506fda5df01f7",
+          "depSha256": "becb349df520fc82030ef3ce00ae94a24b53d2f2139047617df349ef6755b037"
+        }
+      ]
+    },
+    "ccache": {
+      "wallSeconds": 3.662886584000006,
+      "objects": [
+        {
+          "seconds": 1.280408499999993,
+          "objectSha256": "f763b8218068f38f826ea80f6ead33aa8b1093287686b0754b9cbd62baeff261",
+          "depSha256": "d650cb7d21bbe8f64834ebb87551ee414cfb87308df21586022c7ad45031ee23"
+        },
+        {
+          "seconds": 1.2586086249999937,
+          "objectSha256": "53def5f1a6a9fae62433b3e89a249e39e1f9362d19a392a6e0f63bf7ebd32a4e",
+          "depSha256": "f442c720620ea93a9cbecd8c35f962e5e7bc5b78ed48487bc4f3adae9c182f18"
+        },
+        {
+          "seconds": 1.2975243749999947,
+          "objectSha256": "5465c8b9662cc277b7e3841fc515e048e7b728078494d3a8db76e665097b46aa",
+          "depSha256": "80b81ccc98c2c62d57bc553017dddbe08bbe61cd3f094ca6edf75a2b559495ae"
+        },
+        {
+          "seconds": 1.1002602500000052,
+          "objectSha256": "a50b491edd033883edae97dc33c047e16ecfc7c6ed89d9022cbeb8efa34c0054",
+          "depSha256": "c91beb5606c5940c8e0f4573fe46b6ef4786b3f0faa82b4e0d5e064ecc073210"
+        },
+        {
+          "seconds": 1.1654730000000058,
+          "objectSha256": "8463af473f3df5c510a4cd289e184859c1a20cc3f9387e23d4e73b0e07061ab1",
+          "depSha256": "90e7353820435848c03262283118da451b6a37865c71e3e6b193fdac57b006e1"
+        },
+        {
+          "seconds": 1.0828273749999937,
+          "objectSha256": "bedfd571599943175a5f9ff29d065b61df815069c66d78591114430bbf3d455d",
+          "depSha256": "007f77f881b1fde8b012df3e07861d7e61751413a7b57bfbdfc9e08f06a82a5e"
+        },
+        {
+          "seconds": 1.301877791999999,
+          "objectSha256": "c1fe999b8844ea5c5823904137f12b8e7125ba4ddaa17fc79f5ded766313c0c6",
+          "depSha256": "589b262ada80957e44ec1a2d5b31f6c4852fdf275b2a8ba65283903c43209604"
+        },
+        {
+          "seconds": 0.0697672080000018,
+          "objectSha256": "51a51710c6887ce62d306290d54fbec09e5ee3913bf49d4a869506fda5df01f7",
+          "depSha256": "becb349df520fc82030ef3ce00ae94a24b53d2f2139047617df349ef6755b037"
+        }
+      ]
+    }
+  },
+  "warm": {
+    "ccache": [
+      0.1004469169999993,
+      0.11728062499999226,
+      0.09919200000000217,
+      0.10184312500000203,
+      0.10249554199999977,
+      0.1072816669999952,
+      0.09048587499999883
+    ],
+    "sccache": [
+      0.18023033400000088,
+      0.16063441699999714,
+      0.16742495799999801,
+      0.16850629099999992,
+      0.16393991700000754,
+      0.17366108299999894,
+      0.1517857919999983
+    ]
+  },
+  "changedHeader": {
+    "plain": {
+      "wallSeconds": 3.124948875000001,
+      "objects": [
+        {
+          "seconds": 1.0092421669999965,
+          "objectSha256": "53e5903c8763ee842a88ed116767d32b4ec9ebf7838dbad51c3e3b07fe412d91",
+          "depSha256": "d650cb7d21bbe8f64834ebb87551ee414cfb87308df21586022c7ad45031ee23"
+        },
+        {
+          "seconds": 1.006262042000003,
+          "objectSha256": "8b420e4cfb7fadaa013042d1066e677608437c45296c584a9f99ec993c7d52ef",
+          "depSha256": "f442c720620ea93a9cbecd8c35f962e5e7bc5b78ed48487bc4f3adae9c182f18"
+        },
+        {
+          "seconds": 0.9757435409999999,
+          "objectSha256": "75a3c627ebf419c77f5f59b4a2da2e28524689d751ff66161915336b95d7063a",
+          "depSha256": "80b81ccc98c2c62d57bc553017dddbe08bbe61cd3f094ca6edf75a2b559495ae"
+        },
+        {
+          "seconds": 1.3205280420000065,
+          "objectSha256": "5fe47590670904256f3afc95d9a45aaa10e2fd5f3bccbb638115a22214ad170a",
+          "depSha256": "c91beb5606c5940c8e0f4573fe46b6ef4786b3f0faa82b4e0d5e064ecc073210"
+        },
+        {
+          "seconds": 1.306280000000001,
+          "objectSha256": "36cf0baf2a14929fde8e648bb162ed74574131cfb8acef215ff51927b87698b0",
+          "depSha256": "90e7353820435848c03262283118da451b6a37865c71e3e6b193fdac57b006e1"
+        },
+        {
+          "seconds": 1.302105124999997,
+          "objectSha256": "4e7a859c07fa471ce7c4d70ba731a7ce785c28b7ab99dcadd3f0c30a2eb1882a",
+          "depSha256": "007f77f881b1fde8b012df3e07861d7e61751413a7b57bfbdfc9e08f06a82a5e"
+        },
+        {
+          "seconds": 0.8243832499999968,
+          "objectSha256": "4894702f0036b1facfc44be7c96b0bb1e942ebf7adf4216db548c4852ba489bb",
+          "depSha256": "589b262ada80957e44ec1a2d5b31f6c4852fdf275b2a8ba65283903c43209604"
+        },
+        {
+          "seconds": 0.032902582999994934,
+          "objectSha256": "51a51710c6887ce62d306290d54fbec09e5ee3913bf49d4a869506fda5df01f7",
+          "depSha256": "becb349df520fc82030ef3ce00ae94a24b53d2f2139047617df349ef6755b037"
+        }
+      ]
+    },
+    "ccache": {
+      "wallSeconds": 3.9751970829999976,
+      "objects": [
+        {
+          "seconds": 1.6803092499999934,
+          "objectSha256": "53e5903c8763ee842a88ed116767d32b4ec9ebf7838dbad51c3e3b07fe412d91",
+          "depSha256": "d650cb7d21bbe8f64834ebb87551ee414cfb87308df21586022c7ad45031ee23"
+        },
+        {
+          "seconds": 1.6133211249999988,
+          "objectSha256": "8b420e4cfb7fadaa013042d1066e677608437c45296c584a9f99ec993c7d52ef",
+          "depSha256": "f442c720620ea93a9cbecd8c35f962e5e7bc5b78ed48487bc4f3adae9c182f18"
+        },
+        {
+          "seconds": 1.611632874999998,
+          "objectSha256": "75a3c627ebf419c77f5f59b4a2da2e28524689d751ff66161915336b95d7063a",
+          "depSha256": "80b81ccc98c2c62d57bc553017dddbe08bbe61cd3f094ca6edf75a2b559495ae"
+        },
+        {
+          "seconds": 1.1284483749999907,
+          "objectSha256": "5fe47590670904256f3afc95d9a45aaa10e2fd5f3bccbb638115a22214ad170a",
+          "depSha256": "c91beb5606c5940c8e0f4573fe46b6ef4786b3f0faa82b4e0d5e064ecc073210"
+        },
+        {
+          "seconds": 1.1315932910000015,
+          "objectSha256": "36cf0baf2a14929fde8e648bb162ed74574131cfb8acef215ff51927b87698b0",
+          "depSha256": "90e7353820435848c03262283118da451b6a37865c71e3e6b193fdac57b006e1"
+        },
+        {
+          "seconds": 1.1397671250000059,
+          "objectSha256": "4e7a859c07fa471ce7c4d70ba731a7ce785c28b7ab99dcadd3f0c30a2eb1882a",
+          "depSha256": "007f77f881b1fde8b012df3e07861d7e61751413a7b57bfbdfc9e08f06a82a5e"
+        },
+        {
+          "seconds": 1.2314878749999991,
+          "objectSha256": "4894702f0036b1facfc44be7c96b0bb1e942ebf7adf4216db548c4852ba489bb",
+          "depSha256": "589b262ada80957e44ec1a2d5b31f6c4852fdf275b2a8ba65283903c43209604"
+        },
+        {
+          "seconds": 0.011814666999995893,
+          "objectSha256": "51a51710c6887ce62d306290d54fbec09e5ee3913bf49d4a869506fda5df01f7",
+          "depSha256": "becb349df520fc82030ef3ce00ae94a24b53d2f2139047617df349ef6755b037"
+        }
+      ]
+    },
+    "sccache": {
+      "wallSeconds": 3.4127080409999877,
+      "objects": [
+        {
+          "seconds": 1.1284132920000047,
+          "objectSha256": "53e5903c8763ee842a88ed116767d32b4ec9ebf7838dbad51c3e3b07fe412d91",
+          "depSha256": "d650cb7d21bbe8f64834ebb87551ee414cfb87308df21586022c7ad45031ee23"
+        },
+        {
+          "seconds": 1.1197494169999942,
+          "objectSha256": "8b420e4cfb7fadaa013042d1066e677608437c45296c584a9f99ec993c7d52ef",
+          "depSha256": "f442c720620ea93a9cbecd8c35f962e5e7bc5b78ed48487bc4f3adae9c182f18"
+        },
+        {
+          "seconds": 1.1209057079999951,
+          "objectSha256": "75a3c627ebf419c77f5f59b4a2da2e28524689d751ff66161915336b95d7063a",
+          "depSha256": "80b81ccc98c2c62d57bc553017dddbe08bbe61cd3f094ca6edf75a2b559495ae"
+        },
+        {
+          "seconds": 1.0339614579999932,
+          "objectSha256": "5fe47590670904256f3afc95d9a45aaa10e2fd5f3bccbb638115a22214ad170a",
+          "depSha256": "c91beb5606c5940c8e0f4573fe46b6ef4786b3f0faa82b4e0d5e064ecc073210"
+        },
+        {
+          "seconds": 1.0285953329999984,
+          "objectSha256": "36cf0baf2a14929fde8e648bb162ed74574131cfb8acef215ff51927b87698b0",
+          "depSha256": "90e7353820435848c03262283118da451b6a37865c71e3e6b193fdac57b006e1"
+        },
+        {
+          "seconds": 1.0308303329999973,
+          "objectSha256": "4e7a859c07fa471ce7c4d70ba731a7ce785c28b7ab99dcadd3f0c30a2eb1882a",
+          "depSha256": "007f77f881b1fde8b012df3e07861d7e61751413a7b57bfbdfc9e08f06a82a5e"
+        },
+        {
+          "seconds": 1.2610790840000021,
+          "objectSha256": "4894702f0036b1facfc44be7c96b0bb1e942ebf7adf4216db548c4852ba489bb",
+          "depSha256": "589b262ada80957e44ec1a2d5b31f6c4852fdf275b2a8ba65283903c43209604"
+        },
+        {
+          "seconds": 0.007594667000006439,
+          "objectSha256": "51a51710c6887ce62d306290d54fbec09e5ee3913bf49d4a869506fda5df01f7",
+          "depSha256": "becb349df520fc82030ef3ce00ae94a24b53d2f2139047617df349ef6755b037"
+        }
+      ]
+    }
+  },
+  "statsBeforeMutation": {
+    "ccache": {
+      "autoconf_test": 0,
+      "bad_compiler_arguments": 0,
+      "bad_input_file": 0,
+      "bad_output_file": 0,
+      "cache_miss": 8,
+      "cache_size_kibibyte": 388,
+      "called_for_link": 0,
+      "called_for_preprocessing": 0,
+      "cleanups_performed": 0,
+      "compile_failed": 0,
+      "compiler_check_failed": 0,
+      "compiler_produced_empty_output": 0,
+      "compiler_produced_no_output": 0,
+      "compiler_produced_stdout": 0,
+      "could_not_find_compiler": 0,
+      "could_not_use_modules": 0,
+      "could_not_use_precompiled_header": 0,
+      "direct_cache_hit": 56,
+      "direct_cache_miss": 8,
+      "disabled": 0,
+      "error_hashing_extra_file": 0,
+      "files_in_cache": 16,
+      "internal_error": 0,
+      "local_storage_hit": 56,
+      "local_storage_miss": 8,
+      "local_storage_read_hit": 112,
+      "local_storage_read_miss": 16,
+      "local_storage_write": 16,
+      "max_cache_size_kibibyte": 500000,
+      "max_files_in_cache": 0,
+      "missing_cache_file": 0,
+      "modified_input_file": 0,
+      "multiple_source_files": 0,
+      "no_input_file": 0,
+      "output_to_stdout": 0,
+      "preprocessed_cache_hit": 0,
+      "preprocessed_cache_miss": 8,
+      "preprocessor_error": 0,
+      "recache": 0,
+      "remote_storage_error": 0,
+      "remote_storage_hit": 0,
+      "remote_storage_miss": 0,
+      "remote_storage_read_hit": 0,
+      "remote_storage_read_miss": 0,
+      "remote_storage_timeout": 0,
+      "remote_storage_write": 0,
+      "stats_updated_timestamp": 1792187542,
+      "stats_zeroed_timestamp": 0,
+      "unsupported_code_directive": 0,
+      "unsupported_compiler_option": 0,
+      "unsupported_environment_variable": 0,
+      "unsupported_source_encoding": 0,
+      "unsupported_source_language": 0
+    },
+    "sccache": {
+      "stats": {
+        "compile_requests": 64,
+        "requests_unsupported_compiler": 0,
+        "requests_not_compile": 0,
+        "requests_not_cacheable": 0,
+        "requests_executed": 64,
+        "cache_errors": {
+          "counts": {},
+          "adv_counts": {}
+        },
+        "cache_hits": {
+          "counts": {
+            "C/C++": 56
+          },
+          "adv_counts": {
+            "objc++ [clang]": 7,
+            "c++ [clang]": 42,
+            "c [clang]": 7
+          }
+        },
+        "cache_misses": {
+          "counts": {
+            "C/C++": 8
+          },
+          "adv_counts": {
+            "objc++ [clang]": 1,
+            "c [clang]": 1,
+            "c++ [clang]": 6
+          }
+        },
+        "cache_timeouts": 0,
+        "cache_read_errors": 0,
+        "non_cacheable_compilations": 0,
+        "forced_recaches": 0,
+        "cache_write_errors": 0,
+        "cache_writes": 8,
+        "cache_write_duration": {
+          "secs": 0,
+          "nanos": 3186918
+        },
+        "cache_read_hit_duration": {
+          "secs": 0,
+          "nanos": 9035665
+        },
+        "compilations": 8,
+        "compiler_write_duration": {
+          "secs": 6,
+          "nanos": 182688960
+        },
+        "compile_fails": 0,
+        "not_cached": {},
+        "dist_compiles": {},
+        "dist_errors": 0,
+        "multi_level": null
+      },
+      "cache_location": "Local disk: \"/tmp/cloakfox-cache-comparison-ler4l_gr/sccache\"",
+      "cache_size": 322055,
+      "max_cache_size": 536870912,
+      "use_preprocessor_cache_mode": true,
+      "version": "0.17.0",
+      "basedirs": []
+    }
+  },
+  "verifiedWarmCacheHits": {
+    "ccache": 56,
+    "sccache": 56
+  },
+  "finalStats": {
+    "ccache": {
+      "autoconf_test": 0,
+      "bad_compiler_arguments": 0,
+      "bad_input_file": 0,
+      "bad_output_file": 0,
+      "cache_miss": 15,
+      "cache_size_kibibyte": 464,
+      "called_for_link": 0,
+      "called_for_preprocessing": 0,
+      "cleanups_performed": 0,
+      "compile_failed": 0,
+      "compiler_check_failed": 0,
+      "compiler_produced_empty_output": 0,
+      "compiler_produced_no_output": 0,
+      "compiler_produced_stdout": 0,
+      "could_not_find_compiler": 0,
+      "could_not_use_modules": 0,
+      "could_not_use_precompiled_header": 0,
+      "direct_cache_hit": 57,
+      "direct_cache_miss": 15,
+      "disabled": 0,
+      "error_hashing_extra_file": 0,
+      "files_in_cache": 23,
+      "internal_error": 0,
+      "local_storage_hit": 57,
+      "local_storage_miss": 15,
+      "local_storage_read_hit": 121,
+      "local_storage_read_miss": 23,
+      "local_storage_write": 30,
+      "max_cache_size_kibibyte": 500000,
+      "max_files_in_cache": 0,
+      "missing_cache_file": 0,
+      "modified_input_file": 0,
+      "multiple_source_files": 0,
+      "no_input_file": 0,
+      "output_to_stdout": 0,
+      "preprocessed_cache_hit": 0,
+      "preprocessed_cache_miss": 15,
+      "preprocessor_error": 0,
+      "recache": 0,
+      "remote_storage_error": 0,
+      "remote_storage_hit": 0,
+      "remote_storage_miss": 0,
+      "remote_storage_read_hit": 0,
+      "remote_storage_read_miss": 0,
+      "remote_storage_timeout": 0,
+      "remote_storage_write": 0,
+      "stats_updated_timestamp": 1792187550,
+      "stats_zeroed_timestamp": 0,
+      "unsupported_code_directive": 0,
+      "unsupported_compiler_option": 0,
+      "unsupported_environment_variable": 0,
+      "unsupported_source_encoding": 0,
+      "unsupported_source_language": 0
+    },
+    "sccache": {
+      "stats": {
+        "compile_requests": 72,
+        "requests_unsupported_compiler": 0,
+        "requests_not_compile": 0,
+        "requests_not_cacheable": 0,
+        "requests_executed": 72,
+        "cache_errors": {
+          "counts": {},
+          "adv_counts": {}
+        },
+        "cache_hits": {
+          "counts": {
+            "C/C++": 57
+          },
+          "adv_counts": {
+            "c++ [clang]": 42,
+            "objc++ [clang]": 7,
+            "c [clang]": 8
+          }
+        },
+        "cache_misses": {
+          "counts": {
+            "C/C++": 15
+          },
+          "adv_counts": {
+            "c [clang]": 1,
+            "objc++ [clang]": 2,
+            "c++ [clang]": 12
+          }
+        },
+        "cache_timeouts": 0,
+        "cache_read_errors": 0,
+        "non_cacheable_compilations": 0,
+        "forced_recaches": 0,
+        "cache_write_errors": 0,
+        "cache_writes": 15,
+        "cache_write_duration": {
+          "secs": 0,
+          "nanos": 5331126
+        },
+        "cache_read_hit_duration": {
+          "secs": 0,
+          "nanos": 9144915
+        },
+        "compilations": 15,
+        "compiler_write_duration": {
+          "secs": 11,
+          "nanos": 600722879
+        },
+        "compile_fails": 0,
+        "not_cached": {},
+        "dist_compiles": {},
+        "dist_errors": 0,
+        "multi_level": null
+      },
+      "cache_location": "Local disk: \"/tmp/cloakfox-cache-comparison-ler4l_gr/sccache\"",
+      "cache_size": 378609,
+      "max_cache_size": 536870912,
+      "use_preprocessor_cache_mode": true,
+      "version": "0.17.0",
+      "basedirs": []
+    }
+  },
+  "warmMedians": {
+    "ccache": 0.10184312500000203,
+    "sccache": 0.16742495799999801
+  },
+  "correctness": "all objects match uncached compiler; changed header invalidated both caches"
+}
