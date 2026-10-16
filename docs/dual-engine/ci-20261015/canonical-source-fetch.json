@@ -1,0 +1,14 @@
+{
+  "run": 38907954031,
+  "job": 117067482794,
+  "failure": "Pinned ANGLE git fetch returned HTTP 503, exit 128, before compilation",
+  "revision": "464fd3e879d6bb72fe8210b3e58b59836f711951",
+  "log": "/tmp/cloakfox-canonical-38907954031.log",
+  "repair": "At most three attempts for explicit transient HTTP/DNS/connection errors or five-minute timeout, with 10/20 second backoff. Initialized repositories with no HEAD can resume. Origin and fetched/checked-out revision remain exact; existing wrong HEAD fails without reset. Objects are never deleted.",
+  "verification": {
+    "regression": "Transient fetch failed before fix, recovered to exact real Git fixture pin after fix; interrupted empty checkout recovered; exhausted HTTP503 and permanent missing-ref errors fail closed",
+    "ciHelpers": 32,
+    "workflowActionlint": "passed for build/chromium/chromium-source-segment",
+    "hosted": "pending"
+  }
+}

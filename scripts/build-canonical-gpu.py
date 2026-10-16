@@ -13,9 +13,11 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = Path(__file__).with_name('canonical-gpu')
@@ -76,8 +78,34 @@ def checkout(directory, url, revision):
         directory.mkdir(parents=True)
         run(['git', 'init', '-q'], directory)
         run(['git', 'remote', 'add', 'origin', url], directory)
-        run(['git', 'fetch', '--depth', '1', 'origin', revision], directory)
-        run(['git', 'checkout', '--detach', 'FETCH_HEAD'], directory)
+    if output(['git', 'remote', 'get-url', 'origin'], directory) != url:
+        raise ValueError(f'wrong pinned origin in {directory}')
+    head = subprocess.run(['git', 'rev-parse', '--verify', 'HEAD'], cwd=directory,
+                          capture_output=True, text=True)
+    if head.returncode:
+        # Resume an initialized repository whose first fetch never completed.
+        # Only transient transport failures are retried; bad pins fail directly.
+        for attempt in range(3):
+            try:
+                result = run(['git', 'fetch', '--depth', '1', 'origin', revision], directory,
+                             capture_output=True, text=True, timeout=300)
+                print(result.stderr, end='', file=sys.stderr, flush=True)
+                break
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+                detail = error.stderr or ''
+                if isinstance(detail, bytes):
+                    detail = detail.decode('utf-8', errors='replace')
+                print(detail, end='', file=sys.stderr, flush=True)
+                transient = isinstance(error, subprocess.TimeoutExpired) or re.search(
+                    r'HTTP (?:429|500|502|503|504)\b|Could not resolve host|Connection reset|Connection timed out',
+                    detail, re.IGNORECASE)
+                if not transient or attempt == 2:
+                    raise
+                print(f'Pinned fetch transport failed; retry {attempt + 2}/3', flush=True)
+                time.sleep(10 * (attempt + 1))
+        if output(['git', 'rev-parse', 'FETCH_HEAD'], directory) != revision:
+            raise ValueError(f'fetched revision differs from pin in {directory}')
+        run(['git', 'checkout', '--detach', revision], directory)
     if output(['git', 'rev-parse', 'HEAD'], directory) != revision:
         raise ValueError(f'wrong pinned revision in {directory}; use a fresh work directory')
 
