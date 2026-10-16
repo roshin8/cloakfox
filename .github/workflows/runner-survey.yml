@@ -1,0 +1,37 @@
+name: Browser build runner survey
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/firefox-158-port]
+    paths:
+      - .github/workflows/runner-survey.yml
+      - scripts/ci/runner_probe.py
+      - tests/ci/test_runner_probe.py
+
+permissions:
+  contents: read
+
+jobs:
+  survey:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-26, xcode-27]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test capability evaluator
+        run: python3 -m unittest discover -s tests/ci -v
+      - name: Measure storage, Xcode and actual Metal execution
+        run: python3 scripts/ci/runner_probe.py --output runner-capabilities.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runner-capabilities-${{ matrix.runner }}
+          path: runner-capabilities.json
+          if-no-files-found: error
