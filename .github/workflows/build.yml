@@ -25,6 +25,9 @@ concurrency:
 
 jobs:
   chromium:
+    permissions:
+      contents: read
+      checks: write
     uses: ./.github/workflows/chromium.yml
 
   canonical-gpu-macos:

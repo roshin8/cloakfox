@@ -129,3 +129,46 @@ Linux browser build/runtime jobs are now opt-in through the manual workflow's
 do not schedule those browser jobs. Shared unit checks remain enabled. Deferred
 Linux coverage is not reported as passing; existing cross-platform release
 dependencies remain unchanged. No Windows browser job is currently defined.
+
+
+## Chromium runner versus compiler observations
+
+The active job's downloadable log stopped at 18:12:31 UTC on October 16, 2026,
+after 15,453 of 58,410 commands. Its last 30-second parent progress message was
+18:12:18 UTC, with 81.1 GiB free. The log blob's Last-Modified is 18:12:33 UTC;
+repeated CLI downloads remain byte-identical. GitHub still reports in_progress
+and has not provided a disconnect annotation. This does not establish whether
+the VM/runner, log transport, or build supervision stopped. A hosted runner ID
+returning 404 from the self-hosted-runner API is not proof of a disconnect.
+
+A separate harness bug was reproduced: a full Actions stdout pipe blocks the
+same loop that enforces the Ninja deadline. The repaired Actions-only pipe/socket
+mirror writes without blocking and counts dropped console bytes; the original
+child output remains complete in its evidence file. The blocked-pipe regression
+now reaches checkpoint with all four million original child bytes preserved.
+
+The source job also starts an independent, lightweight observer thread before
+host fingerprinting. Once per minute it writes JSON/JSONL observations and updates
+a `Chromium runner telemetry / N` check through the GitHub Checks API. This channel
+does not depend on Actions console delivery. Each update is a neutral snapshot,
+including its observedAt timestamp; it is not a native-build success result and
+cannot leave a new pending check behind after runner loss. The credential is
+removed from the environment before launching build children. Snapshots contain
+process executable names, CPU/RSS/state and log/stage age, never command arguments.
+The checks:write permission is confined to the Chromium reusable-workflow chain.
+
+Compare fresh snapshots and individual PIDs with log growth. CPU totals cover
+currently live processes and can decrease when compilers exit. Fresh observations
+with growing raw logs indicate a running build even if the console relay is stale;
+fresh observations with a stale stage file distinguish a supervision problem.
+No output plus no CPU change alone is not proof of a compiler deadlock. Missing
+observations still require runner annotations or diagnostic evidence to distinguish
+VM loss from network/API failure. Telemetry publishing errors are preserved locally
+and do not waive or turn green the mandatory build/runtime gates.
+
+The repository now enables [GitHub runner diagnostic logging](https://docs.github.com/en/actions/how-tos/monitor-workflows/enable-debug-logging)
+with ACTIONS_RUNNER_DEBUG=true for subsequent jobs. Existing active jobs are not
+retrofitted or cancelled. All 44 CI helper tests, native handoff fixtures and
+workflow lint passed; small fixtures use simulated capacity and retain the explicit
+low-space negative tests. Hosted telemetry delivery and the active job's actual
+failure cause remain pending. [Evidence](ci-20261015/chromium-runner-observation.json).

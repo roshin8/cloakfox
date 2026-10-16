@@ -1,0 +1,32 @@
+{
+  "run": 38907954031,
+  "job": 117067482647,
+  "observed": {
+    "lastCompilerLogUtc": "2026-10-16T18:12:31.525774Z",
+    "lastStep": "15453/58410",
+    "lastProgressUtc": "2026-10-16T18:12:18.646241Z",
+    "freeGiBAtLastProgress": 81.1,
+    "blobLastModifiedUtc": "2026-10-16T18:12:33Z",
+    "downloadedBytes": 2115517,
+    "apiState": "in_progress",
+    "disconnectAnnotations": 0
+  },
+  "assessment": "Current runner disconnect versus stalled execution is not established. Snapshot logs stopped; no public hosted-runner health endpoint, terminal annotation or remote process evidence is available. In-progress status is not compiler liveness. CLI-only investigation per user.",
+  "confirmedSeparateBug": "Reproduced Actions console pipe backpressure blocking Pipeline.run before it can enforce the owned Ninja deadline. Against original HEAD the regression stays running past deadline; repaired mirror reaches checkpoint and retains exact 4MB child output in file evidence.",
+  "repair": "Actions pipe/socket console mirror is nonblocking and counts dropped mirror bytes; original child evidence remains lossless. Independent thread samples parent/descendant CPU per PID, RSS/state, raw log size/age and stage age every60sec; publishes neutral point-in-time GitHub Checks observations independently of stdout and local JSON/JSONL. Diagnostic token removed before build child environment copy. Strict native outcome/checkpoint/runtime gates unchanged.",
+  "githubRunnerDiagnostics": {
+    "ACTIONS_RUNNER_DEBUG": "true",
+    "configuredVia": "authenticated gh variable set; no active job restart"
+  },
+  "verification": {
+    "ciHelperTests": 44,
+    "fixtureCapacity": "20GiB simulated for small helper fixtures; production10GiBguard untouched; explicit9GiB negative cases still pass",
+    "blockedConsole": "RED original / GREEN repair with full raw child output retained",
+    "observer": "real owned child ps snapshot, no command arguments, independent thread/finalization, token removal and POST/PATCH neutral contract",
+    "realNinjaAndMachO": "passed",
+    "actionlint": "three workflows passed",
+    "review": "no blockers",
+    "hosted": "pending; cannot retrofit active job"
+  },
+  "preserved": "No active build cancellation/interruption, duplicate dispatch, production checkpoint/cache/object deletion, Linux/Windows browser work, local identity build or drive recovery."
+}

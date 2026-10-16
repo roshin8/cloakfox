@@ -7,6 +7,8 @@ from unittest.mock import patch
 import json
 from pathlib import Path
 import selectors
+import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -17,6 +19,46 @@ SCRIPT = Path(__file__).resolve().parents[2] / 'scripts/ci/chromium_source.py'
 
 
 class ChromiumProgress(unittest.TestCase):
+    def test_blocked_actions_console_cannot_block_compiler_deadline(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            child = "import sys,time;sys.stdout.write('x'*4000000);sys.stdout.flush();time.sleep(10)"
+            driver = ("import importlib.util,os,sys\nfrom pathlib import Path\n"
+                      f"s=importlib.util.spec_from_file_location('pipeline',{str(SCRIPT)!r})\n"
+                      "m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
+                      "os.environ['GITHUB_ACTIONS']='true'\n"
+                      "m.POLL_INTERVAL=.01;m.PROGRESS_INTERVAL=.05\n"
+                      "from types import SimpleNamespace\n"
+                      "m.shutil.disk_usage=lambda _:SimpleNamespace(free=20*m.GIB)\n"
+                      f"m.Pipeline(Path({folder!r})).run('fixture',[sys.executable,'-u','-c',{child!r}],time_budget_seconds=.2)\n")
+            process = subprocess.Popen([sys.executable, '-u', '-c', driver], stdout=subprocess.PIPE,
+                                       stderr=subprocess.DEVNULL)
+            status = {}
+            try:
+                deadline = time.monotonic() + 3
+                while time.monotonic() < deadline:
+                    try:
+                        status = json.loads((root / 'evidence/stage.json').read_text())
+                    except (FileNotFoundError, json.JSONDecodeError):
+                        pass
+                    if status.get('state') == 'checkpoint':
+                        break
+                    time.sleep(.02)
+                # Intentionally never drain the Actions console pipe until after
+                # the deadline decision: the evidence file must remain exact.
+                self.assertEqual(status.get('state'), 'checkpoint')
+                self.assertGreater(status['consoleDroppedBytes'], 0)
+                self.assertTrue((root / 'evidence/fixture.log').read_bytes().startswith(b'x' * 4000000))
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                if status.get('childPid'):
+                    try:
+                        os.killpg(status['childPid'], signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                process.communicate(timeout=3)
+
     def observe_running(self, child_output, expected):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -29,6 +71,8 @@ class ChromiumProgress(unittest.TestCase):
                       f"s=importlib.util.spec_from_file_location('pipeline',{str(SCRIPT)!r})\n"
                       "m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
                       "m.PROGRESS_INTERVAL=.1;m.POLL_INTERVAL=.02\n"
+                      "from types import SimpleNamespace\n"
+                      "m.shutil.disk_usage=lambda _:SimpleNamespace(free=20*m.GIB)\n"
                       f"m.Pipeline(Path({folder!r})).run('fixture',[sys.executable,'-u','-c',{child!r}])\n")
             process = subprocess.Popen([sys.executable, '-u', '-c', driver], stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT)

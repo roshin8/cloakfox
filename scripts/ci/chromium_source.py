@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pinned Chromium/CEF source pipeline for fresh macOS arm64 CI workspaces."""
 import argparse
+import atexit
 import ast
 import codecs
 import hashlib
@@ -9,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import stat
 import shutil
 import subprocess
 import sys
@@ -21,6 +23,52 @@ ENGINE = REPO / 'engines/chromium'
 GIB = 1024**3
 POLL_INTERVAL = 1
 PROGRESS_INTERVAL = 30
+
+
+class ActionsConsole:
+    """Best-effort console mirror; the original evidence files stay lossless.
+
+    A stopped runner log consumer must not block compiler supervision or the
+    checkpoint deadline. Only pipe/socket output on Actions uses nonblocking IO.
+    """
+    def __init__(self, stream):
+        self.stream = stream
+        self.dropped_bytes = 0
+        self.fd = None
+        try:
+            descriptor = stream.fileno()
+            mode = os.fstat(descriptor).st_mode
+            if stat.S_ISFIFO(mode) or stat.S_ISSOCK(mode):
+                self.fd = descriptor
+        except (AttributeError, OSError, ValueError):
+            pass
+
+    def write(self, value):
+        if self.fd is None:
+            return self.stream.write(value)
+        data = value.encode(self.encoding, errors='replace')
+        blocking = os.get_blocking(self.fd)
+        try:
+            os.set_blocking(self.fd, False)
+            try:
+                written = os.write(self.fd, data)
+            except (BlockingIOError, BrokenPipeError):
+                written = 0
+            self.dropped_bytes += len(data) - written
+        finally:
+            os.set_blocking(self.fd, blocking)
+        return len(value)
+
+    def flush(self):
+        if self.fd is None:
+            self.stream.flush()
+
+    @property
+    def encoding(self):
+        return self.stream.encoding or 'utf-8'
+
+    def __getattr__(self, name):
+        return getattr(self.stream, name)
 
 
 def digest(path):
@@ -88,6 +136,8 @@ def refresh_sdk(source, out, sdk):
 
 class Pipeline:
     def __init__(self, root):
+        if os.environ.get('GITHUB_ACTIONS') == 'true' and not isinstance(sys.stdout, ActionsConsole):
+            sys.stdout = ActionsConsole(sys.stdout)
         self.root = root
         self.logs = root / 'evidence'
         self.logs.mkdir(parents=True, exist_ok=True)
@@ -159,6 +209,7 @@ class Pipeline:
                                       outputIdleSeconds=round(now - last_output, 1),
                                       outputBytes=output_bytes, freeBytes=free,
                                       minimumFreeBytes=minimum_free, updated=time.time())
+                        status['consoleDroppedBytes'] = getattr(sys.stdout, 'dropped_bytes', 0)
                         (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
                         print(f"\nPROGRESS {name}: pid={process.pid} elapsed={now-started:.0f}s "
                               f"output-idle={now-last_output:.0f}s bytes={output_bytes} "
@@ -174,6 +225,7 @@ class Pipeline:
                           elapsedSeconds=round(time.monotonic() - started, 1), outputBytes=output_bytes,
                           outputIdleSeconds=round(time.monotonic() - last_output, 1),
                           freeBytes=shutil.disk_usage(self.root).free)
+            status['consoleDroppedBytes'] = getattr(sys.stdout, 'dropped_bytes', 0)
             if storage_error:
                 status['error'] = storage_error
             (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
@@ -334,6 +386,8 @@ class Pipeline:
 
 
 def main():
+    if os.environ.get('GITHUB_ACTIONS') == 'true' and not isinstance(sys.stdout, ActionsConsole):
+        sys.stdout = ActionsConsole(sys.stdout)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--jobs', type=int, default=3)
@@ -347,6 +401,13 @@ def main():
         parser.error('compile-minutes must be 1–240')
     if not args.checkpoint_out:
         parser.error('--checkpoint-out is required to preserve unfinished compilation')
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        observer_spec = importlib.util.spec_from_file_location('chromium_observer', Path(__file__).with_name('chromium_observer.py'))
+        observer_module = importlib.util.module_from_spec(observer_spec)
+        observer_spec.loader.exec_module(observer_module)
+        observer = observer_module.Observer(args.root, args.checkpoint_out.parent)
+        observer.start()
+        atexit.register(observer.stop)
     spec = importlib.util.spec_from_file_location('chromium_checkpoint', Path(__file__).with_name('chromium_checkpoint.py'))
     checkpoint = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(checkpoint)
