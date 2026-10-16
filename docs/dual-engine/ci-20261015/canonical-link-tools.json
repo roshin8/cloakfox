@@ -1,0 +1,29 @@
+{
+  "run": 38959824435,
+  "job": 117173955876,
+  "failedStep": "Build and verify CPU renderer",
+  "failure": "SwiftShader SOLINK at1371/1782: linker_driver.py output_toc cannot execute llvm-otool",
+  "log": "/tmp/cloakfox-canonical-38959824435.log",
+  "cause": "Workflow installed pinned update.py default clang package only. Pinned update.py supplies llvm-otool and llvm-nm in separate --package objdump archive. Acquisition custom_deps omits binary packages and sync uses --nohooks.",
+  "pinnedToolsClangRevision": "8d23b8570fcc6bde8797b55cca9cafc6ba924338",
+  "upstreamInstaller": "https://chromium.googlesource.com/chromium/src/tools/clang/+/8d23b8570fcc6bde8797b55cca9cafc6ba924338/scripts/update.py",
+  "repair": "Install --package objdump AFTER default clang; preflight executable and --version for clang++, llvm-otool, llvm-nm, llvm-strip, llvm-install-name-tool before native compilation.",
+  "verification": {
+    "regression": "Installer ordering/package/preflight workflow contract RED before, GREEN after",
+    "helpers": 49,
+    "workflowLint": "six affected/reusable/platform workflows pass",
+    "archiveChecks": "Both official Mac_arm64 archives downloaded into isolated /tmp fixture and SHA256 matched pinned ANGLE DEPS",
+    "clangArchiveSha256": "e96c5e31ddc2a6e841bcb0f7278ae82b3a581799904276e6f7673213c9748c27",
+    "objdumpArchiveSha256": "b6c6c0b1b4147ba4d51603713d3ed21f88ee2f506ff07fb432b3444f1d323295",
+    "realMachO": "Pinned clang++ compiled/linked minimal dylib against host SDK; pinned llvm-install-name-tool changed ID, llvm-strip succeeded, llvm-otool verified ID/load commands, llvm-nm verified exported fixture symbol; all five --version commands passed",
+    "fixtureWarning": "System linker warned missing optional libLTO.dylib; fixture used no LTO and linked successfully. Does not establish full SwiftShader link success.",
+    "localCapacity": "Small helper fixtures simulated20GiB free; production10GiB guard and explicit low-space negatives unchanged",
+    "review": "No blocking findings"
+  },
+  "pending": [
+    "Hosted complete GPU build/link/signing",
+    "Gecko Mac same-run renderer handoff and browser runtime",
+    "Chromium full source/checkpoint restore/runtime"
+  ],
+  "scope": "macOS Actions only; active Chromium run preserved; no local identity build or dirty implementation modified"
+}

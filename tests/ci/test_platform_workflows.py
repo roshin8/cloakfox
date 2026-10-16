@@ -26,6 +26,15 @@ class PlatformWorkflows(unittest.TestCase):
         self.assertIn('draft: true', release)
         self.assertIn('scripts/release_security.py', release)
 
+    def test_renderer_installs_pinned_auxiliary_tools_after_clang(self):
+        job = jobs('build-macos.yml')['canonical-gpu-macos']
+        clang = 'python3 "$RUNNER_TEMP/canonical-build/angle/tools/clang/scripts/update.py"'
+        self.assertIn(clang + ' --package objdump', job)
+        self.assertLess(job.index(clang + '\n'), job.index(clang + ' --package objdump'))
+        for tool in ('clang++', 'llvm-otool', 'llvm-nm', 'llvm-strip', 'llvm-install-name-tool'):
+            self.assertIn(tool, job)
+        self.assertIn('test -x', job)
+
     def test_deferred_platforms_cannot_run_on_push_or_pr(self):
         for platform in ('linux', 'windows'):
             with self.subTest(platform=platform):

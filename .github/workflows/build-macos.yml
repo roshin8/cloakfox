@@ -36,7 +36,17 @@ jobs:
       - name: Acquire pinned CPU renderer sources
         run: python3 -u scripts/build-canonical-gpu.py --work-dir "$RUNNER_TEMP/canonical-build" --acquire
       - name: Install renderer's pinned Clang toolchain
-        run: python3 "$RUNNER_TEMP/canonical-build/angle/tools/clang/scripts/update.py"
+        run: |
+          set -euo pipefail
+          python3 "$RUNNER_TEMP/canonical-build/angle/tools/clang/scripts/update.py"
+          # Auxiliary Mach-O tools are a separate package at this pinned revision.
+          # Install after clang: the main package replaces the toolchain directory.
+          python3 "$RUNNER_TEMP/canonical-build/angle/tools/clang/scripts/update.py" --package objdump
+          tool_bin="$RUNNER_TEMP/canonical-build/angle/third_party/llvm-build/Release+Asserts/bin"
+          for tool in clang++ llvm-otool llvm-nm llvm-strip llvm-install-name-tool; do
+            test -x "$tool_bin/$tool"
+            "$tool_bin/$tool" --version
+          done
       - name: Build and verify CPU renderer
         run: |
           set -euo pipefail
