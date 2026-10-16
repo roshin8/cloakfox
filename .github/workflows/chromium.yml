@@ -1,0 +1,98 @@
+name: Chromium source and runtime
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: macos-26
+    timeout-minutes: 350
+    env:
+      CCACHE_DIR: ${{ runner.temp }}/ccache
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate CI helpers
+        run: python3 -m unittest discover -s tests/ci -v
+      - name: Reclaim hosted Mac space and require full build capacity
+        run: python3 scripts/ci/prepare_macos.py --output "$RUNNER_TEMP/capacity.json"
+      - name: Install build tools
+        run: |
+          brew install cmake ninja ccache
+          ccache --max-size 5G
+      - name: Restore compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: chromium-arm64-${{ runner.os }}-${{ hashFiles('engines/chromium/*lock.json', 'engines/chromium/patches/*.patch') }}
+          restore-keys: chromium-arm64-${{ runner.os }}-
+      - name: Build pinned source framework and both test clients
+        run: python3 -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3
+      - name: Upload source-built companion and unpatched control
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-macos-arm64-test-apps
+          path: ${{ runner.temp }}/chromium-build/chromium-apps.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve capacity, source provenance and stage logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-source-evidence
+          path: |
+            ${{ runner.temp }}/capacity.json
+            ${{ runner.temp }}/chromium-build/evidence/
+          if-no-files-found: error
+          retention-days: 14
+
+  runtime:
+    needs: source
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: chromium-macos-arm64-test-apps
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: chromium-source-evidence
+          path: evidence/source
+      - name: Verify same-commit artifact and embedded source framework
+        run: |
+          mkdir -p apps evidence/runtime
+          python3 scripts/ci/verify_chromium_artifact.py --archive artifacts/chromium-apps.tar.gz --evidence evidence/source --destination apps
+          echo "CLOAKFOX_CHROMIUM_BIN=$PWD/apps/patched-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" >> "$GITHUB_ENV"
+          echo "CLOAKFOX_UNPATCHED_CHROMIUM_BIN=$PWD/apps/baseline-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" >> "$GITHUB_ENV"
+      - name: Install owned transport probe dependencies
+        run: python3 -m pip install -r tests/network/requirements-wire.txt
+      - name: Require actual Metal execution
+        run: |
+          python3 scripts/ci/runner_probe.py --output evidence/runtime/runner.json
+          python3 -c 'import json; assert json.load(open("evidence/runtime/runner.json"))["metalAvailable"], "Metal compute unavailable"'
+      - name: Native engine and privacy tests with unpatched control
+        run: |
+          set -o pipefail
+          python3 scripts/ci/run_engine_tests.py 2>&1 | tee evidence/runtime/engine-tests.log
+      - name: Sandbox and storage isolation
+        run: python3 tests/engines/probe_cef_isolation.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report evidence/runtime/isolation.json
+      - name: Owned TCP and QUIC transport and certificate rejection
+        run: python3 tests/engines/probe_cef_transport.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report evidence/runtime/transport.json
+      - name: Preserve actual runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-runtime-evidence
+          path: evidence/runtime/
+          if-no-files-found: error
+          retention-days: 14

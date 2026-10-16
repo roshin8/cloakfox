@@ -3,11 +3,22 @@ name: Build Cloakfox
 on:
   workflow_dispatch:
   push:
+    branches: [main, codex/firefox-158-port]
     tags:
       - "v*"
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  chromium:
+    uses: ./.github/workflows/chromium.yml
+
   build-macos:
     runs-on: macos-26
     env:
@@ -127,6 +138,7 @@ jobs:
         with:
           name: cloakfox-macos-arm64
           path: dist/Cloakfox-macos-arm64.dmg
+          if-no-files-found: error
 
   build-linux:
     runs-on: ubuntu-24.04
@@ -263,13 +275,11 @@ jobs:
           # Never silently upload nothing again.
           if-no-files-found: error
 
-  # Runs the selenium fingerprint probe suite against the packaged macOS build.
+  # Runtime probes and browser-dependent unit failures both block the job.
   # Without this nothing exercises tests/fingerprint/ automatically, and the
   # regressions it guards are SILENT by nature — a dead cloak_cfg key, an
   # unseeded jitter or a mismatched key name changes no visible behaviour, so a
-  # human would not notice one. Non-blocking for releases (continue-on-error)
-  # because a probe needs a real browser launch and can be flaky on CI runners;
-  # the summary still shows the table.
+  # human would not notice one. Capture both suites before the final hard gate.
   fingerprint-tests:
     needs: build-macos
     runs-on: macos-26
@@ -315,6 +325,7 @@ jobs:
           python tests/fingerprint/run_all.py 2>&1 | tee /tmp/probe-output.txt
 
       - name: Browser-dependent unit tests
+        id: browser_units
         continue-on-error: true
         env:
           CLOAKFOX_BIN: /tmp/cfx-app/Cloakfox.app/Contents/MacOS/cloakfox
@@ -347,7 +358,7 @@ jobs:
           path: /tmp/probe-output.txt
 
       - name: Fail if probes regressed
-        if: steps.probes.outcome == 'failure'
+        if: always() && (steps.probes.outcome != 'success' || steps.browser_units.outcome != 'success')
         run: |
           echo "One or more fingerprint probes failed — see the job summary."
           echo "Probes are the only guard against SILENT spoofing regressions."
@@ -427,6 +438,7 @@ jobs:
           python tests/fingerprint/run_all.py 2>&1 | tee /tmp/probe-output-linux.txt
 
       - name: Browser-dependent unit tests
+        id: browser_units
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -455,7 +467,7 @@ jobs:
           path: /tmp/probe-output-linux.txt
 
       - name: Fail if probes regressed
-        if: steps.probes.outcome == 'failure'
+        if: always() && (steps.probes.outcome != 'success' || steps.browser_units.outcome != 'success')
         run: |
           echo "One or more fingerprint probes failed on LINUX."
           echo "A Linux-only failure usually means an assertion assumed a macOS host."
@@ -485,6 +497,11 @@ jobs:
 
       - name: Install pytest
         run: pip install pytest
+
+      - name: Engine and CI helper unit tests (native runtime runs separately)
+        run: |
+          python3 -m unittest discover -s tests/ci -v
+          python3 -m unittest discover -s tests/engines -p 'test_*.py' -v
 
       - name: Node unit tests
         run: |
@@ -517,6 +534,52 @@ jobs:
           python -m unittest discover -s tests/blocker -p 'test_*.py'
           python -m unittest discover -s tests/network -p 'test_*.py'
 
+  dual-engine-tests:
+    needs: [build-macos, chromium]
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime test dependencies
+        run: |
+          python3 -m pip install selenium
+          brew install geckodriver
+      - uses: actions/download-artifact@v4
+        with:
+          name: cloakfox-macos-arm64
+          path: artifacts/gecko
+      - uses: actions/download-artifact@v4
+        with:
+          name: chromium-macos-arm64-test-apps
+          path: artifacts/chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: chromium-source-evidence
+          path: evidence/source
+      - name: Verify and extract same-commit browsers
+        run: |
+          mkdir -p apps evidence/coexistence
+          python3 scripts/ci/verify_chromium_artifact.py --archive artifacts/chromium/chromium-apps.tar.gz --evidence evidence/source --destination apps
+          hdiutil attach artifacts/gecko/Cloakfox-macos-arm64.dmg -mountpoint /tmp/coexist-gecko -nobrowse -readonly
+          cp -R /tmp/coexist-gecko/Cloakfox.app apps/
+          hdiutil detach /tmp/coexist-gecko
+      - name: Concurrent Gecko 158 and Chromium persona and storage checks
+        run: |
+          python3 tests/engines/probe_dual_engine_coexistence.py \
+            --gecko-binary "$PWD/apps/Cloakfox.app/Contents/MacOS/cloakfox" \
+            --chromium-binary "$PWD/apps/patched-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" \
+            --require-persona-config --require-pixel-privacy \
+            --report evidence/coexistence/dual-engine.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dual-engine-runtime-evidence
+          path: evidence/coexistence/
+          if-no-files-found: error
+
   release:
     # Gates on the probe suites, not just the builds. A build only proves the
     # thing compiles and packages; the probes are what verify the browser
@@ -527,7 +590,7 @@ jobs:
     # uploading no artifact at all (a *.tar.bz2 glob against a .tar.xz file),
     # so "the build job passed" has already proven to be a weak release signal
     # here.
-    needs: [build-macos, build-linux, fingerprint-tests, fingerprint-tests-linux]
+    needs: [build-macos, build-linux, fingerprint-tests, fingerprint-tests-linux, unit-tests, chromium, dual-engine-tests]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
@@ -542,9 +605,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: cloakfox-*
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
           generate_release_notes: true
