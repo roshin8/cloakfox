@@ -192,3 +192,12 @@ repaired without disabling assertions. Prior SDKs/apps remain preserved.
 See [scope, evidence and limitations](cef-worker-gpu-privacy.md) and
 [the dated result](cef-worker-gpu-privacy-20261015.json). Privacy parity, shared
 configuration/UI and authenticated H2/H3 isolation remain pending.
+
+## Selective Metal WebGPU image readback — 2026-10-15
+
+The next native increment applies the same Canvas2D HMAC noise after validated
+RGBA8/BGRA8/sRGB texture-to-buffer copies, leaving source textures, padding,
+nonopaque pixels and integer texture/compute output unchanged. All 68 engine
+checks, CTest, sandbox/isolation and pre-certificate transport probes pass.
+See [scope and evidence](cef-webgpu-pixel-privacy.md). Other backends/formats,
+shader extraction and general GPU fingerprints remain outside scope.

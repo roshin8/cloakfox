@@ -182,3 +182,14 @@ workloads and pre-certificate transport checks pass. See
 identity follows the effective storage pool owner, including intentionally
 unpartitioned pools. General GPU capabilities, other pixel formats, persona/shared
 configuration and UI remain open; milestone 3 stays incomplete.
+
+### Selective WebGPU image-copy increment — 2026-10-15
+
+Metal RGBA8/BGRA8/sRGB opaque texture-to-buffer copies now receive native GPU HMAC
+noise matching Canvas2D. Validated execution order avoids stale map-time tags;
+compute/queue/clear overwrites and rejected submissions preserve ordinary byte
+semantics. All 68 engine tests, CTest, actual GPU workloads, sandbox/isolation and
+pre-certificate transport probes pass. See
+`../../dual-engine/cef-webgpu-pixel-privacy-20261015.json`. Other WebGPU backends,
+formats/nonopaque pixels, shader extraction, general capabilities and shared
+settings remain open. Milestone 3 is still incomplete.

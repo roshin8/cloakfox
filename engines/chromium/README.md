@@ -238,3 +238,14 @@ script's `--check` for the combined final state. New ready capabilities are
 The launcher accepts `--disable-canvas-privacy` and `--block-webgpu-readback`,
 rejecting unsupported native builds. `privacyPatched` remains false.
 See [coverage, worker-pool semantics and limitations](../../docs/dual-engine/cef-worker-gpu-privacy.md).
+
+### Selective WebGPU image readback
+
+The third patch, `apply_webgpu_pixel_patch.py`, adds Metal RGBA8/BGRA8/sRGB opaque
+pixel noise at validated texture-to-buffer copy execution. It matches Canvas2D's
+native HMAC transform. Source textures, padding and ordinary compute buffers stay
+unchanged; later copies/writes have normal byte semantics. Apply it after the
+worker/GPU patch and use this final script's `--check` for all inherited hashes.
+`webgpuPixelReadbackVersion:1` reports this Metal-only increment. It uses the
+existing canvas policy; the independent all-READ-map block remains available.
+See [scope and verified results](../../docs/dual-engine/cef-webgpu-pixel-privacy.md).

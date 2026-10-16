@@ -201,6 +201,8 @@ class WorkerPrivacy(unittest.TestCase):
     def test_shared_service_gpu_workloads_and_metadata(self):
         browser = self.app.open('105', self.url)
         expected = self.digest(self.app.evaluate(browser, READ))
+        document_gpu = self.app.evaluate(browser, '(async()=>{' + WEBGPU_WORK + 'return workload()})()')
+        self.assertEqual(document_gpu['compute'], [i*17+23 for i in range(256)])
         for kind in ('shared', 'service'):
             with self.subTest(kind=kind):
                 gl = self.worker(browser, kind, 'webgl')
@@ -213,6 +215,19 @@ class WorkerPrivacy(unittest.TestCase):
                 self.assertNotIn('failure', gpu, gpu)
                 self.assertTrue(gpu['renderSubmitted'] and gpu['writeAllowed'])
                 self.assertEqual(gpu['compute'], [i*17+23 for i in range(256)])
+                def rgba_pixels(value):
+                    pixels = [value['pixels'][y*256+x*4:y*256+x*4+4]
+                              for y in range(8) for x in range(8)]
+                    if value['format'] == 'bgra8unorm':
+                        pixels = [[p[2],p[1],p[0],p[3]] for p in pixels]
+                    else:
+                        self.assertEqual(value['format'], 'rgba8unorm')
+                    return pixels
+                actual = rgba_pixels(gpu)
+                self.assertEqual(actual, rgba_pixels(document_gpu), 'Worker WebGPU pixel owner differs from document')
+                self.assertTrue(any(pixel != [64,128,191,255] for pixel in actual), 'Worker WebGPU pixels lack noise')
+                self.assertTrue(all(pixel[3] == 255 and all(abs(v-r) <= 1 for v,r in zip(pixel[:3], [64,128,191]))
+                                    for pixel in actual))
                 self.assertEqual(gpu['adapter'], gpu['device'])
                 self.assertTrue(all(value == '' for value in gpu['adapter'].values()))
                 self.assertEqual(gpu['errors'], [])

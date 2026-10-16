@@ -1,5 +1,9 @@
 # Chromium worker and GPU privacy increment
 
+For the newer selective Metal image-copy transform, see
+[WebGPU pixel privacy](cef-webgpu-pixel-privacy.md). This page records the earlier
+worker/GPU increment.
+
 This is an extension of the experimental native canvas patch, not full privacy
 parity. Runtime evidence is recorded in
 [the dated report](cef-worker-gpu-privacy-20261015.json).

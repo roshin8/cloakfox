@@ -236,6 +236,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     };
     webgpuVersion_ = nativeVersion("cloakfox.webgpu_privacy_version");
     ready->SetInt("webgpuPrivacyVersion", webgpuVersion_);
+    ready->SetInt("webgpuPixelReadbackVersion", nativeVersion("cloakfox.webgpu_pixel_readback_version"));
     ready->SetInt("webglPrivacyVersion", nativeVersion("cloakfox.webgl_privacy_version"));
     ready->SetInt("workerCanvasPrivacyVersion", nativeVersion("cloakfox.worker_canvas_privacy_version"));
     ready->SetBool("privacyPatched", false); ready->SetBool("probeEnabled", probe_);

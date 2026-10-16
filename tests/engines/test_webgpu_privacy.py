@@ -1,6 +1,6 @@
 """Real WebGPU render/compute regression checks against the source-built companion.
 
-Metadata reduction must not alter compute results. Readback denial is separately
+Pixel privacy must not alter compute results. Readback denial is separately
 opted into and deliberately rejects all READ mapping, including compute output.
 """
 import http.server
@@ -106,14 +106,23 @@ class WebGPUPrivacy(unittest.TestCase):
         self.assertIsInstance(value['adapterCapabilities']['isFallbackAdapter'], bool)
         self.assertLessEqual(value['adapterCapabilities']['subgroupMinSize'], value['adapterCapabilities']['subgroupMaxSize'])
         return value
-    def assert_raw_work(self, value):
+    def assert_raw_work(self, value, protected=True):
         self.assertEqual(value['compute'], [i*17+23 for i in range(256)])
         expected = [64,128,191,255] if value['format']=='rgba8unorm' else [191,128,64,255]
         self.assertIn(value['format'], ['rgba8unorm','bgra8unorm'])
+        changed = False
         for y in range(8):
             for x in range(8):
                 offset=y*256+x*4
-                self.assertEqual(value['pixels'][offset:offset+4], expected)
+                pixel = value['pixels'][offset:offset+4]
+                self.assertEqual(pixel[3], 255)
+                if protected:
+                    self.assertTrue(all(abs(actual-raw) <= 1 for actual,raw in zip(pixel[:3], expected[:3])))
+                    changed |= pixel != expected
+                else:
+                    self.assertEqual(pixel, expected)
+        if protected:
+            self.assertTrue(changed, 'Opaque WebGPU pixels were not protected')
     def assert_masked(self, value):
         self.assertTrue(all(v=='' for v in value['adapter'].values()), value['adapter'])
         self.assertEqual(value['adapter'], value['device'])
@@ -128,7 +137,7 @@ class WebGPUPrivacy(unittest.TestCase):
         self.assertTrue(result['ok'], result)
         browser = self.app.open('202', self.url)
         value = self.run_workload(browser)
-        self.assert_raw_work(value)
+        self.assert_raw_work(value, protected=False)
         self.assertTrue(value['adapter']['vendor'] or value['adapter']['architecture'], value)
         self.assertEqual(value['adapter'], value['device'])
     def test_worker_offscreen_render_compute_and_metadata(self):

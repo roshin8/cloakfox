@@ -1,6 +1,6 @@
 # Chromium privacy port inventory
 
-Baseline: Firefox 157 branch at 24c23d478e. This is a coverage inventory, not a claim that these protections exist in Chromium. The binary SDK prototype remains unpatched. The newer source-built companion has partial native canvas, worker and GPU protections, verified in `../../docs/dual-engine/cef-worker-gpu-privacy-20261015.json`; full parity remains pending. Fixed permission denial and native request-context isolation are separate measured behavior.
+Baseline: Firefox 157 branch at 24c23d478e. This is a coverage inventory, not a claim that these protections exist in Chromium. The binary SDK prototype remains unpatched. The newer source-built companion has partial native canvas, worker and GPU protections, verified in `../../docs/dual-engine/cef-webgpu-pixel-privacy-20261015.json`; full parity remains pending. Fixed permission denial and native request-context isolation are separate measured behavior.
 
 ## Native implementation groups
 
@@ -9,7 +9,7 @@ Baseline: Firefox 157 branch at 24c23d478e. This is a coverage inventory, not a 
 | Container/site persona seeds, overrides, generation checkbox | Backend-independent config plus BrowserContext/StoragePartition ownership | Partial canvas/WebGL secret ownership, including effective shared/SW storage-pool ownership; persona configuration/generation not ported |
 | Navigator, UA/client hints, platform/device capabilities | Native Blink navigator/worker hooks; coherent real engine version | Native identity only; no persona masking |
 | Screen/window geometry, letterboxing, CSS, fonts | Blink layout/screen/CSS/font selection and browser display services | Not ported |
-| Canvas/OffscreenCanvas, WebGL, WebGPU | Native readback and device information hooks, worker ownership | Partial native opaque RGBA8 Canvas2D/export and WebGL direct/PBO readback; document/dedicated/shared/service-worker tests pass. GPU identifying metadata reduced; optional all-WebGPU-READ-map denial. Selective WebGPU pixel noise, other formats and general capabilities remain uncovered |
+| Canvas/OffscreenCanvas, WebGL, WebGPU | Native readback and device information hooks, worker ownership | Partial native opaque RGBA8 Canvas2D/export and WebGL direct/PBO readback; document/dedicated/shared/service-worker tests pass. GPU identifying metadata reduced; Metal RGBA8/BGRA8/sRGB WebGPU copy-time pixel noise plus optional all-READ-map denial. Other backends/formats and general capabilities remain uncovered |
 | Audio, codecs, device labels and media permissions | Blink audio/media paths and browser permission/capture services | Permission requests denied; noise/masking not ported |
 | Locale, timezone, geolocation | Blink/V8 Intl and permission-aware location services | Location denied; persona presentation not ported |
 | Performance clocks, entries, scheduling and Math | Blink timing/scheduling and V8 native math implementation | Not ported |
