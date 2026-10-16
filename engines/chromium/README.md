@@ -1,3 +1,5 @@
+> Source/build-tool location after retiring the old worktree: [permanent build storage](../../docs/dual-engine/chromium-build-storage.md).
+
 > Gecko 158 integration and tested local companion: [verification and launch instructions](../../docs/dual-engine/gecko158-integration.md).
 
 # Chromium companion prototype

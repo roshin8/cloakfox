@@ -64,5 +64,6 @@ python3 tests/engines/probe_dual_engine_coexistence.py \
 
 Rebuilding the companion still needs the SDK on the build volume. If disconnected,
 reconnect the external drive and mount `CloakfoxChromiumBuild.sparsebundle` from
-its root. The Chromium source stays in the preserved `firefox-157-port` worktree;
-that directory name is historical and is not the active Gecko version.
+its root. The source and tools now live independently at
+`/Users/zeus/cloakfox-builds/chromium`; the old 157 worktree is retired. See
+[build storage and relocation](chromium-build-storage.md).

@@ -1,0 +1,102 @@
+{
+  "status": "relocated-and-retired",
+  "date": "2026-10-15",
+  "chromiumHome": "/Users/zeus/cloakfox-builds/chromium",
+  "sourceRoot": "/Users/zeus/cloakfox-builds/chromium/full-source/chromium/src",
+  "toolsRoot": "/Users/zeus/cloakfox-builds/chromium/full-source-tools",
+  "legacyArtifacts": "/Users/zeus/cloakfox-builds/legacy-157",
+  "oldWorktreeRemoved": true,
+  "oldWorktreeRecoverySnapshot": "Codex archived_worktree artifact",
+  "localAndRemoteBranchDeleted": "codex/dual-engine-prototype",
+  "gecko158Branch": "codex/firefox-158-port",
+  "allMovedRootsPresent": true,
+  "movedRoots": 13,
+  "verification": {
+    "gnGeneration": "Done. Made 34454 targets from 4990 files in 208921ms",
+    "sourcePatchReplayAndHashes": {
+      "patchReplay": "reverse/clean replay/idempotence/check passed",
+      "unexpectedInputRejectedBeforeMutation": true,
+      "currentNativeHashesPassed": true,
+      "frameworkHashes": {
+        "source": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+        "sdk": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+        "embedded": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed"
+      },
+      "preservedHashes": {
+        "sourceBaseline": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+        "canvasSdk": "d96aa0093f25d53d2d34b6a54a2ed8d2402cc686912081ec8cb107c7347da35e",
+        "workerGpuSdk": "ffc338312fc1a809c33d611b95bbd1069dd11a2bdc3f3e51d6e1054c13d3ce59",
+        "originalBinarySdkApp": "7884625a6d9931a39409939668bcf1ae03d86ce81e1b4fd3ae97d0e16344cb3a"
+      }
+    },
+    "relocatedProbeRuntime": "TCP/QUIC probes passed with certificate rejection",
+    "postRemovalConcurrentEngines": {
+      "checks": [
+        "Concurrent same-origin cookies/localStorage/IndexedDB stay engine- and container-owned; canvas reads stable",
+        "Private Chromium destruction/regeneration does not alter persistent Gecko/Chromium state",
+        "Gecko remains usable after companion shutdown",
+        "Companion restart preserves its own state and remains usable after Gecko shutdown"
+      ],
+      "gecko": {
+        "buildID": "20261015182935",
+        "version": "158.0-beta.26"
+      },
+      "chromium": {
+        "canvasReadbackVersion": 1,
+        "cefVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+        "chromiumVersion": "154.0.8037.98",
+        "engine": "chromium",
+        "event": "ready",
+        "privacyPatched": false,
+        "probeEnabled": true,
+        "testKeychain": true,
+        "testQuicRoute": false,
+        "version": 1,
+        "webglPrivacyVersion": 1,
+        "webgpuPixelReadbackVersion": 1,
+        "webgpuPrivacyVersion": 1,
+        "workerCanvasPrivacyVersion": 1
+      },
+      "status": "passed"
+    },
+    "nativeFullRebuildPerformed": false,
+    "ninjaConfigurationTarget": "passed after path regeneration; no native compilation"
+  },
+  "operationalToolsUpdated": [
+    "extract-source.py",
+    "package-canvas-sdk.py",
+    "implement-canvas.py",
+    "record-worker-gpu-runtime.py",
+    "finish-source-tests.py",
+    "package-webgpu-pixel-sdk.py",
+    "finish-canvas-tests.py",
+    "finish-webgpu-pixel-tests.py",
+    "implement-webgpu-pixels.py",
+    "fix-gpu-clipping.py",
+    "package-worker-gpu-sdk.py",
+    "verify-worker-gpu-source.py",
+    "document-webgpu-pixel.py",
+    "verify-webgpu-pixel-source.py",
+    "record-webgpu-pixel-runtime.py",
+    "snapshot-gpu-patch.py",
+    "run-stage.py",
+    "finish-canvas-build.py",
+    "finish-webgpu-pixel-build.py",
+    "document-worker-gpu.py",
+    "finish-worker-gpu-build.py",
+    "finish-source-build.py",
+    "snapshot-webgpu-pixel-patch.py",
+    "package-source-sdk.py",
+    "implement-gpu-followup.py",
+    "run-clipping-red.py",
+    "probe-venv/bin/pip3.14",
+    "probe-venv/bin/pip3",
+    "probe-venv/bin/activate.fish",
+    "probe-venv/bin/pip",
+    "probe-venv/bin/cffi-gen-src",
+    "probe-venv/bin/activate",
+    "probe-venv/bin/activate.csh",
+    "probe-venv/pyvenv.cfg"
+  ],
+  "historicalProvenancePreserved": true
+}
