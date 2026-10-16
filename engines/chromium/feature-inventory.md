@@ -1,18 +1,22 @@
-> The companion is now also integrated alongside Gecko 158; see [integration evidence](../../docs/dual-engine/gecko158-integration.md). The inventory below retains its original Gecko 157 baseline and does not imply porting later Gecko 158 features into Chromium.
+> Maintained Gecko158 comparison, refreshed 2026-10-15. The companion runs alongside Gecko; shared settings/tabs and full privacy parity remain pending.
 
 # Chromium privacy port inventory
 
-Baseline: Firefox 157 branch at 24c23d478e. This is a coverage inventory, not a claim that these protections exist in Chromium. The binary SDK prototype remains unpatched. The newer source-built companion has partial native canvas, worker and GPU protections, verified in `../../docs/dual-engine/cef-webgpu-pixel-privacy-20261015.json`; full parity remains pending. Fixed permission denial and native request-context isolation are separate measured behavior.
+Baseline: maintained `codex/firefox-158-port` Gecko sources at `7df5f6ee5a` (158.0), including the installed-browser audit and canonical canvas renderer work. The machine-readable [source manifest](gecko158-inventory.json) records the actual current patch/module/UI hashes. Refresh with `python3 engines/chromium/update_inventory.py`; an engine test detects stale inventory.
+
+The original binary SDK remains unpatched. The source-built companion has partial native canvas/worker/GPU privacy plus the v1 shared config foundation. `privacyPatched` stays false. Current config tests use actual native hooks, owned loopback fixtures and disposable profiles; they do not establish parity for the other groups.
+
+Gecko158 additions missing from the old157 checklist include AudioWorklet privacy, CSS media exposure, request client hints, WebCodecs, coherent Chromium identities, backed WebGL capabilities/profiles, first-draw font fallback, canonical canvas backing/text and CPU/GPU producer provenance through the complete renderer. Chromium's narrower readback transforms do not implement that canonical renderer or those general capability policies.
 
 ## Native implementation groups
 
 | Existing feature group | Chromium work needed | Prototype status |
 |---|---|---|
-| Container/site persona seeds, overrides, generation checkbox | Backend-independent config plus BrowserContext/StoragePartition ownership | Partial canvas/WebGL secret ownership, including effective shared/SW storage-pool ownership; persona configuration/generation not ported |
-| Navigator, UA/client hints, platform/device capabilities | Native Blink navigator/worker hooks; coherent real engine version | Native identity only; no persona masking |
+| Container/site persona seeds, overrides, generation checkbox | Backend-independent config plus BrowserContext/StoragePartition ownership | V1 shared controller model/store, master/options/overrides, seed regeneration and clear-overrides supported. Native applyConfig/revision acknowledgement precedes navigation; seed reaches frames and all worker types. Context changes require companion restart. Shared Gecko adapter/UI and BrowserForge persona generation remain pending |
+| Navigator, UA/client hints, platform/device capabilities | Native Blink navigator/worker hooks; coherent real engine version | Native identity only; navigator/device masking and Gecko158 request/client-hint identity controls not ported |
 | Screen/window geometry, letterboxing, CSS, fonts | Blink layout/screen/CSS/font selection and browser display services | Not ported |
-| Canvas/OffscreenCanvas, WebGL, WebGPU | Native readback and device information hooks, worker ownership | Partial native opaque RGBA8 Canvas2D/export and WebGL direct/PBO readback; document/dedicated/shared/service-worker tests pass. GPU identifying metadata reduced; Metal RGBA8/BGRA8/sRGB WebGPU copy-time pixel noise plus optional all-READ-map denial. Other backends/formats and general capabilities remain uncovered |
-| Audio, codecs, device labels and media permissions | Blink audio/media paths and browser permission/capture services | Permission requests denied; noise/masking not ported |
+| Canvas/OffscreenCanvas, WebGL, WebGPU | Native readback and device information hooks, worker ownership | Partial native opaque RGBA8 Canvas2D/export (not Gecko158 canonical rendering/provenance) and WebGL direct/PBO readback; document/dedicated/shared/service-worker tests pass. GPU identifying metadata reduced; Metal RGBA8/BGRA8/sRGB WebGPU copy-time pixel noise plus optional all-READ-map denial. Other backends/formats and general capabilities remain uncovered |
+| Audio, codecs, device labels and media permissions | Blink audio/media paths and browser permission/capture services | Permission requests denied; AudioWorklet/audio noise, WebCodecs and persona media masking not ported |
 | Locale, timezone, geolocation | Blink/V8 Intl and permission-aware location services | Location denied; persona presentation not ported |
 | Performance clocks, entries, scheduling and Math | Blink timing/scheduling and V8 native math implementation | Not ported |
 | Keyboard, gamepad, MIDI, feature detection | Blink device/input exposure and permission services | Not ported |
@@ -22,146 +26,187 @@ Baseline: Firefox 157 branch at 24c23d478e. This is a coverage inventory, not a 
 | Tracking/query stripping, bounce protection, site exceptions/presets | Browser/network policy integration | Not ported |
 | Container/settings UI, appearance, bookmarks/passwords, security updates | Shared controller and engine capability mapping; engine-owned sensitive stores | Not integrated |
 
-## Active Gecko patch inventory
+<!-- BEGIN GENERATED GECKO158 INVENTORY -->
+## Active Gecko158 source inventory
 
-All 112 active canonical patches require triage for engine specificity; none is mechanically applied to Chromium. Native privacy patches must be rewritten, while Gecko browser UI/branding/build patches may have no Chromium equivalent.
+Canonical patch resolver: 144 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
 
-- `all-addons-private-mode.patch` — Chromium implementation not ported.
-- `anti-font-fingerprinting.patch` — Chromium implementation not ported.
-- `audio-context-spoofing.patch` — Chromium implementation not ported.
-- `audio-fingerprint-manager.patch` — Chromium implementation not ported.
-- `browser-init.patch` — Chromium implementation not ported.
-- `builtin-extension.patch` — Chromium implementation not ported.
-- `canvas-spoofing.patch` — Chromium implementation not ported.
-- `chromeutil.patch` — Chromium implementation not ported.
-- `clipboard-spoofing.patch` — Chromium implementation not ported.
-- `codecs-spoofing.patch` — Chromium implementation not ported.
-- `document-lastmodified-spoofing.patch` — Chromium implementation not ported.
-- `config.patch` — Chromium implementation not ported.
-- `cross-process-storage.patch` — Chromium implementation not ported.
-- `domrect-spoofing.patch` — Chromium implementation not ported.
-- `fingerprint-injection.patch` — Chromium implementation not ported.
-- `font-hijacker.patch` — Chromium implementation not ported.
-- `font-list-spoofing.patch` — Chromium implementation not ported.
-- `font-bundle-packaging.patch` — Chromium implementation not ported.
-- `system-font-spoofing.patch` — Chromium implementation not ported.
-- `force-default-pointer.patch` — Chromium implementation not ported.
-- `geolocation-spoofing.patch` — Chromium implementation not ported.
-- `http2-fingerprint-spoofing.patch` — Chromium implementation not ported.
-- `indexeddb-spoofing.patch` — Chromium implementation not ported.
-- `locale-spoofing.patch` — Chromium implementation not ported.
-- `macos-sandbox-crash-fix.patch` — Chromium implementation not ported.
-- `media-capabilities-spoofing.patch` — Chromium implementation not ported.
-- `media-features-spoofing.patch` — Chromium implementation not ported.
-- `media-device-spoofing.patch` — Chromium implementation not ported.
-- `mediasource-istypesupported-spoofing.patch` — Chromium implementation not ported.
-- `navigator-extra-spoofing.patch` — Chromium implementation not ported.
-- `cloakfox-webgpu-null-safety.patch` — Chromium implementation not ported.
-- `navigator-spoofing.patch` — Chromium implementation not ported.
-- `network-patches.patch` — Chromium implementation not ported.
-- `notification-spoofing.patch` — Chromium implementation not ported.
-- `permissions-spoofing.patch` — Chromium implementation not ported.
-- `range-domrect-spoofing.patch` — Chromium implementation not ported.
-- `screen-orientation-spoofing.patch` — Chromium implementation not ported.
-- `screen-spoofing.patch` — Chromium implementation not ported.
-- `shadow-root-bypass.patch` — Chromium implementation not ported.
-- `speech-voices-spoofing.patch` — Chromium implementation not ported.
-- `storage-estimate-spoofing.patch` — Chromium implementation not ported.
-- `svg-bbox-spoofing.patch` — Chromium implementation not ported.
-- `svg-geometry-spoofing.patch` — Chromium implementation not ported.
-- `svg-metrics-spoofing.patch` — Chromium implementation not ported.
-- `text-metrics-spoofing.patch` — Chromium implementation not ported.
-- `timing-jitter-spoofing.patch` — Chromium implementation not ported.
-- `timezone-spoofing.patch` — Chromium implementation not ported.
-- `vibration-spoofing.patch` — Chromium implementation not ported.
-- `visual-viewport-spoofing.patch` — Chromium implementation not ported.
-- `voice-spoofing.patch` — Chromium implementation not ported.
-- `webgl-spoofing.patch` — Chromium implementation not ported.
-- `webgl-readback-noise.patch` — Chromium implementation not ported.
-- `websocket-spoofing.patch` — Chromium implementation not ported.
-- `webrtc-ip-spoofing.patch` — Chromium implementation not ported.
-- `cloakfox-webrtc-network-policy.patch` — Chromium implementation not ported.
-- `window-name-spoofing.patch` — Chromium implementation not ported.
-- `cloakfox-enabled-staticpref.patch` — Chromium implementation not ported.
-- `cloak-config-webidl.patch` — Chromium implementation not ported.
-- `unified-maskconfig.patch` — Chromium implementation not ported.
-- `http3-fingerprint-spoofing.patch` — Chromium implementation not ported.
-- `http2-profile-webidl.patch` — Chromium implementation not ported.
-- `cpp-first-pref-reader.patch` — Chromium implementation not ported.
-- `cpp-first-pref-migration.patch` — Chromium implementation not ported.
-- `cpp-first-actors-registration.patch` — Chromium implementation not ported.
-- `cpp-first-about-cloakfox.patch` — Chromium implementation not ported.
-- `cpp-first-error-stack-depth.patch` — Chromium implementation not ported.
-- `cpp-first-worker-spoofers.patch` — Chromium implementation not ported.
-- `cloakfox-optional-assets-car.patch` — Chromium implementation not ported.
-- `worker-container-identity.patch` — Chromium implementation not ported.
-- `cloakfox-letterboxing.patch` — Chromium implementation not ported.
-- `cloakfox-container-forget.patch` — Chromium implementation not ported.
-- `cloakfox-scoped-data-clear.patch` — Chromium implementation not ported.
-- `cloakfox-strict-proxy-guard.patch` — Chromium implementation not ported.
-- `site-fingerprint-isolation.patch` — Chromium implementation not ported.
-- `cloakfox-upstream-hardening.patch` — Chromium implementation not ported.
-- `cloakfox-region-policy-proxy.patch` — Chromium implementation not ported.
-- `cloakfox-privacy-completion.patch` — Chromium implementation not ported.
-- `cloakfox-window-activity.patch` — Chromium implementation not ported.
-- `cloakfox-appearance.patch` — Chromium implementation not ported.
-- `cloakfox-clipboard-signals.patch` — Chromium implementation not ported.
-- `cloakfox-pointer-activity.patch` — Chromium implementation not ported.
-- `cloakfox-hover-activity.patch` — Chromium implementation not ported.
-- `cloakfox-native-worker-math.patch` — Chromium implementation not ported.
-- `cloakfox-exported-function-identity.patch` — Chromium implementation not ported.
-- `cloakfox-live-worker-math.patch` — Chromium implementation not ported.
-- `cloakfox-bundled-font-rendering.patch` — Chromium implementation not ported.
-- `cloakfox-user-agent-data.patch` — Chromium implementation not ported.
-- `cloakfox-math-data-correctness.patch` — Chromium implementation not ported.
-- `cloakfox-math-data-toggle.patch` — Chromium implementation not ported.
-- `cloakfox-hackerrank-media-recovery.patch` — Chromium implementation not ported.
-- `cloakfox-appearance-profile.patch` — Chromium implementation not ported.
-- `cloakfox-screen-presentation.patch` — Chromium implementation not ported.
-- `cloakfox-testdome-screen-management.patch` — Chromium implementation not ported.
-- `cloakfox-window-management-permission.patch` — Chromium implementation not ported.
-- `cloakfox-screen-orientation-events.patch` — Chromium implementation not ported.
-- `cloakfox-webgl-live-state-followup.patch` — Chromium implementation not ported.
-- `cloakfox-audio-analyser-copy-followup.patch` — Chromium implementation not ported.
-- `cloakfox-speech-error-followup.patch` — Chromium implementation not ported.
-- `cloakfox-stock-resource-followup.patch` — Chromium implementation not ported.
-- `cloakfox-windows-manifest-followup.patch` — Chromium implementation not ported.
-- `performance-timeline-timing.patch` — Chromium implementation not ported.
-- `cloakfox-media-device-privacy.patch` — Chromium implementation not ported.
-- `cloakfox-hdr-exposure-privacy.patch` — Chromium implementation not ported.
-- `cloakfox-network-profile.patch` — Chromium implementation not ported.
-- `cloakfox-network-conformance.patch` — Chromium implementation not ported.
-- `librewolf/bootstrap.patch` — Chromium implementation not ported.
-- `librewolf/custom-ubo-assets-bootstrap-location.patch` — Chromium implementation not ported.
-- `librewolf/dbus_name.patch` — Chromium implementation not ported.
-- `librewolf/devtools-bypass.patch` — Chromium implementation not ported.
-- `librewolf/disable-data-reporting-at-compile-time.patch` — Chromium implementation not ported.
-- `librewolf/mozilla_dirs.patch` — Chromium implementation not ported.
-- `librewolf/urlbarprovider-interventions.patch` — Chromium implementation not ported.
+Canvas/GPU/config entries have partial Chromium equivalents described above. Gecko UI, branding, build and compatibility patches can be engine-specific; no patch is mechanically applied to Chromium.
+
+- `patches/all-addons-private-mode.patch`
+- `patches/anti-font-fingerprinting.patch`
+- `patches/audio-context-spoofing.patch`
+- `patches/audio-fingerprint-manager.patch`
+- `patches/browser-init.patch`
+- `patches/builtin-extension.patch`
+- `patches/canvas-spoofing.patch`
+- `patches/chromeutil.patch`
+- `patches/clipboard-spoofing.patch`
+- `patches/codecs-spoofing.patch`
+- `patches/document-lastmodified-spoofing.patch`
+- `patches/config.patch`
+- `patches/cross-process-storage.patch`
+- `patches/domrect-spoofing.patch`
+- `patches/fingerprint-injection.patch`
+- `patches/font-hijacker.patch`
+- `patches/font-list-spoofing.patch`
+- `patches/font-bundle-packaging.patch`
+- `patches/system-font-spoofing.patch`
+- `patches/force-default-pointer.patch`
+- `patches/geolocation-spoofing.patch`
+- `patches/http2-fingerprint-spoofing.patch`
+- `patches/indexeddb-spoofing.patch`
+- `patches/locale-spoofing.patch`
+- `patches/macos-sandbox-crash-fix.patch`
+- `patches/media-capabilities-spoofing.patch`
+- `patches/media-features-spoofing.patch`
+- `patches/media-device-spoofing.patch`
+- `patches/mediasource-istypesupported-spoofing.patch`
+- `patches/navigator-extra-spoofing.patch`
+- `patches/cloakfox-webgpu-null-safety.patch`
+- `patches/navigator-spoofing.patch`
+- `patches/network-patches.patch`
+- `patches/notification-spoofing.patch`
+- `patches/permissions-spoofing.patch`
+- `patches/range-domrect-spoofing.patch`
+- `patches/screen-orientation-spoofing.patch`
+- `patches/screen-spoofing.patch`
+- `patches/shadow-root-bypass.patch`
+- `patches/speech-voices-spoofing.patch`
+- `patches/storage-estimate-spoofing.patch`
+- `patches/svg-bbox-spoofing.patch`
+- `patches/svg-geometry-spoofing.patch`
+- `patches/svg-metrics-spoofing.patch`
+- `patches/text-metrics-spoofing.patch`
+- `patches/timing-jitter-spoofing.patch`
+- `patches/timezone-spoofing.patch`
+- `patches/vibration-spoofing.patch`
+- `patches/visual-viewport-spoofing.patch`
+- `patches/voice-spoofing.patch`
+- `patches/webgl-spoofing.patch`
+- `patches/webgl-readback-noise.patch`
+- `patches/websocket-spoofing.patch`
+- `patches/webrtc-ip-spoofing.patch`
+- `patches/cloakfox-webrtc-network-policy.patch`
+- `patches/window-name-spoofing.patch`
+- `patches/cloakfox-enabled-staticpref.patch`
+- `patches/cloak-config-webidl.patch`
+- `patches/unified-maskconfig.patch`
+- `patches/http3-fingerprint-spoofing.patch`
+- `patches/http2-profile-webidl.patch`
+- `patches/cpp-first-pref-reader.patch`
+- `patches/cpp-first-pref-migration.patch`
+- `patches/cpp-first-actors-registration.patch`
+- `patches/cpp-first-about-cloakfox.patch`
+- `patches/cpp-first-error-stack-depth.patch`
+- `patches/cpp-first-worker-spoofers.patch`
+- `patches/cloakfox-optional-assets-car.patch`
+- `patches/worker-container-identity.patch`
+- `patches/cloakfox-letterboxing.patch`
+- `patches/cloakfox-container-forget.patch`
+- `patches/cloakfox-scoped-data-clear.patch`
+- `patches/cloakfox-strict-proxy-guard.patch`
+- `patches/site-fingerprint-isolation.patch`
+- `patches/cloakfox-upstream-hardening.patch`
+- `patches/cloakfox-region-policy-proxy.patch`
+- `patches/cloakfox-privacy-completion.patch`
+- `patches/cloakfox-window-activity.patch`
+- `patches/cloakfox-appearance.patch`
+- `patches/cloakfox-clipboard-signals.patch`
+- `patches/cloakfox-pointer-activity.patch`
+- `patches/cloakfox-hover-activity.patch`
+- `patches/cloakfox-native-worker-math.patch`
+- `patches/cloakfox-exported-function-identity.patch`
+- `patches/cloakfox-live-worker-math.patch`
+- `patches/cloakfox-bundled-font-rendering.patch`
+- `patches/cloakfox-user-agent-data.patch`
+- `patches/cloakfox-math-data-correctness.patch`
+- `patches/cloakfox-math-data-toggle.patch`
+- `patches/cloakfox-hackerrank-media-recovery.patch`
+- `patches/cloakfox-appearance-profile.patch`
+- `patches/cloakfox-screen-presentation.patch`
+- `patches/cloakfox-testdome-screen-management.patch`
+- `patches/cloakfox-window-management-permission.patch`
+- `patches/cloakfox-screen-orientation-events.patch`
+- `patches/cloakfox-webgl-live-state-followup.patch`
+- `patches/cloakfox-audio-analyser-copy-followup.patch`
+- `patches/cloakfox-speech-error-followup.patch`
+- `patches/cloakfox-stock-resource-followup.patch`
+- `patches/cloakfox-windows-manifest-followup.patch`
+- `patches/performance-timeline-timing.patch`
+- `patches/cloakfox-media-device-privacy.patch`
+- `patches/cloakfox-hdr-exposure-privacy.patch`
+- `patches/cloakfox-network-profile.patch`
+- `patches/cloakfox-network-conformance.patch`
+- `patches/cloakfox-graphics-gap-fix.patch`
+- `patches/cloakfox-fontface-native-loading.patch`
+- `patches/cloakfox-font-whitelist-parent.patch`
+- `patches/cloakfox-inherited-realm-privacy.patch`
+- `patches/cloakfox-native-realm-presentation.patch`
+- `patches/cloakfox-language-identity.patch`
+- `patches/cloakfox-request-identity-and-mask-storage.patch`
+- `patches/cloakfox-websocket-privacy.patch`
+- `patches/cloakfox-websocket-headers.patch`
+- `patches/cloakfox-proxy-resolver-errors.patch`
+- `patches/cloakfox-turn-proxy-privacy.patch`
+- `patches/cloakfox-privacy-enforcement.patch`
+- `patches/cloakfox-screen-permission-effective-state.patch`
+- `patches/cloakfox-hackerrank-actor-process-safety.patch`
+- `patches/cloakfox-pointer-hover-retention.patch`
+- `patches/cloakfox-firefox158-compat.patch`
+- `patches/cloakfox-audioworklet-privacy.patch`
+- `patches/cloakfox-css-media-privacy.patch`
+- `patches/cloakfox-client-hints-headers.patch`
+- `patches/cloakfox-webcodecs-privacy.patch`
+- `patches/cloakfox-chromium-identity-coherence.patch`
+- `patches/cloakfox-canvas-api-consistency.patch`
+- `patches/cloakfox-webgl-capability-consistency.patch`
+- `patches/cloakfox-webgl-backed-capacities.patch`
+- `patches/canvas-render-privacy.patch`
+- `patches/cloakfox-webgl-backend-profile.patch`
+- `patches/canvas-canonical-backing.patch`
+- `patches/cloakfox-font-fallback-first-draw.patch`
+- `patches/canvas-canonical-text.patch`
+- `patches/canvas-pixel-provenance.patch`
+- `patches/canvas-gpu-provenance.patch`
+- `patches/librewolf/bootstrap.patch`
+- `patches/librewolf/custom-ubo-assets-bootstrap-location.patch`
+- `patches/librewolf/dbus_name.patch`
+- `patches/librewolf/devtools-bypass.patch`
+- `patches/librewolf/disable-data-reporting-at-compile-time.patch`
+- `patches/librewolf/mozilla_dirs.patch`
+- `patches/librewolf/urlbarprovider-interventions.patch`
+- `patches/canvas-complete-renderer.patch`
 
 ## Optional/privacy preference inventory
 
-Literal cloakfox.opt / cloakfox.webrtc preference names collected from the current module/UI/default sources, with UI-only HDR masking included. Dynamic names and config API fields also require manual audit before privacy parity is declared. These names are not Chromium preference names.
+Literal cloakfox.opt / cloakfox.webrtc names plus dynamically constructed userOpt names from maintained158 modules, defaults and HTML. These are Gecko names; matching semantics remain pending unless the group table says otherwise.
 
-- `cloakfox.opt.clipboard_disabled` — Existing semantics not ported.
-- `cloakfox.opt.clipboard_masking` — Existing semantics not ported.
-- `cloakfox.opt.eme_disabled` — Existing semantics not ported.
-- `cloakfox.opt.focus_masking` — Existing semantics not ported.
-- `cloakfox.opt.hdr_masking` — Existing semantics not ported.
-- `cloakfox.opt.math_constants_noise` — Existing semantics not ported.
-- `cloakfox.opt.math_data_noise` — Existing semantics not ported.
-- `cloakfox.opt.mediadevices_disabled` — Existing semantics not ported.
-- `cloakfox.opt.notification_permission_disabled` — Existing semantics not ported.
-- `cloakfox.opt.storage_persisted_disabled` — Existing semantics not ported.
-- `cloakfox.opt.timer_high_precision_jitter` — Existing semantics not ported.
-- `cloakfox.opt.timer_quantization_off` — Existing semantics not ported.
-- `cloakfox.opt.websocket_disabled` — Existing semantics not ported.
-- `cloakfox.opt.window_name_disabled` — Existing semantics not ported.
-- `cloakfox.webrtc.ip_lookup.enabled` — Existing semantics not ported.
+- `cloakfox.opt.canvas_render_privacy`
+- `cloakfox.opt.clipboard_disabled`
+- `cloakfox.opt.clipboard_masking`
+- `cloakfox.opt.container_rendering_profiles`
+- `cloakfox.opt.eme_disabled`
+- `cloakfox.opt.focus_masking`
+- `cloakfox.opt.gpu_backend_profiles`
+- `cloakfox.opt.hdr_masking`
+- `cloakfox.opt.math_constants_noise`
+- `cloakfox.opt.math_data_noise`
+- `cloakfox.opt.mediadevices_disabled`
+- `cloakfox.opt.notification_permission_disabled`
+- `cloakfox.opt.storage_persisted_disabled`
+- `cloakfox.opt.timer_high_precision_jitter`
+- `cloakfox.opt.timer_quantization_off`
+- `cloakfox.opt.webgl_typed_readback_disabled`
+- `cloakfox.opt.websocket_disabled`
+- `cloakfox.opt.window_name_disabled`
+- `cloakfox.webrtc.ip_lookup.enabled`
+- `cloakfox.webrtc.protect_proxy`
+- `cloakfox.webrtc.protect_unready`
 
 ## Settings surface inventory
 
-Current settings.html IDs/data-pref bindings, retained as an audit checklist for UI porting. The prototype exposes none of this existing Gecko settings surface. Separate settings modules and dynamic panels need manual audit in milestone 3.
+All id/data-pref bindings from component HTML, including secondary settings panels. This is a UI audit checklist; the Chromium companion does not expose the Gecko settings UI. Dynamic panels/API fields still require manual review.
 
 - `cfx-appearance-permissions`
 - `cfx-appearance-restart`
@@ -171,6 +216,7 @@ Current settings.html IDs/data-pref bindings, retained as an audit checklist for
 - `cfx-clear`
 - `cfx-clear-overrides`
 - `cfx-consistency-inspector`
+- `cfx-container-gpu-status`
 - `cfx-container-select`
 - `cfx-dns-settings`
 - `cfx-enabled`
@@ -223,10 +269,14 @@ Current settings.html IDs/data-pref bindings, retained as an audit checklist for
 - `cfx-workspace-settings`
 - `cloakfox.appearance.firefox`
 - `cloakfox.compat.screen_management`
+- `cloakfox.experimental.canvas_pipeline`
+- `cloakfox.opt.canvas_render_privacy`
 - `cloakfox.opt.clipboard_disabled`
 - `cloakfox.opt.clipboard_masking`
+- `cloakfox.opt.container_rendering_profiles`
 - `cloakfox.opt.eme_disabled`
 - `cloakfox.opt.focus_masking`
+- `cloakfox.opt.gpu_backend_profiles`
 - `cloakfox.opt.hdr_masking`
 - `cloakfox.opt.math_constants_noise`
 - `cloakfox.opt.math_data_noise`
@@ -235,8 +285,20 @@ Current settings.html IDs/data-pref bindings, retained as an audit checklist for
 - `cloakfox.opt.storage_persisted_disabled`
 - `cloakfox.opt.timer_high_precision_jitter`
 - `cloakfox.opt.timer_quantization_off`
+- `cloakfox.opt.webgl_typed_readback_disabled`
 - `cloakfox.opt.websocket_disabled`
 - `cloakfox.opt.window_name_disabled`
+- `cloakfox.webrtc.protect_proxy`
+- `cloakfox.webrtc.protect_unready`
+- `comparison`
+- `comparison-status`
+- `conflicting-containers`
+- `container`
+- `current-container`
+- `current-ip`
+- `current-ipv4`
+- `current-ipv6`
+- `destination`
 - `grp-audio`
 - `grp-geo`
 - `grp-graphics`
@@ -249,6 +311,11 @@ Current settings.html IDs/data-pref bindings, retained as an audit checklist for
 - `grp-seeds`
 - `grp-timezone`
 - `grp-voices`
+- `guidance`
+- `heading`
+- `ip`
+- `once`
+- `recheck`
 - `sec-appearance`
 - `sec-audio`
 - `sec-display`
@@ -261,3 +328,44 @@ Current settings.html IDs/data-pref bindings, retained as an audit checklist for
 - `sec-network-policy`
 - `sec-screen-management`
 - `sec-seeds`
+- `settings`
+- `warning-detail`
+- `warning-status`
+- `website`
+
+## Privileged actor inventory
+
+Gecko privileged actors are not installed in Chromium. Equivalent privacy behavior must use appropriate native Chromium hooks.
+
+- `additions/browser/components/cloakfox/actors/CloakfoxFeatureDetectChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxGamepadChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxHackerRankMediaChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxKeyboardChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxMathChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxMediaQueryChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxMidiChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxSpeechChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxTabHistoryChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxTimezoneChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxTimingChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxWebGPUChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxWebRTCChild.sys.mjs`
+<!-- END GENERATED GECKO158 INVENTORY -->
+
+## Shared config capability boundary
+
+`schemaVersion:1` names engine/container/private-session ownership, revision, master
+switch and a 32-byte persona seed. The v1 option names are `canvas` and
+`blockWebGPUReadback`; explicit overrides beat defaults. Master-off disables both
+implemented transforms/policies. Fixed prototype permission denials remain separate.
+Unknown fields/options and incompatible native capabilities are rejected, never
+presented as working. Regenerating changes the graphics seed; it does not yet
+sample a full navigator/device/font/audio persona.
+
+The controller stores persistent records atomically with private permissions and
+serializes revision updates. Private records are memory-only and retired automatically by the production controller on actual context/process closure, accounting for popups. Retired private seeds cannot be replayed in the same backend process. Snapshot seed and
+settings are applied before creating any window; acknowledgements contain revision
+and effective policy, never the secret. Same-snapshot reapplication is idempotent;
+stale/changed live configs require restart rather than mixing worker/page state.
+Existing legacy opens remain for regression tooling; once a context is versioned,
+opening requires its acknowledged revision and cannot mix legacy privacy options.

@@ -3,10 +3,12 @@
 // See THIRD_PARTY_LICENSES/CEF-LICENSE.txt.
 #include "browser_client.h"
 #include "control_channel.h"
+#include "persona_config.h"
 #include <algorithm>
 #include <iostream>
 #include <map>
 #include <optional>
+#include <set>
 #include <thread>
 #include "include/base/cef_callback.h"
 #include "include/cef_devtools_message_observer.h"
@@ -239,6 +241,14 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     ready->SetInt("webgpuPixelReadbackVersion", nativeVersion("cloakfox.webgpu_pixel_readback_version"));
     ready->SetInt("webglPrivacyVersion", nativeVersion("cloakfox.webgl_privacy_version"));
     ready->SetInt("workerCanvasPrivacyVersion", nativeVersion("cloakfox.worker_canvas_privacy_version"));
+    ready->SetInt("configSchemaVersion", 1);
+    auto configOptions = CefListValue::Create();
+    if (canvasVersion_ == 1 && webgpuVersion_ == 1) {
+      configOptions->SetString(0, "canvas");
+      configOptions->SetString(1, "blockWebGPUReadback");
+    }
+    ready->SetList("supportedPersonaOptions", configOptions);
+    ready->SetBool("configRequiresRestart", true);
     ready->SetBool("privacyPatched", false); ready->SetBool("probeEnabled", probe_);
     ready->SetBool("testKeychain", testKeychain_);
     ready->SetBool("testQuicRoute", testQuicPort_ != 0);
@@ -263,6 +273,8 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     data->SetString("container", container); data->SetBool("private", isPrivate);
     data->SetBool("canvasEnabled", canvasVersion_ > 0 && contexts_.at(key).canvasEnabled);
     data->SetBool("webgpuReadbackBlocked", webgpuVersion_ > 0 && contexts_.at(key).blockWebGPUReadback);
+    if (contexts_.at(key).config)
+      data->SetInt("configRevision", contexts_.at(key).config->revision);
     if (requestId == 0) data->Remove("id");
     emit(data);
     if (closing_) browser->GetHost()->CloseBrowser(true);
@@ -275,8 +287,17 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
       bool live = false;
       for (const auto& [browserId, contextKey] : browserContexts_) live = live || contextKey == key;
       auto entry = contexts_.find(key);
-      if (!live && entry != contexts_.end() && entry->second.pending.empty() && !entry->second.creating)
+      if (!live && entry != contexts_.end() && entry->second.pending.empty() && !entry->second.creating) {
+        if (entry->second.config) {
+          retiredPrivateSeeds_[key].insert(entry->second.config->seed);
+          auto discarded = message(); discarded->SetString("event", "configDiscarded");
+          discarded->SetString("container", entry->second.config->container);
+          discarded->SetBool("private", true);
+          discarded->SetInt("configRevision", entry->second.config->revision);
+          emit(discarded);
+        }
         contexts_.erase(entry);
+      }
     }
     auto data = message(); data->SetString("event", "closed"); data->SetInt("browser", id); emit(data);
     bool pending = creatingWindows_ != 0;
@@ -291,6 +312,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     closing_ = true;
     for (auto& [key, entry] : contexts_) {
       for (const auto& request : entry.pending) error(request.id, "Companion is closing");
+      if (entry.configRequest) { error(entry.configRequest, "Companion is closing"); entry.configRequest = 0; }
       entry.pending.clear();
     }
     if (browsers_.empty() && !creatingWindows_) { contexts_.clear(); CefQuitMessageLoop(); return; }
@@ -300,6 +322,8 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
   struct ContextEntry {
     CefRefPtr<CefRequestContext> context;
     bool ready = false;
+    std::optional<cloakfox::PersonaConfig> config;
+    int configRequest = 0;
     bool canvasEnabled = true;
     bool blockWebGPUReadback = false;
     int creating = 0;
@@ -316,6 +340,17 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     if (!view) { --creatingWindows_; --contexts_.at(key).creating; error(request.id, "Cannot create browser view"); return; }
     CefWindow::CreateTopLevelWindow(new WindowDelegate(view));
   }
+  void configApplied(int id, const ContextEntry& entry) {
+    auto data = reply(id, true);
+    data->SetString("event", "configApplied");
+    data->SetString("engine", "chromium");
+    data->SetString("container", entry.config->container);
+    data->SetBool("private", entry.config->isPrivate);
+    data->SetInt("configRevision", entry.config->revision);
+    data->SetBool("canvasEnabled", entry.canvasEnabled);
+    data->SetBool("webgpuReadbackBlocked", entry.blockWebGPUReadback);
+    emit(data);
+  }
   void contextReady(const std::string& key, CefRefPtr<CefRequestContext> context) {
     if (closing_ || !contexts_.count(key)) return;
     auto& entry = contexts_.at(key);
@@ -325,14 +360,19 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
       return context->SetPreference(name, setting, failure);
     };
     CefString failure;
-    if ((canvasVersion_ > 0 && !applyBool("cloakfox.canvas_enabled", entry.canvasEnabled, failure)) ||
+    auto seed = CefValue::Create();
+    if (entry.config) seed->SetString(entry.config->seed);
+    if ((entry.config && !context->SetPreference("cloakfox.canvas_key", seed, failure)) ||
+        (canvasVersion_ > 0 && !applyBool("cloakfox.canvas_enabled", entry.canvasEnabled, failure)) ||
         (webgpuVersion_ > 0 && !applyBool("cloakfox.webgpu_block_readback", entry.blockWebGPUReadback, failure))) {
       for (const auto& request : entry.pending)
         error(request.id, "Cannot configure native privacy policy: " + failure.ToString());
+      if (entry.configRequest) error(entry.configRequest, "Cannot configure native persona policy");
       contexts_.erase(key);
       return;
     }
     entry.ready = true;
+    if (entry.configRequest) { configApplied(entry.configRequest, entry); entry.configRequest = 0; }
     auto pending = std::move(entry.pending);
     for (const auto& request : pending) openWindow(context, request);
   }
@@ -350,7 +390,8 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     if (closing_) { error(id, "Companion is closing"); return; }
     const auto command = data->GetString("command").ToString();
     const std::map<std::string, std::vector<std::string>> fields{
-      {"open", {"version", "id", "command", "container", "url", "private", "privacy"}},
+      {"open", {"version", "id", "command", "container", "url", "private", "privacy", "configRevision"}},
+      {"applyConfig", {"version", "id", "command", "config"}},
       {"quit", {"version", "id", "command"}},
       {"close", {"version", "id", "command", "browser"}},
       {"navigate", {"version", "id", "command", "browser", "url"}},
@@ -366,6 +407,36 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
       }
     }
     if (command == "quit") { emit(reply(id, true)); quit(); return; }
+    if (command == "applyConfig") {
+      try {
+        if (data->GetType("config") != VTYPE_DICTIONARY)
+          throw std::runtime_error("Invalid config object");
+        auto config = cloakfox::parsePersonaConfig(data->GetDictionary("config"), canvasVersion_, webgpuVersion_);
+        const auto key = std::string(config.isPrivate ? "private:" : "persistent:") + config.container;
+        if (config.isPrivate && retiredPrivateSeeds_[key].count(config.seed))
+          throw std::runtime_error("Retired private persona; generate a fresh session snapshot");
+        auto existing = contexts_.find(key);
+        if (existing != contexts_.end()) {
+          const auto& entry = existing->second;
+          if (!entry.ready) throw std::runtime_error("Container configuration is initializing");
+          if (!entry.config || !entry.config->snapshot->IsEqual(config.snapshot))
+            throw std::runtime_error("Stale or changed config; restart companion before applying changes");
+          configApplied(id, entry); return;
+        }
+        CefRequestContextSettings settings;
+        if (!config.isPrivate) CefString(&settings.cache_path) = paths_->cachePath(config.container);
+        ContextEntry entry;
+        entry.canvasEnabled = config.canvas;
+        entry.blockWebGPUReadback = config.blockWebGPUReadback;
+        entry.config = std::move(config);
+        entry.configRequest = id;
+        contexts_.emplace(key, std::move(entry));
+        auto context = CefRequestContext::CreateContext(settings, new ContextHandler(this, key));
+        if (!context) { contexts_.erase(key); throw std::runtime_error("Cannot create container context"); }
+        contexts_.at(key).context = context;
+      } catch (const std::exception& e) { error(id, e.what()); }
+      return;
+    }
     if (command == "open") {
       if (data->GetType("container") != VTYPE_STRING || data->GetType("url") != VTYPE_STRING ||
           (data->HasKey("private") && data->GetType("private") != VTYPE_BOOL)) {
@@ -403,6 +474,17 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
         if (!cloakfox::isValidContainerId(container))
           throw std::runtime_error("Invalid container ID");
         const auto key = std::string(isPrivate ? "private:" : "persistent:") + container;
+        const auto found = contexts_.find(key);
+        if (found != contexts_.end() && found->second.config) {
+          const auto& configured = found->second;
+          if (!configured.ready || data->HasKey("privacy") ||
+              data->GetType("configRevision") != VTYPE_INT ||
+              data->GetInt("configRevision") != configured.config->revision) {
+            error(id, "Open requires acknowledged config revision and no legacy privacy policy"); return;
+          }
+        } else if (data->HasKey("configRevision")) {
+          error(id, "Apply and acknowledge config before opening"); return;
+        }
         auto& entry = contexts_[key];
         if (entry.context &&
             ((canvasEnabled && entry.canvasEnabled != *canvasEnabled) ||
@@ -452,6 +534,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
   bool closing_ = false;
   int creatingWindows_ = 0;
   std::map<std::string, ContextEntry> contexts_;
+  std::map<std::string, std::set<std::string>> retiredPrivateSeeds_;
   std::map<int, CefRefPtr<CefBrowser>> browsers_;
   std::map<int, std::string> browserContexts_;
   IMPLEMENT_REFCOUNTING(Companion);

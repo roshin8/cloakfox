@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 import tempfile
 import threading
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from engines.shared.persona_config import PersonaStore
 
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
@@ -45,6 +48,7 @@ def main():
     parser.add_argument('--chromium-binary',type=Path,required=True)
     parser.add_argument('--report',type=Path,required=True)
     parser.add_argument('--require-pixel-privacy',action='store_true')
+    parser.add_argument('--require-persona-config',action='store_true')
     args=parser.parse_args()
     report={'checks':[]}
     server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Fixture)
@@ -55,6 +59,15 @@ def main():
         with tempfile.TemporaryDirectory(prefix='cloakfox-dual-engines-') as folder:
             root=Path(folder);profile=root/'gecko';profile.mkdir()
             chromium_root=root/'chromium';chromium_root.mkdir(mode=0o700)
+            store=PersonaStore(chromium_root/'personas')
+            def open_cef(container, url, private=False):
+                if not args.require_persona_config:return app.open(container,url,private=private)
+                config=store.get(container,'chromium',private=private)
+                applied=app.rpc('applyConfig',config=config)
+                assert applied.get('ok') and applied.get('configRevision')==config['revision'],applied
+                browser=app.open(container,url,private=private,configRevision=config['revision'])
+                report['versionedConfigVerified']=True
+                return browser
             options=Options();options.binary_location=str(args.gecko_binary.resolve())
             for arg in ('-headless','-no-remote','-purgecaches','-profile',str(profile)):
                 options.add_argument(arg)
@@ -79,22 +92,23 @@ def main():
                 assert record['cookie']==('marker='+marker if marker else ''),record
                 assert record['canvasHash']>0,record
             exact(gecko(),None)
-            first=app.open('1',url);second=app.open('2',url)
+            first=open_cef('1',url);second=open_cef('2',url)
             for browser in (first,second):exact(cef(browser),None)
             a=gecko('gecko158');b=cef(first,'chromium1');c=cef(second,'chromium2')
             exact(a,'gecko158');exact(b,'chromium1');exact(c,'chromium2')
             driver.refresh();assert gecko()==a
             assert cef(first)==b and cef(second)==c
             report['checks'].append('Concurrent same-origin cookies/localStorage/IndexedDB stay engine- and container-owned; canvas reads stable')
-            private=app.open('1',url,private=True);exact(cef(private),None);exact(cef(private,'private1'),'private1')
+            private=open_cef('1',url,private=True);exact(cef(private),None);exact(cef(private,'private1'),'private1')
             assert app.rpc('close',browser=private)['ok'];app.wait(lambda x:x.get('event')=='closed' and x.get('browser')==private)
-            private=app.open('1',url,private=True);exact(cef(private),None)
+            store.forget_private('1','chromium')
+            private=open_cef('1',url,private=True);exact(cef(private),None)
             exact(gecko(),'gecko158');exact(cef(first),'chromium1')
             report['checks'].append('Private Chromium destruction/regeneration does not alter persistent Gecko/Chromium state')
             app.close();app=None
             driver.refresh();assert gecko()==a
             report['checks'].append('Gecko remains usable after companion shutdown')
-            app=Companion(args.chromium_binary.resolve(),chromium_root);first=app.open('1',url)
+            app=Companion(args.chromium_binary.resolve(),chromium_root);first=open_cef('1',url)
             assert cef(first)==b
             driver.quit();driver=None
             assert cef(first)==b

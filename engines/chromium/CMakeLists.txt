@@ -29,7 +29,7 @@ set(EXECUTABLE_NAME "${CEF_TARGET}")
 set(PRODUCT_NAME "Cloakfox Chromium Prototype")
 set(VERSION_SHORT "0.1.0")
 add_executable(${CEF_TARGET} MACOSX_BUNDLE
-  src/main_mac.mm src/browser_client.cc src/container_paths.cc src/control_channel.cc)
+  src/main_mac.mm src/browser_client.cc src/container_paths.cc src/control_channel.cc src/persona_config.cc)
 SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
 target_compile_options(${CEF_TARGET} PRIVATE -fexceptions)
 target_include_directories(${CEF_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")

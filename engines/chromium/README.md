@@ -4,9 +4,9 @@
 
 # Chromium companion prototype
 
-Development-only macOS arm64 CEF companion on branch `codex/dual-engine-prototype`.
+Development-only macOS arm64 CEF companion alongside Gecko158 on `codex/firefox-158-port`.
 It uses real Chromium with a native Views address field and Back/Forward/Reload controls.
-It is **not integrated into Cloakfox's tab bar and has no native fingerprint privacy patches**.
+It is **not integrated into Cloakfox's tab bar**. The source-built framework has partial native graphics privacy; the original downloaded binary SDK does not.
 The existing Gecko browser and DMG are unchanged.
 
 ## Build
@@ -27,6 +27,10 @@ cmake -S engines/chromium -B engines/chromium/build -G Ninja \
 cmake --build engines/chromium/build --parallel 6
 ctest --test-dir engines/chromium/build --output-on-failure
 ```
+
+The example above builds the unpatched binary-SDK baseline. To build the versioned
+persona launcher against the already-patched SDK on this machine, use a separate
+build directory and set `CEF_ROOT=/Volumes/CloakfoxChromiumBuild/source-build/webgpu-pixel-built-sdk`.
 
 The build packages sandbox-enabled helpers and the CEF framework into
 `engines/chromium/build/Release/CloakfoxChromium.app`. The prototype is not
@@ -51,6 +55,8 @@ root; switching to native keychain mode requires a fresh root.
 
 ## Control protocol
 
+See [shared persona/config protocol and lifecycle](../../docs/dual-engine/shared-persona-config.md) for the versioned config model now used by the development launcher. The source-built patched SDK is required for that launcher; the original binary SDK remains useful only for negative/baseline probes.
+
 Only the parent's inherited stdin/stdout pipes carry newline-delimited JSON.
 There is no listener, remote debugging port or JavaScript-to-host page binding.
 The UI process owns browser creation, navigation and profile lifecycle.
@@ -61,7 +67,8 @@ are rejected. Container IDs are canonical decimal integers 1–2147483647.
 
 | Command | Additional fields | Behavior |
 |---|---|---|
-| `open` | `container`, `url`, optional `private` | Opens a window under that container's context |
+| `applyConfig` | `config` | Applies a complete v1 snapshot before creating a browser; replies with `configApplied` and revision |
+| `open` | `container`, `url`, optional `private`, `configRevision` | Opens under that context; versioned contexts require the acknowledged revision |
 | `navigate` | `browser`, `url` | Navigates/reloads a surviving browser, including after renderer failure |
 | `close` | `browser` | Closes that browser |
 | `quit` | none | Closes browsers, releases contexts and shuts down |
@@ -119,10 +126,8 @@ build. See [Chromium's Mac build requirements](https://chromium.googlesource.com
 
 The pinned source baseline now compiles and passes the native runtime probes.
 It includes build compatibility adaptations and a macOS CEF RNG startup repair.
-The next source milestone is deterministic native canvas readback protection for
-container plus schemeful-site ownership, including workers and OffscreenCanvas.
-The native privacy gate remains open before Gecko launcher integration and a
-shared shell.
+Native canvas, shared/service-worker and GPU increments are now implemented; see the coverage sections below. The shared versioned config foundation now supplies container seeds and supported privacy options before navigation.
+Full privacy parity remains open before shared Gecko settings and a common shell.
 
 CEF is a viable embedding candidate based on the measured prototype so far;
 it is not yet selected as Cloakfox's final architecture. See the roadmap and
@@ -223,7 +228,7 @@ controller setting; the shared Gecko settings UI is not integrated yet.
 The first increment changes fully opaque pixels in sRGB/RGBA8 readback and image exports in
 pages and dedicated workers, using a persistent container secret plus schemeful
 site. It is **partial protection**: nonopaque pixels, non-sRGB/float16 readback,
-shared/service workers, opaque origins and raw WebGL/WebGPU remain uncovered.
+opaque origins and additional pixel formats remain uncovered. The subsequent worker/GPU increments below add shared/service-worker and partial WebGL/WebGPU coverage.
 The RGB low-bit transform reduces precision and is deterministic/idempotent for
 the same site and coordinates. It does not establish resistance to all canvas
 fingerprinting or guarantee a website's verification outcome.

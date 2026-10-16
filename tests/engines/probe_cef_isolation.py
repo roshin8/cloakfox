@@ -64,8 +64,9 @@ class Companion:
         self.process.stdin.flush()
         return self.wait(lambda x: x.get("id") == self.serial)
 
-    def open(self, container, url, private=False):
-        response = self.rpc("open", container=container, url=url, private=private)
+    def open(self, container, url, private=False, configRevision=None):
+        revision = {} if configRevision is None else {"configRevision": configRevision}
+        response = self.rpc("open", container=container, url=url, private=private, **revision)
         assert response["ok"], response
         browser = response["browser"]
         end = time.monotonic() + 20

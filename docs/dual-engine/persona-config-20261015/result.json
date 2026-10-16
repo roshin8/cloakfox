@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "date": "2026-10-15",
+  "branch": "codex/firefox-158-port",
+  "baseCommit": "7df5f6ee5a",
+  "frameworkSha256": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+  "companionBinarySha256": "b2ae8d5e70f1e0c75a657246ca1c73d971fc3f4d0b80c9754b6d61707a91f016",
+  "frameworkChanged": false,
+  "geckoSourcesChanged": false,
+  "tests": {
+    "enginePythonPassed": 86,
+    "enginePythonSkipped": 0,
+    "cppPassed": 1,
+    "concurrentGecko158VersionedConfig": "passed",
+    "tcpQuicCertificateRejection": "passed",
+    "launcher": "passed; persistent revision3 disabled/regenerated/cleared; revision4 re-enabled; SIGINT closes orderly",
+    "unpatchedSdk": "rejected v1 native options",
+    "reviewRegressions": "private seed retirement including popup lifetime and process shutdown; FIFO rejection; directory permission revalidation"
+  },
+  "inventory": {
+    "gecko": "158.0",
+    "activePatches": 144,
+    "optionalWebrtcPreferences": 21,
+    "htmlBindings": 124,
+    "actors": 13
+  },
+  "localCompanion": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/engines/chromium/build/Release/CloakfoxChromium.app",
+  "previousCompanion": "/Users/zeus/cloakfox-builds/chromium/pre-persona-companion-20261015.app",
+  "limitations": [
+    "Shared Gecko settings adapter/UI not implemented",
+    "v1 options limited to current canvas/GPU protections",
+    "Full navigator/device/font/audio persona generation not implemented",
+    "Persistent live config changes require companion restart",
+    "Authenticated H2/H3 connection/ticket isolation remains unverified"
+  ]
+}
