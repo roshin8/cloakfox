@@ -1,7 +1,7 @@
 """Exercise the production wildcard conversion after its owner's prefs change.
 
 A small harness substitutes Gecko ownership/string facilities, but compiles the
-actual CreateWildCard body from the committed canonical patch.
+actual CreateWildCard body from the freshly patched Gecko source.
 The live proxy routing probes cover network exchanges separately.
 """
 from pathlib import Path
@@ -15,10 +15,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class NativeNetworkSnapshot(unittest.TestCase):
     def test_proxy_wildcard_preserves_captured_network_and_security_state(self):
-        patch = (ROOT / 'patches/cloakfox-network-profile.patch').read_text()
-        section = patch.split('+++ b/netwerk/protocol/http/nsHttpConnectionInfo.cpp\n',1)[1].split('\n--- a/',1)[0]
-        source = '\n'.join(line[1:] for line in section.splitlines()
-                           if line.startswith(('+',' ')))
+        native = ROOT / 'firefox-src/netwerk/protocol/http/nsHttpConnectionInfo.cpp'
+        if not native.is_file():
+            self.skipTest('Requires patched Gecko source; exercised in both build jobs')
+        source = native.read_text()
         start = source.index('nsresult nsHttpConnectionInfo::CreateWildCard(')
         end = source.index('\n}', start) + 2
         method = source[start:end]

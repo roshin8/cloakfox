@@ -82,6 +82,8 @@ jobs:
             fi
           done
           python3 -m unittest discover -s tests/release -p 'test_*.py'
+          test -f firefox-src/netwerk/protocol/http/nsHttpConnectionInfo.cpp
+          python3 -m unittest discover -s tests/network -p 'test_native_network_snapshot.py'
 
       - name: Build
         env:
@@ -249,6 +251,8 @@ jobs:
             fi
           done
           python3 -m unittest discover -s tests/release -p 'test_*.py'
+          test -f firefox-src/netwerk/protocol/http/nsHttpConnectionInfo.cpp
+          python3 -m unittest discover -s tests/network -p 'test_native_network_snapshot.py'
 
       - name: Build
         env:
@@ -516,8 +520,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install pytest
-        run: pip install pytest
+      - name: Install unit and transport fixture dependencies
+        run: python3 -m pip install pytest -r tests/network/requirements-wire.txt
 
       - name: Engine and CI helper unit tests (native runtime runs separately)
         run: |

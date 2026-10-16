@@ -15,3 +15,5 @@ Constraints: preserve the running local identity build, its sources and SDKs. CI
 Review focus: cleanup outside hosted runners must refuse; active Xcode and macOS tools must survive; source/patch drift must fail before compilation; artifacts must belong to this run/commit; missing binaries/skipped runtime classes must fail the runtime job.
 
 Review ledger: fixed transferred-header SDK refresh before ordinary lookup and preserved generated TRANSFER-README.txt; regression test failed then passed. No deferred review findings. Task3 hosted execution remains pending.
+
+Hosted execution findings: source-dependent Node tests moved to prepared-source build jobs. Network unit job now installs pinned aioquic/h2 dependencies; wildcard harness reads the actual patched Gecko method rather than assuming its signature remains in diff context. Thirteen network tests and33 source-dependent Node tests pass locally; helper7/7 and actionlint pass. Hosted capacity157.0GiB, SDK26.5 and Metal verified; full compilation/runtime remain running.
