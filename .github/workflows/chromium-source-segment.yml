@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.12.10'
       - name: Validate CI helpers
         run: python3 -m unittest discover -s tests/ci -v
       - name: Reclaim hosted Mac space and require full build capacity
@@ -45,6 +45,8 @@ jobs:
           echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
           brew install cmake ninja ccache
           ccache --max-size 5G
+      - name: Verify real Ninja object reuse across checkpoint handoff
+        run: '"$pythonLocation/bin/python3" tests/ci/checkpoint_ninja_fixture.py'
       - name: Restore compiler cache
         uses: actions/cache@v4
         with:
@@ -62,11 +64,12 @@ jobs:
         env:
           HAS_CHECKPOINT: ${{ inputs.checkpoint != '' }}
         run: |
+          export PATH="$pythonLocation/bin:$PATH"
           resume=()
           if [[ "$HAS_CHECKPOINT" == "true" ]]; then
             resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.gz")
           fi
-          python3 -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.gz" "${resume[@]}"
+          "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.gz" "${resume[@]}"
       - name: Preserve unfinished source and compiled objects for next job
         if: steps.build.outputs.complete == 'false'
         uses: actions/upload-artifact@v4
@@ -100,5 +103,7 @@ jobs:
           path: |
             ${{ runner.temp }}/capacity.json
             ${{ runner.temp }}/chromium-build/evidence/
+            ${{ runner.temp }}/checkpoint-out/*.json
+            ${{ runner.temp }}/checkpoint-in/*.json
           if-no-files-found: error
           retention-days: 14

@@ -1,0 +1,34 @@
+{
+  "run": 38889379350,
+  "checkpointJob": 116957111393,
+  "restoreJob": 117059658803,
+  "failure": "Exact runnerImage identity differs before extraction; hosted label assigned different image revisions",
+  "runnerImages": [
+    "20261013.0424.1",
+    "20260907.0351.1"
+  ],
+  "reportedVersions": {
+    "macos": "26.6.2",
+    "build": "25G83",
+    "xcode": "26.6 build17F113",
+    "sdk": "26.5"
+  },
+  "checkpoint": {
+    "archiveBytes": 13633709060,
+    "archiveSha256": "fb3ded28b10c344443caaf39634fe59a8e5378c887f020b7f50b0ccafd714a6b",
+    "saveSeconds": 1321.3,
+    "artifactId": 12056627259,
+    "receipt": "/tmp/cloakfox-checkpoint-receipt-38889379350.json"
+  },
+  "repair": "Version2 binds actual selected Xcode/Python/buildtool bytes and external Python Mach-O library closure, exact OSbuild/arch and all existing source/root/commit/SDK/version/link fields. Runner image and Homebrew install receipts are provenance; legacy checkpoints remain exact. Explicit pinned Python interpreter and separately published small receipts.",
+  "verification": {
+    "ciHelperTests": 39,
+    "realNinja": "restored compiled object, unchanged bytes/mtime_ns, Ninja no work to do",
+    "realMachO": "executable -> external outer -> external inner dylib with inherited LC_RPATH; changed inner bytes detected",
+    "negative": "same version/size/mtime SDK byte changes, tool modes/links/commands, missing external libs and legacy image mismatch reject; receipt installation times alone do not reject",
+    "workflowActionlint": "three workflows passed",
+    "review": "no remaining blocking findings",
+    "hosted": "pending"
+  },
+  "constraints": "macOS GitHub Actions only; active38907954031 untouched; no checkpoint/cache/object deletion or duplicate dispatch; local drive/build recovery deferred"
+}

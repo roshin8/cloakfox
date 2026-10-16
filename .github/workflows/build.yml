@@ -2,6 +2,11 @@ name: Build Cloakfox
 
 on:
   workflow_dispatch:
+    inputs:
+      include_linux:
+        description: 'Include deferred Linux browser build and runtime coverage'
+        type: boolean
+        default: false
   push:
     branches: [main, codex/firefox-158-port]
     paths-ignore: ['docs/**', '**/*.md']
@@ -228,6 +233,8 @@ jobs:
           retention-days: 2
 
   build-linux:
+    # User deferred non-macOS browser work while the Mac handoff is validated.
+    if: github.event_name == 'workflow_dispatch' && inputs.include_linux
     runs-on: ubuntu-24.04
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -528,6 +535,8 @@ jobs:
   # continue-on-error on the suite step (not the job) so a Linux-only failure is
   # reported with full output rather than aborting mid-run.
   fingerprint-tests-linux:
+    # Deferred platform coverage is not a passing browser/runtime result.
+    if: github.event_name == 'workflow_dispatch' && inputs.include_linux
     needs: build-linux
     runs-on: ubuntu-latest
     steps:

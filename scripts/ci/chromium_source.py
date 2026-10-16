@@ -354,20 +354,32 @@ def main():
     sdk_path = Path(subprocess.check_output(['xcrun', '-sdk', 'macosx', '--show-sdk-path'], text=True).strip())
     platform_path = Path(subprocess.check_output(['xcrun', '-sdk', 'macosx', '--show-sdk-platform-path'], text=True).strip())
     sdk_links = [sdk_path, platform_path, developer / 'Toolchains/XcodeDefault.xctoolchain']
+    host_spec = importlib.util.spec_from_file_location('chromium_host_identity', Path(__file__).with_name('chromium_host_identity.py'))
+    host = importlib.util.module_from_spec(host_spec)
+    host_spec.loader.exec_module(host)
     identity = {
+        'identityVersion': 2,
         'gitSha': os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip(),
         'root': str(args.root.resolve()),
         'sourceLock': digest(ENGINE / 'source-lock.json'),
         'patchLocks': {path.name: digest(path) for path in sorted(ENGINE.glob('*patch-lock.json'))},
         'runtimePatch': digest(ENGINE / 'cef-runtime-patches.json'),
         'sdkLock': digest(ENGINE / 'cef-lock.json'),
-        'runnerImage': os.environ.get('ImageVersion'),
+        'hostBuildInputs': host.collect(developer),
         'hostSdkLinks': {str(checkpoint.HOST_LINK_DIR / path.name): str(path.resolve()) for path in sdk_links},
         'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True).strip(),
         'sdk': subprocess.check_output(['xcrun', '-sdk', 'macosx', '--show-sdk-version'], text=True).strip(),
         'python': sys.version,
         'pythonExecutable': sys.executable,
     }
+    provenance = {'runnerImage': os.environ.get('ImageVersion'),
+                  'homebrewInstallReceipts': host.install_provenance(identity['hostBuildInputs'])}
+    # Keep diagnostics outside the workspace so they survive a pre-extraction
+    # rejection and are inexpensive to retrieve independently of a 13GB archive.
+    diagnostics = args.checkpoint_out.parent
+    diagnostics.mkdir(parents=True, exist_ok=True)
+    (diagnostics / 'current-identity.json').write_text(json.dumps({
+        'identity': identity, 'provenance': provenance}, indent=2) + '\n')
     if args.resume:
         checkpoint.restore(args.root, args.resume, identity)
         # The verified workspace now owns the bytes; release duplicate archive space.
@@ -376,7 +388,7 @@ def main():
         args.root.mkdir(parents=True, exist_ok=False)
     complete = Pipeline(args.root.resolve()).build(args.jobs, args.compile_minutes, resumed=bool(args.resume), checkpoint_module=checkpoint, checkpoint_identity=identity)
     if not complete:
-        checkpoint.save(args.root, args.checkpoint_out, identity)
+        checkpoint.save(args.root, args.checkpoint_out, identity, provenance=provenance)
     result = {'complete': complete, 'gitSha': identity['gitSha']}
     (args.root / 'evidence/segment-result.json').write_text(json.dumps(result, indent=2) + '\n')
     if os.environ.get('GITHUB_OUTPUT'):

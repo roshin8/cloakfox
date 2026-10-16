@@ -24,6 +24,43 @@ def load():
 
 
 class Checkpoints(unittest.TestCase):
+    def test_different_runner_provenance_can_resume_only_identical_host_bytes(self):
+        module = load()
+        host_spec = importlib.util.spec_from_file_location('host_identity', PATH.with_name('chromium_host_identity.py'))
+        host = importlib.util.module_from_spec(host_spec)
+        host_spec.loader.exec_module(host)
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder)
+            sdk = base / 'sdk'
+            sdk.mkdir()
+            (sdk / 'header.h').write_text('original ABI')
+            root = base / 'build'
+            root.mkdir()
+            obj = root / 'compiled.o'
+            obj.write_bytes(b'preserved compiled object')
+            original = obj.read_bytes()
+            original_stamp = obj.stat().st_mtime_ns
+            identity = {'identityVersion': 2, 'gitSha': 'same-commit',
+                        'hostBuildInputs': host.tree_identity(sdk)}
+            archive = base / 'handoff/workspace.tar.gz'
+            module.save(root, archive, identity, provenance={'runnerImage': 'image-A'})
+            receipt = json.loads(archive.with_suffix('.json').read_text())
+            self.assertEqual(receipt['provenance']['runnerImage'], 'image-A')
+            shutil.rmtree(root)
+            module.restore(root, archive, identity)
+            self.assertEqual(obj.read_bytes(), original)
+            self.assertEqual(obj.stat().st_mtime_ns, original_stamp)
+            shutil.rmtree(root)
+            (sdk / 'header.h').write_text('changed ABI')
+            with self.assertRaisesRegex(ValueError, 'hostBuildInputs'):
+                module.restore(root, archive, {**identity, 'hostBuildInputs': host.tree_identity(sdk)})
+            self.assertFalse(root.exists())
+            # A v1 checkpoint cannot be silently upgraded across images.
+            module.save(sdk, archive, {'gitSha': 'same-commit', 'runnerImage': 'image-A'})
+            with self.assertRaisesRegex(ValueError, 'identity'):
+                module.restore(root, archive, {'gitSha': 'same-commit', 'runnerImage': 'image-B'})
+            self.assertFalse(root.exists())
+
     def test_roundtrip_preserves_objects_timestamps_and_links(self):
         module = load()
         with tempfile.TemporaryDirectory() as folder:

@@ -74,7 +74,7 @@ def validate_links(root, identity=None):
     print(f'CHECKPOINT preflight verified {count} contained or pinned SDK symlinks', flush=True)
 
 
-def save(root, archive, identity):
+def save(root, archive, identity, provenance=None):
     root, archive = Path(root).resolve(), Path(archive).resolve()
     if archive.is_relative_to(root):
         raise ValueError('Checkpoint archive must be outside the workspace')
@@ -97,7 +97,8 @@ def save(root, archive, identity):
     with archive.open('wb') as file:
         with tarfile.open(fileobj=GuardedWriter(file, archive.parent), mode='w:gz', compresslevel=1) as bundle:
             bundle.add(root, arcname='workspace', filter=preserve)
-    record = {'schemaVersion': 1, 'identity': identity, 'hostLinks': host_links, 'sha256': digest(archive),
+    record = {'schemaVersion': 1, 'identity': identity, 'provenance': provenance or {},
+              'hostLinks': host_links, 'sha256': digest(archive),
               'bytes': archive.stat().st_size, 'seconds': round(time.monotonic() - started, 1)}
     archive.with_suffix('.json').write_text(json.dumps(record, indent=2) + '\n')
     print(f"CHECKPOINT saved bytes={record['bytes']} seconds={record['seconds']}", flush=True)
@@ -109,7 +110,10 @@ def restore(root, archive, identity):
     if receipt.get('schemaVersion') != 1:
         raise ValueError('Unsupported checkpoint schema')
     if receipt.get('identity') != identity:
-        raise ValueError('Checkpoint identity differs from current commit/toolchain/root')
+        previous = receipt.get('identity')
+        fields = sorted(key for key in set(previous or {}) | set(identity)
+                        if (previous or {}).get(key) != identity.get(key))
+        raise ValueError('Checkpoint identity differs from current commit/toolchain/root: ' + ', '.join(fields))
     if digest(archive) != receipt['sha256']:
         raise ValueError('Checkpoint SHA256 mismatch')
     host_links = receipt.get('hostLinks', {})

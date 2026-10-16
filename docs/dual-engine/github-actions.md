@@ -52,7 +52,7 @@ The standard hosted runner passed storage/Metal preflight, but the cold build di
 
 ## Checkpointed standard hosted builds
 
-The source workflow now chains up to four standard `macos-26` jobs. Each runs Ninja for at most 180 minutes, then interrupts only its owned compiler process group and uploads a gzip checkpoint of the full build workspace. Source, dependency tools, generated files, Ninja state, objects and nanosecond timestamps travel together. No source timestamp reconstruction or cache-hit assumption is used. Later jobs restore at the same absolute root only when the commit, source/patch locks, SDK template, Xcode/SDK, Python and runner image match. Safe internal absolute symlinks become relative links; unrecognized external links fail preflight before compilation; the exact installed SDK links described below are recreated after extraction. Archive SHA256, traversal filtering and a 10 GiB creation/extraction reserve protect the handoff. Compression/extraction emit their own progress messages.
+The source workflow now chains up to four standard `macos-26` jobs. Each runs Ninja for at most 180 minutes, then interrupts only its owned compiler process group and uploads a gzip checkpoint of the full build workspace. Source, dependency tools, generated files, Ninja state, objects and nanosecond timestamps travel together. No source timestamp reconstruction or cache-hit assumption is used. Later jobs restore at the same absolute root only when the commit, source/patch locks, SDK template, Xcode/SDK and Python match. The macOS content identity policy below supersedes the original runner-image equality check. Safe internal absolute symlinks become relative links; unrecognized external links fail preflight before compilation; the exact installed SDK links described below are recreated after extraction. Archive SHA256, traversal filtering and a 10 GiB creation/extraction reserve protect the handoff. Compression/extraction emit their own progress messages.
 
 Checkpoint uploads use unique same-run artifact names and two-day retention; the workflow uses standard runners and does not select paid machines or increase cache quotas. GitHub's [Actions billing documentation](https://docs.github.com/en/billing/concepts/product-billing/github-actions) describes standard hosted usage for public repositories. Large checkpoint storage/transfer duration and the full hosted path remain unverified.
 
@@ -88,3 +88,44 @@ Raw hosted native and protected audit logs additionally identify `FEATURE_FAILUR
 ## Linux FFVPX video dependency link repair
 
 Run38889379350 progressed through the repaired WebGPU compilation and failed later while linking `libmozavcodec.so`: imported AV1 lifecycle/T.35 code referenced three missing Dolby Vision helpers. Those shared provider sources, their utility metadata implementation and exports were incorrectly guarded as Darwin-only. They now follow the existing video-enabled target guard on every OS; audio-only targets and the Darwin-only additional H.264/HEVC decoder scope remain unchanged. The regression fails for non-Darwin video targets before the fix and passes afterward; actual source objects compile with Unix configuration, the updated original158 hunks apply, and 29 CI helpers plus parity inventory and workflow lint pass. Full hosted Linux linking remains pending. Chromium and macOS runtime jobs were left running. [Failure record](ci-20261015/linux-ffvpx-dovi-link.json).
+
+
+## macOS checkpoint host compatibility
+
+Run `38889379350` saved its first Chromium workspace successfully: archive bytes
+13,633,709,060, SHA256 `fb3ded28b10c344443caaf39634fe59a8e5378c887f020b7f50b0ccafd714a6b`,
+compression 1,321.3 seconds. Its next job received a different runner image
+(`20261013.0424.1` to `20260907.0351.1`) and rejected the identity before extraction.
+Both jobs reported macOS 26.6.2 build 25G83, Xcode 26.6 build 17F113 and SDK 26.5;
+those version labels alone do not prove binary compatibility.
+
+The new version-2 identity compares actual host inputs instead of the broad image
+revision: full selected Xcode bundle contents, Python runtime source/native files,
+recursive external Python Mach-O dependencies, Homebrew CMake/Ninja/ccache kegs and
+their installed runtime dependency union. Exact macOS build/architecture, paths,
+Python version/executable, source/patch/SDK locks, commit and pinned SDK link mapping
+still must match. File contents, executable modes and symlink targets are bound;
+host file mtimes are not used as a compatibility proxy. Unresolved external host
+directory links and ambiguous/missing dynamic dependencies fail closed. Generated
+Python import caches and non-runtime Homebrew install receipts/recipe metadata are
+excluded; original Homebrew receipts and runner image remain provenance. This does
+not alter any source/object timestamps or relax archive SHA/extraction guards.
+Legacy checkpoints retain their old exact identity and cannot be upgraded without
+host content evidence.
+
+The source job pins Python 3.12.10 and uses its explicit interpreter/PATH. Small
+old/current identity receipts are uploaded with segment evidence, including when
+restore fails, and rejection messages identify differing identity fields. A required
+post-tool-install fixture proves real Ninja resumes the same native object without
+recompilation; a real Mach-O executable/library chain proves external dependency
+changes are detected. All 39 helper tests, fixture checks and workflow lint passed;
+independent review has no remaining blocking findings. Full hosted fingerprinting,
+large checkpoint restore/reuse, source SDK packaging and strict browser/coexistence
+runtime verification remain pending. Current running jobs are not retrofitted or
+cancelled. [Failure and repair evidence](ci-20261015/chromium-checkpoint-host-identity.json).
+
+Linux browser build/runtime jobs are now opt-in through the manual workflow's
+`include_linux` input (default false), per the user's macOS-only scope. Push runs
+do not schedule those browser jobs. Shared unit checks remain enabled. Deferred
+Linux coverage is not reported as passing; existing cross-platform release
+dependencies remain unchanged. No Windows browser job is currently defined.
