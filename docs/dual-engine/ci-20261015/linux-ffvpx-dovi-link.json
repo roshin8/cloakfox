@@ -1,0 +1,22 @@
+{
+  "runId": 38889379350,
+  "jobId": 116957111186,
+  "testedCommit": "ecc1651bc7",
+  "completedAtUtc": "2026-10-16T13:16:30Z",
+  "failureStage": "link media/ffvpx/libavcodec/libmozavcodec.so",
+  "undefinedSymbols": ["ff_dovi_ctx_unref", "ff_dovi_rpu_parse", "ff_dovi_get_metadata"],
+  "consumers": ["libdav1d.c", "libaomenc.c", "av1dec.c", "itut35.c"],
+  "cause": "Imported AV1 lifecycle and T.35 sources call shared Dolby Vision providers on all video platforms, but the owning patch built their sources and metadata API only on Darwin.",
+  "repair": "Build dovi_rpu.c, dovi_rpudec.c and libavutil/dovi_meta.c and export the metadata API for every non-audio-only target. Preserve Darwin-only additional H.264/HEVC decoders and their existing C flags.",
+  "localVerification": {
+    "buildGraphRegression": "red before fix for Linux/Windows/Android video; green after across all four OS and audio/video modes",
+    "metadataExports": "actual added symbol preprocessor blocks verified for Darwin/non-Darwin and audio/video modes",
+    "portableSourceCompile": "actual three provider sources compile with Unix config on the local arm64 Mac; symbol inspection confirms the missing providers, not a Linux link test",
+    "patchReplay": "reverse previous owning hunks then apply-check updated hunks against original158 build/symbol inputs",
+    "ciHelperTestsPassed": 29,
+    "parityInventoryTest": "passed",
+    "workflowLint": "passed"
+  },
+  "hostedLinuxCompilation": "pending corrected successor",
+  "activeOtherJobsCancelled": false
+}

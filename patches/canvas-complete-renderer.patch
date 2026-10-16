@@ -6840,20 +6840,23 @@
          USE_LIBS += [
              'dav1d',
              'media_libdav1d_asm',
-@@ -210,3 +212,51 @@
+@@ -210,3 +212,54 @@
      OS_LIBS += ['android', 'mediandk']
  
  include("../ffvpxcommon.mozbuild")
 +
 +# Exact FFmpeg 9.0.1 LGPL decoder subset, C implementations only.
++# Imported AV1 lifecycle/T.35 code uses these providers on every video target.
++if not CONFIG['MOZ_FFVPX_AUDIOONLY']:
++    dovi_sources = ['dovi_rpu.c', 'dovi_rpudec.c']
++    SOURCES += dovi_sources
++
 +if CONFIG['OS_ARCH'] == 'Darwin' and not CONFIG['MOZ_FFVPX_AUDIOONLY']:
 +    canonical_codec_sources = [
 +        'ac3_parser.c',
 +        'bswapdsp.c',
 +        'cabac.c',
 +        'dirac.c',
-+        'dovi_rpu.c',
-+        'dovi_rpudec.c',
 +        'dv_profile.c',
 +        'error_resilience.c',
 +        'float_scalarproduct.c',
@@ -6887,14 +6890,14 @@
 +    ]
 +    DIRS += ['hevc']
 +    SOURCES += canonical_codec_sources
-+    for canonical_source in canonical_codec_sources:
++    for canonical_source in canonical_codec_sources + dovi_sources:
 +        SOURCES[canonical_source].flags += [
 +            '-include', TOPSRCDIR + '/media/ffvpx/canonical_codec_config.h',
 +            '-ffp-contract=off',
 +        ]
 --- a/media/ffvpx/libavutil/avutil.symbols
 +++ b/media/ffvpx/libavutil/avutil.symbols
-@@ -364,3 +364,28 @@
+@@ -364,3 +364,31 @@
  ff_emms_asm
  #endif
  ff_timecode_set_smpte
@@ -6902,9 +6905,6 @@
 +#if defined(XP_DARWIN) && !defined(MOZ_FFVPX_AUDIOONLY)
 +av_ambient_viewing_environment_alloc
 +av_ambient_viewing_environment_create_side_data
-+av_dovi_alloc
-+av_dovi_metadata_alloc
-+av_dovi_find_level
 +av_md5_alloc
 +av_md5_init
 +av_md5_update
@@ -6923,17 +6923,26 @@
 +av_film_grain_params_select
 +av_container_fifo_write
 +#endif
++
++#if !defined(MOZ_FFVPX_AUDIOONLY)
++av_dovi_alloc
++av_dovi_metadata_alloc
++av_dovi_find_level
++#endif
 --- a/media/ffvpx/libavutil/moz.build
 +++ b/media/ffvpx/libavutil/moz.build
-@@ -121,3 +121,12 @@
+@@ -121,3 +121,15 @@
      OS_LIBS += ['android']
  
  include("../ffvpxcommon.mozbuild")
 +
++# The imported AV1 Dolby Vision parser is shared by all video platforms.
++if not CONFIG['MOZ_FFVPX_AUDIOONLY']:
++    SOURCES += ['dovi_meta.c']
++
 +if CONFIG['OS_ARCH'] == 'Darwin' and not CONFIG['MOZ_FFVPX_AUDIOONLY']:
 +    SOURCES += [
 +        'ambient_viewing_environment.c',
-+        'dovi_meta.c',
 +        'md5.c',
 +        'stereo3d.c',
 +        'tdrdi.c',
