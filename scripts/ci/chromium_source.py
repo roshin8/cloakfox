@@ -129,6 +129,12 @@ class Pipeline:
             raise RuntimeError('Repository pin mismatch: ' + name)
         return target
 
+    def apply_archive_patch(self, patch, cwd):
+        # CEF tarball patches use bare "DEPS"/"gclient.py" filenames, not
+        # a/ and b/ prefixes. Other native patches retain their normal -p1.
+        self.run(patch.name + '-check', ['git', 'apply', '-p0', '--check', patch], cwd)
+        self.run(patch.name, ['git', 'apply', '-p0', patch], cwd)
+
     def prepare(self):
         lock = json.loads((ENGINE / 'source-lock.json').read_text())
         binary_lock = json.loads((ENGINE / 'cef-lock.json').read_text())
@@ -156,8 +162,7 @@ class Pipeline:
             raise RuntimeError('Extracted Chromium version mismatch')
         for name, cwd in [('tarball_gclient.patch', depot), ('tarball_deps.patch', source)]:
             patch = source / 'cef/patch/patches' / name
-            self.run(name + '-check', ['git', 'apply', '--check', patch], cwd)
-            self.run(name, ['git', 'apply', patch], cwd)
+            self.apply_archive_patch(patch, cwd)
         solution = {'name': 'src', 'url': 'https://chromium.googlesource.com/chromium/src.git@' + lock['chromiumVersion'],
                     'managed': False, 'custom_vars': {'source_tarball': True, 'checkout_pgo_profiles': False},
                     'custom_deps': {}, 'deps_file': 'DEPS', 'safesync_url': ''}

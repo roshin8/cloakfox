@@ -593,8 +593,8 @@ Run `python3 scripts/setup-fingerprint-libraries.py`, then explicitly run
 upstream CreepJS and npm FingerprintJS, with exact revision/checksum checks and
 three headful samples per case. The fixtures stay in ignored directories; npm
 lifecycle scripts are disabled. See `libraries/upstreams.json` and
-`docs/fingerprint-repairs/library-validation.md`. This optional audit is excluded
-from `run_all.py` until explicitly invoked; no library detector warnings are
+`docs/fingerprint-repairs/library-validation.md`. This audit is a mandatory separate CI gate on both Gecko platforms and native Chromium. It remains excluded
+from `run_all.py` because CI invokes it separately; no library detector warnings are
 suppressed or treated as proof of undetectability.
 
 Canonical canvas foundation (experimental, complete pipeline unfinished):
@@ -629,3 +629,5 @@ browser (leave `LIBRARY_HEADLESS` unset), and `CLOAKFOX_TEST_CANVAS_PIPELINE=1`
 to test the canonical backend. Personal profile settings are unchanged.
 
 Container GPU persona enforcement: `probe_container_gpu_profiles.py` tests the installed Mac binary with all four BrowserForge hardware families, identical-persona container pairs, native boundaries, workers, captured/restored contexts and restart persistence. Enable the optional mode in pinned-library audits with `LIBRARY_CONTAINER_GPU_PROFILES=1` together with `CLOAKFOX_TEST_CANVAS_PIPELINE=1`; `LIBRARY_WEBGPU_ENABLED=1` exercises WebGPU. See `docs/container-rendering-profiles/README.md` for truthful detector warnings and support limits.
+
+Required CreepJS/FingerprintJS gates and strict inconclusive policy: see [audit contracts and evidence](../../docs/dual-engine/required-library-audits.md). Unallowed exit2 results fail run_all by default; the committed allowance list is empty.

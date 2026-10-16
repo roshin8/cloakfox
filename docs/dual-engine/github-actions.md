@@ -26,3 +26,7 @@ No paid or self-hosted runner is required by this configuration. Hosted job time
 Seven CI helper tests and actionlint pass locally. The packaging regression for transferred Chromium headers is covered by a failing-then-passing fixture. The full new hosted source build and runtime sequence still need their first successful run; hardware/capacity surveys alone do not establish that result. The ongoing local identity source build is independent and unchanged.
 
 [Corrected full run](https://github.com/roshin8/cloakfox/actions/runs/38838708458) builds commit1288a030a7. Its hosted unit-test job passed; full builds and runtime completion are pending. The existing periodic build watcher now also checks the latest non-cancelled dual-engine CI run and fixes failures within this scope.
+
+## Required upstream library audits
+
+CreepJS and FingerprintJS now run as mandatory runtime gates for Gecko on macOS/Linux and Chromium on macOS. Exact fixture pins, three-sample stability, native controls, detector-warning retention and the strict inconclusive policy are documented in [required library audits](required-library-audits.md). No inconclusive probe allowances are enabled by default. Local runtime verification passed; hosted verification of these new gates is pending.

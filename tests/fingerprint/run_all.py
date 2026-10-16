@@ -13,12 +13,15 @@ Usage:
     CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \\
         python tests/fingerprint/run_all.py [-k SUBSTRING] [--list]
 
-Exit code: 0 if every probe passed (2/inconclusive is not a failure), else 1.
+Exit code: 0 only when every result passes or has an exact unexpired allowance.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime
+import json
+import re
 import os
 import subprocess
 import sys
@@ -31,9 +34,42 @@ HERE = Path(__file__).resolve().parent
 # regression tests, with the reason they are skipped by default.
 SKIP = {
     "probe_font_spike.py": "phase-0 spike, needs a hand-staged test font",
-    "probe_fingerprint_libraries.py": "opt-in upstream library audit; run scripts/setup-fingerprint-libraries.py first",
+    "probe_fingerprint_libraries.py": "required separately in CI after pinned fixture setup",
     "run_all.py": "this driver",
 }
+
+
+def validate_allowances(entries):
+    if type(entries) is not list:
+        raise ValueError('Allowances must be a list')
+    seen = set()
+    for entry in entries:
+        if type(entry) is not dict or set(entry) != {'probe', 'platform', 'reason', 'expires'}:
+            raise ValueError('Each allowance needs exact probe, platform, reason and expiry')
+        if not isinstance(entry['probe'], str) or not re.fullmatch(r'probe_[a-z0-9_]+\.py', entry['probe']):
+            raise ValueError('Wildcard/invalid probe allowance')
+        if entry['platform'] not in ('darwin', 'linux', 'win32'):
+            raise ValueError('Allowance requires one exact supported platform')
+        if not isinstance(entry['reason'], str) or not entry['reason'].strip():
+            raise ValueError('Allowance requires a reason')
+        try:
+            if not isinstance(entry['expires'], str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', entry['expires']):
+                raise ValueError('Date must use YYYY-MM-DD')
+            datetime.date.fromisoformat(entry['expires'])
+        except (TypeError, ValueError):
+            raise ValueError('Allowance requires an ISO expiry date')
+        key = (entry['probe'], entry['platform'])
+        if key in seen:
+            raise ValueError('Duplicate probe/platform allowance')
+        seen.add(key)
+    return entries
+
+
+def accept_outcome(probe, code, allowances, platform, today):
+    validate_allowances(allowances)
+    return code == 0 or (code == 2 and any(
+        entry['probe'] == probe and entry['platform'] == platform
+        and datetime.date.fromisoformat(entry['expires']) >= today for entry in allowances))
 
 
 def discover() -> list[Path]:
@@ -50,7 +86,18 @@ def main() -> int:
     ap.add_argument("--retries", type=int, default=1,
                     help="retries for a failing probe (default 1); browser "
                          "launches can fail spuriously under load")
+    ap.add_argument('--allow-inconclusive', type=Path, default=HERE / 'inconclusive-allowances.json',
+                    help='Exact, reasoned, expiring platform/probe allowances (default empty)')
+    ap.add_argument('--report', type=Path, default=HERE / 'reports/probe-suite.json')
     args = ap.parse_args()
+    try:
+        policy = json.loads(args.allow_inconclusive.read_text())
+        if type(policy) is not dict or set(policy) != {'schemaVersion', 'allowances'} or type(policy['schemaVersion']) is not int or policy['schemaVersion'] != 1:
+            raise ValueError('Unsupported allowance policy schema')
+        allowances = validate_allowances(policy['allowances'])
+    except (OSError, ValueError, TypeError) as error:
+        ap.error(str(error))
+    today = datetime.datetime.now(datetime.timezone.utc).date()
 
     probes = discover()
     if args.k:
@@ -63,10 +110,13 @@ def main() -> int:
             print(f"{name}  (skipped: {why})")
         return 0
 
+    if not probes:
+        print('No probes selected; refusing an empty successful suite', file=sys.stderr)
+        return 1
     binary = os.environ.get("CLOAKFOX_BIN")
     if not binary or not os.path.exists(binary):
         print("CLOAKFOX_BIN not set or binary missing", file=sys.stderr)
-        return 2
+        return 1
     print(f"binary: {binary}")
     print(f"probes: {len(probes)}\n")
 
@@ -88,7 +138,7 @@ def main() -> int:
                 code, out = cp.returncode, (cp.stdout or "") + (cp.stderr or "")
             except subprocess.TimeoutExpired:
                 code, out = 3, f"TIMEOUT after {args.timeout}s"
-            if code in (0, 2) or attempts > args.retries:
+            if accept_outcome(p.name, code, allowances, sys.platform, today) or attempts > args.retries:
                 break
             print(f"    retry {attempts}/{args.retries} after exit {code} ...", flush=True)
             time.sleep(3)
@@ -99,27 +149,37 @@ def main() -> int:
         verdict = next((ln for ln in reversed(out.splitlines())
                         if ln.startswith(("PASS", "FAIL", "INCONCLUSIVE"))), "")
         results.append((p.name, code, took, verdict, out))
-        label = {0: "PASS", 1: "FAIL", 2: "SKIP/INCONCLUSIVE", 3: "TIMEOUT"}.get(code, f"EXIT{code}")
+        label = {0: "PASS", 1: "FAIL", 2: ("ALLOW/INCONCLUSIVE" if accept_outcome(p.name, code, allowances, sys.platform, today) else "FAIL/INCONCLUSIVE"), 3: "TIMEOUT"}.get(code, f"EXIT{code}")
         print(f"    {label} ({took:.0f}s) {verdict[:90]}")
 
     print("\n" + "=" * 78)
     print(f"{'PROBE':<42} {'RESULT':<18} {'TIME':>6}")
     print("-" * 78)
     failed = []
+    reported = []
     for name, code, took, verdict, out in results:
-        label = {0: "PASS", 1: "FAIL", 2: "SKIP/INCONCL", 3: "TIMEOUT"}.get(code, f"EXIT{code}")
+        label = {0: "PASS", 1: "FAIL", 2: ("ALLOW/INCONCL" if accept_outcome(name, code, allowances, sys.platform, today) else "FAIL/INCONCL"), 3: "TIMEOUT"}.get(code, f"EXIT{code}")
         print(f"{name:<42} {label:<18} {took:>5.0f}s")
-        if code not in (0, 2):
+        accepted = accept_outcome(name, code, allowances, sys.platform, today)
+        allowance = next((entry for entry in allowances if entry['probe'] == name and entry['platform'] == sys.platform), None)
+        reported.append({'probe': name, 'exitCode': code, 'accepted': accepted,
+                         'seconds': took, 'verdict': verdict, 'output': out,
+                         'allowance': allowance if code == 2 and accepted else None})
+        if not accepted:
             failed.append((name, out))
     print("=" * 78)
     passed = sum(1 for _, c, _, _, _ in results if c == 0)
-    skipped = sum(1 for _, c, _, _, _ in results if c == 2)
-    print(f"{passed} passed · {len(failed)} failed · {skipped} skipped/inconclusive")
+    skipped = sum(1 for name, c, _, _, _ in results if c == 2 and accept_outcome(name, c, allowances, sys.platform, today))
+    print(f"{passed} passed · {len(failed)} failed · {skipped} explicitly allowed inconclusive")
 
     for name, out in failed:
         print(f"\n----- {name} output -----")
         print("\n".join(out.splitlines()[-25:]))
 
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    args.report.write_text(json.dumps({'platform': sys.platform, 'binary': binary,
+        'allowancePolicy': str(args.allow_inconclusive), 'success': not failed,
+        'results': reported}, indent=2) + '\n')
     return 1 if failed else 0
 
 

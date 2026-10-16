@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -21,43 +22,7 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 
-ROOT = Path(__file__).resolve().parents[2]
-LIB = ROOT / 'tests/fingerprint/libraries'
-CREEP = ROOT / 'tests/fingerprint/reports/library-fixtures/creepjs'
-MANIFEST = json.loads((LIB / 'upstreams.json').read_text())
-FP_BUNDLE = LIB / 'node_modules/@fingerprintjs/fingerprintjs' / MANIFEST['fingerprintjs']['bundle']
-FP_PAGE = '''<!doctype html><meta charset=utf-8><title>Local FingerprintJS</title>
-<script src="/vendor/fp.js"></script><script>
-FingerprintJS.load({monitoring:false}).then(a=>a.get()).then(r=>window.libraryResult={...r,rawCanvas:FingerprintJS.getUnstableCanvasFingerprint(false)},
-e=>window.libraryResult={error:String(e)});
-</script>'''
-
-
-def stable_hash(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-
-
-class Handler(SimpleHTTPRequestHandler):
-    def do_GET(self):
-        path = urlsplit(self.path).path
-        self.server.requests.append({'host': self.headers.get('Host'), 'path': path,
-                                     'ua': self.headers.get('User-Agent'),
-                                     'hints': {k: v for k, v in self.headers.items() if k.lower().startswith('sec-ch-')}})
-        if path == '/fp.html':
-            content, mime = FP_PAGE.encode(), 'text/html; charset=utf-8'
-        elif path == '/vendor/fp.js':
-            content, mime = FP_BUNDLE.read_bytes(), 'text/javascript'
-        else:
-            return super().do_GET()
-        self.send_response(200)
-        self.send_header('Content-Type', mime)
-        self.send_header('Cache-Control', 'no-store')
-        self.send_header('Content-Length', str(len(content)))
-        self.end_headers()
-        self.wfile.write(content)
-
-    def log_message(self, *_):
-        pass
+from library_audit_common import ROOT, LIB, CREEP, MANIFEST, FP_BUNDLE, Handler, stable_hash, verify_fixtures
 
 
 def main():
@@ -72,21 +37,10 @@ def main():
     out = Path(os.environ.get('REPORT_DIR', ROOT / 'tests/fingerprint/reports/fingerprint-libraries'))
     out.mkdir(parents=True, exist_ok=True)
     repeats = int(os.environ.get('LIBRARY_REPEATS', '3'))
-    assert repeats >= 2, 'At least two reload samples required'
-    assert FP_BUNDLE.is_file() and (CREEP / 'docs/creep.js').is_file(), 'Run scripts/setup-fingerprint-libraries.py first'
-    assert (CREEP / '.git').is_dir() and not (CREEP / '.git').is_symlink(), 'Fixture requires its own Git directory'
-    commit = subprocess.check_output(['git', '-C', str(CREEP), 'rev-parse', 'HEAD'], text=True).strip()
-    assert commit == MANIFEST['creepjs']['commit'], 'CreepJS fixture revision drift'
-    assert Path(subprocess.check_output(['git', '-C', str(CREEP), 'rev-parse', '--show-toplevel'], text=True).strip()).resolve() == CREEP.resolve(), 'Fixture must have its own Git checkout'
-    assert not subprocess.check_output(['git', '-C', str(CREEP), 'status', '--porcelain', '--untracked-files=normal'], text=True).strip(), 'CreepJS fixture is modified'
-    package = json.loads((FP_BUNDLE.parents[1] / 'package.json').read_text())
-    assert package['version'] == MANIFEST['fingerprintjs']['version']
-    provenance = {'binary': binary, 'graphicsModes': graphics_modes, 'webgpuEnabled': webgpu_enabled, 'containerGPUProfiles':container_profiles,
-                  'creepjsCommit': commit, 'fingerprintjsVersion': package['version'],
-                  'creepjsBundleSHA256': hashlib.sha256((CREEP / 'docs/creep.js').read_bytes()).hexdigest(),
-                  'fingerprintjsBundleSHA256': hashlib.sha256(FP_BUNDLE.read_bytes()).hexdigest()}
-    assert provenance['creepjsBundleSHA256'] == MANIFEST['creepjs']['bundleSHA256'], 'CreepJS bundle checksum mismatch'
-    assert provenance['fingerprintjsBundleSHA256'] == MANIFEST['fingerprintjs']['bundleSHA256'], 'FingerprintJS bundle checksum mismatch'
+    assert repeats >= 3, 'At least three reload samples required'
+    assert Path(binary).is_file(), 'Required Gecko binary is missing'
+    provenance = {**verify_fixtures(), 'binary': binary, 'graphicsModes': graphics_modes,
+                  'webgpuEnabled': webgpu_enabled, 'containerGPUProfiles': container_profiles}
     (out / 'upstreams.json').write_text(json.dumps(provenance, indent=2))
     server = ThreadingHTTPServer(('127.0.0.1', 0), partial(Handler, directory=str(CREEP / 'docs')))
     server.requests = []
@@ -119,7 +73,7 @@ def main():
                 for name, value in graphics_modes.items():
                     options.set_preference('cloakfox.experimental.canvas_pipeline' if name == 'canonical_2d' else 'cloakfox.opt.' + name, value)
                 driver = webdriver.Firefox(options=options, service=Service(
-                    '/opt/homebrew/bin/geckodriver', service_args=['--allow-system-access'],
+                    os.environ.get('GECKODRIVER') or shutil.which('geckodriver'), service_args=['--allow-system-access'],
                     log_output=str(out / ('protected-gecko.log' if enabled else 'native-gecko.log'))))
                 driver.set_page_load_timeout(40)
                 driver.set_script_timeout(60)
@@ -279,6 +233,12 @@ def main():
         (out / 'summary.json').write_text(json.dumps({'cases': len(cases), 'repeats': repeats, 'checks': len(checks),
             'failures': failures, 'libraryExecutions': sum(len(s) for c in cases for s in c['libraries'].values())}, indent=2))
         assert not failures, failures
+    except BaseException as error:
+        check(False, 'library audit completed', str(error))
+        save()
+        (out / 'summary.json').write_text(json.dumps({'success': False, 'error': str(error),
+            'cases': len(cases), 'checks': checks}, indent=2))
+        raise
     finally:
         server.shutdown()
         server.server_close()

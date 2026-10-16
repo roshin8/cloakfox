@@ -109,3 +109,13 @@ class CiInputs(unittest.TestCase):
             (evidence / 'source-provenance.json').write_text(json.dumps(receipt))
             with self.assertRaises(ValueError):
                 api.verify(archive, evidence, root / 'drift', 'expected')
+
+    def test_upstream_tarball_patches_apply_without_a_b_prefix(self):
+        api = load('chromium_source')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'DEPS').write_text('old\n')
+            patch = root / 'tarball_deps.patch'
+            patch.write_text('diff --git DEPS DEPS\n--- DEPS\n+++ DEPS\n@@ -1 +1 @@\n-old\n+new\n')
+            api.Pipeline(root).apply_archive_patch(patch, root)
+            self.assertEqual((root / 'DEPS').read_text(), 'new\n')

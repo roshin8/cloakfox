@@ -1,0 +1,35 @@
+{
+  "gecko": {
+    "success": true,
+    "libraryExecutions": 48,
+    "checks": 456,
+    "runtime": {
+      "buildID": "20261015182935",
+      "os": "Darwin",
+      "version": "158.0-beta.26"
+    }
+  },
+  "chromium": {
+    "success": true,
+    "libraryExecutions": 36,
+    "checks": 440,
+    "chromiumVersion": "154.0.8037.98",
+    "cefVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+    "privacyPatched": false,
+    "notCoveredIsolation": [
+      "audio",
+      "fonts",
+      "screen",
+      "WebRTC",
+      "cross-OS persona masking"
+    ]
+  },
+  "upstreams": {
+    "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+    "fingerprintjsVersion": "5.3.0",
+    "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+    "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538"
+  },
+  "hostedFullRun": "pending after CI changes; these are local runtime results, not hosted pass claims",
+  "warnings": "All upstream detector flags are retained in local raw reports; no zero-warning or undetectability assertion."
+}

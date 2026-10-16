@@ -82,6 +82,14 @@ jobs:
           python3 scripts/ci/verify_chromium_artifact.py --archive artifacts/chromium-apps.tar.gz --evidence evidence/source --destination apps
           echo "CLOAKFOX_CHROMIUM_BIN=$PWD/apps/patched-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" >> "$GITHUB_ENV"
           echo "CLOAKFOX_UNPATCHED_CHROMIUM_BIN=$PWD/apps/baseline-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install pinned upstream fingerprint library fixtures
+        run: python3 scripts/setup-fingerprint-libraries.py
+      - name: Required CreepJS and FingerprintJS native Chromium audit
+        timeout-minutes: 15
+        run: python3 -u tests/engines/probe_fingerprint_libraries.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report-dir evidence/runtime/library-audit
       - name: Install owned transport probe dependencies
         run: python3 -m pip install -r tests/network/requirements-wire.txt
       - name: Require actual Metal execution

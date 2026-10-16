@@ -316,6 +316,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pinned upstream fingerprint library fixtures
+        run: python3 scripts/setup-fingerprint-libraries.py
+
       - name: Install selenium + geckodriver
         run: |
           python -m pip install --upgrade pip
@@ -340,6 +347,15 @@ jobs:
           xattr -cr /tmp/cfx-app/Cloakfox.app || true
           ls -la /tmp/cfx-app/Cloakfox.app/Contents/MacOS/cloakfox
 
+      - name: Required CreepJS and FingerprintJS audit
+        id: libraries
+        continue-on-error: true
+        timeout-minutes: 35
+        env:
+          CLOAKFOX_BIN: /tmp/cfx-app/Cloakfox.app/Contents/MacOS/cloakfox
+          REPORT_DIR: ${{ runner.temp }}/gecko-library-audit
+        run: python3 -u tests/fingerprint/probe_fingerprint_libraries.py
+
       - name: Run fingerprint probe suite
         id: probes
         continue-on-error: true
@@ -360,7 +376,7 @@ jobs:
           # run_all.py only globs probe_*.py. See the unit-tests job for why
           # is needed.
           python -m pip install -q pytest
-          python -m pytest -q \
+          python -m pytest --noconftest -q \
             tests/fingerprint/test_math_constants.py \
             tests/fingerprint/test_sec_ch_ua.py
 
@@ -382,8 +398,19 @@ jobs:
           name: fingerprint-probe-output
           path: /tmp/probe-output.txt
 
+      - name: Preserve required library and strict probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: required-gecko-audits-macos
+          path: |
+            ${{ runner.temp }}/gecko-library-audit/
+            tests/fingerprint/reports/probe-suite.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Fail if probes regressed
-        if: always() && (steps.probes.outcome != 'success' || steps.browser_units.outcome != 'success')
+        if: always() && (steps.probes.outcome != 'success' || steps.browser_units.outcome != 'success' || steps.libraries.outcome != 'success')
         run: |
           echo "One or more fingerprint probes failed — see the job summary."
           echo "Probes are the only guard against SILENT spoofing regressions."
@@ -413,6 +440,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pinned upstream fingerprint library fixtures
+        run: python3 scripts/setup-fingerprint-libraries.py
+
       - name: Install selenium + geckodriver
         run: |
           set -euo pipefail
@@ -430,8 +464,8 @@ jobs:
       - name: Install runtime libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-0 libdbus-glib-1-2 libasound2t64 || \
-            sudo apt-get install -y libgtk-3-0 libdbus-glib-1-2 libasound2
+          sudo apt-get install -y xvfb xauth libgtk-3-0 libdbus-glib-1-2 libasound2t64 || \
+            sudo apt-get install -y xvfb xauth libgtk-3-0 libdbus-glib-1-2 libasound2
 
       - name: Download Linux build
         uses: actions/download-artifact@v4
@@ -455,6 +489,14 @@ jobs:
           test -n "$BIN"
           echo "CLOAKFOX_BIN=$BIN" >> "$GITHUB_ENV"
 
+      - name: Required CreepJS and FingerprintJS audit
+        id: libraries
+        continue-on-error: true
+        timeout-minutes: 35
+        env:
+          REPORT_DIR: ${{ runner.temp }}/gecko-library-audit
+        run: xvfb-run -a python3 -u tests/fingerprint/probe_fingerprint_libraries.py
+
       - name: Run fingerprint probe suite
         id: probes
         continue-on-error: true
@@ -468,7 +510,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install -q pytest
-          python -m pytest -q \
+          python -m pytest --noconftest -q \
             tests/fingerprint/test_math_constants.py \
             tests/fingerprint/test_sec_ch_ua.py
 
@@ -491,8 +533,19 @@ jobs:
           name: fingerprint-probe-output-linux
           path: /tmp/probe-output-linux.txt
 
+      - name: Preserve required library and strict probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: required-gecko-audits-linux
+          path: |
+            ${{ runner.temp }}/gecko-library-audit/
+            tests/fingerprint/reports/probe-suite.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Fail if probes regressed
-        if: always() && (steps.probes.outcome != 'success' || steps.browser_units.outcome != 'success')
+        if: always() && (steps.probes.outcome != 'success' || steps.browser_units.outcome != 'success' || steps.libraries.outcome != 'success')
         run: |
           echo "One or more fingerprint probes failed on LINUX."
           echo "A Linux-only failure usually means an assertion assumed a macOS host."
@@ -548,6 +601,12 @@ jobs:
       # test_math_constants and test_sec_ch_ua look pure but drive a real
       # browser and merely SKIP without CLOAKFOX_BIN; they run in the
       # fingerprint-tests jobs, where a binary exists.
+      - name: Strict outcomes and pinned library audit contract tests
+        run: |
+          python3 -m unittest discover -s tests/fingerprint -p test_probe_outcome_policy.py -v
+          python3 -m unittest discover -s tests/fingerprint -p test_library_audit_contract.py -v
+          python3 -m pytest --noconftest -q tests/fingerprint/test_library_fixture_safety.py
+
       - name: Fingerprint regression self-tests
         run: |
           set -euo pipefail
