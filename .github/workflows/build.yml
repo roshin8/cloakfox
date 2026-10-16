@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, codex/firefox-158-port]
+    paths-ignore: ['docs/**', '**/*.md']
     tags:
       - "v*"
   pull_request:
@@ -13,7 +14,7 @@ permissions:
 
 concurrency:
   group: browser-build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   chromium:
@@ -71,6 +72,16 @@ jobs:
           make dir
           python3 scripts/fix-mach-logging.py firefox-src
           echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
+
+      - name: Source-dependent Gecko regression tests
+        run: |
+          set -euo pipefail
+          for f in tests/fingerprint/test_*.mjs; do
+            if grep -q 'firefox-src' "$f"; then
+              node --test "$f"
+            fi
+          done
+          python3 -m unittest discover -s tests/release -p 'test_*.py'
 
       - name: Build
         env:
@@ -228,6 +239,16 @@ jobs:
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
+
+      - name: Source-dependent Gecko regression tests
+        run: |
+          set -euo pipefail
+          for f in tests/fingerprint/test_*.mjs; do
+            if grep -q 'firefox-src' "$f"; then
+              node --test "$f"
+            fi
+          done
+          python3 -m unittest discover -s tests/release -p 'test_*.py'
 
       - name: Build
         env:
@@ -507,7 +528,10 @@ jobs:
         run: |
           set -euo pipefail
           for f in tests/fingerprint/test_*.mjs; do
-            echo "--- $f"
+            if grep -q 'firefox-src' "$f"; then
+              echo "Source assertions run after patching in both Gecko build jobs: $f"
+              continue
+            fi
             node --test "$f"
           done
 

@@ -12,7 +12,7 @@ The source workflow additionally removes unused mobile target platforms and simu
 
 ## What each gate exercises
 
-- Gecko: existing native build/package and Selenium fingerprint probes on macOS/Linux. Browser-dependent Python test outcomes now join the final failure gate. Unit tests also block draft releases.
+- Gecko: existing native build/package and Selenium fingerprint probes on macOS/Linux. Browser-dependent Python test outcomes now join the final failure gate. Unit tests also block draft releases. Node tests referencing firefox-src run after patch application in each Gecko build job, rather than attempting to read an absent source tree in the fast unit job.
 - Chromium source: pinned source archive size/SHA256, pinned full CEF history and depot_tools revision, official CEF patches, RNG startup repair and ordered Cloakfox native patch locks. The uncommitted identity increment is not part of remote CI until its files are committed; once present the same builder adds and verifies that final patch.
 - Chromium packaging: distribution templates supply build scaffolding only. Headers/wrapper come from matching generated/source files and CEF distribution transfer mappings. The framework must have identical source-output, SDK and app-embedded SHA256. The original binary SDK builds a separate negative control.
 - Chromium runtime: fresh hosted Mac, verified same-commit archive and framework, actual Metal, complete engine suite with both clients, sandbox/storage isolation and owned TCP/QUIC certificate-rejection tests. Native classes skipping for absent binaries cause failure; CLT-only characterization and source replay are explicitly excluded from this binary-only runner.
