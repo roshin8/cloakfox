@@ -34,4 +34,5 @@ class RunnerProbe(unittest.TestCase):
         self.assertTrue(module.readiness({**report, 'sdkVersion': '26.5'})['sourceBuild'])
         self.assertFalse(module.readiness({**report, 'sdkVersion': '26.4'})['sourceBuild'])
         self.assertFalse(module.readiness({**report, 'metalAvailable': False})['metalRuntime'])
+        self.assertTrue(module.readiness({**report, 'freeBytes': 14 * 1024**3})['metalRuntime'])
         self.assertFalse(module.readiness({})['sourceBuild'])

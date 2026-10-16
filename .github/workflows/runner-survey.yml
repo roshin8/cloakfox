@@ -28,10 +28,27 @@ jobs:
       - name: Test capability evaluator
         run: python3 -m unittest discover -s tests/ci -v
       - name: Measure storage, Xcode and actual Metal execution
-        run: python3 scripts/ci/runner_probe.py --output runner-capabilities.json
+        run: python3 scripts/ci/runner_probe.py --output before/runner-capabilities.json
+      - name: Reclaim unused Xcode installations on the disposable hosted runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_ACTIONS" = true
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          active="$(dirname "$(dirname "$(xcode-select -p)")")"
+          case "$active" in /Applications/Xcode*.app) ;; *) exit 1 ;; esac
+          for app in /Applications/Xcode*.app; do
+            test -L "$app" && continue
+            test "$app" -ef "$active" && continue
+            sudo rm -rf -- "$app"
+          done
+      - name: Measure capacity after cleanup
+        run: python3 scripts/ci/runner_probe.py --output after/runner-capabilities.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: runner-capabilities-${{ matrix.runner }}
-          path: runner-capabilities.json
+          path: |
+            before/runner-capabilities.json
+            after/runner-capabilities.json
           if-no-files-found: error

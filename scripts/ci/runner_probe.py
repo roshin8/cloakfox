@@ -33,7 +33,8 @@ def readiness(report):
               and report.get("xcodeAvailable", False)
               and sdk >= (26, 5))
     return {"sourceBuild": bool(source),
-            "metalRuntime": bool(source and report.get("metalAvailable", False)),
+            "metalRuntime": bool(report.get("system") == "Darwin"
+                                 and report.get("metalAvailable", False)),
             "minimumFreeGiB": 128,
             "note": "Capacity preflight only; successful builds and browser tests remain required."}
 
@@ -46,7 +47,10 @@ def probe(root):
               "sdkVersion": "", "metalAvailable": False}
     if report["system"] == "Darwin":
         report["memory"] = command(["sysctl", "-n", "hw.memsize"])
-        report["disk"] = command(["diskutil", "info", str(root)])
+        for location in (root, *root.parents):
+            report["disk"] = command(["diskutil", "info", str(location)])
+            if report["disk"]["exitCode"] == 0:
+                break
         report["developerDirectory"] = command(["xcode-select", "-p"])
         report["xcode"] = command(["xcodebuild", "-version"])
         report["installedXcodes"] = sorted(str(p) for p in Path("/Applications").glob("Xcode*.app"))
