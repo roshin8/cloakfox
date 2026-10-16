@@ -325,10 +325,16 @@ jobs:
       - name: Install pinned upstream fingerprint library fixtures
         run: python3 scripts/setup-fingerprint-libraries.py
 
+      - name: Install pinned Monaco and Firepad probe fixtures
+        run: |
+          npm install --prefix "$RUNNER_TEMP/monaco-probe-assets" --ignore-scripts --no-audit --no-fund --save-exact \
+            monaco-editor@0.18.1 @hackerrank/firepad@0.8.6 esbuild@0.25.12
+          echo "MONACO_PROBE_ASSETS=$RUNNER_TEMP/monaco-probe-assets" >> "$GITHUB_ENV"
+
       - name: Install selenium + geckodriver
         run: |
           python -m pip install --upgrade pip
-          pip install selenium
+          python -m pip install -r tests/fingerprint/requirements-runtime.txt
           brew install geckodriver
 
       - name: Download macOS build
@@ -449,11 +455,17 @@ jobs:
       - name: Install pinned upstream fingerprint library fixtures
         run: python3 scripts/setup-fingerprint-libraries.py
 
+      - name: Install pinned Monaco and Firepad probe fixtures
+        run: |
+          npm install --prefix "$RUNNER_TEMP/monaco-probe-assets" --ignore-scripts --no-audit --no-fund --save-exact \
+            monaco-editor@0.18.1 @hackerrank/firepad@0.8.6 esbuild@0.25.12
+          echo "MONACO_PROBE_ASSETS=$RUNNER_TEMP/monaco-probe-assets" >> "$GITHUB_ENV"
+
       - name: Install selenium + geckodriver
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          pip install selenium
+          python -m pip install -r tests/fingerprint/requirements-runtime.txt
           # Pinned URL rather than a package manager: apt has no geckodriver and
           # snap is unavailable on the runner. The probes pass the system-access
           # flag as a geckodriver service arg, which works on 0.36 and 0.37 alike,

@@ -1,0 +1,22 @@
+{
+  "runId": 38880746857,
+  "jobId": 116929581228,
+  "commit": "450c45877a",
+  "completedAtUtc": "2026-10-16T11:48:12Z",
+  "probeResults": {"passed": 99, "failed": 46, "allowedInconclusive": 0},
+  "requiredLibraries": {"executions": 48, "checks": 456, "failures": 0},
+  "browserPytest": {"passed": 5},
+  "missingPythonImportFailures": 35,
+  "missingImports": ["PIL", "cryptography", "aioquic", "websockets", "pytest"],
+  "missingMonacoAssets": true,
+  "repair": "Install complete pinned Python runtime requirements and pinned Monaco/Firepad/esbuild assets in both Gecko runtime jobs before running probes.",
+  "remainingInvestigation": [
+    "Provision same-build xpcshell for native appearance cases",
+    "Provision actual bundled codec libraries and source fixtures/headers",
+    "Build, sign, stage and verify the canonical GPU dependency; pass its directory to standalone probe",
+    "Investigate unavailable WebGL1/2 contexts without weakening strict collection or sandbox policy"
+  ],
+  "hostedRepairVerification": "pending",
+  "fullRuntimeVerification": "failed",
+  "rawEvidence": "required-gecko-audits-macos and fingerprint-probe-output artifacts on this run"
+}
