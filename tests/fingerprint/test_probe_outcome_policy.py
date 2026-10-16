@@ -59,3 +59,48 @@ class ProbeOutcomePolicy(unittest.TestCase):
                 self.assertTrue(result['accepted'])
                 self.assertEqual(result['exitCode'], 2)
                 self.assertTrue(result['allowance']['reason'])
+
+    def test_probe_attempt_cleans_descendants_on_success_and_timeout(self):
+        import os
+        import signal
+        import subprocess
+        import sys
+        import tempfile
+        import time
+        for finish in (True, False):
+            with self.subTest(finish=finish), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                pidfile = root / 'descendant.pid'
+                descendant = 'import signal,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);time.sleep(30)'
+                probe = root / 'probe_child.py'
+                probe.write_text('import subprocess,sys,time\nfrom pathlib import Path\n'
+                    f'child=subprocess.Popen([sys.executable,"-c",{descendant!r}])\n'
+                    f'Path({str(pidfile)!r}).write_text(str(child.pid))\n'
+                    'print("partial probe output",flush=True)\n' +
+                    ('raise SystemExit(0)\n' if finish else 'time.sleep(30)\n'))
+                try:
+                    code, output = runner.run_probe(probe, timeout=.3)
+                    self.assertEqual(code, 0 if finish else 3)
+                    self.assertIn('partial probe output', output)
+                    pid = int(pidfile.read_text())
+                    # A killed orphan can briefly remain a zombie until reaped.
+                    deadline = time.monotonic() + 2
+                    while True:
+                        state = subprocess.run(['ps','-p',str(pid),'-o','stat='], capture_output=True, text=True).stdout.strip()
+                        if not state or state.startswith('Z') or time.monotonic() >= deadline:
+                            break
+                        time.sleep(.01)
+                    self.assertTrue(not state or state.startswith('Z'), state)
+                finally:
+                    if pidfile.exists():
+                        try: os.kill(int(pidfile.read_text()), signal.SIGKILL)
+                        except ProcessLookupError: pass
+
+    def test_probe_attempt_preserves_failure_code_and_stderr(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            probe = Path(folder) / 'probe_failed.py'
+            probe.write_text('import sys;print("failure detail",file=sys.stderr);raise SystemExit(7)')
+            code, output = runner.run_probe(probe, timeout=2)
+            self.assertEqual(code, 7)
+            self.assertIn('failure detail', output)

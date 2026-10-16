@@ -1,0 +1,16 @@
+{
+  "run": "https://github.com/roshin8/cloakfox/actions/runs/38844274069",
+  "job": 116893341336,
+  "startedUtc": "2026-10-16T08:53:29Z",
+  "finishedUtc": "2026-10-16T10:03:33Z",
+  "annotation": "The hosted runner lost communication with the server. Anything in your workflow that terminates the runner process, starves it for CPU/Memory, or blocks its network access can cause this error.",
+  "macOSGeckoBuild": "passed",
+  "requiredLibraryAuditStep": "passed",
+  "customProbeSuite": "Runner lost during this step; verdict unavailable",
+  "rawRuntimeArtifacts": "Unavailable; runner died before evidence upload",
+  "rootCause": "Not established; annotation does not distinguish memory/CPU starvation, runner failure or connectivity.",
+  "separateReproducedHarnessDefect": "Parent-only timeout cleanup leaves browser/server descendants alive. Real owned descendant fixtures reproduce before the cleanup change, pass afterward.",
+  "repair": "POSIX probe attempts own a fresh process group and clean that group after success, failure or timeout. File-backed capture avoids inherited pipe waits, preserves partial output, and strict timeout/failure acceptance remains unchanged.",
+  "verification": "5 policy/process tests, 4 audit contract tests, 21 CI helpers and workflow lint pass locally; hosted repair verification pending.",
+  "noWaiversAdded": true
+}

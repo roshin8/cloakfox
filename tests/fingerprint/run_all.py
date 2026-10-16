@@ -24,6 +24,8 @@ import json
 import re
 import os
 import subprocess
+import signal
+import tempfile
 import sys
 import time
 from pathlib import Path
@@ -74,6 +76,42 @@ def accept_outcome(probe, code, allowances, platform, today):
 
 def discover() -> list[Path]:
     return sorted(p for p in HERE.glob("probe_*.py") if p.name not in SKIP)
+
+
+def run_probe(path: Path, timeout: float):
+    # File-backed capture cannot hang waiting for inherited browser pipe handles.
+    with tempfile.TemporaryFile() as log:
+        process = subprocess.Popen([sys.executable, str(path)], stdout=log, stderr=subprocess.STDOUT,
+                                   env={**os.environ}, start_new_session=(os.name == 'posix'))
+        try:
+            code = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            code = 3
+        finally:
+            # Each POSIX attempt owns a new session. Clean its browser/server
+            # descendants even when the probe itself exited before quitting them.
+            if os.name == 'posix':
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+            elif process.poll() is None:
+                process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+            if os.name == 'posix':
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        log.seek(0)
+        output = log.read().decode('utf-8', errors='replace')
+        if code == 3:
+            output += f"\nTIMEOUT after {timeout}s"
+        return code, output
 
 
 def main() -> int:
@@ -131,13 +169,7 @@ def main() -> int:
         attempts = 0
         while True:
             attempts += 1
-            try:
-                cp = subprocess.run([sys.executable, str(p)], capture_output=True,
-                                    text=True, timeout=args.timeout,
-                                    env={**os.environ})
-                code, out = cp.returncode, (cp.stdout or "") + (cp.stderr or "")
-            except subprocess.TimeoutExpired:
-                code, out = 3, f"TIMEOUT after {args.timeout}s"
+            code, out = run_probe(p, args.timeout)
             if accept_outcome(p.name, code, allowances, sys.platform, today) or attempts > args.retries:
                 break
             print(f"    retry {attempts}/{args.retries} after exit {code} ...", flush=True)
