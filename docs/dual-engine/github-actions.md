@@ -8,7 +8,7 @@ The `Build Cloakfox` workflow builds Gecko 158 for macOS arm64 and Linux x64, ca
 
 [Unused-Xcode cleanup survey](https://github.com/roshin8/cloakfox/actions/runs/38836760626) measured approximately122.0GiB free on macos-26 afterward, with Metal still passing. The xcode-27 image had only45.6GiB afterward and is not selected for source builds.
 
-The source workflow additionally removes unused mobile target platforms and simulator data, only on disposable GitHub-hosted Macs. It preserves the selected Xcode toolchain and MacOSX.platform. It requires at least128GiB free, arm64, full Xcode, SDK26.5+ and actual Metal execution before downloading source. Its own build stages monitor a10GiB reserve. Before/after capacity reports, per-stage minimum-free samples and build logs are uploaded even on failure. These preflights are budgets; only a completed full build demonstrates capacity for that build.
+The source workflow additionally removes unused mobile target platforms and simulator data, only on disposable GitHub-hosted Macs. Its first assessment measured **157.0GiB free** (168,607,563,776bytes), with Xcode26.6/SDK26.5 and actual Metal compute still passing; see [capacity evidence](ci-20261015/capacity-provenance.json). The superseded run was cancelled for a test-placement fix, so that result establishes capacity preflight, not full compilation. It preserves the selected Xcode toolchain and MacOSX.platform. It requires at least128GiB free, arm64, full Xcode, SDK26.5+ and actual Metal execution before downloading source. Its own build stages monitor a10GiB reserve. Before/after capacity reports, per-stage minimum-free samples and build logs are uploaded even on failure. These preflights are budgets; only a completed full build demonstrates capacity for that build.
 
 ## What each gate exercises
 
@@ -23,4 +23,6 @@ No paid or self-hosted runner is required by this configuration. Hosted job time
 
 ## Current verification
 
-CI helper tests and actionlint pass locally. The packaging regression for transferred Chromium headers is covered by a failing-then-passing fixture. The full new hosted source build and runtime sequence still need their first successful run; hardware/capacity surveys alone do not establish that result. The ongoing local identity source build is independent and unchanged.
+Seven CI helper tests and actionlint pass locally. The packaging regression for transferred Chromium headers is covered by a failing-then-passing fixture. The full new hosted source build and runtime sequence still need their first successful run; hardware/capacity surveys alone do not establish that result. The ongoing local identity source build is independent and unchanged.
+
+[Corrected full run](https://github.com/roshin8/cloakfox/actions/runs/38838366647) builds commit465e94c964. Runtime completion is pending. The existing periodic build watcher now also checks the latest non-cancelled dual-engine CI run and fixes failures within this scope.
