@@ -1,0 +1,78 @@
+{
+  "chromiumVersion": "154.0.8037.98",
+  "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+  "applyAfter": "worker-gpu-patch-lock.json",
+  "patch": "patches/native-webgpu-pixel-privacy.patch",
+  "capabilities": {
+    "webgpuPixelReadbackVersion": 1
+  },
+  "backend": "Metal",
+  "partial": true,
+  "inputs": [
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "c121addc3686b5902dd920b47498b1add1b0b636a471fbf63e695546db048880",
+      "afterSha256": "f600a569b2b2a0610ff45a0d6a2ca06239109a21b4bb7fa5a12c93b9ab9a535e"
+    },
+    {
+      "path": "gpu/command_buffer/service/webgpu_decoder_impl.cc",
+      "beforeSha256": "33b92c94dde470b53c4a9a313268f0b6580fe07b9045b2480d3f4bf775f89d0f",
+      "afterSha256": "1af3f61b453b68bac7f8cfc6c1a28f34bc37a85778043cec4559d85c435710c3"
+    },
+    {
+      "path": "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.cc",
+      "beforeSha256": "fffb87884ff8bf0312f43006ab3705f98b02d615c36d11a522e419354855ee3c",
+      "afterSha256": "023dae2b3aa68ddcc5699d8605253ab9b03ef9da306d4d02582ea19e6ebdf8eb"
+    },
+    {
+      "path": "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h",
+      "beforeSha256": "f82fa40bf430226279fd2d9fc4ade5ca2533b4674b310ba414ebb7e2ac588b1e",
+      "afterSha256": "51df494e1ee4b99ceec195509e3209d03bcc2a71f33cd862ba2885f9cc255e46"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
+      "beforeSha256": "9c797ac7885b268a5e11a678a8a5aa63661c7a4912020573cba3f5ac5d9f7757",
+      "afterSha256": "0bbdb91e3ead40eb71a9bcb5ed08c1ce1f16f3a7d97d125c1b8a76c877ff2809"
+    },
+    {
+      "path": "third_party/dawn/src/dawn/dawn.json",
+      "beforeSha256": "fc8392df82d3225649fce1bf25c371fb131b37a07fb82572c03ae63b6b02ed3b",
+      "afterSha256": "2961f6935a58c4e655e96eacb1aa70fde378b4fad642115020ce72381fe236cf"
+    },
+    {
+      "path": "third_party/dawn/src/dawn/native/CommandEncoder.cpp",
+      "beforeSha256": "9d4b33559e3adf7f4184387a2e5d4280b3806ce52ff7a7ab2838508ecace910b",
+      "afterSha256": "81a21de2a3c331f3b10f752d85508efc4a5f9be1c5e3882fe4b680ff5fa2ac8a"
+    },
+    {
+      "path": "third_party/dawn/src/dawn/native/Device.cpp",
+      "beforeSha256": "b285e20ec3199d0c9f8feab8bd72fed2b85c880bedff9cdeeb2d0c6ce081d747",
+      "afterSha256": "242660f6660aed8bd1d862995840fdab6c2a1e90d7cad14d75f7e174c93dc92c"
+    },
+    {
+      "path": "third_party/dawn/src/dawn/native/Device.h",
+      "beforeSha256": "f1c30847898f0ad28cfb2299d5ebbcc93fbf8a32d66a2f664145c9c0ee0d59f1",
+      "afterSha256": "2d1cd139eb3a81d236cad40c385ae8c98b301a8b72854a73aa7f4f41bca23dc0"
+    },
+    {
+      "path": "third_party/dawn/src/dawn/native/metal/CloakfoxPixelNoise.h",
+      "beforeSha256": null,
+      "afterSha256": "1f46da0d9e354edea314749a728c4a1066d35a56ae777e9dbe5bfc0eac47ec07"
+    },
+    {
+      "path": "third_party/dawn/src/dawn/native/metal/CommandBufferMTL.mm",
+      "beforeSha256": "0351eaefbdf199a06fb2587b17c04ab209f2f7ee9b8b731414191896692584bf",
+      "afterSha256": "7bbc469d18f0b679879edd52e9f60d4231bd321e20568633fcefabca4f678684"
+    },
+    {
+      "path": "third_party/dawn/src/dawn/native/metal/DeviceMTL.h",
+      "beforeSha256": "1b0a4203115bc3fd4f086bac0b76009e424b50c58b15dbd9f75256e0f51ac0e0",
+      "afterSha256": "cc7fb559f112933d877e9cd0bea70d2be9564c57f04e8643f276517647ec837b"
+    },
+    {
+      "path": "third_party/dawn/src/dawn/native/metal/DeviceMTL.mm",
+      "beforeSha256": "13e050a3949f07b60252071e1c0991e433cf9a50e82835a6c0ee8153e444cd1c",
+      "afterSha256": "5c23590e75372c0fe9cda16f1bd4122afc2c67f8a0ccc689898af45755102bf7"
+    }
+  ]
+}

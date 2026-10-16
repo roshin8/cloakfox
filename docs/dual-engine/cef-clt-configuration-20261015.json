@@ -1,0 +1,97 @@
+{
+  "scope": "isolated GN configuration and Cocoa/Metal compilation, not full Chromium/CEF",
+  "gnVersion": "2597 (ca14a831a823)",
+  "checks": {
+    "cltGnGeneration": {
+      "command": [
+        "/private/tmp/cloakfox-chromium154-toolchain-audit/gn-tool/gn",
+        "gen",
+        "out/clt",
+        "--args=mac_use_command_line_tools=true"
+      ],
+      "exitCode": 0,
+      "stdout": "Done. Made 1 targets from 10 files in 97ms\n",
+      "stderr": ""
+    },
+    "officialCltRejected": {
+      "command": [
+        "/private/tmp/cloakfox-chromium154-toolchain-audit/gn-tool/gn",
+        "gen",
+        "out/official",
+        "--args=mac_use_command_line_tools=true is_official_build=true"
+      ],
+      "exitCode": 1,
+      "stdout": "ERROR at //build/config/mac/mac_sdk.gni:117:3: Assertion failed.\n  assert(use_system_xcode && !is_official_build,\n  ^-----\nCLT mode is only supported for local non-official system builds\nSee //BUILD.gn:1:1: whence //build/config/mac/mac_sdk.gni was imported.\nimport(\"//build/config/mac/mac_sdk.gni\")\n^--------------------------------------\n",
+      "stderr": ""
+    },
+    "insufficientSdkRejected": {
+      "command": [
+        "/private/tmp/cloakfox-chromium154-toolchain-audit/gn-tool/gn",
+        "gen",
+        "out/sdk-too-old",
+        "--args=mac_use_command_line_tools=true mac_sdk_min=\"999.0\""
+      ],
+      "exitCode": 1,
+      "stdout": "ERROR at //build/config/mac/mac_sdk.gni:126:19: Script returned non-zero exit code.\n_mac_sdk_result = exec_script(script_name, sdk_info_args, \"scope\")\n                  ^----------\nCurrent dir: /private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/out/sdk-too-old/\nCommand: /opt/homebrew/opt/python@3.14/bin/python3.14 /private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/build/config/apple/clt_sdk_info.py --minimum-sdk 999.0 macosx\nReturned 2.\nstderr:\n\nSDK is older than required minimum\n\nSee //BUILD.gn:1:1: whence //build/config/mac/mac_sdk.gni was imported.\nimport(\"//build/config/mac/mac_sdk.gni\")\n^--------------------------------------\n",
+      "stderr": ""
+    },
+    "unsupportedSdkOverrideRejected": {
+      "command": [
+        "/private/tmp/cloakfox-chromium154-toolchain-audit/gn-tool/gn",
+        "gen",
+        "out/override",
+        "--args=mac_use_command_line_tools=true mac_sdk_path=\"/unsupported/custom.sdk\""
+      ],
+      "exitCode": 1,
+      "stdout": "ERROR at //build/config/mac/mac_sdk.gni:119:3: Assertion failed.\n  assert(mac_sdk_path == \"\",\n  ^-----\nCLT mode does not support mac_sdk_path overrides\nSee //BUILD.gn:1:1: whence //build/config/mac/mac_sdk.gni was imported.\nimport(\"//build/config/mac/mac_sdk.gni\")\n^--------------------------------------\n",
+      "stderr": ""
+    },
+    "defaultXcodeMode": {
+      "command": [
+        "/private/tmp/cloakfox-chromium154-toolchain-audit/gn-tool/gn",
+        "gen",
+        "out/default"
+      ],
+      "exitCode": 1,
+      "stdout": "ERROR at //build/config/mac/mac_sdk.gni:126:19: Script returned non-zero exit code.\n_mac_sdk_result = exec_script(script_name, sdk_info_args, \"scope\")\n                  ^----------\nCurrent dir: /private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/out/default/\nCommand: /opt/homebrew/opt/python@3.14/bin/python3.14 /private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/build/config/apple/sdk_info.py --get_sdk_info --create_symlink_at sdk/xcode_links --root_build_dir //out/default macosx\nReturned 1.\nstderr:\n\nxcode-select: error: tool 'xcodebuild' requires Xcode, but active developer directory '/Library/Developer/CommandLineTools' is a command line tools instance\nTraceback (most recent call last):\n  File \"/private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/build/config/apple/sdk_info.py\", line 209, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/build/config/apple/sdk_info.py\", line 191, in main\n    FillXcodeVersion(settings, args.developer_dir)\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/build/config/apple/sdk_info.py\", line 66, in FillXcodeVersion\n    subprocess.check_output(['xcodebuild', '-version'])\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 473, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n               **kwargs).stdout\n               ^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 578, in run\n    raise CalledProcessError(retcode, process.args,\n                             output=stdout, stderr=stderr)\nsubprocess.CalledProcessError: Command '['xcodebuild', '-version']' returned non-zero exit status 1.\n\nSee //BUILD.gn:1:1: whence //build/config/mac/mac_sdk.gni was imported.\nimport(\"//build/config/mac/mac_sdk.gni\")\n^--------------------------------------\n",
+      "stderr": ""
+    },
+    "nativeCompileUsingGnPaths": {
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/clang++",
+        "-isysroot",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX27.0.sdk",
+        "-framework",
+        "Cocoa",
+        "-framework",
+        "Metal",
+        "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/smoke.mm",
+        "-o",
+        "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/smoke"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "nativeExecution": {
+      "command": [
+        "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cloakfox-clt-gn-eh02i9t2/smoke"
+      ],
+      "exitCode": 0,
+      "stdout": "Cocoa+Metal OK; GPU available\n",
+      "stderr": ""
+    }
+  },
+  "discovered": {
+    "sdk": "/Library/Developer/CommandLineTools/SDKs/MacOSX27.0.sdk",
+    "binaryDirectory": "/Library/Developer/CommandLineTools/usr/bin/",
+    "sdkVersion": "27.0",
+    "toolsetBuild": "CLT-27.0.0.0.1788430756"
+  },
+  "resourceTools": {
+    "ibtool": false,
+    "actool": false,
+    "metal": false,
+    "momc": false
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "chromiumVersion": "154.0.8037.98",
+  "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+  "applyAfter": "canvas-patch-lock.json",
+  "patch": "patches/native-worker-gpu-privacy.patch",
+  "capabilities": {
+    "workerCanvasPrivacyVersion": 1,
+    "webglPrivacyVersion": 1,
+    "webgpuPrivacyVersion": 1
+  },
+  "partial": true,
+  "inputs": [
+    {
+      "path": "cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc",
+      "beforeSha256": "27bd490e063f73f0e2f34aeff4ac8da8e16d22834bcf0f5dcbc10468a310a97f",
+      "afterSha256": "3413f73f0ccc8e5f3eaad201d1950351dbd9b42e92661cfd29ced31942125d74"
+    },
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "7ad0eca5c2d6f4f3265e06064f05ff59aade283845b7cf1f098c991b7c626c69",
+      "afterSha256": "c121addc3686b5902dd920b47498b1add1b0b636a471fbf63e695546db048880"
+    },
+    {
+      "path": "components/performance_manager/worker_watcher.cc",
+      "beforeSha256": "4715031b7f6b345613df67a5a20a26ff8cec958ec771f0344877460e9da94566",
+      "afterSha256": "f249bf8575cb92e9e5f1640b5d40ff04f524aa603bb0fc6d32234032e3333697"
+    },
+    {
+      "path": "content/renderer/worker/embedded_shared_worker_stub.cc",
+      "beforeSha256": "73b7a54c14196c16316c0f4cccc9c00b992343bc464913529dfe60b1c0b02a0b",
+      "afterSha256": "32c20cfab9c503714ed056eaf69e472e7b1f6071621e65d73dbeb245d0b2c06c"
+    },
+    {
+      "path": "third_party/blink/public/web/web_shared_worker.h",
+      "beforeSha256": "8bbd5a0c2e44dbfe06c0cc37900d37b59ca5e39d5c6b18ecb1ce2b034d1b243d",
+      "afterSha256": "addc49e95d2c71f7318ba61ca684e83cd1c5e64e93206b26bdad2f650b3dd5e0"
+    },
+    {
+      "path": "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.cc",
+      "beforeSha256": "b68d0e76038253e7b5f9c8ec6c0a34a8706760b7d5b3b74f39a5708668e2e6eb",
+      "afterSha256": "fffb87884ff8bf0312f43006ab3705f98b02d615c36d11a522e419354855ee3c"
+    },
+    {
+      "path": "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h",
+      "beforeSha256": "ac23dc7b490672c531c113d7cb7362c21e38787fdaf1b09393722e1206168709",
+      "afterSha256": "f82fa40bf430226279fd2d9fc4ade5ca2533b4674b310ba414ebb7e2ac588b1e"
+    },
+    {
+      "path": "third_party/blink/renderer/core/exported/web_shared_worker_impl.cc",
+      "beforeSha256": "6172a66f62f7a233c7b4ba78d83e7951c7f2ad42c825fbbf25500c1e54540597",
+      "afterSha256": "dd56bce69b2d7d3a18086c03386faac08ff064dca3227ced6d269ca7325cefe7"
+    },
+    {
+      "path": "third_party/blink/renderer/core/exported/web_shared_worker_impl.h",
+      "beforeSha256": "b76d53cea26b581653594cb8c38cc22dcda1bc1970e404931a6005bb4a1c2d64",
+      "afterSha256": "bd8a08a478e7a22f17b66809bde8e3fbdb1e638be284d3a141a4c48b88d1cd69"
+    },
+    {
+      "path": "third_party/blink/renderer/core/workers/global_scope_creation_params.h",
+      "beforeSha256": "b094db717146459f42da29bda65dd5a7f8758fc8f21e18a788f88365d982891d",
+      "afterSha256": "e37951173a7e8f53ac0b5010f706816c3972b807f1423596f91b8104519ae868"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc",
+      "beforeSha256": "172264442491db4a22428fe3ec261543e36e9a975831aec3f50c06520f460e5f",
+      "afterSha256": "481c1ab59f3f072c5ad1b94fa3b353cc69be138b2b42be2fa8fe4b5391c414e7"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc",
+      "beforeSha256": "3ebcebc2b5a90576923242ba27860f9189d2d9faecd833c1a1639f66199144f4",
+      "afterSha256": "295ff649c353da55605bffd314de7352127f92285e2358a9b0a6a297e3e129ed"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+      "beforeSha256": "194530d9013b592dd8e128d426c4c891747b8ec3014fdd3501cf2543d12448f9",
+      "afterSha256": "5490fa998b7baad1e45b3d5885f48253f863d127294c550e58e21a73f5e98c76"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h",
+      "beforeSha256": "5fbda2b0fbf96986ed8d26345a0e2a24eb651450d77b2f34afdd8f38b9ba51be",
+      "afterSha256": "cb37186763c7c8b1164853dedb431230395ef5da115147c5018c1a22d7e9486c"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
+      "beforeSha256": "adce5605571613435cfe5c3ebe7f27271f0f8feb443138b72a934d13b687b6bf",
+      "afterSha256": "9c797ac7885b268a5e11a678a8a5aa63661c7a4912020573cba3f5ac5d9f7757"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgpu/gpu_buffer.cc",
+      "beforeSha256": "9a5f3fe9fda41e657754ac58fd095686f854240d1367de100ea86e895a068345",
+      "afterSha256": "688d11bb483533d56e0e0f4289dd2a450817786b2b10f58578e1ccc78aed2555"
+    }
+  ]
+}

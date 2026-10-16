@@ -1,0 +1,132 @@
+{
+  "status": "passed-selective-metal-webgpu-pixel-privacy",
+  "date": "2026-10-15",
+  "baseCommit": "5177ccfc03",
+  "chromiumVersion": "154.0.8037.98",
+  "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+  "binary": "/Volumes/CloakfoxChromiumBuild/source-build/webgpu-pixel-companion-build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium",
+  "frameworkSha256": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+  "sourceSdkEmbeddedHashesMatch": true,
+  "nativePatchSha256": "f18ca96ac78369a843ad62f4bdb1e90072c880c9c406e7b40ff18aca8221a66f",
+  "nativeCapability": "webgpuPixelReadbackVersion:1 (Metal only)",
+  "privacyPatched": false,
+  "algorithm": "GPU HMAC-SHA256 matches existing Canvas2D native transform; canonical RGB high bits plus source x/y; RGB low-bit replacement, opaque alpha only",
+  "execution": "validated native Metal texture-to-buffer copy, then internal compute dispatch in command order; no map-time buffer tags",
+  "verification": {
+    "pythonTests": 68,
+    "selectivePixelTests": 15,
+    "cppTests": 1,
+    "canvas2dParity": "RGBA/BGRA and both sRGB storage formats passed",
+    "workerCoverage": "document, dedicated, shared and service workers",
+    "identityLifecycle": "container/site separation, persistent restart, private regeneration passed",
+    "layouts": "offsets, padded rows, crops, mapped subranges, two copied layers with source z and rowsPerImage gaps passed",
+    "bufferSemantics": "GPU copies preserve protected bytes; compute overwrite, partial clear and queue writes replace bytes normally",
+    "selectivity": "nonopaque pixels, integer texture readback and arbitrary integer compute exact",
+    "validation": "invalid copies and destroyed-source native submit rejection preserve ordinary bytes",
+    "presentation": "CDP compositor screenshot remains original color after protected readback",
+    "strictReadbackDenial": "existing independent all-READ-map block still passes; WRITE/mapped-at-creation unaffected",
+    "nativeMetalShader": "standalone actual Metal bytes equal CPU HMAC-SHA256 reference; padding and offsets unchanged",
+    "sandbox": {
+      "rendererCount": 6,
+      "outsideProfileWriteDenied": true,
+      "parentControlAllowed": true
+    },
+    "graphics": {
+      "error": 0,
+      "pixel": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)"
+    },
+    "transport": "native TCP/QUIC pre-certificate observations; untrusted certificates rejected",
+    "authenticatedHttpSettingsVerified": false,
+    "sourceVerification": {
+      "patchReplay": "reverse/clean replay/idempotence/check passed",
+      "unexpectedInputRejectedBeforeMutation": true,
+      "currentNativeHashesPassed": true,
+      "frameworkHashes": {
+        "source": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+        "sdk": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+        "embedded": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed"
+      },
+      "preservedHashes": {
+        "sourceBaseline": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+        "canvasSdk": "d96aa0093f25d53d2d34b6a54a2ed8d2402cc686912081ec8cb107c7347da35e",
+        "workerGpuSdk": "ffc338312fc1a809c33d611b95bbd1069dd11a2bdc3f3e51d6e1054c13d3ce59",
+        "originalBinarySdkApp": "7884625a6d9931a39409939668bcf1ae03d86ce81e1b4fd3ae97d0e16344cb3a"
+      }
+    },
+    "launcherCombinedFlagsPassed": true
+  },
+  "legacySdkControl": {
+    "passed": true,
+    "ready": {
+      "canvasReadbackVersion": 1,
+      "cefVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+      "chromiumVersion": "154.0.8037.98",
+      "engine": "chromium",
+      "event": "ready",
+      "privacyPatched": false,
+      "probeEnabled": true,
+      "testKeychain": true,
+      "testQuicRoute": false,
+      "version": 1,
+      "webglPrivacyVersion": 1,
+      "webgpuPixelReadbackVersion": 0,
+      "webgpuPrivacyVersion": 1,
+      "workerCanvasPrivacyVersion": 1
+    },
+    "defaultOpenSucceeded": true
+  },
+  "redControl": {
+    "initialTests": 9,
+    "failingSubcases": 8,
+    "missingPixelPrivacyFailures": 7,
+    "fixtureFailure": "Compositor fixture used inline canvas and sampled its line-box offset; fixed to display:block before final run",
+    "firstFullSuiteFixtureFailure": "Expected compositor green128; native old/new controls all produce129 even with protection off and no readback. Final fixture compares protected screenshot byte-exact against disabled control.",
+    "pairedPresentationControls": 8,
+    "computeDisabledAndRejectionControlsPassed": true,
+    "fullLog": "cef-webgpu-pixel-red-20261015.txt"
+  },
+  "performance": {
+    "size": [
+      512,
+      512
+    ],
+    "samples": 3,
+    "protectedCopyAndMapMs": [
+      6.299999997019768,
+      6.9000000059604645,
+      3.199999988079071
+    ],
+    "disabledCopyAndMapMs": [
+      1,
+      0.800000011920929,
+      0.3999999910593033
+    ],
+    "protectedMedianMs": 6.299999997019768,
+    "disabledMedianMs": 0.800000011920929,
+    "note": "Illustrative local Metal texture copy plus READ mapping; excludes device/pipeline creation; not a release benchmark"
+  },
+  "uncovered": [
+    "non-Metal WebGPU backends",
+    "formats outside RGBA8/BGRA8 unorm/sRGB and alpha below255",
+    "shader-based image extraction and general GPU capability fingerprints",
+    "nonce/opaque ownership and separate per-embedding identities inside intentionally unpartitioned worker pools",
+    "persona generation/master configuration/shared settings UI",
+    "authenticated H2/H3 SETTINGS, tickets and connection isolation"
+  ],
+  "preserved": {
+    "hashes": {
+      "sourceBaseline": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+      "canvasSdk": "d96aa0093f25d53d2d34b6a54a2ed8d2402cc686912081ec8cb107c7347da35e",
+      "workerGpuSdk": "ffc338312fc1a809c33d611b95bbd1069dd11a2bdc3f3e51d6e1054c13d3ce59",
+      "originalBinarySdkApp": "7884625a6d9931a39409939668bcf1ae03d86ce81e1b4fd3ae97d0e16344cb3a"
+    },
+    "priorSdkAppsPreserved": true,
+    "geckoFilesChanged": false
+  }
+}

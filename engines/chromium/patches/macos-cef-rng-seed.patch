@@ -1,0 +1,52 @@
+--- a/base/rand_util.cc
++++ b/base/rand_util.cc
+@@ -9,6 +9,7 @@
+ #include <stdint.h>
+ 
+ #include <algorithm>
++#include <array>
+ #include <atomic>
+ #include <limits>
+ 
+@@ -16,6 +17,11 @@
+ #include "base/check_op.h"
+ #include "base/containers/span.h"
+ #include "base/time/time.h"
++#include "build/build_config.h"
++
++#if BUILDFLAG(IS_MAC)
++#include <sys/random.h>
++#endif
+ 
+ namespace base {
+ 
+@@ -147,8 +153,18 @@
+   // point, so it cannot occur post-seeding and is safe to use as the sentinel.
+   if (a_ == 0 && b_ == 0) [[unlikely]] {
+     do {
++#if BUILDFLAG(IS_MAC)
++      // First use can happen inside PartitionAlloc lock metrics. BoringSSL's
++      // per-thread RNG initialization may allocate there, so use the same
++      // allocation-free OS entropy source as RandDoubleAvoidAllocation().
++      std::array<uint64_t, 2> seed;
++      CHECK(getentropy(seed.data(), sizeof(seed)) == 0);
++      a_ = seed[0];
++      b_ = seed[1];
++#else
+       a_ = base::RandUint64();
+       b_ = base::RandUint64();
++#endif
+     } while (a_ == 0 && b_ == 0);  // ~2^-128; effectively never iterates.
+   }
+ 
+--- a/base/rand_util.h
++++ b/base/rand_util.h
+@@ -246,7 +246,7 @@
+ // system call to generate a new number, except to seed it.  This should *never*
+ // be used for cryptographic applications, and is not thread-safe.
+ //
+-// It is lazily seeded using base::RandUint64() on first use, meaning that it
++// It is lazily seeded from OS randomness on first use, meaning that it
+ // doesn't need to be seeded. Seeding is deferred (rather than done in the
+ // constructor) so that constructing one is allocator-safe: base::RandUint64()
+ // can call into BoringSSL, which may allocate, and constructing this object on

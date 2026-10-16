@@ -1,0 +1,48 @@
+--- a/build/config/mac/mac_sdk.gni
++++ b/build/config/mac/mac_sdk.gni
+@@ -41,6 +41,10 @@
+   # If empty, the path to the lowest version greater than or equal to
+   # `mac_sdk_min` is used.
+   mac_sdk_path = ""
++
++  # Cloakfox experimental local development mode, not an Xcode installation.
++  # Resource compiler availability and complete framework builds remain gates.
++  mac_use_command_line_tools = false
+ 
+   # The SDK name as accepted by `xcodebuild`.
+   mac_sdk_name = "macosx"
+@@ -109,6 +113,20 @@
+   ]
+ }
+ sdk_info_args += [ mac_sdk_name ]
++if (mac_use_command_line_tools) {
++  assert(use_system_xcode && !is_official_build,
++         "CLT mode is only supported for local non-official system builds")
++  assert(mac_sdk_path == "",
++         "CLT mode does not support mac_sdk_path overrides")
++  script_name = "//build/config/apple/clt_sdk_info.py"
++  sdk_info_args = []
++  sdk_info_args = [
++    "--minimum-sdk", mac_sdk_min,
++    "--create-symlink-at", "sdk/clt_links",
++    "--root-build-dir", root_build_dir,
++    mac_sdk_name,
++  ]
++}
+ 
+ _mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
+ xcode_version = _mac_sdk_result.xcode_version
+@@ -118,7 +136,12 @@
+   mac_sdk_path = _mac_sdk_result.sdk_path
+ }
+ 
+-if (use_system_xcode) {
++if (mac_use_command_line_tools) {
++  mac_sdk_path = _mac_sdk_result.sdk_path
++  mac_sdk_version = _mac_sdk_result.sdk_version
++  mac_sdk_build_version = _mac_sdk_result.sdk_build
++  mac_bin_path = _mac_sdk_result.mac_bin_path
++} else if (use_system_xcode) {
+   # The tool will print the SDK path on the first line, and the version on the
+   # second line.
+   find_sdk_args = [

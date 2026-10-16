@@ -1,0 +1,128 @@
+{
+  "status": "passed-partial-native-worker-gpu-privacy",
+  "date": "2026-10-15",
+  "baseCommit": "e1ff77ca0a",
+  "chromiumVersion": "154.0.8037.98",
+  "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+  "frameworkSha256": "ffc338312fc1a809c33d611b95bbd1069dd11a2bdc3f3e51d6e1054c13d3ce59",
+  "sourceSdkEmbeddedHashesMatch": true,
+  "nativePatchSha256": "529648d682511c4882f82184a2854801906fee38e88da64f27d097a65e6e0d84",
+  "binary": "/Volumes/CloakfoxChromiumBuild/source-build/worker-gpu-companion-build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium",
+  "capabilities": {
+    "canvasReadbackVersion": 1,
+    "cefVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+    "chromiumVersion": "154.0.8037.98",
+    "privacyPatched": false,
+    "webglPrivacyVersion": 1,
+    "webgpuPrivacyVersion": 1,
+    "workerCanvasPrivacyVersion": 1
+  },
+  "verification": {
+    "pythonTests": 53,
+    "canvasTests": 13,
+    "workerTests": 8,
+    "webglTests": 7,
+    "webgpuTests": 6,
+    "cppTests": 1,
+    "isolationAndSandbox": "passed",
+    "graphics": {
+      "error": 0,
+      "pixel": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)"
+    },
+    "graphicsProbeCanvasPrivacy": false,
+    "protectedShaderRenderCoveredByUnitTest": true,
+    "webgpuActualRenderAndCompute": "passed in document, dedicated, shared and service workers",
+    "webgpuComputeByteExactByDefault": true,
+    "webgpuReadMapDenial": "opt-in, all READ maps including compute; WRITE/mapped-at-creation pass",
+    "webgpuSyncMap": "native guard compiled, runtime feature not enabled/exercised",
+    "transport": "TCP and QUIC ClientHello/parameters observed; untrusted certificates rejected",
+    "authenticatedHttpSettingsVerified": false,
+    "sourceVerification": {
+      "patchReplay": "reverse/clean replay/idempotence/check passed",
+      "unexpectedInputRejectedBeforeMutation": true,
+      "currentNativeHashesPassed": true,
+      "frameworkHashes": {
+        "source": "ffc338312fc1a809c33d611b95bbd1069dd11a2bdc3f3e51d6e1054c13d3ce59",
+        "sdk": "ffc338312fc1a809c33d611b95bbd1069dd11a2bdc3f3e51d6e1054c13d3ce59",
+        "embedded": "ffc338312fc1a809c33d611b95bbd1069dd11a2bdc3f3e51d6e1054c13d3ce59"
+      },
+      "preservedHashes": {
+        "sourceBaseline": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+        "canvasSdk": "d96aa0093f25d53d2d34b6a54a2ed8d2402cc686912081ec8cb107c7347da35e",
+        "originalBinarySdkApp": "7884625a6d9931a39409939668bcf1ae03d86ce81e1b4fd3ae97d0e16344cb3a"
+      }
+    },
+    "launcherCombinedFlagsPassed": true
+  },
+  "compatibilityControls": {
+    "unpatchedSdk": {
+      "passed": true,
+      "canvasReadbackVersion": 0,
+      "workerCanvasPrivacyVersion": 0,
+      "webglPrivacyVersion": 0,
+      "webgpuPrivacyVersion": 0,
+      "explicitPoliciesRejected": 5,
+      "defaultOpenSucceeded": true
+    },
+    "v1CanvasSdk": {
+      "passed": true,
+      "canvasReadbackVersion": 1,
+      "workerCanvasPrivacyVersion": 0,
+      "webglPrivacyVersion": 0,
+      "webgpuPrivacyVersion": 0,
+      "newReadbackPolicyRejectedBothValues": true,
+      "supportedCanvasDisableSucceeded": true
+    }
+  },
+  "redControls": {
+    "worker": "Initial six-test baseline reproduced missing partition owner and private/shutdown worker_watcher assertion; eight final worker tests pass",
+    "webgl": "Initial five-test baseline reproduced missing readback protection/debug extension privacy",
+    "webgpu": "Initial four-test baseline reproduced identifying metadata and unsupported explicit block policy",
+    "clippedRead": "Provisional build reproduced corrupted sentinel bytes outside default framebuffer; corrected build passes default/custom FBO typed/PBO matrix",
+    "logsPreservedAt": "/Volumes/CloakfoxChromiumBuild/source-build/logs/worker-gpu-red"
+  },
+  "webglPerformance": {
+    "size": [
+      512,
+      512
+    ],
+    "samples": 3,
+    "protectedMs": [
+      61,
+      58.5,
+      58.79999999701977
+    ],
+    "disabledMs": [
+      1.7999999970197678,
+      0.7999999970197678,
+      0.7000000029802322
+    ],
+    "protectedMedianMs": 58.79999999701977,
+    "disabledMedianMs": 0.7999999970197678,
+    "note": "Illustrative local GL2 RGBA8 synchronous reads on Apple M2 Pro; no release benchmark. Protected PBO readback is synchronous."
+  },
+  "uncovered": [
+    "selective WebGPU pixel noise (requires validated Dawn/GPU-service provenance)",
+    "WebGL float/integer/packed formats, translucent pixels, transform-feedback/computational extraction",
+    "general GPU features/limits/capability fingerprints",
+    "opaque/nonce worker ownership",
+    "per-embedding-site identity for intentionally unpartitioned shared pools",
+    "persona generation/master configuration/shared settings UI",
+    "authenticated H2/H3 SETTINGS, TLS tickets and connection isolation"
+  ],
+  "preserved": {
+    "hashes": {
+      "sourceBaseline": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+      "canvasSdk": "d96aa0093f25d53d2d34b6a54a2ed8d2402cc686912081ec8cb107c7347da35e",
+      "originalBinarySdkApp": "7884625a6d9931a39409939668bcf1ae03d86ce81e1b4fd3ae97d0e16344cb3a"
+    },
+    "geckoFilesChanged": false,
+    "priorSdkAndAppsPreserved": true
+  }
+}

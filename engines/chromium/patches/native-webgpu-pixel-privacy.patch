@@ -1,0 +1,387 @@
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <array>
+ #include "base/rand_util.h"
++#include "build/build_config.h"
+ #include "base/strings/string_number_conversions.h"
+ 
+ #include "cef/libcef/browser/browser_context.h"
+@@ -56,6 +57,11 @@
+   registry->RegisterIntegerPref("cloakfox.worker_canvas_privacy_version", 1);
+   registry->RegisterIntegerPref("cloakfox.webgl_privacy_version", 1);
+   registry->RegisterIntegerPref("cloakfox.webgpu_privacy_version", 1);
++#if BUILDFLAG(IS_MAC)
++  registry->RegisterIntegerPref("cloakfox.webgpu_pixel_readback_version", 1);
++#else
++  registry->RegisterIntegerPref("cloakfox.webgpu_pixel_readback_version", 0);
++#endif
+   registry->RegisterBooleanPref("cloakfox.webgpu_block_readback", false);
+   registry->RegisterBooleanPref("cloakfox.canvas_enabled", true);
+   registry->RegisterStringPref("cloakfox.canvas_key", "");
+--- a/gpu/command_buffer/service/webgpu_decoder_impl.cc
++++ b/gpu/command_buffer/service/webgpu_decoder_impl.cc
+@@ -1441,12 +1441,24 @@
+     desc = *reinterpret_cast<const wgpu::DeviceDescriptor*>(descriptor);
+   }
+ 
+-  // Check that the only chained struct allowed is DawnConsumeAdapterDescriptor.
++  // Only engine-owned internal device configuration is accepted here.
+   for (auto* chain = desc.nextInChain; chain != nullptr;
+        chain = chain->nextInChain) {
+     switch (chain->sType) {
+       case wgpu::SType::DawnConsumeAdapterDescriptor:
+         break;
++      case wgpu::SType::DawnCloakfoxDeviceDescriptor: {
++        wgpu::AdapterInfo info;
++        adapter_obj.GetInfo(&info);
++        if (info.backendType != wgpu::BackendType::Metal) {
++          callback_info.callback(
++              WGPURequestDeviceStatus_Error, nullptr,
++              MakeStringView("Pixel privacy is unsupported on this backend."),
++              callback_info.userdata1, callback_info.userdata2);
++          return {};
++        }
++        break;
++      }
+       default:
+         callback_info.callback(
+             WGPURequestDeviceStatus_Error, nullptr,
+--- a/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.cc
++++ b/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.cc
+@@ -99,6 +99,16 @@
+ }
+ }  // namespace
+ 
++std::optional<std::array<uint32_t, 8>> CloakfoxCanvasDeviceKey(ExecutionContext* context) {
++  const auto key = SiteKey(context);
++  if (!key) return std::nullopt;
++  std::array<uint32_t, 8> words{};
++  for (size_t i = 0; i < words.size(); ++i)
++    for (size_t j = 0; j < 4; ++j)
++      words[i] = (words[i] << 8) | (*key)[i * 4 + j];
++  return words;
++}
++
+ bool CloakfoxCanvasPrivacyEnabled() {
+   return base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+              "cloakfox-canvas-key").size() == 64;
+--- a/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h
++++ b/third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h
+@@ -1,6 +1,8 @@
+ // Copyright 2026 Cloakfox contributors. BSD-3-Clause.
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CANVAS_INTERVENTIONS_CLOAKFOX_CANVAS_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_CANVAS_INTERVENTIONS_CLOAKFOX_CANVAS_H_
++#include <array>
++#include <optional>
+ #include "base/memory/scoped_refptr.h"
+ #include "third_party/blink/renderer/core/core_export.h"
+ #include "third_party/skia/include/core/SkPixmap.h"
+@@ -8,6 +10,8 @@
+ class ExecutionContext;
+ class BlinkStorageKey;
+ CORE_EXPORT bool CloakfoxCanvasPrivacyEnabled();
++// Native device transport only; never expose this key to script or labels.
++CORE_EXPORT std::optional<std::array<uint32_t, 8>> CloakfoxCanvasDeviceKey(ExecutionContext*);
+ CORE_EXPORT bool CloakfoxWebGPUReadbackBlocked();
+ CORE_EXPORT void CloakfoxSetCanvasOwnerSite(ExecutionContext*, const BlinkStorageKey&);
+ class StaticBitmapImage;
+--- a/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
++++ b/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
+@@ -309,6 +309,13 @@
+   // Create a GPUDevice without the handle, so that we can set up its callbacks
+   // in the wgpu::DeviceDescriptor.
+   ExecutionContext* execution_context = ExecutionContext::From(script_state);
++  const auto privacy_key = CloakfoxCanvasDeviceKey(execution_context);
++  wgpu::DawnCloakfoxDeviceDescriptor privacy_desc;
++  if (privacy_key && backend_type_ == wgpu::BackendType::Metal) {
++    privacy_desc.key = privacy_key->data();
++    privacy_desc.nextInChain = dawn_desc.nextInChain;
++    dawn_desc.nextInChain = &privacy_desc;
++  }
+   auto* device = MakeGarbageCollected<GPUDevice>(
+       execution_context, GetDawnControlClient(), this, descriptor->label());
+   device->SetDescriptorCallbacks(dawn_desc);
+--- a/third_party/dawn/src/dawn/dawn.json
++++ b/third_party/dawn/src/dawn/dawn.json
+@@ -220,6 +220,24 @@
+             {"name": "default queue", "type": "queue descriptor"},
+             {"name": "device lost callback info", "type": "device lost callback info"},
+             {"name": "uncaptured error callback info", "type": "uncaptured error callback info"}
++        ]
++    },
++    "dawn cloakfox device descriptor": {
++        "tags": [
++            "dawn"
++        ],
++        "category": "structure",
++        "chained": "in",
++        "chain roots": [
++            "device descriptor"
++        ],
++        "members": [
++            {
++                "name": "key",
++                "type": "uint32_t",
++                "annotation": "const*",
++                "length": 8
++            }
+         ]
+     },
+     "dawn consume adapter descriptor": {
+@@ -4118,6 +4136,7 @@
+ 
+             {"value": 0, "name": "emscripten surface source canvas HTML selector", "tags": ["emscripten"]},
+ 
++            {"value": 1000, "name": "dawn cloakfox device descriptor", "tags": ["dawn"]},
+             {"value": 0, "name": "surface descriptor from windows core window", "tags": ["dawn"]},
+             {"value": 3, "name": "surface descriptor from windows UWP swap chain panel", "tags": ["dawn"]},
+             {"value": 4, "name": "dawn texture internal usage descriptor", "tags": ["dawn"]},
+--- a/third_party/dawn/src/dawn/native/CommandEncoder.cpp
++++ b/third_party/dawn/src/dawn/native/CommandEncoder.cpp
+@@ -26,6 +26,7 @@
+ // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+ #include "src/dawn/native/CommandEncoder.h"
++#include "src/dawn/native/PhysicalDevice.h"
+ 
+ #include <string_view>
+ #include <utility>
+@@ -1162,6 +1163,17 @@
+         return false;
+     }
+ 
++    // Protected Metal RGBA/BGRA copies must reach its validated native blit
++    // and following internal privacy dispatch, even if emulation is forced.
++    if (device->GetCloakfoxCanvasKey() &&
++        device->GetPhysicalDevice()->GetBackendType() == wgpu::BackendType::Metal &&
++        (format.format == wgpu::TextureFormat::RGBA8Unorm ||
++         format.format == wgpu::TextureFormat::BGRA8Unorm ||
++         format.format == wgpu::TextureFormat::RGBA8UnormSrgb ||
++         format.format == wgpu::TextureFormat::BGRA8UnormSrgb)) {
++        return false;
++    }
++
+     // Snorm
+     if (format.IsSnorm() && device->IsToggleEnabled(Toggle::UseBlitForSnormTextureToBufferCopy)) {
+         return true;
+--- a/third_party/dawn/src/dawn/native/Device.cpp
++++ b/third_party/dawn/src/dawn/native/Device.cpp
+@@ -282,6 +282,12 @@
+       mToggles(deviceToggles),
+       mNextPipelineCompatibilityToken(1) {
+     DAWN_CHECK(descriptor);
++    if (const auto* privacy = descriptor.Get<DawnCloakfoxDeviceDescriptor>()) {
++        if (privacy->key.data() != nullptr) {
++            mCloakfoxCanvasKey.emplace();
++            std::copy_n(privacy->key.data(), 8, mCloakfoxCanvasKey->begin());
++        }
++    }
+ 
+     DAWN_CHECK(mLostEvent);
+     mLostEvent->mDevice = this;
+--- a/third_party/dawn/src/dawn/native/Device.h
++++ b/third_party/dawn/src/dawn/native/Device.h
+@@ -28,6 +28,7 @@
+ #ifndef SRC_DAWN_NATIVE_DEVICE_H_
+ #define SRC_DAWN_NATIVE_DEVICE_H_
+ 
++#include <array>
+ #include <atomic>
+ #include <memory>
+ #include <optional>
+@@ -134,6 +135,10 @@
+                const TogglesState& deviceToggles,
+                Ref<DeviceLostEvent>&& lostEvent);
+     ~DeviceBase() override;
++
++    const std::optional<std::array<uint32_t, 8>>& GetCloakfoxCanvasKey() const {
++        return mCloakfoxCanvasKey;
++    }
+ 
+     void HandleEncoderError(std::unique_ptr<ErrorData> error);
+ 
+@@ -521,6 +526,8 @@
+     std::pair<std::string, bool> GetTraceInfo();
+ 
+   private:
++    // Copied once from native engine configuration before any device work.
++    std::optional<std::array<uint32_t, 8>> mCloakfoxCanvasKey;
+     void WillDropLastExternalRef() override;
+ 
+     virtual ResultOrError<Ref<BindGroupBase>> CreateBindGroupImpl(
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/metal/CloakfoxPixelNoise.h
+@@ -0,0 +1,68 @@
++// Copyright 2026 Cloakfox contributors. BSD-3-Clause.
++#ifndef SRC_DAWN_NATIVE_METAL_CLOAKFOXPIXELNOISE_H_
++#define SRC_DAWN_NATIVE_METAL_CLOAKFOXPIXELNOISE_H_
++namespace dawn::native::metal {
++// Native-only HMAC-SHA256, matching CloakfoxCanvasReadback. The input is the
++// little-endian 64-bit x/y followed by canonical RGB high bits. Only copied
++// opaque pixels change; source textures, alpha and linear-layout gaps do not.
++inline constexpr char kCloakfoxPixelNoise[] = R"MSL(
++#include <metal_stdlib>
++using namespace metal;
++constant uint cfK[64] = {
++0x428a2f98u,0x71374491u,0xb5c0fbcfu,0xe9b5dba5u,0x3956c25bu,0x59f111f1u,0x923f82a4u,0xab1c5ed5u,
++0xd807aa98u,0x12835b01u,0x243185beu,0x550c7dc3u,0x72be5d74u,0x80deb1feu,0x9bdc06a7u,0xc19bf174u,
++0xe49b69c1u,0xefbe4786u,0x0fc19dc6u,0x240ca1ccu,0x2de92c6fu,0x4a7484aau,0x5cb0a9dcu,0x76f988dau,
++0x983e5152u,0xa831c66du,0xb00327c8u,0xbf597fc7u,0xc6e00bf3u,0xd5a79147u,0x06ca6351u,0x14292967u,
++0x27b70a85u,0x2e1b2138u,0x4d2c6dfcu,0x53380d13u,0x650a7354u,0x766a0abbu,0x81c2c92eu,0x92722c85u,
++0xa2bfe8a1u,0xa81a664bu,0xc24b8b70u,0xc76c51a3u,0xd192e819u,0xd6990624u,0xf40e3585u,0x106aa070u,
++0x19a4c116u,0x1e376c08u,0x2748774cu,0x34b0bcb5u,0x391c0cb3u,0x4ed8aa4au,0x5b9cca4fu,0x682e6ff3u,
++0x748f82eeu,0x78a5636fu,0x84c87814u,0x8cc70208u,0x90befffau,0xa4506cebu,0xbef9a3f7u,0xc67178f2u};
++uint cfR(uint x,uint n){return (x>>n)|(x<<(32u-n));}
++uint cfSwap(uint x){return ((x&255u)<<24)|((x&65280u)<<8)|((x>>8)&65280u)|(x>>24);}
++void cfInit(thread uint* h){
++ h[0]=0x6a09e667u;h[1]=0xbb67ae85u;h[2]=0x3c6ef372u;h[3]=0xa54ff53au;
++ h[4]=0x510e527fu;h[5]=0x9b05688cu;h[6]=0x1f83d9abu;h[7]=0x5be0cd19u;
++}
++void cfBlock(thread uint* h,thread uint* w){
++ for(uint i=16;i<64;i++){
++  uint a=w[i-15],b=w[i-2];
++  w[i]=(cfR(b,17)^cfR(b,19)^(b>>10))+w[i-7]+(cfR(a,7)^cfR(a,18)^(a>>3))+w[i-16];
++ }
++ uint a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],j=h[7];
++ for(uint i=0;i<64;i++){
++  uint t=j+(cfR(e,6)^cfR(e,11)^cfR(e,25))+((e&f)^((~e)&g))+cfK[i]+w[i];
++  uint u=(cfR(a,2)^cfR(a,13)^cfR(a,22))+((a&b)^(a&c)^(b&c));
++  j=g;g=f;f=e;e=d+t;d=c;c=b;b=a;a=t+u;
++ }
++ h[0]+=a;h[1]+=b;h[2]+=c;h[3]+=d;h[4]+=e;h[5]+=f;h[6]+=g;h[7]+=j;
++}
++struct CfParams {
++ ulong offset;uint bytesPerRow,rowsPerImage;
++ uint width,height,depth,originX,originY,bgra;uint key[8];
++};
++kernel void cloakfoxPixelNoise(device uchar* bytes [[buffer(0)]],
++ constant CfParams& p [[buffer(1)]],uint3 pos [[thread_position_in_grid]]){
++ if(pos.x>=p.width||pos.y>=p.height||pos.z>=p.depth)return;
++ ulong address=p.offset+(ulong(pos.z)*p.rowsPerImage+pos.y)*p.bytesPerRow+ulong(pos.x)*4u;
++ device uchar* pixel=bytes+address;
++ if(pixel[3]!=255)return;
++ uint r=p.bgra?2u:0u,b=p.bgra?0u:2u;
++ uint highR=uint(pixel[r])&254u,highG=uint(pixel[1])&254u,highB=uint(pixel[b])&254u;
++ uint h[8],inner[8],w[64];cfInit(h);
++ for(uint i=0;i<16;i++)w[i]=(i<8?p.key[i]:0u)^0x36363636u;
++ cfBlock(h,w);
++ for(uint i=0;i<16;i++)w[i]=0u;
++ w[0]=cfSwap(p.originX+pos.x);w[2]=cfSwap(p.originY+pos.y);
++ w[4]=(highR<<24)|(highG<<16)|(highB<<8)|128u;w[15]=664u;
++ cfBlock(h,w);for(uint i=0;i<8;i++)inner[i]=h[i];
++ cfInit(h);for(uint i=0;i<16;i++)w[i]=(i<8?p.key[i]:0u)^0x5c5c5c5cu;
++ cfBlock(h,w);
++ for(uint i=0;i<16;i++)w[i]=i<8?inner[i]:0u;
++ w[8]=0x80000000u;w[15]=768u;cfBlock(h,w);
++ pixel[r]=uchar(highR|((h[0]>>24)&1u));
++ pixel[1]=uchar(highG|((h[0]>>16)&1u));
++ pixel[b]=uchar(highB|((h[0]>>8)&1u));
++}
++)MSL";
++}  // namespace dawn::native::metal
++#endif
+--- a/third_party/dawn/src/dawn/native/metal/CommandBufferMTL.mm
++++ b/third_party/dawn/src/dawn/native/metal/CommandBufferMTL.mm
+@@ -1357,6 +1357,38 @@
+                         }
+                     }
+                 }
++                const auto format = texture->GetFormat().format;
++                Device* device = ToBackend(GetDevice());
++                if (device->GetCloakfoxCanvasKey() &&
++                    (format == wgpu::TextureFormat::RGBA8Unorm ||
++                     format == wgpu::TextureFormat::BGRA8Unorm ||
++                     format == wgpu::TextureFormat::RGBA8UnormSrgb ||
++                     format == wgpu::TextureFormat::BGRA8UnormSrgb)) {
++                    struct Params {
++                        uint64_t offset;
++                        uint32_t bytesPerRow, rowsPerImage;
++                        uint32_t width, height, depth, originX, originY, bgra;
++                        std::array<uint32_t, 8> key;
++                    } params = {dst.offset, dchecked_cast<uint32_t>(dst.blocksPerRow) * 4,
++                                dchecked_cast<uint32_t>(dst.rowsPerImage),
++                                dchecked_cast<uint32_t>(copySize.width),
++                                dchecked_cast<uint32_t>(copySize.height),
++                                dchecked_cast<uint32_t>(copySize.depthOrArrayLayers),
++                                dchecked_cast<uint32_t>(src.origin.x),
++                                dchecked_cast<uint32_t>(src.origin.y),
++                                format == wgpu::TextureFormat::BGRA8Unorm ||
++                                    format == wgpu::TextureFormat::BGRA8UnormSrgb,
++                                *device->GetCloakfoxCanvasKey()};
++                    static_assert(sizeof(Params) == 72);
++                    commandContext->EndBlit();
++                    auto encoder = commandContext->BeginCompute();
++                    [encoder setComputePipelineState:device->GetCloakfoxPixelPipeline()];
++                    [encoder setBuffer:buffer->GetMTLBuffer() offset:0 atIndex:0];
++                    [encoder setBytes:&params length:sizeof(params) atIndex:1];
++                    [encoder dispatchThreads:MTLSizeMake(params.width, params.height, params.depth)
++                        threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
++                    commandContext->EndCompute();
++                }
+                 break;
+             }
+ 
+--- a/third_party/dawn/src/dawn/native/metal/DeviceMTL.h
++++ b/third_party/dawn/src/dawn/native/metal/DeviceMTL.h
+@@ -62,6 +62,9 @@
+     MaybeError TickImpl() override;
+ 
+     id<MTLDevice> GetMTLDevice() const;
++    id<MTLComputePipelineState> GetCloakfoxPixelPipeline() const {
++        return mCloakfoxPixelPipeline.Get();
++    }
+ 
+     MaybeError CopyFromStagingToBuffer(BufferBase* source,
+                                        uint64_t sourceOffset,
+@@ -145,6 +148,7 @@
+     void DestroyImpl(DestroyReason reason) override;
+ 
+     NSPRef<id<MTLDevice>> mMtlDevice;
++    NSPRef<id<MTLComputePipelineState>> mCloakfoxPixelPipeline;
+ 
+     // The current estimation of timestamp period
+     float mTimestampPeriod = 1.0f;
+--- a/third_party/dawn/src/dawn/native/metal/DeviceMTL.mm
++++ b/third_party/dawn/src/dawn/native/metal/DeviceMTL.mm
+@@ -26,6 +26,7 @@
+ // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+ #include "src/dawn/native/metal/DeviceMTL.h"
++#include "src/dawn/native/metal/CloakfoxPixelNoise.h"
+ 
+ #include "dawn/platform/DawnPlatform.h"
+ #include "src/dawn/common/GPUInfo.h"
+@@ -162,6 +163,23 @@
+     // itself is not captured.
+     StartTrace();
+ 
++    // Fail device creation before accepting any work if privacy cannot compile.
++    if (GetCloakfoxCanvasKey()) {
++        NSError* error = nil;
++        auto library = AcquireNSPRef([GetMTLDevice()
++            newLibraryWithSource:[NSString stringWithUTF8String:kCloakfoxPixelNoise]
++            options:nil error:&error]);
++        if (library == nil || error != nil)
++            return DAWN_INTERNAL_ERROR("Cannot compile native pixel privacy pipeline");
++        auto function = AcquireNSPRef([library.Get() newFunctionWithName:@"cloakfoxPixelNoise"]);
++        if (function == nil)
++            return DAWN_INTERNAL_ERROR("Cannot create native pixel privacy function");
++        mCloakfoxPixelPipeline.Acquire(
++            [GetMTLDevice() newComputePipelineStateWithFunction:function.Get() error:&error]);
++        if (mCloakfoxPixelPipeline == nil || error != nil)
++            return DAWN_INTERNAL_ERROR("Cannot create native pixel privacy pipeline");
++    }
++
+     Ref<Queue> queue;
+     DAWN_TRY_ASSIGN(queue, Queue::Create(this, &descriptor->defaultQueue));
+ 
+@@ -383,6 +401,7 @@
+     //   is implicitly destroyed. This case is thread-safe because there are no
+     //   other threads using the device since there are no other live refs.
+     mCounterSampleBufferAllocator = nullptr;
++    mCloakfoxPixelPipeline = nullptr;
+     mMtlDevice = nullptr;
+     mMockBlitMtlBuffer = nullptr;
+ }

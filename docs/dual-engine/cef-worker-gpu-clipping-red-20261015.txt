@@ -1,0 +1,15 @@
+test_clipped_reads_preserve_sentinels_for_default_and_attachment (test_webgl_privacy.WebGLPrivacy.test_clipped_reads_preserve_sentinels_for_default_and_attachment) ... FAIL
+
+======================================================================
+FAIL: test_clipped_reads_preserve_sentinels_for_default_and_attachment (test_webgl_privacy.WebGLPrivacy.test_clipped_reads_preserve_sentinels_for_default_and_attachment)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-157-port/cloakfox/tests/engines/test_webgl_privacy.py", line 114, in test_clipped_reads_preserve_sentinels_for_default_and_attachment
+    self.assertTrue(check['preserved'],check)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : {'attachment': False, 'error': 0, 'height': 2, 'inside': True, 'pbo': False, 'preserved': False, 'version': 'webgl', 'width': 2, 'x': 7, 'y': 0}
+
+----------------------------------------------------------------------
+Ran 1 test in 7.819s
+
+FAILED (failures=1)

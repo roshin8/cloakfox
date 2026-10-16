@@ -1,0 +1,49 @@
+{
+  "chromiumVersion": "154.0.8037.98",
+  "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+  "patch": "patches/native-canvas-readback.patch",
+  "capability": "canvasReadbackVersion:1",
+  "partial": true,
+  "inputs": [
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "b44bebe83420d4a14369921a0be6c82701be898d030e6a0bcf512d9882f82517",
+      "afterSha256": "7ad0eca5c2d6f4f3265e06064f05ff59aade283845b7cf1f098c991b7c626c69"
+    },
+    {
+      "path": "cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc",
+      "beforeSha256": "b28edbd83120eb6bfea454db3ed8c8a2d503d3f70a93cf886889185a6b51e3f1",
+      "afterSha256": "27bd490e063f73f0e2f34aeff4ac8da8e16d22834bcf0f5dcbc10468a310a97f"
+    },
+    {
+      "path": "third_party/blink/renderer/core/canvas_interventions/build.gni",
+      "beforeSha256": "a863d04a0570e1f8fc9f42b3460e81705c2a99e9d2b36b628dea84411169748b",
+      "afterSha256": "a37dd24215c8faaa6dba13abf2ece49f3426523ff74203821922cf4f00c6c36d"
+    },
+    {
+      "path": "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.h",
+      "beforeSha256": null,
+      "afterSha256": "ac23dc7b490672c531c113d7cb7362c21e38787fdaf1b09393722e1206168709"
+    },
+    {
+      "path": "third_party/blink/renderer/core/canvas_interventions/cloakfox_canvas.cc",
+      "beforeSha256": null,
+      "afterSha256": "b68d0e76038253e7b5f9c8ec6c0a34a8706760b7d5b3b74f39a5708668e2e6eb"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc",
+      "beforeSha256": "cc74495688de79a911c558c01e92817eae6340c963c390859e961d9e1b25fdd4",
+      "afterSha256": "6b828a867be95e2dbb6af8ac63d167377717e240f5bd18dceec4f15bc5b6f679"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+      "beforeSha256": "f35088e4265d43d04941a72a97f54f16e6bc63217c4cf4bf2ba66da6e3a16942",
+      "afterSha256": "04e8ebe564f84e62caf49809f5f5239f9ce622cf29510ff487b9fb7ca84d31ff"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/canvas_async_blob_creator.cc",
+      "beforeSha256": "96a7609dec34199445d29733fca03b370c78c98d3e5aa7c1a1a77501c4ca95c6",
+      "afterSha256": "bbd0ab01e24ef12b8f4fc72f2f6b21f135f289bf7da774e146cf99d325524df4"
+    }
+  ]
+}

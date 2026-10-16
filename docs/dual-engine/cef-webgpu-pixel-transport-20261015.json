@@ -1,0 +1,545 @@
+{
+  "certificateVerificationDisabled": false,
+  "httpSettingsVerified": false,
+  "tcp": {
+    "hello": {
+      "legacyVersion": 771,
+      "ciphers": [
+        4865,
+        4866,
+        4867,
+        49195,
+        49199,
+        49196,
+        49200,
+        52393,
+        52392,
+        49171,
+        49172,
+        156,
+        157,
+        47,
+        53
+      ],
+      "extensions": [
+        51764,
+        35,
+        11,
+        16,
+        27,
+        0,
+        65281,
+        43,
+        17613,
+        51,
+        45,
+        23,
+        10,
+        65037,
+        13,
+        5,
+        18
+      ],
+      "alpn": [
+        "h2",
+        "http/1.1"
+      ],
+      "versions": [
+        772,
+        771
+      ],
+      "keyShareGroups": [
+        4588,
+        29
+      ],
+      "groups": [
+        4588,
+        29,
+        23,
+        24
+      ],
+      "signatures": [
+        2308,
+        2309,
+        2310,
+        1027,
+        2052,
+        1025,
+        1283,
+        2053,
+        1281,
+        2054,
+        1537
+      ],
+      "shape": {
+        "ciphers": [
+          "GREASE",
+          4865,
+          4866,
+          4867,
+          49195,
+          49199,
+          49196,
+          49200,
+          52393,
+          52392,
+          49171,
+          49172,
+          156,
+          157,
+          47,
+          53
+        ],
+        "sessionIdLength": 32,
+        "compressionMethods": [
+          0
+        ],
+        "extensions": [
+          [
+            "GREASE",
+            0
+          ],
+          [
+            51764,
+            186
+          ],
+          [
+            35,
+            0
+          ],
+          [
+            11,
+            2
+          ],
+          [
+            16,
+            14
+          ],
+          [
+            27,
+            3
+          ],
+          [
+            0,
+            14
+          ],
+          [
+            65281,
+            1
+          ],
+          [
+            43,
+            7
+          ],
+          [
+            17613,
+            5
+          ],
+          [
+            51,
+            1263
+          ],
+          [
+            45,
+            2
+          ],
+          [
+            23,
+            0
+          ],
+          [
+            10,
+            12
+          ],
+          [
+            65037,
+            186
+          ],
+          [
+            13,
+            26
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            18,
+            0
+          ],
+          [
+            "GREASE",
+            1
+          ]
+        ],
+        "payloads": {
+          "51764": "00b80582df1302010582df1302060582df13020d0582df13020e0582df13020f0582df1302120582df1302130582df13021408839a648c9b2d010708839a648c9b2d010808839a648c9b2d010908839a648c9b2d010a08839a648c9b2d010b08839a648c9b2d010c08839a648c9b2d010d08839a648c9b2d011208839a648c9b2d011304d679090104d679090404d679090504d679090604d679090704d679090804d679090a04d679090b04d679090c04d679090d04d679090f",
+          "11": "0100",
+          "27": "020002",
+          "65281": "00",
+          "17613": "0003026832",
+          "45": "0101",
+          "23": "",
+          "13": "00189a9a09040905090604030804040105030805050108060601"
+        },
+        "versions": [
+          "GREASE",
+          772,
+          771
+        ],
+        "keyShares": [
+          [
+            "GREASE",
+            1
+          ],
+          [
+            4588,
+            1216
+          ],
+          [
+            29,
+            32
+          ]
+        ],
+        "groups": [
+          "GREASE",
+          4588,
+          29,
+          23,
+          24
+        ],
+        "ech": {
+          "kdf": 1,
+          "aead": 1,
+          "encLength": 32,
+          "payloadLength": 144
+        }
+      }
+    },
+    "error": "SSLError",
+    "errorReason": "[SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1082)",
+    "untrustedCertificateRejected": true,
+    "certificateErrorSurface": "net::ERR_CERT_AUTHORITY_INVALID"
+  },
+  "quic": {
+    "datagrams": 5,
+    "alpn": [
+      "h3"
+    ],
+    "requests": [],
+    "handshakes": [],
+    "terminations": [
+      {
+        "errorCode": 302,
+        "frameType": 0,
+        "reason": "199:TLS handshake failure (ENCRYPTION_HANDSHAKE) 46: certificate unknown. SSLErrorStack:[handshake.cc:320] error:1000007d:SSL routines:OPENSSL_internal:CERTIFICATE_VERIFY_FAILED"
+      }
+    ],
+    "initialPackets": [
+      {
+        "datagramLength": 1250,
+        "version": 1,
+        "destinationIdLength": 8,
+        "sourceIdLength": 0,
+        "tokenLength": 0
+      },
+      {
+        "datagramLength": 1250,
+        "version": 1,
+        "destinationIdLength": 8,
+        "sourceIdLength": 0,
+        "tokenLength": 0
+      },
+      {
+        "datagramLength": 1250,
+        "version": 1,
+        "destinationIdLength": 8,
+        "sourceIdLength": 0,
+        "tokenLength": 0
+      }
+    ],
+    "clientHellos": [
+      {
+        "legacyVersion": 771,
+        "ciphers": [
+          4865,
+          4866,
+          4867
+        ],
+        "extensions": [
+          45,
+          27,
+          51764,
+          43,
+          13,
+          51,
+          17613,
+          65037,
+          57,
+          10,
+          16
+        ],
+        "versions": [
+          772
+        ],
+        "signatures": [
+          1027,
+          2052,
+          1025,
+          1283,
+          2053,
+          1281,
+          2054,
+          1537,
+          513
+        ],
+        "keyShareGroups": [
+          4588,
+          29
+        ],
+        "groups": [
+          4588,
+          29,
+          23,
+          24
+        ],
+        "alpn": [
+          "h3"
+        ],
+        "shape": {
+          "ciphers": [
+            4865,
+            4866,
+            4867
+          ],
+          "sessionIdLength": 0,
+          "compressionMethods": [
+            0
+          ],
+          "extensions": [
+            [
+              45,
+              2
+            ],
+            [
+              27,
+              3
+            ],
+            [
+              51764,
+              186
+            ],
+            [
+              43,
+              3
+            ],
+            [
+              13,
+              20
+            ],
+            [
+              51,
+              1258
+            ],
+            [
+              17613,
+              5
+            ],
+            [
+              65037,
+              186
+            ],
+            [
+              57,
+              87
+            ],
+            [
+              10,
+              10
+            ],
+            [
+              16,
+              5
+            ]
+          ],
+          "payloads": {
+            "45": "0101",
+            "27": "020002",
+            "51764": "00b80582df1302010582df1302060582df13020d0582df13020e0582df13020f0582df1302120582df1302130582df13021408839a648c9b2d010708839a648c9b2d010808839a648c9b2d010908839a648c9b2d010a08839a648c9b2d010b08839a648c9b2d010c08839a648c9b2d010d08839a648c9b2d011208839a648c9b2d011304d679090104d679090404d679090504d679090604d679090704d679090804d679090a04d679090b04d679090c04d679090d04d679090f",
+            "13": "0012040308040401050308050501080606010201",
+            "17613": "0003026833"
+          },
+          "versions": [
+            772
+          ],
+          "keyShares": [
+            [
+              4588,
+              1216
+            ],
+            [
+              29,
+              32
+            ]
+          ],
+          "ech": {
+            "kdf": 1,
+            "aead": 1,
+            "encLength": 32,
+            "payloadLength": 144
+          },
+          "groups": [
+            4588,
+            29,
+            23,
+            24
+          ]
+        }
+      }
+    ],
+    "transportParameters": [
+      [
+        [
+          32,
+          65536
+        ],
+        [
+          6,
+          6291456
+        ],
+        [
+          4,
+          15728640
+        ],
+        [
+          12584,
+          {
+            "length": 4
+          }
+        ],
+        [
+          7,
+          6291456
+        ],
+        [
+          3,
+          1472
+        ],
+        [
+          15,
+          {
+            "opaqueLength": 0
+          }
+        ],
+        [
+          8,
+          100
+        ],
+        [
+          5,
+          6291456
+        ],
+        [
+          1,
+          30000
+        ],
+        [
+          9,
+          103
+        ],
+        [
+          17,
+          [
+            1,
+            1
+          ]
+        ]
+      ]
+    ],
+    "parameterDetails": [
+      [
+        [
+          32,
+          {
+            "length": 4
+          }
+        ],
+        [
+          6,
+          {
+            "length": 4
+          }
+        ],
+        [
+          4,
+          {
+            "length": 4
+          }
+        ],
+        [
+          12584,
+          {
+            "length": 4,
+            "publicOptions": "4f524947"
+          }
+        ],
+        [
+          7,
+          {
+            "length": 4
+          }
+        ],
+        [
+          3,
+          {
+            "length": 2
+          }
+        ],
+        [
+          "GREASE",
+          {
+            "length": 7
+          }
+        ],
+        [
+          15,
+          {
+            "length": 0
+          }
+        ],
+        [
+          8,
+          {
+            "length": 2
+          }
+        ],
+        [
+          5,
+          {
+            "length": 4
+          }
+        ],
+        [
+          1,
+          {
+            "length": 4
+          }
+        ],
+        [
+          9,
+          {
+            "length": 2
+          }
+        ],
+        [
+          17,
+          {
+            "length": 12
+          }
+        ]
+      ]
+    ],
+    "untrustedCertificateRejected": true,
+    "certificateErrorSurface": "net::ERR_QUIC_PROTOCOL_ERROR"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+  "chromiumVersion": "154.0.8037.98",
+  "patch": "patches/macos-cef-rng-seed.patch",
+  "applyAfter": "CEF tools/patcher.py, including base_rand_util_lazy_seed.patch",
+  "purpose": "Avoid allocating while lazily seeding the metrics RNG on macOS allocator-critical paths",
+  "inputs": [
+    {
+      "path": "base/rand_util.cc",
+      "cefPatchedSha256": "6deecfdc0ed53814208482e1ad6e9c760793d827024196718dcb30011353be25",
+      "fixedSha256": "924ab0566c842259f429ffff8cffe8e2b590cabbe8e480bd367b2d83731a7ff7"
+    },
+    {
+      "path": "base/rand_util.h",
+      "cefPatchedSha256": "2625488068eb5897ceee2d735b082fb93b561b50724703a9b13a55d81119cdd5",
+      "fixedSha256": "107baf2832e7d3cad0bd0b732cfee365d0376b1a4374eb35b48af73d409516b1"
+    }
+  ]
+}

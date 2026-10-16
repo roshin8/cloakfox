@@ -1,0 +1,86 @@
+{
+  "status": "passed-partial-native-canvas",
+  "date": "2026-10-15",
+  "baseCommit": "d99497bec91560b0e4a2c074abafb308e3fe6e09",
+  "chromiumVersion": "154.0.8037.98",
+  "cefCommit": "14c5a089e8452874cb1a556dc3fde26ed2d87723",
+  "frameworkSha256": "d96aa0093f25d53d2d34b6a54a2ed8d2402cc686912081ec8cb107c7347da35e",
+  "sourceSdkEmbeddedHashesMatch": true,
+  "nativeCapabilityVersion": 1,
+  "privacyPatched": false,
+  "nativePatchSha256": "8e3f6d01d1cedb36e14bdec06b65bb350ab7cfd042db50c9b2a93f7777d89737",
+  "binary": "/Volumes/CloakfoxChromiumBuild/source-build/canvas-companion-build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium",
+  "verification": {
+    "pythonTests": 32,
+    "canvasTests": 13,
+    "cppTests": 1,
+    "isolationAndSandbox": "passed",
+    "webglRenderPixel": [
+      255,
+      0,
+      0,
+      255
+    ],
+    "graphicsRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)",
+    "transport": "TCP and QUIC ClientHello/parameters observed; untrusted certificates rejected",
+    "authenticatedHttpSettingsVerified": false,
+    "patchReplay": "reverse/clean replay/idempotence and final source hashes passed",
+    "unexpectedInput": "rejected before mutation"
+  },
+  "binarySdkNegativeControl": {
+    "passed": true,
+    "canvasReadbackVersion": 0,
+    "privacyPatched": false,
+    "explicitEnableRejected": true,
+    "explicitDisableRejected": true,
+    "defaultOpenSucceeded": true,
+    "openedCanvasEnabled": false
+  },
+  "redControl": {
+    "initialTests": 4,
+    "expectedFailures": 2,
+    "reasons": [
+      "identical cross-container native pixels",
+      "explicit canvas policy rejected"
+    ]
+  },
+  "detachedFrameBaseline": {
+    "afterAllZero": true,
+    "beforeNonzero": true
+  },
+  "testCorrection": "Initial 32-test run had one incorrect detached-frame expectation. Unpatched source baseline clears the canvas on removal; corrected compatibility assertion passes. Export decoding uses a canvas-disabled context to avoid an idempotence false positive.",
+  "uncovered": [
+    "shared and service workers",
+    "opaque top-level sites",
+    "nonopaque pixels",
+    "float16/non-sRGB pixels",
+    "raw WebGL/WebGPU readback",
+    "persona generation/master configuration/shared settings UI"
+  ],
+  "preserved": {
+    "sourceBaselineFrameworkSha256": "544e6e78aba087413376f6e3954a96dc11b5317c24aaba54b8aa1db25e4a3056",
+    "originalBinarySdkCompanionSha256": "7884625a6d9931a39409939668bcf1ae03d86ce81e1b4fd3ae97d0e16344cb3a",
+    "geckoFilesChanged": false
+  },
+  "performance": {
+    "canvasSize": [
+      512,
+      512
+    ],
+    "softwareReadback": true,
+    "protectedMs": [
+      52.5,
+      52,
+      52.30000001192093
+    ],
+    "disabledMs": [
+      0.3999999910593033,
+      0.30000001192092896,
+      0.19999998807907104
+    ],
+    "samples": 3,
+    "environment": "Concurrent Firefox build on same Mac; illustrative, not a release benchmark",
+    "protectedMedianMs": 52.30000001192093,
+    "disabledMedianMs": 0.30000001192092896
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "status": "passed",
+  "date": "2026-10-15",
+  "geckoParent": "cade27d4f8de0894d8a76e319a3cb6f32d3a3f03",
+  "chromiumMergedThrough": "a7afa2c1a7d69f66d9049790694e2137b6600f72",
+  "gecko": {
+    "buildID": "20261015182935",
+    "version": "158.0-beta.26"
+  },
+  "chromium": {
+    "canvasReadbackVersion": 1,
+    "cefVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+    "chromiumVersion": "154.0.8037.98",
+    "engine": "chromium",
+    "event": "ready",
+    "privacyPatched": false,
+    "probeEnabled": true,
+    "testKeychain": true,
+    "testQuicRoute": false,
+    "version": 1,
+    "webglPrivacyVersion": 1,
+    "webgpuPixelReadbackVersion": 1,
+    "webgpuPrivacyVersion": 1,
+    "workerCanvasPrivacyVersion": 1
+  },
+  "tests": {
+    "geckoNodePassed": 295,
+    "geckoPythonPassed": 132,
+    "geckoTargetedRuntimePassed": 6,
+    "chromiumPythonPassed": 68,
+    "cppPassed": 1,
+    "simultaneousEngines": "passed with both external build and local self-contained app",
+    "relocatedAppGPUReadback": "RGBA/BGRA/sRGB opaque/noise/repeated-map test passed",
+    "defaultLauncher": "passed using local patched app; orderly close"
+  },
+  "geckoSourceConfigUnchanged": true,
+  "frameworkHashes": {
+    "source": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+    "sdk": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+    "158companion": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+    "originalPatchedCompanion": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed"
+  },
+  "localApp": {
+    "app": "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/engines/chromium/build/Release/CloakfoxChromium.app",
+    "frameworkSha256": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+    "allSymlinksInsideBundle": true
+  },
+  "review": "No blocking findings; Gecko default-context coexistence only, no claim of cross-engine persona equivalence or shared UI",
+  "limits": [
+    "Separate development companion window; shared settings/tab integration and combined signed package remain pending",
+    "Coexistence probe does not restart Gecko or exercise its own containers; separate Gecko probes cover its existing container workflows",
+    "Native Chromium privacy remains partial, including Metal-only selective WebGPU image readback",
+    "Transport checks verify pre-certificate behavior and certificate rejection, not authenticated H2/H3 settings/ticket isolation"
+  ],
+  "storage": {
+    "buildImage": "/Volumes/Untitled/CloakfoxChromiumBuild.sparsebundle",
+    "buildVolume": "/Volumes/CloakfoxChromiumBuild",
+    "localCompanionNeedsExternalDriveAtRuntime": false
+  }
+}

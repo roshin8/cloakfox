@@ -1,0 +1,39 @@
+{
+  "checks": [
+    "initial: private storage cleared after last private window closes",
+    "initial: cookies/localStorage/IndexedDB/CacheStorage/service workers isolated",
+    "initial: actual macOS renderer sandbox enforced",
+    "initial: camera/microphone/location denied before hardware access",
+    "initial: malformed container IDs rejected",
+    "restart: private storage cleared after last private window closes",
+    "restart: cookies/localStorage/IndexedDB/CacheStorage/service workers isolated",
+    "restart: actual macOS renderer sandbox enforced",
+    "restart: camera/microphone/location denied before hardware access",
+    "restart: malformed container IDs rejected"
+  ],
+  "url": "http://127.0.0.1:65090/",
+  "backend": {
+    "cefVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+    "chromiumVersion": "154.0.8037.98",
+    "engine": "chromium",
+    "event": "ready",
+    "privacyPatched": false,
+    "probeEnabled": true,
+    "testKeychain": true,
+    "testQuicRoute": false,
+    "version": 1
+  },
+  "identity": {
+    "appVersion": "5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "chrome": "object",
+    "firefox": "undefined",
+    "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "webgl": true,
+    "webgpu": true
+  },
+  "sandbox": {
+    "rendererCount": 4,
+    "outsideProfileWriteDenied": true,
+    "parentControlAllowed": true
+  }
+}
