@@ -1,0 +1,60 @@
+FFFFF
+======================================================================
+FAIL: test_containers_and_independent_toggles_do_not_contaminate (test_identity_privacy.IdentityPrivacy.test_containers_and_independent_toggles_do_not_contaminate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 121, in test_containers_and_independent_toggles_do_not_contaminate
+    _,a=self.configured()
+        ^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 58, in configured
+    self.assertEqual(self.app.ready.get('identityPrivacyVersion'),1,'Native identity patch not present')
+AssertionError: None != 1 : Native identity patch not present
+
+======================================================================
+FAIL: test_each_toggle_preserves_other_groups (test_identity_privacy.IdentityPrivacy.test_each_toggle_preserves_other_groups)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 134, in test_each_toggle_preserves_other_groups
+    _,browser=self.configured(container,**{disabled:False})
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 58, in configured
+    self.assertEqual(self.app.ready.get('identityPrivacyVersion'),1,'Native identity patch not present')
+AssertionError: None != 1 : Native identity patch not present
+
+======================================================================
+FAIL: test_first_script_frames_workers_and_native_getters_agree (test_identity_privacy.IdentityPrivacy.test_first_script_frames_workers_and_native_getters_agree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 76, in test_first_script_frames_workers_and_native_getters_agree
+    _,browser=self.configured();page=self.app.evaluate(browser,'firstIdentity');self.assert_masked(page)
+              ^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 58, in configured
+    self.assertEqual(self.app.ready.get('identityPrivacyVersion'),1,'Native identity patch not present')
+AssertionError: None != 1 : Native identity patch not present
+
+======================================================================
+FAIL: test_http_hints_and_languages_match_and_restart_restores_native (test_identity_privacy.IdentityPrivacy.test_http_hints_and_languages_match_and_restart_restores_native)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 94, in test_http_hints_and_languages_match_and_restart_restores_native
+    config,browser=self.configured()
+                   ^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 58, in configured
+    self.assertEqual(self.app.ready.get('identityPrivacyVersion'),1,'Native identity patch not present')
+AssertionError: None != 1 : Native identity patch not present
+
+======================================================================
+FAIL: test_language_toggle_restores_native_after_masked_profile_restart (test_identity_privacy.IdentityPrivacy.test_language_toggle_restores_native_after_masked_profile_restart)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 148, in test_language_toggle_restores_native_after_masked_profile_restart
+    config,_=self.configured()
+             ^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 58, in configured
+    self.assertEqual(self.app.ready.get('identityPrivacyVersion'),1,'Native identity patch not present')
+AssertionError: None != 1 : Native identity patch not present
+
+----------------------------------------------------------------------
+Ran 5 tests in 3.994s
+
+FAILED (failures=5)
