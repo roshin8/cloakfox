@@ -3859,15 +3859,19 @@
  
 --- a/dom/webgpu/ipc/WebGPUParent.cpp
 +++ b/dom/webgpu/ipc/WebGPUParent.cpp
-@@ -7,6 +7,7 @@
+@@ -7,6 +7,11 @@
  #include <unordered_set>
  
  #include "ExternalTexture.h"
 +#include "GLLibraryEGL.h"
++// X11's event macro collides with WebGPUParent::MapRequest.
++#ifdef MapRequest
++#  undef MapRequest
++#endif
  #include "mozilla/ScopeExit.h"
  #include "mozilla/dom/WebGPUBinding.h"
  #include "mozilla/gfx/FileHandleWrapper.h"
-@@ -40,6 +41,11 @@
+@@ -40,6 +45,11 @@
  
  namespace ffi {
  
@@ -3879,7 +3883,7 @@
  extern bool wgpu_server_use_shared_texture_for_swap_chain(
      WGPUWebGPUParentPtr aParent, WGPUSwapChainId aSwapChainId) {
    auto* parent = static_cast<WebGPUParent*>(aParent);
-@@ -444,6 +450,14 @@
+@@ -444,6 +454,14 @@
  
  WebGPUParent::WebGPUParent(const dom::ContentParentId& aContentId)
      : mContentId(aContentId), mContext(ffi::wgpu_server_new(this)) {

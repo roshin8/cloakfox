@@ -29,3 +29,22 @@ class WebGpuBuildFlags(unittest.TestCase):
                     subprocess.run([compiler, '-std=c++17', '-fsyntax-only', *namespace['CXXFLAGS'], str(source)], check=True)
                 else:
                     self.assertEqual(namespace['CXXFLAGS'], [], toolkit)
+
+    def test_egl_include_does_not_replace_webgpu_map_request_type(self):
+        patch = (ROOT / 'patches/canvas-complete-renderer.patch').read_text()
+        section = patch.split('+++ b/dom/webgpu/ipc/WebGPUParent.cpp\n', 1)[1].split('\n@@', 2)[0]
+        # Execute the actual added include/hygiene block, with the exact X11 macro
+        # reported by the hosted compiler. WebGPUParent.h precedes the EGL include.
+        additions = '\n'.join(line[1:] for line in section.splitlines() if line.startswith('+'))
+        compiler = shutil.which('c++')
+        self.assertIsNotNone(compiler)
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            header = root / 'GLLibraryEGL.h'
+            source = root / 'map.cpp'
+            source.write_text('#include <memory>\nstruct WebGPUParent { struct MapRequest {}; };\n' + additions +
+                              '\nstd::unique_ptr<WebGPUParent::MapRequest> request(new WebGPUParent::MapRequest{});\n')
+            for x11 in (True, False):
+                header.write_text('#define MapRequest 20\n' if x11 else '')
+                result = subprocess.run([compiler, '-std=c++17', '-fsyntax-only', '-I'+folder, str(source)], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)

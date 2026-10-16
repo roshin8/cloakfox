@@ -1,0 +1,14 @@
+{
+  "run": "https://github.com/roshin8/cloakfox/actions/runs/38880746857",
+  "job": 116919417442,
+  "failure": "WebGPUParent.cpp:346 and :527 MapRequest type replaced by X11/X.h macro MapRequest=20",
+  "priorGtkHeaderRepair": "Build progressed past gdk/gdk.h into WebGPUParent.cpp type checking",
+  "repair": "Undefine X11 MapRequest after the new GLLibraryEGL include in the owning WebGPUParent.cpp patch hunk.",
+  "validation": [
+    "Compile smoke reproduced expected unqualified-id/type errors with X11 macro before repair.",
+    "Actual added include/hygiene block compiles with X11 macro present and absent after repair.",
+    "Include hunk applies to original158 include input; whole patch parses.",
+    "22 CI helper tests, parity inventory test and workflow lint pass locally."
+  ],
+  "fullLinuxBuild": "Pending hosted successor; no full compile/runtime success claimed"
+}
