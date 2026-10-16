@@ -1,0 +1,17 @@
+name: Cloakfox Windows readiness (deferred)
+
+# No Windows browser build exists yet. Never report readiness as a passing build.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report deferred Windows implementation
+        run: |
+          echo "::error::Windows build, packaging, signing and runtime gates are not implemented. Windows remains deferred."
+          exit 1

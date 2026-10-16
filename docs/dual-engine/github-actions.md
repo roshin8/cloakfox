@@ -1,6 +1,6 @@
 # GitHub Actions: Gecko and Chromium
 
-The `Build Cloakfox` workflow builds Gecko 158 for macOS arm64 and Linux x64, calls the reusable `Chromium source and runtime` workflow, and runs same-run concurrent Gecko/Chromium checks. It runs for pull requests, pushes to main and codex/firefox-158-port, version tags and manual dispatch. Chromium currently supports macOS arm64 only.
+The `Build Cloakfox macOS` workflow (`build-macos.yml`) builds Gecko 158 for macOS arm64, calls the reusable `Chromium source and runtime` workflow, and runs same-run concurrent Gecko/Chromium checks. It runs for pull requests, pushes to main and codex/firefox-158-port, version tags and manual dispatch. Linux has a separate manual workflow; Windows remains an unimplemented, manual readiness check. Chromium currently supports macOS arm64 only.
 
 ## Hosted storage evidence
 
@@ -17,13 +17,13 @@ The source workflow additionally removes unused mobile target platforms and simu
 - Chromium packaging: distribution templates supply build scaffolding only. Headers/wrapper come from matching generated/source files and CEF distribution transfer mappings. The framework must have identical source-output, SDK and app-embedded SHA256. The original binary SDK builds a separate negative control.
 - Chromium runtime: fresh hosted Mac, verified same-commit archive and framework, actual Metal, complete engine suite with both clients, sandbox/storage isolation and owned TCP/QUIC certificate-rejection tests. Native classes skipping for absent binaries cause failure; CLT-only characterization and source replay are explicitly excluded from this binary-only runner.
 - Coexistence: downloads the Gecko DMG and Chromium apps from this exact workflow run, verifies Chromium provenance, then exercises concurrent Gecko158/Chromium containers/personas/storage and pixel privacy. It never uses an installed /Applications browser.
-- Release: draft Gecko artifacts remain the release format. Draft creation requires both builds, both Gecko runtime jobs, unit tests, Chromium source/runtime and coexistence. Test controls and evidence are retained as CI artifacts, not attached as browser downloads.
+- Release: draft Gecko artifacts remain the release format. macOS draft creation requires the Gecko macOS build/runtime, shared unit tests, Chromium macOS source/runtime and coexistence; deferred platforms are independent. Test controls and evidence are retained as CI artifacts, not attached as browser downloads.
 
 No paid or self-hosted runner is required by this configuration. Hosted job time is bounded below GitHub's six-hour maximum. A cold Chromium run exceeding that bound fails visibly; cached or faster build capacity must then be evaluated rather than reporting success.
 
 ## Current verification
 
-Seven CI helper tests and actionlint pass locally. The packaging regression for transferred Chromium headers is covered by a failing-then-passing fixture. The full new hosted source build and runtime sequence still need their first successful run; hardware/capacity surveys alone do not establish that result. The ongoing local identity source build is independent and unchanged.
+All 48 CI helper tests and lint for the six active/reusable/platform workflow files pass locally. Local fixture capacity is simulated at 20 GiB because the development host has less than the production 10 GiB reserve; explicit low-space rejection tests still run. The separate runner-survey workflow retains a pre-existing actionlint error for its `xcode-27` label. The packaging regression for transferred Chromium headers is covered by a failing-then-passing fixture. The full new hosted source build and runtime sequence still need their first successful run; hardware/capacity surveys alone do not establish that result. The ongoing local identity source build is independent and unchanged.
 
 [Corrected full run](https://github.com/roshin8/cloakfox/actions/runs/38838708458) builds commit1288a030a7. Its hosted unit-test job passed; full builds and runtime completion are pending. The existing periodic build watcher now also checks the latest non-cancelled dual-engine CI run and fixes failures within this scope.
 
@@ -124,11 +124,30 @@ large checkpoint restore/reuse, source SDK packaging and strict browser/coexiste
 runtime verification remain pending. Current running jobs are not retrofitted or
 cancelled. [Failure and repair evidence](ci-20261015/chromium-checkpoint-host-identity.json).
 
-Linux browser build/runtime jobs are now opt-in through the manual workflow's
-`include_linux` input (default false), per the user's macOS-only scope. Push runs
-do not schedule those browser jobs. Shared unit checks remain enabled. Deferred
-Linux coverage is not reported as passing; existing cross-platform release
-dependencies remain unchanged. No Windows browser job is currently defined.
+Platform entry workflows are separate:
+
+- `.github/workflows/build-macos.yml` is the only automatically triggered browser
+  pipeline (push, pull request and version tags). It calls reusable `checks.yml`
+  for shared unit/policy tests, and retains the existing Chromium source/runtime,
+  Gecko package/runtime and same-run coexistence gates.
+- `.github/workflows/build-linux.yml` retains the existing Gecko build/package
+  and Linux runtime tests, available only by explicit manual dispatch. It does
+  not claim Chromium/Linux coverage or publish releases.
+- `.github/workflows/build-windows.yml` is a manual readiness report that fails
+  explicitly because Windows build/package/signing/runtime implementation is
+  deferred. It is not a working Windows browser pipeline.
+
+The macOS release job requires all five macOS/shared jobs to succeed, then checks
+upstream security freshness and creates a **draft** release containing only the
+same-run `cloakfox-macos-arm64` DMG. Missing DMGs fail publication. Linux and
+Windows are not release dependencies or passing coverage claims. Signing remains
+ad-hoc; Developer ID signing and notarization are not implemented here.
+
+The macOS concurrency group is explicitly the original
+`browser-build-Build Cloakfox-${{ github.ref }}` with `cancel-in-progress: false`.
+Renaming the workflow therefore queues its first successor behind the running
+build without cancelling or dispatching a duplicate. Existing running jobs retain
+those workflows as loaded at their own commit.
 
 
 ## Chromium runner versus compiler observations

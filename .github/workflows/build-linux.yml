@@ -1,0 +1,292 @@
+name: Build Cloakfox Linux (manual)
+
+# Deferred: no automatic push, PR or tag builds until Linux work resumes.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-build-linux-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  unit-tests:
+    uses: ./.github/workflows/checks.yml
+
+  build-linux:
+    runs-on: ubuntu-24.04
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      BUILD_TARGET: linux,x86_64
+      CC: clang-19
+      CXX: clang++-19
+      HOST_CC: clang-19
+      HOST_CXX: clang++-19
+
+    steps:
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-docker-images: "true"
+          remove-cached-tools: "true"
+          remove-swapfile: "true"
+          verbose: "false"
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up LLVM 19
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 19
+          sudo apt-get install -y lld-19 clang-19
+          sudo update-alternatives --install /usr/bin/ld.lld ld.lld /usr/bin/ld.lld-19 100
+
+      - name: Install Rust
+        run: |
+          curl https://sh.rustup.rs -sSf | bash -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y msitools p7zip-full aria2 nasm \
+            libasound2-dev libgtk-3-dev libdbus-glib-1-dev libpulse-dev \
+            libx11-xcb-dev libxt-dev libxrandr-dev libxcomposite-dev libxdamage-dev \
+            libclang-19-dev
+          cargo install cbindgen --version 0.29.4 --locked
+
+      - name: Set up git identity
+        run: |
+          git config --global user.email "ci@cloakfox"
+          git config --global user.name "Cloakfox CI"
+
+      - name: Set up sccache
+        uses: Mozilla-Actions/sccache-action@v0.0.9
+
+      - name: Prioritize action's sccache
+        run: echo "$(dirname $SCCACHE_PATH)" >> $GITHUB_PATH
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build extension
+        run: make extension
+
+      - name: Fetch and setup
+        run: |
+          make fetch
+          make setup-minimal
+
+      - name: Patch and configure
+        run: |
+          make dir
+          python3 scripts/fix-mach-logging.py firefox-src
+          echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
+
+      - name: Create swap space
+        run: |
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
+      - name: Source-dependent Gecko regression tests
+        run: |
+          set -euo pipefail
+          for f in tests/fingerprint/test_*.mjs; do
+            if grep -q 'firefox-src' "$f"; then
+              node --test "$f"
+            fi
+          done
+          python3 -m unittest discover -s tests/release -p 'test_*.py'
+          test -f firefox-src/netwerk/protocol/http/nsHttpConnectionInfo.cpp
+          python3 -m unittest discover -s tests/network -p 'test_native_network_snapshot.py'
+
+      - name: Build
+        env:
+          # Route rustc through sccache (mk_add_options in mozconfig
+          # didn't propagate). Step-level env reaches mach/cargo/rustc.
+          RUSTC_WRAPPER: ${{ env.SCCACHE_PATH }}
+          SCCACHE_GHA_ENABLED: "true"
+          # Prevent the sccache daemon from idling out on macOS. On
+          # recent runs the daemon shut down mid-build with
+          # 'server looks like it shut down unexpectedly, compiling
+          # locally instead' — after which every compile bypasses
+          # the cache. SCCACHE_IDLE_TIMEOUT=0 disables the 600s-default
+          # idle timer. Also enable error logging so the next crash
+          # (if any) is diagnosable.
+          SCCACHE_IDLE_TIMEOUT: "0"
+          SCCACHE_ERROR_LOG: /tmp/sccache.log
+          SCCACHE_LOG: warn
+        run: make build
+
+      - name: Dump sccache error log
+        if: always()
+        run: cat /tmp/sccache.log || true
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats || true
+
+      - name: Verify
+        run: |
+          ls -la firefox-src/obj-*/dist/bin/cloakfox* || true
+          grep "setCanvasSeed" firefox-src/dom/webidl/Window.webidl && echo "C++ API: FOUND" || echo "C++ API: NOT FOUND"
+
+      - name: Package
+        run: cd firefox-src && ./mach package
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloakfox-linux-x86_64
+          # mach package produces .tar.xz on Firefox 146; the old *.tar.bz2 glob
+          # matched nothing, so this artifact was NEVER uploaded — the step
+          # logged "No files were found" and still reported success. Nothing
+          # consumed it until the Linux probe job, which is what exposed it.
+          path: firefox-src/obj-*/dist/*.tar.xz
+          # Never silently upload nothing again.
+          if-no-files-found: error
+
+  fingerprint-tests-linux:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pinned upstream fingerprint library fixtures
+        run: python3 scripts/setup-fingerprint-libraries.py
+
+      - name: Install pinned Monaco and Firepad probe fixtures
+        run: |
+          npm install --prefix "$RUNNER_TEMP/monaco-probe-assets" --ignore-scripts --no-audit --no-fund --save-exact \
+            monaco-editor@0.18.1 @hackerrank/firepad@0.8.6 esbuild@0.25.12
+          echo "MONACO_PROBE_ASSETS=$RUNNER_TEMP/monaco-probe-assets" >> "$GITHUB_ENV"
+
+      - name: Install selenium + geckodriver
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -r tests/fingerprint/requirements-runtime.txt
+          # Pinned URL rather than a package manager: apt has no geckodriver and
+          # snap is unavailable on the runner. The probes pass the system-access
+          # flag as a geckodriver service arg, which works on 0.36 and 0.37 alike,
+          # so this version can move without breaking them.
+          curl -sL -o /tmp/gd.tar.gz \
+            https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-linux64.tar.gz
+          sudo tar -xzf /tmp/gd.tar.gz -C /usr/local/bin
+          geckodriver --version
+
+      - name: Install runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth libgtk-3-0 libdbus-glib-1-2 libasound2t64 || \
+            sudo apt-get install -y xvfb xauth libgtk-3-0 libdbus-glib-1-2 libasound2
+
+      - name: Download Linux build
+        uses: actions/download-artifact@v4
+        with:
+          name: cloakfox-linux-x86_64
+          path: artifact
+
+      - name: Extract build
+        run: |
+          set -euo pipefail
+          TARBALL=$(find artifact \( -name "*.tar.xz" -o -name "*.tar.bz2" \) | head -1)
+          echo "tarball: $TARBALL"
+          test -n "$TARBALL"
+          mkdir -p /tmp/cfx-linux
+          case "$TARBALL" in
+            *.tar.xz)  tar -xJf "$TARBALL" -C /tmp/cfx-linux ;;
+            *.tar.bz2) tar -xjf "$TARBALL" -C /tmp/cfx-linux ;;
+          esac
+          BIN=$(find /tmp/cfx-linux -maxdepth 3 -type f -name "cloakfox" | head -1)
+          echo "binary: $BIN"
+          test -n "$BIN"
+          echo "CLOAKFOX_BIN=$BIN" >> "$GITHUB_ENV"
+
+      - name: Required CreepJS and FingerprintJS audit
+        id: libraries
+        continue-on-error: true
+        timeout-minutes: 35
+        env:
+          REPORT_DIR: ${{ runner.temp }}/gecko-library-audit
+        run: xvfb-run -a python3 -u tests/fingerprint/probe_fingerprint_libraries.py
+
+      - name: Run fingerprint probe suite
+        id: probes
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python tests/fingerprint/run_all.py 2>&1 | tee /tmp/probe-output-linux.txt
+
+      - name: Browser-dependent unit tests
+        id: browser_units
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest
+          python -m pytest --noconftest -q \
+            tests/fingerprint/test_math_constants.py \
+            tests/fingerprint/test_sec_ch_ua.py
+
+      - name: Summarise results
+        if: always()
+        run: |
+          {
+            echo "## Fingerprint probe suite (Linux)"
+            echo ""
+            echo '```'
+            sed -n '/^====/,$p' /tmp/probe-output-linux.txt 2>/dev/null | head -60 || \
+              echo "no probe output captured"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload probe output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fingerprint-probe-output-linux
+          path: /tmp/probe-output-linux.txt
+
+      - name: Preserve required library and strict probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: required-gecko-audits-linux
+          path: |
+            ${{ runner.temp }}/gecko-library-audit/
+            tests/fingerprint/reports/probe-suite.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail if probes regressed
+        if: always() && (steps.probes.outcome != 'success' || steps.browser_units.outcome != 'success' || steps.libraries.outcome != 'success')
+        run: |
+          echo "One or more fingerprint probes failed on LINUX."
+          echo "A Linux-only failure usually means an assertion assumed a macOS host."
+          exit 1
+

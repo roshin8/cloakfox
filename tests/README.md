@@ -1,6 +1,6 @@
 # Cloakfox Tests
 
-Two live suites. Both run in CI (`.github/workflows/build.yml`).
+Two live suites. Shared checks run through `.github/workflows/checks.yml`; macOS runtime coverage runs in `.github/workflows/build-macos.yml`. Linux runtime coverage is manual-only in `.github/workflows/build-linux.yml`; Windows is deferred.
 
 ## `fingerprint/` — the real suite
 

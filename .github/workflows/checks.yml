@@ -1,0 +1,72 @@
+name: Shared checks
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install unit and transport fixture dependencies
+        run: python3 -m pip install pytest -r tests/network/requirements-wire.txt
+
+      - name: Engine and CI helper unit tests (native runtime runs separately)
+        run: |
+          python3 -m unittest discover -s tests/ci -v
+          python3 -m unittest discover -s tests/engines -p 'test_*.py' -v
+
+      - name: Node unit tests
+        run: |
+          set -euo pipefail
+          for f in tests/fingerprint/test_*.mjs; do
+            if grep -q 'firefox-src' "$f"; then
+              echo "Source assertions run after patching in both Gecko build jobs: $f"
+              continue
+            fi
+            node --test "$f"
+          done
+
+      # test_probe_js_spoofers_scoring.py is a main()-style script, not a
+      # pytest module — it has real checks but no test_* functions, so pytest
+      # collects nothing from it and exits clean. Run it the way its own
+      # docstring documents (exit 0 = pass) instead of listing it under pytest,
+      # where it would have been a green step that checked nothing.
+      #
+      # test_math_constants and test_sec_ch_ua look pure but drive a real
+      # browser and merely SKIP without CLOAKFOX_BIN; they run in the
+      # fingerprint-tests jobs, where a binary exists.
+      - name: Strict outcomes and pinned library audit contract tests
+        run: |
+          python3 -m unittest discover -s tests/fingerprint -p test_probe_outcome_policy.py -v
+          python3 -m unittest discover -s tests/fingerprint -p test_library_audit_contract.py -v
+          python3 -m pytest --noconftest -q tests/fingerprint/test_library_fixture_safety.py
+
+      - name: Fingerprint regression self-tests
+        run: |
+          set -euo pipefail
+          python tests/fingerprint/test_probe_js_spoofers_scoring.py
+          python tests/fingerprint/test_webgl_async_readback.py
+          python tests/fingerprint/test_canvas_extraction_policy.py
+          python tests/fingerprint/test_cpp_first_worker_cache.py
+
+      - name: Release, blocker and native network policy tests
+        run: |
+          python -m unittest discover -s tests/release -p 'test_*.py'
+          python -m unittest discover -s tests/blocker -p 'test_*.py'
+          python -m unittest discover -s tests/network -p 'test_*.py'
+
