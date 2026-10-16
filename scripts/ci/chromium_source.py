@@ -280,7 +280,7 @@ class Pipeline:
         (self.logs / 'source-provenance.json').write_text(json.dumps(receipt, indent=2) + '\n')
         return source, out, locks
 
-    def build(self, jobs, compile_minutes=None, resumed=False, checkpoint_module=None):
+    def build(self, jobs, compile_minutes=None, resumed=False, checkpoint_module=None, checkpoint_identity=None):
         if resumed:
             source = self.root / 'chromium/src'
             out = source / 'out/Release_GN_arm64'
@@ -294,7 +294,7 @@ class Pipeline:
         else:
             source, out, locks = self.prepare()
         if checkpoint_module:
-            checkpoint_module.validate_links(self.root)
+            checkpoint_module.validate_links(self.root, checkpoint_identity)
         finished = self.run('framework', [source / 'third_party/ninja/ninja', '-C', out, 'cef_framework', '-j' + str(jobs)],
                             source, time_budget_seconds=compile_minutes * 60 if compile_minutes else None)
         if not finished:
@@ -350,6 +350,10 @@ def main():
     spec = importlib.util.spec_from_file_location('chromium_checkpoint', Path(__file__).with_name('chromium_checkpoint.py'))
     checkpoint = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(checkpoint)
+    developer = Path(subprocess.check_output(['xcode-select', '-p'], text=True).strip())
+    sdk_path = Path(subprocess.check_output(['xcrun', '-sdk', 'macosx', '--show-sdk-path'], text=True).strip())
+    platform_path = Path(subprocess.check_output(['xcrun', '-sdk', 'macosx', '--show-sdk-platform-path'], text=True).strip())
+    sdk_links = [sdk_path, platform_path, developer / 'Toolchains/XcodeDefault.xctoolchain']
     identity = {
         'gitSha': os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip(),
         'root': str(args.root.resolve()),
@@ -358,8 +362,9 @@ def main():
         'runtimePatch': digest(ENGINE / 'cef-runtime-patches.json'),
         'sdkLock': digest(ENGINE / 'cef-lock.json'),
         'runnerImage': os.environ.get('ImageVersion'),
+        'hostSdkLinks': {str(checkpoint.HOST_LINK_DIR / path.name): str(path.resolve()) for path in sdk_links},
         'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True).strip(),
-        'sdk': subprocess.check_output(['xcrun', '--show-sdk-version'], text=True).strip(),
+        'sdk': subprocess.check_output(['xcrun', '-sdk', 'macosx', '--show-sdk-version'], text=True).strip(),
         'python': sys.version,
         'pythonExecutable': sys.executable,
     }
@@ -369,7 +374,7 @@ def main():
         args.resume.unlink()
     else:
         args.root.mkdir(parents=True, exist_ok=False)
-    complete = Pipeline(args.root.resolve()).build(args.jobs, args.compile_minutes, resumed=bool(args.resume), checkpoint_module=checkpoint)
+    complete = Pipeline(args.root.resolve()).build(args.jobs, args.compile_minutes, resumed=bool(args.resume), checkpoint_module=checkpoint, checkpoint_identity=identity)
     if not complete:
         checkpoint.save(args.root, args.checkpoint_out, identity)
     result = {'complete': complete, 'gitSha': identity['gitSha']}

@@ -1,0 +1,12 @@
+{
+  "run": "https://github.com/roshin8/cloakfox/actions/runs/38880746857",
+  "job": 116919417638,
+  "failureUtc": "2026-10-16T10:31:07Z",
+  "failure": "Checkpoint external symlink: chromium/src/out/Release_GN_arm64/sdk/xcode_links/MacOSX.platform",
+  "compilationStarted": false,
+  "cause": "Chromium sdk_info.py intentionally links its build output to the runner's installed Xcode SDK/platform/toolchain directories. The checkpoint preflight rejected these along with arbitrary external links.",
+  "upstreamReference": "https://github.com/chromium/chromium/blob/154.0.8037.98/build/config/apple/sdk_info.py",
+  "repair": "Compute the exact SDK, platform and XcodeDefault.xctoolchain link mapping from xcrun macosx and xcode-select; bind it into checkpoint identity. Omit those links from archive bytes and recreate only validated links after extraction. Reject all other external links and occupied/escaping restore destinations.",
+  "verification": "23 CI helper tests and actionlint pass; tests cover legitimate SDK roundtrip, target-manifest tampering and forged archive paths without modifying the host SDK. Independent review found no important defects.",
+  "hostedCheckpointAndFullBuild": "Pending; no completed compilation, capacity or transfer-duration claim"
+}

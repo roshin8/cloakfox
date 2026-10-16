@@ -8,6 +8,7 @@ import tarfile
 import time
 
 GIB = 1024**3
+HOST_LINK_DIR = PurePosixPath('chromium/src/out/Release_GN_arm64/sdk/xcode_links')
 
 
 def digest(path):
@@ -51,14 +52,26 @@ def internal_link(source, root):
     return os.path.relpath(target, source.parent)
 
 
-def validate_links(root):
+def verified_host_link(relative, target, identity):
+    allowed = (identity or {}).get('hostSdkLinks', {})
+    if (PurePosixPath(relative).parent != HOST_LINK_DIR or '..' in PurePosixPath(relative).parts
+            or allowed.get(relative) != target or not Path(target).is_absolute()
+            or str(Path(target).resolve()) != target or not Path(target).is_dir()):
+        raise ValueError('Unverified checkpoint host SDK link (external symlink): ' + relative)
+    return target
+
+
+def validate_links(root, identity=None):
     root = Path(root).resolve()
     count = 0
     for source in root.rglob('*'):
         if source.is_symlink():
-            internal_link(source, root)
+            if source.resolve().is_relative_to(root):
+                internal_link(source, root)
+            else:
+                verified_host_link(source.relative_to(root).as_posix(), str(source.resolve()), identity)
             count += 1
-    print(f'CHECKPOINT preflight verified {count} internal symlinks', flush=True)
+    print(f'CHECKPOINT preflight verified {count} contained or pinned SDK symlinks', flush=True)
 
 
 def save(root, archive, identity):
@@ -68,17 +81,23 @@ def save(root, archive, identity):
     archive.parent.mkdir(parents=True, exist_ok=True)
     require_space(archive.parent)
     started = time.monotonic()
+    host_links = {}
     def preserve(member):
         relative = PurePosixPath(member.name).relative_to('workspace')
         source = root / str(relative)
         if member.issym():
-            member.linkname = internal_link(source, root)
+            if source.resolve().is_relative_to(root):
+                member.linkname = internal_link(source, root)
+            else:
+                key = source.relative_to(root).as_posix()
+                host_links[key] = verified_host_link(key, str(source.resolve()), identity)
+                return None  # Recreate verified SDK links only after extraction.
         member.pax_headers['cloakfox.mtime_ns'] = str(source.lstat().st_mtime_ns)
         return member
     with archive.open('wb') as file:
         with tarfile.open(fileobj=GuardedWriter(file, archive.parent), mode='w:gz', compresslevel=1) as bundle:
             bundle.add(root, arcname='workspace', filter=preserve)
-    record = {'schemaVersion': 1, 'identity': identity, 'sha256': digest(archive),
+    record = {'schemaVersion': 1, 'identity': identity, 'hostLinks': host_links, 'sha256': digest(archive),
               'bytes': archive.stat().st_size, 'seconds': round(time.monotonic() - started, 1)}
     archive.with_suffix('.json').write_text(json.dumps(record, indent=2) + '\n')
     print(f"CHECKPOINT saved bytes={record['bytes']} seconds={record['seconds']}", flush=True)
@@ -93,6 +112,11 @@ def restore(root, archive, identity):
         raise ValueError('Checkpoint identity differs from current commit/toolchain/root')
     if digest(archive) != receipt['sha256']:
         raise ValueError('Checkpoint SHA256 mismatch')
+    host_links = receipt.get('hostLinks', {})
+    if type(host_links) is not dict:
+        raise ValueError('Invalid checkpoint host SDK link manifest')
+    for relative, target in host_links.items():
+        verified_host_link(relative, target, identity)
     if root.exists():
         raise ValueError('Checkpoint destination already exists; preserve it for diagnosis')
     root.mkdir(parents=True)
@@ -122,6 +146,12 @@ def restore(root, archive, identity):
                     stamps.append((root / member.name, int(member.pax_headers['cloakfox.mtime_ns'])))
                 yield member
         bundle.extractall(root, members=members(), filter='data')
+    for relative, target in host_links.items():
+        destination = root / relative
+        if not destination.parent.resolve().is_relative_to(root) or os.path.lexists(destination):
+            raise ValueError('Checkpoint host SDK link destination is occupied or escapes workspace')
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.symlink_to(target, target_is_directory=True)
     for path, stamp in reversed(stamps):
         os.utime(path, ns=(stamp, stamp), follow_symlinks=False)
     print(f'CHECKPOINT restored seconds={time.monotonic()-started:.1f}', flush=True)

@@ -119,3 +119,51 @@ class Checkpoints(unittest.TestCase):
         for complete, failure, expected in [('true','false',0),('false','false',1),('true','true',1)]:
             result = subprocess.run(['bash','-e','-c',gate], env={**os.environ,'COMPLETE':complete,'FAILURE':failure})
             self.assertEqual(result.returncode, expected)
+
+    def test_verified_host_sdk_links_are_recreated_only_after_extract(self):
+        module = load()
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder)
+            sdk = base / 'Xcode/Platforms/MacOSX.platform'
+            sdk.mkdir(parents=True)
+            header = sdk / 'header.h'
+            header.write_text('host SDK unchanged')
+            root = base / 'build'
+            relative = 'chromium/src/out/Release_GN_arm64/sdk/xcode_links/MacOSX.platform'
+            link = root / relative
+            link.parent.mkdir(parents=True)
+            link.symlink_to(sdk, target_is_directory=True)
+            identity = {'hostSdkLinks': {relative: str(sdk.resolve())}}
+            module.validate_links(root, identity)
+            archive = base / 'checkpoint/workspace.tar.gz'
+            module.save(root, archive, identity)
+            with tarfile.open(archive) as bundle:
+                self.assertNotIn('workspace/' + relative, bundle.getnames())
+            shutil.rmtree(root)
+            module.restore(root, archive, identity)
+            self.assertTrue(link.is_symlink())
+            self.assertEqual((link / 'header.h').read_text(), 'host SDK unchanged')
+            self.assertEqual(header.read_text(), 'host SDK unchanged')
+            # An altered manifest cannot point the re-created link at arbitrary
+            # host paths, even though the archive itself still has its valid hash.
+            receipt_path = archive.with_suffix('.json')
+            receipt = json.loads(receipt_path.read_text())
+            receipt['hostLinks'][relative] = '/etc'
+            receipt_path.write_text(json.dumps(receipt))
+            shutil.rmtree(root)
+            with self.assertRaisesRegex(ValueError, 'host SDK link'):
+                module.restore(root, archive, identity)
+            self.assertFalse(root.exists())
+
+            # A hostile archive cannot write through the pinned external link:
+            # it is absent until extraction has finished, then occupied paths fail.
+            with tarfile.open(archive, 'w:gz') as bundle:
+                entry = tarfile.TarInfo('workspace/' + relative + '/header.h')
+                entry.size = 6
+                bundle.addfile(entry, io.BytesIO(b'poison'))
+            receipt['hostLinks'][relative] = str(sdk.resolve())
+            receipt['sha256'] = module.digest(archive)
+            receipt_path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, 'occupied'):
+                module.restore(root, archive, identity)
+            self.assertEqual(header.read_text(), 'host SDK unchanged')
