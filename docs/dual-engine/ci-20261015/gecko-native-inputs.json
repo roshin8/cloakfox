@@ -1,0 +1,26 @@
+{
+  "triggerRun": 38880746857,
+  "triggerJob": 116929581228,
+  "repairScope": ["same-build xpcshell runtime", "FFVPX source headers and upstream corpus", "same-run CPU renderer build and packaged integrity", "explicit standalone library directory"],
+  "localHandoff": {"archiveBytes": 97268599, "files": 492, "appearanceStartupCasesPassed": 7, "codecCorpusCasesPassed": 28},
+  "localSigningFixture": {
+    "scope": "temporary app and copied real renderer libraries; original apps and libraries unchanged",
+    "deepStrictSignature": "passed",
+    "finalManifestHashes": "passed",
+    "standaloneCpuVulkanShader": "passed",
+    "opaqueClearSha256": "e40796989b6e6e6c3b665ad7b86a5218537370b0dd8bd742b74884398a394fe4",
+    "shaderSha256": "d506d4da6f2936bdb873022b106a7cf80d9645794cb331266dd90e091d391ef2"
+  },
+  "hostedNativeGraphics": {
+    "logs": "required-gecko-audits-macos/native-gecko.log and protected-gecko.log",
+    "observedFailure": ["FEATURE_FAILURE_CGL_FBO", "FEATURE_FAILURE_WEBGL_EXHAUSTED_DRIVERS"],
+    "fingerprintJsNativeWebGlBasics": -1,
+    "fingerprintJsProtectedWebGlBasics": -1,
+    "underlyingCglFailureCause": "not established",
+    "canonicalResourcesDoNotProveNativeCglRepair": true
+  },
+  "hostedFreshRendererBuild": "pending",
+  "hostedNativeInputHandoff": "pending",
+  "installedSandboxedBrowserAcceptance": "pending",
+  "linuxCanonicalBackend": "not supported by the current macOS-only builder; strict suite remains unwaived"
+}

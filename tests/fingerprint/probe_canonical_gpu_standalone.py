@@ -8,6 +8,7 @@ import argparse
 import ctypes as C
 import hashlib
 import json
+import os
 from pathlib import Path
 
 
@@ -115,6 +116,9 @@ def probe(directory):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('directory', type=lambda p: Path(p).resolve())
+    parser.add_argument('directory', nargs='?', type=lambda p: Path(p).resolve(),
+                        default=os.environ.get('CLOAKFOX_CANONICAL_GPU_DIR'))
     args = parser.parse_args()
+    if args.directory is None:
+        parser.error('provide directory or CLOAKFOX_CANONICAL_GPU_DIR')
     print(json.dumps(probe(args.directory), indent=2))

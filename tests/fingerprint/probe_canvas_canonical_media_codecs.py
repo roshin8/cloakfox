@@ -32,7 +32,7 @@ def first_video_sample(path):
    return codec,extra,data[offset:offset+size]
  raise ValueError(f'No supported clear MP4 video sample: {path}')
 def run(output):
- native=ROOT/'firefox-src';libraries=Path(os.environ.get('CANONICAL_CODEC_LIB_DIR',str(native/'obj-aarch64-apple-darwin/dist/bin')))
+ native=Path(os.environ.get('CANONICAL_CODEC_SOURCE_DIR',str(ROOT/'firefox-src')));libraries=Path(os.environ.get('CANONICAL_CODEC_LIB_DIR',str(native/'obj-aarch64-apple-darwin/dist/bin')))
  fixtures=[native/'dom/media/webvtt/test/reftest/black.mp4',native/'dom/media/test/hevc_white_frame.mp4',native/'dom/media/test/red-48x46.mp4']
  fixtures+=sorted((native/'dom/media/test/reftest/color_quads').glob('*.mp4'))
  result={'scope':'actual bundled Mac FFVPX first-frame corpus; C versus available SIMD, not cross-host acceptance','cases':[],'libraryDirectory':str(libraries),'librarySHA256':{name:hashlib.sha256((libraries/name).read_bytes()).hexdigest() for name in ['libmozavcodec.dylib','libmozavutil.dylib']}}

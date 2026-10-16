@@ -22,7 +22,48 @@ jobs:
   chromium:
     uses: ./.github/workflows/chromium.yml
 
+  canonical-gpu-macos:
+    runs-on: macos-26
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned renderer build tools
+        run: brew install ninja
+      - name: Acquire pinned CPU renderer sources
+        run: python3 -u scripts/build-canonical-gpu.py --work-dir "$RUNNER_TEMP/canonical-build" --acquire
+      - name: Install renderer's pinned Clang toolchain
+        run: python3 "$RUNNER_TEMP/canonical-build/angle/tools/clang/scripts/update.py"
+      - name: Build and verify CPU renderer
+        run: |
+          set -euo pipefail
+          python3 -u scripts/build-canonical-gpu.py --work-dir "$RUNNER_TEMP/canonical-build" \
+            --build --jobs 2 --ci-live-logs --stage "$RUNNER_TEMP/canonical-gpu"
+          python3 scripts/ci/sign_canonical_gpu.py bundle --path "$RUNNER_TEMP/canonical-gpu" --commit "$GITHUB_SHA"
+          tar -czf "$RUNNER_TEMP/canonical-gpu.tar.gz" -C "$RUNNER_TEMP" canonical-gpu
+      - name: Upload same-run renderer
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-gpu-macos
+          path: ${{ runner.temp }}/canonical-gpu.tar.gz
+          if-no-files-found: error
+          retention-days: 2
+      - name: Preserve renderer build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-gpu-build-evidence
+          path: |
+            ${{ runner.temp }}/canonical-build/*.log
+            ${{ runner.temp }}/canonical-build/evidence/
+            ${{ runner.temp }}/canonical-gpu/manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
   build-macos:
+    needs: canonical-gpu-macos
     runs-on: macos-26
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -63,6 +104,19 @@ jobs:
 
       - name: Generate Assets.car
         run: bash scripts/generate-assets-car.sh
+
+      - name: Download same-run CPU renderer
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-gpu-macos
+          path: ${{ runner.temp }}/canonical-gpu-artifact
+
+      - name: Verify renderer before source staging
+        run: |
+          set -euo pipefail
+          mkdir -p bundle
+          tar -xzf "$RUNNER_TEMP/canonical-gpu-artifact/canonical-gpu.tar.gz" -C bundle
+          python3 scripts/ci/sign_canonical_gpu.py verify --path bundle/canonical-gpu --commit "$GITHUB_SHA"
 
       - name: Fetch and setup
         run: |
@@ -118,8 +172,17 @@ jobs:
           ls -la firefox-src/obj-*/dist/bin/cloakfox* || true
           grep "setCanvasSeed" firefox-src/dom/webidl/Window.webidl && echo "C++ API: FOUND" || echo "C++ API: NOT FOUND"
 
+      - name: Package same-build native runtime inputs
+        run: |
+          set -euo pipefail
+          BIN=$(find firefox-src/obj-* -path '*/dist/bin/xpcshell' -type f -print -quit)
+          test -n "$BIN"
+          python3 scripts/ci/gecko_native_inputs.py pack --source firefox-src --binary "$(dirname "$BIN")" \
+            --inputs "$RUNNER_TEMP/gecko-native-inputs" --commit "$GITHUB_SHA"
+
       - name: Package
         run: |
+          set -euo pipefail
           cd firefox-src && ./mach package
           # Extract app from mach package DMG
           DMG_PATH=$(find obj-*/dist -name "*.dmg" -maxdepth 1 | head -1)
@@ -128,7 +191,7 @@ jobs:
           mkdir -p /tmp/dmg-staging
           cp -R /tmp/mach-dmg/Cloakfox.app /tmp/dmg-staging/
           xattr -cr /tmp/dmg-staging/Cloakfox.app
-          codesign --force --deep --sign - /tmp/dmg-staging/Cloakfox.app
+          python3 ../scripts/ci/sign_canonical_gpu.py app --path /tmp/dmg-staging/Cloakfox.app --commit "$GITHUB_SHA"
           hdiutil detach /tmp/mach-dmg
           # Create branded DMG with background, icon positioning, and Applications shortcut
           mkdir -p ../dist
@@ -154,6 +217,15 @@ jobs:
           name: cloakfox-macos-arm64
           path: dist/Cloakfox-macos-arm64.dmg
           if-no-files-found: error
+
+      - name: Upload same-build native runtime inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: gecko-native-inputs-macos
+          path: ${{ runner.temp }}/gecko-native-inputs/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 2
 
   build-linux:
     runs-on: ubuntu-24.04
@@ -354,6 +426,24 @@ jobs:
           hdiutil detach /tmp/cfx-dmg
           xattr -cr /tmp/cfx-app/Cloakfox.app || true
           ls -la /tmp/cfx-app/Cloakfox.app/Contents/MacOS/cloakfox
+
+      - name: Download same-build native runtime inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: gecko-native-inputs-macos
+          path: ${{ runner.temp }}/gecko-native-inputs
+
+      - name: Verify and restore native runtime inputs
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/gecko_native_inputs.py restore --inputs "$RUNNER_TEMP/gecko-native-inputs" \
+            --destination "$RUNNER_TEMP/gecko-native" --commit "$GITHUB_SHA"
+          echo "CLOAKFOX_XPCSHELL=$RUNNER_TEMP/gecko-native/bin/xpcshell" >> "$GITHUB_ENV"
+          echo "CANONICAL_CODEC_SOURCE_DIR=$RUNNER_TEMP/gecko-native/firefox-src" >> "$GITHUB_ENV"
+          echo "CANONICAL_CODEC_LIB_DIR=/tmp/cfx-app/Cloakfox.app/Contents/MacOS" >> "$GITHUB_ENV"
+          echo "CLOAKFOX_CANONICAL_GPU_DIR=/tmp/cfx-app/Cloakfox.app/Contents/Resources/canonical-gpu" >> "$GITHUB_ENV"
+          python3 scripts/ci/sign_canonical_gpu.py verify \
+            --path /tmp/cfx-app/Cloakfox.app/Contents/Resources/canonical-gpu --commit "$GITHUB_SHA"
 
       - name: Required CreepJS and FingerprintJS audit
         id: libraries

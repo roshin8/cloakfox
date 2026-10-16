@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -33,7 +34,8 @@ def output(command, cwd):
 
 
 def digest(path):
-    return hashlib.file_digest(path.open('rb'), 'sha256').hexdigest()
+    with path.open('rb') as source:
+        return hashlib.file_digest(source, 'sha256').hexdigest()
 
 
 def write_integrity_manifest(directory, metadata):
@@ -127,7 +129,7 @@ def apply_patch(checkout_dir, patch):
     run(['git', 'apply', str(patch)], checkout_dir)
 
 
-def build(work, jobs):
+def build(work, jobs, live_logs=False):
     angle = work / 'angle'
     apply_patch(angle, RESOURCES / 'canonical-only.patch')
     if output(['xcode-select', '-print-path'], angle).endswith('/CommandLineTools'):
@@ -135,10 +137,21 @@ def build(work, jobs):
     target = angle / 'out/Canonical'
     target.mkdir(parents=True, exist_ok=True)
     shutil.copy2(RESOURCES / 'args.gn', target / 'args.gn')
-    with (work / 'gn-gen.log').open('w') as log:
-        run([str(angle / 'buildtools/mac/gn'), 'gen', str(target)], angle, stdout=log, stderr=subprocess.STDOUT)
-    with (work / 'ninja-build.log').open('w') as log:
-        run(['ninja', '-C', str(target), f'-j{jobs}', 'libEGL', 'libGLESv2'], angle, stdout=log, stderr=subprocess.STDOUT)
+    commands = [('gn-gen', [str(angle / 'buildtools/mac/gn'), 'gen', str(target)]),
+                ('ninja-build', ['ninja', '-C', str(target), f'-j{jobs}', 'libEGL', 'libGLESv2'])]
+    if live_logs:
+        # Reuse the tested file-backed child logger and 10GiB reserve guard;
+        # this does not invoke Chromium's source acquisition/build methods.
+        spec = importlib.util.spec_from_file_location('ci_child_logger', ROOT / 'scripts/ci/chromium_source.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        pipeline = module.Pipeline(work)
+        for name, command in commands:
+            pipeline.run('canonical-' + name, command, angle)
+    else:
+        for name, command in commands:
+            with (work / (name + '.log')).open('w') as log:
+                run(command, angle, stdout=log, stderr=subprocess.STDOUT)
     run([sys.executable, str(ROOT / 'tests/fingerprint/probe_canonical_gpu_standalone.py'), str(target)], ROOT)
 
 
@@ -190,6 +203,7 @@ def main():
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=2)
     parser.add_argument('--acquire', action='store_true')
     parser.add_argument('--build', action='store_true')
+    parser.add_argument('--ci-live-logs', action='store_true')
     parser.add_argument('--stage', type=lambda p: Path(p).resolve())
     parser.add_argument('--verify', type=lambda p: Path(p).resolve())
     args = parser.parse_args()
@@ -204,7 +218,7 @@ def main():
     if args.acquire:
         acquire(args.work_dir)
     if args.build:
-        build(args.work_dir, args.jobs)
+        build(args.work_dir, args.jobs, args.ci_live_logs)
     if args.stage:
         stage(args.work_dir, args.stage)
 
