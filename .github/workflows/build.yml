@@ -14,7 +14,9 @@ permissions:
 
 concurrency:
   group: browser-build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Preserve healthy full-source compilation when another platform needs a fix.
+  # Keep at most the newest pending run behind the current one.
+  cancel-in-progress: false
 
 jobs:
   chromium:

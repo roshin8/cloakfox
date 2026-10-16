@@ -3896,12 +3896,16 @@
  }
 --- a/dom/webgpu/moz.build
 +++ b/dom/webgpu/moz.build
-@@ -117,3 +117,5 @@
+@@ -117,3 +117,9 @@
  include("/ipc/chromium/chromium-config.mozbuild")
  
  FINAL_LIBRARY = "xul"
 +
 +LOCAL_INCLUDES += ["/cloakcfg"]
++
++# The canonical EGL verifier includes the toolkit's X11 helpers on GTK.
++if CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
++    CXXFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]
 --- a/gfx/2d/2D.h
 +++ b/gfx/2d/2D.h
 @@ -1384,6 +1384,12 @@

@@ -30,3 +30,9 @@ Seven CI helper tests and actionlint pass locally. The packaging regression for 
 ## Required upstream library audits
 
 CreepJS and FingerprintJS now run as mandatory runtime gates for Gecko on macOS/Linux and Chromium on macOS. Exact fixture pins, three-sample stability, native controls, detector-warning retention and the strict inconclusive policy are documented in [required library audits](required-library-audits.md). No inconclusive probe allowances are enabled by default. Local runtime verification passed; hosted verification of these new gates is pending.
+
+## Linux GTK build repair
+
+The first full Linux compile reached dom/webgpu and exposed a transitive GTK header dependency introduced by the canonical EGL verifier. The owning WebGPU moz.build hunk now adds MOZ_GTK3_CFLAGS only for GTK, following the existing dom/canvas and gfx/gl pattern. [Failure and verification record](ci-20261015/linux-webgpu-gtk.json). The patch applies and a compile smoke test passes for GTK while checking Cocoa/Android retain no GTK flags; full Linux compilation remains pending.
+
+Workflow concurrency now keeps healthy active full-source builds running while retaining the latest pending corrected run. A platform fix no longer cancels another engine's healthy compilation.

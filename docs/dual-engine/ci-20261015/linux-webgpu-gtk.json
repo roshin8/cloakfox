@@ -1,0 +1,15 @@
+{
+  "run": "https://github.com/roshin8/cloakfox/actions/runs/38844274069",
+  "job": 116791363626,
+  "failure": "dom/webgpu Unified_cpp_dom_webgpu2.cpp -> WebGPUParent.cpp -> GLLibraryEGL.h -> X11Util.h -> gdk/gdk.h not found",
+  "cause": "The canonical EGL verifier added a transitive GTK header dependency to dom/webgpu without the owning target MOZ_GTK3_CFLAGS.",
+  "repair": "GTK-only CXXFLAGS += CONFIG[\"MOZ_GTK3_CFLAGS\"] in the existing dom/webgpu/moz.build patch hunk.",
+  "validation": [
+    "Compile smoke test using owning patch build flags failed with missing gdk/gdk.h, then passed with GTK flags; Cocoa and Android stay unchanged.",
+    "Updated hunk applies to original158 moz.build input.",
+    "Gecko158 parity inventory refreshed and test passes.",
+    "Full CI helper suite and actionlint pass."
+  ],
+  "fullLinuxCompile": "Pending hosted rerun; no full-build success claimed.",
+  "ciConcurrency": "Do not cancel healthy jobs for an unrelated platform fix; retain the newest pending run behind the active workflow."
+}
