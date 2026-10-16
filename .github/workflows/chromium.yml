@@ -8,59 +8,49 @@ permissions:
 
 jobs:
   source:
-    runs-on: macos-26
-    timeout-minutes: 350
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      segment: 1
+
+  source2:
+    needs: [source]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      segment: 2
+      checkpoint: chromium-workspace-1
+
+  source3:
+    needs: [source, source2]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      segment: 3
+      checkpoint: chromium-workspace-2
+
+  source4:
+    needs: [source, source2, source3]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      segment: 4
+      checkpoint: chromium-workspace-3
+
+  source-complete:
+    needs: [source, source2, source3, source4]
+    if: always()
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Validate CI helpers
-        run: python3 -m unittest discover -s tests/ci -v
-      - name: Reclaim hosted Mac space and require full build capacity
-        run: python3 scripts/ci/prepare_macos.py --output "$RUNNER_TEMP/capacity.json"
-      - name: Publish capacity assessment before the long build
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chromium-capacity
-          path: ${{ runner.temp }}/capacity.json
-          if-no-files-found: error
-          retention-days: 14
-      - name: Install build tools
+      - name: Require actual completed framework and packaged clients
+        env:
+          COMPLETE: ${{ needs.source.outputs.complete == 'true' || needs.source2.outputs.complete == 'true' || needs.source3.outputs.complete == 'true' || needs.source4.outputs.complete == 'true' }}
+          FAILURE: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         run: |
-          export CCACHE_DIR="$RUNNER_TEMP/ccache"
-          echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
-          brew install cmake ninja ccache
-          ccache --max-size 5G
-      - name: Restore compiler cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/ccache
-          key: chromium-arm64-${{ runner.os }}-${{ hashFiles('engines/chromium/*lock.json', 'engines/chromium/patches/*.patch') }}
-          restore-keys: chromium-arm64-${{ runner.os }}-
-      - name: Build pinned source framework and both test clients
-        run: python3 -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3
-      - name: Upload source-built companion and unpatched control
-        uses: actions/upload-artifact@v4
-        with:
-          name: chromium-macos-arm64-test-apps
-          path: ${{ runner.temp }}/chromium-build/chromium-apps.tar.gz
-          if-no-files-found: error
-          retention-days: 7
-      - name: Preserve capacity, source provenance and stage logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chromium-source-evidence
-          path: |
-            ${{ runner.temp }}/capacity.json
-            ${{ runner.temp }}/chromium-build/evidence/
-          if-no-files-found: error
-          retention-days: 14
+          test "$COMPLETE" = "true"
+          test "$FAILURE" = "false"
 
   runtime:
-    needs: source
+    needs: source-complete
     runs-on: macos-26
     timeout-minutes: 45
     steps:

@@ -1,0 +1,105 @@
+name: Chromium source segment
+
+on:
+  workflow_call:
+    inputs:
+      segment:
+        type: number
+        required: true
+      checkpoint:
+        type: string
+        default: ''
+    outputs:
+      complete:
+        value: ${{ jobs.segment.outputs.complete }}
+
+permissions:
+  contents: read
+
+jobs:
+  segment:
+    runs-on: macos-26
+    timeout-minutes: 350
+    outputs:
+      complete: ${{ steps.build.outputs.complete }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate CI helpers
+        run: python3 -m unittest discover -s tests/ci -v
+      - name: Reclaim hosted Mac space and require full build capacity
+        run: python3 scripts/ci/prepare_macos.py --output "$RUNNER_TEMP/capacity.json"
+      - name: Publish capacity assessment before the long build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-capacity-${{ inputs.segment }}
+          path: ${{ runner.temp }}/capacity.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Install build tools
+        run: |
+          export CCACHE_DIR="$RUNNER_TEMP/ccache"
+          echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
+          brew install cmake ninja ccache
+          ccache --max-size 5G
+      - name: Restore compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: chromium-arm64-${{ runner.os }}-${{ hashFiles('engines/chromium/*lock.json', 'engines/chromium/patches/*.patch') }}
+          restore-keys: chromium-arm64-${{ runner.os }}-
+      - name: Download previous same-run workspace
+        if: inputs.checkpoint != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.checkpoint }}
+          path: ${{ runner.temp }}/checkpoint-in
+      - name: Build or resume pinned source framework and both test clients
+        id: build
+        env:
+          HAS_CHECKPOINT: ${{ inputs.checkpoint != '' }}
+        run: |
+          resume=()
+          if [[ "$HAS_CHECKPOINT" == "true" ]]; then
+            resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.gz")
+          fi
+          python3 -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.gz" "${resume[@]}"
+      - name: Preserve unfinished source and compiled objects for next job
+        if: steps.build.outputs.complete == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-workspace-${{ inputs.segment }}
+          path: ${{ runner.temp }}/checkpoint-out/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 2
+      - name: Upload source-built companion and unpatched control
+        if: steps.build.outputs.complete == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-macos-arm64-test-apps
+          path: ${{ runner.temp }}/chromium-build/chromium-apps.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish completed source provenance for mandatory runtime
+        if: steps.build.outputs.complete == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-source-evidence
+          path: ${{ runner.temp }}/chromium-build/evidence/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve capacity, source provenance and stage logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-source-evidence-${{ inputs.segment }}
+          path: |
+            ${{ runner.temp }}/capacity.json
+            ${{ runner.temp }}/chromium-build/evidence/
+          if-no-files-found: error
+          retention-days: 14
+

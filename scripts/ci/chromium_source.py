@@ -93,7 +93,7 @@ class Pipeline:
         self.logs.mkdir(parents=True, exist_ok=True)
         self.env = dict(os.environ)
 
-    def run(self, name, command, cwd=None):
+    def run(self, name, command, cwd=None, time_budget_seconds=None):
         print('STAGE', name, flush=True)
         status = {'stage': name, 'state': 'running', 'started': time.time(),
                   'freeBytes': shutil.disk_usage(self.root).free}
@@ -113,6 +113,7 @@ class Pipeline:
             (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
             decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
             storage_error = None
+            interrupted_for_checkpoint = False
             final_offset = None
             with log_path.open('rb') as live:
                 live.seek(initial_size)
@@ -142,6 +143,17 @@ class Pipeline:
                         storage_error = 'Stopped owned CI stage before exhausting the 10 GiB storage reserve'
                         # File-backed output cannot block shutdown on a full pipe.
                         # Drain its final bytes before recording the failure.
+                    if (time_budget_seconds is not None and now - started >= time_budget_seconds
+                            and not storage_error and process.poll() is None):
+                        print(f'CHECKPOINT stopping owned {name} at its time budget', flush=True)
+                        os.killpg(process.pid, signal.SIGINT)
+                        try:
+                            process.wait(timeout=30)
+                        except subprocess.TimeoutExpired:
+                            os.killpg(process.pid, signal.SIGKILL)
+                            process.wait()
+                            raise RuntimeError('Compiler did not stop cleanly for checkpoint')
+                        interrupted_for_checkpoint = process.returncode in (-signal.SIGINT, 2, 130)
                     if now - last_report >= PROGRESS_INTERVAL:
                         status.update(elapsedSeconds=round(now - started, 1),
                                       outputIdleSeconds=round(now - last_output, 1),
@@ -156,7 +168,8 @@ class Pipeline:
                         time.sleep(POLL_INTERVAL)
                 print(decoder.decode(b'', final=True), end='', flush=True)
             process.wait()
-            status.update(state='passed' if process.returncode == 0 and not storage_error else 'failed',
+            status.update(state=('checkpoint' if interrupted_for_checkpoint else
+                                 'passed' if process.returncode == 0 and not storage_error else 'failed'),
                           exitCode=process.returncode, finished=time.time(), minimumFreeBytes=minimum_free,
                           elapsedSeconds=round(time.monotonic() - started, 1), outputBytes=output_bytes,
                           outputIdleSeconds=round(time.monotonic() - last_output, 1),
@@ -170,8 +183,9 @@ class Pipeline:
                   f"elapsed={status['elapsedSeconds']}s", flush=True)
             if storage_error:
                 raise RuntimeError(storage_error)
-            if process.returncode:
+            if process.returncode and not interrupted_for_checkpoint:
                 raise RuntimeError(f'{name} failed: {process.returncode}')
+            return not interrupted_for_checkpoint
 
     def checkout(self, name, url, revision):
         target = self.root / name
@@ -187,17 +201,20 @@ class Pipeline:
         self.run(patch.name + '-check', ['git', 'apply', '-p0', '--check', patch], cwd)
         self.run(patch.name, ['git', 'apply', '-p0', patch], cwd)
 
+    def configure_environment(self, depot):
+        self.env.update(PATH=str(depot) + os.pathsep + os.environ['PATH'],
+                        DEPOT_TOOLS_UPDATE='0', GIT_CEILING_DIRECTORIES=str(self.root),
+                        CIPD_CACHE_DIR=str(self.root / 'cipd-cache'),
+                        VPYTHON_VIRTUALENV_ROOT=str(self.root / 'vpython-cache'),
+                        GN_OUT_CONFIGS='Release_GN_arm64')
+
     def prepare(self):
         lock = json.loads((ENGINE / 'source-lock.json').read_text())
         binary_lock = json.loads((ENGINE / 'cef-lock.json').read_text())
         if lock['chromiumVersion'] != binary_lock['chromiumVersion']:
             raise RuntimeError('Source and SDK template versions differ')
         depot = self.checkout('depot_tools', lock['depotToolsRepository'], lock['depotToolsCommit'])
-        self.env.update(PATH=str(depot) + os.pathsep + os.environ['PATH'],
-                        DEPOT_TOOLS_UPDATE='0', GIT_CEILING_DIRECTORIES=str(self.root),
-                        CIPD_CACHE_DIR=str(self.root / 'cipd-cache'),
-                        VPYTHON_VIRTUALENV_ROOT=str(self.root / 'vpython-cache'),
-                        GN_OUT_CONFIGS='Release_GN_arm64')
+        self.configure_environment(depot)
         archive = self.root / 'chromium.tar.xz'
         print('Downloading pinned Chromium source archive', flush=True)
         urllib.request.urlretrieve(lock['archiveUrl'], archive)
@@ -263,9 +280,25 @@ class Pipeline:
         (self.logs / 'source-provenance.json').write_text(json.dumps(receipt, indent=2) + '\n')
         return source, out, locks
 
-    def build(self, jobs):
-        source, out, locks = self.prepare()
-        self.run('framework', [source / 'third_party/ninja/ninja', '-C', out, 'cef_framework', '-j' + str(jobs)], source)
+    def build(self, jobs, compile_minutes=None, resumed=False, checkpoint_module=None):
+        if resumed:
+            source = self.root / 'chromium/src'
+            out = source / 'out/Release_GN_arm64'
+            names = ['canvas', 'worker-gpu', 'webgpu-pixel']
+            if (ENGINE / 'identity-patch-lock.json').is_file():
+                names.append('identity')
+            locks = [json.loads((ENGINE / (name + '-patch-lock.json')).read_text()) for name in names]
+            verify_chain(source, locks)
+            self.configure_environment(self.root / 'depot_tools')
+            print('CHECKPOINT verified native patch hashes; resuming existing Ninja objects', flush=True)
+        else:
+            source, out, locks = self.prepare()
+        if checkpoint_module:
+            checkpoint_module.validate_links(self.root)
+        finished = self.run('framework', [source / 'third_party/ninja/ninja', '-C', out, 'cef_framework', '-j' + str(jobs)],
+                            source, time_budget_seconds=compile_minutes * 60 if compile_minutes else None)
+        if not finished:
+            return False
         verify_chain(source, locks)
         self.run('sdk-template', [sys.executable, ENGINE / 'fetch_cef.py', '--cache-dir', self.root / 'sdk-template'])
         template_lock = json.loads((ENGINE / 'cef-lock.json').read_text())
@@ -297,17 +330,53 @@ class Pipeline:
                             'patched-client/Release/CloakfoxChromium.app',
                             'baseline-client/Release/CloakfoxChromium.app'])
         (self.logs / 'chromium-apps.sha256').write_text(digest(package) + '  chromium-apps.tar.gz\n')
+        return True
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--jobs', type=int, default=3)
+    parser.add_argument('--compile-minutes', type=int, default=180)
+    parser.add_argument('--resume', type=Path)
+    parser.add_argument('--checkpoint-out', type=Path)
     args = parser.parse_args()
     if not 1 <= args.jobs <= 8:
         parser.error('jobs must be 1–8')
-    args.root.mkdir(parents=True, exist_ok=False)
-    Pipeline(args.root.resolve()).build(args.jobs)
+    if not 1 <= args.compile_minutes <= 240:
+        parser.error('compile-minutes must be 1–240')
+    if not args.checkpoint_out:
+        parser.error('--checkpoint-out is required to preserve unfinished compilation')
+    spec = importlib.util.spec_from_file_location('chromium_checkpoint', Path(__file__).with_name('chromium_checkpoint.py'))
+    checkpoint = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checkpoint)
+    identity = {
+        'gitSha': os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip(),
+        'root': str(args.root.resolve()),
+        'sourceLock': digest(ENGINE / 'source-lock.json'),
+        'patchLocks': {path.name: digest(path) for path in sorted(ENGINE.glob('*patch-lock.json'))},
+        'runtimePatch': digest(ENGINE / 'cef-runtime-patches.json'),
+        'sdkLock': digest(ENGINE / 'cef-lock.json'),
+        'runnerImage': os.environ.get('ImageVersion'),
+        'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True).strip(),
+        'sdk': subprocess.check_output(['xcrun', '--show-sdk-version'], text=True).strip(),
+        'python': sys.version,
+        'pythonExecutable': sys.executable,
+    }
+    if args.resume:
+        checkpoint.restore(args.root, args.resume, identity)
+        # The verified workspace now owns the bytes; release duplicate archive space.
+        args.resume.unlink()
+    else:
+        args.root.mkdir(parents=True, exist_ok=False)
+    complete = Pipeline(args.root.resolve()).build(args.jobs, args.compile_minutes, resumed=bool(args.resume), checkpoint_module=checkpoint)
+    if not complete:
+        checkpoint.save(args.root, args.checkpoint_out, identity)
+    result = {'complete': complete, 'gitSha': identity['gitSha']}
+    (args.root / 'evidence/segment-result.json').write_text(json.dumps(result, indent=2) + '\n')
+    if os.environ.get('GITHUB_OUTPUT'):
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+            output.write('complete=' + str(complete).lower() + '\n')
 
 
 if __name__ == '__main__':

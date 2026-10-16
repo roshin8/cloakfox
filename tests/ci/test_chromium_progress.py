@@ -125,3 +125,17 @@ class ChromiumProgress(unittest.TestCase):
             self.assertEqual(status['state'], 'failed')
             self.assertEqual(status['exitCode'], 0)
             self.assertIn('storage reserve', status['error'])
+
+    def test_budget_interrupt_is_checkpoint_not_build_success(self):
+        spec = importlib.util.spec_from_file_location('pipeline', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.POLL_INTERVAL = .02
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            complete = module.Pipeline(root).run('fixture', [sys.executable, '-u', '-c',
+                "import time;print('compiling',flush=True);time.sleep(10)"], time_budget_seconds=.1)
+            self.assertFalse(complete)
+            status = json.loads((root / 'evidence/stage.json').read_text())
+            self.assertEqual(status['state'], 'checkpoint')
+            self.assertNotEqual(status['exitCode'], 0)
