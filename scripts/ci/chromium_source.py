@@ -2,6 +2,7 @@
 """Pinned Chromium/CEF source pipeline for fresh macOS arm64 CI workspaces."""
 import argparse
 import ast
+import codecs
 import hashlib
 import importlib.util
 import json
@@ -18,6 +19,8 @@ import urllib.request
 REPO = Path(__file__).resolve().parents[2]
 ENGINE = REPO / 'engines/chromium'
 GIB = 1024**3
+POLL_INTERVAL = 1
+PROGRESS_INTERVAL = 30
 
 
 def digest(path):
@@ -95,29 +98,78 @@ class Pipeline:
         status = {'stage': name, 'state': 'running', 'started': time.time(),
                   'freeBytes': shutil.disk_usage(self.root).free}
         (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
-        with (self.logs / (name + '.log')).open('a') as output:
+        started = last_output = last_report = time.monotonic()
+        output_bytes = 0
+        # Keep the original byte stream as evidence and mirror it immediately.
+        # Tailing a regular file also lets quiet compilation/linking report liveness.
+        log_path = self.logs / (name + '.log')
+        initial_size = log_path.stat().st_size if log_path.exists() else 0
+        with log_path.open('ab', buffering=0) as output:
             process = subprocess.Popen([str(item) for item in command], cwd=cwd or REPO,
                                        env=self.env, stdout=output, stderr=subprocess.STDOUT,
                                        stdin=subprocess.DEVNULL, start_new_session=True)
             minimum_free = status['freeBytes']
-            while process.poll() is None:
-                minimum_free = min(minimum_free, shutil.disk_usage(self.root).free)
-                if minimum_free < 10 * GIB:
-                    os.killpg(process.pid, signal.SIGTERM)
-                    try:
-                        process.wait(timeout=30)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(process.pid, signal.SIGKILL)
-                        process.wait()
-                    raise RuntimeError('Stopped owned CI stage before exhausting the 10 GiB storage reserve')
-                time.sleep(5)
-            status.update(state='passed' if process.returncode == 0 else 'failed',
+            status['childPid'] = process.pid
+            (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
+            decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+            storage_error = None
+            final_offset = None
+            with log_path.open('rb') as live:
+                live.seek(initial_size)
+                while True:
+                    if process.poll() is not None and final_offset is None:
+                        # A descendant can keep its inherited log open; only drain
+                        # bytes present when the owned direct child finishes.
+                        final_offset = log_path.stat().st_size
+                    limit = 65536 if final_offset is None else min(65536, final_offset - live.tell())
+                    chunk = live.read(limit)
+                    if chunk:
+                        output_bytes += len(chunk)
+                        last_output = time.monotonic()
+                        print(decoder.decode(chunk), end='', flush=True)
+                    elif final_offset is not None:
+                        break
+                    now = time.monotonic()
+                    free = shutil.disk_usage(self.root).free
+                    minimum_free = min(minimum_free, free)
+                    if minimum_free < 10 * GIB and process.poll() is None:
+                        os.killpg(process.pid, signal.SIGTERM)
+                        try:
+                            process.wait(timeout=30)
+                        except subprocess.TimeoutExpired:
+                            os.killpg(process.pid, signal.SIGKILL)
+                            process.wait()
+                        storage_error = 'Stopped owned CI stage before exhausting the 10 GiB storage reserve'
+                        # File-backed output cannot block shutdown on a full pipe.
+                        # Drain its final bytes before recording the failure.
+                    if now - last_report >= PROGRESS_INTERVAL:
+                        status.update(elapsedSeconds=round(now - started, 1),
+                                      outputIdleSeconds=round(now - last_output, 1),
+                                      outputBytes=output_bytes, freeBytes=free,
+                                      minimumFreeBytes=minimum_free, updated=time.time())
+                        (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
+                        print(f"\nPROGRESS {name}: pid={process.pid} elapsed={now-started:.0f}s "
+                              f"output-idle={now-last_output:.0f}s bytes={output_bytes} "
+                              f"free={free/GIB:.1f}GiB (quiet output alone does not prove a stall)", flush=True)
+                        last_report = now
+                    if not chunk:
+                        time.sleep(POLL_INTERVAL)
+                print(decoder.decode(b'', final=True), end='', flush=True)
+            process.wait()
+            status.update(state='passed' if process.returncode == 0 and not storage_error else 'failed',
                           exitCode=process.returncode, finished=time.time(), minimumFreeBytes=minimum_free,
+                          elapsedSeconds=round(time.monotonic() - started, 1), outputBytes=output_bytes,
+                          outputIdleSeconds=round(time.monotonic() - last_output, 1),
                           freeBytes=shutil.disk_usage(self.root).free)
+            if storage_error:
+                status['error'] = storage_error
             (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
             with (self.logs / 'capacity-stages.jsonl').open('a') as capacity:
                 capacity.write(json.dumps(status) + '\n')
-            print((self.logs / (name + '.log')).read_text(errors='replace')[-6000:], flush=True)
+            print(f"\nSTAGE {name} {status['state']}: exit={process.returncode} "
+                  f"elapsed={status['elapsedSeconds']}s", flush=True)
+            if storage_error:
+                raise RuntimeError(storage_error)
             if process.returncode:
                 raise RuntimeError(f'{name} failed: {process.returncode}')
 

@@ -36,3 +36,9 @@ CreepJS and FingerprintJS now run as mandatory runtime gates for Gecko on macOS/
 The first full Linux compile reached dom/webgpu and exposed a transitive GTK header dependency introduced by the canonical EGL verifier. The owning WebGPU moz.build hunk now adds MOZ_GTK3_CFLAGS only for GTK, following the existing dom/canvas and gfx/gl pattern. [Failure and verification record](ci-20261015/linux-webgpu-gtk.json). The patch applies and a compile smoke test passes for GTK while checking Cocoa/Android retain no GTK flags; full Linux compilation remains pending.
 
 Workflow concurrency now keeps healthy active full-source builds running while retaining the latest pending corrected run. A platform fix no longer cancels another engine's healthy compilation.
+
+## Live Chromium build progress
+
+Child stages now mirror stdout/stderr to the Actions log as bytes arrive, while preserving the complete original byte stream in each evidence log. Every 30 seconds, including during quiet compilation/linking, the runner emits `PROGRESS` with the stage, child PID, elapsed seconds, seconds since output, byte count and free GiB; it also refreshes `evidence/stage.json`. A completion line records elapsed time and exit code. Quiet output is a diagnostic signal, not proof of a hung compiler. The existing 10 GiB reserve still stops only the pipeline's own process group.
+
+Five real-child regression tests verify output arrives before exit, silent-stage telemetry, nonzero exit preservation, descendants retaining output handles, and complete shutdown output when the storage reserve triggers. The full 14-test CI helper suite and workflow lint pass locally. This change applies to subsequent workflow runs; it cannot modify the already-running runner's loaded script. Active builds are preserved by workflow concurrency, with the newest corrected run pending behind them.
