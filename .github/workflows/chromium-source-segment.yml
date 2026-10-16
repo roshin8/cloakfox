@@ -10,6 +10,8 @@ on:
         type: string
         default: ''
     outputs:
+      artifact-id:
+        value: ${{ jobs.segment.outputs.artifact-id }}
       complete:
         value: ${{ jobs.segment.outputs.complete }}
 
@@ -23,11 +25,15 @@ jobs:
     timeout-minutes: 350
     outputs:
       complete: ${{ steps.build.outputs.complete }}
+      artifact-id: ${{ steps.sdk.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.10'
+      - name: Compute committed engine input identity
+        id: key
+        run: python3 scripts/ci/engine_artifact.py key --kind chromium
       - name: Validate CI helpers
         run: python3 -m unittest discover -s tests/ci -v
       - name: Reclaim hosted Mac space and require full build capacity
@@ -60,7 +66,7 @@ jobs:
         with:
           name: ${{ inputs.checkpoint }}
           path: ${{ runner.temp }}/checkpoint-in
-      - name: Build or resume pinned source framework and both test clients
+      - name: Build or resume pinned native source framework and SDK
         id: build
         env:
           HAS_CHECKPOINT: ${{ inputs.checkpoint != '' }}
@@ -82,22 +88,21 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 2
-      - name: Upload source-built companion and unpatched control
+      - name: Seal completed SDK and original source provenance
+        if: steps.build.outputs.complete == 'true'
+        run: |
+          cp "$RUNNER_TEMP/checkpoint-out/current-identity.json" "$RUNNER_TEMP/chromium-build/engine-package/host-identity.json"
+          python3 scripts/ci/engine_artifact.py seal --kind chromium --directory "$RUNNER_TEMP/chromium-build/engine-package"
+      - name: Publish immutable source SDK
+        id: sdk
         if: steps.build.outputs.complete == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: chromium-macos-arm64-test-apps
-          path: ${{ runner.temp }}/chromium-build/chromium-apps.tar.gz
+          name: chromium-macos-arm64-${{ steps.key.outputs.key }}
+          path: ${{ runner.temp }}/chromium-build/engine-package/
+          compression-level: 0
           if-no-files-found: error
           retention-days: 7
-      - name: Publish completed source provenance for mandatory runtime
-        if: steps.build.outputs.complete == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: chromium-source-evidence
-          path: ${{ runner.temp }}/chromium-build/evidence/
-          if-no-files-found: error
-          retention-days: 14
       - name: Preserve capacity, source provenance and stage logs
         if: always()
         uses: actions/upload-artifact@v4

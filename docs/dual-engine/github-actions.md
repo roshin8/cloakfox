@@ -2,6 +2,58 @@
 
 The `Build Cloakfox macOS` workflow (`build-macos.yml`) builds Gecko 158 for macOS arm64, calls the reusable `Chromium source and runtime` workflow, and runs same-run concurrent Gecko/Chromium checks. It runs for pull requests, pushes to main and codex/firefox-158-port, version tags and manual dispatch. Linux has a separate manual workflow; Windows remains an unimplemented, manual readiness check. Chromium currently supports macOS arm64 only.
 
+## Reusing native builds in normal macOS CI
+
+`build-macos.yml` runs current shared checks first, then calls independent reusable
+`chromium-engine.yml` and `gecko-engine.yml` workflows. Both also support manual
+prewarming, but no extra dispatch is required. An exact matching completed artifact
+skips the cold native producer. Missing or expired artifacts cause the existing
+native build; a corrupt downloaded artifact fails verification rather than being
+used. Standard hosted macOS runners remain selected; the repository is public and
+no paid runner, external build service or billing setting is added.
+
+The immutable artifact name contains a versioned SHA256 of committed Git tree
+modes and object IDs for the relevant inputs. Chromium covers source/CEF pins,
+native patch bytes/locks/apply scripts and build/checkpoint recipes. Client sources
+and tests are separate: current patched/control clients and C++ tests always build
+from the verified SDK, and the complete current runtime suite always runs. The
+source/SDK framework hashes retain their original producer commit/run; current
+clients add their embedded hash and current checkout commit. Both identities are
+preserved rather than relabeling an old engine as freshly compiled.
+
+Gecko currently reuses a complete package and its matching native test fixtures,
+not a bare XUL library. Its conservative key covers patches, additions (including
+the extension), settings, branding/assets, bundled fonts, scripts and its native
+workflow. Current source-dependent test inputs also invalidate it so those tests
+cannot silently disappear on a warm run. Changes to these bundled inputs still
+require a cold package build; independent asset repackaging is not implemented.
+Ordinary changes outside that boundary can reuse the verified package. Current
+browser/library/coexistence tests remain mandatory even on a hit.
+
+These keys mean identical **committed source and declared build recipes**, not
+identical current runner bytes. The Chromium SDK retains its original host-content
+receipt; Gecko retains Xcode/SDK/Rust/cbindgen versions. A finished relocatable
+binary can be tested on a new runner. Exact host-content compatibility remains
+mandatory for unfinished compiler-object checkpoint restoration. Source/recipe
+changes invalidate reusable artifacts. Changing a moving upstream tool version
+without changing a committed recipe does not itself invalidate a completed package;
+seven-day artifact expiry bounds reuse, and current runtime gates still apply.
+
+Cross-run discovery accepts only this repository's push/manual producers on main
+or codex/firefox-158-port, from the expected platform/engine workflow, with the
+specific engine completion gate successful. PR/fork producers, expired artifacts,
+wrong engines/platforms/keys and mismatched producer SHA/run are rejected. Downloads
+are by immutable artifact ID with `actions: read`; all payload files must match the
+sealed size/SHA256 manifest before use. Gecko's original fixture/GPU commit stays
+intact and is passed explicitly to their existing verifiers. Current consumer and
+producer provenance is retained as evidence.
+
+New native SDK/package artifacts retain seven days; existing checkpoint and runtime
+evidence policies remain. The first run of this format must build cold, and actual
+hosted cold completion, a later cache hit and end-to-end runtime success remain
+pending. Local helper fixtures validate keys, trust, tampering and warm/cold gates;
+they do not establish a finished hosted browser.
+
 ## Hosted storage evidence
 
 [Initial survey](https://github.com/roshin8/cloakfox/actions/runs/38836571176) executed an actual Metal shader/compute check on standard hosted macos-26 and xcode-27 runners. Both passed. macos-26 selected Xcode26.6/macOS SDK26.5 and initially had approximately95.6GiB free.
@@ -129,7 +181,7 @@ Platform entry workflows are separate:
 - `.github/workflows/build-macos.yml` is the only automatically triggered browser
   pipeline (push, pull request and version tags). It calls reusable `checks.yml`
   for shared unit/policy tests, and retains the existing Chromium source/runtime,
-  Gecko package/runtime and same-run coexistence gates.
+  Gecko package/runtime and same-run coexistence gates, with verified native artifact reuse.
 - `.github/workflows/build-linux.yml` retains the existing Gecko build/package
   and Linux runtime tests, available only by explicit manual dispatch. It does
   not claim Chromium/Linux coverage or publish releases.

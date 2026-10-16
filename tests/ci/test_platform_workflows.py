@@ -27,7 +27,7 @@ class PlatformWorkflows(unittest.TestCase):
         self.assertIn('scripts/release_security.py', release)
 
     def test_renderer_installs_pinned_auxiliary_tools_after_clang(self):
-        job = jobs('build-macos.yml')['canonical-gpu-macos']
+        job = jobs('gecko-engine.yml')['canonical-gpu-macos']
         clang = 'python3 "$RUNNER_TEMP/canonical-build/angle/tools/clang/scripts/update.py"'
         self.assertIn(clang + ' --package objdump', job)
         self.assertLess(job.index(clang + '\n'), job.index(clang + ' --package objdump'))
@@ -49,6 +49,20 @@ class PlatformWorkflows(unittest.TestCase):
         linux = jobs('build-linux.yml')
         self.assertIn('needs: build-linux', linux['fingerprint-tests-linux'])
         self.assertNotIn('chromium', linux)
+
+    def test_current_apps_rebuild_and_runtime_gates_survive_engine_reuse(self):
+        chromium = jobs('chromium.yml')
+        self.assertIn('uses: ./.github/workflows/chromium-engine.yml', chromium['engine'])
+        self.assertIn('scripts/ci/chromium_clients.py', chromium['clients'])
+        self.assertIn('needs: engine', chromium['clients'])
+        self.assertIn('needs: clients', chromium['runtime'])
+        self.assertNotIn('if:', chromium['clients'].split('    steps:', 1)[0])
+        for probe in ('probe_fingerprint_libraries.py', 'run_engine_tests.py', 'probe_cef_isolation.py', 'probe_cef_transport.py'):
+            self.assertIn(probe, chromium['runtime'])
+        for workflow, job in [('chromium.yml','clients'), ('gecko-engine.yml','gecko-engine-complete')]:
+            self.assertIn('merge-multiple: true', jobs(workflow)[job])
+        self.assertIn("needs.native-build.result == 'success'", jobs('gecko-engine.yml')['gecko-engine-complete'])
+        self.assertIn('GECKO_BUILD_SHA', jobs('build-macos.yml')['fingerprint-tests'])
 
     def test_macos_preserves_existing_active_run_concurrency(self):
         text = (WORKFLOWS / 'build-macos.yml').read_text()

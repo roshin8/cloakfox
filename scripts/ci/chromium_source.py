@@ -361,27 +361,20 @@ class Pipeline:
         shutil.copytree(template, sdk, ignore=shutil.ignore_patterns('Release', 'Debug', 'tests', 'cefclient.app', 'cefsimple.app'))
         shutil.copytree(native, sdk / 'Release' / framework, symlinks=True)
         refresh_sdk(source, out, sdk)
-        for label, which_sdk in [('patched', sdk), ('baseline', template)]:
-            build = self.root / (label + '-client')
-            self.run(label + '-configure', ['cmake', '-S', ENGINE, '-B', build, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DCEF_ROOT=' + str(which_sdk)])
-            self.run(label + '-compile', ['cmake', '--build', build, '--parallel', str(jobs)])
-            self.run(label + '-cpp-tests', ['ctest', '--test-dir', build, '--output-on-failure'])
         source_hash = digest(native / 'Chromium Embedded Framework')
         sdk_hash = digest(sdk / 'Release' / framework / 'Chromium Embedded Framework')
-        embedded = self.root / 'patched-client/Release/CloakfoxChromium.app/Contents/Frameworks' / framework / 'Versions/A/Chromium Embedded Framework'
-        embedded_hash = digest(embedded)
-        if len({source_hash, sdk_hash, embedded_hash}) != 1:
-            raise RuntimeError('Source/SDK/embedded framework hashes differ')
+        if source_hash != sdk_hash:
+            raise RuntimeError('Source/SDK framework hashes differ')
+        package_dir = self.root / 'engine-package'
+        package_dir.mkdir()
+        package = package_dir / 'source-sdk.tar.gz'
+        self.run('package-sdk', ['tar', '-czf', package, '-C', self.root, 'source-sdk'])
         receipt_path = self.logs / 'source-provenance.json'
         receipt = json.loads(receipt_path.read_text())
         receipt.update(sourceFrameworkSha256=source_hash, sdkFrameworkSha256=sdk_hash,
-                       embeddedFrameworkSha256=embedded_hash, freeBytesAfterBuild=shutil.disk_usage(self.root).free)
+                       sdkArchiveSha256=digest(package), freeBytesAfterBuild=shutil.disk_usage(self.root).free)
         receipt_path.write_text(json.dumps(receipt, indent=2) + '\n')
-        package = self.root / 'chromium-apps.tar.gz'
-        self.run('package', ['tar', '-czf', package, '-C', self.root,
-                            'patched-client/Release/CloakfoxChromium.app',
-                            'baseline-client/Release/CloakfoxChromium.app'])
-        (self.logs / 'chromium-apps.sha256').write_text(digest(package) + '  chromium-apps.tar.gz\n')
+        shutil.copy2(receipt_path, package_dir / 'source-provenance.json')
         return True
 
 

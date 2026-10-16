@@ -1,57 +1,59 @@
-name: Chromium source and runtime
+name: Chromium current app and runtime
 
 on:
   workflow_call:
 
 permissions:
   contents: read
+  actions: read
   checks: write
 
 jobs:
-  source:
-    uses: ./.github/workflows/chromium-source-segment.yml
-    with:
-      segment: 1
+  engine:
+    uses: ./.github/workflows/chromium-engine.yml
 
-  source2:
-    needs: [source]
-    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' }}
-    uses: ./.github/workflows/chromium-source-segment.yml
-    with:
-      segment: 2
-      checkpoint: chromium-workspace-1
-
-  source3:
-    needs: [source, source2]
-    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' }}
-    uses: ./.github/workflows/chromium-source-segment.yml
-    with:
-      segment: 3
-      checkpoint: chromium-workspace-2
-
-  source4:
-    needs: [source, source2, source3]
-    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' }}
-    uses: ./.github/workflows/chromium-source-segment.yml
-    with:
-      segment: 4
-      checkpoint: chromium-workspace-3
-
-  source-complete:
-    needs: [source, source2, source3, source4]
-    if: always()
-    runs-on: ubuntu-24.04
+  clients:
+    needs: engine
+    runs-on: macos-26
+    timeout-minutes: 45
     steps:
-      - name: Require actual completed framework and packaged clients
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Install current app build tools
+        run: brew install cmake ninja
+      - name: Download exact resolved native SDK artifact
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          artifact-ids: ${{ needs.engine.outputs.artifact-id }}
+          run-id: ${{ needs.engine.outputs.producer-run }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/engine-package
+      - name: Verify SDK and compile current patched and control clients
         env:
-          COMPLETE: ${{ needs.source.outputs.complete == 'true' || needs.source2.outputs.complete == 'true' || needs.source3.outputs.complete == 'true' || needs.source4.outputs.complete == 'true' }}
-          FAILURE: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+          PRODUCER_SHA: ${{ needs.engine.outputs.producer-sha }}
+          PRODUCER_RUN: ${{ needs.engine.outputs.producer-run }}
         run: |
-          test "$COMPLETE" = "true"
-          test "$FAILURE" = "false"
+          python3 -u scripts/ci/chromium_clients.py --package "$RUNNER_TEMP/engine-package" \
+            --root "$RUNNER_TEMP/chromium-clients" --producer-sha "$PRODUCER_SHA" --producer-run "$PRODUCER_RUN"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chromium-macos-arm64-test-apps
+          path: ${{ runner.temp }}/chromium-clients/chromium-apps.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chromium-source-evidence
+          path: ${{ runner.temp }}/chromium-clients/evidence/
+          if-no-files-found: error
+          retention-days: 14
 
   runtime:
-    needs: source-complete
+    needs: clients
     runs-on: macos-26
     timeout-minutes: 45
     steps:

@@ -2,6 +2,7 @@
 """Verify same-run source provenance before launching either test companion."""
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -19,7 +20,16 @@ def verify(archive, evidence, destination, expected_sha):
     if len(receipts) != 1 or len(checksums) != 1:
         raise ValueError('Exactly one source provenance and archive checksum required')
     record = json.loads(receipts[0].read_text())
-    if not expected_sha or record.get('gitSha') != expected_sha:
+    if 'appGitSha' in record or 'engineProducerSha' in record:
+        spec = importlib.util.spec_from_file_location('engine_artifact', Path(__file__).with_name('engine_artifact.py'))
+        engine = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(engine)
+        if (not expected_sha or record.get('appGitSha') != expected_sha
+                or not record.get('engineProducerSha')
+                or record.get('gitSha') != record.get('engineProducerSha')
+                or record.get('engineKey') != engine.input_key(Path(__file__).resolve().parents[2], 'chromium')):
+            raise ValueError('Current app commit or reusable engine provenance mismatch')
+    elif not expected_sha or record.get('gitSha') != expected_sha:
         raise ValueError('Source artifact is not from this checkout commit')
     if digest(archive) != checksums[0].read_text().split()[0]:
         raise ValueError('Companion archive checksum differs from source job')
@@ -29,7 +39,7 @@ def verify(archive, evidence, destination, expected_sha):
     actual = digest(framework)
     if {actual, record['sourceFrameworkSha256'], record['sdkFrameworkSha256'], record['embeddedFrameworkSha256']} != {actual}:
         raise ValueError('Embedded framework differs from the source/SDK provenance')
-    print('Verified same-commit source/SDK/embedded framework SHA256:', actual)
+    print('Verified current app and source/SDK/embedded framework SHA256:', actual)
 
 
 def main():

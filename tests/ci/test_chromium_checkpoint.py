@@ -150,11 +150,16 @@ class Checkpoints(unittest.TestCase):
             self.assertFalse((root / 'input').exists())
 
     def test_workflow_gate_rejects_unfinished_or_failed_segments(self):
-        workflow = PATH.parents[2] / '.github/workflows/chromium.yml'
-        text = workflow.read_text().split('  source-complete:', 1)[1].split('  runtime:', 1)[0]
+        workflow = PATH.parents[2] / '.github/workflows/chromium-engine.yml'
+        text = workflow.read_text().split('  chromium-engine-complete:', 1)[1]
         gate = textwrap.dedent(text.split('        run: |\n', 1)[1])
-        for complete, failure, expected in [('true','false',0),('false','false',1),('true','true',1)]:
-            result = subprocess.run(['bash','-e','-c',gate], env={**os.environ,'COMPLETE':complete,'FAILURE':failure})
+        for found, complete, failure, artifact, expected in [
+                ('false','true','false','123',0),('false','false','false','',1),
+                ('false','true','true','123',1),('true','false','false','123',0),
+                ('true','false','true','123',1),('true','false','false','',1)]:
+            result = subprocess.run(['bash','-e','-c',gate], env={**os.environ,
+                'COMPLETE':complete,'FAILURE':failure,'FOUND':found,'ARTIFACT':artifact,
+                'PRODUCER_SHA':'sha','PRODUCER_RUN':'123','KEY':'key','GITHUB_OUTPUT':os.devnull})
             self.assertEqual(result.returncode, expected)
 
     def test_verified_host_sdk_links_are_recreated_only_after_extract(self):

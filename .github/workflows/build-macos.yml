@@ -18,228 +18,25 @@ concurrency:
 
 jobs:
   chromium:
+    needs: unit-tests
     permissions:
       contents: read
+      actions: read
       checks: write
     uses: ./.github/workflows/chromium.yml
 
-  canonical-gpu-macos:
-    runs-on: macos-26
-    timeout-minutes: 350
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install pinned renderer build tools
-        run: brew install ninja
-      - name: Acquire pinned CPU renderer sources
-        run: python3 -u scripts/build-canonical-gpu.py --work-dir "$RUNNER_TEMP/canonical-build" --acquire
-      - name: Install renderer's pinned Clang toolchain
-        run: |
-          set -euo pipefail
-          python3 "$RUNNER_TEMP/canonical-build/angle/tools/clang/scripts/update.py"
-          # Auxiliary Mach-O tools are a separate package at this pinned revision.
-          # Install after clang: the main package replaces the toolchain directory.
-          python3 "$RUNNER_TEMP/canonical-build/angle/tools/clang/scripts/update.py" --package objdump
-          tool_bin="$RUNNER_TEMP/canonical-build/angle/third_party/llvm-build/Release+Asserts/bin"
-          for tool in clang++ llvm-otool llvm-nm llvm-strip llvm-install-name-tool; do
-            test -x "$tool_bin/$tool"
-            "$tool_bin/$tool" --version
-          done
-      - name: Build and verify CPU renderer
-        run: |
-          set -euo pipefail
-          python3 -u scripts/build-canonical-gpu.py --work-dir "$RUNNER_TEMP/canonical-build" \
-            --build --jobs 2 --ci-live-logs --stage "$RUNNER_TEMP/canonical-gpu"
-          python3 scripts/ci/sign_canonical_gpu.py bundle --path "$RUNNER_TEMP/canonical-gpu" --commit "$GITHUB_SHA"
-          tar -czf "$RUNNER_TEMP/canonical-gpu.tar.gz" -C "$RUNNER_TEMP" canonical-gpu
-      - name: Upload same-run renderer
-        uses: actions/upload-artifact@v4
-        with:
-          name: canonical-gpu-macos
-          path: ${{ runner.temp }}/canonical-gpu.tar.gz
-          if-no-files-found: error
-          retention-days: 2
-      - name: Preserve renderer build evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: canonical-gpu-build-evidence
-          path: |
-            ${{ runner.temp }}/canonical-build/*.log
-            ${{ runner.temp }}/canonical-build/evidence/
-            ${{ runner.temp }}/canonical-gpu/manifest.json
-          if-no-files-found: error
-          retention-days: 14
-
   build-macos:
-    needs: canonical-gpu-macos
-    runs-on: macos-26
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      BUILD_TARGET: macos,arm64
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Rust
-        run: |
-          curl https://sh.rustup.rs -sSf | bash -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: |
-          brew install aria2 nasm lld create-dmg
-          cargo install cbindgen --version 0.29.4 --locked
-          echo "$(brew --prefix lld)/bin" >> $GITHUB_PATH
-
-      - name: Set up sccache
-        uses: Mozilla-Actions/sccache-action@v0.0.9
-
-      - name: Prioritize action's sccache
-        run: echo "$(dirname $SCCACHE_PATH)" >> $GITHUB_PATH
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Build extension
-        run: make extension
-
-      - name: Generate Assets.car
-        run: bash scripts/generate-assets-car.sh
-
-      - name: Download same-run CPU renderer
-        uses: actions/download-artifact@v4
-        with:
-          name: canonical-gpu-macos
-          path: ${{ runner.temp }}/canonical-gpu-artifact
-
-      - name: Verify renderer before source staging
-        run: |
-          set -euo pipefail
-          mkdir -p bundle
-          tar -xzf "$RUNNER_TEMP/canonical-gpu-artifact/canonical-gpu.tar.gz" -C bundle
-          python3 scripts/ci/sign_canonical_gpu.py verify --path bundle/canonical-gpu --commit "$GITHUB_SHA"
-
-      - name: Fetch and setup
-        run: |
-          make fetch
-          make setup-minimal
-
-      - name: Patch and configure
-        run: |
-          make dir
-          python3 scripts/fix-mach-logging.py firefox-src
-          echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
-
-      - name: Source-dependent Gecko regression tests
-        run: |
-          set -euo pipefail
-          for f in tests/fingerprint/test_*.mjs; do
-            if grep -q 'firefox-src' "$f"; then
-              node --test "$f"
-            fi
-          done
-          python3 -m unittest discover -s tests/release -p 'test_*.py'
-          test -f firefox-src/netwerk/protocol/http/nsHttpConnectionInfo.cpp
-          python3 -m unittest discover -s tests/network -p 'test_native_network_snapshot.py'
-
-      - name: Build
-        env:
-          # Route rustc through sccache (mk_add_options in mozconfig
-          # didn't propagate). Step-level env reaches mach/cargo/rustc.
-          RUSTC_WRAPPER: ${{ env.SCCACHE_PATH }}
-          SCCACHE_GHA_ENABLED: "true"
-          # Prevent the sccache daemon from idling out on macOS. On
-          # recent runs the daemon shut down mid-build with
-          # 'server looks like it shut down unexpectedly, compiling
-          # locally instead' — after which every compile bypasses
-          # the cache. SCCACHE_IDLE_TIMEOUT=0 disables the 600s-default
-          # idle timer. Also enable error logging so the next crash
-          # (if any) is diagnosable.
-          SCCACHE_IDLE_TIMEOUT: "0"
-          SCCACHE_ERROR_LOG: /tmp/sccache.log
-          SCCACHE_LOG: warn
-        run: make build
-
-      - name: Dump sccache error log
-        if: always()
-        run: cat /tmp/sccache.log || true
-
-      - name: Show sccache stats
-        if: always()
-        run: sccache --show-stats || true
-
-      - name: Verify
-        run: |
-          ls -la firefox-src/obj-*/dist/bin/cloakfox* || true
-          grep "setCanvasSeed" firefox-src/dom/webidl/Window.webidl && echo "C++ API: FOUND" || echo "C++ API: NOT FOUND"
-
-      - name: Package same-build native runtime inputs
-        run: |
-          set -euo pipefail
-          BIN=$(find firefox-src/obj-* -path '*/dist/bin/xpcshell' -type f -print -quit)
-          test -n "$BIN"
-          python3 scripts/ci/gecko_native_inputs.py pack --source firefox-src --binary "$(dirname "$BIN")" \
-            --inputs "$RUNNER_TEMP/gecko-native-inputs" --commit "$GITHUB_SHA"
-
-      - name: Package
-        run: |
-          set -euo pipefail
-          cd firefox-src && ./mach package
-          # Extract app from mach package DMG
-          DMG_PATH=$(find obj-*/dist -name "*.dmg" -maxdepth 1 | head -1)
-          hdiutil attach "$DMG_PATH" -mountpoint /tmp/mach-dmg -nobrowse
-          # Copy app, strip extended attributes, and ad-hoc codesign
-          mkdir -p /tmp/dmg-staging
-          cp -R /tmp/mach-dmg/Cloakfox.app /tmp/dmg-staging/
-          xattr -cr /tmp/dmg-staging/Cloakfox.app
-          python3 ../scripts/ci/sign_canonical_gpu.py app --path /tmp/dmg-staging/Cloakfox.app --commit "$GITHUB_SHA"
-          hdiutil detach /tmp/mach-dmg
-          # Create branded DMG with background, icon positioning, and Applications shortcut
-          mkdir -p ../dist
-          create-dmg \
-            --volname "Cloakfox" \
-            --volicon "../additions/browser/branding/cloakfox/firefox.icns" \
-            --background "../additions/browser/branding/cloakfox/background.png" \
-            --window-pos 200 120 \
-            --window-size 660 400 \
-            --icon-size 128 \
-            --text-size 12 \
-            --icon "Cloakfox.app" 175 200 \
-            --app-drop-link 485 200 \
-            --hide-extension "Cloakfox.app" \
-            --no-internet-enable \
-            --format UDZO \
-            ../dist/Cloakfox-macos-arm64.dmg \
-            /tmp/dmg-staging
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloakfox-macos-arm64
-          path: dist/Cloakfox-macos-arm64.dmg
-          if-no-files-found: error
-
-      - name: Upload same-build native runtime inputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: gecko-native-inputs-macos
-          path: ${{ runner.temp }}/gecko-native-inputs/
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 2
+    needs: unit-tests
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+    uses: ./.github/workflows/gecko-engine.yml
 
   fingerprint-tests:
     needs: build-macos
+    env:
+      GECKO_BUILD_SHA: ${{ needs.build-macos.outputs.producer-sha }}
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -296,13 +93,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/ci/gecko_native_inputs.py restore --inputs "$RUNNER_TEMP/gecko-native-inputs" \
-            --destination "$RUNNER_TEMP/gecko-native" --commit "$GITHUB_SHA"
+            --destination "$RUNNER_TEMP/gecko-native" --commit "$GECKO_BUILD_SHA"
           echo "CLOAKFOX_XPCSHELL=$RUNNER_TEMP/gecko-native/bin/xpcshell" >> "$GITHUB_ENV"
           echo "CANONICAL_CODEC_SOURCE_DIR=$RUNNER_TEMP/gecko-native/firefox-src" >> "$GITHUB_ENV"
           echo "CANONICAL_CODEC_LIB_DIR=/tmp/cfx-app/Cloakfox.app/Contents/MacOS" >> "$GITHUB_ENV"
           echo "CLOAKFOX_CANONICAL_GPU_DIR=/tmp/cfx-app/Cloakfox.app/Contents/Resources/canonical-gpu" >> "$GITHUB_ENV"
           python3 scripts/ci/sign_canonical_gpu.py verify \
-            --path /tmp/cfx-app/Cloakfox.app/Contents/Resources/canonical-gpu --commit "$GITHUB_SHA"
+            --path /tmp/cfx-app/Cloakfox.app/Contents/Resources/canonical-gpu --commit "$GECKO_BUILD_SHA"
 
       - name: Required CreepJS and FingerprintJS audit
         id: libraries

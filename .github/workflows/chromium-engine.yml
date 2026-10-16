@@ -1,0 +1,100 @@
+name: Chromium native SDK (macOS)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      artifact-id:
+        value: ${{ jobs.chromium-engine-complete.outputs.artifact-id }}
+      producer-sha:
+        value: ${{ jobs.chromium-engine-complete.outputs.producer-sha }}
+      producer-run:
+        value: ${{ jobs.chromium-engine-complete.outputs.producer-run }}
+      key:
+        value: ${{ jobs.chromium-engine-complete.outputs.key }}
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      found: ${{ steps.resolve.outputs.found }}
+      artifact-id: ${{ steps.resolve.outputs.artifact-id }}
+      producer-sha: ${{ steps.resolve.outputs.producer-sha }}
+      producer-run: ${{ steps.resolve.outputs.producer-run }}
+      key: ${{ steps.resolve.outputs.key }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Find repository-owned completed native build with exact inputs
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci/engine_artifact.py find --kind chromium
+
+  source:
+    needs: resolve
+    if: needs.resolve.outputs.found != 'true'
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      segment: 1
+
+  source2:
+    needs: [resolve, source]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      segment: 2
+      checkpoint: chromium-workspace-1
+
+  source3:
+    needs: [resolve, source, source2]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      segment: 3
+      checkpoint: chromium-workspace-2
+
+  source4:
+    needs: [resolve, source, source2, source3]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      segment: 4
+      checkpoint: chromium-workspace-3
+
+  chromium-engine-complete:
+    needs: [resolve, source, source2, source3, source4]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact-id: ${{ steps.select.outputs.artifact-id }}
+      producer-sha: ${{ steps.select.outputs.producer-sha }}
+      producer-run: ${{ steps.select.outputs.producer-run }}
+      key: ${{ steps.select.outputs.key }}
+    steps:
+      - name: Require verified reusable artifact or completed native SDK
+        id: select
+        env:
+          FOUND: ${{ needs.resolve.outputs.found }}
+          COMPLETE: ${{ needs.source.outputs.complete == 'true' || needs.source2.outputs.complete == 'true' || needs.source3.outputs.complete == 'true' || needs.source4.outputs.complete == 'true' }}
+          FAILURE: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+          ARTIFACT: ${{ needs.resolve.outputs.artifact-id || needs.source.outputs.artifact-id || needs.source2.outputs.artifact-id || needs.source3.outputs.artifact-id || needs.source4.outputs.artifact-id }}
+          PRODUCER_SHA: ${{ needs.resolve.outputs.producer-sha || github.sha }}
+          PRODUCER_RUN: ${{ needs.resolve.outputs.producer-run || github.run_id }}
+          KEY: ${{ needs.resolve.outputs.key }}
+        run: |
+          test "$FAILURE" = "false"
+          test "$FOUND" = "true" || test "$COMPLETE" = "true"
+          test -n "$ARTIFACT"
+          echo "artifact-id=$ARTIFACT" >> "$GITHUB_OUTPUT"
+          echo "producer-sha=$PRODUCER_SHA" >> "$GITHUB_OUTPUT"
+          echo "producer-run=$PRODUCER_RUN" >> "$GITHUB_OUTPUT"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"

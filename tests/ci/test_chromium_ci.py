@@ -105,6 +105,14 @@ class CiInputs(unittest.TestCase):
             with self.assertRaises(ValueError):
                 api.verify(archive, evidence, root / 'bad', 'other-commit')
             api.verify(archive, evidence, root / 'valid', 'expected')
+            reusable = {**receipt, 'engineProducerSha': 'expected', 'appGitSha': 'consumer',
+                        'engineKey': load('engine_artifact').input_key(ROOT, 'chromium')}
+            (evidence / 'source-provenance.json').write_text(json.dumps(reusable))
+            api.verify(archive, evidence, root / 'current-app', 'consumer')
+            for field, value in [('appGitSha', 'other'), ('engineKey', 'wrong'), ('engineProducerSha', 'other')]:
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    (evidence / 'source-provenance.json').write_text(json.dumps({**reusable, field: value}))
+                    api.verify(archive, evidence, root / ('invalid-' + field), 'consumer')
             receipt['sourceFrameworkSha256'] = '0' * 64
             (evidence / 'source-provenance.json').write_text(json.dumps(receipt))
             with self.assertRaises(ValueError):
