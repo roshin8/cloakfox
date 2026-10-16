@@ -16,4 +16,6 @@ Review focus: cleanup outside hosted runners must refuse; active Xcode and macOS
 
 Review ledger: fixed transferred-header SDK refresh before ordinary lookup and preserved generated TRANSFER-README.txt; regression test failed then passed. No deferred review findings. Task3 hosted execution remains pending.
 
-Hosted execution findings: source-dependent Node tests moved to prepared-source build jobs. Network unit job now installs pinned aioquic/h2 dependencies; wildcard harness reads the actual patched Gecko method rather than assuming its signature remains in diff context. Thirteen network tests and33 source-dependent Node tests pass locally; helper7/7 and actionlint pass. Hosted capacity157.0GiB, SDK26.5 and Metal verified; full compilation/runtime remain running.
+Hosted execution findings: source-dependent Node tests moved to prepared-source build jobs. Network unit job now installs pinned aioquic/h2 dependencies; wildcard harness reads the actual patched Gecko method rather than assuming its signature remains in diff context. Thirteen network tests and33 source-dependent Node tests pass locally; helper7/7 and actionlint pass. Hosted capacity157.0GiB, SDK26.5 and Metal verified; full compilation/runtime remain pending.
+
+Hosted fast-unit gate passed on run38838708458 at1288a030a7, including engine/CI helper, Node, fingerprint regression, release, blocker and network unit suites. Full build and runtime gates still pending; periodic watcher updated to finish verification.

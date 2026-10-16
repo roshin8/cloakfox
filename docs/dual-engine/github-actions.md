@@ -25,4 +25,4 @@ No paid or self-hosted runner is required by this configuration. Hosted job time
 
 Seven CI helper tests and actionlint pass locally. The packaging regression for transferred Chromium headers is covered by a failing-then-passing fixture. The full new hosted source build and runtime sequence still need their first successful run; hardware/capacity surveys alone do not establish that result. The ongoing local identity source build is independent and unchanged.
 
-[Corrected full run](https://github.com/roshin8/cloakfox/actions/runs/38838366647) builds commit465e94c964. Runtime completion is pending. The existing periodic build watcher now also checks the latest non-cancelled dual-engine CI run and fixes failures within this scope.
+[Corrected full run](https://github.com/roshin8/cloakfox/actions/runs/38838708458) builds commit1288a030a7. Its hosted unit-test job passed; full builds and runtime completion are pending. The existing periodic build watcher now also checks the latest non-cancelled dual-engine CI run and fixes failures within this scope.
