@@ -17,7 +17,7 @@ const FIREFOX_ADDON_PATH = "/builtin-addons/firefox-panel/";
 // Keep the filesystem name distinct even when Finder displays “Firefox”.
 // Dragging a revealed appearance copy into Applications must not collide with
 // Mozilla's Firefox.app.
-const APPEARANCE_APP = "Firefox Personal.app";
+const APPEARANCE_APP = "Stealthfox.app";
 let preparing;
 
 function assertPrivateAppearancePath(path) {
