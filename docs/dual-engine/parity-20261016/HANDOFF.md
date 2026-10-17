@@ -29,6 +29,10 @@ Shutdown-watchdog stress (15 windowed open/quit cycles on disposable roots): 15/
 
 Pipeline acceptance stages, all passing on the fixed binary: CTest `container_paths` + `surface_transport` 2/2; `probe_cef_isolation` (initial+restart isolation, renderer sandbox, camera/mic/location denial); `probe_cef_transport` (`certificateVerificationDisabled=false`); `probe_dual_engine_coexistence` (Gecko 158 beta + CEF 154 concurrently, shared owned origin). Log: `continuation-pipeline-stages-afterfix-20261016.log`.
 
+Complete native-engine harness (`engines/chromium/build_identity.py`) also reran end to end. One run failed in `engine-tests` on a single load-induced shutdown-watchdog teardown expiry (`test_webgpu_pixel_privacy.test_disable_keeps_rendered_pixels_exact`): the test body passed, but `close()` observed `returncode 2` with "Teardown watchdog expired". The system load average was 12–21 and that suite took 234 s versus ~130 s normally. Preserved log: `continuation-pipeline-teardown-failure-20261016.log`. The same WebGPU module then passed 8/8 (13–16 s each) once load eased, and the 15-cycle windowed open/quit stress passed 15/15 (slowest 0.62 s). No leaked companion or helper process was found, and the client releases all browser/context/DevTools-observer refs before `CefShutdown`, so no client-side shutdown-ordering defect was identified; the researched browser/window destruction ordering problem remains unproven. Do not raise the watchdog or relax the test.
+
+A subsequent full harness run (`continuation-full-pipeline-2-20261017.log`) passed end to end: `owned-editor-build-status.json` is `state=passed`, `lastPassed=gecko158-coexistence`, `runtimeTestsPassed=true`, 156 engine tests in 123.4 s, framework SHA `7b2a1d9a...` unchanged.
+
 ## Remaining limits
 
 - Real macOS IME/accent/dead-key input and same-window UI acceptance are still not exercised here; they need an explicit live-UI window and must not be run from background tests. The strengthened `--expect-typed-sequence` assertion is ready but has not yet run against a live typing flow.
