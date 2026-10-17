@@ -13,22 +13,33 @@ Continue in `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox`, branch `co
 - Narrow initial ASCII typing repair, preserving pending password/IME isolation.
 - Separate nonnumeric `Default` startup control profile, pinned before CEF startup. Numeric user-container profiles and immutable snapshot rejection remain intact.
 - Password fixture and deterministic restart regression.
+- Synchronous pointer-focus ownership fence before CEF `mouseDown` on the probe/windowless input path: it bumps the per-browser editing epoch and re-emits the host invalidation, so a metadata reply already in flight for the old focus target cannot be accepted after a click that may move focus. It never restores an old focus and does not relax field/document validation. Client-only; the native framework is unchanged.
+- Same-window typing probe gained `--expect-typed-sequence`, so a final Select All + replacement can no longer hide a dropped intermediate accent/dead-key commit.
+- `test_same_field_password_transition_invalidates_cached_input_state` no longer assumes the first state query carries metadata; it waits for the settled state, matching the documented "a query retires while fresh focus/type metadata is in flight" behavior.
 
-## Verification and limits
+## Verification (2026-10-16 continuation)
 
-Latest focused identity/protocol/bootstrap suites: 14 tests passed, 24.549 seconds. Source log: `/Volumes/CloakfoxChromiumBuild/source-build/logs/bootstrap-focused-suites.log`.
-CTest rerun at checkpoint: container_paths and surface_transport both passed (2/2). `git diff --check` passed before staging.
+Full native engine suite, first run after the startup-profile fix: 156 tests, one error (the owned-IME state-query test race fixed below), 138.8 s. Log: `/Volumes/CloakfoxChromiumBuild/source-build/logs/continuation-engine-tests-20261016.log`.
 
-Earlier full owned-editor pipeline failed: 155 tests, 12 failures plus one error. Inventory was refreshed and the restart collision fixed subsequently; full pipeline has NOT been rerun successfully. Several failures were shutdown-watchdog teardown failures rather than failed privacy assertions. Investigate cleanup without disabling watchdog/security checks.
+Full native engine suite after the pointer-focus fence: **156 tests passed**, 129.6 s. Log: `/Volumes/CloakfoxChromiumBuild/source-build/logs/continuation-engine-tests-afterfix-20261016.log`. This supersedes the earlier 155-test run with 12 failures and one error: the inventory refresh and restart-collision fix already cleared them, and no shutdown-watchdog teardown failure appeared in either full run.
 
-Real native initial ASCII and password input passed targeted checks. Immediate Option/accent/IME input before fresh focus metadata remains unresolved. A final replacement character can hide a missing accent in the current probe; add intermediate assertions. Consider synchronous pointer-focus invalidation before CEF mouseDown, but this is research, NOT implemented. Do not weaken field/document validation to replay unknown queued input.
+Stale cross-frame metadata probe (`tests/engines/probe_owned_ime_state_order.py`): an accepted stale reply reproduced 2/10 before the fence and 10/10 clean after it. Logs: `continuation-stale-frame-repro-20261016.log`, `continuation-stale-frame-afterfix-20261016.log`.
 
-Scoped static reviews found no actionable issue in the counters/Select All, narrow ASCII gate, and startup control-profile fix. These are not a final review of the entire port.
+Shutdown-watchdog stress (15 windowed open/quit cycles on disposable roots): 15/15 clean, slowest shutdown 0.62 s against the 10 s watchdog. Log: `continuation-shutdown-stress-20261016.log`. The intermittent teardown failures seen before the startup-profile fix did not reproduce; no watchdog, test, or security check was weakened.
+
+Pipeline acceptance stages, all passing on the fixed binary: CTest `container_paths` + `surface_transport` 2/2; `probe_cef_isolation` (initial+restart isolation, renderer sandbox, camera/mic/location denial); `probe_cef_transport` (`certificateVerificationDisabled=false`); `probe_dual_engine_coexistence` (Gecko 158 beta + CEF 154 concurrently, shared owned origin). Log: `continuation-pipeline-stages-afterfix-20261016.log`.
+
+## Remaining limits
+
+- Real macOS IME/accent/dead-key input and same-window UI acceptance are still not exercised here; they need an explicit live-UI window and must not be run from background tests. The strengthened `--expect-typed-sequence` assertion is ready but has not yet run against a live typing flow.
+- The fence closes the reproduced pointer-driven race but does not eliminate the general browser-focus-lag window. A renderer-acknowledged native focus transaction remains the correct long-term design for reliable queued-input replay; research only, not implemented.
+- Remaining Chromium privacy policy groups, full same-window/separate-window integration, and the final independent review of the whole port are unfinished. `releaseEligible` stays false.
+- The native CEF framework hash is unchanged: `7b2a1d9a925fd91685af30bfadaae61e70ca480f372ac9ac84e7c67c6ef07b85`.
 
 ## Build artifacts
 
 External drive must remain mounted. Build root: `/Volumes/CloakfoxChromiumBuild/source-build`.
-Current development client: `owned-editor-companion-build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium` under that root. Current native framework hash remains `7b2a1d9a925fd91685af30bfadaae61e70ca480f372ac9ac84e7c67c6ef07b85`. No native CEF source/framework changes in the latest increment.
+Current development client: `owned-editor-companion-build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium` under that root.
 Do not install the diagnostic owned-editor-ui-candidate bundle: deep signing verification failed. No release artifact is approved.
 
 Generated historical evidence logs and live fixture reports remain outside this code checkpoint where untracked. External build logs remain on the build drive. The ignored .superpowers progress ledger remains local; this tracked handoff records the latest state.

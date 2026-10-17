@@ -121,19 +121,40 @@ class OwnedIme(unittest.TestCase):
                     self.assertTrue(app.rpc('applyConfig',config=config)['ok'])
                     browser=app.open('1',f'http://127.0.0.1:{server.server_port}/',configRevision=1)
                     app.evaluate(browser,'field.focus();true')
-                    before=app.rpc('textInputState',browser=browser,configRevision=1)['state']
+                    # A state query can legitimately retire while fresh
+                    # focus/type metadata is still in flight; wait for the
+                    # settled non-password state instead of assuming the first
+                    # reply already carries it.
+                    deadline=time.monotonic()+3
+                    while True:
+                        reply=app.rpc('textInputState',browser=browser,configRevision=1)
+                        self.assertTrue(reply['ok'],reply)
+                        before=reply.get('state')
+                        if before is not None and not before['password']:break
+                        self.assertLess(time.monotonic(),deadline,'Focused non-password editing state did not settle')
+                        time.sleep(.01)
                     self.assertFalse(before['password'])
                     # Mutation occurs after evaluate replies: no focus event,
                     # input request or polling query may discover it for us.
                     app.evaluate(browser,"setTimeout(()=>{field.type='password'},100);true")
-                    deadline=time.monotonic()+3
-                    while True:
-                        changed=app.wait(lambda p:p.get('event')=='ownedImeInvalidated' and p.get('browser')==browser,
-                                         timeout=max(.01,deadline-time.monotonic()))
+                    deadline=time.monotonic()+5
+                    password=None
+                    while time.monotonic()<deadline:
+                        try:
+                            changed=app.wait(lambda p:p.get('event')=='ownedImeInvalidated' and p.get('browser')==browser,
+                                             timeout=max(.01,deadline-time.monotonic()))
+                        except TimeoutError:
+                            break
                         self.assertEqual(changed['configRevision'],1)
+                        # Allow a short settle window: a query racing the
+                        # invalidation may retire before returning the state.
+                        settle=time.monotonic()+0.5
                         password=app.rpc('textInputState',browser=browser,configRevision=1).get('state')
+                        while not (password and password['password']) and time.monotonic()<settle:
+                            time.sleep(.01)
+                            password=app.rpc('textInputState',browser=browser,configRevision=1).get('state')
                         if password and password['password']:break
-                        self.assertLess(time.monotonic(),deadline,'No native password-type invalidation arrived')
+                    self.assertTrue(password and password['password'],'No native password-type invalidation arrived')
                     self.assertEqual(password['field'],before['field'])
                     self.assertFalse(app.rpc('input',browser=browser,configRevision=1,kind='ownedIme',action='set',
                         field=password['field'],text='secret',selectionStart=6,selectionEnd=6)['applied'])

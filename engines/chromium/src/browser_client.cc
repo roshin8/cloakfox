@@ -489,6 +489,16 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     return type==imeTypes_.end() || (state->GetBool("editable")==type->second.editable &&
         state->GetBool("password")==type->second.password);
   }
+  // A pointer-down can move focus before the renderer reports the new editing
+  // type. Fence in-flight metadata replies for this browser so a stale
+  // field/document result cannot be accepted as current, and let the trusted
+  // host invalidate its cached state. The renderer's next type report (if any)
+  // re-arms normal acceptance; the fence never restores an old focus.
+  void fenceEditingOwnership(int browser) {
+    ++imeTypeEpoch_[browser];
+    if (browserContexts_.contains(browser) && contexts_.contains(browserContexts_.at(browser)))
+      emitImeInvalidated(browser);
+  }
   void emitImeInvalidated(int browser) {
     const auto& context=contexts_.at(browserContexts_.at(browser));
     if (!context.config) return;
@@ -1064,6 +1074,10 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
             if (data->HasKey("deltaX") || data->HasKey("deltaY")) {
               error(id, "Unexpected feasibility mouse delta"); return;
             }
+            // Fence editing ownership synchronously before CEF processes the
+            // pointer-down, so a metadata reply already in flight for the old
+            // focus target cannot be accepted once the click may have moved it.
+            if (kind == "mouseDown") fenceEditingOwnership(browser->GetIdentifier());
             browser->GetHost()->SetFocus(true);
             browser->GetHost()->SendMouseClickEvent(mouse, MBT_LEFT, kind == "mouseUp", 1);
           }

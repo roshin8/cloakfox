@@ -77,6 +77,7 @@ def main():
     parser.add_argument('--test-epoch-clear',action='store_true')
     parser.add_argument('--test-large-viewport',action='store_true')
     parser.add_argument('--expect-typed')
+    parser.add_argument('--expect-typed-sequence',help='JSON array of successive /typed values that must all arrive in order')
     parser.add_argument('--password-field',action='store_true',help='Owned fixture password-input acceptance only')
     parser.add_argument('--expect-single-click',action='store_true')
     parser.add_argument('--expect-chrome-input')
@@ -89,6 +90,15 @@ def main():
     parser.add_argument('--test-input-state',action='store_true')
     parser.add_argument('--expect-input-state-rejection',action='store_true')
     args=parser.parse_args()
+    typed_sequence=None
+    if args.expect_typed_sequence is not None:
+        typed_sequence=json.loads(args.expect_typed_sequence)
+        assert (isinstance(typed_sequence,list) and typed_sequence and
+                all(isinstance(value,str) for value in typed_sequence)),'--expect-typed-sequence must be a non-empty JSON array of strings'
+        # The typing window is only polled under --hold; requiring it avoids
+        # asserting before the caller has finished typing.
+        if not args.hold:
+            parser.error('--expect-typed-sequence requires --hold')
     server=http.server.ThreadingHTTPServer(('127.0.0.1',0),HostFixture)
     server.requests=[]
     server.nativeInputs=[]
@@ -261,12 +271,20 @@ return Array.from(c.getContext('2d').getImageData(c.width-1,c.height-1,1,1).data
                 state=driver.execute_script('return {...window.hostService.state(arguments[0]),ownerSelected:gBrowser.selectedBrowser===document.activeElement,activeElement:document.activeElement?.localName,windowActive:Services.focus.activeWindow===window,modal:window.windowUtils.isInModalState()}',token)
                 args.report.with_suffix('.live.json').write_text(json.dumps({**state,'nativeInputs':list(server.nativeInputs),'scrollPositions':list(server.scrollPositions),'selectedValues':list(server.selectedValues)}))
                 typed_ready=args.expect_typed is None or bool(server.nativeInputs and server.nativeInputs[-1]==args.expect_typed)
+                sequence_ready=typed_sequence is None or server.nativeInputs[:len(typed_sequence)]==typed_sequence
                 scroll_ready=not args.expect_scroll or any(y>0 for y in server.scrollPositions)
                 selection_ready=args.expect_selection is None or bool(server.selectedValues and server.selectedValues[-1]==args.expect_selection)
-                if (args.expect_typed is not None or args.expect_scroll or args.expect_selection is not None) and typed_ready and scroll_ready and selection_ready:break
+                if (args.expect_typed is not None or typed_sequence is not None or args.expect_scroll or args.expect_selection is not None) and typed_ready and sequence_ready and scroll_ready and selection_ready:break
                 time.sleep(.2)
         if args.expect_typed is not None:
             assert server.nativeInputs and server.nativeInputs[-1]==args.expect_typed,server.nativeInputs
+        if typed_sequence is not None:
+            # Intermediate values matter: a final Select All + replacement can
+            # hide a dropped accent/dead-key commit, so every step must arrive.
+            # Use distinct expected steps so adjacent duplicates cannot fill a
+            # dropped slot; entries after the prefix (the replacement) are left
+            # to --expect-typed.
+            assert server.nativeInputs[:len(typed_sequence)]==typed_sequence,('Intermediate typed text missing',list(server.nativeInputs))
         if args.expect_scroll:
             assert any(y>0 for y in server.scrollPositions),'Native scroll did not reach the owned page'
         if args.expect_selection is not None:
@@ -390,7 +408,7 @@ return Array.from(c.getContext('2d').getImageData(c.width-1,c.height-1,1,1).data
                 time.sleep(.025)
             assert canvas_retired,'Retired helper pixels remain in the chrome compositor'
         driver.execute_script('window.hostService.close(arguments[0])',token)
-        report={'status':'passed','scope':'Scripted native runtime checks; visual popup/screenshot acceptance is separate','gecko':guards,'frame':state,'wrongTabHidden':True,'helperDeathRevoked':True,'startupCancelled':args.test_startup_cancel,'duplicateOwnerRejected':True,'resizedViewports':resized,'tabRestored':True,'hiddenRendererSizePreserved':True,'epochClearTested':args.test_epoch_clear,'largeViewportTested':args.test_large_viewport,'nativeInputs':list(server.nativeInputs),'nativeScrollTested':args.expect_scroll,'scrollPositions':list(server.scrollPositions),'selectedValues':list(server.selectedValues),'nativeVideoTested':args.test_video,'nativeEditingStateTested':args.test_input_state,'videoColors':video_colors,'videoStates':list(server.videoStates)}
+        report={'status':'passed','scope':'Scripted native runtime checks; visual popup/screenshot acceptance is separate','gecko':guards,'frame':state,'wrongTabHidden':True,'helperDeathRevoked':True,'startupCancelled':args.test_startup_cancel,'duplicateOwnerRejected':True,'resizedViewports':resized,'tabRestored':True,'hiddenRendererSizePreserved':True,'epochClearTested':args.test_epoch_clear,'largeViewportTested':args.test_large_viewport,'nativeInputs':list(server.nativeInputs),'nativeScrollTested':args.expect_scroll,'scrollPositions':list(server.scrollPositions),'selectedValues':list(server.selectedValues),'nativeVideoTested':args.test_video,'nativeEditingStateTested':args.test_input_state,'typedSequenceExpected':typed_sequence,'typedSequenceVerified':typed_sequence is not None,'typedSequenceObserved':(list(server.nativeInputs[:len(typed_sequence)]) if typed_sequence is not None else None),'videoColors':video_colors,'videoStates':list(server.videoStates)}
         args.report.write_text(json.dumps(report,indent=2)+'\n')
         print(json.dumps(report,indent=2))
     finally:
