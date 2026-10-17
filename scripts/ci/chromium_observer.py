@@ -23,6 +23,17 @@ def snapshot(root):
             log = root / 'evidence' / (name + '.log')
             if log.is_file():
                 result.update(logBytes=log.stat().st_size, logAgeSeconds=round(now - log.stat().st_mtime, 1))
+                # Preserve native compiler evidence independently of the runner's
+                # console upload. Restrict this to framework output: fetch/setup
+                # logs may contain remote URLs or credentials and are excluded.
+                if name == 'framework':
+                    with log.open('rb') as source:
+                        size = source.seek(0, os.SEEK_END)
+                        source.seek(max(0, size - 12000))
+                        tail = source.read(12000)
+                    # Ignore a partial UTF-8 character at the bounded start.
+                    result['compilerLogTail'] = tail.decode('utf-8', errors='ignore')
+                    result['compilerLogTailTruncated'] = size > len(tail)
     except (OSError, ValueError):
         result['stage'] = {'state': 'not-yet-available'}
     rows = subprocess.check_output(['ps', '-axo', 'pid=,ppid=,time=,rss=,stat=,comm='], text=True, timeout=5)
