@@ -14,7 +14,27 @@ const PROFILE_BINDING = "cloakfox-profile.ini";
 const ADDON_ID = "cloakfox-shield@cloakfox";
 const ADDON_PATH = "/builtin-addons/cloakfox-shield/";
 const FIREFOX_ADDON_PATH = "/builtin-addons/firefox-panel/";
+// Keep the filesystem name distinct even when Finder displays “Firefox”.
+// Dragging a revealed appearance copy into Applications must not collide with
+// Mozilla's Firefox.app.
+const APPEARANCE_APP = "Cloakfox Firefox Appearance.app";
 let preparing;
+
+function assertPrivateAppearancePath(path) {
+  if (!PathUtils.isAbsolute(path) || path.split("/").some(part =>
+    [".", "..", "applications"].includes(part.toLowerCase()))) {
+    throw new Error("Appearance copies must remain in a private profile cache.");
+  }
+  for (let current = path; current !== "/"; current = PathUtils.parent(current)) {
+    const entry = file(current);
+    if (entry.exists() && entry.isSymlink()) {
+      // Standard macOS temporary profile paths traverse these OS-owned aliases.
+      // All profile/cache-owned links remain forbidden.
+      if ((current === "/var" || current === "/tmp") && entry.target === `/private${current}`) continue;
+      throw new Error("Appearance cache paths must not contain a symbolic link.");
+    }
+  }
+}
 
 function file(path) {
   const value = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
@@ -218,7 +238,10 @@ async function buildFirefoxCopy(status) {
   const source = status.sourceApp;
   const infoPath = PathUtils.join(source, "Contents", "Info.plist");
   const info = await readPlist(infoPath);
-  if (info.CFBundleName !== "Cloakfox") throw new Error("The source must be a Cloakfox app bundle.");
+  if (info.CFBundleName !== "Cloakfox" || info.CFBundleIdentifier !== "org.mozilla.cloakfox" ||
+      info.CFBundleExecutable !== "cloakfox") {
+    throw new Error("The source must be a Cloakfox app bundle.");
+  }
   const fingerprint = await sourceFingerprint(source, info);
   const profileRoot = PathUtils.profileDir, profileLocal = PathUtils.localProfileDir;
   if ([profileRoot, profileLocal].some(path => /[\r\n]/.test(path))) {
@@ -228,9 +251,18 @@ async function buildFirefoxCopy(status) {
   const cache = PathUtils.join(PathUtils.localProfileDir, "cloakfox-appearance");
   const root = cache;
   if (root.startsWith(source + "/")) throw new Error("The profile must be outside the application bundle.");
-  const app = PathUtils.join(root, "Firefox.app");
+  const app = PathUtils.join(root, APPEARANCE_APP);
+  assertPrivateAppearancePath(app);
   const executable = PathUtils.join(app, "Contents", "MacOS", "firefox");
   const marker = PathUtils.join(app, "Contents", "Resources", MARKER);
+  if (await IOUtils.exists(app)) {
+    let owner;
+    try { owner = await IOUtils.readJSON(marker); } catch (_) { /* Reject below. */ }
+    if (!owner || owner.schema !== SCHEMA || owner.sourceApp !== source ||
+        owner.profileRoot !== profileRoot || owner.profileLocal !== profileLocal) {
+      throw new Error("Refusing to replace an unowned appearance application.");
+    }
+  }
   if (await IOUtils.exists(marker)) {
     try {
       const saved = await IOUtils.readJSON(marker);

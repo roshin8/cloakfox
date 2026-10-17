@@ -9,6 +9,7 @@ import tempfile
 from shlex import join
 
 from _mixin import find_src_dir, get_moz_target, list_files, run, temp_cd
+from verify_macos_bundle import verify_bundle
 
 UNNEEDED_PATHS = {'uninstall', 'pingsender.exe', 'pingsender', 'vaapitest', 'glxtest'}
 
@@ -33,6 +34,7 @@ def add_includes_to_package(package_file, includes, fonts, new_file, target):
         if target == 'macos':
             # Move Cloakfox/Cloakfox.app -> Cloakfox.app
             nightly_dir = os.path.join(temp_dir, 'Cloakfox')
+            verify_bundle(os.path.join(nightly_dir, 'Cloakfox.app'))
             shutil.move(
                 os.path.join(nightly_dir, 'Cloakfox.app'), os.path.join(temp_dir, 'Cloakfox.app')
             )
@@ -92,6 +94,8 @@ def add_includes_to_package(package_file, includes, fonts, new_file, target):
                 os.remove(os.path.join(target_dir, path))
 
         # Update package
+        if target == 'macos':
+            verify_bundle(os.path.join(temp_dir, 'Cloakfox.app'))
         run(join(['7z', 'u', new_file, f'{temp_dir}/*', '-r', '-mx=9']))
 
 
@@ -135,6 +139,8 @@ def main():
     with temp_cd(src_dir):
         # Create package files
         run('./mach package')
+        if args.os == 'macos':
+            verify_bundle(f'obj-{moz_target}/dist/cloakfox/Cloakfox.app')
         # Find package files
         search_path = os.path.abspath(
             f'obj-{moz_target}/dist/cloakfox-{args.version}-{args.release}.*.{file_ext}'

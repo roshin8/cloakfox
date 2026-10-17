@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -9,7 +10,7 @@ import vm from "node:vm";
 // Execute the shipping module against real temporary files. Only platform
 // helpers (plist/signing/Finder) are replaced; cache and replacement logic run.
 async function harness(t) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "appearance-cache-"));
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "appearance-cache-")));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const source = path.join(root, "Cloakfox.app"), profile = path.join(root, "profile"), local = path.join(root, "cache");
   const put = async (name, value) => {
@@ -53,7 +54,7 @@ async function harness(t) {
     copy: (a, b) => fs.copyFile(a, b),
     remove: (p, options = {}) => fs.rm(p, { recursive: !!options.recursive, force: !!options.ignoreAbsent }),
     move: async (a, b, options = {}) => {
-      if (failInstall && a.endsWith(".app") && b.endsWith("/Firefox.app")) {
+      if (failInstall && a.endsWith(".app") && b.endsWith("/Cloakfox Firefox Appearance.app")) {
         failInstall = false; throw new Error("installation failed");
       }
       if (options.noOverwrite && await IOUtils.exists(b)) throw new Error("destination exists");
@@ -70,7 +71,7 @@ async function harness(t) {
     },
     Ci: { nsIFile: {}, nsICryptoHash: {} },
     Cc: {
-      "@mozilla.org/file/local;1": { createInstance: () => ({ initWithPath(p) { this.path = p; }, reveal() { revealed = this.path; } }) },
+      "@mozilla.org/file/local;1": { createInstance: () => ({ initWithPath(p) { this.path = p; }, exists() { return fsSync.existsSync(this.path); }, isSymlink() { return fsSync.lstatSync(this.path).isSymbolicLink(); }, reveal() { revealed = this.path; } }) },
       "@mozilla.org/security/hash;1": { createInstance: () => ({
         SHA256: 1, init() { this.hash = crypto.createHash("sha256"); },
         update(bytes) { this.hash.update(bytes); }, finish() { return this.hash.digest("base64"); },
@@ -96,7 +97,7 @@ async function harness(t) {
   vm.runInContext(code.replace(/^import .*;\n/gm, "").replace(/^export /gm, "") +
     "\nrun = platformRun; globalThis.api = {prepareAppearance, getAppearance, revealAppearance, brandText};", context);
   return { api: context.api, source, profile, local, put, signSource: () => sign(source),
-    setActive(value) { active = value; }, setFailSign(value) { failSign = value; },
+    setActive(value) { active = value; }, setLocal(value) { context.PathUtils.localProfileDir = value; }, setFailSign(value) { failSign = value; },
     failInstall() { failInstall = true; }, get copies() { return copies; }, get revealed() { return revealed; } };
 }
 
@@ -108,7 +109,7 @@ test("unchanged source reuses one signed app and its owning profile", async t =>
   const before = await fs.stat(seal);
   assert.deepEqual(await h.api.prepareAppearance(true), a);
   assert.equal((await fs.stat(seal)).mtimeMs, before.mtimeMs); assert.equal(h.copies, 1);
-  assert.equal(a.app, path.join(h.local, "cloakfox-appearance/Firefox.app"));
+  assert.equal(a.app, path.join(h.local, "cloakfox-appearance/Cloakfox Firefox Appearance.app"));
   assert.equal(await fs.readFile(path.join(a.app, "Contents/Resources/cloakfox-profile.ini"), "utf8"),
     `[CloakfoxProfile]\nRoot=${h.profile}\nLocal=${h.local}\n`);
   h.setActive(a.app); await h.api.revealAppearance(); assert.equal(h.revealed, a.app);
@@ -132,7 +133,7 @@ test("failed signing and failed installation retain the working copy", async t =
   h.setFailSign(true); await assert.rejects(h.api.prepareAppearance(true), /signing failed/);
   h.setFailSign(false); h.failInstall(); await assert.rejects(h.api.prepareAppearance(true), /installation failed/);
   assert.equal(await fs.readFile(marker, "utf8"), before);
-  assert.deepEqual(await fs.readdir(path.dirname(a.app)), ["Firefox.app"]);
+  assert.deepEqual(await fs.readdir(path.dirname(a.app)), ["Cloakfox Firefox Appearance.app"]);
   await h.api.prepareAppearance(true);
   assert.equal(await fs.readFile(path.join(a.app, "Contents/Resources/payload"), "utf8"), "update");
 });
@@ -156,4 +157,43 @@ test("Firefox appearance replaces the current SVG popup badge without losing con
   assert.match(branded, /id="cfx-open-settings"/);
   assert.match(branded, /id="cfx-popup-regen"/);
   assert.match(branded, /<span class="brand-name">Firefox<\/span>/);
+});
+
+
+test("appearance refuses a cache directory redirected to installed applications", async t => {
+  const h = await harness(t);
+  const apps = path.join(path.dirname(h.local), "Applications");
+  await fs.mkdir(apps);
+  const stock = path.join(apps, "Firefox.app");
+  await fs.mkdir(stock); await fs.writeFile(path.join(stock, "stock"), "Mozilla original");
+  await fs.symlink(apps, path.join(h.local, "cloakfox-appearance"));
+  await assert.rejects(h.api.prepareAppearance(true), /symbolic link/);
+  assert.equal(h.copies, 0);
+  assert.equal(await fs.readFile(path.join(stock, "stock"), "utf8"), "Mozilla original");
+});
+
+test("appearance refuses an existing app without its ownership receipt", async t => {
+  const h = await harness(t);
+  const target = path.join(h.local, "cloakfox-appearance", "Cloakfox Firefox Appearance.app");
+  await fs.mkdir(target, {recursive:true});
+  await fs.writeFile(path.join(target, "foreign"), "keep me");
+  await assert.rejects(h.api.prepareAppearance(true), /unowned appearance/);
+  assert.equal(h.copies, 0);
+  assert.equal(await fs.readFile(path.join(target, "foreign"), "utf8"), "keep me");
+});
+
+test("a display name alone cannot authorize a Mozilla bundle as the source", async t => {
+  const h = await harness(t);
+  await h.put("Contents/Info.plist", JSON.stringify({CFBundleName:"Cloakfox", CFBundleIdentifier:"org.mozilla.firefox", CFBundleExecutable:"firefox"}));
+  await assert.rejects(h.api.prepareAppearance(true), /source must be a Cloakfox/);
+  assert.equal(h.copies, 0);
+});
+
+
+test("Applications exclusion follows case-insensitive macOS spelling", async t => {
+  const h = await harness(t);
+  const apps = path.join(path.dirname(h.local), "applications");
+  await fs.mkdir(apps); h.setLocal(apps);
+  await assert.rejects(h.api.prepareAppearance(true), /private profile cache/);
+  assert.equal(h.copies, 0);
 });

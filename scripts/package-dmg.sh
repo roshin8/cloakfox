@@ -14,8 +14,8 @@ fi
 
 APP_BUNDLE="$OBJ_DIR/dist/${APP_NAME}.app"
 if ! [[ -d "$APP_BUNDLE" ]]; then
-    # Fall back to default Firefox name
-    APP_BUNDLE="$OBJ_DIR/dist/Firefox.app"
+    echo "Error: Only Cloakfox.app may be packaged; Firefox.app is never a fallback." >&2
+    exit 1
 fi
 
 if ! [[ -d "$APP_BUNDLE" ]]; then
@@ -26,6 +26,7 @@ if ! [[ -d "$APP_BUNDLE" ]]; then
 fi
 
 echo "Creating DMG from $APP_BUNDLE..."
+python3 "$(dirname "$0")/verify_macos_bundle.py" "$APP_BUNDLE"
 
 # Create a temporary directory for the DMG contents
 STAGING=$(mktemp -d)
