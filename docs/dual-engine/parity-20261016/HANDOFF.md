@@ -16,6 +16,7 @@ Continue in `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox`, branch `co
 - Synchronous pointer-focus ownership fence before CEF `mouseDown` on the probe/windowless input path: it bumps the per-browser editing epoch and re-emits the host invalidation, so a metadata reply already in flight for the old focus target cannot be accepted after a click that may move focus. It never restores an old focus and does not relax field/document validation. Client-only; the native framework is unchanged.
 - Same-window typing probe gained `--expect-typed-sequence`, so a final Select All + replacement can no longer hide a dropped intermediate accent/dead-key commit.
 - `test_same_field_password_transition_invalidates_cached_input_state` no longer assumes the first state query carries metadata; it waits for the settled state, matching the documented "a query retires while fresh focus/type metadata is in flight" behavior.
+- Renderer-acknowledged focus transaction investigated and found unnecessary for the reachable configuration (see Remaining limits). A deterministic headless probe (script-initiated cross-origin focus with a delayed metadata query) showed the accepted reply is computed while the field is still focused, so it is legitimate; the speculative native changes it was meant to justify were reverted and the tree re-verified (156/156).
 
 ## Verification (2026-10-16 continuation)
 
@@ -33,10 +34,12 @@ Complete native-engine harness (`engines/chromium/build_identity.py`) also reran
 
 A subsequent full harness run (`continuation-full-pipeline-2-20261017.log`) passed end to end: `owned-editor-build-status.json` is `state=passed`, `lastPassed=gecko158-coexistence`, `runtimeTestsPassed=true`, 156 engine tests in 123.4 s, framework SHA `7b2a1d9a...` unchanged.
 
+Focus-transaction investigation re-verification: after reverting the speculative native edits, the client was rebuilt (`owned-editor-companion-build`, helpers unchanged) and the full engine suite passed again — **156 tests, 0 failures, 133.2 s** — and `tests/engines/test_engine_policy.py` + `test_engine_policy_contract.py` passed (21 tests, 189 subtests), confirming the Task 4 schema2 contract. `git diff` for `engines/chromium/src/browser_client.cc` and `process_helper_mac.cc` is empty (reverted to the committed fence-only state).
+
 ## Remaining limits
 
 - Real macOS IME/accent/dead-key input and same-window UI acceptance are still not exercised here; they need an explicit live-UI window and must not be run from background tests. The strengthened `--expect-typed-sequence` assertion is ready but has not yet run against a live typing flow.
-- The fence closes the reproduced pointer-driven race but does not eliminate the general browser-focus-lag window. A renderer-acknowledged native focus transaction remains the correct long-term design for reliable queued-input replay; research only, not implemented.
+- The fence closes the reproduced pointer-driven race. The residual "general browser-focus-lag window" was investigated and is **not reachable in the testable configuration**: a script-initiated cross-origin (loopback) focus move with a delayed metadata query was reproduced deterministically, but the child frame shares the parent's render process (its own timer cannot run while the parent is blocked), so the query reply is computed while the field is still focused and is correctly accepted. In production the same case is bounded by the browser's focus-IPC latency, and the renderer's live `IsFocused()` + document/node delivery recheck already reject any edit whose live field has changed, so misdelivery is impossible. A renderer-acknowledged native focus transaction would add cross-process protocol complexity without removing that inherent IPC-latency window; it stays unproven as a needed change, not implemented. Reproducing a forced-isolation (separate-process) variant would require a test-only site-isolation switch the client does not have.
 - Remaining Chromium privacy policy groups, full same-window/separate-window integration, and the final independent review of the whole port are unfinished. `releaseEligible` stays false.
 - The native CEF framework hash is unchanged: `7b2a1d9a925fd91685af30bfadaae61e70ca480f372ac9ac84e7c67c6ef07b85`.
 
