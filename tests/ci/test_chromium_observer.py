@@ -60,6 +60,23 @@ class Observer(unittest.TestCase):
             self.assertIsNotNone(observer.publisher)
             self.assertNotIn('CHROMIUM_TELEMETRY_TOKEN', dict(os.environ))
 
+    def test_framework_tail_preserves_failed_compiler_output_with_a_byte_bound(self):
+        module = load()
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); evidence = root / 'evidence'; evidence.mkdir()
+            (evidence/'stage.json').write_text('{"stage":"framework","state":"failed","exitCode":1}')
+            (evidence/'framework.log').write_bytes(b'x'*100000 + b'\nFAILED: object.o\nerror: exact compiler diagnostic\nninja: build stopped\n')
+            with patch.object(module.subprocess, 'check_output', return_value=''):
+                result = module.snapshot(root)
+            self.assertIn('error: exact compiler diagnostic', result['compilerLogTail'])
+            self.assertLessEqual(len(result['compilerLogTail'].encode('utf-8')), 12000)
+            self.assertTrue(result['compilerLogTailTruncated'])
+            (evidence/'stage.json').write_text('{"stage":"depot_tools-clone","state":"failed"}')
+            (evidence/'depot_tools-clone.log').write_text('credential-like fetch output')
+            with patch.object(module.subprocess, 'check_output', return_value=''):
+                result = module.snapshot(root)
+            self.assertNotIn('compilerLogTail', result)
+
     def test_snapshot_observes_real_child_without_command_arguments(self):
         module = load()
         with tempfile.TemporaryDirectory() as folder:
