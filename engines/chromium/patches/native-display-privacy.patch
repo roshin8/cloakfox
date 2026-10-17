@@ -51,6 +51,16 @@
        }
      }
      if (profile && profile->GetPrefs()->GetBoolean("cloakfox.webgpu_block_readback"))
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -67,6 +67,7 @@
+   registry->RegisterIntegerPref("cloakfox.owned_ime_version", 1);
+   registry->RegisterIntegerPref("cloakfox.owned_ime_state_version", 1);
+   registry->RegisterIntegerPref("cloakfox.identity_privacy_version", 2);
++  registry->RegisterIntegerPref("cloakfox.display_privacy_version", 1);
+   registry->RegisterDictionaryPref("cloakfox.presentation");
+   registry->RegisterBooleanPref("cloakfox.native_languages_saved", false);
+   registry->RegisterStringPref("cloakfox.native_accept_languages", "");
 --- a/third_party/blink/renderer/platform/widget/widget_base.cc
 +++ b/third_party/blink/renderer/platform/widget/widget_base.cc
 @@ -13,6 +13,8 @@

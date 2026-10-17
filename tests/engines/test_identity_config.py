@@ -48,9 +48,18 @@ class IdentityConfig(unittest.TestCase):
             store=PersonaStore(Path(folder));a=store.get('1','chromium')
             self.assertIn('presentation',a['persona'])
             a['persona'].pop('presentation')
-            for name in ('navigator','language','timezone'):
+            for name in ('navigator','language','timezone','display'):
                 a['persona']['options'].pop(name,None)
             self.assertEqual(validate_snapshot(a),a)
+
+    def test_display_option_requires_the_identity_presentation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            a=PersonaStore(Path(folder)).get('1','chromium')
+            a['persona'].pop('presentation')
+            for name in ('navigator','language','timezone'):
+                a['persona']['options'].pop(name,None)
+            self.assertIn('display',a['persona']['options'],'Display option is presentation-gated')
+            with self.assertRaises(ValueError):validate_snapshot(a)
 
     def test_disable_toggle_does_not_pin_generated_presentation(self):
         from types import SimpleNamespace

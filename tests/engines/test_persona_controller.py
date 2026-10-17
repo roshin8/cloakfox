@@ -22,7 +22,7 @@ class PersonaController(unittest.TestCase):
                 with self.subTest(status=status):
                     controller=object.__new__(ChromiumController)
                     controller.ready={'identityPrivacyVersion':2,'initialSnapshotVersion':1,
-                        'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone']}
+                        'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone','display']}
                     controller.applied={}
                     controller._request=lambda *args,**kwargs:{'event':'configApplied','engine':'chromium',
                         'container':'1','private':False,'configRevision':1,'initialSnapshotStatus':copy.deepcopy(status)}
@@ -36,7 +36,7 @@ class PersonaController(unittest.TestCase):
             for version in (-1,2,True,'1',None):
                 controller=object.__new__(ChromiumController)
                 controller.ready={'identityPrivacyVersion':2,'initialSnapshotVersion':version,
-                    'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone']}
+                    'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone','display']}
                 writes=[];controller._request=lambda *args,**kwargs:writes.append((args,kwargs))
                 with self.assertRaisesRegex(RuntimeError,'initial native snapshot'):controller._apply(config)
                 self.assertEqual(writes,[])
@@ -47,7 +47,7 @@ class PersonaController(unittest.TestCase):
             config=PersonaStore(Path(folder)).get('1','chromium')
             config['persona']['presentation']['hardwareConcurrency']=2
             controller=object.__new__(ChromiumController)
-            controller.ready={'identityPrivacyVersion':1,'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone']}
+            controller.ready={'identityPrivacyVersion':1,'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone','display']}
             writes=[];controller._request=lambda *args,**kwargs:writes.append((args,kwargs))
             with self.assertRaisesRegex(RuntimeError,'processor count'):controller._apply(config)
             self.assertEqual(writes,[])

@@ -18,7 +18,7 @@ import stat
 
 SCHEMA_VERSION = 1
 BASE_OPTIONS = {'canvas': True, 'blockWebGPUReadback': False}
-DEFAULT_OPTIONS = {**BASE_OPTIONS, 'navigator': True, 'language': True, 'timezone': True}
+DEFAULT_OPTIONS = {**BASE_OPTIONS, 'navigator': True, 'language': True, 'timezone': True, 'display': True}
 REGIONS = (
     (('en-US', 'en'), 'America/New_York'),
     (('en-GB', 'en'), 'Europe/London'),
@@ -113,7 +113,7 @@ def validate_snapshot(value):
                     raise ValueError('Presentation override not applied')
             elif key not in DEFAULT_OPTIONS or type(item) is not bool:
                 raise ValueError('Unsupported persona option')
-            if key in ('navigator', 'language', 'timezone') and 'presentation' not in persona:
+            if key in ('navigator', 'language', 'timezone', 'display') and 'presentation' not in persona:
                 raise ValueError('Presentation is required for identity options')
     return copy.deepcopy(value)
 

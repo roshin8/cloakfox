@@ -86,4 +86,14 @@ class DisplayPrivacy(unittest.TestCase):
         a=self.read(first);b=self.read(second);self.assert_presented(a,PROFILE_A);self.assert_presented(b,PROFILE_B)
         self.assertNotEqual((a['width'],a['height']),(b['width'],b['height']))
 
+    def test_display_option_off_keeps_only_the_native_panel(self):
+        browser=self.configured('4',preset=PROFILE_A,display=False)
+        native=self.read(browser)
+        self.assertNotEqual((native['width'],native['height']),(PROFILE_A['screenWidth'],PROFILE_A['screenHeight']),
+                            'A disabled display option must keep the native host panel')
+        identity=self.app.evaluate(browser,"({languages:Array.from(navigator.languages),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,cores:navigator.hardwareConcurrency})")
+        self.assertEqual(identity['languages'],PROFILE_A['languages'],'Display toggle must not disable the identity group')
+        self.assertEqual(identity['timezone'],PROFILE_A['timezone'])
+        self.assertEqual(identity['cores'],PROFILE_A['hardwareConcurrency'])
+
 if __name__=='__main__':unittest.main()

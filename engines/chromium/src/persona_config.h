@@ -16,5 +16,6 @@ struct PersonaConfig {
   CefRefPtr<CefDictionaryValue> presentation;
 };
 PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
-                                int canvasVersion, int webgpuVersion, int identityVersion);
+                                int canvasVersion, int webgpuVersion, int identityVersion,
+                                int displayVersion);
 }

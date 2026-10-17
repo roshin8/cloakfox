@@ -361,6 +361,8 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
     };
     identityVersion_ = nativeVersion("cloakfox.identity_privacy_version");
     ready->SetInt("identityPrivacyVersion", identityVersion_);
+    displayVersion_ = identityVersion_ > 0 ? nativeVersion("cloakfox.display_privacy_version") : 0;
+    ready->SetInt("displayPrivacyVersion", displayVersion_);
 #if defined(CEF_CLOAKFOX_INITIAL_SNAPSHOT_VERSION)
     initialSnapshotVersion_ = nativeVersion("cloakfox.initial_snapshot_version") ==
         CEF_CLOAKFOX_INITIAL_SNAPSHOT_VERSION ? CEF_CLOAKFOX_INITIAL_SNAPSHOT_VERSION : 0;
@@ -395,6 +397,8 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
         configOptions->SetString(2, "navigator");
         configOptions->SetString(3, "language");
         configOptions->SetString(4, "timezone");
+        // Only claim the display option when the framework registers its hook.
+        if (displayVersion_ == 1) configOptions->SetString(5, "display");
       }
     }
     ready->SetList("supportedPersonaOptions", configOptions);
@@ -755,7 +759,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
       try {
         if (data->GetType("config") != VTYPE_DICTIONARY)
           throw std::runtime_error("Invalid config object");
-        auto config = cloakfox::parsePersonaConfig(data->GetDictionary("config"), canvasVersion_, webgpuVersion_, identityVersion_);
+        auto config = cloakfox::parsePersonaConfig(data->GetDictionary("config"), canvasVersion_, webgpuVersion_, identityVersion_, displayVersion_);
         if (fixtureScope_->restricted()) {
           if (fixtureNetworkVersion_ != 1 || data->GetType("fixtureURL") != VTYPE_STRING ||
               !fixtureScope_->bind(data->GetString("fixtureURL").ToString()))
@@ -1137,6 +1141,7 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
   int canvasVersion_ = 0;
   int webgpuVersion_ = 0;
   int identityVersion_ = 0;
+  int displayVersion_ = 0;
   int initialSnapshotVersion_ = 0;
   int fixtureNetworkVersion_ = 0;
   int ownedImeVersion_ = 0, ownedImeStateVersion_ = 0;

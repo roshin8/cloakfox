@@ -21,7 +21,8 @@ void optionFields(CefRefPtr<CefDictionaryValue> value, bool complete, bool prese
   for (const auto& key : keys) {
     if (!complete && key == "presentation" && presentation && value->GetType(key) == VTYPE_DICTIONARY) continue;
     if (((key != "canvas" && key != "blockWebGPUReadback") &&
-         !(presentation && (key == "navigator" || key == "language" || key == "timezone"))) ||
+         !(presentation && (key == "navigator" || key == "language" || key == "timezone" ||
+                            key == "display"))) ||
         value->GetType(key) != VTYPE_BOOL)
       throw std::runtime_error("Unsupported config option");
   }
@@ -71,7 +72,8 @@ void validatePresentation(CefRefPtr<CefDictionaryValue> value) {
 }
 }
 PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
-                                int canvasVersion, int webgpuVersion, int identityVersion) {
+                                int canvasVersion, int webgpuVersion, int identityVersion,
+                                int displayVersion) {
   exactFields(value, {"schemaVersion", "engine", "containerId", "private", "revision", "enabled", "persona"});
   if (value->GetType("schemaVersion") != VTYPE_INT || value->GetInt("schemaVersion") != 1 ||
       value->GetType("revision") != VTYPE_INT || value->GetInt("revision") < 1 ||
@@ -99,6 +101,10 @@ PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
     if (identityVersion != 1 && identityVersion != 2) throw std::runtime_error("Backend does not support native identity presentation");
     if (persona->GetType("presentation") != VTYPE_DICTIONARY) throw std::runtime_error("Invalid presentation");
     validatePresentation(persona->GetDictionary("presentation"));
+    // The display block rides on the identity presentation; a framework built
+    // without the display hook must never silently ignore it.
+    if (persona->GetDictionary("presentation")->HasKey("screenWidth") && displayVersion != 1)
+      throw std::runtime_error("Backend does not support native display privacy");
     if (identityVersion < 2 && !std::set<int>{4,8,16}.count(
             persona->GetDictionary("presentation")->GetInt("hardwareConcurrency")))
       throw std::runtime_error("Backend does not support this BrowserForge processor count");
@@ -129,8 +135,9 @@ PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
     presentation->SetString("locale", languages->GetString(0));
     presentation->SetString("languages", languages->GetString(0).ToString() + "," + languages->GetString(1).ToString());
     presentation->SetString("timezoneId", source->GetString("timezone"));
-    // Owner-provided screen geometry; applied only when the identity is active.
-    if (enabled && source->HasKey("screenWidth"))
+    // Owner-provided screen geometry; applied only when the identity and the
+    // display option are active.
+    if (enabled && effective("display") && source->HasKey("screenWidth"))
       for (const auto* key : {"screenWidth", "screenHeight", "screenAvailWidth", "screenAvailHeight"})
         presentation->SetInt(key, source->GetInt(key));
   }
