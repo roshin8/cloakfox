@@ -69,7 +69,7 @@ def observe(directory):
     directory.mkdir(parents=True, exist_ok=True)
     token = os.environ.pop('CHROMIUM_TELEMETRY_TOKEN')
     publisher = Publisher(os.environ['GITHUB_REPOSITORY'], os.environ['GITHUB_SHA'], token, 'checkpoint-transfer-diagnostic')
-    deadline = time.monotonic() + 40 * 60
+    deadline = time.monotonic() + 50 * 60
     while True:
         finished = (directory / 'stop').exists() or time.monotonic() >= deadline
         data = {'observedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'finished': finished,
