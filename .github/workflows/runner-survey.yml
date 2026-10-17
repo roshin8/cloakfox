@@ -3,6 +3,10 @@ name: Browser build runner survey
 on:
   workflow_dispatch:
     inputs:
+      checkpoint_upload_only:
+        description: Diagnose transfer of the exact successful checkpoint without compiling
+        type: boolean
+        default: false
       diagnostic_only:
         description: Run focused existing-app diagnostics without rebuilding engines
         type: boolean
@@ -19,7 +23,7 @@ permissions:
 
 jobs:
   survey:
-    if: ${{ !inputs.diagnostic_only }}
+    if: ${{ !inputs.diagnostic_only && !inputs.checkpoint_upload_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +64,7 @@ jobs:
           if-no-files-found: error
 
   runtime-diagnostic:
-    if: ${{ inputs.diagnostic_only }}
+    if: ${{ inputs.diagnostic_only && !inputs.checkpoint_upload_only }}
     runs-on: macos-26
     timeout-minutes: 20
     permissions:
@@ -125,5 +129,83 @@ jobs:
           path: |
             ${{ runner.temp }}/runtime-diagnostic/
             ${{ runner.temp }}/producer.json
+          if-no-files-found: error
+          retention-days: 7
+
+  checkpoint-upload-diagnostic:
+    if: ${{ inputs.checkpoint_upload_only }}
+    runs-on: macos-26
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Test independent transfer observer
+        run: python3 -m unittest discover -s tests/ci -p test_checkpoint_upload_diagnostic.py -v
+      - name: Start independent observation through download and upload
+        env:
+          CHROMIUM_TELEMETRY_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/transfer-diagnostic"
+          echo download > "$RUNNER_TEMP/transfer-diagnostic/phase"
+          RUNNER_TRACKING_ID="" nohup "$pythonLocation/bin/python3" -u scripts/ci/checkpoint_upload_diagnostic.py observe "$RUNNER_TEMP/transfer-diagnostic" > "$RUNNER_TEMP/transfer-diagnostic/observer.log" 2>&1 < /dev/null &
+          echo $! > "$RUNNER_TEMP/transfer-diagnostic/pid"
+      - name: Verify original artifact producer and exact artifact identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/roshin8/cloakfox/actions/artifacts/12089892751 > "$RUNNER_TEMP/transfer-diagnostic/artifact.json"
+          gh api repos/roshin8/cloakfox/actions/jobs/117263705488 > "$RUNNER_TEMP/transfer-diagnostic/producer-job.json"
+          python3 - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])/'transfer-diagnostic'
+          artifact = json.loads((root/'artifact.json').read_text())
+          assert artifact['id'] == 12089892751 and artifact['name'] == 'chromium-workspace-1'
+          assert artifact['workflow_run']['id'] == 38972153983
+          assert artifact['workflow_run']['head_sha'] == '43aede189510fe56f98744bd7ecf11f894445285'
+          assert not artifact['expired']
+          job = json.loads((root/'producer-job.json').read_text())
+          assert job['run_id'] == 38972153983 and job['conclusion'] == 'success'
+          PYCODE
+      - uses: actions/download-artifact@v4
+        timeout-minutes: 15
+        with:
+          artifact-ids: '12089892751'
+          run-id: '38972153983'
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/checkpoint-transfer
+      - name: Verify exact checkpoint bytes without extraction or compilation
+        run: |
+          python3 scripts/ci/checkpoint_upload_diagnostic.py verify "$RUNNER_TEMP/checkpoint-transfer" > "$RUNNER_TEMP/transfer-diagnostic/verified-checkpoint.json"
+          echo upload > "$RUNNER_TEMP/transfer-diagnostic/phase"
+      - name: Reproduce the failed upload path using the existing 13.65 GB checkpoint
+        timeout-minutes: 15
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-upload-diagnostic-${{ github.run_id }}
+          path: ${{ runner.temp }}/checkpoint-transfer/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Finish independent observation
+        if: always()
+        run: |
+          echo finished > "$RUNNER_TEMP/transfer-diagnostic/phase"
+          touch "$RUNNER_TEMP/transfer-diagnostic/stop"
+          for attempt in {1..25}; do
+            if ! kill -0 "$(cat "$RUNNER_TEMP/transfer-diagnostic/pid")" 2>/dev/null; then break; fi
+            sleep 1
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-transfer-evidence
+          path: ${{ runner.temp }}/transfer-diagnostic/
           if-no-files-found: error
           retention-days: 7
