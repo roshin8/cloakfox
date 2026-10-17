@@ -1,5 +1,6 @@
 """Fresh constrained persona generation, persistence, override policy and isolation."""
 import json
+from click_evidence import click_with_evidence
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -27,10 +28,14 @@ def main():
                 Select(el).select_by_visible_text(value)
             else:
                 Select(el).select_by_value(value)
+        generation_attempt = 0
         def generate():
+            nonlocal generation_attempt
+            generation_attempt += 1
             reveal('cfx-persona-panel')
             el=d.find_element(By.ID,'cfx-generate-new')
-            d.execute_script('arguments[0].scrollIntoView({block:"center"})',el);el.click()
+            d.execute_script('arguments[0].scrollIntoView({block:"center"})',el)
+            click_with_evidence(d,el,f.report_path,f"generate-{generation_attempt}")
             WebDriverWait(d,15).until(lambda d: not d.find_element(By.ID,'cfx-generate-new').get_attribute('aria-busy'))
             assert 'Generated and applied' in d.find_element(By.ID,'cfx-identity-status').text
         load();before=cfg()

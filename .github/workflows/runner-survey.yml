@@ -2,6 +2,11 @@ name: Browser build runner survey
 
 on:
   workflow_dispatch:
+    inputs:
+      diagnostic_only:
+        description: Run focused existing-app diagnostics without rebuilding engines
+        type: boolean
+        default: false
   push:
     branches: [codex/firefox-158-port]
     paths:
@@ -14,10 +19,11 @@ permissions:
 
 jobs:
   survey:
+    if: ${{ !inputs.diagnostic_only }}
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-26, xcode-27]
+        runner: [macos-26]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
     steps:
@@ -52,3 +58,72 @@ jobs:
             before/runner-capabilities.json
             after/runner-capabilities.json
           if-no-files-found: error
+
+  runtime-diagnostic:
+    if: ${{ inputs.diagnostic_only }}
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Verify the fixed diagnostic producer
+        run: |
+          gh api repos/roshin8/cloakfox/actions/runs/39004787714 > "$RUNNER_TEMP/producer.json"
+          python3 - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          run=json.loads((Path(os.environ['RUNNER_TEMP'])/'producer.json').read_text())
+          assert run['head_sha']=='73b9b4ea95465c374750c4a8ee3798546f1cb738'
+          assert run['repository']['full_name']=='roshin8/cloakfox'
+          PYCODE
+          gh api repos/roshin8/cloakfox/actions/jobs/117319635556 --jq '.conclusion' | python3 -c 'import sys; assert sys.stdin.read().strip()=="success"'
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '12092350521'
+          run-id: '39004787714'
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/diagnostic-dmg
+      - name: Restore and verify the existing app
+        run: |
+          set -euo pipefail
+          dmg=$(find "$RUNNER_TEMP/diagnostic-dmg" -name '*.dmg' -print -quit)
+          test -n "$dmg"
+          hdiutil attach "$dmg" -mountpoint "$RUNNER_TEMP/diagnostic-mount" -nobrowse -readonly
+          mkdir -p "$RUNNER_TEMP/diagnostic-app"
+          cp -R "$RUNNER_TEMP/diagnostic-mount/Cloakfox.app" "$RUNNER_TEMP/diagnostic-app/"
+          hdiutil detach "$RUNNER_TEMP/diagnostic-mount"
+          codesign --verify --deep --strict "$RUNNER_TEMP/diagnostic-app/Cloakfox.app"
+          python3 scripts/ci/sign_canonical_gpu.py verify --path "$RUNNER_TEMP/diagnostic-app/Cloakfox.app/Contents/Resources/canonical-gpu" --commit 73b9b4ea95465c374750c4a8ee3798546f1cb738
+      - name: Record exact AppKit pixel format and framebuffer capabilities
+        timeout-minutes: 2
+        run: |
+          mkdir -p "$RUNNER_TEMP/runtime-diagnostic/persona"
+          clang scripts/ci/native_nsopengl_diagnostic.m -framework AppKit -framework OpenGL -o "$RUNNER_TEMP/runtime-diagnostic/nsopengl-probe"
+          "$RUNNER_TEMP/runtime-diagnostic/nsopengl-probe" > "$RUNNER_TEMP/runtime-diagnostic/nsopengl.jsonl"
+      - name: Install disposable probe dependencies
+        run: |
+          python3 -m pip install -r tests/fingerprint/requirements-runtime.txt
+          brew install geckodriver
+      # This fixture explicitly defaults to headless, as in the failed producer.
+      - name: Reproduce the unchanged persona assertions with click evidence
+        timeout-minutes: 5
+        env:
+          CLOAKFOX_BIN: ${{ runner.temp }}/diagnostic-app/Cloakfox.app/Contents/MacOS/cloakfox
+          REPORT_DIR: ${{ runner.temp }}/runtime-diagnostic/persona
+        run: python3 -u tests/fingerprint/probe_persona_generation.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-runtime-diagnostic
+          path: |
+            ${{ runner.temp }}/runtime-diagnostic/
+            ${{ runner.temp }}/producer.json
+          if-no-files-found: error
+          retention-days: 7
