@@ -1,6 +1,6 @@
 """Fresh constrained persona generation, persistence, override policy and isolation."""
 import json
-from click_evidence import click_with_evidence
+from click_evidence import click_with_evidence, action_with_evidence
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -19,15 +19,20 @@ def main():
         def reveal(id):
             d.execute_script('location.hash=arguments[0]',id)
             WebDriverWait(d,5).until(lambda d:d.find_element(By.ID,id).is_displayed())
+        selection_attempt = 0
         def choose(id,value):
+            nonlocal selection_attempt
+            selection_attempt += 1
             if id != 'cfx-container-select':
                 reveal('cfx-persona-panel')
             el=d.find_element(By.ID,id)
             d.execute_script('arguments[0].scrollIntoView({block:"center"})',el)
-            if el.get_attribute('id') == 'cfx-persona-filter' and value != 'all':
-                Select(el).select_by_visible_text(value)
-            else:
-                Select(el).select_by_value(value)
+            def select():
+                if el.get_attribute('id') == 'cfx-persona-filter' and value != 'all':
+                    Select(el).select_by_visible_text(value)
+                else:
+                    Select(el).select_by_value(value)
+            action_with_evidence(d,el,f.report_path,f'choose-{selection_attempt}-{id}',select)
         generation_attempt = 0
         def generate():
             nonlocal generation_attempt

@@ -12,8 +12,12 @@ top:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.id,ancestors};"""
 
 
 def click_with_evidence(driver, element, report_path, name):
+    return action_with_evidence(driver, element, report_path, name, element.click)
+
+
+def action_with_evidence(driver, element, report_path, name, action):
     try:
-        element.click()
+        action()
     except Exception:
         evidence = {}
         try:

@@ -31,6 +31,22 @@ class ClickEvidenceTests(unittest.TestCase):
             self.assertIn('ancestors', (Path(directory) / 'generate-2.json').read_text())
             self.assertTrue((Path(directory) / 'generate-2.png').exists())
 
+    def test_select_failure_records_its_control_without_retry(self):
+        spec = importlib.util.spec_from_file_location('click_evidence', ROOT / 'tests/fingerprint/click_evidence.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        calls = []
+        class Driver:
+            def execute_script(self, script, element): return {'id': element}
+            def save_screenshot(self, path): Path(path).write_bytes(b'png')
+        def select():
+            calls.append('select')
+            raise ValueError('option cannot scroll')
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, 'option cannot scroll'):
+                module.action_with_evidence(Driver(), 'os-select', Path(directory), 'choose-1', select)
+            self.assertEqual(calls, ['select'])
+            self.assertIn('os-select', (Path(directory)/'choose-1.json').read_text())
+
     def test_evidence_error_does_not_replace_original_click_failure(self):
         spec = importlib.util.spec_from_file_location('click_evidence', ROOT / 'tests/fingerprint/click_evidence.py')
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
