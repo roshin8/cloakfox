@@ -78,11 +78,20 @@ def discover() -> list[Path]:
     return sorted(p for p in HERE.glob("probe_*.py") if p.name not in SKIP)
 
 
+def probe_environment(path: Path, environment):
+    environment = dict(environment)
+    if root := environment.get('PROBE_REPORT_ROOT'):
+        report = Path(root).resolve() / path.stem
+        report.mkdir(parents=True, exist_ok=True)
+        environment['REPORT_DIR'] = str(report)
+    return environment
+
+
 def run_probe(path: Path, timeout: float):
     # File-backed capture cannot hang waiting for inherited browser pipe handles.
     with tempfile.TemporaryFile() as log:
         process = subprocess.Popen([sys.executable, str(path)], stdout=log, stderr=subprocess.STDOUT,
-                                   env={**os.environ}, start_new_session=(os.name == 'posix'))
+                                   env=probe_environment(path, os.environ), start_new_session=(os.name == 'posix'))
         try:
             code = process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -111,6 +120,9 @@ def run_probe(path: Path, timeout: float):
         output = log.read().decode('utf-8', errors='replace')
         if code == 3:
             output += f"\nTIMEOUT after {timeout}s"
+        if os.environ.get('PROBE_REPORT_ROOT'):
+            report = Path(probe_environment(path, os.environ)['REPORT_DIR'])
+            (report / 'probe-output.txt').write_text(output)
         return code, output
 
 

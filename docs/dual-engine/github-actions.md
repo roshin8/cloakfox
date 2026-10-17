@@ -243,3 +243,41 @@ retrofitted or cancelled. All 44 CI helper tests, native handoff fixtures and
 workflow lint passed; small fixtures use simulated capacity and retain the explicit
 low-space negative tests. Hosted telemetry delivery and the active job's actual
 failure cause remain pending. [Evidence](ci-20261015/chromium-runner-observation.json).
+
+## Completed run 38972153983: exact Homebrew handoff and runtime inputs
+
+The first Chromium segment finished its compile budget and uploaded a full
+checkpoint. Segment two failed before extraction because five Homebrew keg
+fingerprints differed: blake3, ccache, fmt, hiredis and xxhash. Their versions,
+paths, file counts and sizes matched; the available aggregate receipts cannot
+identify the specific differing file bytes or modes. Xcode, Python, macOS and
+all other checkpoint inputs matched. This was a compatibility rejection, not a
+runner-disconnection diagnosis. The full archive and evidence remain preserved.
+
+Segment one now publishes an immutable same-run/run-attempt snapshot of the
+Homebrew tool/dependency union. Later segments validate its commit, run ID,
+archive and per-file hashes, exact keg/opt mappings and complete layout before
+atomically restoring only existing regular tool files. They then run the same
+unchanged host-content identity and checkpoint guards. No workspace source/object
+timestamps, archive checks or SDK link protections are relaxed. Per-file restore
+differences are uploaded for diagnosis; hosted full restore/reuse is still pending.
+
+Gecko's native build and canonical GPU build passed, and the corrected runtime
+suite improved to 134 pass / 11 fail / zero allowances. The required library audit
+completed 48 executions and 456 checks with zero failures within its declared
+scope; it does not establish native WebGL availability. Three strict TLS probes
+lacked ALPS_SERVER. Runtime provisioning now builds the real loopback fixture
+against the documented immutable BoringSSL pin, verifies its checkout and hashes,
+and retains its provenance. Provisioning and child commands have deadlines.
+Network probe partial reports, driver logs and fixture transcripts survive failure.
+
+The canonical GPU probe supports a headful mode, now selected on macOS so the
+normal GPU process can run without weakening sandbox preferences. Persistent
+per-probe logs and a diagnostic-only hosted CGL capability survey are uploaded.
+Native/protected library logs still show CGL_FBO followed by exhausted drivers;
+the exact native CGL cause remains unresolved. The native browser probes remain
+strict. No hosted GPU/TLS repair success is claimed until fresh results arrive.
+
+The latest queued run also caught a stale appearance-module digest in the
+maintained inventory. That committed-source digest is refreshed without publishing
+unrelated local identity/native-host work. [Raw failure record](ci-20261015/macos-checkpoint-runtime-38972153983.json).

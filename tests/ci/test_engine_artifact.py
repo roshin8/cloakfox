@@ -42,6 +42,17 @@ class EngineArtifact(unittest.TestCase):
             self.commit(root)
             self.assertNotEqual(key, api.input_key(root, 'chromium'))
 
+    def test_chromium_host_tool_recipe_changes_invalidate_native_sdk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); self.git(root,'init','-q')
+            (root/'scripts/ci').mkdir(parents=True)
+            (root/'engines/chromium/patches').mkdir(parents=True)
+            (root/'engines/chromium/patches/a.patch').write_text('stable native input')
+            recipe=root/'scripts/ci/chromium_host_tools.py'; recipe.write_text('original')
+            self.commit(root); before=api.input_key(root,'chromium')
+            recipe.write_text('changed restore policy'); self.commit(root)
+            self.assertNotEqual(before,api.input_key(root,'chromium'))
+
     def test_gecko_key_includes_bundled_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

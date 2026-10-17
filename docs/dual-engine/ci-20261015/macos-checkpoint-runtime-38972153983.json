@@ -1,0 +1,78 @@
+{
+  "run": 38972153983,
+  "producerCommit": "43aede189510fe56f98744bd7ecf11f894445285",
+  "conclusion": "failure",
+  "chromium": {
+    "firstSegmentJob": 117263705488,
+    "firstSegmentConclusion": "success",
+    "secondSegmentJob": 117310170556,
+    "secondSegmentConclusion": "failure",
+    "error": "Checkpoint identity differs from current commit/toolchain/root: hostBuildInputs",
+    "differingHostPackages": {
+      "blake3": {
+        "path": "/opt/homebrew/Cellar/blake3/1.8.7",
+        "oldSha256": "340edc62cf6f49cdabcceb0afc47790bfff1b7cfcbc912abe4c5c183ae3e04dc",
+        "currentSha256": "2f40da5ba6f0ebf74a729b7ce077b3280484b71907f3a3d9c8bcc3dfa8777fad",
+        "files": 9,
+        "bytes": 75564
+      },
+      "ccache": {
+        "path": "/opt/homebrew/Cellar/ccache/4.14.1_1",
+        "oldSha256": "72e9ec257cce3010070162eab256fec10f3fc16e5276469f6831d28d62e20617",
+        "currentSha256": "aea1b1836515e32a9a08a1823d0179c7135111db34439bcc64f55d2c9676eac7",
+        "files": 9,
+        "bytes": 2208354
+      },
+      "fmt": {
+        "path": "/opt/homebrew/Cellar/fmt/12.2.0",
+        "oldSha256": "520bfbf13db593ffb49f1320ead3a4eb4700f82251c92a93df820a78f6af860b",
+        "currentSha256": "13b83a98f71298afc929750721225c994983795c4069bd4e1dc2d869aab74597",
+        "files": 27,
+        "bytes": 1088184
+      },
+      "hiredis": {
+        "path": "/opt/homebrew/Cellar/hiredis/1.4.1_1",
+        "oldSha256": "1002e2ee35e26bfc9f328da24d03ac6e64a9d301c5a008f051dcd636cc5af072",
+        "currentSha256": "385eb6cceca77387d16775a9410357f36f06b8cf44b69403a788120594e77262",
+        "files": 47,
+        "bytes": 544457
+      },
+      "xxhash": {
+        "path": "/opt/homebrew/Cellar/xxhash/0.8.4",
+        "oldSha256": "7026f54bed17b4bd25ab316bcb7afa7b583a013586c84b27e18aa19b3d15f954",
+        "currentSha256": "d677b13e61f9f60d8d0f18a1cf5e233e299f0c5baed26c818b7038fffafebf6c",
+        "files": 20,
+        "bytes": 579923
+      }
+    },
+    "specificFileOrModeCause": "Not established: old identity receipts contain aggregate keg hashes only",
+    "otherHostInputs": "Identical in the saved/current receipts, including Xcode/Python/macOS",
+    "checkpointArchiveBytes": 13653110569,
+    "checkpointArchiveSha256": "d33370ae66319b69c224b2a02032502f85b360660c1079ec559ce7d42a912680",
+    "fullRestoreVerified": false
+  },
+  "gecko": {
+    "nativeBuild": "success",
+    "canonicalGpuBuild": "success",
+    "runtimeJob": 117278154959,
+    "passed": 134,
+    "failed": 11,
+    "explicitlyAllowedInconclusive": 0,
+    "upstreamLibraryExecutions": 48,
+    "upstreamLibraryChecks": 456,
+    "upstreamLibraryFailures": 0,
+    "missingFixture": "ALPS_SERVER absent for ALPS/ECH/signature probes",
+    "canonicalWebgpu": "Headless probe disables normal macOS GPU process; hosted repair verification pending",
+    "nativeWebgl": "Native and protected raw logs show CGL_FBO then exhausted drivers; specific CGL failure not yet established"
+  },
+  "repairs": {
+    "checkpoint": "Exact first-segment Homebrew tool snapshot and validated restore, without relaxing host identity",
+    "runtime": "Pinned same-run ALPS fixture; headful canonical GPU probe; persistent probe evidence and CGL diagnostics",
+    "unitGate": "Refresh only committed appearance-module inventory digest"
+  },
+  "verificationLimits": [
+    "No local native/browser/compiler benchmark executed for these CI repairs",
+    "Local physical disk below10GiB reserve; unmodified full helper suite reports reserve failures; test-only20GiB capacity simulation used with negative reserve tests retained",
+    "Fresh hosted tool snapshot/restore, ALPS compilation/transcripts, WebGPU and native CGL verification remain pending"
+  ]
+}

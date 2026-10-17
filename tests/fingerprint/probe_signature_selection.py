@@ -1,20 +1,22 @@
 """Authenticated P-521 selection against an actual Chrome/native offer."""
-import base64,hashlib,json,os,ssl,subprocess,sys,tempfile
+import base64,hashlib,os,ssl,subprocess,sys,tempfile
 from pathlib import Path
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding,PublicFormat
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'network'))
 from h3_fixture import create_certificates
 from alps_fixture import ALPSFixture
+from probe_evidence import ProbeEvidence
 from probe_daily_defaults import launch
 from probe_network_policy import READ
 
 def main():
-    with tempfile.TemporaryDirectory(prefix='cloakfox-signature-') as tmp:
+    with ProbeEvidence('signature','SIGNATURE_REPORT') as evidence, tempfile.TemporaryDirectory(prefix='cloakfox-signature-') as tmp:
         root=Path(tmp);ca,cert,key=create_certificates(root,['signature-wire.test'],leaf_curve='secp521r1')
-        report={}
+        report=evidence.report
         if os.environ.get('SIGNATURE_CHROME_REFERENCE')=='1':
             fixture=ALPSFixture(cert,key,settings='unadvertised-signature')
+            report['chromeReference']=fixture.observed
             try:
                 spki=x509.load_pem_x509_certificate(cert.read_bytes()).public_key().public_bytes(Encoding.DER,PublicFormat.SubjectPublicKeyInfo)
                 pin=base64.b64encode(hashlib.sha256(spki).digest()).decode()
@@ -25,7 +27,7 @@ def main():
                 report['chromeReference']=fixture.observed
             finally:fixture.close()
         else:
-            profile=root/'profile';profile.mkdir();driver=launch(profile,root/'driver.log',accept_insecure_certs=False)
+            profile=root/'profile';profile.mkdir();driver=launch(profile,evidence.root/'driver.log',accept_insecure_certs=False)
             try:
                 driver.set_script_timeout(25)
                 driver.execute_script("""
@@ -37,18 +39,18 @@ def main():
                 """,base64.b64encode(ssl.PEM_cert_to_DER_cert(ca.read_text())).decode())
                 for name,chrome in [('native',False),('chrome',True)]:
                     fixture=ALPSFixture(cert,key,settings='unadvertised-signature')
+                    report[name]={'handshakes':fixture.observed}
                     try:
                         driver.execute_script("Services.prefs.setBoolPref('cloakfox.container.7.network_follow_identity',arguments[0]);ChromeUtils.importESModule('resource:///modules/CloakfoxNetworkProfiles.sys.mjs').writeNetworkProfile(7);",chrome)
                         result=driver.execute_async_script(READ,f'https://signature-wire.test:{fixture.port}/',7)
+                        report[name]['response']=result
                         if chrome:
                             assert result['status']!=0,('Chrome profile accepted an unadvertised handshake signature',result,fixture.observed)
                         else:
                             assert result['status']==0 and result['body']=='local-alps-ok',(result,fixture.observed)
                             assert any(r.get('signature')==1539 for r in fixture.observed),fixture.observed
-                        report[name]={'response':result,'handshakes':fixture.observed}
                     finally:fixture.close()
             finally:driver.quit()
-        destination=Path(os.environ.get('SIGNATURE_REPORT','/tmp/cloakfox-signature.json'))
-        destination.write_text(json.dumps(report,indent=2)+'\n')
+        destination=evidence.destination
         print('PASS: authenticated signature selection matches the advertised profile;',destination)
 if __name__=='__main__':main()
