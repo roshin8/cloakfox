@@ -2,6 +2,11 @@ name: Browser build runner survey
 
 on:
   workflow_dispatch:
+    inputs:
+      chromium_intel_build:
+        description: Build the ARM64 Chromium SDK on a standard higher-memory Intel Mac
+        type: boolean
+        default: false
   push:
     branches: [codex/firefox-158-port]
     paths:
@@ -14,10 +19,11 @@ permissions:
 
 jobs:
   survey:
+    if: ${{ !inputs.chromium_intel_build }}
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-26, xcode-27]
+        runner: [macos-26]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
     steps:
@@ -52,3 +58,11 @@ jobs:
             before/runner-capabilities.json
             after/runner-capabilities.json
           if-no-files-found: error
+
+  chromium-intel-build:
+    if: ${{ inputs.chromium_intel_build }}
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+    uses: ./.github/workflows/chromium-engine.yml
