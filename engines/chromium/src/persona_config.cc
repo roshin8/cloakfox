@@ -27,7 +27,24 @@ void optionFields(CefRefPtr<CefDictionaryValue> value, bool complete, bool prese
   }
 }
 void validatePresentation(CefRefPtr<CefDictionaryValue> value) {
-  exactFields(value, {"hardwareConcurrency", "deviceMemory", "languages", "timezone"});
+  const std::set<std::string> base{"hardwareConcurrency", "deviceMemory", "languages", "timezone"};
+  const std::set<std::string> display{"screenWidth", "screenHeight", "screenAvailWidth", "screenAvailHeight"};
+  if (!value) throw std::runtime_error("Invalid identity presentation");
+  CefDictionaryValue::KeyList keys; value->GetKeys(keys);
+  std::set<std::string> present;
+  for (const auto& key : keys) present.insert(key.ToString());
+  for (const auto& key : base)
+    if (!present.count(key)) throw std::runtime_error("Unsupported presentation fields");
+  bool any_display = false, all_display = true;
+  for (const auto& key : present) {
+    if (base.count(key)) continue;
+    if (!display.count(key)) throw std::runtime_error("Unsupported presentation fields");
+  }
+  for (const auto& key : display) {
+    if (present.count(key)) any_display = true;
+    else all_display = false;
+  }
+  if (any_display && !all_display) throw std::runtime_error("Incomplete display presentation");
   if (value->GetType("hardwareConcurrency") != VTYPE_INT ||
       (value->GetInt("hardwareConcurrency") < 1 || value->GetInt("hardwareConcurrency") > 128) ||
       value->GetType("deviceMemory") != VTYPE_INT ||
@@ -42,6 +59,15 @@ void validatePresentation(CefRefPtr<CefDictionaryValue> value) {
   if (!regions.count({languages->GetString(0).ToString(), languages->GetString(1).ToString()}) ||
       !std::set<std::string>{"UTC","America/Los_Angeles","America/New_York","Europe/London","Europe/Berlin","Europe/Paris","Asia/Tokyo"}.count(value->GetString("timezone").ToString()))
     throw std::runtime_error("Unsupported language/timezone preset");
+  if (all_display) {
+    const int width = value->GetInt("screenWidth"), height = value->GetInt("screenHeight");
+    const int avail_width = value->GetInt("screenAvailWidth"), avail_height = value->GetInt("screenAvailHeight");
+    if (value->GetType("screenWidth") != VTYPE_INT || value->GetType("screenHeight") != VTYPE_INT ||
+        value->GetType("screenAvailWidth") != VTYPE_INT || value->GetType("screenAvailHeight") != VTYPE_INT ||
+        width < 1 || width > 16384 || height < 1 || height > 16384 ||
+        avail_width < 1 || avail_width > width || avail_height < 1 || avail_height > height)
+      throw std::runtime_error("Invalid display geometry");
+  }
 }
 }
 PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
@@ -103,6 +129,10 @@ PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
     presentation->SetString("locale", languages->GetString(0));
     presentation->SetString("languages", languages->GetString(0).ToString() + "," + languages->GetString(1).ToString());
     presentation->SetString("timezoneId", source->GetString("timezone"));
+    // Owner-provided screen geometry; applied only when the identity is active.
+    if (enabled && source->HasKey("screenWidth"))
+      for (const auto* key : {"screenWidth", "screenHeight", "screenAvailWidth", "screenAvailHeight"})
+        presentation->SetInt(key, source->GetInt(key));
   }
   return {value->Copy(false), value->GetString("containerId").ToString(), seed,
           value->GetInt("revision"), value->GetBool("private"),

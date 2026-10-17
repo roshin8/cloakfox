@@ -1,0 +1,21 @@
+{
+ "applyAfter": "owned-ime-state-patch-lock.json",
+ "patch": "patches/native-display-privacy.patch",
+ "inputs": [
+  {
+   "path": "cef/libcef/browser/browser_context.cc",
+   "beforeSha256": "f6a1eb3299be3e60237a0059e9c7f8300dacf2c5f76380ae003cd10c0133ebc7",
+   "afterSha256": "96da84e9e5ed6f5d3de283c96b3312e61d9bb207cd3372367fe9ceda6907892b"
+  },
+  {
+   "path": "cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc",
+   "beforeSha256": "721cfb1daf0ee9e641bfb956f406919c5076fea9785708c19994d7cc7b518df2",
+   "afterSha256": "6014d978a3d8e85282134dcf88419f702f2d104732d84764d7b1216edef60b79"
+  },
+  {
+   "path": "third_party/blink/renderer/platform/widget/widget_base.cc",
+   "beforeSha256": "65ef15027cfaf9d468f4f6ec4413080b29d3bbf4b0c10db63ac3e224c1ac3b66",
+   "afterSha256": "e3032bd2169e5e3d94699cc1d0c4aa63071e82528edfea2360308e5f1615534e"
+  }
+ ]
+}

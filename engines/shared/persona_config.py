@@ -27,10 +27,26 @@ REGIONS = (
     (('ja-JP', 'ja'), 'Asia/Tokyo'),
 )
 TIMEZONES = {'UTC', 'America/Los_Angeles', *(zone for _, zone in REGIONS)}
+# Canonical retina-plausible desktop panels (width, height, availWidth, availHeight).
+# Avail height reserves a menu bar so the presentation stays internally coherent.
+DISPLAYS = (
+    (1280, 800, 1280, 775),
+    (1440, 900, 1440, 875),
+    (1512, 982, 1512, 957),
+    (1680, 1050, 1680, 1025),
+    (1728, 1117, 1728, 1092),
+    (1920, 1200, 1920, 1175),
+    (2560, 1440, 2560, 1415),
+    (2560, 1600, 2560, 1575),
+    (2880, 1800, 2880, 1775),
+)
+IDENTITY_FIELDS = ('hardwareConcurrency', 'deviceMemory', 'languages', 'timezone')
+DISPLAY_FIELDS = ('screenWidth', 'screenHeight', 'screenAvailWidth', 'screenAvailHeight')
 
 
 def validate_presentation(value):
-    if type(value) is not dict or set(value) != {'hardwareConcurrency', 'deviceMemory', 'languages', 'timezone'}:
+    if type(value) is not dict or not set(IDENTITY_FIELDS) <= set(value) \
+            or set(value) - set(IDENTITY_FIELDS) - set(DISPLAY_FIELDS):
         raise ValueError('Unsupported presentation fields')
     if type(value['hardwareConcurrency']) is not int or not 1 <= value['hardwareConcurrency'] <= 128:
         raise ValueError('Unsupported hardware concurrency')
@@ -40,15 +56,26 @@ def validate_presentation(value):
         raise ValueError('Unsupported language preset')
     if type(value['timezone']) is not str or value['timezone'] not in TIMEZONES:
         raise ValueError('Unsupported timezone preset')
+    present = [name for name in DISPLAY_FIELDS if name in value]
+    if present and len(present) != len(DISPLAY_FIELDS):
+        raise ValueError('Unsupported display presentation')
+    if present:
+        width, height, avail_width, avail_height = (value[name] for name in DISPLAY_FIELDS)
+        if any(type(part) is not int for part in (width, height, avail_width, avail_height)) \
+                or not 1 <= avail_width <= width <= 16384 or not 1 <= avail_height <= height <= 16384:
+            raise ValueError('Unsupported display geometry')
     return copy.deepcopy(value)
 
 
 def sample_presentation(seed):
     digest = hmac.new(bytes.fromhex(seed), b'cloakfox-presentation-v1', hashlib.sha256).digest()
     languages, timezone = REGIONS[digest[0] % len(REGIONS)]
+    width, height, avail_width, avail_height = DISPLAYS[digest[3] % len(DISPLAYS)]
     return {'hardwareConcurrency': (4, 8, 16)[digest[1] % 3],
             'deviceMemory': (4, 8)[digest[2] % 2],
-            'languages': list(languages), 'timezone': timezone}
+            'languages': list(languages), 'timezone': timezone,
+            'screenWidth': width, 'screenHeight': height,
+            'screenAvailWidth': avail_width, 'screenAvailHeight': avail_height}
 MAX_REVISION = 2147483647
 
 

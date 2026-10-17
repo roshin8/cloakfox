@@ -1,0 +1,94 @@
+--- a/cef/libcef/browser/browser_context.cc
++++ b/cef/libcef/browser/browser_context.cc
+@@ -233,8 +233,15 @@
+   if (seed.size() != 64 || seed.find_first_not_of("0123456789abcdef") != std::string::npos) return nullptr;
+   auto presentation = snapshot->GetDictionary("presentation");
+   if (presentation->GetSize()) {
+-    if (!ExactFields(presentation, {"navigator", "language", "timezone", "hardwareConcurrency",
+-                                    "deviceMemory", "locale", "languages", "timezoneId"})) return nullptr;
++    const std::set<std::string> allowed{"navigator", "language", "timezone", "hardwareConcurrency",
++                                        "deviceMemory", "locale", "languages", "timezoneId",
++                                        "screenWidth", "screenHeight", "screenAvailWidth", "screenAvailHeight"};
++    CefDictionaryValue::KeyList keys; presentation->GetKeys(keys);
++    for (const auto& key : keys)
++      if (!allowed.count(key.ToString())) return nullptr;
++    for (const auto* key : {"navigator", "language", "timezone", "hardwareConcurrency",
++                            "deviceMemory", "locale", "languages", "timezoneId"})
++      if (!presentation->HasKey(key)) return nullptr;
+     for (const auto* key : {"navigator", "language", "timezone"})
+       if (presentation->GetType(key) != VTYPE_BOOL) return nullptr;
+     if (presentation->GetType("hardwareConcurrency") != VTYPE_INT ||
+@@ -250,6 +257,15 @@
+         !std::set<std::string>{"UTC","America/Los_Angeles","America/New_York","Europe/London",
+                                "Europe/Berlin","Europe/Paris","Asia/Tokyo"}.count(
+             presentation->GetString("timezoneId").ToString())) return nullptr;
++    if (presentation->HasKey("screenWidth")) {
++      for (const auto* key : {"screenWidth", "screenHeight", "screenAvailWidth", "screenAvailHeight"})
++        if (!presentation->HasKey(key) || presentation->GetType(key) != VTYPE_INT) return nullptr;
++      const int width = presentation->GetInt("screenWidth"), height = presentation->GetInt("screenHeight");
++      const int avail_width = presentation->GetInt("screenAvailWidth");
++      const int avail_height = presentation->GetInt("screenAvailHeight");
++      if (width < 1 || width > 16384 || height < 1 || height > 16384 ||
++          avail_width < 1 || avail_width > width || avail_height < 1 || avail_height > height) return nullptr;
++    }
+   }
+   return snapshot->Copy(false);
+ }
+--- a/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
++++ b/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
+@@ -232,6 +232,14 @@
+       if (identity.FindBool("timezone").value_or(false)) {
+         if (const auto* timezone_id = identity.FindString("timezoneId"))
+           command_line->AppendSwitchASCII("cloakfox-timezone", *timezone_id);
++      }
++      if (identity.FindInt("screenWidth")) {
++        const auto metric = [&identity](const char* key) {
++          return base::NumberToString(identity.FindInt(key).value_or(0));
++        };
++        command_line->AppendSwitchASCII("cloakfox-screen",
++            metric("screenWidth") + "," + metric("screenHeight") + "," +
++            metric("screenAvailWidth") + "," + metric("screenAvailHeight"));
+       }
+     }
+     if (profile && profile->GetPrefs()->GetBoolean("cloakfox.webgpu_block_readback"))
+--- a/third_party/blink/renderer/platform/widget/widget_base.cc
++++ b/third_party/blink/renderer/platform/widget/widget_base.cc
+@@ -13,6 +13,8 @@
+ #include "base/logging.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_split.h"
+ #include "base/task/common/task_annotator.h"
+ #include "base/trace_event/trace_event.h"
+ #include "build/build_config.h"
+@@ -1862,6 +1864,29 @@
+   display::ScreenInfos new_screen_infos = screen_infos;
+   display::ScreenInfo& new_screen_info = new_screen_infos.mutable_current();
+ 
++  // Cloakfox: present the owner-provided panel geometry so JavaScript screen
++  // metrics and CSS device metrics agree instead of exposing the host display.
++  // Parse errors are ignored to stay fail-open on the host panel, never on a
++  // half-applied spoof; the client validated the values before navigation.
++  {
++    const std::string screen_override =
++        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++            "cloakfox-screen");
++    if (!screen_override.empty()) {
++      const std::vector<std::string> parts = base::SplitString(
++          screen_override, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++      int values[4] = {0, 0, 0, 0};
++      bool valid = parts.size() == 4;
++      for (size_t i = 0; valid && i < 4; ++i)
++        valid = base::StringToInt(parts[i], &values[i]);
++      if (valid && values[0] > 0 && values[1] > 0 && values[2] > 0 &&
++          values[3] > 0 && values[2] <= values[0] && values[3] <= values[1]) {
++        new_screen_info.rect = gfx::Rect(0, 0, values[0], values[1]);
++        new_screen_info.available_rect = gfx::Rect(0, 0, values[2], values[3]);
++      }
++    }
++  }
++
+   // If there is a screen orientation override apply it.
+   if (auto orientation_override = client_->ScreenOrientationOverride()) {
+     new_screen_info.orientation_type = orientation_override.value();
