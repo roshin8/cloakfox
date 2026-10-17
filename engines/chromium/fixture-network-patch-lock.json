@@ -1,0 +1,36 @@
+{
+  "applyAfter": "initial-snapshot-patch-lock.json",
+  "patch": "patches/native-fixture-network-privacy.patch",
+  "inputs": [
+    {
+      "path": "content/public/browser/content_browser_client.h",
+      "beforeSha256": "429f76ad8eb4ac58fb60aaac43b58d1d229d75410d866793f53c68166f03d8f6",
+      "afterSha256": "66bfd757f379fdaf9ec8adba77858568eea1e952927bbf690df4cff36a129825"
+    },
+    {
+      "path": "content/browser/websockets/websocket_connector_impl.cc",
+      "beforeSha256": "1648a2e4c1829b4e3c2f2cd1b368715f45b81d8c61334f2cf373223dbb5a4629",
+      "afterSha256": "7e8d89862b6cca3ec9b04eab385190a6f41bc76b58181fb0557ca47b6f9a71a2"
+    },
+    {
+      "path": "cef/libcef/browser/chrome/chrome_content_browser_client_cef.h",
+      "beforeSha256": "a05207552ad75d66a2988d2ac5a0ea6d65ea0a0098c466b4f322b07f4034edaa",
+      "afterSha256": "23d6f4ef0ad39a61c966fc7df698910618af9358bbf44c3318b8e2d0be639d73"
+    },
+    {
+      "path": "cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc",
+      "beforeSha256": "a9ab20612f200c33c89aef58106294b5bca37e26ef45d32f183fefd473c45f0a",
+      "afterSha256": "721cfb1daf0ee9e641bfb956f406919c5076fea9785708c19994d7cc7b518df2"
+    },
+    {
+      "path": "cef/libcef/browser/browser_context.cc",
+      "beforeSha256": "be3897349ab52df5f8c8ce8601ea73b754357dc006bdc851d6d60c118eb9cfb6",
+      "afterSha256": "f6a1eb3299be3e60237a0059e9c7f8300dacf2c5f76380ae003cd10c0133ebc7"
+    },
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "d37be2dbcc5cf8c57a2ff365ef3ab55b0f75c281143666e01d409f439e3c6590",
+      "afterSha256": "29e5f1123945fedd7034b9fb7715cc6d7ccb8dfbd854a7e1b460d98d74d944ae"
+    }
+  ]
+}

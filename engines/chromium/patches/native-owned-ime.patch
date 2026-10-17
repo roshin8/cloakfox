@@ -1,0 +1,607 @@
+--- a/cef/cef_api_untracked.json
++++ b/cef/cef_api_untracked.json
+@@ -2,17 +2,17 @@
+   "hashes": {
+     "999998": {
+       "comment": "Next version last updated October 16, 2026.",
+-      "linux": "55fbfb8919d2d7650cd8568ad5649dcd2eaf5a27",
+-      "mac": "8fae4ed82522ee020663648f06047805da8f77ab",
++      "linux": "989eda57691373493f1b8aad5dc21c6c8ae1c821",
++      "mac": "08c0a2a5b3d94b626f5f7b38ec78a8e21c654e35",
+       "sandbox_compat": "265fca9293e6b6ef",
+-      "windows": "69b487d9aff68cdd52079e55770589b8ef14255f"
++      "windows": "2be8fa88cf3d05d0e920c3fa0f3b854ed923ee9c"
+     },
+     "999999": {
+       "comment": "Experimental version last updated October 16, 2026.",
+-      "linux": "874bd080f85b294651deeb5c6b64b021b1fd4b99",
+-      "mac": "b1509a2d34f79bbe02b16bd0888332daf3302083",
++      "linux": "ce3fefe525120c94fd7503324c748baa7d257a14",
++      "mac": "fc8dee12715d8503f7669d86ceb77a28ce48951d",
+       "sandbox_compat": "265fca9293e6b6ef",
+-      "windows": "5837cca07655bbe0489a506686c1aff7d84b3a21"
++      "windows": "176655fc6aea0c82a2157af095327c976f2ab82f"
+     }
+   }
+ }--- a/cef/cef_api_versions.json
++++ b/cef/cef_api_versions.json
+@@ -183,8 +183,15 @@
+       "mac": "8fae4ed82522ee020663648f06047805da8f77ab",
+       "sandbox_compat": "265fca9293e6b6ef",
+       "windows": "69b487d9aff68cdd52079e55770589b8ef14255f"
++    },
++    "15402": {
++      "comment": "Added October 16, 2026.",
++      "linux": "989eda57691373493f1b8aad5dc21c6c8ae1c821",
++      "mac": "08c0a2a5b3d94b626f5f7b38ec78a8e21c654e35",
++      "sandbox_compat": "265fca9293e6b6ef",
++      "windows": "2be8fa88cf3d05d0e920c3fa0f3b854ed923ee9c"
+     }
+   },
+-  "last": "15401",
++  "last": "15402",
+   "min": "13300"
+ }--- a/cef/include/capi/cef_frame_capi.h
++++ b/cef/include/capi/cef_frame_capi.h
+@@ -33,7 +33,7 @@
+ // by hand. See the translator.README.txt file in the tools directory for
+ // more information.
+ //
+-// $hash=dd70298bcb7d3c27ad90f93f04afc4785a1c0444$
++// $hash=873f7885a6abaebd37772754bbee196f54cb65b2$
+ //
+ 
+ #ifndef CEF_INCLUDE_CAPI_CEF_FRAME_CAPI_H_
+@@ -50,6 +50,7 @@
+ #include "include/capi/cef_request_capi.h"
+ #include "include/capi/cef_stream_capi.h"
+ #include "include/capi/cef_string_visitor_capi.h"
++#include "include/capi/cef_values_capi.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -246,6 +247,34 @@
+ } cef_frame_t;
+ 
+ 
++#if CEF_API_ADDED(15402)
++///
++/// Returns bounded native editing metadata for the currently focused frame on
++/// the renderer main thread. No field values or selected text are returned. The
++/// document and node fields are informational staleness checks, never selectors
++/// for another object. Unfocused or detached frames have no client.
++///
++CEF_EXPORT struct _cef_dictionary_value_t* cef_get_owned_input_state(cef_frame_t* frame);
++#endif
++
++#if CEF_API_ADDED(15402)
++///
++/// Validates bounded composition command syntax without accessing a frame or
++/// modifying native state. The caller owns the command on the calling thread.
++///
++CEF_EXPORT int cef_validate_owned_input_command(struct _cef_dictionary_value_t* command);
++#endif
++
++#if CEF_API_ADDED(15402)
++///
++/// Performs a native composition operation only if the live focused document
++/// and field still match the supplied bounded command. Called on the renderer
++/// main thread. A stale field is rejected without restoring focus. This
++/// separate symbol preserves the existing frame virtual ABI.
++///
++CEF_EXPORT int cef_perform_owned_input(cef_frame_t* frame, struct _cef_dictionary_value_t* command);
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif
+--- a/cef/include/capi/cef_frame_capi_versions.h
++++ b/cef/include/capi/cef_frame_capi_versions.h
+@@ -8,7 +8,7 @@
+ // by hand. See the translator.README.txt file in the tools directory for
+ // more information.
+ //
+-// $hash=1e63fabf60216a237e0d83be3d6db0c3d44c6b4e$
++// $hash=8ac1181ca3063736813203fedffd4aec218ae031$
+ //
+ 
+ #ifndef CEF_INCLUDE_CAPI_CEF_FRAME_CAPI_VERSIONS_H_
+@@ -25,6 +25,7 @@
+ #include "include/capi/cef_request_capi_versions.h"
+ #include "include/capi/cef_stream_capi_versions.h"
+ #include "include/capi/cef_string_visitor_capi_versions.h"
++#include "include/capi/cef_values_capi_versions.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -65,6 +66,10 @@
+   void (CEF_CALLBACK *send_process_message)(struct _cef_frame_0_t* self, cef_process_id_t target_process, struct _cef_process_message_0_t* message);
+ } cef_frame_0_t;
+ 
++CEF_EXPORT struct _cef_dictionary_value_0_t* cef_get_owned_input_state(cef_frame_0_t* frame);
++CEF_EXPORT int cef_validate_owned_input_command(struct _cef_dictionary_value_0_t* command);
++CEF_EXPORT int cef_perform_owned_input(cef_frame_0_t* frame, struct _cef_dictionary_value_0_t* command);
++
+ #ifdef __cplusplus
+ }
+ #endif
+--- a/cef/include/cef_frame.h
++++ b/cef/include/cef_frame.h
+@@ -258,4 +258,33 @@
+                                   CefRefPtr<CefProcessMessage> message) = 0;
+ };
+ 
++#if CEF_API_ADDED(15402)
++#define CEF_CLOAKFOX_OWNED_IME_VERSION 1
++///
++/// Returns bounded native editing metadata for the currently focused frame on
++/// the renderer main thread. No field values or selected text are returned.
++/// The document and node fields are informational staleness checks, never
++/// selectors for another object. Unfocused or detached frames have no client.
++///
++/*--cef(added=15402)--*/
++CefRefPtr<CefDictionaryValue> CefGetOwnedInputState(CefRefPtr<CefFrame> frame);
++
++///
++/// Validates bounded composition command syntax without accessing a frame or
++/// modifying native state. The caller owns the command on the calling thread.
++///
++/*--cef(added=15402)--*/
++bool CefValidateOwnedInputCommand(CefRefPtr<CefDictionaryValue> command);
++
++///
++/// Performs a native composition operation only if the live focused document
++/// and field still match the supplied bounded command. Called on the renderer
++/// main thread. A stale field is rejected without restoring focus. This
++/// separate symbol preserves the existing frame virtual ABI.
++///
++/*--cef(added=15402)--*/
++bool CefPerformOwnedInput(CefRefPtr<CefFrame> frame,
++                          CefRefPtr<CefDictionaryValue> command);
++#endif
++
+ #endif  // CEF_INCLUDE_CEF_FRAME_H_
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -64,6 +64,7 @@
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+   registry->RegisterIntegerPref("cloakfox.initial_snapshot_version", 1);
+   registry->RegisterIntegerPref("cloakfox.fixture_network_version", 1);
++  registry->RegisterIntegerPref("cloakfox.owned_ime_version", 1);
+   registry->RegisterIntegerPref("cloakfox.identity_privacy_version", 2);
+   registry->RegisterDictionaryPref("cloakfox.presentation");
+   registry->RegisterBooleanPref("cloakfox.native_languages_saved", false);
+--- a/cef/libcef/renderer/frame_impl.cc
++++ b/cef/libcef/renderer/frame_impl.cc
+@@ -5,6 +5,11 @@
+ #include "cef/libcef/renderer/frame_impl.h"
+ 
+ #include "build/build_config.h"
++#include <algorithm>
++#include <set>
++#include "third_party/blink/public/common/tokens/tokens.h"
++#include "third_party/blink/public/web/web_element.h"
++#include "third_party/blink/public/web/web_input_method_controller.h"
+ 
+ // Enable deprecation warnings on Windows. See http://crbug.com/585142.
+ #if BUILDFLAG(IS_WIN)
+@@ -74,6 +79,153 @@
+ 
+ }  // namespace
+ 
++namespace {
++bool OwnedInputFields(CefRefPtr<CefDictionaryValue> value,
++                      const std::set<std::string>& expected) {
++  if (!value) return false;
++  CefDictionaryValue::KeyList keys;
++  value->GetKeys(keys);
++  std::set<std::string> actual;
++  for (const auto& key : keys) actual.insert(key.ToString());
++  return actual == expected;
++}
++bool OwnedInputText(const CefString& text) {
++  if (text.length() > 4096) return false;
++  const auto units = text.ToString16();
++  for (size_t i = 0; i < units.size(); ++i) {
++    const auto c = units[i];
++    if ((c < 32 && c != 9 && c != 10 && c != 13) ||
++        (c >= 0x7f && c <= 0x9f) || (c >= 0xdc00 && c <= 0xdfff)) return false;
++    if (c >= 0xd800 && c <= 0xdbff) {
++      if (++i >= units.size() || units[i] < 0xdc00 || units[i] > 0xdfff) return false;
++    }
++  }
++  return true;
++}
++CefRefPtr<CefListValue> OwnedInputRange(const blink::WebRange& range) {
++  auto result = CefListValue::Create();
++  result->SetInt(0, range.StartOffset());
++  result->SetInt(1, range.EndOffset());
++  return result;
++}
++}  // namespace
++
++CefRefPtr<CefDictionaryValue> CefGetOwnedInputState(CefRefPtr<CefFrame> frame) {
++  CEF_REQUIRE_RT_RETURN(nullptr);
++  auto result = CefDictionaryValue::Create();
++  result->SetNull("field");
++  result->SetBool("editable", false);
++  result->SetBool("password", false);
++  for (const auto* key : {"selection", "composition", "caret"}) result->SetNull(key);
++  if (!frame || !frame->IsValid() || !frame->IsFocused()) return result;
++  auto* web = static_cast<CefFrameImpl*>(frame.get())->web_frame();
++  if (!web) return result;
++  const auto document = web->GetDocument();
++  const auto element = document.FocusedElement();
++  auto* controller = web->GetInputMethodController();
++  if (element.IsNull() || !element.IsConnected() || !controller ||
++      controller->TextInputType() == blink::kWebTextInputTypeNone ||
++      element.GetDomNodeId() <= 0) return result;
++  auto field = CefDictionaryValue::Create();
++  field->SetString("document", document.Token().ToString());
++  field->SetInt("node", element.GetDomNodeId());
++  result->SetDictionary("field", field);
++  result->SetBool("editable", true);
++  result->SetBool("password", controller->TextInputType() == blink::kWebTextInputTypePassword);
++  const auto selection = controller->GetSelectionOffsets();
++  if (!selection.IsNull()) result->SetList("selection", OwnedInputRange(selection));
++  const auto composition = controller->CompositionRange();
++  if (!composition.IsNull()) result->SetList("composition", OwnedInputRange(composition));
++  gfx::Rect caret;
++  if (selection.IsNull() || !web->FirstRectForCharacterRange(selection.EndOffset(), 0, caret)) {
++    // No field contents are materialized for the fallback or normal query.
++    caret = element.BoundsInWidget();
++    caret.set_width(0);
++  }
++  auto bounds = CefListValue::Create();
++  bounds->SetInt(0, std::clamp(caret.x(), -32768, 32768));
++  bounds->SetInt(1, std::clamp(caret.y(), -32768, 32768));
++  bounds->SetInt(2, std::clamp(caret.width(), 0, 4096));
++  bounds->SetInt(3, std::clamp(caret.height(), 0, 4096));
++  result->SetList("caret", bounds);
++  return result;
++}
++
++bool CefValidateOwnedInputCommand(CefRefPtr<CefDictionaryValue> command) {
++  if (!command || command->GetType("action") != VTYPE_STRING ||
++      command->GetType("field") != VTYPE_DICTIONARY) return false;
++  const auto action = command->GetString("action").ToString();
++  std::set<std::string> expected{"action", "field"};
++  if (action == "set" || action == "commit") expected.insert("text");
++  else if (action != "finish" && action != "cancel") return false;
++  if (action == "set") { expected.insert("selectionStart"); expected.insert("selectionEnd"); }
++  if (command->HasKey("replacement")) {
++    if (action != "set" && action != "commit") return false;
++    expected.insert("replacement");
++  }
++  if (!OwnedInputFields(command, expected)) return false;
++  auto field = command->GetDictionary("field");
++  if (!OwnedInputFields(field, {"document", "node"}) ||
++      field->GetType("document") != VTYPE_STRING || !field->GetString("document").length() ||
++      field->GetString("document").length() > 128 ||
++      field->GetType("node") != VTYPE_INT || field->GetInt("node") < 1) return false;
++  CefString text;
++  if (action == "set" || action == "commit") {
++    if (command->GetType("text") != VTYPE_STRING) return false;
++    text = command->GetString("text");
++    if (!OwnedInputText(text) || (action == "commit" && !text.length())) return false;
++  }
++  if (action == "set" && (command->GetType("selectionStart") != VTYPE_INT ||
++      command->GetType("selectionEnd") != VTYPE_INT || command->GetInt("selectionStart") < 0 ||
++      command->GetInt("selectionEnd") < command->GetInt("selectionStart") ||
++      command->GetInt("selectionEnd") > static_cast<int>(text.length()))) return false;
++  if (command->HasKey("replacement")) {
++    if (command->GetType("replacement") != VTYPE_LIST) return false;
++    auto range = command->GetList("replacement");
++    if (range->GetSize() != 2 || range->GetType(0) != VTYPE_INT || range->GetType(1) != VTYPE_INT ||
++        range->GetInt(0) < 0 || range->GetInt(1) < range->GetInt(0)) return false;
++  }
++  return true;
++}
++
++bool CefPerformOwnedInput(CefRefPtr<CefFrame> frame,
++                          CefRefPtr<CefDictionaryValue> command) {
++  CEF_REQUIRE_RT_RETURN(false);
++  if (!frame || !frame->IsValid() || !frame->IsFocused() ||
++      !CefValidateOwnedInputCommand(command)) return false;
++  const auto action = command->GetString("action").ToString();
++  auto field = command->GetDictionary("field");
++  CefString text;
++  if (action == "set" || action == "commit") text = command->GetString("text");
++  blink::WebRange replacement;
++  if (command->HasKey("replacement")) {
++    auto range = command->GetList("replacement");
++    replacement = blink::WebRange(range->GetInt(0), range->GetInt(1)-range->GetInt(0));
++  }
++  // Recheck the live object at final delivery in the renderer. The supplied
++  // IDs are never used to look up a node or restore a previously focused field.
++  auto* web = static_cast<CefFrameImpl*>(frame.get())->web_frame();
++  if (!web) return false;
++  const auto document = web->GetDocument();
++  const auto element = document.FocusedElement();
++  auto* controller = web->GetInputMethodController();
++  if (document.Token().ToString() != field->GetString("document").ToString() ||
++      element.IsNull() || !element.IsConnected() || element.GetDomNodeId() != field->GetInt("node") ||
++      !controller || controller->TextInputType() == blink::kWebTextInputTypeNone) return false;
++  if (action == "set") {
++    if (controller->TextInputType() == blink::kWebTextInputTypePassword) return false;
++    std::vector<ui::ImeTextSpan> spans;
++    if (text.length()) spans.emplace_back(ui::ImeTextSpan::Type::kComposition, 0, text.length());
++    return controller->SetComposition(blink::WebString(text.ToString16()), spans, replacement,
++        command->GetInt("selectionStart"), command->GetInt("selectionEnd"));
++  }
++  if (action == "commit")
++    return controller->CommitText(blink::WebString(text.ToString16()), {}, replacement, 0);
++  if (action == "finish")
++    return controller->FinishComposingText(blink::WebInputMethodController::kDoNotKeepSelection);
++  return controller->SetComposition(blink::WebString(), {}, blink::WebRange(), 0, 0);
++}
++
+ CefFrameImpl::CefFrameImpl(CefBrowserImpl* browser, blink::WebLocalFrame* frame)
+     : browser_(browser),
+       frame_(frame),
+--- a/cef/libcef_dll/libcef_dll.cc
++++ b/cef/libcef_dll/libcef_dll.cc
+@@ -9,12 +9,13 @@
+ // implementations. See the translator.README.txt file in the tools directory
+ // for more information.
+ //
+-// $hash=ca20848fa3c76834affe031514192c0855eff9f5$
++// $hash=1b5c850382a82c524d3ab39c855e8dadad4859a8$
+ //
+ 
+ #include "include/capi/cef_app_capi_versions.h"
+ #include "include/capi/cef_crash_util_capi_versions.h"
+ #include "include/capi/cef_file_util_capi_versions.h"
++#include "include/capi/cef_frame_capi_versions.h"
+ #include "include/capi/cef_i18n_util_capi_versions.h"
+ #include "include/capi/cef_origin_whitelist_capi_versions.h"
+ #include "include/capi/cef_parser_capi_versions.h"
+@@ -30,6 +31,7 @@
+ #include "include/cef_app.h"
+ #include "include/cef_crash_util.h"
+ #include "include/cef_file_util.h"
++#include "include/cef_frame.h"
+ #include "include/cef_i18n_util.h"
+ #include "include/cef_origin_whitelist.h"
+ #include "include/cef_parser.h"
+@@ -362,6 +364,69 @@
+       CefString(path));
+ }
+ 
++#if CEF_API_ADDED(15402)
++CEF_EXPORT struct _cef_dictionary_value_0_t* cef_get_owned_input_state(struct _cef_frame_0_t* frame) {
++  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
++
++  // Verify param: frame; type: refptr_same
++  DCHECK(frame);
++  if (!frame) {
++    return NULL;
++  }
++
++  // Execute
++  CefRefPtr<CefDictionaryValue> _retval = CefGetOwnedInputState(
++      CefFrameCppToC_Unwrap(frame));
++
++  // Return type: refptr_same
++  return CefDictionaryValueCppToC_Wrap(_retval);
++}
++#endif  // CEF_API_ADDED(15402)
++
++#if CEF_API_ADDED(15402)
++CEF_EXPORT int cef_validate_owned_input_command(struct _cef_dictionary_value_0_t* command) {
++  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
++
++  // Verify param: command; type: refptr_same
++  DCHECK(command);
++  if (!command) {
++    return 0;
++  }
++
++  // Execute
++  bool _retval = CefValidateOwnedInputCommand(
++      CefDictionaryValueCppToC_Unwrap(command));
++
++  // Return type: bool
++  return _retval;
++}
++#endif  // CEF_API_ADDED(15402)
++
++#if CEF_API_ADDED(15402)
++CEF_EXPORT int cef_perform_owned_input(struct _cef_frame_0_t* frame, struct _cef_dictionary_value_0_t* command) {
++  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
++
++  // Verify param: frame; type: refptr_same
++  DCHECK(frame);
++  if (!frame) {
++    return 0;
++  }
++  // Verify param: command; type: refptr_same
++  DCHECK(command);
++  if (!command) {
++    return 0;
++  }
++
++  // Execute
++  bool _retval = CefPerformOwnedInput(
++      CefFrameCppToC_Unwrap(frame),
++      CefDictionaryValueCppToC_Unwrap(command));
++
++  // Return type: bool
++  return _retval;
++}
++#endif  // CEF_API_ADDED(15402)
++
+ CEF_EXPORT int cef_is_rtl() {
+   // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+ 
+--- a/cef/libcef_dll/wrapper/libcef_dll_dylib.cc
++++ b/cef/libcef_dll/wrapper/libcef_dll_dylib.cc
+@@ -9,7 +9,7 @@
+ // implementations. See the translator.README.txt file in the tools directory
+ // for more information.
+ //
+-// $hash=56ae826f44bd7eb52e9a2bc7875111a27830e0b3$
++// $hash=bdda0ed247c9ff45d230e4d8794ea2af839774be$
+ //
+ 
+ 
+@@ -26,6 +26,7 @@
+ #include "include/capi/cef_crash_util_capi.h"
+ #include "include/capi/cef_drag_data_capi.h"
+ #include "include/capi/cef_file_util_capi.h"
++#include "include/capi/cef_frame_capi.h"
+ #include "include/capi/cef_i18n_util_capi.h"
+ #include "include/capi/cef_image_capi.h"
+ #include "include/capi/cef_media_router_capi.h"
+@@ -117,6 +118,15 @@
+ decltype(&cef_delete_file) cef_delete_file;
+ decltype(&cef_zip_directory) cef_zip_directory;
+ decltype(&cef_load_crlsets_file) cef_load_crlsets_file;
++#if CEF_API_ADDED(15402)
++decltype(&cef_get_owned_input_state) cef_get_owned_input_state;
++#endif
++#if CEF_API_ADDED(15402)
++decltype(&cef_validate_owned_input_command) cef_validate_owned_input_command;
++#endif
++#if CEF_API_ADDED(15402)
++decltype(&cef_perform_owned_input) cef_perform_owned_input;
++#endif
+ decltype(&cef_is_rtl) cef_is_rtl;
+ decltype(&cef_add_cross_origin_whitelist_entry) cef_add_cross_origin_whitelist_entry;
+ decltype(&cef_remove_cross_origin_whitelist_entry) cef_remove_cross_origin_whitelist_entry;
+@@ -414,6 +424,15 @@
+ INIT_ENTRY(cef_delete_file);
+ INIT_ENTRY(cef_zip_directory);
+ INIT_ENTRY(cef_load_crlsets_file);
++#if CEF_API_ADDED(15402)
++INIT_ENTRY(cef_get_owned_input_state);
++#endif
++#if CEF_API_ADDED(15402)
++INIT_ENTRY(cef_validate_owned_input_command);
++#endif
++#if CEF_API_ADDED(15402)
++INIT_ENTRY(cef_perform_owned_input);
++#endif
+ INIT_ENTRY(cef_is_rtl);
+ INIT_ENTRY(cef_add_cross_origin_whitelist_entry);
+ INIT_ENTRY(cef_remove_cross_origin_whitelist_entry);
+@@ -800,6 +819,24 @@
+   g_libcef_pointers.cef_load_crlsets_file(path);
+ }
+ 
++#if CEF_API_ADDED(15402)
++NO_SANITIZE("cfi-icall") struct _cef_dictionary_value_t* cef_get_owned_input_state(struct _cef_frame_t* frame) {
++  return g_libcef_pointers.cef_get_owned_input_state(frame);
++}
++#endif
++
++#if CEF_API_ADDED(15402)
++NO_SANITIZE("cfi-icall") int cef_validate_owned_input_command(struct _cef_dictionary_value_t* command) {
++  return g_libcef_pointers.cef_validate_owned_input_command(command);
++}
++#endif
++
++#if CEF_API_ADDED(15402)
++NO_SANITIZE("cfi-icall") int cef_perform_owned_input(struct _cef_frame_t* frame, struct _cef_dictionary_value_t* command) {
++  return g_libcef_pointers.cef_perform_owned_input(frame, command);
++}
++#endif
++
+ NO_SANITIZE("cfi-icall") int cef_is_rtl() {
+   return g_libcef_pointers.cef_is_rtl();
+ }
+--- a/cef/libcef_dll/wrapper/libcef_dll_wrapper.cc
++++ b/cef/libcef_dll/wrapper/libcef_dll_wrapper.cc
+@@ -9,12 +9,13 @@
+ // implementations. See the translator.README.txt file in the tools directory
+ // for more information.
+ //
+-// $hash=90da6b2156a6b4aa08f6f2150069e1f4ac3a1f9e$
++// $hash=49f0b4e765bd09659a7ca8c0105f8233fdcba63e$
+ //
+ 
+ #include "include/capi/cef_app_capi.h"
+ #include "include/capi/cef_crash_util_capi.h"
+ #include "include/capi/cef_file_util_capi.h"
++#include "include/capi/cef_frame_capi.h"
+ #include "include/capi/cef_i18n_util_capi.h"
+ #include "include/capi/cef_origin_whitelist_capi.h"
+ #include "include/capi/cef_parser_capi.h"
+@@ -31,6 +32,7 @@
+ #include "include/cef_app.h"
+ #include "include/cef_crash_util.h"
+ #include "include/cef_file_util.h"
++#include "include/cef_frame.h"
+ #include "include/cef_i18n_util.h"
+ #include "include/cef_origin_whitelist.h"
+ #include "include/cef_parser.h"
+@@ -318,6 +320,69 @@
+       path.GetStruct());
+ }
+ 
++#if CEF_API_ADDED(15402)
++NO_SANITIZE("cfi-icall") CEF_GLOBAL CefRefPtr<CefDictionaryValue> CefGetOwnedInputState(CefRefPtr<CefFrame> frame) {
++  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
++
++  // Verify param: frame; type: refptr_same
++  DCHECK(frame.get());
++  if (!frame.get()) {
++    return nullptr;
++  }
++
++  // Execute
++  auto* _retval = cef_get_owned_input_state(
++      CefFrameCToCpp_Unwrap(frame));
++
++  // Return type: refptr_same
++  return CefDictionaryValueCToCpp_Wrap(_retval);
++}
++#endif  // CEF_API_ADDED(15402)
++
++#if CEF_API_ADDED(15402)
++NO_SANITIZE("cfi-icall") CEF_GLOBAL bool CefValidateOwnedInputCommand(CefRefPtr<CefDictionaryValue> command) {
++  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
++
++  // Verify param: command; type: refptr_same
++  DCHECK(command.get());
++  if (!command.get()) {
++    return false;
++  }
++
++  // Execute
++  int _retval = cef_validate_owned_input_command(
++      CefDictionaryValueCToCpp_Unwrap(command));
++
++  // Return type: bool
++  return _retval?true:false;
++}
++#endif  // CEF_API_ADDED(15402)
++
++#if CEF_API_ADDED(15402)
++NO_SANITIZE("cfi-icall") CEF_GLOBAL bool CefPerformOwnedInput(CefRefPtr<CefFrame> frame, CefRefPtr<CefDictionaryValue> command) {
++  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
++
++  // Verify param: frame; type: refptr_same
++  DCHECK(frame.get());
++  if (!frame.get()) {
++    return false;
++  }
++  // Verify param: command; type: refptr_same
++  DCHECK(command.get());
++  if (!command.get()) {
++    return false;
++  }
++
++  // Execute
++  int _retval = cef_perform_owned_input(
++      CefFrameCToCpp_Unwrap(frame),
++      CefDictionaryValueCToCpp_Unwrap(command));
++
++  // Return type: bool
++  return _retval?true:false;
++}
++#endif  // CEF_API_ADDED(15402)
++
+ NO_SANITIZE("cfi-icall") CEF_GLOBAL bool CefIsRTL() {
+   // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+ 

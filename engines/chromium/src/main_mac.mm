@@ -3,7 +3,9 @@
 // See THIRD_PARTY_LICENSES/CEF-LICENSE.txt.
 #import <Cocoa/Cocoa.h>
 #include <iostream>
+#include <unistd.h>
 #include "browser_client.h"
+#include "surface_launch_mac.h"
 #include "include/cef_application_mac.h"
 #include "include/cef_command_line.h"
 #include "include/wrapper/cef_helpers.h"
@@ -28,13 +30,38 @@
 @end
 
 int main(int argc, char* argv[]) {
+  struct SurfacePort {
+    mach_port_t port = MACH_PORT_NULL;
+    ~SurfacePort() { if (MACH_PORT_VALID(port)) mach_port_deallocate(mach_task_self(), port); }
+  } surface;
+  bool rawProbe = false, rawTestKeychain = false, hostRequested = false;
+  std::string hostName;
   // Do not let Chromium command-line overrides bypass the companion's policy.
   for (int i = 1; i < argc; ++i) {
     const std::string arg(argv[i]);
-    if (arg != "--enable-probe" && arg != "--test-keychain" &&
-        arg.rfind("--profile-root=", 0) != 0 && arg.rfind("--test-quic-port=", 0) != 0) {
+    rawProbe |= arg == "--enable-probe";
+    rawTestKeychain |= arg == "--test-keychain";
+    if (arg.rfind("--host-rendezvous=", 0) == 0) {
+      if (hostRequested) { std::cerr << "Duplicate native host rendezvous\n"; return 2; }
+      hostRequested = true; hostName = arg.substr(std::string("--host-rendezvous=").size());
+    }
+    if (arg != "--enable-probe" && arg != "--test-keychain" && arg != "--windowless" && arg != "--shared-texture" &&
+        arg.rfind("--profile-root=", 0) != 0 && arg.rfind("--test-quic-port=", 0) != 0 &&
+        arg.rfind("--host-rendezvous=", 0) != 0) {
       std::cerr << "Unsupported launch option\n"; return 2;
     }
+  }
+  if (hostRequested) {
+    const std::string prefix = "org.cloakfox.engine-host." + std::to_string(getppid()) + ".";
+    if (!rawProbe || !rawTestKeychain || hostName.size() != prefix.size() + 32 ||
+        hostName.rfind(prefix, 0) != 0 ||
+        hostName.substr(prefix.size()).find_first_not_of("0123456789abcdef") != std::string::npos) {
+      std::cerr << "Invalid native host rendezvous\n"; return 2;
+    }
+    // Authenticate before loading the large framework, initializing AppKit or
+    // creating a profile. Cold dyld signature checks must not delay the hello.
+    surface.port = cloakfox::connectSurfaceHost(hostName.c_str(), 5000);
+    if (!MACH_PORT_VALID(surface.port)) { std::cerr << "Native host authentication failed\n"; return 2; }
   }
   CefScopedLibraryLoader loader;
   if (!loader.LoadInMain()) return 1;
@@ -51,6 +78,11 @@ int main(int argc, char* argv[]) {
     auto command = CefCommandLine::CreateCommandLine();
     command->InitFromArgv(argc, argv);
     try {
+      const bool windowless = command->HasSwitch("windowless");
+      const bool sharedTexture = command->HasSwitch("shared-texture");
+      if (sharedTexture && !windowless) throw std::runtime_error("Shared texture requires windowless mode");
+      if (windowless && (!command->HasSwitch("enable-probe") || !command->HasSwitch("test-keychain")))
+        throw std::runtime_error("Windowless feasibility mode requires explicit test options");
       int testQuicPort = 0;
       if (command->HasSwitch("test-quic-port")) {
         const auto port = command->GetSwitchValue("test-quic-port").ToString();
@@ -66,13 +98,16 @@ int main(int argc, char* argv[]) {
       // Chrome-style CEF requires each profile to be an immediate child of
       // user_data_dir; otherwise it silently falls back to OffTheRecord.
       CefString(&settings.root_cache_path) = paths->root() + "/containers";
-      CefString(&settings.cache_path) = paths->root() + "/containers";
+      // The unconfigured global context must never select the last-used user
+      // container before the controller supplies its immutable snapshot.
+      CefString(&settings.cache_path) = paths->bootstrapCachePath();
       CefString(&settings.log_file) = paths->root() + "/chromium.log";
       settings.log_severity = LOGSEVERITY_WARNING;
       settings.no_sandbox = false;
+      settings.windowless_rendering_enabled = windowless;
       settings.command_line_args_disabled = true;
       auto app = CreateCompanionApp(paths, command->HasSwitch("enable-probe"),
-                                   command->HasSwitch("test-keychain"), testQuicPort);
+                                   command->HasSwitch("test-keychain"), testQuicPort, windowless, sharedTexture, surface.port);
       if (!CefInitialize(args, settings, app, nullptr)) return CefGetExitCode();
       CefRunMessageLoop();
       StopCompanionControl();

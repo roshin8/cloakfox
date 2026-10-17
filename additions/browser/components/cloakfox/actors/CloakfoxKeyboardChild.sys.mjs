@@ -27,6 +27,15 @@ const MIN_DELAY_MS = 30;
 const MAX_JITTER_MS = 15;
 const KEY_EVENTS = new Set(["keydown", "keyup", "keypress"]);
 
+// A page may retain EventTarget methods from a frame it subsequently destroys.
+// Resolve borrowed calls against the receiving realm before touching any of the
+// source realm's DOM wrappers. Weak keys do not retain documents or identities.
+const realmHooks = new WeakMap();
+
+function recipientHooks(target) {
+  return realmHooks.get(Cu.getGlobalForObject(Cu.waiveXrays(target)));
+}
+
 // Cu.exportFunction yields a page-side function with name:"" and length:0.
 // Native methods report their own name + arity; set both on the page object
 // (Xray-waived) with native function-property flags so a name/length probe
@@ -156,6 +165,12 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
     // listener with our normalizer only if it's a keyboard event.
     const origAdd = pageWin.EventTarget.prototype.addEventListener;
     const wrapped = Cu.exportFunction(function (type, listener, options) {
+      const hooks = recipientHooks(this);
+      if (hooks?.add !== wrapped) {
+        return hooks
+          ? hooks.add.call(this, type, listener, options)
+          : Cu.unwaiveXrays(this).addEventListener(type, listener, options);
+      }
       if (KEY_EVENTS.has(String(type)) && typeof listener === "function") {
         const capture = captureFlag(options);
         const wm = wrapperMapFor(this, String(type), capture);
@@ -181,6 +196,12 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
     // listeners leak and identity-dedup breaks.
     const origRemove = pageWin.EventTarget.prototype.removeEventListener;
     const wrappedRemove = Cu.exportFunction(function (type, listener, options) {
+      const hooks = recipientHooks(this);
+      if (hooks?.remove !== wrappedRemove) {
+        return hooks
+          ? hooks.remove.call(this, type, listener, options)
+          : Cu.unwaiveXrays(this).removeEventListener(type, listener, options);
+      }
       if (KEY_EVENTS.has(String(type)) && typeof listener === "function") {
         const capture = captureFlag(options);
         const wm = wrapperMapFor(this, String(type), capture);
@@ -200,6 +221,9 @@ export class CloakfoxKeyboardChild extends JSWindowActorChild {
     // identity (name + arity) onto them first.
     setNativeIdentity(wrapped, origAdd.name, origAdd.length);
     setNativeIdentity(wrappedRemove, origRemove.name, origRemove.length);
+    realmHooks.set(Cu.getGlobalForObject(pageWin.EventTarget.prototype), {
+      add: wrapped, remove: wrappedRemove,
+    });
     pageWin.EventTarget.prototype.addEventListener = wrapped;
     pageWin.EventTarget.prototype.removeEventListener = wrappedRemove;
   }

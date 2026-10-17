@@ -1,0 +1,62 @@
+--- a/widget/moz.build
++++ b/widget/moz.build
+@@ -58,6 +58,7 @@
+ 
+ if toolkit == "cocoa":
+     XPIDL_SOURCES += [
++        "nsICloakfoxEngineHost.idl",
+         "nsIMacDockSupport.idl",
+         "nsIMacFinderProgress.idl",
+         "nsIMacSharingService.idl",
+--- a/widget/cocoa/moz.build
++++ b/widget/cocoa/moz.build
+@@ -185,3 +185,14 @@
+ LICENSED_UNDER["chromium"].paths = [
+     "GfxInfo.mm",
+ ]
++
++# Shared native dual-engine ownership boundary; one source, used by both engines.
++SOURCES += [
++    "/cloakcfg/engine-host/surface_launch_mac.mm",
++    "/cloakcfg/engine-host/surface_transport_mac.mm",
++    "CloakfoxEngineHost.mm",
++    "CloakfoxTextInputClient.mm",
++]
++LOCAL_INCLUDES += ["/cloakcfg/engine-host", "/dom/base"]
++
++OS_LIBS += ["bsm"]
+--- a/widget/cocoa/components.conf
++++ b/widget/cocoa/components.conf
+@@ -170,3 +170,13 @@
+         'processes': ProcessSelector.MAIN_PROCESS_ONLY,
+     },
+ ]
++
++Classes += [{
++    'cid': '{04d71a35-16c5-4234-928a-8cbad6759931}',
++    'contract_ids': ['@cloakfox.org/engine-host;1'],
++    'type': 'CloakfoxEngineHost',
++    'headers': ['/widget/cocoa/CloakfoxEngineHost.h'],
++    'interfaces': ['nsICloakfoxEngineHost'],
++    'singleton': True,
++    'processes': ProcessSelector.MAIN_PROCESS_ONLY,
++}]
+--- a/widget/cocoa/nsCocoaWindow.mm
++++ b/widget/cocoa/nsCocoaWindow.mm
+@@ -3,6 +3,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "nsCocoaWindow.h"
++#include "CloakfoxEngineHost.h"
+ 
+ #include "CocoaCompositorWidget.h"
+ #include "GLContextCGL.h"
+@@ -3242,6 +3243,8 @@
+ 
+ - (void)keyDown:(NSEvent*)theEvent {
+   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
++
++  if (CloakfoxRouteEngineKeyDown(self, theEvent)) return;
+ 
+   [mLastKeyDownEvent release];
+   mLastKeyDownEvent = [theEvent retain];

@@ -631,3 +631,13 @@ to test the canonical backend. Personal profile settings are unchanged.
 Container GPU persona enforcement: `probe_container_gpu_profiles.py` tests the installed Mac binary with all four BrowserForge hardware families, identical-persona container pairs, native boundaries, workers, captured/restored contexts and restart persistence. Enable the optional mode in pinned-library audits with `LIBRARY_CONTAINER_GPU_PROFILES=1` together with `CLOAKFOX_TEST_CANVAS_PIPELINE=1`; `LIBRARY_WEBGPU_ENABLED=1` exercises WebGPU. See `docs/container-rendering-profiles/README.md` for truthful detector warnings and support limits.
 
 Required CreepJS/FingerprintJS gates and strict inconclusive policy: see [audit contracts and evidence](../../docs/dual-engine/required-library-audits.md). Unallowed exit2 results fail run_all by default; the committed allowance list is empty.
+
+## Browser profile picker
+
+`probe_browser_profile_picker.py` opens `about:cloakfox`, selects a recent
+Firefox/Windows profile, generates it, and verifies that DOM User-Agent,
+HTTP User-Agent, `appVersion`, `platform`, and `oscpu` agree. It then applies a
+Chrome identity and verifies that identity selection remains independent from
+the separate rendering-engine control. Custom User-Agent text remains an
+Advanced override. The probe is included in
+`run_daily_driver.py` and uses a disposable profile.

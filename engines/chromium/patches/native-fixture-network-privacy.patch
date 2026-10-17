@@ -1,0 +1,109 @@
+--- a/content/public/browser/content_browser_client.h
++++ b/content/public/browser/content_browser_client.h
+@@ -1981,6 +1981,11 @@
+       scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
+       bool is_for_network_service);
+ 
++  // Checked before any WebSocket factory/header interception or network
++  // connection, including workers without an associated RenderFrameHost.
++  virtual bool AllowWebSocketForBrowserContext(BrowserContext* browser_context,
++                                               const GURL& url) { return true; }
++
+   // Returns true when the embedder wants to intercept a websocket connection.
+   virtual bool WillInterceptWebSocket(RenderFrameHost* frame);
+ 
+--- a/content/browser/websockets/websocket_connector_impl.cc
++++ b/content/browser/websockets/websocket_connector_impl.cc
+@@ -120,6 +120,14 @@
+     return;
+   }
+ 
++  // The context comes from the actual renderer process, never an optional
++  // frame or page-supplied Origin. Dropping the pending client aborts before
++  // header interception, proxy resolution or a network-service connection.
++  if (!GetContentClient()->browser()->AllowWebSocketForBrowserContext(
++          process->GetBrowserContext(), url)) {
++    return;
++  }
++
+   RenderFrameHost* frame = RenderFrameHost::FromID(frame_id_);
+   content::ContentBrowserClient::WebSocketOptions options =
+       GetContentClient()->browser()->GetWebSocketOptions(frame);
+--- a/cef/libcef/browser/chrome/chrome_content_browser_client_cef.h
++++ b/cef/libcef/browser/chrome/chrome_content_browser_client_cef.h
+@@ -115,6 +115,8 @@
+       override;
+   void CreateThrottlesForNavigation(
+       content::NavigationThrottleRegistry& registry) override;
++  bool AllowWebSocketForBrowserContext(content::BrowserContext* context,
++                                       const GURL& url) override;
+   bool ConfigureNetworkContextParams(
+       content::BrowserContext* context,
+       bool in_memory,
+--- a/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
++++ b/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
+@@ -643,6 +643,22 @@
+   throttle::CreateThrottlesForNavigation(registry);
+ }
+ 
++bool ChromeContentBrowserClientCef::AllowWebSocketForBrowserContext(
++    content::BrowserContext* context, const GURL& url) {
++  CEF_REQUIRE_UIT();
++  auto cef_context = CefBrowserContext::FromBrowserContext(context);
++  if (!cef_context) {
++    const auto& cache_path = Profile::FromBrowserContext(context)->GetPath();
++    if (!cache_path.empty()) cef_context = CefBrowserContext::FromCachePath(cache_path);
++  }
++  auto snapshot = cef_context ? cef_context->initial_privacy_snapshot() : nullptr;
++  if (!snapshot || !snapshot->HasKey("fixtureOrigin")) return true;
++  const GURL origin(snapshot->GetString("fixtureOrigin").ToString());
++  return url.is_valid() && url.SchemeIs("ws") && url.host() == origin.host() &&
++      url.EffectiveIntPort() == origin.EffectiveIntPort() &&
++      !url.has_username() && !url.has_password();
++}
++
+ bool ChromeContentBrowserClientCef::ConfigureNetworkContextParams(
+     content::BrowserContext* context,
+     bool in_memory,
+--- a/cef/libcef/browser/browser_context.cc
++++ b/cef/libcef/browser/browser_context.cc
+@@ -28,6 +28,8 @@
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/storage_partition.h"
++#include "url/gurl.h"
++#include "url/origin.h"
+ 
+ using content::BrowserThread;
+ 
+@@ -204,8 +206,18 @@
+   if (!json.length() || json.length() > 16384) return nullptr;
+   auto value = CefParseJSON(json, JSON_PARSER_RFC);
+   auto snapshot = value && value->GetType() == VTYPE_DICTIONARY ? value->GetDictionary() : nullptr;
+-  if (!ExactFields(snapshot, {"schemaVersion", "container", "private", "revision", "seed",
+-                             "canvasEnabled", "webgpuReadbackBlocked", "presentation"})) return nullptr;
++  auto fields = snapshot ? snapshot->Copy(false) : nullptr;
++  if (fields) fields->Remove("fixtureOrigin");
++  if (!ExactFields(fields, {"schemaVersion", "container", "private", "revision", "seed",
++                           "canvasEnabled", "webgpuReadbackBlocked", "presentation"})) return nullptr;
++  if (snapshot->HasKey("fixtureOrigin")) {
++    if (snapshot->GetType("fixtureOrigin") != VTYPE_STRING) return nullptr;
++    const auto encoded = snapshot->GetString("fixtureOrigin").ToString();
++    const GURL origin(encoded);
++    if (!origin.is_valid() || !origin.SchemeIs("http") || origin.host() != "127.0.0.1" ||
++        origin.has_username() || origin.has_password() || origin.EffectiveIntPort() < 1 ||
++        url::Origin::Create(origin).Serialize() != encoded) return nullptr;
++  }
+   if (snapshot->GetType("schemaVersion") != VTYPE_INT || snapshot->GetInt("schemaVersion") != 1 ||
+       snapshot->GetType("container") != VTYPE_STRING || snapshot->GetType("private") != VTYPE_BOOL ||
+       snapshot->GetType("revision") != VTYPE_INT || snapshot->GetInt("revision") < 1 ||
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -63,6 +63,7 @@
+ 
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+   registry->RegisterIntegerPref("cloakfox.initial_snapshot_version", 1);
++  registry->RegisterIntegerPref("cloakfox.fixture_network_version", 1);
+   registry->RegisterIntegerPref("cloakfox.identity_privacy_version", 2);
+   registry->RegisterDictionaryPref("cloakfox.presentation");
+   registry->RegisterBooleanPref("cloakfox.native_languages_saved", false);

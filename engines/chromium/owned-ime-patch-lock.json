@@ -1,0 +1,56 @@
+{
+  "applyAfter": "fixture-network-patch-lock.json",
+  "patch": "patches/native-owned-ime.patch",
+  "inputs": [
+    {
+      "path": "cef/cef_api_untracked.json",
+      "beforeSha256": "b6f139da17e1dfb08f78a83325045b18b7ca154105bd29d707b2eb95551419b8",
+      "afterSha256": "663ac9e9dc0b8e5cacf20101e9a3795808135fa18ba3e85ece4671258be0bc0a"
+    },
+    {
+      "path": "cef/cef_api_versions.json",
+      "beforeSha256": "ff0372b4f4f96be68ac8c55a12065fbfac8a4392a44e1b522d3f3cc1199e964b",
+      "afterSha256": "c523f5ede12befa2cbe4c72ec7b65341be27b08e3d2b83a329237a86a487da28"
+    },
+    {
+      "path": "cef/include/capi/cef_frame_capi.h",
+      "beforeSha256": "925596661abcc2da4b970fe54f61dcd1a9180899fe6d6858086e111e407a1b05",
+      "afterSha256": "65a20101d227d75ff4eb87cf4adf386478d49b5b7d3cbc5d8f536ac2dd411056"
+    },
+    {
+      "path": "cef/include/capi/cef_frame_capi_versions.h",
+      "beforeSha256": "146cde22be136444ae68688d2ede5debfbcbc2fb585ddb025ff40f050ccceaeb",
+      "afterSha256": "5942bd22f73e97a0860883f56bd76de454fe54168cec1d9372d7277d1060ffde"
+    },
+    {
+      "path": "cef/include/cef_frame.h",
+      "beforeSha256": "a35c6985118a514c0cd77a3047b3bb4e4a8ceb5295ac8b6c27b513d499c85eec",
+      "afterSha256": "82059098800c054c5b29932f92a2e26d98c8c9f0673f1f6e57cd8f2d36066ec1"
+    },
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "29e5f1123945fedd7034b9fb7715cc6d7ccb8dfbd854a7e1b460d98d74d944ae",
+      "afterSha256": "62a8f317645432081579bfcce057af4381251ab108b61f01006145f6ab232e9e"
+    },
+    {
+      "path": "cef/libcef/renderer/frame_impl.cc",
+      "beforeSha256": "2de57e0baa3fb3971ec41f5b8ec3d1ea078c893943a6edb39a8aad37586956d9",
+      "afterSha256": "228af31c2765347da0a985d019d211a09ecaf18e6ca5ca3d05bd22cc6c1db914"
+    },
+    {
+      "path": "cef/libcef_dll/libcef_dll.cc",
+      "beforeSha256": "a641011f22e45440707e7f7317ea84f2608c8abd95690a52512dd9f811081aaa",
+      "afterSha256": "8b9463448ea04a21188104aa585363124ff01bf4bedabcc7905f6de74ce722ac"
+    },
+    {
+      "path": "cef/libcef_dll/wrapper/libcef_dll_dylib.cc",
+      "beforeSha256": "23c4e826e24074a2b6d2172159d95df5f52b73f022232c268cedbe8e3878e507",
+      "afterSha256": "4ac1b6ea1c10e1213abde4421e677dd1336a8a3aeb141d78ab8d7bc834bb40d8"
+    },
+    {
+      "path": "cef/libcef_dll/wrapper/libcef_dll_wrapper.cc",
+      "beforeSha256": "a20d239effc888e33d3f16b37bbcd174833194c960df116c9d07b8203fcddd80",
+      "afterSha256": "77b49921e4ba51b15134a93edff88164479d61548a7be0ada35c15250925c6c7"
+    }
+  ]
+}

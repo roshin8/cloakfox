@@ -8,8 +8,32 @@ import sys
 
 # Support both `python -m ...` and the documented direct script invocation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from engines.shared.persona_config import PersonaStore
+from engines.shared.persona_config import PersonaStore, REGIONS, TIMEZONES, sample_presentation
 from engines.chromium.controller import ChromiumController
+
+
+def configure_snapshot(store, snapshot, args):
+    """Apply explicit CLI choices without pinning generated values on toggles."""
+    if args.regenerate_persona:
+        snapshot = store.regenerate(snapshot, clear_overrides=args.clear_overrides_when_generating)
+    presentation = snapshot['persona'].get('presentation')
+    if args.language or args.timezone:
+        presentation = (presentation or sample_presentation(snapshot['persona']['seed'])).copy()
+        if args.language:
+            presentation['languages'] = list(next(languages for languages, _ in REGIONS if languages[0] == args.language))
+        if args.timezone: presentation['timezone'] = args.timezone
+        snapshot = store.update(snapshot, presentation=presentation)
+    overrides = snapshot['persona']['overrides'].copy()
+    for name in ('navigator','language','timezone'):
+        # A legacy snapshot has no identity masking to disable. Enabling the
+        # new groups requires explicit regeneration or a selected presentation.
+        if presentation and getattr(args, 'disable_' + name + '_privacy'): overrides[name] = False
+    if args.disable_canvas_privacy: overrides['canvas'] = False
+    if args.block_webgpu_readback: overrides['blockWebGPUReadback'] = True
+    enabled = snapshot['enabled'] if args.privacy_enabled is None else args.privacy_enabled
+    if enabled != snapshot['enabled'] or overrides != snapshot['persona']['overrides']:
+        snapshot = store.update(snapshot, enabled=enabled, overrides=overrides)
+    return snapshot
 
 
 def main():
@@ -27,6 +51,10 @@ def main():
     parser.set_defaults(privacy_enabled=None)
     parser.add_argument('--regenerate-persona', action='store_true', help='Generate a new seed for the next context/session')
     parser.add_argument('--clear-overrides-when-generating', action='store_true', help='Clear explicit overrides with persona regeneration')
+    parser.add_argument('--language', choices=[languages[0] for languages, _ in REGIONS], help='Choose a supported primary/fallback language preset')
+    parser.add_argument('--timezone', choices=sorted(TIMEZONES), help='Choose a supported IANA timezone')
+    for name in ('navigator', 'language', 'timezone'):
+        parser.add_argument('--disable-' + name + '-privacy', action='store_true', help='Disable this native presentation policy')
     args = parser.parse_args()
     if args.clear_overrides_when_generating and not args.regenerate_persona:
         parser.error('--clear-overrides-when-generating requires --regenerate-persona')
@@ -48,17 +76,7 @@ def main():
                   '; shared config, partial native privacy; parity incomplete.', flush=True)
             try:
                 for container in args.container or ['1']:
-                    snapshot = store.get(container, 'chromium')
-                    overrides = snapshot['persona']['overrides'].copy()
-                    if args.disable_canvas_privacy:
-                        overrides['canvas'] = False
-                    if args.block_webgpu_readback:
-                        overrides['blockWebGPUReadback'] = True
-                    enabled = snapshot['enabled'] if args.privacy_enabled is None else args.privacy_enabled
-                    if enabled != snapshot['enabled'] or overrides != snapshot['persona']['overrides']:
-                        snapshot = store.update(snapshot, enabled=enabled, overrides=overrides)
-                    if args.regenerate_persona:
-                        snapshot = store.regenerate(snapshot, clear_overrides=args.clear_overrides_when_generating)
+                    snapshot = configure_snapshot(store, store.get(container, 'chromium'), args)
                     controller.open(snapshot, args.url)
                 controller.wait()
             except KeyboardInterrupt:

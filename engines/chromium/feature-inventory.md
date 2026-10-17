@@ -13,11 +13,11 @@ Gecko158 additions missing from the old157 checklist include AudioWorklet privac
 | Existing feature group | Chromium work needed | Prototype status |
 |---|---|---|
 | Container/site persona seeds, overrides, generation checkbox | Backend-independent config plus BrowserContext/StoragePartition ownership | V1 shared controller model/store, master/options/overrides, seed regeneration and clear-overrides supported. Native applyConfig/revision acknowledgement precedes navigation; seed reaches frames and all worker types. Context changes require companion restart. Shared Gecko adapter/UI and BrowserForge persona generation remain pending |
-| Navigator, UA/client hints, platform/device capabilities | Native Blink navigator/worker hooks; coherent real engine version | Native identity only; navigator/device masking and Gecko158 request/client-hint identity controls not ported |
+| Navigator, UA/client hints, platform/device capabilities | Native Blink navigator/worker hooks; coherent real engine version | Native hardwareConcurrency/deviceMemory and high-entropy UA-hint reduction implemented behind identityPrivacyVersion:1; source-framework/runtime verification passed on macOS (2026-10-16). Real OS/brand/version retained; cross-OS personas remain pending |
 | Screen/window geometry, letterboxing, CSS, fonts | Blink layout/screen/CSS/font selection and browser display services | Not ported |
 | Canvas/OffscreenCanvas, WebGL, WebGPU | Native readback and device information hooks, worker ownership | Partial native opaque RGBA8 Canvas2D/export (not Gecko158 canonical rendering/provenance) and WebGL direct/PBO readback; document/dedicated/shared/service-worker tests pass. GPU identifying metadata reduced; Metal RGBA8/BGRA8/sRGB WebGPU copy-time pixel noise plus optional all-READ-map denial. Other backends/formats and general capabilities remain uncovered |
 | Audio, codecs, device labels and media permissions | Blink audio/media paths and browser permission/capture services | Permission requests denied; AudioWorklet/audio noise, WebCodecs and persona media masking not ported |
-| Locale, timezone, geolocation | Blink/V8 Intl and permission-aware location services | Location denied; persona presentation not ported |
+| Locale, timezone, geolocation | Blink/V8 Intl and permission-aware location services | Bounded language/Intl-locale and IANA-timezone presets implemented natively for frames/workers, with native preference restoration; source-framework/runtime verification passed on macOS (2026-10-16). Geolocation presentation remains unported |
 | Performance clocks, entries, scheduling and Math | Blink timing/scheduling and V8 native math implementation | Not ported |
 | Keyboard, gamepad, MIDI, feature detection | Blink device/input exposure and permission services | Not ported |
 | WebRTC, IP discovery and DNS/proxy controls | Chromium WebRTC and NetworkContext policies, explicit consent and isolation | Not ported |
@@ -29,7 +29,7 @@ Gecko158 additions missing from the old157 checklist include AudioWorklet privac
 <!-- BEGIN GENERATED GECKO158 INVENTORY -->
 ## Active Gecko158 source inventory
 
-Canonical patch resolver: 144 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
+Canonical patch resolver: 145 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
 
 Canvas/GPU/config entries have partial Chromium equivalents described above. Gecko UI, branding, build and compatibility patches can be engine-specific; no patch is mechanically applied to Chromium.
 
@@ -177,6 +177,7 @@ Canvas/GPU/config entries have partial Chromium equivalents described above. Gec
 - `patches/librewolf/mozilla_dirs.patch`
 - `patches/librewolf/urlbarprovider-interventions.patch`
 - `patches/canvas-complete-renderer.patch`
+- `patches/cloakfox-native-engine-host.patch`
 
 ## Optional/privacy preference inventory
 
@@ -212,6 +213,11 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-appearance-restart`
 - `cfx-appearance-reveal`
 - `cfx-appearance-status`
+- `cfx-browser-families`
+- `cfx-browser-family-help`
+- `cfx-chromium-presentation`
+- `cfx-chromium-presentation-help`
+- `cfx-chromium-presentation-status`
 - `cfx-chromium-status`
 - `cfx-clear`
 - `cfx-clear-overrides`
@@ -220,6 +226,7 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-container-select`
 - `cfx-dns-settings`
 - `cfx-enabled`
+- `cfx-engine-title`
 - `cfx-engine-version`
 - `cfx-firefox-appearance`
 - `cfx-forget-data`
@@ -245,7 +252,14 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-persona-hardware`
 - `cfx-persona-help`
 - `cfx-persona-os-current`
+- `cfx-persona-version`
 - `cfx-privacy-settings`
+- `cfx-profile-confidence`
+- `cfx-profile-preview`
+- `cfx-profile-preview-text`
+- `cfx-profile-preview-traits`
+- `cfx-profile-preview-ua`
+- `cfx-profile-tools-title`
 - `cfx-provider-readiness`
 - `cfx-proxy-manager`
 - `cfx-proxy-url`
@@ -355,8 +369,8 @@ Gecko privileged actors are not installed in Chromium. Equivalent privacy behavi
 ## Shared config capability boundary
 
 `schemaVersion:1` names engine/container/private-session ownership, revision, master
-switch and a 32-byte persona seed. The v1 option names are `canvas` and
-`blockWebGPUReadback`; explicit overrides beat defaults. Master-off disables both
+switch and a 32-byte persona seed. The original v1 option names are `canvas` and
+`blockWebGPUReadback`; optional presentation adds `navigator`, `language` and `timezone` and requires the new identity capability (runtime build pending); explicit overrides beat defaults. Master-off disables both
 implemented transforms/policies. Fixed prototype permission denials remain separate.
 Unknown fields/options and incompatible native capabilities are rejected, never
 presented as working. Regenerating changes the graphics seed; it does not yet
@@ -369,3 +383,20 @@ and effective policy, never the secret. Same-snapshot reapplication is idempoten
 stale/changed live configs require restart rather than mixing worker/page state.
 Existing legacy opens remain for regression tooling; once a context is versioned,
 opening requires its acknowledged revision and cannot mix legacy privacy options.
+
+## Verified bounded native identity increment
+
+The native `identity-patch-lock.json` follows the graphics patches and provides
+`identityPrivacyVersion:1`. The recovered framework and all five identity runtime
+cases passed on macOS on 2026-10-16, including navigation/fetch headers and worker/
+Intl behavior. This supports only the bounded presentation presets documented in
+[scope and verification](../../docs/dual-engine/chromium-identity-locale.md).
+Cross-OS personas and the remaining groups above are still unported;
+`privacyPatched` remains false.
+
+A development-only windowless foundation now exercises CPU/IOSurface callbacks,
+bounded owned frame copies, revision-bound resize/input and rejected native popup
+escape. The separate native Mach boundary authenticates the launch child and
+validates tab/configuration/viewport/replay ownership before copying surfaces.
+These components are not connected to Gecko's viewport or production routing.
+See [current acceptance and limits](../../docs/dual-engine/parity-20261016/README.md).

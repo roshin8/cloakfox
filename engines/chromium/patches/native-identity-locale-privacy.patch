@@ -1,0 +1,360 @@
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -53,6 +53,11 @@
+ }
+ 
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
++  registry->RegisterIntegerPref("cloakfox.identity_privacy_version", 1);
++  registry->RegisterDictionaryPref("cloakfox.presentation");
++  registry->RegisterBooleanPref("cloakfox.native_languages_saved", false);
++  registry->RegisterStringPref("cloakfox.native_accept_languages", "");
++  registry->RegisterStringPref("cloakfox.native_selected_languages", "");
+   registry->RegisterIntegerPref("cloakfox.canvas_readback_version", 1);
+   registry->RegisterIntegerPref("cloakfox.worker_canvas_privacy_version", 1);
+   registry->RegisterIntegerPref("cloakfox.webgl_privacy_version", 1);
+@@ -92,6 +97,21 @@
+ 
+ void SetInitialProfilePrefs(Profile* profile) {
+   auto* prefs = profile->GetPrefs();
++  // Restore native profile language preferences before applying this session's
++  // immutable snapshot. Master-off must not inherit last session's mask.
++  if (prefs->GetBoolean("cloakfox.native_languages_saved")) {
++    prefs->SetString(language::prefs::kAcceptLanguages,
++                     prefs->GetString("cloakfox.native_accept_languages"));
++    prefs->SetString(language::prefs::kSelectedLanguages,
++                     prefs->GetString("cloakfox.native_selected_languages"));
++  } else {
++    prefs->SetString("cloakfox.native_accept_languages",
++                     prefs->GetString(language::prefs::kAcceptLanguages));
++    prefs->SetString("cloakfox.native_selected_languages",
++                     prefs->GetString(language::prefs::kSelectedLanguages));
++    prefs->SetBoolean("cloakfox.native_languages_saved", true);
++  }
++  prefs->SetDict("cloakfox.presentation", base::DictValue());
+   // Off-the-record contexts must never inherit a persistent parent's key.
+   if (profile->IsOffTheRecord() || prefs->GetString("cloakfox.canvas_key").empty()) {
+     std::array<uint8_t, 32> key;
+--- a/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
++++ b/cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc
+@@ -4,6 +4,7 @@
+ // found in the LICENSE file.
+ 
+ #include "cef/libcef/browser/chrome/chrome_content_browser_client_cef.h"
++#include "base/strings/string_number_conversions.h"
+ 
+ #include <tuple>
+ 
+@@ -213,6 +214,26 @@
+     auto* host = content::RenderProcessHost::FromID(child_process_id);
+     auto* profile = host ? Profile::FromBrowserContext(host->GetBrowserContext())
+                          : nullptr;
++    if (profile) {
++      const auto& identity = profile->GetPrefs()->GetDict("cloakfox.presentation");
++      if (identity.FindBool("navigator").value_or(false)) {
++        command_line->AppendSwitch("cloakfox-reduce-ua-hints");
++        command_line->AppendSwitchASCII("cloakfox-hardware-concurrency",
++            base::NumberToString(identity.FindInt("hardwareConcurrency").value_or(8)));
++        command_line->AppendSwitchASCII("cloakfox-device-memory",
++            base::NumberToString(identity.FindInt("deviceMemory").value_or(8)));
++      }
++      if (identity.FindBool("language").value_or(false)) {
++        if (const auto* languages = identity.FindString("languages"))
++          command_line->AppendSwitchASCII("cloakfox-languages", *languages);
++        if (const auto* locale = identity.FindString("locale"))
++          command_line->AppendSwitchASCII("cloakfox-locale", *locale);
++      }
++      if (identity.FindBool("timezone").value_or(false)) {
++        if (const auto* timezone_id = identity.FindString("timezoneId"))
++          command_line->AppendSwitchASCII("cloakfox-timezone", *timezone_id);
++      }
++    }
+     if (profile && profile->GetPrefs()->GetBoolean("cloakfox.webgpu_block_readback"))
+       command_line->AppendSwitch("cloakfox-webgpu-block-readback");
+     if (profile && profile->GetPrefs()->GetBoolean("cloakfox.canvas_enabled")) {
+--- a/third_party/blink/public/common/user_agent/user_agent_metadata.h
++++ b/third_party/blink/public/common/user_agent/user_agent_metadata.h
+@@ -106,6 +106,10 @@
+ bool BLINK_COMMON_EXPORT operator==(const UserAgentOverride& a,
+                                     const UserAgentOverride& b);
+ 
++// Preserve real OS family/brand/version while reducing high-entropy hardware
++// and OS-version identifiers in both HTTP hints and native navigator objects.
++BLINK_COMMON_EXPORT void ReduceCloakfoxUserAgentMetadata(UserAgentMetadata& value);
++
+ }  // namespace blink
+ 
+ #endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_USER_AGENT_USER_AGENT_METADATA_H_
+--- a/third_party/blink/common/user_agent/user_agent_metadata.cc
++++ b/third_party/blink/common/user_agent/user_agent_metadata.cc
+@@ -12,6 +12,14 @@
+ #include "third_party/blink/public/common/features.h"
+ 
+ namespace blink {
++
++void ReduceCloakfoxUserAgentMetadata(UserAgentMetadata& value) {
++  value.architecture.clear();
++  value.bitness.clear();
++  value.platform_version.clear();
++  value.model.clear();
++  value.wow64 = false;
++}
+ 
+ namespace {
+ constexpr uint32_t kVersion = 3u;
+--- a/components/client_hints/browser/client_hints.h
++++ b/components/client_hints/browser/client_hints.h
+@@ -33,7 +33,7 @@
+               network::NetworkQualityTracker* network_quality_tracker,
+               HostContentSettingsMap* settings_map,
+               scoped_refptr<content_settings::CookieSettings> cookie_settings,
+-              PrefService* pref_service);
++              PrefService* pref_service, PrefService* presentation_prefs = nullptr);
+ 
+   ClientHints(const ClientHints&) = delete;
+   ClientHints& operator=(const ClientHints&) = delete;
+@@ -51,6 +51,7 @@
+                            content::RenderFrameHost* parent_rfh) override;
+ 
+   blink::UserAgentMetadata GetUserAgentMetadata() override;
++  std::optional<float> GetDeviceMemoryOverride() override;
+ 
+   void PersistClientHints(const url::Origin& primary_origin,
+                           content::RenderFrameHost* parent_rfh,
+@@ -77,6 +78,7 @@
+   scoped_refptr<content_settings::CookieSettings> cookie_settings_;
+   std::vector<network::mojom::WebClientHintsType> additional_hints_;
+   raw_ptr<PrefService> pref_service_;
++  raw_ptr<PrefService> presentation_prefs_ = nullptr;
+   bool should_force_empty_viewport_size_{false};
+ 
+   // This stores the viewport size of the most recent visible main frame tree
+--- a/components/client_hints/browser/client_hints.cc
++++ b/components/client_hints/browser/client_hints.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "components/client_hints/browser/client_hints.h"
++#include "components/prefs/pref_service.h"
+ 
+ #include <cmath>
+ #include <functional>
+@@ -90,12 +91,12 @@
+     network::NetworkQualityTracker* network_quality_tracker,
+     HostContentSettingsMap* settings_map,
+     scoped_refptr<content_settings::CookieSettings> cookie_settings,
+-    PrefService* pref_service)
++    PrefService* pref_service, PrefService* presentation_prefs)
+     : context_(context),
+       network_quality_tracker_(network_quality_tracker),
+       settings_map_(settings_map),
+       cookie_settings_(cookie_settings),
+-      pref_service_(pref_service) {
++      pref_service_(pref_service), presentation_prefs_(presentation_prefs) {
+   DCHECK(context_);
+   DCHECK(network_quality_tracker_);
+   DCHECK(settings_map_);
+@@ -151,7 +152,20 @@
+ }
+ 
+ blink::UserAgentMetadata ClientHints::GetUserAgentMetadata() {
+-  return embedder_support::GetUserAgentMetadata();
++  auto metadata = embedder_support::GetUserAgentMetadata();
++  if (presentation_prefs_ && presentation_prefs_->FindPreference("cloakfox.presentation") &&
++      presentation_prefs_->GetDict("cloakfox.presentation").FindBool("navigator").value_or(false))
++    blink::ReduceCloakfoxUserAgentMetadata(metadata);
++  return metadata;
++}
++
++std::optional<float> ClientHints::GetDeviceMemoryOverride() {
++  if (presentation_prefs_ && presentation_prefs_->FindPreference("cloakfox.presentation")) {
++    const auto& value = presentation_prefs_->GetDict("cloakfox.presentation");
++    if (value.FindBool("navigator").value_or(false))
++      return value.FindInt("deviceMemory").value_or(8);
++  }
++  return std::nullopt;
+ }
+ 
+ void ClientHints::PersistClientHints(
+--- a/content/public/browser/client_hints_controller_delegate.h
++++ b/content/public/browser/client_hints_controller_delegate.h
+@@ -6,6 +6,7 @@
+ #define CONTENT_PUBLIC_BROWSER_CLIENT_HINTS_CONTROLLER_DELEGATE_H_
+ 
+ #include <memory>
++#include <optional>
+ 
+ #include "base/time/time.h"
+ #include "content/common/content_export.h"
+@@ -47,6 +48,8 @@
+                                    RenderFrameHost* parent_rfh) = 0;
+ 
+   virtual blink::UserAgentMetadata GetUserAgentMetadata() = 0;
++  // Optional per-BrowserContext presentation, never a process-global override.
++  virtual std::optional<float> GetDeviceMemoryOverride() { return std::nullopt; }
+ 
+   virtual void PersistClientHints(
+       const url::Origin& primary_origin,
+--- a/content/browser/client_hints/client_hints.cc
++++ b/content/browser/client_hints/client_hints.cc
+@@ -236,11 +236,13 @@
+ }
+ 
+ void AddDeviceMemoryHeader(net::HttpRequestHeaders* headers,
++                           ClientHintsControllerDelegate* delegate,
+                            bool use_deprecated_version = false) {
+   DCHECK(headers);
+   blink::ApproximatedDeviceMemory::Initialize();
+   const float device_memory =
+-      blink::ApproximatedDeviceMemory::GetApproximatedDeviceMemory();
++      delegate->GetDeviceMemoryOverride().value_or(
++          blink::ApproximatedDeviceMemory::GetApproximatedDeviceMemory());
+   DCHECK_LT(0.0, device_memory);
+   SetHeaderToDouble(headers,
+                     use_deprecated_version
+@@ -862,10 +864,10 @@
+ 
+   // Add Headers
+   if (ShouldAddClientHint(data, WebClientHintsType::kDeviceMemory_DEPRECATED)) {
+-    AddDeviceMemoryHeader(headers, /*use_deprecated_version*/ true);
++    AddDeviceMemoryHeader(headers, delegate, /*use_deprecated_version*/ true);
+   }
+   if (ShouldAddClientHint(data, WebClientHintsType::kDeviceMemory)) {
+-    AddDeviceMemoryHeader(headers);
++    AddDeviceMemoryHeader(headers, delegate);
+   }
+   if (ShouldAddClientHint(data, WebClientHintsType::kDpr_DEPRECATED)) {
+     AddDPRHeader(headers, context, url, /*use_deprecated_version*/ true);
+--- a/third_party/blink/common/device_memory/approximated_device_memory.cc
++++ b/third_party/blink/common/device_memory/approximated_device_memory.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/public/common/device_memory/approximated_device_memory.h"
++#include "base/command_line.h"
++#include "base/strings/string_number_conversions.h"
+ 
+ #include "base/byte_size.h"
+ #include "base/check_op.h"
+@@ -27,6 +29,10 @@
+ 
+ // static
+ float ApproximatedDeviceMemory::GetApproximatedDeviceMemory() {
++  int requested = 0;
++  if (base::StringToInt(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++          "cloakfox-device-memory"), &requested) && (requested == 4 || requested == 8))
++    return requested;
+   return approximated_device_memory_gb_;
+ }
+ 
+--- a/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
++++ b/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
+@@ -3,12 +3,19 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/core/frame/navigator_concurrent_hardware.h"
++#include "base/command_line.h"
++#include "base/strings/string_number_conversions.h"
+ 
+ #include "base/system/sys_info.h"
+ 
+ namespace blink {
+ 
+ unsigned NavigatorConcurrentHardware::hardwareConcurrency() const {
++  int requested = 0;
++  if (base::StringToInt(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++          "cloakfox-hardware-concurrency"), &requested) &&
++      (requested == 4 || requested == 8 || requested == 16))
++    return requested;
+   return static_cast<unsigned>(base::SysInfo::NumberOfProcessors());
+ }
+ 
+--- a/content/renderer/render_thread_impl.cc
++++ b/content/renderer/render_thread_impl.cc
+@@ -864,6 +864,8 @@
+   user_agent_ = WebString::FromUtf8(user_agent);
+   GetContentClient()->renderer()->DidSetUserAgent(user_agent);
+   user_agent_metadata_ = user_agent_metadata;
++  if (base::CommandLine::ForCurrentProcess()->HasSwitch("cloakfox-reduce-ua-hints"))
++    blink::ReduceCloakfoxUserAgentMetadata(user_agent_metadata_);
+   cors_exempt_header_list_ = cors_exempt_header_list;
+   cpu_performance_tier_ = cpu_performance_tier;
+ 
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.cc
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+@@ -26,6 +26,7 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
++#include "base/command_line.h"
+ 
+ #include "base/memory/scoped_refptr.h"
+ #include "base/metrics/histogram_functions.h"
+@@ -208,7 +209,10 @@
+   if (CoreProbeSink* sink = probe::ToCoreProbeSink(GetExecutionContext())) {
+     probe::ApplyUserAgentMetadataOverride(sink, &optional_metadata);
+   }
+-  return optional_metadata.value_or(ua_metadata_);
++  auto metadata = optional_metadata.value_or(ua_metadata_);
++  if (base::CommandLine::ForCurrentProcess()->HasSwitch("cloakfox-reduce-ua-hints"))
++    ReduceCloakfoxUserAgentMetadata(metadata);
++  return metadata;
+ }
+ 
+ scheduler::WorkerScheduler* WorkerGlobalScope::GetScheduler() {
+--- a/third_party/blink/renderer/core/frame/navigator_language.cc
++++ b/third_party/blink/renderer/core/frame/navigator_language.cc
+@@ -69,6 +69,13 @@
+ }
+ 
+ void NavigatorLanguage::EnsureUpdatedLanguage() {
++  const auto languages = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++      "cloakfox-languages");
++  if (!languages.empty()) {
++    if (languages_dirty_) languages_ = ParseAndSanitize(String::FromUtf8(languages));
++    languages_dirty_ = false;
++    return;
++  }
+   String accept_languages_override;
+   probe::ApplyAcceptLanguageOverride(execution_context_,
+                                      &accept_languages_override);
+--- a/third_party/blink/renderer/core/timezone/timezone_controller.cc
++++ b/third_party/blink/renderer/core/timezone/timezone_controller.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/core/timezone/timezone_controller.h"
++#include "third_party/blink/renderer/core/inspector/locale_controller.h"
+ 
+ #include "base/command_line.h"
+ #include "base/feature_list.h"
+@@ -105,6 +106,19 @@
+ 
+ // static
+ void TimeZoneController::Init() {
++  // Each renderer belongs to exactly one immutable BrowserContext snapshot.
++  // Initialize ICU before V8 page/worker scripts; keep the timezone handle for
++  // the renderer lifetime so host timezone events cannot restore host values.
++  const auto* command = base::CommandLine::ForCurrentProcess();
++  const auto timezone = command->GetSwitchValueASCII("cloakfox-timezone");
++  if (!timezone.empty()) {
++    static const auto* override_owner =
++        new TimeZoneOverrideResult(SetTimeZoneOverride(String::FromUtf8(timezone)));
++    CHECK(override_owner->status == TimeZoneOverrideStatus::kSuccess);
++  }
++  const auto locale = command->GetSwitchValueASCII("cloakfox-locale");
++  if (!locale.empty())
++    CHECK(LocaleController::instance().SetLocaleOverride(String::FromUtf8(locale), true).empty());
+   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+           blink::switches::kTopChromeWebUI) &&
+       base::FeatureList::IsEnabled(features::kWebUIBypassMojoConnections)) {
+--- a/chrome/browser/client_hints/client_hints_factory.cc
++++ b/chrome/browser/client_hints/client_hints_factory.cc
+@@ -60,7 +60,7 @@
+       HostContentSettingsMapFactory::GetForProfile(context),
+       CookieSettingsFactory::GetForProfile(
+           Profile::FromBrowserContext(context)),
+-      g_browser_process->local_state());
++      g_browser_process->local_state(), Profile::FromBrowserContext(context)->GetPrefs());
+ }
+ 
+ bool ClientHintsFactory::ServiceIsNULLWhileTesting() const {

@@ -69,14 +69,16 @@ def main():
                 report['versionedConfigVerified']=True
                 return browser
             options=Options();options.binary_location=str(args.gecko_binary.resolve())
+            options.set_preference('cloakfox.enabled',True)
             for arg in ('-headless','-no-remote','-purgecaches','-profile',str(profile)):
                 options.add_argument(arg)
             driver=webdriver.Firefox(options=options,service=Service(service_args=['--allow-system-access'],log_output=str(root/'geckodriver.log')))
             driver.set_script_timeout(20)
             driver.set_context('chrome')
-            try:info=driver.execute_script('return {version:Services.appinfo.version,buildID:Services.appinfo.appBuildID}')
+            try:info=driver.execute_script('return {version:Services.appinfo.version,buildID:Services.appinfo.appBuildID,cloakfoxEnabled:Services.prefs.getBoolPref("cloakfox.enabled"),resistFingerprinting:Services.prefs.getBoolPref("privacy.resistFingerprinting")}')
             finally:driver.set_context('content')
             assert info['version'].startswith('158.'),info
+            assert info['cloakfoxEnabled'] is True and info['resistFingerprinting'] is False,info
             report['gecko']=info
             app=Companion(args.chromium_binary.resolve(),chromium_root)
             report['chromium']=app.ready
@@ -91,6 +93,10 @@ def main():
                 assert record['local']==record['indexed']==marker,record
                 assert record['cookie']==('marker='+marker if marker else ''),record
                 assert record['canvasHash']>0,record
+                if args.require_pixel_privacy:
+                    raw=2166136261
+                    for byte in [72,108,144,255]*(32*24):raw=((raw^byte)*16777619)&0xffffffff
+                    assert record['canvasHash']!=raw,('Native canvas protection inactive',record)
             exact(gecko(),None)
             first=open_cef('1',url);second=open_cef('2',url)
             for browser in (first,second):exact(cef(browser),None)

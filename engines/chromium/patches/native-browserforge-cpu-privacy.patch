@@ -1,0 +1,34 @@
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -53,7 +53,7 @@
+ }
+ 
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+-  registry->RegisterIntegerPref("cloakfox.identity_privacy_version", 1);
++  registry->RegisterIntegerPref("cloakfox.identity_privacy_version", 2);
+   registry->RegisterDictionaryPref("cloakfox.presentation");
+   registry->RegisterBooleanPref("cloakfox.native_languages_saved", false);
+   registry->RegisterStringPref("cloakfox.native_accept_languages", "");
+--- a/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
++++ b/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
+@@ -11,12 +11,17 @@
+ namespace blink {
+ 
+ unsigned NavigatorConcurrentHardware::hardwareConcurrency() const {
++  const auto* command = base::CommandLine::ForCurrentProcess();
++  if (!command->HasSwitch("cloakfox-hardware-concurrency"))
++    return static_cast<unsigned>(base::SysInfo::NumberOfProcessors());
+   int requested = 0;
+-  if (base::StringToInt(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++  if (base::StringToInt(command->GetSwitchValueASCII(
+           "cloakfox-hardware-concurrency"), &requested) &&
+-      (requested == 4 || requested == 8 || requested == 16))
++      requested >= 1 && requested <= 128)
+     return requested;
+-  return static_cast<unsigned>(base::SysInfo::NumberOfProcessors());
++  // A malformed protected value must not fall through to the physical host.
++  // The trusted browser validates profiles before creating a renderer.
++  return 8;
+ }
+ 
+ }  // namespace blink

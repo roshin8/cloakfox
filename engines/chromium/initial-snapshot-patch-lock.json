@@ -1,0 +1,91 @@
+{
+  "applyAfter": "browserforge-patch-lock.json",
+  "patch": "patches/native-initial-snapshot-privacy.patch",
+  "inputs": [
+    {
+      "path": "cef/include/internal/cef_types.h",
+      "beforeSha256": "7114bb5368b33364fca0dca8370ef71972147ed15df5af8514722af81fd01576",
+      "afterSha256": "588c25aec396d2f06a356a457f2e322864da909a743ab564957766705b2b23eb"
+    },
+    {
+      "path": "cef/include/internal/cef_types_wrappers.h",
+      "beforeSha256": "bdd91154a9ca672cbb3e4cc355f3a012b7079cef2d4e5470c5a7d8106c732059",
+      "afterSha256": "3ee9c308bc58a07efffd4f9e0c5bf47279c56cdcb97f3434b55161b16fe14eca"
+    },
+    {
+      "path": "cef/include/cef_request_context.h",
+      "beforeSha256": "ddba140a147525f188ba2f0ed668908ae82a5dce9ffc4f5d468707d9f534e4e3",
+      "afterSha256": "0811fe065c7d114066faa66bed06213a56aa40c6a9e9f2dcbe98a2da6ca482e8"
+    },
+    {
+      "path": "cef/libcef/browser/request_context_impl.cc",
+      "beforeSha256": "b2483b97408e978a914d75623162ebb57525e57f0f55676b92e59ee668b282e8",
+      "afterSha256": "03eb8d1813695c59d6d7306f03bf88b387689710c76e8c31a0e96d56e8606d05"
+    },
+    {
+      "path": "cef/libcef/browser/browser_context.h",
+      "beforeSha256": "eaad128994e97fa15e1aa4d155239a4d109d519ddc26d3a0d6858d7ab41fba24",
+      "afterSha256": "6d68caabca01ddbdc292a2b5d9dde4cbf97a158fbd0bae5e67878d34b4badab4"
+    },
+    {
+      "path": "cef/libcef/browser/browser_context.cc",
+      "beforeSha256": "8995beb6f281234004d282f80d4eb2106f7f879c0b74bfb18567f900575e1e5e",
+      "afterSha256": "be3897349ab52df5f8c8ce8601ea73b754357dc006bdc851d6d60c118eb9cfb6"
+    },
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.h",
+      "beforeSha256": "800e8bda412a1384063280d203dd8e15e0d94483eac1d6a9e25ea503ae5a7a9b",
+      "afterSha256": "26513db39340b2ecf14ca408291381935a715e046098d5b56ba094ee57391970"
+    },
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "3106d886424c32e3dc9b26cdc7fd45e7bf940733c635cd92167fde08382affdd",
+      "afterSha256": "d37be2dbcc5cf8c57a2ff365ef3ab55b0f75c281143666e01d409f439e3c6590"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_impl.cc",
+      "beforeSha256": "5ab07bdf7327e915be0a0f0d73138f6834fe07597cb076fced0ba30eefe3c276",
+      "afterSha256": "268be2888716bd4f59bcedaf88443023188f4922a1df29989fe0b5a9f7c746dd"
+    },
+    {
+      "path": "chrome/browser/profiles/off_the_record_profile_impl.cc",
+      "beforeSha256": "0bbd28bf25810cc6146948bbdbb32ba2c025876647589220401f91ecd3c3718e",
+      "afterSha256": "8b12d4ca7e55eaf29bfa5797aabd7f1d6e38f0ea32da8a6df8d7f2a5d0e40620"
+    },
+    {
+      "path": "cef/cef_api_versions.json",
+      "beforeSha256": "82462e537d418dd2a60868b2a274f355112f88588445bb69f0baf6b92a3f21fb",
+      "afterSha256": "ff0372b4f4f96be68ac8c55a12065fbfac8a4392a44e1b522d3f3cc1199e964b"
+    },
+    {
+      "path": "cef/include/capi/cef_request_context_capi.h",
+      "beforeSha256": "2ff3d4f918ca0a23892613be1e13f24ab77716f980dc15719051ce26607e5d2c",
+      "afterSha256": "2f6e6af73cf057cb1dc36237eb243091b199685793a45528603254cd53fcf6c7"
+    },
+    {
+      "path": "cef/include/capi/cef_request_context_capi_versions.h",
+      "beforeSha256": "ec1056e5f7a06ec395c98c493112c3b5e63f0e38bc9b8f292da46026301a9bf4",
+      "afterSha256": "a795f9c95093a370713f398fb761e6e19132b2d82f9379b6ff3460f896e8f71a"
+    },
+    {
+      "path": "cef/libcef_dll/libcef_dll.cc",
+      "beforeSha256": "537b81b3a6f9fd76754470997dd01c1c42295f14c8cb4b0907375dfedfe6eff6",
+      "afterSha256": "a641011f22e45440707e7f7317ea84f2608c8abd95690a52512dd9f811081aaa"
+    },
+    {
+      "path": "cef/libcef_dll/wrapper/libcef_dll_dylib.cc",
+      "beforeSha256": "2b7400d495f3fcb350b203de2497a6add4d68156217b4444c6d6bcc6edfbbd6c",
+      "afterSha256": "23c4e826e24074a2b6d2172159d95df5f52b73f022232c268cedbe8e3878e507"
+    },
+    {
+      "path": "cef/libcef_dll/wrapper/libcef_dll_wrapper.cc",
+      "beforeSha256": "421917f42bcb217b5365ea1d313664505df720a039bd8ca8c4094310784bb181",
+      "afterSha256": "a20d239effc888e33d3f16b37bbcd174833194c960df116c9d07b8203fcddd80"
+    },
+    {
+      "path": "cef/cef_api_untracked.json",
+      "beforeSha256": "d096fc52eb4b742ae7db1bf6c50305aa4c1c90692e9b7e691fff6b1c15347680",
+      "afterSha256": "b6f139da17e1dfb08f78a83325045b18b7ca154105bd29d707b2eb95551419b8"
+    }
+  ]
+}

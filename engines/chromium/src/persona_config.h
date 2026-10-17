@@ -13,7 +13,8 @@ struct PersonaConfig {
   bool isPrivate = false;
   bool canvas = true;
   bool blockWebGPUReadback = false;
+  CefRefPtr<CefDictionaryValue> presentation;
 };
 PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
-                                int canvasVersion, int webgpuVersion);
+                                int canvasVersion, int webgpuVersion, int identityVersion);
 }

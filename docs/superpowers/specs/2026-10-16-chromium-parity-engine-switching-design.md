@@ -1,6 +1,6 @@
 # Chromium privacy parity and identity-driven engine selection
 
-Status: design under review; implementation and release acceptance are not complete.
+Status: user selected same-window switching and reattached the build drive on 2026-10-16; proceeding inline. Implementation and release acceptance are not complete.
 
 ## User requirements
 
@@ -8,9 +8,9 @@ Finish porting Cloakfox privacy protections to Chromium, make selection of a Chr
 
 ## Current evidence and dependencies
 
-The maintained checkout is `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox`. Existing Gecko158 patches and `additions/` are the behavioral reference, including the keyboard lifecycle repair. The Chromium port is the separate CEF154 companion under `engines/chromium/`, not an engine embedded in Gecko tabs. `feature-inventory.md` and `gecko158-inventory.json` are discovery inputs, not passing privacy evidence.
+The maintained checkout is `/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox`. Existing Gecko158 patches and `additions/` are the behavioral reference, including the keyboard lifecycle repair. The Chromium port is the CEF154 development companion under `engines/chromium/`. Native same-window fixture hosting now works; production tab routing and general privacy parity are not implemented. `feature-inventory.md` and `gecko158-inventory.json` are discovery inputs, not passing privacy evidence.
 
-On 2026-10-16 the existing installed Gecko and local companion passed the concurrent owned-origin storage/lifecycle probe. All five `test_identity_privacy.py` runtime cases failed at missing `identityPrivacyVersion`. Uncommitted identity/config/source patches already exist; preserve and complete them rather than overwrite them. The current SDK/app does not include that native increment. Chromium source is present at `/Users/zeus/cloakfox-builds/chromium/full-source/chromium/src`. Native outputs and SDKs require `/Volumes/CloakfoxChromiumBuild/source-build`; that volume was absent during this audit. The internal filesystem had about 9 GiB free and is not an alternative native build location.
+At the initial 2026-10-16 audit, the existing installed Gecko and local companion passed the concurrent owned-origin storage/lifecycle probe. All five `test_identity_privacy.py` runtime cases failed at missing `identityPrivacyVersion`. Uncommitted identity/config/source patches already exist; preserve and complete them rather than overwrite them. That initial SDK/app did not include the native increment; recovery has since built and runtime-verified it, as recorded in `docs/dual-engine/parity-20261016/native-host-status.json`. Chromium source is present at `/Users/zeus/cloakfox-builds/chromium/full-source/chromium/src`. Native outputs and SDKs require `/Volumes/CloakfoxChromiumBuild/source-build`; that volume was absent during the initial audit and has since been reattached. The internal filesystem had about 9 GiB free and is not an alternative native build location.
 
 ## Product behavior
 
@@ -20,7 +20,7 @@ Only trusted settings actions change engine intent. A website changing a JavaScr
 
 The earlier roadmap constraint that UA edits never select engines is superseded by the user's explicit 2026-10-16 request.
 
-The user's choice between same-window replacement and a separate Chromium window is pending. The default assumption for design review is same-window replacement. This must be settled before choosing the presentation implementation. Existing companion windows do not satisfy same-window acceptance.
+The user selected same-window replacement and subsequently requested a configurable same-window/separate-window choice on 2026-10-16. Same-window remains the default. Persist the presentation preference per container; apply it through the same atomic switch transaction on explicit reload, without moving a live page or losing edits/capture. Separate-window uses its own engine-owned UI and stores and is never an automatic fallback for a failed same-window switch. Both modes require identical verified policy, permission, lifecycle, network and isolation guarantees. Same-window native surface/input/accessibility feasibility remains required; separate-window success does not complete same-window acceptance.
 
 Engine selection is per container, including Default (external ID 0) and private-container ownership. The portable schema currently excludes 0 and needs an explicit Default mapping without colliding with real container 1. User-selected BrowserForge OS/hardware/locale and overrides remain container-owned. Derive engine/site keys with separate domains; do not reuse another container's record or publish a master seed to page code. Equivalent privacy policy does not require exposing identical cross-engine fingerprints.
 
@@ -84,4 +84,4 @@ No product code, dependencies, installed engines or user settings were changed w
 
 ## Builder review
 
-Independent reviewer `chromium_parity_builder_check` found no additional consequential user questions beyond the pending presentation choice and disconnected build volume. Native signing availability and physical permission actions can be checked during execution. Baseline records are in `docs/dual-engine/parity-20261016/`; five missing-native-identity failures remain open rather than reported as passing.
+Independent reviewer `chromium_parity_builder_check` found no additional consequential user questions beyond the pending presentation choice and disconnected build volume. Native signing availability and physical permission actions can be checked during execution. Baseline records are in `docs/dual-engine/parity-20261016/`; the five initial missing-native-identity failures are retained as baseline evidence. The recovered source-built identity app passes its current native tests; this does not complete the remaining groups.

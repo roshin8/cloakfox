@@ -59,6 +59,11 @@ std::string ContainerPaths::cachePath(const std::string& id) const {
   close(fd);
   return root_ + "/containers/" + id;
 }
+std::string ContainerPaths::bootstrapCachePath() const {
+  const int fd = openPrivateChild(containersFd_, kBootstrapProfile);
+  close(fd);
+  return root_ + "/containers/" + kBootstrapProfile;
+}
 void ContainerPaths::configureKeychainMode(bool testKeychain) const {
   const std::string expected = testKeychain ? "test\n" : "native\n";
   int fd = openat(rootFd_, ".keychain-mode", O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);

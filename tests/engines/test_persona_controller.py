@@ -1,5 +1,6 @@
-"""Shared snapshots through the actual production controller/CEF pipes."""
+"""Shared snapshots through the development controller and real CEF pipes."""
 import os
+import copy
 from pathlib import Path
 import sys
 import tempfile
@@ -9,6 +10,48 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from engines.shared.persona_config import PersonaStore
 
 class PersonaController(unittest.TestCase):
+    def test_initial_snapshot_acknowledgement_is_strict_and_owner_bound(self):
+        from engines.chromium.controller import ChromiumController
+        with tempfile.TemporaryDirectory() as folder:
+            config=PersonaStore(Path(folder)).get('1','chromium')
+            expected={'schemaVersion':1,'appliedBeforeServices':True,'container':'1','private':False,'revision':1}
+            cases=[None,{},*({**expected,**change} for change in (
+                {'schemaVersion':True},{'appliedBeforeServices':1},{'appliedBeforeServices':False},
+                {'container':'2'},{'private':0},{'revision':True},{'revision':2},{'seed':'private-data'}))]
+            for status in cases:
+                with self.subTest(status=status):
+                    controller=object.__new__(ChromiumController)
+                    controller.ready={'identityPrivacyVersion':2,'initialSnapshotVersion':1,
+                        'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone']}
+                    controller.applied={}
+                    controller._request=lambda *args,**kwargs:{'event':'configApplied','engine':'chromium',
+                        'container':'1','private':False,'configRevision':1,'initialSnapshotStatus':copy.deepcopy(status)}
+                    with self.assertRaisesRegex(RuntimeError,'initial native snapshot'):controller._apply(config)
+                    self.assertEqual(controller.applied,{})
+
+    def test_unsupported_initial_snapshot_capability_rejects_before_rpc(self):
+        from engines.chromium.controller import ChromiumController
+        with tempfile.TemporaryDirectory() as folder:
+            config=PersonaStore(Path(folder)).get('1','chromium')
+            for version in (-1,2,True,'1',None):
+                controller=object.__new__(ChromiumController)
+                controller.ready={'identityPrivacyVersion':2,'initialSnapshotVersion':version,
+                    'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone']}
+                writes=[];controller._request=lambda *args,**kwargs:writes.append((args,kwargs))
+                with self.assertRaisesRegex(RuntimeError,'initial native snapshot'):controller._apply(config)
+                self.assertEqual(writes,[])
+
+    def test_v1_helper_refuses_extended_processor_counts_before_any_rpc(self):
+        from engines.chromium.controller import ChromiumController
+        with tempfile.TemporaryDirectory() as folder:
+            config=PersonaStore(Path(folder)).get('1','chromium')
+            config['persona']['presentation']['hardwareConcurrency']=2
+            controller=object.__new__(ChromiumController)
+            controller.ready={'identityPrivacyVersion':1,'supportedPersonaOptions':['canvas','blockWebGPUReadback','navigator','language','timezone']}
+            writes=[];controller._request=lambda *args,**kwargs:writes.append((args,kwargs))
+            with self.assertRaisesRegex(RuntimeError,'processor count'):controller._apply(config)
+            self.assertEqual(writes,[])
+
     def test_controller_opens_only_after_config_ack_and_rejects_live_mutation(self):
         if not os.environ.get('CLOAKFOX_CHROMIUM_BIN'):
             self.skipTest('Set CLOAKFOX_CHROMIUM_BIN for controller runtime')

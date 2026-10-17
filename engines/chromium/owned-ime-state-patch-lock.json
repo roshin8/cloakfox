@@ -1,0 +1,16 @@
+{
+  "applyAfter": "owned-ime-patch-lock.json",
+  "patch": "patches/native-owned-ime-state.patch",
+  "inputs": [
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "62a8f317645432081579bfcce057af4381251ab108b61f01006145f6ab232e9e",
+      "afterSha256": "162db41d14988a030599e5a7cb02bd3310c354689fc32a16c93b168266bf3056"
+    },
+    {
+      "path": "cef/libcef/browser/osr/render_widget_host_view_osr.cc",
+      "beforeSha256": "96d4f3636af6c3723b84a4c67dcb461658a5346db849308aaf715bc414bd676b",
+      "afterSha256": "1527f9057593fdb2b5c15c00d10f9546c4a48e0e5212250ea7826cfdb9c5e94c"
+    }
+  ]
+}

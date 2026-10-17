@@ -8,6 +8,8 @@ import contextlib
 import copy
 import fcntl
 import json
+import hashlib
+import hmac
 import os
 from pathlib import Path
 import re
@@ -15,7 +17,38 @@ import secrets
 import stat
 
 SCHEMA_VERSION = 1
-DEFAULT_OPTIONS = {'canvas': True, 'blockWebGPUReadback': False}
+BASE_OPTIONS = {'canvas': True, 'blockWebGPUReadback': False}
+DEFAULT_OPTIONS = {**BASE_OPTIONS, 'navigator': True, 'language': True, 'timezone': True}
+REGIONS = (
+    (('en-US', 'en'), 'America/New_York'),
+    (('en-GB', 'en'), 'Europe/London'),
+    (('de-DE', 'de'), 'Europe/Berlin'),
+    (('fr-FR', 'fr'), 'Europe/Paris'),
+    (('ja-JP', 'ja'), 'Asia/Tokyo'),
+)
+TIMEZONES = {'UTC', 'America/Los_Angeles', *(zone for _, zone in REGIONS)}
+
+
+def validate_presentation(value):
+    if type(value) is not dict or set(value) != {'hardwareConcurrency', 'deviceMemory', 'languages', 'timezone'}:
+        raise ValueError('Unsupported presentation fields')
+    if type(value['hardwareConcurrency']) is not int or not 1 <= value['hardwareConcurrency'] <= 128:
+        raise ValueError('Unsupported hardware concurrency')
+    if type(value['deviceMemory']) is not int or value['deviceMemory'] not in (4, 8):
+        raise ValueError('Unsupported device memory')
+    if type(value['languages']) is not list or tuple(value['languages']) not in tuple(langs for langs, _ in REGIONS):
+        raise ValueError('Unsupported language preset')
+    if type(value['timezone']) is not str or value['timezone'] not in TIMEZONES:
+        raise ValueError('Unsupported timezone preset')
+    return copy.deepcopy(value)
+
+
+def sample_presentation(seed):
+    digest = hmac.new(bytes.fromhex(seed), b'cloakfox-presentation-v1', hashlib.sha256).digest()
+    languages, timezone = REGIONS[digest[0] % len(REGIONS)]
+    return {'hardwareConcurrency': (4, 8, 16)[digest[1] % 3],
+            'deviceMemory': (4, 8)[digest[2] % 2],
+            'languages': list(languages), 'timezone': timezone}
 MAX_REVISION = 2147483647
 
 
@@ -37,14 +70,24 @@ def validate_snapshot(value):
     if type(value['revision']) is not int or not 1 <= value['revision'] <= MAX_REVISION:
         raise ValueError('Invalid config revision')
     persona = value['persona']
-    fields(persona, ('seed', 'options', 'overrides'))
+    fields(persona, {'seed', 'options', 'overrides'} | ({'presentation'} if 'presentation' in persona else set()))
     if type(persona['seed']) is not str or not re.fullmatch('[0-9a-f]{64}', persona['seed']):
         raise ValueError('Invalid persona seed')
-    fields(persona['options'], DEFAULT_OPTIONS)
+    if type(persona['options']) is not dict or not set(BASE_OPTIONS) <= set(persona['options']):
+        raise ValueError('Missing persona options')
+    if 'presentation' in persona:
+        validate_presentation(persona['presentation'])
     for name in ('options', 'overrides'):
         options = persona[name]
-        if type(options) is not dict or any(k not in DEFAULT_OPTIONS or type(v) is not bool for k, v in options.items()):
-            raise ValueError('Unsupported persona option')
+        if type(options) is not dict: raise ValueError('Unsupported persona option')
+        for key, item in options.items():
+            if key == 'presentation' and name == 'overrides' and 'presentation' in persona:
+                if validate_presentation(item) != persona['presentation']:
+                    raise ValueError('Presentation override not applied')
+            elif key not in DEFAULT_OPTIONS or type(item) is not bool:
+                raise ValueError('Unsupported persona option')
+            if key in ('navigator', 'language', 'timezone') and 'presentation' not in persona:
+                raise ValueError('Presentation is required for identity options')
     return copy.deepcopy(value)
 
 
@@ -116,9 +159,10 @@ class PersonaStore:
             with contextlib.suppress(FileNotFoundError): os.unlink(temp, dir_fd=folder)
 
     def get(self, container, engine, *, private=False):
+        seed = secrets.token_hex(32)
         value = validate_snapshot({'schemaVersion': 1, 'engine': engine, 'containerId': container,
             'private': private, 'revision': 1, 'enabled': True,
-            'persona': {'seed': secrets.token_hex(32), 'options': DEFAULT_OPTIONS.copy(), 'overrides': {}}})
+            'persona': {'seed': seed, 'options': DEFAULT_OPTIONS.copy(), 'overrides': {}, 'presentation': sample_presentation(seed)}})
         key = (engine, container)
         if private:
             return copy.deepcopy(self._private.setdefault(key, value))
@@ -131,7 +175,7 @@ class PersonaStore:
             raise ValueError('Persona record ownership mismatch')
         return value
 
-    def update(self, snapshot, *, enabled=None, options=None, overrides=None, private=None, regenerate=False, clear_overrides=False):
+    def update(self, snapshot, *, enabled=None, options=None, overrides=None, presentation=None, private=None, regenerate=False, clear_overrides=False):
         before = validate_snapshot(snapshot)
         if private is not None and private != before['private']:
             raise ValueError('Cannot change persona ownership')
@@ -140,8 +184,15 @@ class PersonaStore:
         if enabled is not None: after['enabled'] = enabled
         if options is not None: after['persona']['options'] = copy.deepcopy(options)
         if overrides is not None: after['persona']['overrides'] = copy.deepcopy(overrides)
-        if regenerate: after['persona']['seed'] = secrets.token_hex(32)
+        if presentation is not None:
+            after['persona']['overrides']['presentation'] = validate_presentation(presentation)
+        if regenerate:
+            after['persona']['seed'] = secrets.token_hex(32)
+            after['persona']['options'] = {**DEFAULT_OPTIONS, **after['persona']['options']}
         if clear_overrides: after['persona']['overrides'] = {}
+        if presentation is not None or regenerate or 'presentation' in after['persona']:
+            after['persona']['presentation'] = copy.deepcopy(after['persona']['overrides'].get(
+                'presentation', sample_presentation(after['persona']['seed'])))
         after = validate_snapshot(after)
         key = (before['engine'], before['containerId'])
         if before['private']:

@@ -25,6 +25,14 @@ int main() {
     assert(a == root.string() + "/containers/1");
     assert(b == root.string() + "/containers/2");
     assert(paths.cachePath("1") == a);
+    const auto bootstrap=paths.bootstrapCachePath();
+    assert(bootstrap!=a && bootstrap!=b && paths.bootstrapCachePath()==bootstrap);
+    rejects([&] { paths.cachePath(ContainerPaths::kBootstrapProfile); });
+    std::filesystem::remove(bootstrap);
+    std::filesystem::create_directory_symlink(root,bootstrap);
+    rejects([&] { paths.bootstrapCachePath(); });
+    std::filesystem::remove(bootstrap);
+    assert(paths.bootstrapCachePath()==bootstrap);
     for (const auto id : {"", "0", "01", "-1", "1/2", "../escape", "2147483648", "1x"})
       rejects([&] { paths.cachePath(id); });
     rejects([&] { ContainerPaths duplicate(root.string()); });

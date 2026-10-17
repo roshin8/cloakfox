@@ -62,6 +62,14 @@ class PersonaBackend(unittest.TestCase):
             __import__('time').sleep(.03)
         return browser
 
+    def test_complete_policy_capabilities_do_not_claim_partial_hooks_as_parity(self):
+        from engines.shared.engine_policy import POLICY_GROUPS
+        self.assertEqual(self.app.ready.get('requiredPolicySchemaVersion'),2)
+        self.assertEqual(self.app.ready.get('nativePolicyGroups'),dict.fromkeys(POLICY_GROUPS,0))
+        self.assertIs(self.app.ready.get('releaseEligible'),False)
+        # The v1 development protocol is not silently relabeled as schema2.
+        self.assertEqual(self.app.ready.get('configSchemaVersion'),1)
+
     def test_applied_seed_reaches_document_and_worker_before_script(self):
         self.assertEqual(self.app.ready.get('configSchemaVersion'), 1)
         a = self.store.get('11', 'chromium'); self.apply(a); first = self.open(a)
@@ -92,7 +100,7 @@ class PersonaBackend(unittest.TestCase):
         for mutate in (lambda v: v.update(schemaVersion=2), lambda v: v.update(engine='gecko'),
                        lambda v: v.update(revision=0), lambda v: v.update(revision=True),
                        lambda v: v['persona'].update(seed='X'*64),
-                       lambda v: v['persona']['overrides'].update(navigator=True),
+                       lambda v: v['persona']['overrides'].update(unsupportedFuture=True),
                        lambda v: v['persona']['options'].update(canvas=1),
                        lambda v: v.update(enabled=False, revision=2)):
             bad = copy.deepcopy(a); mutate(bad)

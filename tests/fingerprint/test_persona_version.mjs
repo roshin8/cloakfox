@@ -172,6 +172,32 @@ test('saved 146 OS/hardware filters survive the port and invalid strings keep th
   assert.equal(h.filters.length, 1);
 });
 
+test('selected recent Firefox version updates navigator, HTTP UA and appVersion together', () => {
+  const h = harness('158.0.1');
+  h.prefs.set('cloakfox.container.7.persona_os', 'windows');
+  h.prefs.set('cloakfox.container.7.persona_browser', 'firefox');
+  h.prefs.set('cloakfox.container.7.persona_version', '156');
+  const cfg = h.context.fillPersonaKeys(seed, 7);
+  assert.match(cfg['navigator.userAgent'], /rv:156\.0/);
+  assert.match(cfg['navigator.userAgent'], /Firefox\/156\.0/);
+  assert.equal(cfg['headers.User-Agent'], cfg['navigator.userAgent']);
+  assert.equal(cfg['navigator.appVersion'], cfg['navigator.userAgent'].replace(/^Mozilla\//, ''));
+  assert.deepEqual(h.filters, [{browser:'firefox', version:'156', os:'windows', hardware:'auto'}]);
+});
+
+test('browser identity selection is independent from the rendering engine control', () => {
+  const h = harness('158.0.1');
+  h.prefs.set('cloakfox.container.7.persona_os', 'windows');
+  h.prefs.set('cloakfox.container.7.persona_browser', 'chrome');
+  h.prefs.set('cloakfox.container.7.persona_version', '154');
+  const cfg = h.context.fillPersonaKeys(seed, 7);
+  assert.match(cfg['navigator.userAgent'], /Chrome\/154\.0\.0\.0/);
+  assert.doesNotMatch(cfg['navigator.userAgent'], /Firefox\//);
+  assert.equal(cfg['headers.User-Agent'], cfg['navigator.userAgent']);
+  assert.equal(cfg['navigator.appVersion'], cfg['navigator.userAgent'].replace(/^Mozilla\//, ''));
+  assert.equal(cfg['navigator.platform'], 'Win32');
+});
+
 test('timing keys vary by launch salt and seed, and preserve explicit media choices', () => {
   const h=harness();
   const a=h.context.deriveTimingSessionKey(seed, seed);

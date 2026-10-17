@@ -1,0 +1,81 @@
+{
+  "applyAfter": "webgpu-pixel-patch-lock.json",
+  "patch": "patches/native-identity-locale-privacy.patch",
+  "inputs": [
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "f600a569b2b2a0610ff45a0d6a2ca06239109a21b4bb7fa5a12c93b9ab9a535e",
+      "afterSha256": "449fc3b841b53feac7a94e5a73414e6044e9824c2bbf7494b4f2efb8daafbe3b"
+    },
+    {
+      "path": "cef/libcef/browser/chrome/chrome_content_browser_client_cef.cc",
+      "beforeSha256": "3413f73f0ccc8e5f3eaad201d1950351dbd9b42e92661cfd29ced31942125d74",
+      "afterSha256": "a9ab20612f200c33c89aef58106294b5bca37e26ef45d32f183fefd473c45f0a"
+    },
+    {
+      "path": "third_party/blink/public/common/user_agent/user_agent_metadata.h",
+      "beforeSha256": "4251977dcc7934fcd7bcb268c6b4c4df01094603bbdbe77f1dd69284b71a70b9",
+      "afterSha256": "68096568f2ee92df763a86a358d09ccdde96bc14ffc3bd95a6514eb52636a00f"
+    },
+    {
+      "path": "third_party/blink/common/user_agent/user_agent_metadata.cc",
+      "beforeSha256": "8ee92df193aedba88b312f3fc213e9bba72f76f5df19861a007207f9b326a44d",
+      "afterSha256": "b39d3cebeff0b16329e66a58fc51178f4d05699abbdfe70de57dde762e1d4bd7"
+    },
+    {
+      "path": "components/client_hints/browser/client_hints.h",
+      "beforeSha256": "34072e8370e06eadb025d94cde7775ff6efd6d82387162636bde0da869fae379",
+      "afterSha256": "0fa2716b919f9003673992446716ebfb318fb1e5a43fdb5bacaf2ddb7a436514"
+    },
+    {
+      "path": "components/client_hints/browser/client_hints.cc",
+      "beforeSha256": "c3e9d2a9316dc021876ef48e5013ff998d841927a2aa896c105504b0cfad5826",
+      "afterSha256": "0f713ef0dab5b530c11b835b9ce04d787f72262cf2674de0e3916cf1ad8dc649"
+    },
+    {
+      "path": "content/public/browser/client_hints_controller_delegate.h",
+      "beforeSha256": "bad9e92abc7f44e5c39db25a4aab958df8c36c45adbe90b44a3f67ca5d76f8c7",
+      "afterSha256": "15bef2272be8f0b31e6764ca23432ab9a474106477a4ccc3dfd38b1adc500ccf"
+    },
+    {
+      "path": "content/browser/client_hints/client_hints.cc",
+      "beforeSha256": "97a5b0accac0ca8c0e31320fd22fa904d5f8b4454bc3eb9116c98016a3a0cb71",
+      "afterSha256": "86a3662afa6c3e82569d435c5d67bb93b52e0081aed15334e296f7879badadf6"
+    },
+    {
+      "path": "third_party/blink/common/device_memory/approximated_device_memory.cc",
+      "beforeSha256": "2a3bd1c5250808355b6eea60fb13f15db565b8eba0a78f7fd0ea3ad718da4d8a",
+      "afterSha256": "f7eba9a64901e510a21e2ad08040ec005ce2d48df44c42a6823d59ffea8b0a2c"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc",
+      "beforeSha256": "7b689c17f7007b7e342412cb27165111fe6b5db8672ac27b8b9fc1ea0f432928",
+      "afterSha256": "15276856b8bf63cb670236253e0d906cd7014457b8dbc073270e9e5613fcd409"
+    },
+    {
+      "path": "content/renderer/render_thread_impl.cc",
+      "beforeSha256": "640dfcc567d6afd4e5e39d79e5cb587a1940cb0c32e743c6a6327c6a701781d7",
+      "afterSha256": "ec70cb85dfabe97d951752371837f3e2d6527a3c962bdd1745b68809acd3cb58"
+    },
+    {
+      "path": "third_party/blink/renderer/core/workers/worker_global_scope.cc",
+      "beforeSha256": "7d22fe98af8868888b509bc23ceabe4b4b3f502db007f4e1424aaadb3fabec9c",
+      "afterSha256": "99d5950d7e9d72c89dfddcb0807d503457498174f98acd6813c332ba4db3ac1e"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/navigator_language.cc",
+      "beforeSha256": "6eecd7715b44a514025ef27bebe599c258123ea9c39ac10e4a26022ca0269888",
+      "afterSha256": "b3e9afa9dc8e7905ed0cfb1cc521e5075c23d9b40856d749a876bd1f8b729bff"
+    },
+    {
+      "path": "third_party/blink/renderer/core/timezone/timezone_controller.cc",
+      "beforeSha256": "c378fecb1cd84682c73ac7ec7122dff402f4a1c9afc4156803f53ccb2db1ea3b",
+      "afterSha256": "20d903d09858ab3ca3bd52ea10bf804852732cdea2df4bf4a0f1f6826eaf4553"
+    },
+    {
+      "path": "chrome/browser/client_hints/client_hints_factory.cc",
+      "beforeSha256": "cace4831e972c118fa6a4a4e6d5e50056a4fac1fa7d2fd75051ce76ef81a732b",
+      "afterSha256": "752897808eb74bfbca799befad5b10733bd8cf5e1cfc13d8a7d73ca8d8ed6efd"
+    }
+  ]
+}

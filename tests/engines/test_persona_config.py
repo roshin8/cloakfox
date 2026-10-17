@@ -63,7 +63,7 @@ class PersonaConfig(unittest.TestCase):
                 with self.subTest(key=key, bad=bad), self.assertRaises(ValueError):
                     validate(value)
             for key, bad in [('seed', 'a'*63), ('seed', 'g'*64), ('seed', 'A'*64),
-                             ('options', {'canvas': 'false'}), ('options', {'navigator': True}),
+                             ('options', {'canvas': 'false'}), ('options', {'unsupportedFuture': True}),
                              ('overrides', {'canvas': 0}), ('unknown', True)]:
                 value = copy.deepcopy(base); value['persona'][key] = bad
                 with self.subTest(key=key, bad=bad), self.assertRaises(ValueError):

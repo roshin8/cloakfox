@@ -14,18 +14,38 @@ void exactFields(CefRefPtr<CefDictionaryValue> value,
   for (const auto& key : keys) actual.insert(key.ToString());
   if (actual != expected) throw std::runtime_error("Unsupported config fields");
 }
-void optionFields(CefRefPtr<CefDictionaryValue> value, bool complete) {
-  if (!value) throw std::runtime_error("Invalid config options");
-  if (complete) exactFields(value, {"canvas", "blockWebGPUReadback"});
-  CefDictionaryValue::KeyList keys;
-  value->GetKeys(keys);
-  for (const auto& key : keys)
-    if ((key != "canvas" && key != "blockWebGPUReadback") || value->GetType(key) != VTYPE_BOOL)
+void optionFields(CefRefPtr<CefDictionaryValue> value, bool complete, bool presentation) {
+  if (!value || (complete && (!value->HasKey("canvas") || !value->HasKey("blockWebGPUReadback"))))
+    throw std::runtime_error("Missing config options");
+  CefDictionaryValue::KeyList keys; value->GetKeys(keys);
+  for (const auto& key : keys) {
+    if (!complete && key == "presentation" && presentation && value->GetType(key) == VTYPE_DICTIONARY) continue;
+    if (((key != "canvas" && key != "blockWebGPUReadback") &&
+         !(presentation && (key == "navigator" || key == "language" || key == "timezone"))) ||
+        value->GetType(key) != VTYPE_BOOL)
       throw std::runtime_error("Unsupported config option");
+  }
+}
+void validatePresentation(CefRefPtr<CefDictionaryValue> value) {
+  exactFields(value, {"hardwareConcurrency", "deviceMemory", "languages", "timezone"});
+  if (value->GetType("hardwareConcurrency") != VTYPE_INT ||
+      (value->GetInt("hardwareConcurrency") < 1 || value->GetInt("hardwareConcurrency") > 128) ||
+      value->GetType("deviceMemory") != VTYPE_INT ||
+      !std::set<int>{4,8}.count(value->GetInt("deviceMemory")) ||
+      value->GetType("languages") != VTYPE_LIST || value->GetType("timezone") != VTYPE_STRING)
+    throw std::runtime_error("Invalid identity presentation");
+  auto languages = value->GetList("languages");
+  if (languages->GetSize() != 2 || languages->GetType(0) != VTYPE_STRING || languages->GetType(1) != VTYPE_STRING)
+    throw std::runtime_error("Unsupported language preset");
+  const std::set<std::pair<std::string,std::string>> regions{
+    {"en-US","en"},{"en-GB","en"},{"de-DE","de"},{"fr-FR","fr"},{"ja-JP","ja"}};
+  if (!regions.count({languages->GetString(0).ToString(), languages->GetString(1).ToString()}) ||
+      !std::set<std::string>{"UTC","America/Los_Angeles","America/New_York","Europe/London","Europe/Berlin","Europe/Paris","Asia/Tokyo"}.count(value->GetString("timezone").ToString()))
+    throw std::runtime_error("Unsupported language/timezone preset");
 }
 }
 PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
-                                int canvasVersion, int webgpuVersion) {
+                                int canvasVersion, int webgpuVersion, int identityVersion) {
   exactFields(value, {"schemaVersion", "engine", "containerId", "private", "revision", "enabled", "persona"});
   if (value->GetType("schemaVersion") != VTYPE_INT || value->GetInt("schemaVersion") != 1 ||
       value->GetType("revision") != VTYPE_INT || value->GetInt("revision") < 1 ||
@@ -36,7 +56,10 @@ PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
       value->GetType("persona") != VTYPE_DICTIONARY)
     throw std::runtime_error("Invalid config schema, engine or ownership");
   auto persona = value->GetDictionary("persona");
-  exactFields(persona, {"seed", "options", "overrides"});
+  const bool hasPresentation = persona->HasKey("presentation");
+  auto personaFields = std::set<std::string>{"seed", "options", "overrides"};
+  if (hasPresentation) personaFields.insert("presentation");
+  exactFields(persona, personaFields);
   if (persona->GetType("seed") != VTYPE_STRING ||
       persona->GetType("options") != VTYPE_DICTIONARY || persona->GetType("overrides") != VTYPE_DICTIONARY)
     throw std::runtime_error("Invalid persona config");
@@ -45,17 +68,44 @@ PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
     throw std::runtime_error("Invalid persona seed");
   auto options = persona->GetDictionary("options");
   auto overrides = persona->GetDictionary("overrides");
-  optionFields(options, true); optionFields(overrides, false);
+  optionFields(options, true, hasPresentation); optionFields(overrides, false, hasPresentation);
+  if (hasPresentation) {
+    if (identityVersion != 1 && identityVersion != 2) throw std::runtime_error("Backend does not support native identity presentation");
+    if (persona->GetType("presentation") != VTYPE_DICTIONARY) throw std::runtime_error("Invalid presentation");
+    validatePresentation(persona->GetDictionary("presentation"));
+    if (identityVersion < 2 && !std::set<int>{4,8,16}.count(
+            persona->GetDictionary("presentation")->GetInt("hardwareConcurrency")))
+      throw std::runtime_error("Backend does not support this BrowserForge processor count");
+    if (overrides->HasKey("presentation")) {
+      validatePresentation(overrides->GetDictionary("presentation"));
+      if (!overrides->GetDictionary("presentation")->IsEqual(persona->GetDictionary("presentation")))
+        throw std::runtime_error("Presentation override is not applied");
+    }
+  }
   // v1 requires both current hooks, even when disabled. Never acknowledge an
   // unsupported option as implemented by an unpatched/older binary SDK.
   if (canvasVersion != 1 || webgpuVersion != 1)
     throw std::runtime_error("Backend does not support persona options");
   const auto effective = [&options, &overrides](const char* key) {
-    return overrides->HasKey(key) ? overrides->GetBool(key) : options->GetBool(key);
+    return overrides->HasKey(key) ? overrides->GetBool(key) :
+           options->HasKey(key) ? options->GetBool(key) : true;
   };
   const bool enabled = value->GetBool("enabled");
+  CefRefPtr<CefDictionaryValue> presentation;
+  if (hasPresentation) {
+    const auto source = persona->GetDictionary("presentation");
+    presentation = CefDictionaryValue::Create();
+    for (const auto* key : {"navigator", "language", "timezone"})
+      presentation->SetBool(key, enabled && effective(key));
+    presentation->SetInt("hardwareConcurrency", source->GetInt("hardwareConcurrency"));
+    presentation->SetInt("deviceMemory", source->GetInt("deviceMemory"));
+    auto languages = source->GetList("languages");
+    presentation->SetString("locale", languages->GetString(0));
+    presentation->SetString("languages", languages->GetString(0).ToString() + "," + languages->GetString(1).ToString());
+    presentation->SetString("timezoneId", source->GetString("timezone"));
+  }
   return {value->Copy(false), value->GetString("containerId").ToString(), seed,
           value->GetInt("revision"), value->GetBool("private"),
-          enabled && effective("canvas"), enabled && effective("blockWebGPUReadback")};
+          enabled && effective("canvas"), enabled && effective("blockWebGPUReadback"), presentation};
 }
 }

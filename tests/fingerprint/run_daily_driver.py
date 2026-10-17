@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-PROBES = ['daily_defaults', 'persona_version', 'bundled_blocker', 'network_policy',
+PROBES = ['daily_defaults', 'persona_version', 'browser_profile_picker', 'bundled_blocker', 'network_policy',
           'native_webrtc_policy', 'identity_forget', 'shared_permissions',
           'site_isolation', 'container_workflows', 'daily_settings_ui', 'settings_navigation', 'upstream_hardening', 'regions', 'privacy_inspector', 'proxy_manager', 'bundled_containers', 'ip_conflicts', 'ip_conflict_settings', 'templates', 'worker_lifecycle', 'permissions_workspaces', 'dns_network', 'tracking_protection', 'network_transports', 'host_personas', 'network_quic']
 

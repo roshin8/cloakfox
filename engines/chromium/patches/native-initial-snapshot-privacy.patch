@@ -1,0 +1,693 @@
+--- a/cef/include/internal/cef_types.h
++++ b/cef/include/internal/cef_types.h
+@@ -515,6 +515,9 @@
+ /// Request context initialization settings. Specify NULL or 0 to get the
+ /// recommended default values.
+ ///
++#if CEF_API_ADDED(15401)
++#define CEF_CLOAKFOX_INITIAL_SNAPSHOT_VERSION 1
++#endif
+ typedef struct _cef_request_context_settings_t {
+   ///
+   /// Size of this structure.
+@@ -566,6 +569,16 @@
+   ///
+   cef_string_t cookieable_schemes_list;
+   int cookieable_schemes_exclude_defaults;
++
++#if CEF_API_ADDED(15401)
++  ///
++  /// Cloakfox's bounded, versioned effective native privacy snapshot. Bound to
++  /// this context before profile services start. Empty preserves ordinary CEF
++  /// behavior. Invalid non-empty snapshots reject context creation. This
++  /// partial native-hook schema is not a complete browser privacy policy.
++  ///
++  cef_string_t cloakfox_initial_snapshot;
++#endif
+ } cef_request_context_settings_t;
+ 
+ ///
+--- a/cef/include/internal/cef_types_wrappers.h
++++ b/cef/include/internal/cef_types_wrappers.h
+@@ -491,6 +491,10 @@
+     cef_string_clear(&s->cache_path);
+     cef_string_clear(&s->accept_language_list);
+     cef_string_clear(&s->cookieable_schemes_list);
++#if CEF_API_ADDED(15401)
++    if (CEF_MEMBER_EXISTS(s, cloakfox_initial_snapshot))
++      cef_string_clear(&s->cloakfox_initial_snapshot);
++#endif
+   }
+ 
+   static inline void set(const struct_type* src,
+@@ -508,6 +512,12 @@
+                    &target->cookieable_schemes_list, copy);
+     target->cookieable_schemes_exclude_defaults =
+         src->cookieable_schemes_exclude_defaults;
++#if CEF_API_ADDED(15401)
++    if (CEF_MEMBER_EXISTS(src, cloakfox_initial_snapshot))
++      cef_string_set(src->cloakfox_initial_snapshot.str,
++                     src->cloakfox_initial_snapshot.length,
++                     &target->cloakfox_initial_snapshot, copy);
++#endif
+   }
+ };
+ 
+--- a/cef/include/cef_request_context.h
++++ b/cef/include/cef_request_context.h
+@@ -165,6 +165,7 @@
+   /*--cef()--*/
+   virtual CefString GetCachePath() = 0;
+ 
++
+   ///
+   /// Returns the cookie manager for this object. If |callback| is non-NULL it
+   /// will be executed asnychronously on the UI thread after the manager's
+@@ -367,4 +368,17 @@
+   virtual cef_color_variant_t GetChromeColorSchemeVariant() = 0;
+ };
+ 
++#if CEF_API_ADDED(15401)
++///
++/// Returns seed-free metadata for the immutable Cloakfox initial snapshot.
++/// Called on the browser UI thread after context initialization. The result is
++/// copied from native context state, not a writable profile preference. This
++/// partial native-hook status does not attest complete privacy parity. This
++/// separate symbol preserves the existing request-context virtual ABI.
++///
++/*--cef(added=15401)--*/
++CefRefPtr<CefDictionaryValue> CefGetInitialPrivacyStatus(
++    CefRefPtr<CefRequestContext> request_context);
++#endif
++
+ #endif  // CEF_INCLUDE_CEF_REQUEST_CONTEXT_H_
+--- a/cef/libcef/browser/request_context_impl.cc
++++ b/cef/libcef/browser/request_context_impl.cc
+@@ -141,6 +141,15 @@
+ 
+   CefRequestContextImpl::Config config;
+   config.settings = settings;
++  if (CEF_MEMBER_EXISTS(&settings, cloakfox_initial_snapshot) &&
++      settings.cloakfox_initial_snapshot.length > 0) {
++    const auto snapshot = CefBrowserContext::ParseInitialPrivacySnapshot(
++        CefString(&settings.cloakfox_initial_snapshot));
++    if (!snapshot || snapshot->GetBool("private") !=
++                         (settings.cache_path.length == 0)) {
++      return nullptr;
++    }
++  }
+   config.handler = handler;
+   config.unique_id = g_next_id.GetNext();
+   return CefRequestContextImpl::GetOrCreateRequestContext(std::move(config));
+@@ -432,6 +441,14 @@
+   return pref_helper::GetPreference(pref_service, name);
+ }
+ 
++CefRefPtr<CefDictionaryValue> CefGetInitialPrivacyStatus(
++    CefRefPtr<CefRequestContext> request_context) {
++  if (!request_context) return nullptr;
++  auto* context = static_cast<CefRequestContextImpl*>(request_context.get());
++  if (!context->VerifyBrowserContext()) return nullptr;
++  return context->GetBrowserContext()->initial_privacy_status();
++}
++
+ CefRefPtr<CefDictionaryValue> CefRequestContextImpl::GetAllPreferences(
+     bool include_defaults) {
+   if (!VerifyBrowserContext()) {
+@@ -793,6 +810,13 @@
+       // Check if a CefBrowserContext is already globally registered for
+       // the specified cache path. If so then use it.
+       browser_context_ = CefBrowserContext::FromCachePath(cache_path);
++      if (browser_context_) {
++        // A cache path must never silently adopt a different immutable owner
++        // or policy. Explicit CreateContext(other) shares the existing context
++        // above and does not enter this path. Fail closed on a broker bug.
++        CHECK(CefString(&config_.settings.cloakfox_initial_snapshot) ==
++              CefString(&browser_context_->settings().cloakfox_initial_snapshot));
++      }
+     }
+   }
+ 
+--- a/cef/libcef/browser/browser_context.h
++++ b/cef/libcef/browser/browser_context.h
+@@ -182,6 +182,12 @@
+   // These accessors are safe to call from any thread because the values don't
+   // change during this object's lifespan.
+   const CefRequestContextSettings& settings() const { return settings_; }
++  static CefRefPtr<CefDictionaryValue> ParseInitialPrivacySnapshot(const CefString& json);
++  // UI-thread-only initial snapshot state. Callers receive independent copies.
++  CefRefPtr<CefDictionaryValue> initial_privacy_snapshot() const;
++  CefRefPtr<CefDictionaryValue> initial_privacy_status() const;
++  bool initial_privacy_applied() const { return initial_privacy_applied_; }
++  void MarkInitialPrivacyAppliedBeforeServices() { initial_privacy_applied_ = true; }
+   base::FilePath cache_path() const { return cache_path_; }
+   scoped_refptr<CefIOThreadState> iothread_state() const {
+     return iothread_state_;
+@@ -208,6 +214,8 @@
+   base::FilePath cache_path_;
+ 
+  private:
++  const CefRefPtr<CefDictionaryValue> initial_privacy_snapshot_;
++  bool initial_privacy_applied_ = false;
+   // Update the handler for worker requests without an associated frame/process
+   // handler. Chooses an arbitrary non-null handler from the sharing contexts.
+   void UpdateWorkerRequestContextHandler();
+--- a/cef/libcef/browser/browser_context.cc
++++ b/cef/libcef/browser/browser_context.cc
+@@ -6,14 +6,17 @@
+ 
+ #include <map>
+ #include <memory>
++#include <set>
+ #include <utility>
+ 
+ #include "base/files/file_util.h"
+ #include "base/lazy_instance.h"
+ #include "base/logging.h"
+ #include "base/no_destructor.h"
++#include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_split.h"
+ #include "base/strings/string_util.h"
++#include "cef/include/cef_parser.h"
+ #include "cef/libcef/browser/context.h"
+ #include "cef/libcef/browser/media_router/media_router_manager.h"
+ #include "cef/libcef/browser/request_context_impl.h"
+@@ -30,6 +33,17 @@
+ 
+ namespace {
+ 
++bool ExactFields(CefRefPtr<CefDictionaryValue> value,
++                 const std::set<std::string>& expected) {
++  if (!value) return false;
++  CefDictionaryValue::KeyList keys;
++  value->GetKeys(keys);
++  std::set<std::string> actual;
++  for (const auto& key : keys) actual.insert(key.ToString());
++  return actual == expected;
++}
++
++
+ // Manages the global list of Impl instances.
+ class ImplManager {
+  public:
+@@ -186,10 +200,74 @@
+ 
+ }  // namespace
+ 
++CefRefPtr<CefDictionaryValue> CefBrowserContext::ParseInitialPrivacySnapshot(const CefString& json) {
++  if (!json.length() || json.length() > 16384) return nullptr;
++  auto value = CefParseJSON(json, JSON_PARSER_RFC);
++  auto snapshot = value && value->GetType() == VTYPE_DICTIONARY ? value->GetDictionary() : nullptr;
++  if (!ExactFields(snapshot, {"schemaVersion", "container", "private", "revision", "seed",
++                             "canvasEnabled", "webgpuReadbackBlocked", "presentation"})) return nullptr;
++  if (snapshot->GetType("schemaVersion") != VTYPE_INT || snapshot->GetInt("schemaVersion") != 1 ||
++      snapshot->GetType("container") != VTYPE_STRING || snapshot->GetType("private") != VTYPE_BOOL ||
++      snapshot->GetType("revision") != VTYPE_INT || snapshot->GetInt("revision") < 1 ||
++      snapshot->GetType("seed") != VTYPE_STRING || snapshot->GetType("canvasEnabled") != VTYPE_BOOL ||
++      snapshot->GetType("webgpuReadbackBlocked") != VTYPE_BOOL ||
++      snapshot->GetType("presentation") != VTYPE_DICTIONARY) return nullptr;
++  const auto container = snapshot->GetString("container").ToString();
++  int owner = 0;
++  if (container.empty() || container.front() == '0' ||
++      container.find_first_not_of("0123456789") != std::string::npos ||
++      !base::StringToInt(container, &owner) || owner < 1) return nullptr;
++  const auto seed = snapshot->GetString("seed").ToString();
++  if (seed.size() != 64 || seed.find_first_not_of("0123456789abcdef") != std::string::npos) return nullptr;
++  auto presentation = snapshot->GetDictionary("presentation");
++  if (presentation->GetSize()) {
++    if (!ExactFields(presentation, {"navigator", "language", "timezone", "hardwareConcurrency",
++                                    "deviceMemory", "locale", "languages", "timezoneId"})) return nullptr;
++    for (const auto* key : {"navigator", "language", "timezone"})
++      if (presentation->GetType(key) != VTYPE_BOOL) return nullptr;
++    if (presentation->GetType("hardwareConcurrency") != VTYPE_INT ||
++        presentation->GetInt("hardwareConcurrency") < 1 || presentation->GetInt("hardwareConcurrency") > 128 ||
++        presentation->GetType("deviceMemory") != VTYPE_INT ||
++        !std::set<int>{4,8}.count(presentation->GetInt("deviceMemory")) ||
++        presentation->GetType("locale") != VTYPE_STRING || presentation->GetType("languages") != VTYPE_STRING ||
++        presentation->GetType("timezoneId") != VTYPE_STRING) return nullptr;
++    const std::set<std::pair<std::string,std::string>> regions{
++      {"en-US","en-US,en"},{"en-GB","en-GB,en"},{"de-DE","de-DE,de"},
++      {"fr-FR","fr-FR,fr"},{"ja-JP","ja-JP,ja"}};
++    if (!regions.count({presentation->GetString("locale").ToString(),presentation->GetString("languages").ToString()}) ||
++        !std::set<std::string>{"UTC","America/Los_Angeles","America/New_York","Europe/London",
++                               "Europe/Berlin","Europe/Paris","Asia/Tokyo"}.count(
++            presentation->GetString("timezoneId").ToString())) return nullptr;
++  }
++  return snapshot->Copy(false);
++}
++
+ CefBrowserContext::CefBrowserContext(const CefRequestContextSettings& settings)
+-    : settings_(settings), weak_ptr_factory_(this) {
++    : settings_(settings),
++      initial_privacy_snapshot_(ParseInitialPrivacySnapshot(
++          CefString(&settings.cloakfox_initial_snapshot))),
++      weak_ptr_factory_(this) {
++  CHECK(!settings_.cloakfox_initial_snapshot.length || initial_privacy_snapshot_);
+   g_manager.Get().AddImpl(this);
+   getter_ = base::BindRepeating(GetSelf, weak_ptr_factory_.GetWeakPtr());
++}
++
++CefRefPtr<CefDictionaryValue> CefBrowserContext::initial_privacy_snapshot() const {
++  CEF_REQUIRE_UIT();
++  return initial_privacy_snapshot_ ? initial_privacy_snapshot_->Copy(false) : nullptr;
++}
++
++CefRefPtr<CefDictionaryValue> CefBrowserContext::initial_privacy_status() const {
++  CEF_REQUIRE_UIT();
++  auto status = CefDictionaryValue::Create();
++  status->SetInt("schemaVersion", 1);
++  status->SetBool("appliedBeforeServices", initial_privacy_applied_);
++  if (initial_privacy_snapshot_) {
++    status->SetString("container", initial_privacy_snapshot_->GetString("container"));
++    status->SetBool("private", initial_privacy_snapshot_->GetBool("private"));
++    status->SetInt("revision", initial_privacy_snapshot_->GetInt("revision"));
++  }
++  return status;
+ }
+ 
+ CefBrowserContext::~CefBrowserContext() {
+--- a/cef/libcef/browser/prefs/browser_prefs.h
++++ b/cef/libcef/browser/prefs/browser_prefs.h
+@@ -26,6 +26,10 @@
+ // Set preferences for a newly initialized Profile.
+ void SetInitialProfilePrefs(Profile* profile);
+ 
++// Called before profile services exist. The native context records this phase;
++// the later initialization callback cannot forge it through a writable pref.
++void ApplyInitialPrivacyPrefsBeforeServices(Profile* profile);
++
+ }  // namespace browser_prefs
+ 
+ #endif  // CEF_LIBCEF_BROWSER_PREFS_BROWSER_PREFS_H_
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -3,11 +3,13 @@
+ // be found in the LICENSE file.
+ 
+ #include "cef/libcef/browser/prefs/browser_prefs.h"
++#include "cef/include/cef_parser.h"
++#include "base/json/json_reader.h"
++#include "base/strings/string_number_conversions.h"
+ 
+ #include <array>
+ #include "base/rand_util.h"
+ #include "build/build_config.h"
+-#include "base/strings/string_number_conversions.h"
+ 
+ #include "cef/libcef/browser/browser_context.h"
+ #include "cef/libcef/browser/context.h"
+@@ -22,6 +24,13 @@
+ 
+ namespace {
+ 
++CefBrowserContext* OwnContext(Profile* profile) {
++  if (auto* context = CefBrowserContext::FromProfile(profile)) return context;
++  if (!profile->GetPath().empty())
++    return CefBrowserContext::FromCachePath(profile->GetPath());
++  return nullptr;
++}
++
+ // Match the logic in chrome/browser/net/profile_network_context_service.cc.
+ std::string ComputeAcceptLanguageFromPref(const std::string& language_pref) {
+   std::string accept_languages_str =
+@@ -31,7 +40,7 @@
+ 
+ // Return the most relevant setting based on |profile|.
+ std::string GetAcceptLanguageListSetting(Profile* profile) {
+-  if (auto* browser_context = CefBrowserContext::FromProfile(profile)) {
++  if (auto* browser_context = OwnContext(profile)) {
+     const auto& settings = browser_context->settings();
+     if (settings.accept_language_list.length > 0) {
+       return CefString(&settings.accept_language_list);
+@@ -53,6 +62,7 @@
+ }
+ 
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
++  registry->RegisterIntegerPref("cloakfox.initial_snapshot_version", 1);
+   registry->RegisterIntegerPref("cloakfox.identity_privacy_version", 2);
+   registry->RegisterDictionaryPref("cloakfox.presentation");
+   registry->RegisterBooleanPref("cloakfox.native_languages_saved", false);
+@@ -96,6 +106,8 @@
+ }
+ 
+ void SetInitialProfilePrefs(Profile* profile) {
++  auto* context = OwnContext(profile);
++  if (context && context->initial_privacy_applied()) return;
+   auto* prefs = profile->GetPrefs();
+   // Restore native profile language preferences before applying this session's
+   // immutable snapshot. Master-off must not inherit last session's mask.
+@@ -133,6 +145,44 @@
+     // LanguagePrefs::UpdateAcceptLanguagesPref().
+     prefs->SetString(language::prefs::kSelectedLanguages, accept_language_list);
+   }
++  if (context) {
++    if (auto snapshot = context->initial_privacy_snapshot()) {
++      CHECK_EQ(snapshot->GetBool("private"), profile->IsOffTheRecord());
++      prefs->SetString("cloakfox.canvas_key", snapshot->GetString("seed").ToString());
++      prefs->SetBoolean("cloakfox.canvas_enabled", snapshot->GetBool("canvasEnabled"));
++      prefs->SetBoolean("cloakfox.webgpu_block_readback", snapshot->GetBool("webgpuReadbackBlocked"));
++      auto presentation = snapshot->GetDictionary("presentation");
++      // Convert the already strictly bounded dictionary through the existing
++      // Chromium value adapter, without exposing the seed in status metadata.
++      auto projected = CefValue::Create();
++      projected->SetDictionary(presentation);
++      auto parsed = base::JSONReader::Read(CefWriteJSON(projected, JSON_WRITER_DEFAULT).ToString(),
++                                          base::JSON_PARSE_RFC);
++      CHECK(parsed && parsed->is_dict());
++      const auto expected_presentation = parsed->GetDict().Clone();
++      prefs->SetDict("cloakfox.presentation", std::move(*parsed).TakeDict());
++      if (presentation->HasKey("language") && presentation->GetBool("language")) {
++        const auto languages = presentation->GetString("languages").ToString();
++        prefs->SetString(language::prefs::kAcceptLanguages, languages);
++        prefs->SetString(language::prefs::kSelectedLanguages, languages);
++        CHECK(prefs->GetString(language::prefs::kAcceptLanguages) == languages);
++        CHECK(prefs->GetString(language::prefs::kSelectedLanguages) == languages);
++      }
++      // Managed or incompatible preferences must not turn a failed write into
++      // a successful native attestation. Never print the seed or policy values.
++      CHECK(prefs->GetString("cloakfox.canvas_key") == snapshot->GetString("seed").ToString());
++      CHECK(prefs->GetBoolean("cloakfox.canvas_enabled") == snapshot->GetBool("canvasEnabled"));
++      CHECK(prefs->GetBoolean("cloakfox.webgpu_block_readback") == snapshot->GetBool("webgpuReadbackBlocked"));
++      CHECK(prefs->GetDict("cloakfox.presentation") == expected_presentation);
++    }
++  }
++}
++
++void ApplyInitialPrivacyPrefsBeforeServices(Profile* profile) {
++  auto* context = OwnContext(profile);
++  if (!context || context->initial_privacy_applied() || !context->initial_privacy_snapshot()) return;
++  SetInitialProfilePrefs(profile);
++  context->MarkInitialPrivacyAppliedBeforeServices();
+ }
+ 
+ }  // namespace browser_prefs
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -239,6 +239,7 @@
+ 
+ #if BUILDFLAG(ENABLE_CEF)
+ #include "cef/libcef/browser/prefs/pref_names.h"
++#include "cef/libcef/browser/prefs/browser_prefs.h"
+ #endif
+ 
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+@@ -1251,6 +1252,10 @@
+       delegate_->OnProfileCreationFinished(this, create_mode, false, false);
+     return;
+   }
++
++#if BUILDFLAG(ENABLE_CEF)
++  browser_prefs::ApplyInitialPrivacyPrefsBeforeServices(this);
++#endif
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+   switch (create_mode) {
+--- a/chrome/browser/profiles/off_the_record_profile_impl.cc
++++ b/chrome/browser/profiles/off_the_record_profile_impl.cc
+@@ -3,6 +3,10 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/profiles/off_the_record_profile_impl.h"
++#include "cef/libcef/features/features.h"
++#if BUILDFLAG(ENABLE_CEF)
++#include "cef/libcef/browser/prefs/browser_prefs.h"
++#endif
+ 
+ #include <memory>
+ #include <utility>
+@@ -195,6 +199,9 @@
+ }
+ 
+ void OffTheRecordProfileImpl::Init() {
++#if BUILDFLAG(ENABLE_CEF)
++  browser_prefs::ApplyInitialPrivacyPrefsBeforeServices(this);
++#endif
+   FullBrowserTransitionManager::Get()->OnProfileCreated(this);
+ 
+   BrowserContextDependencyManager::GetInstance()->CreateBrowserContextServices(
+--- a/cef/cef_api_versions.json
++++ b/cef/cef_api_versions.json
+@@ -176,8 +176,15 @@
+       "mac": "e5cd28047fc1f8bbb972e54692fc665040c7f034",
+       "sandbox_compat": "265fca9293e6b6ef",
+       "windows": "726dc73763db22edb289e41af2421a232617f7f4"
++    },
++    "15401": {
++      "comment": "Added October 16, 2026.",
++      "linux": "55fbfb8919d2d7650cd8568ad5649dcd2eaf5a27",
++      "mac": "8fae4ed82522ee020663648f06047805da8f77ab",
++      "sandbox_compat": "265fca9293e6b6ef",
++      "windows": "69b487d9aff68cdd52079e55770589b8ef14255f"
+     }
+   },
+-  "last": "15400",
++  "last": "15401",
+   "min": "13300"
+ }--- a/cef/include/capi/cef_request_context_capi.h
++++ b/cef/include/capi/cef_request_context_capi.h
+@@ -33,7 +33,7 @@
+ // by hand. See the translator.README.txt file in the tools directory for
+ // more information.
+ //
+-// $hash=22032394ed067849d95ef1b1832b6a1d3492c8b8$
++// $hash=b06e5b76df89afc022bd52769258beb8b5c24328$
+ //
+ 
+ #ifndef CEF_INCLUDE_CAPI_CEF_REQUEST_CONTEXT_CAPI_H_
+@@ -336,6 +336,17 @@
+ CEF_EXPORT cef_request_context_t* cef_request_context_cef_create_context_shared(cef_request_context_t* other, struct _cef_request_context_handler_t* handler);
+ 
+ 
++#if CEF_API_ADDED(15401)
++///
++/// Returns seed-free metadata for the immutable Cloakfox initial snapshot.
++/// Called on the browser UI thread after context initialization. The result is
++/// copied from native context state, not a writable profile preference. This
++/// partial native-hook status does not attest complete privacy parity. This
++/// separate symbol preserves the existing request-context virtual ABI.
++///
++CEF_EXPORT struct _cef_dictionary_value_t* cef_get_initial_privacy_status(cef_request_context_t* request_context);
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif
+--- a/cef/include/capi/cef_request_context_capi_versions.h
++++ b/cef/include/capi/cef_request_context_capi_versions.h
+@@ -8,7 +8,7 @@
+ // by hand. See the translator.README.txt file in the tools directory for
+ // more information.
+ //
+-// $hash=3e4d77003a10967fe202fdfa274fd6500fa51dea$
++// $hash=b6c9d9459cd08597d5f63135b98e5053156c32d9$
+ //
+ 
+ #ifndef CEF_INCLUDE_CAPI_CEF_REQUEST_CONTEXT_CAPI_VERSIONS_H_
+@@ -125,6 +125,8 @@
+ CEF_EXPORT cef_request_context_0_t* cef_request_context_create_context(const struct _cef_request_context_settings_t* settings, struct _cef_request_context_handler_0_t* handler);
+ CEF_EXPORT cef_request_context_0_t* cef_request_context_cef_create_context_shared(cef_request_context_0_t* other, struct _cef_request_context_handler_0_t* handler);
+ 
++CEF_EXPORT struct _cef_dictionary_value_0_t* cef_get_initial_privacy_status(cef_request_context_0_t* request_context);
++
+ #ifdef __cplusplus
+ }
+ #endif
+--- a/cef/libcef_dll/libcef_dll.cc
++++ b/cef/libcef_dll/libcef_dll.cc
+@@ -9,7 +9,7 @@
+ // implementations. See the translator.README.txt file in the tools directory
+ // for more information.
+ //
+-// $hash=9f7d9d138b8e995c28b47f07a0945d9c693e4988$
++// $hash=ca20848fa3c76834affe031514192c0855eff9f5$
+ //
+ 
+ #include "include/capi/cef_app_capi_versions.h"
+@@ -20,6 +20,7 @@
+ #include "include/capi/cef_parser_capi_versions.h"
+ #include "include/capi/cef_path_util_capi_versions.h"
+ #include "include/capi/cef_process_util_capi_versions.h"
++#include "include/capi/cef_request_context_capi_versions.h"
+ #include "include/capi/cef_scheme_capi_versions.h"
+ #include "include/capi/cef_ssl_info_capi_versions.h"
+ #include "include/capi/cef_task_capi_versions.h"
+@@ -34,6 +35,7 @@
+ #include "include/cef_parser.h"
+ #include "include/cef_path_util.h"
+ #include "include/cef_process_util.h"
++#include "include/cef_request_context.h"
+ #include "include/cef_scheme.h"
+ #include "include/cef_ssl_info.h"
+ #include "include/cef_task.h"
+@@ -43,7 +45,9 @@
+ #include "libcef_dll/cpptoc/binary_value_cpptoc.h"
+ #include "libcef_dll/cpptoc/browser_cpptoc.h"
+ #include "libcef_dll/cpptoc/command_line_cpptoc.h"
++#include "libcef_dll/cpptoc/dictionary_value_cpptoc.h"
+ #include "libcef_dll/cpptoc/frame_cpptoc.h"
++#include "libcef_dll/cpptoc/request_context_cpptoc.h"
+ #include "libcef_dll/cpptoc/value_cpptoc.h"
+ #include "libcef_dll/ctocpp/app_ctocpp.h"
+ #include "libcef_dll/ctocpp/completion_callback_ctocpp.h"
+@@ -789,6 +793,25 @@
+   return _retval;
+ }
+ 
++#if CEF_API_ADDED(15401)
++CEF_EXPORT struct _cef_dictionary_value_0_t* cef_get_initial_privacy_status(struct _cef_request_context_0_t* request_context) {
++  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
++
++  // Verify param: request_context; type: refptr_same
++  DCHECK(request_context);
++  if (!request_context) {
++    return NULL;
++  }
++
++  // Execute
++  CefRefPtr<CefDictionaryValue> _retval = CefGetInitialPrivacyStatus(
++      CefRequestContextCppToC_Unwrap(request_context));
++
++  // Return type: refptr_same
++  return CefDictionaryValueCppToC_Wrap(_retval);
++}
++#endif  // CEF_API_ADDED(15401)
++
+ CEF_EXPORT int cef_register_scheme_handler_factory(const cef_string_t* scheme_name, const cef_string_t* domain_name, struct _cef_scheme_handler_factory_0_t* factory) {
+   // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+ 
+--- a/cef/libcef_dll/wrapper/libcef_dll_dylib.cc
++++ b/cef/libcef_dll/wrapper/libcef_dll_dylib.cc
+@@ -9,7 +9,7 @@
+ // implementations. See the translator.README.txt file in the tools directory
+ // for more information.
+ //
+-// $hash=ce119e01e2ae6fe23956e8eb03f9a3e855985f62$
++// $hash=56ae826f44bd7eb52e9a2bc7875111a27830e0b3$
+ //
+ 
+ 
+@@ -137,6 +137,9 @@
+ decltype(&cef_write_json) cef_write_json;
+ decltype(&cef_get_path) cef_get_path;
+ decltype(&cef_launch_process) cef_launch_process;
++#if CEF_API_ADDED(15401)
++decltype(&cef_get_initial_privacy_status) cef_get_initial_privacy_status;
++#endif
+ decltype(&cef_register_scheme_handler_factory) cef_register_scheme_handler_factory;
+ decltype(&cef_clear_scheme_handler_factories) cef_clear_scheme_handler_factories;
+ decltype(&cef_is_cert_status_error) cef_is_cert_status_error;
+@@ -431,6 +434,9 @@
+ INIT_ENTRY(cef_write_json);
+ INIT_ENTRY(cef_get_path);
+ INIT_ENTRY(cef_launch_process);
++#if CEF_API_ADDED(15401)
++INIT_ENTRY(cef_get_initial_privacy_status);
++#endif
+ INIT_ENTRY(cef_register_scheme_handler_factory);
+ INIT_ENTRY(cef_clear_scheme_handler_factories);
+ INIT_ENTRY(cef_is_cert_status_error);
+@@ -874,6 +880,12 @@
+   return g_libcef_pointers.cef_launch_process(command_line);
+ }
+ 
++#if CEF_API_ADDED(15401)
++NO_SANITIZE("cfi-icall") struct _cef_dictionary_value_t* cef_get_initial_privacy_status(struct _cef_request_context_t* request_context) {
++  return g_libcef_pointers.cef_get_initial_privacy_status(request_context);
++}
++#endif
++
+ NO_SANITIZE("cfi-icall") int cef_register_scheme_handler_factory(const cef_string_t* scheme_name, const cef_string_t* domain_name, struct _cef_scheme_handler_factory_t* factory) {
+   return g_libcef_pointers.cef_register_scheme_handler_factory(scheme_name, domain_name, factory);
+ }
+--- a/cef/libcef_dll/wrapper/libcef_dll_wrapper.cc
++++ b/cef/libcef_dll/wrapper/libcef_dll_wrapper.cc
+@@ -9,7 +9,7 @@
+ // implementations. See the translator.README.txt file in the tools directory
+ // for more information.
+ //
+-// $hash=a55e760b5a7b2fe6ce030d87bfe6a3fcceac2620$
++// $hash=90da6b2156a6b4aa08f6f2150069e1f4ac3a1f9e$
+ //
+ 
+ #include "include/capi/cef_app_capi.h"
+@@ -20,6 +20,7 @@
+ #include "include/capi/cef_parser_capi.h"
+ #include "include/capi/cef_path_util_capi.h"
+ #include "include/capi/cef_process_util_capi.h"
++#include "include/capi/cef_request_context_capi.h"
+ #include "include/capi/cef_scheme_capi.h"
+ #include "include/capi/cef_ssl_info_capi.h"
+ #include "include/capi/cef_task_capi.h"
+@@ -35,6 +36,7 @@
+ #include "include/cef_parser.h"
+ #include "include/cef_path_util.h"
+ #include "include/cef_process_util.h"
++#include "include/cef_request_context.h"
+ #include "include/cef_scheme.h"
+ #include "include/cef_ssl_info.h"
+ #include "include/cef_task.h"
+@@ -50,7 +52,9 @@
+ #include "libcef_dll/ctocpp/binary_value_ctocpp.h"
+ #include "libcef_dll/ctocpp/browser_ctocpp.h"
+ #include "libcef_dll/ctocpp/command_line_ctocpp.h"
++#include "libcef_dll/ctocpp/dictionary_value_ctocpp.h"
+ #include "libcef_dll/ctocpp/frame_ctocpp.h"
++#include "libcef_dll/ctocpp/request_context_ctocpp.h"
+ #include "libcef_dll/ctocpp/value_ctocpp.h"
+ #include "libcef_dll/shutdown_checker.h"
+ #include "libcef_dll/transfer_util.h"
+@@ -690,6 +694,25 @@
+   return _retval?true:false;
+ }
+ 
++#if CEF_API_ADDED(15401)
++NO_SANITIZE("cfi-icall") CEF_GLOBAL CefRefPtr<CefDictionaryValue> CefGetInitialPrivacyStatus(CefRefPtr<CefRequestContext> request_context) {
++  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
++
++  // Verify param: request_context; type: refptr_same
++  DCHECK(request_context.get());
++  if (!request_context.get()) {
++    return nullptr;
++  }
++
++  // Execute
++  auto* _retval = cef_get_initial_privacy_status(
++      CefRequestContextCToCpp_Unwrap(request_context));
++
++  // Return type: refptr_same
++  return CefDictionaryValueCToCpp_Wrap(_retval);
++}
++#endif  // CEF_API_ADDED(15401)
++
+ NO_SANITIZE("cfi-icall") CEF_GLOBAL bool CefRegisterSchemeHandlerFactory(const CefString& scheme_name, const CefString& domain_name, CefRefPtr<CefSchemeHandlerFactory> factory) {
+   // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+ 
+--- a/cef/cef_api_untracked.json
++++ b/cef/cef_api_untracked.json
+@@ -1,18 +1,18 @@
+ {
+   "hashes": {
+     "999998": {
+-      "comment": "Next version last updated October 15, 2026.",
+-      "linux": "5c8344ae7d7f6421bc801401e35d4dbf6d38e101",
+-      "mac": "e5cd28047fc1f8bbb972e54692fc665040c7f034",
++      "comment": "Next version last updated October 16, 2026.",
++      "linux": "55fbfb8919d2d7650cd8568ad5649dcd2eaf5a27",
++      "mac": "8fae4ed82522ee020663648f06047805da8f77ab",
+       "sandbox_compat": "265fca9293e6b6ef",
+-      "windows": "726dc73763db22edb289e41af2421a232617f7f4"
++      "windows": "69b487d9aff68cdd52079e55770589b8ef14255f"
+     },
+     "999999": {
+-      "comment": "Experimental version last updated October 15, 2026.",
+-      "linux": "488548509981031433af22af05c9b59e6f0788a9",
+-      "mac": "a0751e05d62eb0b55000bb93ed449c395828684e",
++      "comment": "Experimental version last updated October 16, 2026.",
++      "linux": "874bd080f85b294651deeb5c6b64b021b1fd4b99",
++      "mac": "b1509a2d34f79bbe02b16bd0888332daf3302083",
+       "sandbox_compat": "265fca9293e6b6ef",
+-      "windows": "f14d20a5b5f2c89e7fe93de28b60278b38300f84"
++      "windows": "5837cca07655bbe0489a506686c1aff7d84b3a21"
+     }
+   }
+ }

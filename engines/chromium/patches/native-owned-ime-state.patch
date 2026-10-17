@@ -1,0 +1,44 @@
+--- a/cef/libcef/browser/prefs/browser_prefs.cc
++++ b/cef/libcef/browser/prefs/browser_prefs.cc
+@@ -65,6 +65,7 @@
+   registry->RegisterIntegerPref("cloakfox.initial_snapshot_version", 1);
+   registry->RegisterIntegerPref("cloakfox.fixture_network_version", 1);
+   registry->RegisterIntegerPref("cloakfox.owned_ime_version", 1);
++  registry->RegisterIntegerPref("cloakfox.owned_ime_state_version", 1);
+   registry->RegisterIntegerPref("cloakfox.identity_privacy_version", 2);
+   registry->RegisterDictionaryPref("cloakfox.presentation");
+   registry->RegisterBooleanPref("cloakfox.native_languages_saved", false);
+--- a/cef/libcef/browser/osr/render_widget_host_view_osr.cc
++++ b/cef/libcef/browser/osr/render_widget_host_view_osr.cc
+@@ -4,6 +4,7 @@
+ // found in the LICENSE file.
+ 
+ #include "cef/libcef/browser/osr/render_widget_host_view_osr.h"
++#include "cef/include/cef_process_message.h"
+ 
+ #include <stdint.h>
+ 
+@@ -1511,6 +1512,23 @@
+     content::RenderWidgetHostViewBase* updated_view,
+     bool did_update_state) {
+   const auto state = text_input_manager->GetTextInputState();
++  // Only bounded type metadata crosses the private embedding boundary. Never
++  // copy TextInputState.value or surrounding text. This precedes the virtual
++  // keyboard early return, which intentionally ignores ordinary desktop edits.
++  if (did_update_state && browser_impl_ &&
++      (!text_input_manager->GetActiveWidget() ||
++       text_input_manager->GetActiveWidget() == updated_view->GetRenderWidgetHost())) {
++    auto browser = browser_impl_->GetBrowser();
++    auto frame = browser->GetFocusedFrame();
++    if (!frame) frame = browser->GetMainFrame();
++    if (frame && frame->IsValid()) {
++      auto notice = CefProcessMessage::Create("cloakfox.native-owned-ime-type.v1");
++      notice->GetArgumentList()->SetBool(0, state && state->type != ui::TEXT_INPUT_TYPE_NONE);
++      notice->GetArgumentList()->SetBool(1, state && state->type == ui::TEXT_INPUT_TYPE_PASSWORD);
++      // Native browser callback, never a renderer/V8 message or web binding.
++      browser_impl_->GetClient()->OnProcessMessageReceived(browser, frame, PID_BROWSER, notice);
++    }
++  }
+   if (state && !state->show_ime_if_needed) {
+     return;
+   }

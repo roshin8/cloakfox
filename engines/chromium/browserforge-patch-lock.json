@@ -1,0 +1,16 @@
+{
+  "applyAfter": "identity-patch-lock.json",
+  "patch": "patches/native-browserforge-cpu-privacy.patch",
+  "inputs": [
+    {
+      "path": "cef/libcef/browser/prefs/browser_prefs.cc",
+      "beforeSha256": "449fc3b841b53feac7a94e5a73414e6044e9824c2bbf7494b4f2efb8daafbe3b",
+      "afterSha256": "3106d886424c32e3dc9b26cdc7fd45e7bf940733c635cd92167fde08382affdd"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc",
+      "beforeSha256": "15276856b8bf63cb670236253e0d906cd7014457b8dbc073270e9e5613fcd409",
+      "afterSha256": "a28aec87aedea129713b7ce8d8781e473c07eaf43c8af0544a8c62cfb58694ac"
+    }
+  ]
+}

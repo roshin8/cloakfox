@@ -1,0 +1,7 @@
+// Generated from the shared privacy contract at configure time.
+#pragma once
+namespace cloakfox {
+inline constexpr int kRequiredPolicySchemaVersion = @_policy_schema@;
+inline constexpr const char* kRequiredPrivacyGroups[] = {
+@_policy_group_names@};
+}

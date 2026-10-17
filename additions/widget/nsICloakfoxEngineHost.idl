@@ -1,0 +1,28 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+#include "nsISupports.idl"
+interface mozIDOMWindowProxy;
+interface nsIObserver;
+webidl Element;
+
+/** Chrome-only native viewport boundary. General engine routing is separately
+ * gated on complete native policy capabilities; this interface has no web binding. */
+[scriptable, builtinclass, uuid(241a9be1-e393-4fc7-b3ec-940d644a9efe)]
+interface nsICloakfoxEngineHost : nsISupports {
+  AUTF8String createLaunch(in mozIDOMWindowProxy owner);
+  void acceptLaunch(in mozIDOMWindowProxy owner, in AUTF8String name, in unsigned long pid);
+  AUTF8String attach(in mozIDOMWindowProxy owner, in Element browser,
+                     in AUTF8String name, in unsigned long revision,
+                     in long x, in long y, in unsigned long width, in unsigned long height,
+                     in nsIObserver inputObserver);
+  void setCanvas(in AUTF8String token, in Element canvas);
+  AUTF8String updateViewport(in AUTF8String token, in long x, in long y,
+                            in unsigned long width, in unsigned long height, in boolean visible);
+  void setInputState(in AUTF8String token, in unsigned long configRevision,
+                     in unsigned long viewportRevision, in AUTF8String stateJSON);
+  void invalidateInputState(in AUTF8String token, in unsigned long configRevision, in unsigned long viewportRevision);
+  AUTF8String state(in AUTF8String token);
+  void close(in AUTF8String token);
+  void closeLaunch(in AUTF8String name);
+};

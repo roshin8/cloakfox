@@ -74,8 +74,17 @@ class ChromiumController:
     def _apply(self, snapshot):
         config = validate_snapshot(snapshot)
         if config['engine'] != 'chromium': raise ValueError('Wrong engine for Chromium adapter')
+        initial_version = self.ready.get('initialSnapshotVersion', 0)
+        if type(initial_version) is not int or initial_version not in (0, 1):
+            raise RuntimeError('Unsupported initial native snapshot capability')
+        if 'presentation' in config['persona'] and self.ready.get('identityPrivacyVersion') not in (1, 2):
+            raise RuntimeError('Companion does not implement native identity presentation')
+        if ('presentation' in config['persona'] and
+                self.ready.get('identityPrivacyVersion', 0) < 2 and
+                config['persona']['presentation']['hardwareConcurrency'] not in (4, 8, 16)):
+            raise RuntimeError('Companion does not implement this BrowserForge processor count')
         supported = self.ready.get('supportedPersonaOptions', [])
-        if any(key not in supported for key in config['persona']['options']):
+        if any(key not in supported for key in (set(config['persona']['options']) | (set(config['persona']['overrides']) - {'presentation'}))):
             raise RuntimeError('Companion does not implement requested persona options')
         if config['private']:
             if config != self.store.get(config['containerId'], 'chromium', private=True):
@@ -87,6 +96,16 @@ class ChromiumController:
                 or result.get('private') is not config['private']
                 or result.get('configRevision') != config['revision']):
             raise RuntimeError('Companion acknowledged a different config snapshot')
+        if initial_version == 1:
+            status = result.get('initialSnapshotStatus')
+            if (type(status) is not dict or set(status) !=
+                    {'schemaVersion','appliedBeforeServices','container','private','revision'} or
+                    type(status['schemaVersion']) is not int or status['schemaVersion'] != 1 or
+                    status['appliedBeforeServices'] is not True or
+                    type(status['container']) is not str or status['container'] != config['containerId'] or
+                    status['private'] is not config['private'] or
+                    type(status['revision']) is not int or status['revision'] != config['revision']):
+                raise RuntimeError('Invalid initial native snapshot acknowledgement')
         self.applied[(config['containerId'], config['private'])] = config['revision']
         return config
 

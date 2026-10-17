@@ -161,7 +161,11 @@ export function getPersonaHardwareFamilies(os = "auto") {
 }
 
 /** Condition the real network on OS/GPU, weighting UAs by matching GPU mass. */
-export function samplePersonaFingerprint(prng, {os = "auto", hardware = "auto"} = {}) {
+export function samplePersonaFingerprint(prng, {browser = "firefox", version = "auto", os = "auto", hardware = "auto"} = {}) {
+  if (!["firefox", "chrome", "edge", "chromium", "safari"].includes(browser))
+    throw new Error("Unknown browser identity family.");
+  if (version !== "auto" && version !== "random-recent" && !/^\d+$/.test(String(version)))
+    throw new Error("Unknown browser identity version.");
   if (os === "auto" && hardware === "auto") return sampleFingerprint(prng);
   const choices = personaChoices(os, hardware);
   if (!choices.length) throw new Error("BrowserForge has no matching persona for this OS and hardware family.");

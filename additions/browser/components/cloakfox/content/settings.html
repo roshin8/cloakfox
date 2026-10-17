@@ -55,47 +55,91 @@
           <p class="hero-summary" id="cfx-headline-text">—</p>
         </div>
       </div>
-      <header class="profile-heading"><h2>BrowserForge profile</h2><span>Choose a preview or generate a fresh identity</span></header>
+      <header class="profile-heading">
+        <div><h2>Choose this container’s browser identity</h2><p>Pick the browser it reports; rendering engine selection stays independent.</p></div>
+        <span class="browserforge-badge">BrowserForge generated</span>
+      </header>
+      <fieldset class="browser-family-picker">
+        <legend>Browser family</legend>
+        <div id="cfx-browser-families" class="browser-family-grid" aria-describedby="cfx-browser-family-help"></div>
+        <p id="cfx-browser-family-help" class="field-help">This controls the reported browser identity. Choose the rendering engine separately in Engine settings.</p>
+      </fieldset>
       <div class="profile-fields">
+        <div class="profile-field">
+          <label for="cfx-persona-version">Browser version</label>
+          <select id="cfx-persona-version" class="hero-select"></select>
+        </div>
         <div class="profile-field">
           <label for="cfx-persona-filter">Operating system</label>
           <select id="cfx-persona-filter" class="hero-select"><option value="all">All operating systems</option><option>Windows</option><option>macOS</option><option>Linux</option></select>
         </div>
-        <div class="profile-field">
-          <label for="cfx-persona-choice">Profile preview</label>
-          <select id="cfx-persona-choice" class="hero-select" aria-describedby="cfx-persona-help"></select>
-        </div>
-
         <div class="profile-field"><label for="cfx-persona-hardware">Graphics family for fresh generation</label>
           <select id="cfx-persona-hardware"><option value="auto">Any graphics family</option></select>
         </div>
       </div>
-      <label class="generation-reset"><input id="cfx-generation-clear-overrides" type="checkbox"> Clear existing field overrides when generating</label>
-      <div class="profile-toolbar">
-        <p id="cfx-generate-help">Cookies and logins are kept. Custom overrides are kept unless you choose to clear them above.</p>
+      <div id="cfx-profile-preview" class="profile-preview" aria-live="polite">
+        <div class="profile-preview-copy">
+          <div class="profile-preview-heading"><strong id="cfx-profile-preview-text">Firefox · recent version</strong><span id="cfx-profile-confidence" class="profile-confidence">High confidence</span></div>
+          <code id="cfx-profile-preview-ua">Mozilla/5.0 (…) Gecko/20100101 Firefox/158.0</code>
+          <div id="cfx-profile-preview-traits" class="profile-preview-traits"></div>
+        </div>
         <div class="profile-buttons">
-          <button id="cfx-generate-new" type="button" class="btn btn-ghost" aria-describedby="cfx-generate-help">Generate new identity</button>
-          <button id="cfx-regenerate" class="btn btn-primary">Apply selected profile</button>
+          <button id="cfx-generate-new" type="button" class="btn btn-primary" aria-describedby="cfx-generate-help">Generate and apply</button>
+          <button id="cfx-regenerate" class="btn btn-ghost">Apply selected profile</button>
         </div>
       </div>
-      <p id="cfx-identity-status" class="identity-status" role="status" aria-live="polite"></p>
-      <div class="profile-overrides">
-        <span class="hero-overrides" id="cfx-override-count">No field overrides — every value comes from the persona.</span>
-        <button id="cfx-clear-overrides" class="btn btn-ghost btn-small" hidden>Clear overrides</button>
+      <details class="matching-profile-browser">
+        <summary>Browse matching profiles</summary>
+        <div class="matching-profile-field"><label for="cfx-persona-choice">Profile preview</label><select id="cfx-persona-choice" class="hero-select" aria-describedby="cfx-persona-help"></select></div>
+      </details>
+      <div class="profile-note"><strong>Version protection</strong><span>Current and recent releases provide the strongest blend. Older choices stay available and are clearly labelled when confidence is lower.</span></div>
+      <div class="profile-utility-row">
+        <label class="generation-reset"><input id="cfx-generation-clear-overrides" type="checkbox"> Clear existing field overrides when generating</label>
+        <p id="cfx-generate-help">Cookies and logins are kept. Custom overrides stay unless cleared.</p>
       </div>
-      <details class="profile-help">
-        <summary>How identity generation works</summary>
-        <p id="cfx-persona-help" class="card-help"></p>
-        <p id="cfx-persona-os-current" class="card-help"></p>
-        <p>Generate new identity creates and applies a fresh BrowserForge identity using the operating system selected above. The preview list is not a limit. Apply selected profile applies the preview you choose with a fresh identity seed.</p>
-        <p>Choosing this computer’s OS reduces font and rendering contradictions. Cross-OS sampling cannot reproduce a foreign OS renderer.</p>
-      </details>
-      <details class="profile-maintenance">
-        <summary>Reset persona or clear container data</summary>
-        <p>Resetting persona settings keeps cookies, logins and site data. Forget container data clears them and requires confirmation.</p>
-        <div class="profile-buttons"><button id="cfx-clear" class="btn btn-ghost">Reset persona settings</button><button id="cfx-forget-data" class="btn btn-ghost">Forget container data…</button></div>
-      </details>
-      <p id="cfx-forget-status" role="status" aria-live="polite"></p>
+      <p id="cfx-identity-status" class="identity-status" role="status" aria-live="polite"></p>
+      <section class="profile-tools" aria-labelledby="cfx-profile-tools-title">
+        <header>
+          <div><h3 id="cfx-profile-tools-title">Identity tools</h3><p>Review custom fields, learn how generation works, or reset this container.</p></div>
+        </header>
+        <div class="profile-overrides">
+          <div><strong>Custom field overrides</strong><span class="hero-overrides" id="cfx-override-count">No field overrides — every value comes from the persona.</span></div>
+          <button id="cfx-clear-overrides" class="btn btn-ghost btn-small" hidden>Clear overrides</button>
+        </div>
+        <details class="profile-help">
+          <summary><span><strong>How identity generation works</strong><small>BrowserForge sampling, operating systems, and raw User-Agent editing</small></span></summary>
+          <div class="profile-disclosure-body">
+            <p id="cfx-persona-help" class="card-help"></p>
+            <p id="cfx-persona-os-current" class="card-help"></p>
+            <p>Generate and apply creates a fresh BrowserForge identity using the browser, version, operating system and hardware selected above. Apply selected profile uses the deterministic preview with a fresh identity seed.</p>
+            <p>Raw User-Agent remains available under Advanced field overrides for expert use.</p>
+            <p>Choosing this computer’s OS reduces font and rendering contradictions. Cross-OS sampling cannot reproduce a foreign OS renderer.</p>
+          </div>
+        </details>
+        <details class="profile-maintenance">
+          <summary><span><strong>Reset identity or container data</strong><small>Reset only the persona, or remove cookies, logins, and site data</small></span></summary>
+          <div class="profile-disclosure-body">
+            <p>Reset persona settings keeps cookies, logins and site data. Forget container data clears them and requires confirmation.</p>
+            <div class="profile-buttons"><button id="cfx-clear" class="btn btn-ghost">Reset persona settings</button><button id="cfx-forget-data" class="btn btn-danger">Forget container data…</button></div>
+          </div>
+        </details>
+        <p id="cfx-forget-status" role="status" aria-live="polite"></p>
+      </section>
+      <section class="profile-engine" aria-labelledby="cfx-engine-title">
+        <header>
+          <div><h3 id="cfx-engine-title">Rendering engine</h3><p>Choose how a future Chromium engine session should open for this container.</p></div>
+          <span class="profile-engine-badge">Experimental</span>
+        </header>
+        <div class="profile-engine-control">
+          <label for="cfx-chromium-presentation">Window behavior</label>
+          <select id="cfx-chromium-presentation" class="hero-select" aria-describedby="cfx-chromium-presentation-help cfx-chromium-presentation-status">
+            <option value="same-window">Use this browser window</option>
+            <option value="separate-window">Open a separate Chromium window</option>
+          </select>
+        </div>
+        <p id="cfx-chromium-presentation-help" class="card-help">The choice is saved per container. Existing tabs keep their current engine and window.</p>
+        <p id="cfx-chromium-presentation-status" class="profile-engine-status" role="status" aria-live="polite">Chromium switching is not available in this build. This preference is saved for a future release.</p>
+      </section>
     </section>
 
     <nav class="section-nav">

@@ -372,11 +372,25 @@ function detectOSFromUA(ua) {
   return "linux";
 }
 
-function normalizeUA(ua) {
+function normalizeUA(ua, version = FIREFOX_VERSION, browser = "firefox") {
   if (!ua) return ua;
-  return ua
-    .replace(/rv:\d+\.\d+/, `rv:${FIREFOX_VERSION}`)
-    .replace(/Firefox\/\d+\.\d+/, `Firefox/${FIREFOX_VERSION}`);
+  const major = parseInt(version, 10);
+  const firefoxVersion = `${major}.0`;
+  if (browser === "firefox") return ua
+    .replace(/rv:\d+\.\d+/, `rv:${firefoxVersion}`)
+    .replace(/Firefox\/\d+\.\d+/, `Firefox/${firefoxVersion}`);
+  const os = detectOSFromUA(ua);
+  const platform = os === "windows" ? "Windows NT 10.0; Win64; x64" :
+    os === "macos" ? "Macintosh; Intel Mac OS X 10_15_7" : "X11; Linux x86_64";
+  const chrome = `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
+  if (browser === "chrome") return chrome;
+  if (browser === "edge") return `${chrome} Edg/${major}.0.0.0`;
+  if (browser === "chromium") return chrome.replace("Chrome/", "Chromium/");
+  if (browser === "safari") {
+    const safariPlatform = os === "macos" ? platform : "Macintosh; Intel Mac OS X 10_15_7";
+    return `Mozilla/5.0 (${safariPlatform}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${major}.0 Safari/605.1.15`;
+  }
+  throw new Error("Unknown browser identity family.");
 }
 
 // Upgrade only the generated desktop Firefox identity shape. Version tokens
@@ -454,9 +468,9 @@ function makeSeededPRNG(seedB64) {
 }
 
 // Map a BrowserForge fingerprint sample to our cloak_cfg key shape.
-function bfToCloakKeys(fp, prng) {
+function bfToCloakKeys(fp, prng, version = FIREFOX_VERSION, browser = "firefox") {
   const keys = {};
-  const ua = normalizeUA(fp.userAgent || "");
+  const ua = normalizeUA(fp.userAgent || "", version, browser);
   const os = detectOSFromUA(ua);
 
   // Navigator
@@ -665,16 +679,24 @@ export function fillPersonaKeys(seedB64, ucid = null, constraints = null) {
   const prefix = `cloakfox.container.${ucid}.`;
   const rawOS = ucid === null ? "auto" : Services.prefs.getStringPref(prefix + "persona_os", "auto");
   const rawHardware = ucid === null ? "auto" : Services.prefs.getStringPref(prefix + "persona_hardware", "auto");
+  const rawBrowser = ucid === null ? "firefox" : Services.prefs.getStringPref(prefix + "persona_browser", "firefox");
+  const rawVersion = ucid === null ? "auto" : Services.prefs.getStringPref(prefix + "persona_version", "auto");
   const savedOS = ["auto", "windows", "macos", "linux"].includes(rawOS) ? rawOS : "auto";
   const savedHardware = ["auto", "apple", "intel", "nvidia", "amd", "software", "other"].includes(rawHardware) ? rawHardware : "auto";
   const filtered = constraints !== null || savedOS !== "auto" || savedHardware !== "auto";
-  const filters = constraints || { os: savedOS, hardware: savedHardware };
+  const savedBrowser = ["firefox", "chrome", "edge", "chromium", "safari"].includes(rawBrowser) ? rawBrowser : "firefox";
+  const savedVersion = rawVersion === "random-recent" || /^\d+$/.test(rawVersion) ? rawVersion : "auto";
+  const filters = constraints || (savedVersion === "auto"
+    ? { os: savedOS, hardware: savedHardware }
+    : { browser: savedBrowser, version: savedVersion, os: savedOS, hardware: savedHardware });
   let fp = filtered ? samplePersonaFingerprint(prng, filters) : sampleForMode(prng, mode);
   if (ucid !== null) {
     const index = Services.prefs.getIntPref(`cloakfox.container.${ucid}.persona_index`, -1);
     if (!filtered && index >= 0 && index < 30) fp = previewPersona(index, mode);
   }
-  const keys = bfToCloakKeys(fp, prng);
+  let selectedVersion = filters.version || "auto";
+  if (selectedVersion === "random-recent") selectedVersion = String(parseInt(FIREFOX_VERSION, 10) - Math.floor(prng() * 3));
+  const keys = bfToCloakKeys(fp, prng, selectedVersion === "auto" ? FIREFOX_VERSION : selectedVersion, filters.browser || savedBrowser);
 
   // Precise/PBO GPU readbacks bypass canvas noise. Explicit opt-out preserves
   // compute compatibility; never perturb numerical application buffers.

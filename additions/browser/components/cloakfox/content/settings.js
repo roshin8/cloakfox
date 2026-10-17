@@ -1,4 +1,5 @@
 import { getPersonaHardwareFamilies } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
+import { listBrowserFamilies, listBrowserVersions, normalizeBrowserSelection } from "resource:///modules/CloakfoxBrowserProfiles.sys.mjs";
 import { PRESETS, browserValues, screenValues, languageValues, gpuValues } from "./settings-presets.mjs";
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,6 +21,12 @@ import { PRESETS, browserValues, screenValues, languageValues, gpuValues } from 
 const { fillPersonaKeys, writeHttpProfilePrefs, personaOSMode, listPersonas } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxPersonas.sys.mjs"
 );
+const { AppConstants } = ChromeUtils.importESModule("resource://gre/modules/AppConstants.sys.mjs");
+const browserCapabilities = () => Object.freeze({
+  gecko: Object.freeze({ available: true, version: AppConstants.MOZ_APP_VERSION }),
+  chromium: Object.freeze({ available: true, version: "154.0" }),
+  webkit: Object.freeze({ available: true, version: "26.0" }),
+});
 
 // Write a container's cloak_cfg and keep its H2/H3 wire profile coherent
 // with the persona in one step. Used by every cloak_cfg (re)write below.
@@ -39,6 +46,10 @@ const { ContextualIdentityService } = ChromeUtils.importESModule(
   "moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs");
 const { forgetContainerData } = ChromeUtils.importESModule(
   "resource:///modules/CloakfoxIdentityActions.sys.mjs");
+
+const { getChromiumPresentation, setChromiumPresentation } = ChromeUtils.importESModule(
+  "resource:///modules/CloakfoxEnginePreferences.sys.mjs"
+);
 
 const PREF_ENABLED = "cloakfox.enabled";
 const { resolveNetworkProfile, writeNetworkProfile } = ChromeUtils.importESModule(
@@ -652,11 +663,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Match the native desktop Chromium eligibility gate, including custom UAs.
     const chromium = /(?:Chrome|Chromium)\/\d/.test(ua)
       && !/(?:Firefox\/|iPhone|iPad|Android|Mobile)/.test(ua);
-    document.getElementById("sec-screen-management").hidden = !chromium;
-
     const status = document.getElementById("cfx-chromium-status");
     if (!chromium) {
-      status.textContent = "Choose a desktop Chrome or Edge identity to configure Chromium compatibility. Saved settings are retained.";
+      status.textContent = "These settings are saved and editable now, but only apply after a desktop Chrome, Edge or Chromium identity is generated and applied.";
     } else if (!Services.prefs.getBoolPref(PREF_ENABLED, false)) {
       status.textContent = "Unavailable: enable Cloakfox to activate Chromium compatibility.";
     } else if (!Services.prefs.getBoolPref("cloakfox.compat.screen_management", false)) {
@@ -686,6 +695,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const tzCurrentEl  = document.getElementById("cfx-tz-current");
   const regenBtn     = document.getElementById("cfx-regenerate");
   const clearBtn     = document.getElementById("cfx-clear");
+
+  const presentationEl = document.getElementById("cfx-chromium-presentation");
+  presentationEl.addEventListener("change", () => {
+    const status = document.getElementById("cfx-chromium-presentation-status");
+    try {
+      setChromiumPresentation(Number(selectEl.value), presentationEl.value);
+      Services.prefs.savePrefFile(null);
+      status.textContent = "Preference saved for this container. Chromium switching is not available in this build; existing tabs keep their current engine and window.";
+    } catch (error) {
+      status.textContent = `Could not save presentation: ${error.message}`;
+    }
+  });
 
   // Master enable.
   function syncStatus() {
@@ -738,9 +759,89 @@ document.addEventListener("DOMContentLoaded", () => {
       persistCloakCfg(ucid, seed);
     }
   }
+  const generateNew = document.getElementById("cfx-generate-new");
+
+  function selectedBrowser() {
+    return document.querySelector(".browser-family-tile.is-selected")?.dataset.browser || "firefox";
+  }
+
+  function updateBrowserPreview() {
+    const browser = selectedBrowser();
+    const versionSelect = document.getElementById("cfx-persona-version");
+    const version = versionSelect.selectedOptions[0];
+    const os = document.getElementById("cfx-persona-filter").selectedOptions[0]?.textContent || "All operating systems";
+    const hardware = document.getElementById("cfx-persona-hardware").selectedOptions[0]?.textContent || "Any graphics family";
+    const labels = {firefox:"Firefox",chrome:"Chrome",edge:"Microsoft Edge",chromium:"Chromium",safari:"Safari"};
+    const label = labels[browser] || browser;
+    const major = parseInt(versionSelect.value, 10) || parseInt(AppConstants.MOZ_APP_VERSION, 10);
+    const osToken = os === "Windows" ? "Windows NT 10.0; Win64; x64" : os === "macOS" ? "Macintosh; Intel Mac OS X 10_15_7" : "X11; Linux x86_64";
+    const chromeUA = `Mozilla/5.0 (${osToken}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
+    const ua = browser === "firefox" ? `Mozilla/5.0 (${osToken}; rv:${major}.0) Gecko/20100101 Firefox/${major}.0` :
+      browser === "edge" ? `${chromeUA} Edg/${major}.0.0.0` :
+      browser === "chromium" ? chromeUA.replace("Chrome/", "Chromium/") :
+      browser === "safari" ? `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${major}.0 Safari/605.1.15` : chromeUA;
+    document.getElementById("cfx-profile-preview-text").textContent = `${label} ${version?.textContent || ""} · ${os}`;
+    document.getElementById("cfx-profile-preview-ua").textContent = ua;
+    const traits = document.getElementById("cfx-profile-preview-traits");
+    traits.replaceChildren(...[
+      os === "Windows" ? "Win32" : os === "macOS" ? "MacIntel" : os === "Linux" ? "Linux x86_64" : "BrowserForge OS",
+      hardware, "Desktop", `${label} identity`, "Engine selected separately",
+    ].map(text => { const span = document.createElement("span"); span.textContent = text; return span; }));
+    const confidence = version?.dataset.confidence || "high";
+    const badge = document.getElementById("cfx-profile-confidence");
+    badge.dataset.confidence = confidence;
+    badge.textContent = confidence === "lower" ? "Lower confidence" : "High confidence";
+    const selection = normalizeBrowserSelection({ browser, version: versionSelect.value }, browserCapabilities());
+    generateNew.disabled = !selection;
+    generateNew.title = selection ? "" : "Choose a supported identity profile.";
+  }
+
+  function renderBrowserPicker(ucid) {
+    const capabilities = browserCapabilities();
+    const saved = Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_browser`, "firefox");
+    const active = listBrowserFamilies(capabilities).find(item => item.id === saved && item.available)?.id || "firefox";
+    const grid = document.getElementById("cfx-browser-families");
+    grid.replaceChildren();
+    for (const family of listBrowserFamilies(capabilities)) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `browser-family-tile${family.id === active ? " is-selected" : ""}`;
+      button.dataset.browser = family.id;
+      button.disabled = !family.available;
+      button.title = family.unavailableReason;
+      button.setAttribute("aria-pressed", String(family.id === active));
+      button.setAttribute("aria-label", family.available ? family.label : `${family.label}: ${family.unavailableReason}`);
+      const initials = {firefox:"Fx",chrome:"Ch",edge:"Ed",chromium:"Cr",safari:"Sa",custom:"Cu"}[family.id];
+      const engine = family.engine ? `Identity profile · engine separate` : "Advanced override";
+      button.innerHTML = `<span class="browser-tile-top"><span class="browser-family-logo browser-logo-${family.id}">${initials}</span><span class="browser-ready-dot"></span></span><strong>${family.label}</strong><small>${family.available ? engine : family.unavailableReason}</small>`;
+      button.addEventListener("click", () => {
+        for (const tile of grid.children) { tile.classList.remove("is-selected"); tile.setAttribute("aria-pressed", "false"); }
+        button.classList.add("is-selected"); button.setAttribute("aria-pressed", "true");
+        populateBrowserVersions(ucid, family.id);
+      });
+      grid.append(button);
+    }
+    populateBrowserVersions(ucid, active);
+  }
+
+  function populateBrowserVersions(ucid, family) {
+    const select = document.getElementById("cfx-persona-version");
+    const saved = Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_version`, "");
+    select.replaceChildren();
+    for (const version of listBrowserVersions(family, browserCapabilities())) {
+      const option = new Option(version.label, version.value);
+      option.dataset.confidence = version.confidence;
+      select.append(option);
+    }
+    select.value = [...select.options].some(option => option.value === saved) ? saved : select.options[0]?.value || "";
+    updateBrowserPreview();
+  }
 
   function refreshContainer() {
     const ucid = parseInt(selectEl.value, 10) || 0;
+    presentationEl.value = getChromiumPresentation(ucid);
+    document.getElementById("cfx-chromium-presentation-status").textContent =
+      "Chromium switching is not available in this build. This preference is saved for a future release.";
     const cfg = getCloakCfg(ucid);
     const overrides = readOverrides(ucid);
     const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
@@ -750,6 +851,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const osLabels = { windows:"Windows", macos:"macOS", linux:"Linux", legacy:"all" };
     const hostLabel = { Darwin:"macOS", WINNT:"Windows", Linux:"Linux" }[Services.appinfo.OS];
     document.getElementById("cfx-persona-filter").value = mode === "host" ? hostLabel : osLabels[mode];
+    renderBrowserPicker(ucid);
     document.getElementById("cfx-persona-os-current").textContent =
       `Saved generation mode: ${mode === "host" ? "this computer’s OS" : osLabels[mode] === "all" ? "all operating systems" : osLabels[mode]}. Custom overrides may differ.`;
     document.getElementById("cfx-persona-choice").value = "-1";
@@ -757,6 +859,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateChromiumCompatibility();
     updateNetworkProfile();
     updateHardwareChoices(Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_hardware`, "auto"));
+    updateBrowserPreview();
     updateHeadline(cfg, seedB64);
     populateGrid("grp-navigator", cfg, GROUPS["grp-navigator"], ucid, overrides, onEdit);
     populateGrid("grp-screen",    cfg, GROUPS["grp-screen"],    ucid, overrides, onEdit);
@@ -810,7 +913,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const identityChoice = document.getElementById("cfx-persona-choice");
-  const generateNew = document.getElementById("cfx-generate-new");
   generateNew.addEventListener("click", () => {
     if (generateNew.disabled) return;
     applyIdentity(-1);
@@ -841,11 +943,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (group.children.length) choice.append(group);
     }
     regenBtn.disabled = true;
-    document.getElementById("cfx-generate-new").textContent = filter.value === "all" ? "Generate new identity" : `Generate ${filter.value} identity`;
+    document.getElementById("cfx-generate-new").textContent = "Generate and apply";
     document.getElementById("cfx-persona-help").textContent =
       `${choice.options.length - 1} BrowserForge previews. Both fresh generation and previews use the operating system above. Selecting an OS or preview does not apply it. Custom overrides are kept unless cleared during fresh generation.`;
   }
-  document.getElementById("cfx-persona-filter").addEventListener("change", () => { loadIdentityChoices(); updateHardwareChoices(); });
+  document.getElementById("cfx-persona-filter").addEventListener("change", () => { loadIdentityChoices(); updateHardwareChoices(); updateBrowserPreview(); });
+  document.getElementById("cfx-persona-hardware").addEventListener("change", updateBrowserPreview);
+  document.getElementById("cfx-persona-version").addEventListener("change", updateBrowserPreview);
 
   identityChoice.addEventListener("change", () => { regenBtn.disabled = Number(identityChoice.value) < 0; });
 
@@ -885,12 +989,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }));
     try {
       if (!["legacy", "windows", "macos", "linux"].includes(mode)) throw new Error("Invalid persona OS mode");
+      const browser = selectedBrowser();
+      const version = document.getElementById("cfx-persona-version").value;
+      const selection = normalizeBrowserSelection({ browser, version }, browserCapabilities());
+      if (!selection) throw new Error("The selected browser engine is unavailable");
       Services.prefs.setStringPref(personaModePref(ucid), mode);
       if (!Number.isInteger(index) || index < -1 || index >= 30) throw new Error("Select a BrowserForge identity");
       if (index === -1) Services.prefs.clearUserPref(personaIndexPref(ucid));
       else Services.prefs.setIntPref(personaIndexPref(ucid), index);
       const hardware = document.getElementById("cfx-persona-hardware").value;
       const prefix = `cloakfox.container.${ucid}.`;
+      Services.prefs.setStringPref(prefix + "persona_browser", selection.browser);
+      Services.prefs.setStringPref(prefix + "persona_version", selection.version);
       // A selected preview retains its 155 pin; fresh sampling may use hardware filters.
       if (index === -1 && hardware !== "auto") {
         Services.prefs.setStringPref(prefix + "persona_os", mode === "legacy" ? "auto" : mode);
@@ -1098,8 +1208,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const details = [...main.querySelectorAll(":scope > details")];
   details.forEach((node, index) => { node.id ||= `cfx-reference-${index}`; });
   const categories = [
-    {id:"identity",label:"Persona & identity",description:"Choose a BrowserForge persona for this container, then customize its identity fields.",panels:["cfx-persona-panel","sec-identity","sec-screen-management"]},
-    {id:"display",label:"Display & graphics",description:"Customize screen geometry, pixel density and the graphics identity.",panels:["sec-display","sec-graphics","sec-appearance"]},
+    {id:"identity",label:"Persona & identity",description:"Choose a BrowserForge persona for this container, then customize its identity fields.",panels:["cfx-persona-panel","sec-identity"]},
+    {id:"display",label:"Display & graphics",description:"Customize screen geometry, virtual screens, pixel density and the graphics identity.",panels:["sec-display","sec-screen-management","sec-graphics","sec-appearance"]},
     {id:"region",label:"Language & region",description:"Coordinate language, timezone and optional location for this container.",panels:["cfx-region-settings","sec-locale","sec-geo"]},
     {id:"media",label:"Audio & media",description:"Control audio characteristics, media capabilities and exposed device surfaces.",panels:["sec-audio","sec-media"]},
     {id:"connections",label:"Connections & proxies",description:"Choose this container’s connection policy and manage saved proxy routes.",panels:["sec-network-policy","cfx-proxy-manager","cfx-ip-conflict-panel"]},
@@ -1155,7 +1265,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const buttons = [];
     for (const [value, text] of choices) {
       const button = document.createElement("button"); button.type = "button";
-      button.textContent = ({console:"Console", grouped:"Grouped", light:"Light", dark:"Dark"})[value] || text;
+      button.textContent = ({console:"Focused", grouped:"All controls", light:"Light", dark:"Dark"})[value] || text;
       button.title = text; button.dataset.value = value;
       button.addEventListener("click", () => { select.value = value; select.dispatchEvent(new Event("change")); });
       segment.append(button); buttons.push(button);
@@ -1164,7 +1274,7 @@ document.addEventListener("DOMContentLoaded", () => {
     select.addEventListener("change", sync); sync();
     appearance.append(segment); return select;
   }
-  const layout = appearanceSelect("cfx-layout", "Layout", [["console", "Extension console"], ["grouped", "Grouped controls"]], "cloakfox.ui.layout", "console");
+  const layout = appearanceSelect("cfx-layout", "Layout", [["console", "Focused categories"], ["grouped", "All controls"]], "cloakfox.ui.layout", "console");
   const theme = appearanceSelect("cfx-theme", "Colors", [["light", "Slate blue · Light"], ["dark", "Graphite & teal · Dark"]], "cloakfox.ui.theme", matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   const advancedPreference = document.createElement("label");
   advancedPreference.className = "advanced-preference";
@@ -1219,7 +1329,9 @@ document.addEventListener("DOMContentLoaded", () => {
     link.prepend(icon);
     link.addEventListener("click", event => {
       event.preventDefault(); search.value = ""; active = category.id;
-      history.pushState(null,"",`#category-${active}`); render(); title.focus({preventScroll:true}); window.scrollTo(0,0);
+      history.pushState(null,"",`#category-${active}`); render();
+      if (layout.value === "grouped") groups.get(category.panels.find(id => groups.has(id)))?.scrollIntoView({behavior:"smooth",block:"start"});
+      else { title.focus({preventScroll:true}); window.scrollTo(0,0); }
     });
     nav.append(link); links.set(category.id,link);
   });
@@ -1227,6 +1339,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ensureGroups();
     document.documentElement.dataset.theme = theme.value;
     document.body.dataset.layout = layout.value;
+    document.body.dataset.category = active;
     const query = search.value.trim().toLocaleLowerCase();
     const currentCategory = categories.find(item => item.id === active);
     const available = currentCategory.panels.filter(id => groups.has(id));
@@ -1262,7 +1375,7 @@ document.addEventListener("DOMContentLoaded", () => {
       let matches = 0;
       for (const id of category.panels) {
         const panel = document.getElementById(id); if (!panel) continue;
-        const match = query ? `${category.label} ${panel.textContent}`.toLocaleLowerCase().includes(query) : category.id === active;
+        const match = query ? `${category.label} ${panel.textContent}`.toLocaleLowerCase().includes(query) : layout.value === "grouped" || category.id === active;
         const visible = match && (query || layout.value === "grouped" || id === selectedId);
         panel.hidden = !visible;
         const group = groups.get(id); group.hidden = !visible;
@@ -1281,8 +1394,9 @@ document.addEventListener("DOMContentLoaded", () => {
       link.classList.toggle("search-match", !!query && matches > 0);
     }
     const category = categories.find(item=>item.id===active);
-    title.textContent = query ? "Search settings" : category.label;
-    description.textContent = query ? `${count} sections match “${search.value.trim()}”. Clear search to return to your category.` : category.description;
+    title.textContent = query ? "Search settings" : layout.value === "grouped" ? "All controls" : category.label;
+    description.textContent = query ? `${count} sections match “${search.value.trim()}”. Clear search to return to your category.`
+      : layout.value === "grouped" ? "The complete settings page. Use the sidebar to jump between sections, or switch to Focused for one category at a time." : category.description;
     empty.hidden = count > 0;
   }
   function followHash() {
