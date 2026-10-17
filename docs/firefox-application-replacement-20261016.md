@@ -29,7 +29,7 @@ change, so profile backup/content verification was not claimed.
 ## Confirmed hazards and safeguards
 
 - The appearance cache formerly used the collision-prone filename Firefox.app.
-  It now uses Cloakfox Disguise.app; CFBundleName/DisplayName remain
+  It now uses Firefox Personal.app; CFBundleName/DisplayName remain
   Firefox, and the engine/profile identity remains Cloakfox's.
 - Appearance preparation now requires the actual Cloakfox source bundle ID and
   executable, refuses Applications paths regardless of case, refuses redirected

@@ -212,7 +212,7 @@ def main():
             close(driver)
 
         firefox_app = Path(target["app"])
-        assert firefox_app.name == "Cloakfox Disguise.app"
+        assert firefox_app.name == "Firefox Personal.app"
         info = plistlib.loads((firefox_app / "Contents/Info.plist").read_bytes())
         assert info["CFBundleName"] == info["CFBundleDisplayName"] == "Firefox", info
         assert info["CFBundleExecutable"] == "firefox", info
