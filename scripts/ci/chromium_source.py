@@ -25,6 +25,22 @@ POLL_INTERVAL = 1
 PROGRESS_INTERVAL = 30
 
 
+def cef_arm64_config(gn, args, environment):
+    # CEF's Python generator reads os.environ directly, rather than the env
+    # mapping used for child commands. Scope the target flags to this call.
+    keys = ('CEF_ENABLE_ARM64', 'GN_OUT_CONFIGS')
+    previous = {key: os.environ.get(key) for key in keys}
+    try:
+        os.environ.update({key: environment[key] for key in keys})
+        return gn.GetAllPlatformConfigs(args)['Release_GN_arm64']
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
 class ActionsConsole:
     """Best-effort console mirror; the original evidence files stay lossless.
 
@@ -322,7 +338,7 @@ class Pipeline:
         if shutil.which('ccache'):
             args['cc_wrapper'] = shutil.which('ccache')
         # Runtime Metal stays enabled and tested, matching the verified local path.
-        config = gn.GetAllPlatformConfigs(args)['Release_GN_arm64']
+        config = cef_arm64_config(gn, args, self.env)
         (out / 'args.gn').write_text(gn.GetConfigFileContents(config) + '\n')
         self.run('gn', [source / 'buildtools/mac/gn', 'gen', out, '--root=' + str(source)], source)
         (self.logs / 'args.gn').write_text((out / 'args.gn').read_text())

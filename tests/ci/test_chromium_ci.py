@@ -1,5 +1,8 @@
 import importlib.util
 import io
+import os
+from types import SimpleNamespace
+from unittest.mock import patch
 from pathlib import Path
 import tarfile
 import tempfile
@@ -16,6 +19,25 @@ def load(name):
 
 
 class CiInputs(unittest.TestCase):
+    def test_in_process_cef_generator_sees_target_environment_and_restores_it(self):
+        api = load('chromium_source')
+        def generate(args):
+            self.assertEqual(os.environ['CEF_ENABLE_ARM64'], '1')
+            self.assertEqual(os.environ['GN_OUT_CONFIGS'], 'Release_GN_arm64')
+            return {'Release_GN_arm64': {'target_cpu': 'arm64'}}
+        with patch.dict(os.environ, {'CEF_ENABLE_ARM64': '0', 'GN_OUT_CONFIGS': 'original'}):
+            result = api.cef_arm64_config(SimpleNamespace(GetAllPlatformConfigs=generate), {},
+                                         {'CEF_ENABLE_ARM64': '1', 'GN_OUT_CONFIGS': 'Release_GN_arm64'})
+            self.assertEqual(result['target_cpu'], 'arm64')
+            self.assertEqual(os.environ['CEF_ENABLE_ARM64'], '0')
+            self.assertEqual(os.environ['GN_OUT_CONFIGS'], 'original')
+            def fail(args):
+                raise ValueError('generator failure')
+            with self.assertRaisesRegex(ValueError, 'generator failure'):
+                api.cef_arm64_config(SimpleNamespace(GetAllPlatformConfigs=fail), {},
+                                     {'CEF_ENABLE_ARM64': '1', 'GN_OUT_CONFIGS': 'Release_GN_arm64'})
+            self.assertEqual(os.environ['GN_OUT_CONFIGS'], 'original')
+
     def test_arm64_target_is_explicit_even_when_the_build_host_is_intel(self):
         api = load('chromium_source')
         with tempfile.TemporaryDirectory() as folder:
