@@ -3,6 +3,10 @@ name: Browser build runner survey
 on:
   workflow_dispatch:
     inputs:
+      intel_build_probe:
+        description: Verify free Intel Mac capacity and ARM64 cross-compilation
+        type: boolean
+        default: false
       checkpoint_upload_only:
         description: Diagnose transfer of the exact successful checkpoint without compiling
         type: boolean
@@ -23,7 +27,7 @@ permissions:
 
 jobs:
   survey:
-    if: ${{ !inputs.diagnostic_only && !inputs.checkpoint_upload_only }}
+    if: ${{ !inputs.diagnostic_only && !inputs.checkpoint_upload_only && !inputs.intel_build_probe }}
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +68,7 @@ jobs:
           if-no-files-found: error
 
   runtime-diagnostic:
-    if: ${{ inputs.diagnostic_only && !inputs.checkpoint_upload_only }}
+    if: ${{ inputs.diagnostic_only && !inputs.checkpoint_upload_only && !inputs.intel_build_probe }}
     runs-on: macos-26
     timeout-minutes: 20
     permissions:
@@ -133,7 +137,7 @@ jobs:
           retention-days: 7
 
   checkpoint-upload-diagnostic:
-    if: ${{ inputs.checkpoint_upload_only }}
+    if: ${{ inputs.checkpoint_upload_only && !inputs.intel_build_probe }}
     runs-on: macos-26
     timeout-minutes: 50
     permissions:
@@ -208,5 +212,45 @@ jobs:
         with:
           name: checkpoint-transfer-evidence
           path: ${{ runner.temp }}/transfer-diagnostic/
+          if-no-files-found: error
+          retention-days: 7
+
+  intel-build-probe:
+    if: ${{ inputs.intel_build_probe }}
+    runs-on: macos-26-intel
+    timeout-minutes: 10
+    steps:
+      - name: Verify real host capacity and ARM64 compiler output
+        run: |
+          mkdir -p "$RUNNER_TEMP/intel-build-probe"
+          python3 - <<'PYCODE'
+          import json, os, platform, shutil, subprocess
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])/'intel-build-probe'
+          def run(*args):
+              return subprocess.check_output(args, text=True, timeout=60).strip()
+          report = {'architecture': platform.machine(), 'memoryBytes': int(run('sysctl','-n','hw.memsize')),
+                    'cpuCount': os.cpu_count(), 'freeBytes': shutil.disk_usage(root).free,
+                    'xcode': run('xcodebuild','-version'), 'sdk': run('xcrun','--show-sdk-version'),
+                    'homebrewPrefix': run('brew','--prefix')}
+          try:
+              assert report['architecture'] == 'x86_64'
+              assert report['memoryBytes'] >= 12 * 1024**3
+              assert report['homebrewPrefix'] == '/usr/local'
+              source = root/'probe.c'
+              source.write_text('int cloakfox_cross_compile_probe(void) { return 42; }\n')
+              output = root/'probe.dylib'
+              run('xcrun','clang','-target','arm64-apple-macos13','-dynamiclib',str(source),'-o',str(output))
+              run('xcrun','lipo','-verify_arch','arm64',str(output))
+              report['arm64Dylib'] = run('file',str(output))
+              report['success'] = True
+          finally:
+              (root/'result.json').write_text(json.dumps(report,indent=2)+'\n')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intel-arm64-build-capability
+          path: ${{ runner.temp }}/intel-build-probe/
           if-no-files-found: error
           retention-days: 7
