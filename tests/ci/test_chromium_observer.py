@@ -21,6 +21,29 @@ def load():
 
 
 class Observer(unittest.TestCase):
+    def test_finished_stage_does_not_adopt_a_reused_compiler_pid(self):
+        module = load()
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'evidence').mkdir()
+            (root / 'evidence/stage.json').write_text('{"stage":"framework","state":"checkpoint","childPid":101}')
+            with patch.object(module.subprocess, 'check_output', return_value='101 100 00:01 20 S node\n'):
+                result = module.snapshot(root)
+            self.assertNotIn(101, {p['pid'] for p in result['processes']})
+
+    def test_external_observer_tracks_stage_child_outside_its_own_process_tree(self):
+        module = load()
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'evidence').mkdir()
+            (root / 'evidence/stage.json').write_text('{"stage":"framework","state":"running","childPid":101}')
+            rows = '100 1 00:01 10 S Python\n101 100 00:02 20 S ninja\n102 101 00:03 30 S clang\n200 1 00:01 40 S Runner.Worker\n'
+            with patch.object(module.subprocess, 'check_output', return_value=rows):
+                result = module.snapshot(root)
+            self.assertTrue({100, 101, 102}.issubset({p['pid'] for p in result['processes']}))
+            self.assertEqual(result['buildHarnessPid'], 100)
+            self.assertEqual(result['runnerProcesses'][0]['pid'], 200)
+
     def test_independent_thread_reports_stale_stage_and_finishes_neutrally(self):
         module = load()
         with tempfile.TemporaryDirectory() as folder:

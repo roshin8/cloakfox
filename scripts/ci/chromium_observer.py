@@ -50,11 +50,28 @@ def snapshot(root):
         processes.append({'pid': int(pid), 'parentPid': int(parent), 'cpuSeconds': seconds,
                           'rssKiB': int(rss), 'state': state, 'executable': command})
     owned = {os.getpid()}
+    stage_child = (result.get('stage', {}).get('childPid')
+                   if result.get('stage', {}).get('state') == 'running' else None)
+    for process in processes:
+        if process['pid'] == stage_child:
+            owned.update((stage_child, process['parentPid']))
+            result['buildHarnessPid'] = process['parentPid']
+            break
     while True:
         expanded = owned | {p['pid'] for p in processes if p['parentPid'] in owned}
         if expanded == owned:
             break
         owned = expanded
+    # Observe the Actions agent and upload worker as well as compiler children.
+    # These are executable names only; never publish command-line arguments.
+    result['runnerProcesses'] = [p for p in processes if Path(p['executable']).name
+                                 in ('Runner.Worker', 'Runner.Listener', 'node')]
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        try:
+            result['vmStat'] = subprocess.check_output(['vm_stat'], text=True, timeout=5).strip()
+            result['swapUsage'] = subprocess.check_output(['sysctl', '-n', 'vm.swapusage'], text=True, timeout=5).strip()
+        except (OSError, subprocess.SubprocessError):
+            result['hostMemoryTelemetry'] = 'unavailable'
     result['processes'] = [p for p in processes if p['pid'] in owned]
     result['cpuSeconds'] = round(sum(p['cpuSeconds'] for p in result['processes']), 2)
     result['rssKiB'] = sum(p['rssKiB'] for p in result['processes'])
@@ -127,3 +144,22 @@ class Observer:
             if finished:
                 return
             self.stopped.wait(60)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Observe the whole source job, including checkpoint upload')
+    parser.add_argument('--root', type=Path, required=True)
+    parser.add_argument('--evidence', type=Path, required=True)
+    parser.add_argument('--minutes', type=int, default=350)
+    args = parser.parse_args()
+    if os.environ.get('GITHUB_ACTIONS') != 'true' or not 1 <= args.minutes <= 350:
+        parser.error('Job observation requires Actions and a bounded lifetime')
+    observer = Observer(args.root, args.evidence)
+    observer.start()
+    deadline = time.monotonic() + args.minutes * 60
+    try:
+        while time.monotonic() < deadline and not (args.evidence / 'job-observer.stop').exists():
+            time.sleep(1)
+    finally:
+        observer.stop()

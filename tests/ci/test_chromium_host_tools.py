@@ -130,10 +130,18 @@ class HostToolsTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.restore()
         self.assertEqual(self.tool.read_bytes(), b'changed!')
 
-    def test_cli_requires_hosted_darwin_arm64(self):
-        for actions, system, machine in [('false', 'Darwin', 'arm64'), ('true', 'Linux', 'arm64'), ('true', 'Darwin', 'x86_64')]:
+    def test_cli_requires_hosted_supported_darwin(self):
+        for actions, system, machine in [('false', 'Darwin', 'arm64'), ('true', 'Linux', 'arm64'), ('true', 'Darwin', 'unknown')]:
             with patch.dict(os.environ, {'GITHUB_ACTIONS': actions}), patch.object(self.m.platform, 'system', return_value=system), patch.object(self.m.platform, 'machine', return_value=machine):
                 with self.assertRaises(ValueError): self.m.hosted_packages()
+
+    def test_homebrew_root_is_bound_to_the_actual_supported_host_architecture(self):
+        with patch.object(self.m.platform, 'machine', return_value='x86_64'):
+            self.assertEqual(self.m.homebrew_root(), Path('/usr/local'))
+        with patch.object(self.m.platform, 'machine', return_value='arm64'):
+            self.assertEqual(self.m.homebrew_root(), Path('/opt/homebrew'))
+        with patch.object(self.m.platform, 'machine', return_value='unknown'):
+            with self.assertRaises(ValueError): self.m.homebrew_root()
 
     def test_workflow_restores_before_fingerprinting_or_ninja(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/chromium-source-segment.yml').read_text()

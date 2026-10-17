@@ -91,6 +91,11 @@ class HostIdentity(unittest.TestCase):
                     patch('shutil.which', side_effect=lambda name: str(packages[name] / 'binary')), \
                     patch.object(module.sys, 'base_prefix', str(python)):
                 first = module.collect(developer)
+                with patch.object(module.platform, 'machine', return_value='x86_64'):
+                    intel = module.collect(developer)
+                self.assertEqual(intel['architecture'], 'x86_64')
+                self.assertEqual(intel['xcodeBundle'], first['xcodeBundle'])
+                self.assertNotEqual(intel, first)
                 self.assertEqual(set(first['homebrewBuildTools']), {'cmake', 'ninja', 'ccache', 'zstd'})
                 (packages['zstd'] / 'binary').write_bytes(b'changed dependency')
                 self.assertNotEqual(module.collect(developer), first)

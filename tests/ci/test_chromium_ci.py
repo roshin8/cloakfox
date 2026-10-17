@@ -16,6 +16,14 @@ def load(name):
 
 
 class CiInputs(unittest.TestCase):
+    def test_arm64_target_is_explicit_even_when_the_build_host_is_intel(self):
+        api = load('chromium_source')
+        with tempfile.TemporaryDirectory() as folder:
+            pipeline = api.Pipeline(Path(folder))
+            pipeline.configure_environment(Path(folder) / 'depot_tools')
+            self.assertEqual(pipeline.env['CEF_ENABLE_ARM64'], '1')
+            self.assertEqual(pipeline.env['GN_OUT_CONFIGS'], 'Release_GN_arm64')
+
     def test_cleanup_refuses_local_machine_and_preserves_selected_xcode(self):
         api = load('prepare_macos')
         with self.assertRaises(RuntimeError):

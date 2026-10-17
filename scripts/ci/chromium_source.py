@@ -258,7 +258,7 @@ class Pipeline:
                         DEPOT_TOOLS_UPDATE='0', GIT_CEILING_DIRECTORIES=str(self.root),
                         CIPD_CACHE_DIR=str(self.root / 'cipd-cache'),
                         VPYTHON_VIRTUALENV_ROOT=str(self.root / 'vpython-cache'),
-                        GN_OUT_CONFIGS='Release_GN_arm64')
+                        GN_OUT_CONFIGS='Release_GN_arm64', CEF_ENABLE_ARM64='1')
 
     def prepare(self):
         lock = json.loads((ENGINE / 'source-lock.json').read_text())
@@ -394,7 +394,7 @@ def main():
         parser.error('compile-minutes must be 1–240')
     if not args.checkpoint_out:
         parser.error('--checkpoint-out is required to preserve unfinished compilation')
-    if os.environ.get('GITHUB_ACTIONS') == 'true':
+    if os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('CHROMIUM_JOB_OBSERVER') != '1':
         observer_spec = importlib.util.spec_from_file_location('chromium_observer', Path(__file__).with_name('chromium_observer.py'))
         observer_module = importlib.util.module_from_spec(observer_spec)
         observer_spec.loader.exec_module(observer_module)

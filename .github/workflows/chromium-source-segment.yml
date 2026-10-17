@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   segment:
-    runs-on: macos-26
+    runs-on: macos-26-intel
     timeout-minutes: 350
     outputs:
       complete: ${{ steps.build.outputs.complete }}
@@ -31,6 +31,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.10'
+      - name: Require the higher-memory standard Intel build host
+        run: |
+          python3 - <<'PYCODE'
+          import platform, subprocess
+          memory = int(subprocess.check_output(['sysctl', '-n', 'hw.memsize'], text=True))
+          assert platform.machine() == 'x86_64', 'Chromium source compilation requires the selected Intel host'
+          assert memory >= 12 * 1024**3, 'Chromium source compilation requires at least 12 GiB host RAM'
+          print(f'Intel build host memory: {memory / 1024**3:.1f} GiB; target remains ARM64')
+          PYCODE
       - name: Compute committed engine input identity
         id: key
         run: python3 scripts/ci/engine_artifact.py key --kind chromium
@@ -79,20 +88,28 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/ccache
-          key: chromium-arm64-${{ runner.os }}-${{ hashFiles('engines/chromium/*lock.json', 'engines/chromium/patches/*.patch') }}
-          restore-keys: chromium-arm64-${{ runner.os }}-
+          key: chromium-arm64-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('engines/chromium/*lock.json', 'engines/chromium/patches/*.patch') }}
+          restore-keys: chromium-arm64-${{ runner.os }}-${{ runner.arch }}-
       - name: Download previous same-run workspace
         if: inputs.checkpoint != ''
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.checkpoint }}
           path: ${{ runner.temp }}/checkpoint-in
+      - name: Observe compiler, runner memory and checkpoint upload independently
+        env:
+          CHROMIUM_SEGMENT: ${{ inputs.segment }}
+          CHROMIUM_TELEMETRY_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/checkpoint-out"
+          RUNNER_TRACKING_ID="" nohup "$pythonLocation/bin/python3" -u scripts/ci/chromium_observer.py --root "$RUNNER_TEMP/chromium-build" --evidence "$RUNNER_TEMP/checkpoint-out" --minutes 350 > "$RUNNER_TEMP/checkpoint-out/job-observer.log" 2>&1 < /dev/null &
+          echo $! > "$RUNNER_TEMP/checkpoint-out/job-observer.pid"
       - name: Build or resume pinned native source framework and SDK
         id: build
         env:
           HAS_CHECKPOINT: ${{ inputs.checkpoint != '' }}
           CHROMIUM_SEGMENT: ${{ inputs.segment }}
-          CHROMIUM_TELEMETRY_TOKEN: ${{ github.token }}
+          CHROMIUM_JOB_OBSERVER: '1'
         run: |
           export PATH="$pythonLocation/bin:$PATH"
           resume=()
@@ -105,7 +122,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chromium-workspace-${{ inputs.segment }}
-          path: ${{ runner.temp }}/checkpoint-out/
+          path: |
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.gz
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.json
           compression-level: 0
           if-no-files-found: error
           retention-days: 2
@@ -124,6 +143,15 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 7
+      - name: Finish independent whole-job observation
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/checkpoint-out"
+          touch "$RUNNER_TEMP/checkpoint-out/job-observer.stop"
+          for attempt in {1..25}; do
+            if ! kill -0 "$(cat "$RUNNER_TEMP/checkpoint-out/job-observer.pid")" 2>/dev/null; then break; fi
+            sleep 1
+          done
       - name: Preserve capacity, source provenance and stage logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -136,6 +164,7 @@ jobs:
             ${{ runner.temp }}/checkpoint-out/*.json
             ${{ runner.temp }}/checkpoint-in/*.json
             ${{ runner.temp }}/checkpoint-out/runner-telemetry*.log
+            ${{ runner.temp }}/checkpoint-out/job-observer.log
             ${{ runner.temp }}/checkpoint-out/runner-telemetry.jsonl
           if-no-files-found: error
           retention-days: 14

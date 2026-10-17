@@ -22,10 +22,11 @@ class RunnerProbe(unittest.TestCase):
             'sdkVersion': '27.0', 'metalAvailable': True,
         }
         self.assertTrue(module.readiness(report)['sourceBuild'])
+        self.assertTrue(module.readiness({**report, 'architecture': 'x86_64'})['sourceBuild'])
         self.assertTrue(module.readiness(report)['metalRuntime'])
         for key, value in [
             ('freeBytes', 14 * 1024**3), ('xcodeAvailable', False),
-            ('architecture', 'x86_64'), ('system', 'Linux'),
+            ('architecture', 'unknown'), ('system', 'Linux'),
             ('sdkVersion', '14.0'), ('sdkVersion', ''),
             ('sdkVersion', 'SDK unavailable'),
         ]:

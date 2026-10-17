@@ -139,8 +139,8 @@ def install_provenance(inputs):
 
 
 def collect(developer):
-    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        raise ValueError('Chromium hosted checkpoints require macOS arm64')
+    if platform.system() != 'Darwin' or platform.machine() not in ('arm64', 'x86_64'):
+        raise ValueError('Chromium hosted checkpoints require macOS arm64 or x86_64')
 
     def output(command):
         return subprocess.check_output(command, text=True).strip()

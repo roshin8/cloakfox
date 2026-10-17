@@ -28,7 +28,7 @@ def readiness(report):
         sdk = ()
     # Conservative local build budget, not a claim about GitHub's disk limit.
     source = (report.get("system") == "Darwin"
-              and report.get("architecture") == "arm64"
+              and report.get("architecture") in ("arm64", "x86_64")
               and report.get("freeBytes", 0) >= 128 * GIB
               and report.get("xcodeAvailable", False)
               and sdk >= (26, 5))
