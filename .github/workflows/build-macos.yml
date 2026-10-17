@@ -37,6 +37,8 @@ jobs:
     needs: build-macos
     env:
       GECKO_BUILD_SHA: ${{ needs.build-macos.outputs.producer-sha }}
+      # WebGPU requires the macOS GPU process; retain the normal sandbox.
+      CLOAKFOX_HEADFUL: '1'
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -101,6 +103,24 @@ jobs:
           python3 scripts/ci/sign_canonical_gpu.py verify \
             --path /tmp/cfx-app/Cloakfox.app/Contents/Resources/canonical-gpu --commit "$GECKO_BUILD_SHA"
 
+      - name: Build and verify pinned same-run ALPS TLS fixture
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          brew install cmake ninja go
+          python3 scripts/ci/alps_runtime_fixture.py build --work-dir "$RUNNER_TEMP/alps-fixture" --commit "$GITHUB_SHA"
+          python3 scripts/ci/alps_runtime_fixture.py verify --work-dir "$RUNNER_TEMP/alps-fixture" --commit "$GITHUB_SHA"
+          test -x "$RUNNER_TEMP/alps-fixture/alps-server"
+          echo "ALPS_SERVER=$RUNNER_TEMP/alps-fixture/alps-server" >> "$GITHUB_ENV"
+
+      - name: Record hosted native CGL capability
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/native-cgl-diagnostic"
+          system_profiler SPDisplaysDataType > "$RUNNER_TEMP/native-cgl-diagnostic/displays.txt" 2>&1
+          clang scripts/ci/native_cgl_diagnostic.c -framework OpenGL -o "$RUNNER_TEMP/native-cgl-diagnostic/probe" > "$RUNNER_TEMP/native-cgl-diagnostic/build.log" 2>&1
+          "$RUNNER_TEMP/native-cgl-diagnostic/probe" > "$RUNNER_TEMP/native-cgl-diagnostic/cgl.jsonl" 2>&1
+
       - name: Required CreepJS and FingerprintJS audit
         id: libraries
         continue-on-error: true
@@ -115,6 +135,7 @@ jobs:
         continue-on-error: true
         env:
           CLOAKFOX_BIN: /tmp/cfx-app/Cloakfox.app/Contents/MacOS/cloakfox
+          PROBE_REPORT_ROOT: ${{ runner.temp }}/gecko-probe-evidence
         run: |
           set -o pipefail
           python tests/fingerprint/run_all.py 2>&1 | tee /tmp/probe-output.txt
@@ -160,6 +181,9 @@ jobs:
           path: |
             ${{ runner.temp }}/gecko-library-audit/
             tests/fingerprint/reports/probe-suite.json
+            ${{ runner.temp }}/gecko-probe-evidence/
+            ${{ runner.temp }}/native-cgl-diagnostic/
+            ${{ runner.temp }}/alps-fixture/manifest.json
           if-no-files-found: error
           retention-days: 14
 

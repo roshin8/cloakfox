@@ -21,6 +21,7 @@ INPUTS = {
         'engines/chromium/apply_*_patch.py', 'engines/chromium/patches',
         'engines/chromium/fetch_cef.py', 'scripts/ci/chromium_source.py',
         'scripts/ci/chromium_checkpoint.py', 'scripts/ci/chromium_host_identity.py',
+        'scripts/ci/chromium_host_tools.py',
         'scripts/ci/prepare_macos.py', 'scripts/ci/runner_probe.py',
         'scripts/ci/engine_artifact.py', '.github/workflows/chromium-engine.yml',
         '.github/workflows/chromium-source-segment.yml'],
