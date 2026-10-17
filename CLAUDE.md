@@ -83,7 +83,7 @@ alone. `cloakfox.compat.hackerrank_media=false` disables it on the next load.
 ## Critical Constraints
 
 - `/Applications/Firefox.app` and Mozilla's `org.mozilla.firefox` bundle are reserved for genuine Mozilla Firefox. Never install, copy, rename, or synchronize Cloakfox over them. Install only a verified `org.mozilla.cloakfox` / `cloakfox` executable bundle as `Cloakfox.app`.
-- Firefox appearance is a private, profile-owned cache copy named `Cloakfox Firefox Appearance.app`, with a distinct bundle ID. Never distribute or install an appearance copy into Applications. Preserve personal profiles independently of application replacement.
+- Firefox appearance is a private, profile-owned cache copy named `Cloakfox Disguise.app`, with a distinct bundle ID. Never distribute or install an appearance copy into Applications. Preserve personal profiles independently of application replacement.
 
 - C++ patches MUST be applied before `./mach build` — they modify Gecko source directly
 - `privacy.resistFingerprinting` MUST be false — RFP conflicts with C++ patches (makes everyone identical; we want per-container uniqueness)

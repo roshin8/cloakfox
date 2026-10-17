@@ -54,7 +54,7 @@ async function harness(t) {
     copy: (a, b) => fs.copyFile(a, b),
     remove: (p, options = {}) => fs.rm(p, { recursive: !!options.recursive, force: !!options.ignoreAbsent }),
     move: async (a, b, options = {}) => {
-      if (failInstall && a.endsWith(".app") && b.endsWith("/Cloakfox Firefox Appearance.app")) {
+      if (failInstall && a.endsWith(".app") && b.endsWith("/Cloakfox Disguise.app")) {
         failInstall = false; throw new Error("installation failed");
       }
       if (options.noOverwrite && await IOUtils.exists(b)) throw new Error("destination exists");
@@ -109,7 +109,7 @@ test("unchanged source reuses one signed app and its owning profile", async t =>
   const before = await fs.stat(seal);
   assert.deepEqual(await h.api.prepareAppearance(true), a);
   assert.equal((await fs.stat(seal)).mtimeMs, before.mtimeMs); assert.equal(h.copies, 1);
-  assert.equal(a.app, path.join(h.local, "cloakfox-appearance/Cloakfox Firefox Appearance.app"));
+  assert.equal(a.app, path.join(h.local, "cloakfox-appearance/Cloakfox Disguise.app"));
   assert.equal(await fs.readFile(path.join(a.app, "Contents/Resources/cloakfox-profile.ini"), "utf8"),
     `[CloakfoxProfile]\nRoot=${h.profile}\nLocal=${h.local}\n`);
   h.setActive(a.app); await h.api.revealAppearance(); assert.equal(h.revealed, a.app);
@@ -133,7 +133,7 @@ test("failed signing and failed installation retain the working copy", async t =
   h.setFailSign(true); await assert.rejects(h.api.prepareAppearance(true), /signing failed/);
   h.setFailSign(false); h.failInstall(); await assert.rejects(h.api.prepareAppearance(true), /installation failed/);
   assert.equal(await fs.readFile(marker, "utf8"), before);
-  assert.deepEqual(await fs.readdir(path.dirname(a.app)), ["Cloakfox Firefox Appearance.app"]);
+  assert.deepEqual(await fs.readdir(path.dirname(a.app)), ["Cloakfox Disguise.app"]);
   await h.api.prepareAppearance(true);
   assert.equal(await fs.readFile(path.join(a.app, "Contents/Resources/payload"), "utf8"), "update");
 });
@@ -174,7 +174,7 @@ test("appearance refuses a cache directory redirected to installed applications"
 
 test("appearance refuses an existing app without its ownership receipt", async t => {
   const h = await harness(t);
-  const target = path.join(h.local, "cloakfox-appearance", "Cloakfox Firefox Appearance.app");
+  const target = path.join(h.local, "cloakfox-appearance", "Cloakfox Disguise.app");
   await fs.mkdir(target, {recursive:true});
   await fs.writeFile(path.join(target, "foreign"), "keep me");
   await assert.rejects(h.api.prepareAppearance(true), /unowned appearance/);
