@@ -1,0 +1,53 @@
+--- a/cef/libcef/browser/browser_context.cc
++++ b/cef/libcef/browser/browser_context.cc
+@@ -10,6 +10,8 @@
+ #include <utility>
+ 
+ #include "base/files/file_util.h"
++#include "base/i18n/icubridge/supported_locales.h"
++#include "base/i18n/tag_converters.h"
+ #include "base/lazy_instance.h"
+ #include "base/logging.h"
+ #include "base/no_destructor.h"
+@@ -28,6 +30,7 @@
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/storage_partition.h"
++#include "third_party/icu/source/i18n/unicode/timezone.h"
+ #include "url/gurl.h"
+ #include "url/origin.h"
+ 
+@@ -250,13 +253,26 @@
+         !std::set<int>{4,8}.count(presentation->GetInt("deviceMemory")) ||
+         presentation->GetType("locale") != VTYPE_STRING || presentation->GetType("languages") != VTYPE_STRING ||
+         presentation->GetType("timezoneId") != VTYPE_STRING) return nullptr;
+-    const std::set<std::pair<std::string,std::string>> regions{
+-      {"en-US","en-US,en"},{"en-GB","en-GB,en"},{"de-DE","de-DE,de"},
+-      {"fr-FR","fr-FR,fr"},{"ja-JP","ja-JP,ja"}};
+-    if (!regions.count({presentation->GetString("locale").ToString(),presentation->GetString("languages").ToString()}) ||
+-        !std::set<std::string>{"UTC","America/Los_Angeles","America/New_York","Europe/London",
+-                               "Europe/Berlin","Europe/Paris","Asia/Tokyo"}.count(
+-            presentation->GetString("timezoneId").ToString())) return nullptr;
++    // Any canonical language list and IANA zone this engine's own ICU can
++    // render, not a fixed preset list. Blink adopts these values through
++    // LocaleController::SetLocaleOverride and TimeZoneController, and aborts
++    // the renderer when ICU cannot parse a tag or adopt a zone, so a persona
++    // this engine cannot present is refused here: before any context or page
++    // exists, and never by inheriting the host language or zone.
++    const auto locale = presentation->GetString("locale").ToString();
++    const auto languages = base::SplitString(presentation->GetString("languages").ToString(),
++                                             ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++    if (languages.empty() || languages.size() > 4 || languages.front() != locale) return nullptr;
++    const auto& supported = base::i18n::GetSupportedIcuLocales();
++    std::set<std::string> seen;
++    for (const auto& tag : languages) {
++      const auto parsed = base::i18n::GetLanguageTagFromString(tag);
++      if (!parsed || parsed->tag_string() != tag || !supported.contains(*parsed) ||
++          !seen.insert(tag).second) return nullptr;
++    }
++    std::unique_ptr<icu::TimeZone> zone(icu::TimeZone::createTimeZone(
++        icu::UnicodeString::fromUTF8(presentation->GetString("timezoneId").ToString())));
++    if (!zone || *zone == icu::TimeZone::getUnknown()) return nullptr;
+     if (presentation->HasKey("screenWidth")) {
+       for (const auto* key : {"screenWidth", "screenHeight", "screenAvailWidth", "screenAvailHeight"})
+         if (!presentation->HasKey(key) || presentation->GetType(key) != VTYPE_INT) return nullptr;

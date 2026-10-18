@@ -53,13 +53,25 @@ void validatePresentation(CefRefPtr<CefDictionaryValue> value) {
       value->GetType("languages") != VTYPE_LIST || value->GetType("timezone") != VTYPE_STRING)
     throw std::runtime_error("Invalid identity presentation");
   auto languages = value->GetList("languages");
-  if (languages->GetSize() != 2 || languages->GetType(0) != VTYPE_STRING || languages->GetType(1) != VTYPE_STRING)
-    throw std::runtime_error("Unsupported language preset");
-  const std::set<std::pair<std::string,std::string>> regions{
-    {"en-US","en"},{"en-GB","en"},{"de-DE","de"},{"fr-FR","fr"},{"ja-JP","ja"}};
-  if (!regions.count({languages->GetString(0).ToString(), languages->GetString(1).ToString()}) ||
-      !std::set<std::string>{"UTC","America/Los_Angeles","America/New_York","Europe/London","Europe/Berlin","Europe/Paris","Asia/Tokyo"}.count(value->GetString("timezone").ToString()))
-    throw std::runtime_error("Unsupported language/timezone preset");
+  // Structure only. The engine's own ICU data decides which languages and
+  // zones it can render; the framework refuses a persona it cannot render when
+  // the container context is created, before any renderer exists, because
+  // Blink aborts a renderer whose language or zone ICU cannot adopt. This gate
+  // keeps the host boundary safe and never builds a presentation from a broken
+  // list.
+  if (languages->GetSize() < 1 || languages->GetSize() > 4)
+    throw std::runtime_error("Unsupported language list");
+  std::set<std::string> seen;
+  for (size_t index = 0; index < languages->GetSize(); ++index) {
+    if (languages->GetType(index) != VTYPE_STRING)
+      throw std::runtime_error("Unsupported language list");
+    const auto tag = languages->GetString(index).ToString();
+    if (tag.empty() || tag.size() > 35 || !seen.insert(tag).second)
+      throw std::runtime_error("Unsupported language list");
+  }
+  const auto timezone = value->GetString("timezone").ToString();
+  if (timezone.empty() || timezone.size() > 64)
+    throw std::runtime_error("Unsupported timezone");
   if (all_display) {
     const int width = value->GetInt("screenWidth"), height = value->GetInt("screenHeight");
     const int avail_width = value->GetInt("screenAvailWidth"), avail_height = value->GetInt("screenAvailHeight");
@@ -133,7 +145,10 @@ PersonaConfig parsePersonaConfig(CefRefPtr<CefDictionaryValue> value,
     presentation->SetInt("deviceMemory", source->GetInt("deviceMemory"));
     auto languages = source->GetList("languages");
     presentation->SetString("locale", languages->GetString(0));
-    presentation->SetString("languages", languages->GetString(0).ToString() + "," + languages->GetString(1).ToString());
+    std::string joined = languages->GetString(0).ToString();
+    for (size_t index = 1; index < languages->GetSize(); ++index)
+      joined += "," + languages->GetString(index).ToString();
+    presentation->SetString("languages", joined);
     presentation->SetString("timezoneId", source->GetString("timezone"));
     // Owner-provided screen geometry; applied only when the identity and the
     // display option are active.

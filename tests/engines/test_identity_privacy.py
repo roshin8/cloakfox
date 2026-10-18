@@ -142,6 +142,68 @@ class IdentityPrivacy(unittest.TestCase):
         self.assertTrue(self.app.rpc('applyConfig',config=config)['ok'])
         native=self.app.open('3',self.url,configRevision=config['revision']);baseline=self.app.open('99',self.url)
         self.assertEqual(self.read(native),self.read(baseline))
+    def test_any_canonical_locale_and_zone_reach_the_page_and_headers(self):
+        # The UTC offsets prove the zone itself reaches Intl/Date, not only the
+        # reported id string. Three cases are DST-free and one observes DST, and
+        # one list is a three-part language-Script-REGION tag whose reported
+        # locale and language must round-trip exactly.
+        cases=(('7',{'hardwareConcurrency':8,'deviceMemory':8,'languages':['ko-KR','ko'],'timezone':'Asia/Seoul'},-540,-540),
+               ('8',{'hardwareConcurrency':4,'deviceMemory':8,'languages':['pt-BR','pt','en'],'timezone':'America/Sao_Paulo'},180,180),
+               ('9',{'hardwareConcurrency':4,'deviceMemory':8,'languages':['zh-Hant-TW','zh-Hant','zh'],'timezone':'Asia/Taipei'},-480,-480),
+               ('10',{'hardwareConcurrency':8,'deviceMemory':4,'languages':['sv-SE','sv'],'timezone':'Europe/Stockholm'},-60,-120))
+        for container,preset,winter,summer in cases:
+            with self.subTest(timezone=preset['timezone']):
+                _,browser=self.configured(container,preset)
+                page=self.read(browser);self.assert_masked(page,preset)
+                self.assertEqual(page['winter'],winter);self.assertEqual(page['summer'],summer)
+                headers={k.lower():v for k,v in self.app.evaluate(browser,"fetch('/headers').then(r=>r.json())").items()}
+                self.assertTrue(headers['accept-language'].startswith(','.join(preset['languages'][:2])),headers['accept-language'])
+                worker=self.app.evaluate(browser,"new Promise(r=>{const w=new Worker('/worker.js');w.onmessage=e=>{w.terminate();r(e.data)};w.postMessage(1)})")
+                self.assertEqual(worker['first'],page)
+
+    def test_engine_refuses_an_unsupported_locale_or_zone(self):
+        # The engine, not the store, is the authority for what it can render.
+        # A refusal must be clean and fail closed: no container context, no
+        # renderer, and never a silent fallback to the host language or zone.
+        # CEF context creation has no error channel, so a value only the engine
+        # can judge (an unknown locale, an unknown zone) surfaces as the
+        # container-context refusal; a broken language list is still named
+        # precisely by the embedded client, which needs no ICU for that.
+        cases=(('11',{'languages':['xx-XX','xx']},'Cannot create container context'),
+               ('12',{'timezone':'Mars/Olympus'},'Cannot create container context'),
+               ('13',{'languages':['fr-FR','fr','fr-FR']},'Unsupported language list'),
+               ('14',{'timezone':'mars/paris'},'Cannot create container context'))
+        for container,changes,expected in cases:
+            with self.subTest(changes=changes):
+                config=self.store.get(container,'chromium')
+                config['persona']['presentation']={**PRESET,**changes}
+                config['persona']['options'].update({'navigator':True,'language':True,'timezone':True})
+                ack=self.app.rpc('applyConfig',config=config)
+                self.assertFalse(ack['ok'],ack)
+                self.assertIn(expected,str(ack.get('error','')),ack)
+                # The refusal left nothing behind: the same container still
+                # accepts a persona this engine can render.
+                retry=self.store.get(container,'chromium')
+                retry['persona']['presentation']=dict(PRESET)
+                retry['persona']['options'].update({'navigator':True,'language':True,'timezone':True})
+                accepted=self.app.rpc('applyConfig',config=retry)
+                self.assertTrue(accepted['ok'],accepted)
+
+    def test_every_sampling_preset_is_accepted_by_the_engine(self):
+        # Sampling may only ever produce personas this engine can render: a
+        # preset it refuses would leave a container that can never start, and
+        # an ICU data set that moves could quietly turn a preset into a refusal.
+        from engines.shared.persona_config import LOCALE_PRESETS
+        for index,(languages,timezone) in enumerate(LOCALE_PRESETS):
+            with self.subTest(languages=languages,timezone=timezone):
+                container=str(200+index)
+                config=self.store.get(container,'chromium')
+                config['persona']['presentation']={'hardwareConcurrency':4,'deviceMemory':4,
+                    'languages':list(languages),'timezone':timezone}
+                config['persona']['options'].update({'navigator':True,'language':True,'timezone':True})
+                ack=self.app.rpc('applyConfig',config=config)
+                self.assertTrue(ack['ok'],ack)
+
     def test_each_toggle_preserves_other_groups(self):
         baseline=self.read(self.app.open('99',self.url))
         for container,disabled in (('4','navigator'),('5','language'),('6','timezone')):

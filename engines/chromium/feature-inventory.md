@@ -17,7 +17,7 @@ Gecko158 additions missing from the old157 checklist include AudioWorklet privac
 | Screen/window geometry, letterboxing, CSS, fonts | Blink layout/screen/CSS/font selection and browser display services | Native panel geometry (size and available rect) and a standard 24-bit SDR colour profile presented from the owner-provided persona presentation, so `window.screen`, the CSS `color`/`dynamic-range` queries and CSS device metrics agree per container instead of exposing the host panel (30-bit HDR here); the group has its own `display` option and a `displayPrivacyVersion` capability so an older framework rejects display fields instead of ignoring them; verified 2026-10-17. Colour gamut and layout-zoom/`deviceScaleFactor` deliberately keep the retained host display profile; letterboxing and font selection remain unported |
 | Canvas/OffscreenCanvas, WebGL, WebGPU | Native readback and device information hooks, worker ownership | Partial native opaque RGBA8 Canvas2D/export (not Gecko158 canonical rendering/provenance) and WebGL direct/PBO readback; document/dedicated/shared/service-worker tests pass. GPU identifying metadata reduced; Metal RGBA8/BGRA8/sRGB WebGPU copy-time pixel noise plus optional all-READ-map denial. Other backends/formats and general capabilities remain uncovered |
 | Audio, codecs, device labels and media permissions | Blink audio/media paths and browser permission/capture services | Permission requests denied; AudioWorklet/audio noise, WebCodecs and persona media masking not ported |
-| Locale, timezone, geolocation | Blink/V8 Intl and permission-aware location services | Bounded language/Intl-locale and IANA-timezone presets implemented natively for frames/workers, with native preference restoration; source-framework/runtime verification passed on macOS (2026-10-16). Geolocation presentation remains unported |
+| Locale, timezone, geolocation | Blink/V8 Intl and permission-aware location services | Any canonical BCP 47 language list (1-4 distinct tags) and any canonical IANA zone the engine's own ICU can render are applied natively to frames and all worker types, with native preference restoration; a persona the engine cannot render is refused before any container context exists, instead of aborting a renderer or inheriting the host language/zone. Sampling still draws from a plausible regional preset table. Runtime verification passed on macOS (2026-10-16 bounded presets; 2026-10-17 widened values). Geolocation presentation remains unported |
 | Performance clocks, entries, scheduling and Math | Blink timing/scheduling and V8 native math implementation | Not ported |
 | Keyboard, gamepad, MIDI, feature detection | Blink device/input exposure and permission services | Not ported |
 | WebRTC, IP discovery and DNS/proxy controls | Chromium WebRTC and NetworkContext policies, explicit consent and isolation | Not ported |
@@ -370,7 +370,7 @@ Gecko privileged actors are not installed in Chromium. Equivalent privacy behavi
 
 `schemaVersion:1` names engine/container/private-session ownership, revision, master
 switch and a 32-byte persona seed. The original v1 option names are `canvas` and
-`blockWebGPUReadback`; optional presentation adds `navigator`, `language` and `timezone` and requires the new identity capability (runtime build pending); explicit overrides beat defaults. Master-off disables both
+`blockWebGPUReadback`; optional presentation adds `navigator`, `language` and `timezone` and requires the new identity capability (verified on macOS 2026-10-16; regional values widened 2026-10-17); explicit overrides beat defaults. Master-off disables both
 implemented transforms/policies. Fixed prototype permission denials remain separate.
 Unknown fields/options and incompatible native capabilities are rejected, never
 presented as working. Regenerating changes the graphics seed; it does not yet
@@ -387,9 +387,15 @@ opening requires its acknowledged revision and cannot mix legacy privacy options
 ## Verified bounded native identity increment
 
 The native `identity-patch-lock.json` follows the graphics patches and provides
-`identityPrivacyVersion:1`. The recovered framework and all five identity runtime
-cases passed on macOS on 2026-10-16, including navigation/fetch headers and worker/
-Intl behavior. This supports only the bounded presentation presets documented in
+`identityPrivacyVersion:1`; the `locale-timezone-patch-lock.json` tail replaces the
+bounded language/timezone preset list with the canonical one described above, so the
+engine accepts any canonical value its own ICU data can render and refuses the ones
+it cannot before a container context exists. The recovered framework and all five
+identity runtime cases passed on macOS on 2026-10-16, including navigation/fetch
+headers and worker/Intl behavior; the widening was verified on 2026-10-17 (all 35
+sampling presets accepted, canonical languages/zones reach the page, HTTP headers
+and workers, unrenderable values refused fail-closed). This supports only the
+regional presentation documented in
 [scope and verification](../../docs/dual-engine/chromium-identity-locale.md).
 Cross-OS personas and the remaining groups above are still unported;
 `privacyPatched` remains false.

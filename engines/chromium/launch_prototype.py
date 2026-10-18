@@ -8,7 +8,8 @@ import sys
 
 # Support both `python -m ...` and the documented direct script invocation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from engines.shared.persona_config import PersonaStore, REGIONS, TIMEZONES, sample_presentation
+from engines.shared.persona_config import (PersonaStore, language_fallbacks, language_list,
+    sample_presentation, validate_timezone)
 from engines.chromium.controller import ChromiumController
 
 
@@ -20,7 +21,7 @@ def configure_snapshot(store, snapshot, args):
     if args.language or args.timezone:
         presentation = (presentation or sample_presentation(snapshot['persona']['seed'])).copy()
         if args.language:
-            presentation['languages'] = list(next(languages for languages, _ in REGIONS if languages[0] == args.language))
+            presentation['languages'] = language_fallbacks(args.language)
         if args.timezone: presentation['timezone'] = args.timezone
         snapshot = store.update(snapshot, presentation=presentation)
     overrides = snapshot['persona']['overrides'].copy()
@@ -34,6 +35,24 @@ def configure_snapshot(store, snapshot, args):
     if enabled != snapshot['enabled'] or overrides != snapshot['persona']['overrides']:
         snapshot = store.update(snapshot, enabled=enabled, overrides=overrides)
     return snapshot
+
+
+def primary_language(value):
+    """Any canonical primary tag; its fallback chain is derived from it."""
+    try:
+        language_list(language_fallbacks(value))
+    except ValueError:
+        raise argparse.ArgumentTypeError('Canonical primary language tag, e.g. es-ES, zh-Hant-TW or ja') from None
+    return value
+
+
+def iana_timezone(value):
+    """Any canonical IANA zone a real browser reports, not a legacy alias."""
+    try:
+        validate_timezone(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Canonical IANA zone, e.g. Europe/Madrid or Asia/Seoul') from None
+    return value
 
 
 def main():
@@ -51,8 +70,8 @@ def main():
     parser.set_defaults(privacy_enabled=None)
     parser.add_argument('--regenerate-persona', action='store_true', help='Generate a new seed for the next context/session')
     parser.add_argument('--clear-overrides-when-generating', action='store_true', help='Clear explicit overrides with persona regeneration')
-    parser.add_argument('--language', choices=[languages[0] for languages, _ in REGIONS], help='Choose a supported primary/fallback language preset')
-    parser.add_argument('--timezone', choices=sorted(TIMEZONES), help='Choose a supported IANA timezone')
+    parser.add_argument('--language', type=primary_language, help='Canonical primary language tag; the fallback chain is derived from it')
+    parser.add_argument('--timezone', type=iana_timezone, help='Canonical IANA timezone, e.g. Europe/Madrid')
     for name in ('navigator', 'language', 'timezone'):
         parser.add_argument('--disable-' + name + '-privacy', action='store_true', help='Disable this native presentation policy')
     args = parser.parse_args()

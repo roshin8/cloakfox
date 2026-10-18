@@ -16,7 +16,8 @@ class IdentityConfig(unittest.TestCase):
             p=a['persona']['presentation']
             self.assertIn(p['hardwareConcurrency'],(4,8,16))
             self.assertIn(p['deviceMemory'],(4,8))
-            self.assertIn(p['languages'][0],('en-US','en-GB','de-DE','fr-FR','ja-JP'))
+            from engines.shared.persona_config import LOCALE_PRESETS
+            self.assertIn(tuple(p['languages']),tuple(langs for langs,_ in LOCALE_PRESETS))
             self.assertEqual(validate_snapshot(a),a)
             b=store.regenerate(a)
             self.assertNotEqual(a['persona']['seed'],b['persona']['seed'])
@@ -32,6 +33,47 @@ class IdentityConfig(unittest.TestCase):
                             ('userAgent','Fake Chrome'),('platform','Win32')]:
                 value=copy.deepcopy(a); value['persona']['presentation'][key]=bad
                 with self.subTest(key=key),self.assertRaises(ValueError):validate_snapshot(value)
+    def test_any_canonical_language_and_zone_the_engine_applies_is_accepted(self):
+        # A persona must be able to represent the real BrowserForge distribution,
+        # not five hardcoded regional presets.
+        with tempfile.TemporaryDirectory() as folder:
+            base=PersonaStore(Path(folder)).get('1','chromium')
+            for languages,timezone in [(['es-ES','es'],'Europe/Madrid'),(['ko-KR','ko'],'Asia/Seoul'),
+                                       (['pt-BR','pt','en','en-US'],'America/Sao_Paulo'),
+                                       (['zh-Hant-TW','zh'],'Asia/Taipei'),(['en'],'UTC'),
+                                       (['sv-SE','sv'],'Europe/Stockholm')]:
+                with self.subTest(languages=languages,timezone=timezone):
+                    value=copy.deepcopy(base)
+                    value['persona']['presentation']['languages']=languages
+                    value['persona']['presentation']['timezone']=timezone
+                    self.assertEqual(validate_snapshot(value),value)
+
+    def test_non_canonical_or_unusable_locale_values_fail_closed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base=PersonaStore(Path(folder)).get('1','chromium')
+            for languages,timezone in [(['fr-fr','fr'],'Europe/Paris'),(['FR'],'Europe/Paris'),
+                                       (['fr-FR','fr-FR'],'Europe/Paris'),([],'Europe/Paris'),
+                                       (['fr','de','en','it','es'],'Europe/Paris'),
+                                       (['en-US','en-US'],'Europe/Paris'),(['en_US'],'Europe/Paris'),
+                                       (['fr-FR'],'US/Eastern'),(['fr-FR'],'Etc/Unknown'),
+                                       (['fr-FR'],'CET'),(['fr-FR'],'Europe/paris'),
+                                       (['fr-FR'],'Mars/Olympus'),(['fr-FR'],'')]:
+                with self.subTest(languages=languages,timezone=timezone):
+                    value=copy.deepcopy(base)
+                    value['persona']['presentation']['languages']=languages
+                    value['persona']['presentation']['timezone']=timezone
+                    with self.assertRaises(ValueError):validate_snapshot(value)
+
+    def test_sampling_presets_are_themselves_canonical(self):
+        # A typo in the sampling table would otherwise surface only for the
+        # seeds that happen to draw that entry.
+        from engines.shared.persona_config import LOCALE_PRESETS, language_fallbacks, language_list, validate_timezone
+        for languages, timezone in LOCALE_PRESETS:
+            with self.subTest(languages=languages,timezone=timezone):
+                language_list(list(languages))
+                validate_timezone(timezone)
+                self.assertEqual(list(languages),language_fallbacks(languages[0]))
+
     def test_explicit_values_survive_generation_unless_cleared(self):
         with tempfile.TemporaryDirectory() as folder:
             store=PersonaStore(Path(folder));a=store.get('1','chromium')

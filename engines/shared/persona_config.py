@@ -3,10 +3,16 @@
 Only implemented portable option names belong in v1. A backend must additionally
 check its own capability report before accepting a snapshot. The store is the
 controller authority, not a second browser profile or an engine adapter.
+
+Language and timezone values are checked here for canonical shape: only tags and
+zones a current browser reports are accepted, while the engine's own ICU data
+remains the authority for what it can render, and the engine refuses an unusable
+locale or zone before any page exists instead of falling back to the host.
 """
 import contextlib
 import copy
 import fcntl
+import functools
 import json
 import hashlib
 import hmac
@@ -15,18 +21,64 @@ from pathlib import Path
 import re
 import secrets
 import stat
+import zoneinfo
 
 SCHEMA_VERSION = 1
 BASE_OPTIONS = {'canvas': True, 'blockWebGPUReadback': False}
 DEFAULT_OPTIONS = {**BASE_OPTIONS, 'navigator': True, 'language': True, 'timezone': True, 'display': True}
-REGIONS = (
+# Plausible regional presets: canonical primary/fallback language tags with the
+# zone a real device of that locale reports. Sampling draws from here so a
+# generated persona always looks like a real machine, while validation below
+# additionally accepts any canonical tag or zone the engine can apply: the
+# engine's own ICU data, not this table, decides what it can render.
+LOCALE_PRESETS = (
     (('en-US', 'en'), 'America/New_York'),
     (('en-GB', 'en'), 'Europe/London'),
+    (('en-AU', 'en'), 'Australia/Sydney'),
+    (('en-IE', 'en'), 'Europe/Dublin'),
     (('de-DE', 'de'), 'Europe/Berlin'),
+    (('de-AT', 'de'), 'Europe/Vienna'),
     (('fr-FR', 'fr'), 'Europe/Paris'),
+    (('fr-CA', 'fr'), 'America/Toronto'),
+    (('es-ES', 'es'), 'Europe/Madrid'),
+    (('es-MX', 'es'), 'America/Mexico_City'),
+    (('pt-BR', 'pt'), 'America/Sao_Paulo'),
+    (('pt-PT', 'pt'), 'Europe/Lisbon'),
+    (('it-IT', 'it'), 'Europe/Rome'),
+    (('nl-NL', 'nl'), 'Europe/Amsterdam'),
+    (('sv-SE', 'sv'), 'Europe/Stockholm'),
+    (('nb-NO', 'nb'), 'Europe/Oslo'),
+    (('da-DK', 'da'), 'Europe/Copenhagen'),
+    (('fi-FI', 'fi'), 'Europe/Helsinki'),
+    (('pl-PL', 'pl'), 'Europe/Warsaw'),
+    (('cs-CZ', 'cs'), 'Europe/Prague'),
+    (('hu-HU', 'hu'), 'Europe/Budapest'),
+    (('ro-RO', 'ro'), 'Europe/Bucharest'),
+    (('el-GR', 'el'), 'Europe/Athens'),
+    (('tr-TR', 'tr'), 'Europe/Istanbul'),
+    (('ru-RU', 'ru'), 'Europe/Moscow'),
+    (('he-IL', 'he'), 'Asia/Jerusalem'),
+    (('ar-EG', 'ar'), 'Africa/Cairo'),
+    (('hi-IN', 'hi'), 'Asia/Kolkata'),
+    (('id-ID', 'id'), 'Asia/Jakarta'),
+    (('th-TH', 'th'), 'Asia/Bangkok'),
+    (('vi-VN', 'vi'), 'Asia/Ho_Chi_Minh'),
     (('ja-JP', 'ja'), 'Asia/Tokyo'),
+    (('ko-KR', 'ko'), 'Asia/Seoul'),
+    (('zh-CN', 'zh'), 'Asia/Shanghai'),
+    (('zh-TW', 'zh'), 'Asia/Taipei'),
 )
-TIMEZONES = {'UTC', 'America/Los_Angeles', *(zone for _, zone in REGIONS)}
+# Canonical BCP 47 shape language[-Script][-REGION]. Lowercase language,
+# Titlecase script and uppercase region are what a real browser reports; any
+# other casing would hand a site a tag no real client sends.
+LANGUAGE_TAG = re.compile(r'[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-[A-Z]{2}|-[0-9]{3})?')
+# Canonical IANA ids are Area/Location, or UTC. The tz database's legacy
+# top-level aliases (US/Eastern, CET, Japan, …) are real zones no current
+# browser reports, so a persona must not claim one; the canonical areas are a
+# fixed, small set.
+ZONE_ID = re.compile(r'(?:(?:Africa|America|Antarctica|Arctic|Asia|Atlantic|Australia|Europe|Indian|Pacific)'
+                     r'/[A-Z][A-Za-z0-9_+-]*(?:/[A-Z][A-Za-z0-9_+-]*)?|UTC)')
+MAX_LANGUAGES = 4
 # Canonical retina-plausible desktop panels (width, height, availWidth, availHeight).
 # Avail height reserves a menu bar so the presentation stays internally coherent.
 DISPLAYS = (
@@ -44,6 +96,33 @@ IDENTITY_FIELDS = ('hardwareConcurrency', 'deviceMemory', 'languages', 'timezone
 DISPLAY_FIELDS = ('screenWidth', 'screenHeight', 'screenAvailWidth', 'screenAvailHeight')
 
 
+@functools.lru_cache(maxsize=1)
+def canonical_timezones():
+    """IANA zones whose id is one a real browser reports for that location."""
+    return frozenset(zone for zone in zoneinfo.available_timezones() if ZONE_ID.fullmatch(zone))
+
+
+def language_list(value):
+    """Validate a navigator.languages list: 1–4 distinct canonical BCP 47 tags."""
+    if type(value) is not list or not 1 <= len(value) <= MAX_LANGUAGES \
+            or any(type(tag) is not str or LANGUAGE_TAG.fullmatch(tag) is None for tag in value) \
+            or len(set(value)) != len(value):
+        raise ValueError('Unsupported language list')
+    return value
+
+
+def language_fallbacks(primary):
+    """The language tag followed by its progressively broader prefixes."""
+    parts = primary.split('-')
+    return ['-'.join(parts[:size]) for size in range(len(parts), 0, -1)]
+
+
+def validate_timezone(value):
+    if type(value) is not str or value not in canonical_timezones():
+        raise ValueError('Unsupported timezone')
+    return value
+
+
 def validate_presentation(value):
     if type(value) is not dict or not set(IDENTITY_FIELDS) <= set(value) \
             or set(value) - set(IDENTITY_FIELDS) - set(DISPLAY_FIELDS):
@@ -52,10 +131,8 @@ def validate_presentation(value):
         raise ValueError('Unsupported hardware concurrency')
     if type(value['deviceMemory']) is not int or value['deviceMemory'] not in (4, 8):
         raise ValueError('Unsupported device memory')
-    if type(value['languages']) is not list or tuple(value['languages']) not in tuple(langs for langs, _ in REGIONS):
-        raise ValueError('Unsupported language preset')
-    if type(value['timezone']) is not str or value['timezone'] not in TIMEZONES:
-        raise ValueError('Unsupported timezone preset')
+    language_list(value['languages'])
+    validate_timezone(value['timezone'])
     present = [name for name in DISPLAY_FIELDS if name in value]
     if present and len(present) != len(DISPLAY_FIELDS):
         raise ValueError('Unsupported display presentation')
@@ -69,7 +146,7 @@ def validate_presentation(value):
 
 def sample_presentation(seed):
     digest = hmac.new(bytes.fromhex(seed), b'cloakfox-presentation-v1', hashlib.sha256).digest()
-    languages, timezone = REGIONS[digest[0] % len(REGIONS)]
+    languages, timezone = LOCALE_PRESETS[digest[0] % len(LOCALE_PRESETS)]
     width, height, avail_width, avail_height = DISPLAYS[digest[3] % len(DISPLAYS)]
     return {'hardwareConcurrency': (4, 8, 16)[digest[1] % 3],
             'deviceMemory': (4, 8)[digest[2] % 2],

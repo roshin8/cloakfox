@@ -19,7 +19,7 @@ def copy_native_fixture(source, destination, wanted):
         if selected:wanted_chain.add(name)
         for item in value['inputs']:inputs[item['path']]=item
     inherit(wanted,True)
-    extensions=['browserforge-patch-lock.json','initial-snapshot-patch-lock.json','fixture-network-patch-lock.json','owned-ime-patch-lock.json','owned-ime-state-patch-lock.json','display-patch-lock.json']
+    extensions=['browserforge-patch-lock.json','initial-snapshot-patch-lock.json','fixture-network-patch-lock.json','owned-ime-patch-lock.json','owned-ime-state-patch-lock.json','display-patch-lock.json','locale-timezone-patch-lock.json']
     for name in extensions:
         if (here/name).exists():inherit(name)
     for name in inputs:
@@ -145,6 +145,23 @@ class IdentityPatch(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='cloakfox-owned-ime-state-replay-') as folder:
             temp=Path(folder);copy_native_fixture(source,temp,'owned-ime-state-patch-lock.json')
             command=[sys.executable,str(here/'apply_identity_patch.py'),'--source-root',str(temp),'--lock','owned-ime-state-patch-lock.json']
+            subprocess.run(command,check=True,capture_output=True)
+            subprocess.run(['patch','-p1','-R','--batch','-i',str(here/lock['patch'])],cwd=temp,check=True,capture_output=True)
+            for item in lock['inputs']:
+                self.assertEqual(hashlib.sha256((temp/item['path']).read_bytes()).hexdigest(),item['beforeSha256'])
+            subprocess.run(command,check=True,capture_output=True)
+            subprocess.run(command+['--check'],check=True,capture_output=True)
+            changed=temp/lock['inputs'][0]['path'];changed.write_text(changed.read_text()+'\n// unexpected mutation\n')
+            rejected=subprocess.run(command+['--check'],capture_output=True,text=True)
+            self.assertNotEqual(rejected.returncode,0);self.assertIn('Unexpected source input',rejected.stderr)
+
+    def test_locale_timezone_extension_replays_and_rejects_tampering(self):
+        source=Path(os.environ.get('CLOAKFOX_CHROMIUM_SOURCE','/Users/zeus/cloakfox-builds/chromium/full-source/chromium/src'))
+        if not source.is_dir():self.skipTest('Requires local pinned native source for replay check')
+        here=ROOT/'engines/chromium';lock=json.loads((here/'locale-timezone-patch-lock.json').read_text())
+        with tempfile.TemporaryDirectory(prefix='cloakfox-locale-timezone-replay-') as folder:
+            temp=Path(folder);copy_native_fixture(source,temp,'locale-timezone-patch-lock.json')
+            command=[sys.executable,str(here/'apply_identity_patch.py'),'--source-root',str(temp),'--lock','locale-timezone-patch-lock.json']
             subprocess.run(command,check=True,capture_output=True)
             subprocess.run(['patch','-p1','-R','--batch','-i',str(here/lock['patch'])],cwd=temp,check=True,capture_output=True)
             for item in lock['inputs']:
