@@ -25,6 +25,36 @@ POLL_INTERVAL = 1
 PROGRESS_INTERVAL = 30
 
 
+def interrupt_for_checkpoint(process):
+    # Ninja forwards the interrupt to its own subcommands and waits for them.
+    # Allow bounded cleanup before escalation; a forced stop is never reusable.
+    try:
+        os.killpg(process.pid, signal.SIGINT)
+    except ProcessLookupError:
+        process.wait(timeout=30)
+        return
+    try:
+        process.wait(timeout=420)
+        return
+    except subprocess.TimeoutExpired:
+        if process.poll() is not None:
+            return
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (PermissionError, ProcessLookupError) as error:
+        # The group may disappear/change while wait and kill race. Only a
+        # confirmed normal interrupt exit can become a checkpoint afterwards.
+        try:
+            process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError('Compiler did not stop cleanly for checkpoint') from error
+        if process.returncode not in (0, -signal.SIGINT, 2, 130):
+            raise RuntimeError('Compiler did not stop cleanly for checkpoint') from error
+        return
+    process.wait(timeout=30)
+    raise RuntimeError('Compiler did not stop cleanly for checkpoint: forced kill')
+
+
 def cef_arm64_config(gn, args, environment):
     # CEF's Python generator reads os.environ directly, rather than the env
     # mapping used for child commands. Scope the target flags to this call.
@@ -212,13 +242,13 @@ class Pipeline:
                     if (time_budget_seconds is not None and now - started >= time_budget_seconds
                             and not storage_error and process.poll() is None):
                         print(f'CHECKPOINT stopping owned {name} at its time budget', flush=True)
-                        os.killpg(process.pid, signal.SIGINT)
                         try:
-                            process.wait(timeout=30)
-                        except subprocess.TimeoutExpired:
-                            os.killpg(process.pid, signal.SIGKILL)
-                            process.wait()
-                            raise RuntimeError('Compiler did not stop cleanly for checkpoint')
+                            interrupt_for_checkpoint(process)
+                        except (RuntimeError, OSError, subprocess.SubprocessError) as error:
+                            status.update(state='failed', error=str(error), exitCode=process.poll(),
+                                          finished=time.time(), elapsedSeconds=round(time.monotonic() - started, 1))
+                            (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
+                            raise
                         interrupted_for_checkpoint = process.returncode in (-signal.SIGINT, 2, 130)
                     if now - last_report >= PROGRESS_INTERVAL:
                         status.update(elapsedSeconds=round(now - started, 1),
