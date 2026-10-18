@@ -7,12 +7,35 @@ import os
 from pathlib import Path
 import platform
 import subprocess
+import signal
 
 
 def command(argv):
-    result = subprocess.run(argv, text=True, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, timeout=120, check=True)
-    return result.stdout.strip()
+    child = subprocess.Popen(argv, text=True, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        output, _ = child.communicate(timeout=120)
+    except BaseException:
+        # xcrun may have spawned xcodebuild, which inherits the output pipe.
+        # Kill the entire owned session before draining it; never leave a child
+        # holding the Actions step open after the command deadline expires.
+        try:
+            os.killpg(child.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        try:
+            child.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            if child.stdout is not None:
+                child.stdout.close()
+            try:
+                child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        raise
+    if child.returncode:
+        raise subprocess.CalledProcessError(child.returncode, argv, output=output)
+    return output.strip()
 
 
 def verify(directory, run=command):

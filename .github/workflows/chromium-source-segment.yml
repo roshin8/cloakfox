@@ -46,7 +46,7 @@ jobs:
       - name: Validate CI helpers
         run: python3 -m unittest discover -s tests/ci -v
       - name: Reclaim hosted Mac space and require full build capacity
-        run: python3 scripts/ci/prepare_macos.py --output "$RUNNER_TEMP/capacity.json"
+        run: python3 scripts/ci/prepare_macos.py --preserve-active-xcode --output "$RUNNER_TEMP/capacity.json"
       - name: Publish capacity assessment before the long build
         if: always()
         uses: actions/upload-artifact@v4

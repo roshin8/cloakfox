@@ -3,6 +3,10 @@ name: Browser build runner survey
 on:
   workflow_dispatch:
     inputs:
+      xcrun_verify_fixed:
+        description: Verify full source setup and host identity without Chromium compilation
+        type: boolean
+        default: false
       xcrun_setup_diagnostic:
         description: Compare full setup with and without changes inside selected Xcode
         type: boolean
@@ -27,7 +31,7 @@ permissions:
 
 jobs:
   survey:
-    if: ${{ !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic }}
+    if: ${{ !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +72,7 @@ jobs:
           if-no-files-found: error
 
   chromium-intel-build:
-    if: ${{ inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic }}
+    if: ${{ inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed }}
     permissions:
       contents: read
       actions: read
@@ -76,7 +80,7 @@ jobs:
     uses: ./.github/workflows/chromium-engine.yml
 
   metal-prerequisites:
-    if: ${{ inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic }}
+    if: ${{ inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed }}
     runs-on: macos-26-intel
     timeout-minutes: 30
     steps:
@@ -99,7 +103,7 @@ jobs:
           if-no-files-found: warn
 
   xcrun-setup-diagnostic:
-    if: ${{ inputs.xcrun_setup_diagnostic }}
+    if: ${{ inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed }}
     strategy:
       fail-fast: false
       matrix:
@@ -140,4 +144,111 @@ jobs:
           path: |
             ${{ runner.temp }}/capacity.json
             ${{ runner.temp }}/xcrun-diagnostic/
+          if-no-files-found: warn
+
+  xcrun-fixed-full-setup:
+    if: ${{ inputs.xcrun_verify_fixed }}
+    runs-on: macos-26-intel
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Require the higher-memory standard Intel build host
+        run: |
+          python3 - <<'PYCODE'
+          import platform, subprocess
+          memory = int(subprocess.check_output(['sysctl', '-n', 'hw.memsize'], text=True))
+          assert platform.machine() == 'x86_64', 'Chromium source compilation requires the selected Intel host'
+          assert memory >= 12 * 1024**3, 'Chromium source compilation requires at least 12 GiB host RAM'
+          print(f'Intel build host memory: {memory / 1024**3:.1f} GiB; target remains ARM64')
+          PYCODE
+      - name: Compute committed engine input identity
+        id: key
+        run: python3 scripts/ci/engine_artifact.py key --kind chromium
+      - name: Validate CI helpers
+        run: python3 -m unittest discover -s tests/ci -v
+      - name: Verify selected Xcode signature before cleanup
+        timeout-minutes: 5
+        run: |
+          developer="$(xcode-select -p)"
+          codesign --verify --strict --verbose=2 "${developer%/Contents/Developer}" > "$RUNNER_TEMP/xcode-seal-before.txt" 2>&1
+          python3 - <<'PYCODE'
+          import plistlib, subprocess, os, json
+          from pathlib import Path
+          developer=Path(subprocess.check_output(['xcode-select','-p'],text=True).strip())
+          seal=plistlib.loads((developer.parents[1]/'Contents/_CodeSignature/CodeResources').read_bytes())
+          entries=set(seal.get('files',{}))|set(seal.get('files2',{}))
+          platforms=[p for p in entries if p.startswith('Developer/Platforms/') and not p.startswith('Developer/Platforms/MacOSX.platform')]
+          Path(os.environ['RUNNER_TEMP'],'xcode-sealed-platforms.json').write_text(json.dumps({'sealedNonMacPlatformEntries':len(platforms),'examples':sorted(platforms)[:20]},indent=2)+'\n')
+          PYCODE
+      - name: Reclaim hosted Mac space and require full build capacity
+        run: python3 scripts/ci/prepare_macos.py --preserve-active-xcode --output "$RUNNER_TEMP/capacity.json"
+      - name: Publish capacity assessment before the long build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-capacity-1
+          path: ${{ runner.temp }}/capacity.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Install build tools
+        run: |
+          export CCACHE_DIR="$RUNNER_TEMP/ccache"
+          echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
+          brew install cmake ninja ccache
+          ccache --max-size 5G
+      - name: Snapshot exact same-run Homebrew build tools
+        run: python3 scripts/ci/chromium_host_tools.py snapshot --directory "$RUNNER_TEMP/host-tools"
+      - name: Publish immutable same-run Homebrew build tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-host-tools-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/host-tools/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 2
+      - name: Install the separate Xcode Metal toolchain on every segment
+        timeout-minutes: 20
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Verify offline ARM64 Metal shader compilation and linking
+        timeout-minutes: 5
+        run: python3 scripts/ci/metal_toolchain.py --directory "$RUNNER_TEMP/metal-preflight"
+      - name: Preserve toolchain preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-metal-preflight-1
+          path: ${{ runner.temp }}/metal-preflight/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Verify selected Xcode signature after complete setup
+        timeout-minutes: 5
+        run: |
+          developer="$(xcode-select -p)"
+          codesign --verify --strict --verbose=2 "${developer%/Contents/Developer}" > "$RUNNER_TEMP/xcode-seal-after.txt" 2>&1
+      - name: Verify full checkpoint host identity on the preserved installation
+        timeout-minutes: 20
+        run: |
+          python3 -u - <<'PYCODE'
+          import sys, subprocess, json, os
+          from pathlib import Path
+          sys.path.insert(0, 'scripts/ci')
+          from chromium_host_identity import collect
+          developer=subprocess.check_output(['xcode-select','-p'],text=True).strip()
+          identity=collect(developer)
+          Path(os.environ['RUNNER_TEMP'],'host-identity-preflight.json').write_text(json.dumps(identity,indent=2)+'\n')
+          PYCODE
+      - name: Preserve full setup verification receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcrun-fixed-full-setup
+          path: |
+            ${{ runner.temp }}/capacity.json
+            ${{ runner.temp }}/metal-preflight/
+            ${{ runner.temp }}/xcode-seal-*.txt
+            ${{ runner.temp }}/xcode-sealed-platforms.json
+            ${{ runner.temp }}/host-identity-preflight.json
           if-no-files-found: warn
