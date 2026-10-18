@@ -3,6 +3,10 @@ name: Browser build runner survey
 on:
   workflow_dispatch:
     inputs:
+      xcrun_setup_diagnostic:
+        description: Compare full setup with and without changes inside selected Xcode
+        type: boolean
+        default: false
       metal_prerequisites_only:
         description: Verify Metal installation and offline shader compilation without building Chromium
         type: boolean
@@ -23,7 +27,7 @@ permissions:
 
 jobs:
   survey:
-    if: ${{ !inputs.chromium_intel_build && !inputs.metal_prerequisites_only }}
+    if: ${{ !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic }}
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +68,7 @@ jobs:
           if-no-files-found: error
 
   chromium-intel-build:
-    if: ${{ inputs.chromium_intel_build && !inputs.metal_prerequisites_only }}
+    if: ${{ inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic }}
     permissions:
       contents: read
       actions: read
@@ -72,7 +76,7 @@ jobs:
     uses: ./.github/workflows/chromium-engine.yml
 
   metal-prerequisites:
-    if: ${{ inputs.metal_prerequisites_only }}
+    if: ${{ inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic }}
     runs-on: macos-26-intel
     timeout-minutes: 30
     steps:
@@ -92,4 +96,48 @@ jobs:
         with:
           name: metal-prerequisites
           path: ${{ runner.temp }}/metal-preflight/
+          if-no-files-found: warn
+
+  xcrun-setup-diagnostic:
+    if: ${{ inputs.xcrun_setup_diagnostic }}
+    strategy:
+      fail-fast: false
+      matrix:
+        cleanup: [legacy, preserve-active]
+    runs-on: macos-26-intel
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Validate CI helpers as in source workflow
+        run: python3 -m unittest discover -s tests/ci -v
+      - name: Run source workflow capacity setup
+        env:
+          CLEANUP: ${{ matrix.cleanup }}
+        run: |
+          args=()
+          if [[ "$CLEANUP" == preserve-active ]]; then args+=(--preserve-active-xcode); fi
+          python3 scripts/ci/prepare_macos.py --output "$RUNNER_TEMP/capacity.json" "${args[@]}"
+      - name: Install and snapshot same source build tools
+        run: |
+          export CCACHE_DIR="$RUNNER_TEMP/ccache"
+          echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
+          brew install cmake ninja ccache
+          ccache --max-size 5G
+          python3 scripts/ci/chromium_host_tools.py snapshot --directory "$RUNNER_TEMP/host-tools"
+      - name: Install separate Metal component
+        timeout-minutes: 20
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Trace identical shader and SDK discovery commands
+        timeout-minutes: 5
+        run: python3 -u scripts/ci/xcrun_diagnostic.py --directory "$RUNNER_TEMP/xcrun-diagnostic"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xcrun-setup-${{ matrix.cleanup }}
+          path: |
+            ${{ runner.temp }}/capacity.json
+            ${{ runner.temp }}/xcrun-diagnostic/
           if-no-files-found: warn
