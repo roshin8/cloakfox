@@ -26,13 +26,20 @@ def verify(directory, run=command):
     air = directory / 'preflight.air'
     library = directory / 'preflight.metallib'
     source.write_text('#include <metal_stdlib>\nusing namespace metal;\nkernel void preflight(device uint *out [[buffer(0)]], uint i [[thread_position_in_grid]]) { out[i] = i + 1; }\n')
-    run(['xcrun', '--sdk', 'macosx', 'metal', '-target', 'air64-apple-macos26.0', '-c', str(source), '-o', str(air)])
-    if not air.is_file() or not air.stat().st_size:
-        raise ValueError('Metal compiler did not produce AIR')
-    run(['xcrun', '--sdk', 'macosx', 'metallib', str(air), '-o', str(library)])
-    if not library.is_file() or not library.stat().st_size:
-        raise ValueError('Metal linker did not produce a library')
-    return {'shaderCompileAndLink': True, 'tools': tools,
+    variants = {}
+    for name, flags in (('arm64', ['-target', 'air64-apple-macos26.0']),
+                        ('angle', ['--std=macos-metal2.1', '-mmacosx-version-min=10.14'])):
+        air = directory / (name + '.air')
+        library = directory / (name + '.metallib')
+        run(['xcrun', '--sdk', 'macosx', 'metal', *flags, '-c', str(source), '-o', str(air)])
+        if not air.is_file() or not air.stat().st_size:
+            raise ValueError('Metal compiler did not produce AIR: ' + name)
+        run(['xcrun', '--sdk', 'macosx', 'metallib', str(air), '-o', str(library)])
+        if not library.is_file() or not library.stat().st_size:
+            raise ValueError('Metal linker did not produce a library: ' + name)
+        variants[name] = {'flags': flags, 'libraryBytes': library.stat().st_size,
+                          'librarySha256': hashlib.sha256(library.read_bytes()).hexdigest()}
+    return {'shaderCompileAndLink': True, 'tools': tools, 'variants': variants,
             'metalVersion': run(['xcrun', '--sdk', 'macosx', 'metal', '--version']),
             'xcodeVersion': run(['xcodebuild', '-version']),
             'sdkVersion': run(['xcrun', '--sdk', 'macosx', '--show-sdk-version']),
@@ -50,6 +57,8 @@ def main():
     report = {'shaderCompileAndLink': False}
     try:
         report = verify(args.directory)
+        from chromium_host_identity import metal_toolchains
+        report['toolchainIdentity'] = metal_toolchains(command)
     except Exception as error:
         report['error'] = str(error)
         if isinstance(error, subprocess.CalledProcessError):

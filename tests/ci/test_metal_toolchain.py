@@ -22,6 +22,8 @@ class MetalToolchainTests(unittest.TestCase):
             self.assertIn('air64-apple-macos26.0', compile_call)
             self.assertLess(calls.index(compile_call), next(i for i,c in enumerate(calls) if 'metallib' in c and '--find' not in c))
             self.assertTrue(report['shaderCompileAndLink'])
+            self.assertTrue(any('--std=macos-metal2.1' in c and '-mmacosx-version-min=10.14' in c for c in calls))
+            self.assertEqual(len([c for c in calls if 'metallib' in c and '--find' not in c]), 2)
     def test_missing_library_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises((ValueError, FileNotFoundError)):

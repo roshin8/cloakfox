@@ -68,6 +68,10 @@ class HostIdentity(unittest.TestCase):
             python = base / 'python'
             python.mkdir()
             (python / 'python3').write_bytes(b'interpreter')
+            metal = base / 'Metal.xctoolchain/usr/bin'
+            metal.mkdir(parents=True)
+            for tool in ('metal', 'metallib'):
+                (metal / tool).write_bytes(tool.encode())
             packages = {}
             for name in ('cmake', 'ninja', 'ccache', 'zstd'):
                 packages[name] = base / name
@@ -75,6 +79,8 @@ class HostIdentity(unittest.TestCase):
                 (packages[name] / 'binary').write_bytes(name.encode())
 
             def command(args, **kwargs):
+                if args[:4] == ['xcrun', '--sdk', 'macosx', '--find']:
+                    return str(metal / args[4])
                 if args == ['sw_vers', '-productVersion']:
                     return '26.6.2'
                 if args == ['sw_vers', '-buildVersion']:
@@ -97,6 +103,8 @@ class HostIdentity(unittest.TestCase):
                 self.assertEqual(intel['xcodeBundle'], first['xcodeBundle'])
                 self.assertNotEqual(intel, first)
                 self.assertEqual(set(first['homebrewBuildTools']), {'cmake', 'ninja', 'ccache', 'zstd'})
+                (metal / 'metallib').write_bytes(b'changed Metal linker')
+                self.assertNotEqual(module.collect(developer)['metalToolchains'], first['metalToolchains'])
                 (packages['zstd'] / 'binary').write_bytes(b'changed dependency')
                 self.assertNotEqual(module.collect(developer), first)
                 (developer / 'compiler').write_bytes(b'changed compiler')
