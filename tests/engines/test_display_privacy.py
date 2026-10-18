@@ -21,6 +21,9 @@ READ = """async function display(){
  const s=window.screen;
  return {width:s.width,height:s.height,availWidth:s.availWidth,availHeight:s.availHeight,
   colorDepth:s.colorDepth,pixelDepth:s.pixelDepth,dpr:window.devicePixelRatio,
+  color8:matchMedia("(color: 8)").matches,minColor10:matchMedia("(min-color: 10)").matches,
+  hdr:matchMedia("(dynamic-range: high)").matches,
+  p3:matchMedia("(color-gamut: p3)").matches,srgb:matchMedia("(color-gamut: srgb)").matches,
   deviceWidth:matchMedia("(device-width: "+s.width+"px)").matches,
   deviceHeight:matchMedia("(device-height: "+s.height+"px)").matches,
   minDeviceWidth:matchMedia("(min-device-width: "+s.width+"px)").matches};
@@ -65,6 +68,11 @@ class DisplayPrivacy(unittest.TestCase):
         self.assertEqual(value['availWidth'],preset['screenAvailWidth']);self.assertEqual(value['availHeight'],preset['screenAvailHeight'])
         self.assertLessEqual(value['availWidth'],value['width']);self.assertLessEqual(value['availHeight'],value['height'])
         self.assertEqual(value['colorDepth'],value['pixelDepth'])
+        # An owner panel is a standard 24-bit SDR panel, so the host's 30-bit
+        # HDR profile is not reported through screen or CSS colour queries.
+        self.assertEqual(value['colorDepth'],24)
+        self.assertTrue(value['color8']);self.assertFalse(value['minColor10'])
+        self.assertFalse(value['hdr'])
         # CSS device metrics read the same native panel as window.screen.
         self.assertTrue(value['deviceWidth']);self.assertTrue(value['deviceHeight']);self.assertTrue(value['minDeviceWidth'])
 
@@ -95,5 +103,20 @@ class DisplayPrivacy(unittest.TestCase):
         self.assertEqual(identity['languages'],PROFILE_A['languages'],'Display toggle must not disable the identity group')
         self.assertEqual(identity['timezone'],PROFILE_A['timezone'])
         self.assertEqual(identity['cores'],PROFILE_A['hardwareConcurrency'])
+
+    def test_display_mask_hides_the_host_colour_profile(self):
+        # The harness host is a 30-bit HDR panel, a rare enough profile to
+        # identify the machine; the masked panel must not report it.
+        spoofed=self.read(self.configured('5',preset=PROFILE_A))
+        self.assert_presented(spoofed,PROFILE_A)
+        host=self.read(self.configured('6',preset=BASE))
+        self.assertNotEqual(host['colorDepth'],24,'Harness host is expected to be a non-24-bit panel')
+        self.assertNotEqual(host['colorDepth'],spoofed['colorDepth'],
+                            'Host colour depth must not be reported under the display mask')
+        # Scope boundary: the retained real OS/brand keeps its display's gamut
+        # and scale, because both are normal for the claimed device and forcing
+        # them would either change rendering or make the profile less common.
+        self.assertEqual(spoofed['p3'],host['p3']);self.assertEqual(spoofed['srgb'],host['srgb'])
+        self.assertEqual(spoofed['dpr'],host['dpr'])
 
 if __name__=='__main__':unittest.main()

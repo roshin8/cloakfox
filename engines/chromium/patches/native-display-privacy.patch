@@ -61,6 +61,30 @@
    registry->RegisterDictionaryPref("cloakfox.presentation");
    registry->RegisterBooleanPref("cloakfox.native_languages_saved", false);
    registry->RegisterStringPref("cloakfox.native_accept_languages", "");
+--- a/third_party/blink/renderer/core/css/media_values.cc
++++ b/third_party/blink/renderer/core/css/media_values.cc
+@@ -199,10 +199,17 @@
+ bool MediaValues::CalculateDeviceSupportsHDR(LocalFrame* frame) {
+   DCHECK(frame);
+   DCHECK(frame->GetPage());
+-  return frame->GetPage()
+-      ->GetChromeClient()
+-      .GetScreenInfo(*frame)
+-      .display_color_spaces.SupportsHDR();
++  const display::ScreenInfo& screen_info =
++      frame->GetPage()->GetChromeClient().GetScreenInfo(*frame);
++  // Cloakfox: an owner panel is presented as a standard 24-bit SDR panel, with
++  // the matching depth set in widget_base.cc. Such a panel never claims HDR,
++  // so the host's HDR capability cannot single the machine out. A native
++  // 24-bit HDR panel would be under-reported, which stays consistent with its
++  // reported depth; the host capability is never over-reported.
++  if (screen_info.depth == 24 && screen_info.depth_per_component == 8) {
++    return false;
++  }
++  return screen_info.display_color_spaces.SupportsHDR();
+ }
+ 
+ int MediaValues::CalculateColorBitsPerComponent(LocalFrame* frame) {
 --- a/third_party/blink/renderer/platform/widget/widget_base.cc
 +++ b/third_party/blink/renderer/platform/widget/widget_base.cc
 @@ -13,6 +13,8 @@
@@ -72,7 +96,7 @@
  #include "base/task/common/task_annotator.h"
  #include "base/trace_event/trace_event.h"
  #include "build/build_config.h"
-@@ -1862,6 +1864,29 @@
+@@ -1862,6 +1864,36 @@
    display::ScreenInfos new_screen_infos = screen_infos;
    display::ScreenInfo& new_screen_info = new_screen_infos.mutable_current();
  
@@ -95,6 +119,13 @@
 +          values[3] > 0 && values[2] <= values[0] && values[3] <= values[1]) {
 +        new_screen_info.rect = gfx::Rect(0, 0, values[0], values[1]);
 +        new_screen_info.available_rect = gfx::Rect(0, 0, values[2], values[3]);
++        // An owner panel is presented as a standard 24-bit SDR panel. The
++        // host's 30-bit panel is rare enough to identify the machine, and the
++        // companion also reports the matching non-HDR capability in
++        // media_values.cc. Reporting only: display_color_spaces above is left
++        // untouched so compositing and raster color stay native.
++        new_screen_info.depth = 24;
++        new_screen_info.depth_per_component = 8;
 +      }
 +    }
 +  }
