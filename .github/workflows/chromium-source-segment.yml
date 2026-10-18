@@ -82,6 +82,20 @@ jobs:
       - name: Verify and restore exact first-segment Homebrew tool bytes
         if: inputs.segment > 1
         run: python3 scripts/ci/chromium_host_tools.py restore --directory "$RUNNER_TEMP/host-tools"
+      - name: Install the separate Xcode Metal toolchain on every segment
+        timeout-minutes: 20
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Verify offline ARM64 Metal shader compilation and linking
+        timeout-minutes: 5
+        run: python3 scripts/ci/metal_toolchain.py --directory "$RUNNER_TEMP/metal-preflight"
+      - name: Preserve toolchain preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-metal-preflight-${{ inputs.segment }}
+          path: ${{ runner.temp }}/metal-preflight/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Verify real Ninja object reuse across checkpoint handoff
         run: '"$pythonLocation/bin/python3" tests/ci/checkpoint_ninja_fixture.py'
       - name: Restore compiler cache

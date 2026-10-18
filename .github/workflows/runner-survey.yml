@@ -3,6 +3,10 @@ name: Browser build runner survey
 on:
   workflow_dispatch:
     inputs:
+      metal_prerequisites_only:
+        description: Verify Metal installation and offline shader compilation without building Chromium
+        type: boolean
+        default: false
       chromium_intel_build:
         description: Build the ARM64 Chromium SDK on a standard higher-memory Intel Mac
         type: boolean
@@ -19,7 +23,7 @@ permissions:
 
 jobs:
   survey:
-    if: ${{ !inputs.chromium_intel_build }}
+    if: ${{ !inputs.chromium_intel_build && !inputs.metal_prerequisites_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -60,9 +64,32 @@ jobs:
           if-no-files-found: error
 
   chromium-intel-build:
-    if: ${{ inputs.chromium_intel_build }}
+    if: ${{ inputs.chromium_intel_build && !inputs.metal_prerequisites_only }}
     permissions:
       contents: read
       actions: read
       checks: write
     uses: ./.github/workflows/chromium-engine.yml
+
+  metal-prerequisites:
+    if: ${{ inputs.metal_prerequisites_only }}
+    runs-on: macos-26-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - run: brew install cmake ninja ccache
+      - name: Install separate Metal component
+        timeout-minutes: 20
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Compile and link ARM64 shader and check build utilities
+        timeout-minutes: 5
+        run: python3 scripts/ci/metal_toolchain.py --directory "$RUNNER_TEMP/metal-preflight"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metal-prerequisites
+          path: ${{ runner.temp }}/metal-preflight/
+          if-no-files-found: warn
