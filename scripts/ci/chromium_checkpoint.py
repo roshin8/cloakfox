@@ -1,4 +1,9 @@
 """Same-run full-workspace handoff; preserve compiler objects and source timestamps."""
+from contextlib import contextmanager
+from decimal import Decimal
+import signal
+import subprocess
+import tempfile
 import hashlib
 import json
 import os
@@ -8,6 +13,7 @@ import tarfile
 import time
 
 GIB = 1024**3
+ZSTD = 'zstd'
 HOST_LINK_DIR = PurePosixPath('chromium/src/out/Release_GN_arm64/sdk/xcode_links')
 
 
@@ -86,7 +92,7 @@ class WriteOnlyTarFile(tarfile.TarFile):
         self.members.clear()
 
 
-def save(root, archive, identity, provenance=None):
+def _save_gzip(root, archive, identity, provenance=None):
     root, archive = Path(root).resolve(), Path(archive).resolve()
     if archive.is_relative_to(root):
         raise ValueError('Checkpoint archive must be outside the workspace')
@@ -121,6 +127,96 @@ def save(root, archive, identity, provenance=None):
     print(f"CHECKPOINT saved bytes={record['bytes']} seconds={record['seconds']}", flush=True)
 
 
+def stop_process(process):
+    if process is not None and process.poll() is None:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            # Some macOS hosts reject killpg after the child has exited.
+            if process.poll() is None:
+                process.kill()
+        process.wait()
+
+
+def save(root, archive, identity, provenance=None):
+    # Retain legacy gzip handoffs for old receipts and fixtures. New jobs use zst.
+    if Path(archive).suffix != '.zst':
+        return _save_gzip(root, archive, identity, provenance)
+    root, archive = Path(root).resolve(), Path(archive).resolve()
+    if archive.is_relative_to(root):
+        raise ValueError('Checkpoint archive must be outside the workspace')
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    receipt = archive.with_suffix('.json')
+    if receipt.exists() or archive.exists():
+        raise ValueError('Checkpoint output already exists; preserve it for diagnosis')
+    require_space(archive.parent)
+    validate_links(root, identity)
+    host_links = {}
+    for relative, target in identity.get('hostSdkLinks', {}).items():
+        source = root / relative
+        if source.is_symlink():
+            host_links[relative] = verified_host_link(relative, str(source.resolve()), identity)
+    command = ['/usr/bin/tar', '--format=pax', '--no-xattrs', '-C', str(root.parent)]
+    for relative in host_links:
+        command += ['--exclude', str(PurePosixPath(root.name) / relative)]
+    command += ['-cf', '-', root.name]
+    started = time.monotonic()
+    tar = compressor = None
+    with tempfile.TemporaryFile() as tar_log, tempfile.TemporaryFile() as zstd_log, archive.open('xb') as output:
+        try:
+            tar = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=tar_log,
+                                   env={**os.environ, 'COPYFILE_DISABLE': '1'}, start_new_session=True)
+            compressor = subprocess.Popen([ZSTD, '-3', '-T2', '-c'], stdin=tar.stdout,
+                                          stdout=output, stderr=zstd_log, start_new_session=True)
+            tar.stdout.close()
+            reported = 0
+            while tar.poll() is None or compressor.poll() is None:
+                require_space(archive.parent)
+                now = time.monotonic()
+                if now-reported >= 30:
+                    print(f'CHECKPOINT native archive bytes={archive.stat().st_size}', flush=True)
+                    reported = now
+                if compressor.poll() not in (None, 0) or tar.poll() not in (None, 0):
+                    raise RuntimeError('Native checkpoint tar/zstd pipeline failed')
+                time.sleep(.2)
+            if tar.returncode or compressor.returncode:
+                raise RuntimeError(f'Native checkpoint pipeline failed: tar={tar.returncode}, zstd={compressor.returncode}')
+            require_space(archive.parent)
+        finally:
+            stop_process(tar)
+            stop_process(compressor)
+    record = {'schemaVersion': 1, 'compression': 'zstd', 'archivePrefix': root.name,
+              'sourceRoot': str(root), 'identity': identity, 'provenance': provenance or {},
+              'hostLinks': host_links, 'sha256': digest(archive), 'bytes': archive.stat().st_size,
+              'seconds': round(time.monotonic()-started, 1)}
+    receipt.write_text(json.dumps(record, indent=2)+'\n')
+    print(f"CHECKPOINT saved native bytes={record['bytes']} seconds={record['seconds']}", flush=True)
+
+
+@contextmanager
+def open_archive(archive, receipt):
+    if receipt.get('compression') != 'zstd':
+        with tarfile.open(archive, 'r:gz') as bundle:
+            yield bundle
+        return
+    with tempfile.TemporaryFile() as errors:
+        process = subprocess.Popen([ZSTD, '-d', '-c', str(archive)], stdout=subprocess.PIPE,
+                                   stderr=errors, start_new_session=True)
+        try:
+            with tarfile.open(fileobj=process.stdout, mode='r|') as bundle:
+                yield bundle
+            # Drain to EOF to validate the zstd trailer; never leave a blocked child.
+            while process.stdout.read(1024*1024):
+                pass
+            if process.wait(timeout=30):
+                raise RuntimeError('Checkpoint zstd decompression failed')
+        finally:
+            process.stdout.close()
+            stop_process(process)
+
+
 def restore(root, archive, identity):
     root, archive = Path(root).resolve(), Path(archive).resolve()
     receipt = json.loads(archive.with_suffix('.json').read_text())
@@ -145,19 +241,25 @@ def restore(root, archive, identity):
     reported = time.monotonic()
     count = 0
     started = time.monotonic()
-    with tarfile.open(archive, 'r:gz') as bundle:
+    with open_archive(archive, receipt) as bundle:
         def members():
             nonlocal reported, count
             for member in bundle:
                 parts = PurePosixPath(member.name).parts
-                if not parts or parts[0] != 'workspace' or '..' in parts:
+                if not parts or parts[0] != receipt.get('archivePrefix', 'workspace') or '..' in parts:
                     raise ValueError('Checkpoint member escapes workspace')
                 member.name = str(PurePosixPath(*parts[1:]))
                 if member.islnk():
                     link = PurePosixPath(member.linkname)
-                    if not link.parts or link.parts[0] != 'workspace' or '..' in link.parts:
+                    if not link.parts or link.parts[0] != receipt.get('archivePrefix', 'workspace') or '..' in link.parts:
                         raise ValueError('Checkpoint hardlink escapes workspace')
                     member.linkname = str(PurePosixPath(*link.parts[1:]))
+                if member.issym() and Path(member.linkname).is_absolute():
+                    target = Path(member.linkname).resolve()
+                    original = Path(receipt.get('sourceRoot', str(root)))
+                    if not target.is_relative_to(original):
+                        raise ValueError('Checkpoint external symlink')
+                    member.linkname = os.path.relpath(root / target.relative_to(original), (root / member.name).parent)
                 require_space(root, member.size if member.isfile() else 0)
                 count += 1
                 if time.monotonic() - reported >= 30:
@@ -165,6 +267,9 @@ def restore(root, archive, identity):
                     reported = time.monotonic()
                 if 'cloakfox.mtime_ns' in member.pax_headers:
                     stamps.append((root / member.name, int(member.pax_headers['cloakfox.mtime_ns'])))
+                elif receipt.get('compression') == 'zstd':
+                    exact = member.pax_headers.get('mtime', str(member.mtime))
+                    stamps.append((root / member.name, int(Decimal(exact) * 1000000000)))
                 yield member
         bundle.extractall(root, members=members(), filter='data')
     for relative, target in host_links.items():

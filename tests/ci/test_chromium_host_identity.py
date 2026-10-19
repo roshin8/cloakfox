@@ -85,7 +85,7 @@ class HostIdentity(unittest.TestCase):
                     return '26.6.2'
                 if args == ['sw_vers', '-buildVersion']:
                     return '25G83'
-                if args == ['brew', 'deps', '--installed', '--formula', '--union', 'ccache', 'cmake', 'ninja']:
+                if args == ['brew', 'deps', '--installed', '--formula', '--union', 'ccache', 'cmake', 'ninja', 'zstd']:
                     return 'zstd\n'
                 if args[:2] == ['brew', '--prefix']:
                     return str(packages[args[2]])

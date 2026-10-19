@@ -58,7 +58,7 @@ def main():
             raise RuntimeError('Actual Ninja did not drain slow child cleanup before checkpoint')
         (root / 'build.ninja').write_text(original_ninja)
         print('PASS: real Ninja clean checkpoint waits for >30-second child shutdown')
-        archive = base / 'checkpoint/workspace.tar.gz'
+        archive = base / 'checkpoint/workspace.tar.zst'
         checkpoint.save(root, archive, identity, provenance={'runnerImage': 'fixture-image-A'})
         shutil.rmtree(root)  # Only the fixture-owned temporary workspace.
         checkpoint.restore(root, archive, identity)

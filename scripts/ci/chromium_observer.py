@@ -18,7 +18,9 @@ def process_started(pid):
 
 
 def archive_snapshot(directory, now, previous):
-    archive = Path(directory) / 'workspace.tar.gz'
+    archive = Path(directory) / 'workspace.tar.zst'
+    if not archive.exists():
+        archive = Path(directory) / 'workspace.tar.gz'
     result = {'exists': False, 'receiptPresent': False}
     try:
         info = archive.lstat()

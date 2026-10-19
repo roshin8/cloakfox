@@ -57,7 +57,7 @@ class Observer(unittest.TestCase):
             with patch.object(module.subprocess,'check_output',ps), patch.object(module.time,'time',return_value=100):
                 first=module.snapshot(root, output)
             stage.write_text('{"stage":"framework","state":"checkpoint","childPid":101}')
-            archive=output/'workspace.tar.gz'; archive.write_bytes(b'archive')
+            archive=output/'workspace.tar.zst'; archive.write_bytes(b'archive')
             rows='100 1 00:04 10 R Python\n101 999 00:01 20 S unrelated\n'
             with patch.object(module.subprocess,'check_output',ps), patch.object(module.time,'time',return_value=110):
                 second=module.snapshot(root,output,previous=first)

@@ -164,13 +164,13 @@ def collect(developer):
     xcode = Path(developer).resolve().parents[1]
     if xcode.suffix != '.app':
         raise ValueError('A full selected Xcode application is required')
-    formulas = {'cmake', 'ninja', 'ccache'}
+    formulas = {'cmake', 'ninja', 'ccache', 'zstd'}
     formulas.update(output(['brew', 'deps', '--installed', '--formula', '--union', *sorted(formulas)]).splitlines())
     packages = {}
     for formula in sorted(formulas):
         packages[formula] = tree_identity(output(['brew', '--prefix', formula]), homebrew_package=True)
     commands = {}
-    for name in ('cmake', 'ninja', 'ccache'):
+    for name in ('cmake', 'ninja', 'ccache', 'zstd'):
         executable = shutil.which(name)
         if not executable or not Path(executable).resolve().is_relative_to(packages[name]['path']):
             raise ValueError('Build tool resolves outside fingerprinted package: ' + name)

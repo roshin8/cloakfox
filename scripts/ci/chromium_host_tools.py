@@ -17,7 +17,7 @@ import subprocess
 import tarfile
 import tempfile
 
-TOOLS = {'cmake', 'ninja', 'ccache'}
+TOOLS = {'cmake', 'ninja', 'ccache', 'zstd'}
 
 
 def digest(path):

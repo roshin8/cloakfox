@@ -43,6 +43,8 @@ jobs:
       - name: Compute committed engine input identity
         id: key
         run: python3 scripts/ci/engine_artifact.py key --kind chromium
+      - name: Install checkpoint codec before CI helper tests
+        run: brew install zstd
       - name: Validate CI helpers
         run: python3 -m unittest discover -s tests/ci -v
       - name: Reclaim hosted Mac space and require full build capacity
@@ -59,7 +61,7 @@ jobs:
         run: |
           export CCACHE_DIR="$RUNNER_TEMP/ccache"
           echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
-          brew install cmake ninja ccache
+          brew install cmake ninja ccache zstd
           ccache --max-size 5G
       - name: Snapshot exact same-run Homebrew build tools
         if: inputs.segment == 1
@@ -128,16 +130,16 @@ jobs:
           export PATH="$pythonLocation/bin:$PATH"
           resume=()
           if [[ "$HAS_CHECKPOINT" == "true" ]]; then
-            resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.gz")
+            resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.zst")
           fi
-          "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.gz" "${resume[@]}"
+          "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
       - name: Preserve unfinished source and compiled objects for next job
         if: steps.build.outputs.complete == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: chromium-workspace-${{ inputs.segment }}
           path: |
-            ${{ runner.temp }}/checkpoint-out/workspace.tar.gz
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.zst
             ${{ runner.temp }}/checkpoint-out/workspace.tar.json
           compression-level: 0
           if-no-files-found: error
