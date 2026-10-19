@@ -154,10 +154,13 @@ def save(root, archive, identity, provenance=None):
     require_space(archive.parent)
     validate_links(root, identity)
     host_links = {}
+    host_link_metadata = {}
     for relative, target in identity.get('hostSdkLinks', {}).items():
         source = root / relative
         if source.is_symlink():
             host_links[relative] = verified_host_link(relative, str(source.resolve()), identity)
+            info = source.lstat()
+            host_link_metadata[relative] = {'mtimeNs': info.st_mtime_ns, 'mode': info.st_mode & 0o777}
     command = ['/usr/bin/tar', '--format=pax', '--no-xattrs', '-C', str(root.parent)]
     for relative in host_links:
         command += ['--exclude', str(PurePosixPath(root.name) / relative)]
@@ -189,7 +192,7 @@ def save(root, archive, identity, provenance=None):
             stop_process(compressor)
     record = {'schemaVersion': 1, 'compression': 'zstd', 'archivePrefix': root.name,
               'sourceRoot': str(root), 'identity': identity, 'provenance': provenance or {},
-              'hostLinks': host_links, 'sha256': digest(archive), 'bytes': archive.stat().st_size,
+              'hostLinks': host_links, 'hostLinkMetadata': host_link_metadata, 'sha256': digest(archive), 'bytes': archive.stat().st_size,
               'seconds': round(time.monotonic()-started, 1)}
     receipt.write_text(json.dumps(record, indent=2)+'\n')
     print(f"CHECKPOINT saved native bytes={record['bytes']} seconds={record['seconds']}", flush=True)
@@ -234,6 +237,12 @@ def restore(root, archive, identity):
         raise ValueError('Invalid checkpoint host SDK link manifest')
     for relative, target in host_links.items():
         verified_host_link(relative, target, identity)
+    link_metadata = receipt.get('hostLinkMetadata', {})
+    if (type(link_metadata) is not dict or set(link_metadata) - set(host_links)
+            or any(type(item) is not dict or set(item) != {'mtimeNs', 'mode'}
+                   or type(item['mtimeNs']) is not int or type(item['mode']) is not int
+                   or not 0 <= item['mode'] <= 0o777 for item in link_metadata.values())):
+        raise ValueError('Invalid checkpoint host SDK link metadata')
     if root.exists():
         raise ValueError('Checkpoint destination already exists; preserve it for diagnosis')
     root.mkdir(parents=True)
@@ -278,6 +287,10 @@ def restore(root, archive, identity):
             raise ValueError('Checkpoint host SDK link destination is occupied or escapes workspace')
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.symlink_to(target, target_is_directory=True)
+        if relative in link_metadata:
+            metadata = link_metadata[relative]
+            os.chmod(destination, metadata['mode'], follow_symlinks=False)
+            os.utime(destination, ns=(metadata['mtimeNs'], metadata['mtimeNs']), follow_symlinks=False)
     for path, stamp in reversed(stamps):
         os.utime(path, ns=(stamp, stamp), follow_symlinks=False)
     print(f'CHECKPOINT restored seconds={time.monotonic()-started:.1f}', flush=True)

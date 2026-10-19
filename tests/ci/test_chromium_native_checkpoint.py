@@ -47,6 +47,8 @@ class NativeCheckpoint(unittest.TestCase):
             base=Path(folder);sdk=base/'SDK';sdk.mkdir();(sdk/'header').write_text('host')
             root=base/'workspace';relative=m.HOST_LINK_DIR/'SDK';link=root/relative
             link.parent.mkdir(parents=True);link.symlink_to(sdk)
+            link_stamp=1700000000123456789
+            os.utime(link,ns=(link_stamp,link_stamp),follow_symlinks=False)
             stamp=1700000000000000000
             os.utime(link.parent,ns=(stamp,stamp))
             identity={'hostSdkLinks':{str(relative):str(sdk.resolve())}}
@@ -55,6 +57,7 @@ class NativeCheckpoint(unittest.TestCase):
                 m.save(root,archive,identity);shutil.rmtree(root);m.restore(root,archive,identity)
             self.assertEqual((link/'header').read_text(),'host')
             self.assertEqual(link.parent.stat().st_mtime_ns,stamp)
+            self.assertEqual(link.lstat().st_mtime_ns,link_stamp)
             (root/'bad').symlink_to('/etc/passwd')
             with self.assertRaisesRegex(ValueError,'external symlink'):
                 m.save(root,base/'bad/workspace.tar.zst',identity)

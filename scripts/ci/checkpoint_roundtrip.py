@@ -105,7 +105,7 @@ def observe(directory):
     token = os.environ.pop('CHROMIUM_TELEMETRY_TOKEN')
     publisher = Publisher(os.environ['GITHUB_REPOSITORY'], os.environ['GITHUB_SHA'], token, 'checkpoint-roundtrip')
     previous = None
-    deadline = time.monotonic()+170*60
+    deadline = time.monotonic()+230*60
     while True:
         finished = (directory/'stop').exists() or time.monotonic()>deadline
         now = time.time()
