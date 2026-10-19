@@ -4,15 +4,58 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import stat
 import threading
 import time
 import urllib.request
 
 
-def snapshot(root):
+def process_started(pid):
+    try:
+        return subprocess.check_output(['ps', '-p', str(pid), '-o', 'lstart='], text=True, timeout=5).strip()
+    except (OSError, subprocess.SubprocessError):
+        return ''
+
+
+def archive_snapshot(directory, now, previous):
+    archive = Path(directory) / 'workspace.tar.gz'
+    result = {'exists': False, 'receiptPresent': False}
+    try:
+        info = archive.lstat()
+        if not stat.S_ISREG(info.st_mode):
+            return result
+        result.update(exists=True, bytes=info.st_size, modifiedAtUnix=info.st_mtime,
+                      modifiedAgeSeconds=round(max(0, now-info.st_mtime), 1),
+                      fileIdentity=[info.st_dev, info.st_ino])
+        receipt = archive.with_suffix('.json')
+        result['receiptPresent'] = receipt.is_file() and not receipt.is_symlink()
+    except OSError:
+        return result
+    prior = (previous or {}).get('checkpointArchive', {})
+    interval = now - (previous or {}).get('sampleTimeUnix', now)
+    same_file = prior.get('fileIdentity') == result['fileIdentity']
+    last_growth = prior.get('lastObservedGrowthUnix', now) if same_file else now
+    if same_file and interval > 0:
+        delta = info.st_size-prior['bytes']
+        result['sizeDeltaBytes'] = delta
+        result['bytesPerSecond'] = round(delta/interval, 1)
+        result['sampleIntervalSeconds'] = round(interval, 1)
+        if delta > 0:
+            last_growth = now
+        elif delta < 0:
+            result['sizeReset'] = True
+            result['bytesPerSecond'] = None
+    result['lastObservedGrowthUnix'] = last_growth
+    result['secondsSinceObservedGrowth'] = round(max(0, now-last_growth), 1)
+    # Receipt presence and CPU activity are observations, not proof that upload
+    # completed. No archive reads, directory scans, or expensive hashing here.
+    return result
+
+
+def snapshot(root, evidence=None, previous=None):
     root = Path(root)
     now = time.time()
-    result = {'observedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'harnessPid': os.getpid()}
+    result = {'observedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'harnessPid': os.getpid(), 'sampleTimeUnix': now}
     stage = root / 'evidence/stage.json'
     try:
         state = json.loads(stage.read_text())
@@ -52,11 +95,30 @@ def snapshot(root):
     owned = {os.getpid()}
     stage_child = (result.get('stage', {}).get('childPid')
                    if result.get('stage', {}).get('state') == 'running' else None)
-    for process in processes:
-        if process['pid'] == stage_child:
-            owned.update((stage_child, process['parentPid']))
-            result['buildHarnessPid'] = process['parentPid']
-            break
+    parent = next((p['parentPid'] for p in processes if p['pid'] == stage_child), None)
+    remembered = previous or {}
+    if parent is not None:
+        started = process_started(parent)
+        if started:
+            result.update(buildHarnessPid=parent, buildHarnessStartedAt=started)
+            owned.update((stage_child, parent))
+    elif remembered.get('buildHarnessPid') and remembered.get('buildHarnessStartedAt'):
+        parent = remembered['buildHarnessPid']
+        result.update(buildHarnessPid=parent, buildHarnessStartedAt=remembered['buildHarnessStartedAt'])
+        # Retain the Python archiver after Ninja exits, but never adopt a PID
+        # that has been reused by an unrelated process.
+        if any(p['pid'] == parent for p in processes) and process_started(parent) == remembered['buildHarnessStartedAt']:
+            owned.add(parent)
+    harness = next((p for p in processes if p['pid'] == result.get('buildHarnessPid') and p['pid'] in owned), None)
+    result['buildHarnessAlive'] = harness is not None
+    if harness:
+        result['buildHarnessCpuSeconds'] = harness['cpuSeconds']
+        same = (result.get('buildHarnessPid') == remembered.get('buildHarnessPid') and
+                result.get('buildHarnessStartedAt') == remembered.get('buildHarnessStartedAt'))
+        if same and 'buildHarnessCpuSeconds' in remembered:
+            result['buildHarnessCpuDeltaSeconds'] = max(0, round(harness['cpuSeconds']-remembered['buildHarnessCpuSeconds'], 2))
+    if evidence is not None:
+        result['checkpointArchive'] = archive_snapshot(evidence, now, previous)
     while True:
         expanded = owned | {p['pid'] for p in processes if p['parentPid'] in owned}
         if expanded == owned:
@@ -122,10 +184,12 @@ class Observer:
         self.thread.join(timeout=22)
 
     def run(self):
+        previous = None
         while True:
             finished = self.stopped.is_set()
             try:
-                data = snapshot(self.root)
+                data = snapshot(self.root, self.evidence, previous=previous)
+                previous = data
                 data['finished'] = finished
                 if not self.publisher:
                     data['remoteTelemetry'] = 'unavailable: no diagnostic token'
