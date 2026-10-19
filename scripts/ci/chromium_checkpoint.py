@@ -74,6 +74,18 @@ def validate_links(root, identity=None):
     print(f'CHECKPOINT preflight verified {count} contained or pinned SDK symlinks', flush=True)
 
 
+class WriteOnlyTarFile(tarfile.TarFile):
+    """Do not retain serialized TarInfo/PAX objects for a write-only handoff.
+
+    CPython 3.12 appends every written member to self.members. Hardlink
+    detection uses self.inodes, not that list; keep its genuine hardlinks.
+    Restore deliberately continues using the unmodified standard reader.
+    """
+    def addfile(self, tarinfo, fileobj=None):
+        super().addfile(tarinfo, fileobj)
+        self.members.clear()
+
+
 def save(root, archive, identity, provenance=None):
     root, archive = Path(root).resolve(), Path(archive).resolve()
     if archive.is_relative_to(root):
@@ -85,6 +97,11 @@ def save(root, archive, identity, provenance=None):
     def preserve(member):
         relative = PurePosixPath(member.name).relative_to('workspace')
         source = root / str(relative)
+        metadata = source.lstat()
+        # gettarinfo also caches every single-link regular file, although it
+        # cannot be the target of a later hardlink. Keep only actual links.
+        if member.isreg() and metadata.st_nlink == 1:
+            bundle.inodes.pop((metadata.st_ino, metadata.st_dev), None)
         if member.issym():
             if source.resolve().is_relative_to(root):
                 member.linkname = internal_link(source, root)
@@ -92,10 +109,10 @@ def save(root, archive, identity, provenance=None):
                 key = source.relative_to(root).as_posix()
                 host_links[key] = verified_host_link(key, str(source.resolve()), identity)
                 return None  # Recreate verified SDK links only after extraction.
-        member.pax_headers['cloakfox.mtime_ns'] = str(source.lstat().st_mtime_ns)
+        member.pax_headers['cloakfox.mtime_ns'] = str(metadata.st_mtime_ns)
         return member
     with archive.open('wb') as file:
-        with tarfile.open(fileobj=GuardedWriter(file, archive.parent), mode='w:gz', compresslevel=1) as bundle:
+        with WriteOnlyTarFile.open(fileobj=GuardedWriter(file, archive.parent), mode='w:gz', compresslevel=1) as bundle:
             bundle.add(root, arcname='workspace', filter=preserve)
     record = {'schemaVersion': 1, 'identity': identity, 'provenance': provenance or {},
               'hostLinks': host_links, 'sha256': digest(archive),
