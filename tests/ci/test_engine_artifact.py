@@ -155,6 +155,16 @@ class EngineArtifact(unittest.TestCase):
                        {'head_repository':{'full_name':'other/fork'}}):
             with self.subTest(change=change):self.assertFalse(api.trusted_run({**run,**change},'roshin8/cloakfox','chromium'))
 
+    def test_dedicated_intel_sdk_producer_is_trusted_only_for_manual_chromium(self):
+        run={'repository':{'full_name':'owner/repo'},'head_repository':{'full_name':'owner/repo'},
+             'event':'workflow_dispatch','head_branch':'codex/chromium-intel-build',
+             'path':'.github/workflows/runner-survey.yml'}
+        self.assertTrue(api.trusted_run(run,'owner/repo','chromium'))
+        self.assertFalse(api.trusted_run(run,'owner/repo','gecko'))
+        for change in [{'event':'pull_request'},{'event':'push'},{'path':'.github/workflows/other.yml'},
+                       {'head_repository':{'full_name':'evil/fork'}}]:
+            self.assertFalse(api.trusted_run({**run,**change},'owner/repo','chromium'))
+
     def test_completed_engine_gate_required_even_if_unrelated_parent_failed(self):
         self.assertTrue(api.completed_gate([{'name':'chromium / engine / chromium-engine-complete','conclusion':'success','status':'completed'}],'chromium'))
         for conclusion in ('failure','skipped',None):

@@ -36,6 +36,18 @@ class ChromiumClients(unittest.TestCase):
             (package/'source-provenance.json').write_text(json.dumps(original))
             with self.assertRaises(ValueError):api.restore_sdk(package,root/'tampered','producer')
 
+    def test_continued_sdk_source_requires_sealed_controller_lineage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); package=root/'package';self.fixture(package)
+            manifest={'producerSha':'controller','producerRun':'12','key':'key'}
+            (package/'engine-artifact.json').write_text(json.dumps(manifest))
+            lineage={'sourceSha':'producer','workflowSha':'controller','run':12,'key':'key'}
+            (package/'checkpoint-producer.json').write_text(json.dumps(lineage))
+            api.restore_sdk(package,root/'restored','controller',manifest)
+            lineage['workflowSha']='foreign'
+            (package/'checkpoint-producer.json').write_text(json.dumps(lineage))
+            with self.assertRaises(ValueError):api.restore_sdk(package,root/'wrong','controller',manifest)
+
     def test_current_app_binding_preserves_original_engine_commit_and_rejects_changed_embedding(self):
         record={'gitSha':'producer','sourceFrameworkSha256':'hash','sdkFrameworkSha256':'hash'}
         current=api.app_provenance(record,'hash','consumer','key','123')

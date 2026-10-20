@@ -6,6 +6,27 @@ on:
       segment:
         type: number
         required: true
+      first:
+        type: boolean
+        default: false
+      stage:
+        type: number
+        default: 1
+      source-sha:
+        type: string
+        default: ''
+      checkpoint-run:
+        type: number
+        default: 0
+      checkpoint-artifact:
+        type: string
+        default: ''
+      tools-artifact:
+        type: string
+        default: ''
+      tools-name:
+        type: string
+        default: ''
       checkpoint:
         type: string
         default: ''
@@ -17,17 +38,30 @@ on:
 
 permissions:
   contents: read
+  actions: read
   checks: write
 
 jobs:
   segment:
     runs-on: macos-26-intel
     timeout-minutes: 350
+    defaults:
+      run:
+        working-directory: recipe
     outputs:
       complete: ${{ steps.build.outputs.complete }}
       artifact-id: ${{ steps.sdk.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: controller
+          persist-credentials: false
+      - name: Check out the immutable compilation recipe
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source-sha || github.sha }}
+          path: recipe
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.10'
@@ -63,27 +97,41 @@ jobs:
           echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
           brew install cmake ninja ccache zstd
           ccache --max-size 5G
-      - name: Snapshot exact same-run Homebrew build tools
-        if: inputs.segment == 1
-        run: python3 scripts/ci/chromium_host_tools.py snapshot --directory "$RUNNER_TEMP/host-tools"
-      - name: Publish immutable same-run Homebrew build tools
-        if: inputs.segment == 1
-        uses: actions/upload-artifact@v4
+      - name: Download exact cross-run producer Homebrew artifact
+        if: ${{ inputs.first && inputs.checkpoint-run > 0 }}
+        uses: actions/download-artifact@v4
         with:
-          name: chromium-host-tools-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/host-tools/
-          compression-level: 0
-          if-no-files-found: error
-          retention-days: 2
-      - name: Download exact first-segment Homebrew build tools
-        if: inputs.segment > 1
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.checkpoint-run }}
+          artifact-ids: ${{ inputs.tools-artifact }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/host-tools
+      - name: Download exact current-run Homebrew build tools
+        if: ${{ !inputs.first }}
         uses: actions/download-artifact@v4
         with:
           name: chromium-host-tools-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/host-tools
-      - name: Verify and restore exact first-segment Homebrew tool bytes
-        if: inputs.segment > 1
-        run: python3 scripts/ci/chromium_host_tools.py restore --directory "$RUNNER_TEMP/host-tools"
+      - name: Verify and restore exact producer Homebrew tool bytes
+        if: ${{ !inputs.first || inputs.checkpoint-run > 0 }}
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+          TOOLS_RUN: ${{ inputs.first && inputs.checkpoint-run > 0 && inputs.checkpoint-run || github.run_id }}
+        run: GITHUB_SHA="$SOURCE_SHA" GITHUB_RUN_ID="$TOOLS_RUN" python3 scripts/ci/chromium_host_tools.py restore --directory "$RUNNER_TEMP/host-tools"
+      - name: Bind restored tools to this continuation run
+        if: inputs.first
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+        run: GITHUB_SHA="$SOURCE_SHA" python3 scripts/ci/chromium_host_tools.py snapshot --directory "$RUNNER_TEMP/current-host-tools"
+      - name: Publish immutable same-run Homebrew build tools
+        if: inputs.first
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-host-tools-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/current-host-tools/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
       - name: Install the separate Xcode Metal toolchain on every segment
         timeout-minutes: 20
         run: xcodebuild -downloadComponent MetalToolchain
@@ -101,13 +149,24 @@ jobs:
       - name: Verify real Ninja object reuse across checkpoint handoff
         run: '"$pythonLocation/bin/python3" tests/ci/checkpoint_ninja_fixture.py'
       - name: Restore compiler cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/ccache
-          key: chromium-arm64-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('engines/chromium/*lock.json', 'engines/chromium/patches/*.patch') }}
-          restore-keys: chromium-arm64-${{ runner.os }}-${{ runner.arch }}-
-      - name: Download previous same-run workspace
-        if: inputs.checkpoint != ''
+          key: chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.segment }}
+          restore-keys: |
+            chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-
+            chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-
+      - name: Download exact validated cross-run workspace
+        if: ${{ inputs.first && inputs.checkpoint-run > 0 }}
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.checkpoint-run }}
+          artifact-ids: ${{ inputs.checkpoint-artifact }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/checkpoint-in
+      - name: Download previous current-run workspace
+        if: ${{ inputs.checkpoint != '' && !inputs.first }}
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.checkpoint }}
@@ -125,14 +184,61 @@ jobs:
         env:
           HAS_CHECKPOINT: ${{ inputs.checkpoint != '' }}
           CHROMIUM_SEGMENT: ${{ inputs.segment }}
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
           CHROMIUM_JOB_OBSERVER: '1'
         run: |
           export PATH="$pythonLocation/bin:$PATH"
+          ccache --max-size 5G
+          ccache --show-stats > "$RUNNER_TEMP/checkpoint-out/ccache-before.log"
+          ccache --zero-stats
           resume=()
           if [[ "$HAS_CHECKPOINT" == "true" ]]; then
             resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.zst")
           fi
-          "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
+          GITHUB_SHA="$SOURCE_SHA" "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
+      - name: Record compilation-source and controller provenance separately
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+          ENGINE_KEY: ${{ steps.key.outputs.key }}
+          STAGE: ${{ inputs.stage }}
+          SEGMENT: ${{ inputs.segment }}
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, subprocess
+          from pathlib import Path
+          source=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          assert source == os.environ['SOURCE_SHA']
+          record={'schema':1,'sourceSha':source,'workflowSha':os.environ['GITHUB_SHA'],
+                  'run':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+                  'stage':int(os.environ['STAGE']),'segment':int(os.environ['SEGMENT']),
+                  'key':os.environ['ENGINE_KEY']}
+          output=Path(os.environ['RUNNER_TEMP'])/'checkpoint-out'
+          receipt=output/'workspace.tar.json'
+          if receipt.exists():
+              data=json.loads(receipt.read_text())
+              assert data['identity']['gitSha']==source
+              record['checkpointSha256']=data['sha256']
+          (output/'checkpoint-producer.json').write_text(json.dumps(record,indent=2)+'\n')
+          PYCODE
+      - name: Save cumulative compiler-cache snapshot
+        if: steps.build.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.segment }}
+      - name: Record compiler-cache hits and misses
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/checkpoint-out"
+          ccache --show-stats > "$RUNNER_TEMP/checkpoint-out/ccache-after.log"
+      - name: Publish checkpoint producer lineage
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-checkpoint-producer-${{ inputs.segment }}
+          path: ${{ runner.temp }}/checkpoint-out/checkpoint-producer.json
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
       - name: Preserve unfinished source and compiled objects for next job
         if: steps.build.outputs.complete == 'false'
         uses: actions/upload-artifact@v4
@@ -143,10 +249,11 @@ jobs:
             ${{ runner.temp }}/checkpoint-out/workspace.tar.json
           compression-level: 0
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 7
       - name: Seal completed SDK and original source provenance
         if: steps.build.outputs.complete == 'true'
         run: |
+          cp "$RUNNER_TEMP/checkpoint-out/checkpoint-producer.json" "$RUNNER_TEMP/chromium-build/engine-package/checkpoint-producer.json"
           cp "$RUNNER_TEMP/checkpoint-out/current-identity.json" "$RUNNER_TEMP/chromium-build/engine-package/host-identity.json"
           python3 scripts/ci/engine_artifact.py seal --kind chromium --directory "$RUNNER_TEMP/chromium-build/engine-package"
       - name: Publish immutable source SDK
@@ -180,6 +287,7 @@ jobs:
             ${{ runner.temp }}/checkpoint-out/*.json
             ${{ runner.temp }}/checkpoint-in/*.json
             ${{ runner.temp }}/checkpoint-out/runner-telemetry*.log
+            ${{ runner.temp }}/checkpoint-out/ccache-*.log
             ${{ runner.temp }}/checkpoint-out/job-observer.log
             ${{ runner.temp }}/checkpoint-out/runner-telemetry.jsonl
           if-no-files-found: error

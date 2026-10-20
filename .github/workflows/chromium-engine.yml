@@ -2,7 +2,15 @@ name: Chromium native SDK (macOS)
 
 on:
   workflow_dispatch:
+    inputs:
+      resume-run:
+        type: number
+        default: 0
   workflow_call:
+    inputs:
+      resume-run:
+        type: number
+        default: 0
     outputs:
       artifact-id:
         value: ${{ jobs.chromium-engine-complete.outputs.artifact-id }}
@@ -28,6 +36,14 @@ jobs:
       producer-sha: ${{ steps.resolve.outputs.producer-sha }}
       producer-run: ${{ steps.resolve.outputs.producer-run }}
       key: ${{ steps.resolve.outputs.key }}
+      source-sha: ${{ steps.resolve.outputs.source-sha }}
+      checkpoint-run: ${{ steps.resolve.outputs.checkpoint-run }}
+      checkpoint-name: ${{ steps.resolve.outputs.checkpoint-name }}
+      segment-base: ${{ steps.resolve.outputs.segment-base }}
+      segments: ${{ steps.resolve.outputs.segments }}
+      tools-name: ${{ steps.resolve.outputs.tools-name }}
+      checkpoint-artifact: ${{ steps.resolve.outputs.checkpoint-artifact }}
+      tools-artifact: ${{ steps.resolve.outputs.tools-artifact }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -37,41 +53,147 @@ jobs:
         id: resolve
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci/engine_artifact.py find --kind chromium
+          RESUME_RUN: ${{ inputs.resume-run }}
+        run: python3 scripts/ci/chromium_checkpoint_reuse.py --repository "$GITHUB_REPOSITORY" --run "$RESUME_RUN"
 
   source:
-    needs: resolve
-    if: needs.resolve.outputs.found != 'true'
+    needs: [resolve]
+    if: ${{ needs.resolve.outputs.found != 'true' }}
     uses: ./.github/workflows/chromium-source-segment.yml
     with:
-      segment: 1
+      first: true
+      stage: 1
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[0] }}
+      checkpoint: ${{ needs.resolve.outputs.checkpoint-name }}
+      checkpoint-run: ${{ fromJSON(needs.resolve.outputs.checkpoint-run) }}
+      tools-name: ${{ needs.resolve.outputs.tools-name }}
+      tools-artifact: ${{ needs.resolve.outputs.tools-artifact }}
+      checkpoint-artifact: ${{ needs.resolve.outputs.checkpoint-artifact }}
 
   source2:
     needs: [resolve, source]
     if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' }}
     uses: ./.github/workflows/chromium-source-segment.yml
     with:
-      segment: 2
-      checkpoint: chromium-workspace-1
+      first: false
+      stage: 2
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[1] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[0]) }}
 
   source3:
     needs: [resolve, source, source2]
     if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' }}
     uses: ./.github/workflows/chromium-source-segment.yml
     with:
-      segment: 3
-      checkpoint: chromium-workspace-2
+      first: false
+      stage: 3
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[2] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[1]) }}
 
   source4:
     needs: [resolve, source, source2, source3]
     if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' }}
     uses: ./.github/workflows/chromium-source-segment.yml
     with:
-      segment: 4
-      checkpoint: chromium-workspace-3
+      first: false
+      stage: 4
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[3] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[2]) }}
+
+  source5:
+    needs: [resolve, source, source2, source3, source4]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' && needs.source4.result == 'success' && needs.source4.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      first: false
+      stage: 5
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[4] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[3]) }}
+
+  source6:
+    needs: [resolve, source, source2, source3, source4, source5]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' && needs.source4.result == 'success' && needs.source4.outputs.complete != 'true' && needs.source5.result == 'success' && needs.source5.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      first: false
+      stage: 6
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[5] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[4]) }}
+
+  source7:
+    needs: [resolve, source, source2, source3, source4, source5, source6]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' && needs.source4.result == 'success' && needs.source4.outputs.complete != 'true' && needs.source5.result == 'success' && needs.source5.outputs.complete != 'true' && needs.source6.result == 'success' && needs.source6.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      first: false
+      stage: 7
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[6] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[5]) }}
+
+  source8:
+    needs: [resolve, source, source2, source3, source4, source5, source6, source7]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' && needs.source4.result == 'success' && needs.source4.outputs.complete != 'true' && needs.source5.result == 'success' && needs.source5.outputs.complete != 'true' && needs.source6.result == 'success' && needs.source6.outputs.complete != 'true' && needs.source7.result == 'success' && needs.source7.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      first: false
+      stage: 8
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[7] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[6]) }}
+
+  source9:
+    needs: [resolve, source, source2, source3, source4, source5, source6, source7, source8]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' && needs.source4.result == 'success' && needs.source4.outputs.complete != 'true' && needs.source5.result == 'success' && needs.source5.outputs.complete != 'true' && needs.source6.result == 'success' && needs.source6.outputs.complete != 'true' && needs.source7.result == 'success' && needs.source7.outputs.complete != 'true' && needs.source8.result == 'success' && needs.source8.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      first: false
+      stage: 9
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[8] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[7]) }}
+
+  source10:
+    needs: [resolve, source, source2, source3, source4, source5, source6, source7, source8, source9]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' && needs.source4.result == 'success' && needs.source4.outputs.complete != 'true' && needs.source5.result == 'success' && needs.source5.outputs.complete != 'true' && needs.source6.result == 'success' && needs.source6.outputs.complete != 'true' && needs.source7.result == 'success' && needs.source7.outputs.complete != 'true' && needs.source8.result == 'success' && needs.source8.outputs.complete != 'true' && needs.source9.result == 'success' && needs.source9.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      first: false
+      stage: 10
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[9] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[8]) }}
+
+  source11:
+    needs: [resolve, source, source2, source3, source4, source5, source6, source7, source8, source9, source10]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' && needs.source4.result == 'success' && needs.source4.outputs.complete != 'true' && needs.source5.result == 'success' && needs.source5.outputs.complete != 'true' && needs.source6.result == 'success' && needs.source6.outputs.complete != 'true' && needs.source7.result == 'success' && needs.source7.outputs.complete != 'true' && needs.source8.result == 'success' && needs.source8.outputs.complete != 'true' && needs.source9.result == 'success' && needs.source9.outputs.complete != 'true' && needs.source10.result == 'success' && needs.source10.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      first: false
+      stage: 11
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[10] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[9]) }}
+
+  source12:
+    needs: [resolve, source, source2, source3, source4, source5, source6, source7, source8, source9, source10, source11]
+    if: ${{ always() && !cancelled() && needs.source.result == 'success' && needs.source.outputs.complete != 'true' && needs.source2.result == 'success' && needs.source2.outputs.complete != 'true' && needs.source3.result == 'success' && needs.source3.outputs.complete != 'true' && needs.source4.result == 'success' && needs.source4.outputs.complete != 'true' && needs.source5.result == 'success' && needs.source5.outputs.complete != 'true' && needs.source6.result == 'success' && needs.source6.outputs.complete != 'true' && needs.source7.result == 'success' && needs.source7.outputs.complete != 'true' && needs.source8.result == 'success' && needs.source8.outputs.complete != 'true' && needs.source9.result == 'success' && needs.source9.outputs.complete != 'true' && needs.source10.result == 'success' && needs.source10.outputs.complete != 'true' && needs.source11.result == 'success' && needs.source11.outputs.complete != 'true' }}
+    uses: ./.github/workflows/chromium-source-segment.yml
+    with:
+      first: false
+      stage: 12
+      source-sha: ${{ needs.resolve.outputs.source-sha }}
+      segment: ${{ fromJSON(needs.resolve.outputs.segments)[11] }}
+      checkpoint: ${{ format('chromium-workspace-{0}', fromJSON(needs.resolve.outputs.segments)[10]) }}
 
   chromium-engine-complete:
-    needs: [resolve, source, source2, source3, source4]
+    needs: [resolve, source, source2, source3, source4, source5, source6, source7, source8, source9, source10, source11, source12]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-24.04
     outputs:
@@ -84,9 +206,9 @@ jobs:
         id: select
         env:
           FOUND: ${{ needs.resolve.outputs.found }}
-          COMPLETE: ${{ needs.source.outputs.complete == 'true' || needs.source2.outputs.complete == 'true' || needs.source3.outputs.complete == 'true' || needs.source4.outputs.complete == 'true' }}
+          COMPLETE: ${{ needs.source.outputs.complete == 'true' || needs.source2.outputs.complete == 'true' || needs.source3.outputs.complete == 'true' || needs.source4.outputs.complete == 'true' || needs.source5.outputs.complete == 'true' || needs.source6.outputs.complete == 'true' || needs.source7.outputs.complete == 'true' || needs.source8.outputs.complete == 'true' || needs.source9.outputs.complete == 'true' || needs.source10.outputs.complete == 'true' || needs.source11.outputs.complete == 'true' || needs.source12.outputs.complete == 'true' }}
           FAILURE: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-          ARTIFACT: ${{ needs.resolve.outputs.artifact-id || needs.source.outputs.artifact-id || needs.source2.outputs.artifact-id || needs.source3.outputs.artifact-id || needs.source4.outputs.artifact-id }}
+          ARTIFACT: ${{ needs.resolve.outputs.artifact-id || needs.source.outputs.artifact-id || needs.source2.outputs.artifact-id || needs.source3.outputs.artifact-id || needs.source4.outputs.artifact-id || needs.source5.outputs.artifact-id || needs.source6.outputs.artifact-id || needs.source7.outputs.artifact-id || needs.source8.outputs.artifact-id || needs.source9.outputs.artifact-id || needs.source10.outputs.artifact-id || needs.source11.outputs.artifact-id || needs.source12.outputs.artifact-id }}
           PRODUCER_SHA: ${{ needs.resolve.outputs.producer-sha || github.sha }}
           PRODUCER_RUN: ${{ needs.resolve.outputs.producer-run || github.run_id }}
           KEY: ${{ needs.resolve.outputs.key }}
