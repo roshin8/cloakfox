@@ -3,6 +3,10 @@ name: Browser build runner survey
 on:
   workflow_dispatch:
     inputs:
+      checkout_preflight_only:
+        description: Verify the exact checkpoint-4 recipe checkout without compiling
+        type: boolean
+        default: false
       chromium_resume_run:
         description: Continue a terminal trusted Chromium checkpoint run; zero selects an exact-input cache automatically
         type: string
@@ -39,7 +43,7 @@ permissions:
 
 jobs:
   survey:
-    if: ${{ !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.checkout_preflight_only && !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     strategy:
       fail-fast: false
       matrix:
@@ -80,7 +84,7 @@ jobs:
           if-no-files-found: error
 
   chromium-intel-build:
-    if: ${{ inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.checkout_preflight_only && inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     permissions:
       contents: read
       actions: read
@@ -90,7 +94,7 @@ jobs:
       resume-run: ${{ inputs.chromium_resume_run }}
 
   metal-prerequisites:
-    if: ${{ inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.checkout_preflight_only && inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     runs-on: macos-26-intel
     timeout-minutes: 30
     steps:
@@ -113,7 +117,7 @@ jobs:
           if-no-files-found: warn
 
   xcrun-setup-diagnostic:
-    if: ${{ inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.checkout_preflight_only && inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     strategy:
       fail-fast: false
       matrix:
@@ -157,7 +161,7 @@ jobs:
           if-no-files-found: warn
 
   xcrun-fixed-full-setup:
-    if: ${{ inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.checkout_preflight_only && inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     runs-on: macos-26-intel
     timeout-minutes: 50
     steps:
@@ -264,9 +268,18 @@ jobs:
           if-no-files-found: warn
 
   checkpoint-roundtrip:
-    if: ${{ inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.checkout_preflight_only && inputs.checkpoint_roundtrip }}
     permissions:
       contents: read
       actions: read
       checks: write
     uses: ./.github/workflows/checkpoint-roundtrip.yml
+
+  checkout-preflight:
+    if: ${{ inputs.checkout_preflight_only }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/chromium-checkout-preflight.yml
+    with:
+      source-sha: 4f155411db66d1934e6926c4bf4c93cfb6561838
+      source-key: cc270ce4c2790dc4d2fb295e7721c23321cb3acc4aefa3f934b846eda5d08999

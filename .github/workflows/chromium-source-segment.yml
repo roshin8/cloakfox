@@ -52,11 +52,8 @@ jobs:
       complete: ${{ steps.build.outputs.complete }}
       artifact-id: ${{ steps.sdk.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          path: controller
-          persist-credentials: false
       - name: Check out the immutable compilation recipe
+        timeout-minutes: 5
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.source-sha || github.sha }}

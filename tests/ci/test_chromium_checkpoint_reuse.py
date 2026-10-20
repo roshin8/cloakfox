@@ -126,3 +126,11 @@ class CheckpointReuse(unittest.TestCase):
         self.assertIn("type: string\n        default: '0'",dispatcher.split('chromium_resume_run:',1)[1].split('checkpoint_roundtrip:',1)[0])
         self.assertNotIn('fromJSON(needs.resolve.outputs.checkpoint-run)',engine)
         self.assertNotIn('inputs.checkpoint-run > 0',segment)
+
+    def test_source_job_checks_out_only_the_exact_recipe_once(self):
+        workflow=(PATH.parents[2]/'.github/workflows/chromium-source-segment.yml').read_text()
+        self.assertEqual(workflow.count('uses: actions/checkout@v4'),1)
+        self.assertNotIn('path: controller',workflow)
+        self.assertIn('ref: ${{ inputs.source-sha || github.sha }}',workflow)
+        self.assertIn('path: recipe',workflow)
+        self.assertIn('timeout-minutes: 5',workflow.split('name: Check out the immutable compilation recipe',1)[1].split('- uses:',1)[0])
