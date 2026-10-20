@@ -5,8 +5,8 @@ on:
     inputs:
       chromium_resume_run:
         description: Continue a terminal trusted Chromium checkpoint run; zero selects an exact-input cache automatically
-        type: number
-        default: 0
+        type: string
+        default: '0'
       checkpoint_roundtrip:
         description: Verify native checkpoint save and restore without compiling
         type: boolean

@@ -115,3 +115,14 @@ class CheckpointReuse(unittest.TestCase):
             result=m.resolve('owner/repo',12)
         self.assertEqual(result['checkpoint-run'],'0')
         self.assertEqual(result['source-sha'],'c'*40)
+
+    def test_large_run_ids_cross_workflow_boundaries_as_opaque_strings(self):
+        root=PATH.parents[2]
+        engine=(root/'.github/workflows/chromium-engine.yml').read_text()
+        segment=(root/'.github/workflows/chromium-source-segment.yml').read_text()
+        dispatcher=(root/'.github/workflows/runner-survey.yml').read_text()
+        self.assertEqual(engine.count("resume-run:\n        type: string\n        default: '0'"),2)
+        self.assertIn("checkpoint-run:\n        type: string\n        default: '0'",segment)
+        self.assertIn("type: string\n        default: '0'",dispatcher.split('chromium_resume_run:',1)[1].split('checkpoint_roundtrip:',1)[0])
+        self.assertNotIn('fromJSON(needs.resolve.outputs.checkpoint-run)',engine)
+        self.assertNotIn('inputs.checkpoint-run > 0',segment)

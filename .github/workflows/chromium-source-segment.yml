@@ -16,8 +16,8 @@ on:
         type: string
         default: ''
       checkpoint-run:
-        type: number
-        default: 0
+        type: string
+        default: '0'
       checkpoint-artifact:
         type: string
         default: ''
@@ -98,7 +98,7 @@ jobs:
           brew install cmake ninja ccache zstd
           ccache --max-size 5G
       - name: Download exact cross-run producer Homebrew artifact
-        if: ${{ inputs.first && inputs.checkpoint-run > 0 }}
+        if: ${{ inputs.first && inputs.checkpoint-run != '0' }}
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -113,10 +113,10 @@ jobs:
           name: chromium-host-tools-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/host-tools
       - name: Verify and restore exact producer Homebrew tool bytes
-        if: ${{ !inputs.first || inputs.checkpoint-run > 0 }}
+        if: ${{ !inputs.first || inputs.checkpoint-run != '0' }}
         env:
           SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
-          TOOLS_RUN: ${{ inputs.first && inputs.checkpoint-run > 0 && inputs.checkpoint-run || github.run_id }}
+          TOOLS_RUN: ${{ inputs.first && inputs.checkpoint-run != '0' && inputs.checkpoint-run || github.run_id }}
         run: GITHUB_SHA="$SOURCE_SHA" GITHUB_RUN_ID="$TOOLS_RUN" python3 scripts/ci/chromium_host_tools.py restore --directory "$RUNNER_TEMP/host-tools"
       - name: Bind restored tools to this continuation run
         if: inputs.first
@@ -157,7 +157,7 @@ jobs:
             chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-
             chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-
       - name: Download exact validated cross-run workspace
-        if: ${{ inputs.first && inputs.checkpoint-run > 0 }}
+        if: ${{ inputs.first && inputs.checkpoint-run != '0' }}
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
