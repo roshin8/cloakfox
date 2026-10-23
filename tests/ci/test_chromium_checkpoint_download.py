@@ -37,7 +37,34 @@ class Download(unittest.TestCase):
   from unittest.mock import patch
   with tempfile.TemporaryDirectory() as d:
    artifact={'id':5,'name':'chromium-workspace-15','expired':False,'workflow_run':{'id':1,'head_sha':'controller'},'digest':'sha256:'+'0'*64,'size_in_bytes':100}
-   def transport(args,stdout,check):stdout.write(b'partial')
-   with patch.object(m,'api',side_effect=[{'head_sha':'controller'},artifact]),patch.object(m.shutil,'disk_usage',return_value=type('Usage',(),{'free':100*1024**3})()),patch.object(m.subprocess,'run',side_effect=transport):
+   def transport(repository,artifact_id,bundle,total):Path(bundle).write_bytes(b'partial')
+   with patch.object(m,'api',side_effect=[{'head_sha':'controller'},artifact]),patch.object(m.shutil,'disk_usage',return_value=type('Usage',(),{'free':100*1024**3})()),patch.object(m,'transfer',side_effect=transport):
     with self.assertRaisesRegex(ValueError,'Truncated'):m.download('owner/repo','1','5','chromium-workspace-15',Path(d),'source')
     self.assertFalse((Path(d)/'workspace.tar.zst').exists())
+ def test_range_transfer_resumes_after_timeout_and_validates_range(self):
+  from unittest.mock import patch
+  class Response:
+   status=206
+   def __init__(self,start,end,fail=False):self.headers={'Content-Range':f'bytes {start}-{end}/10'};self.body=b'0123456789'[start:end+1];self.fail=fail
+   def __enter__(self):return self
+   def __exit__(self,*a):pass
+   def read(self,n):
+    if self.body:b=self.body[:3];self.body=self.body[3:];return b
+    if self.fail:raise TimeoutError('fixture connection stalled')
+    return b''
+  requests=[]
+  def open_(req,timeout):
+   start,end=map(int,req.get_header('Range').split('=')[1].split('-'));requests.append((start,end))
+   r=Response(start,end)
+   if len(requests)==1:r.body=b'012';r.fail=True
+   return r
+  with tempfile.TemporaryDirectory() as d,patch.object(m,'signed_url',return_value='https://example.invalid/blob'),patch.object(m.urllib.request,'urlopen',side_effect=open_),patch.object(m.time,'sleep'):
+   p=Path(d)/'zip';m.transfer('owner/repo',5,p,10);self.assertEqual(p.read_bytes(),b'0123456789');self.assertEqual(requests,[(0,9),(3,9)])
+ def test_full_response_to_range_fails_closed(self):
+  from unittest.mock import patch
+  class Response:
+   status=200;headers={}
+   def __enter__(self):return self
+   def __exit__(self,*a):pass
+  with tempfile.TemporaryDirectory() as d,patch.object(m,'signed_url',return_value='https://example.invalid/blob'),patch.object(m.urllib.request,'urlopen',return_value=Response()):
+   with self.assertRaises(ValueError):m.transfer('owner/repo',5,Path(d)/'zip',10)

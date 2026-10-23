@@ -1,5 +1,5 @@
 """Download a repository-owned checkpoint to disk and verify it before handoff."""
-import argparse,hashlib,json,os,shutil,subprocess,tempfile,zipfile
+import argparse,hashlib,json,os,shutil,subprocess,tempfile,zipfile,time,urllib.request,urllib.error,http.client
 from pathlib import Path
 
 def digest(path):
@@ -26,6 +26,50 @@ def extract_verified(bundle,destination,expected_digest,source_sha):
    for name in ['workspace.tar.zst','workspace.tar.json']:os.replace(staged/name,destination/name)
  return {'verified':True,'sourceSha':source_sha,'artifactSha256':expected_digest,'archiveSha256':receipt['sha256'],'archiveBytes':(destination/'workspace.tar.zst').stat().st_size}
 
+def signed_url(repository,artifact_id):
+ class NoRedirect(urllib.request.HTTPRedirectHandler):
+  def redirect_request(self,*args):return None
+ token=os.environ.get('GH_TOKEN') or subprocess.check_output(['gh','auth','token'],text=True).strip()
+ request=urllib.request.Request(f'https://api.github.com/repos/{repository}/actions/artifacts/{artifact_id}/zip',headers={'Authorization':'Bearer '+token})
+ try:
+  with urllib.request.build_opener(NoRedirect).open(request,timeout=30):
+   raise ValueError('Expected artifact redirect')
+ except urllib.error.HTTPError as e:
+  if e.code!=302:raise
+  location=e.headers['Location']
+  if not location.startswith('https://'):raise ValueError('Non-HTTPS artifact redirect')
+  return location
+
+def transfer(repository,artifact_id,bundle,total):
+ # Bounded ranges keep a timeout from discarding the entire multi-GB transfer.
+ # Fresh signed URLs avoid retrying expired redirects; credentials stay on api.github.com.
+ bundle=Path(bundle);bundle.touch(exist_ok=False);started=time.monotonic();last_log=started
+ with bundle.open('r+b') as output:
+  while output.tell()<total:
+   end=min(output.tell()+256*1024*1024,total)-1
+   for attempt in range(5):
+    start=output.tell()
+    try:
+     request=urllib.request.Request(signed_url(repository,artifact_id),headers={'Range':f'bytes={start}-{end}'})
+     with urllib.request.urlopen(request,timeout=30) as response:
+      if response.status!=206 or response.headers.get('Content-Range')!=f'bytes {start}-{end}/{total}':raise ValueError('Artifact range response mismatch')
+      remaining=end-start+1
+      while remaining:
+       chunk=response.read(min(8*1024*1024,remaining))
+       if not chunk:raise OSError('Truncated artifact range')
+       output.write(chunk);remaining-=len(chunk)
+       now=time.monotonic()
+       if now-last_log>=30:
+        print(json.dumps({'phase':'download','bytes':output.tell(),'totalBytes':total,'elapsedSeconds':round(now-started,1)}),flush=True);last_log=now
+     print(json.dumps({'phase':'download','bytes':output.tell(),'totalBytes':total,'elapsedSeconds':round(time.monotonic()-started,1)}),flush=True)
+     break
+    except (OSError,http.client.HTTPException) as e:
+     print(json.dumps({'phase':'download-retry','bytes':output.tell(),'totalBytes':total,'attempt':attempt+1,'errorType':type(e).__name__}),flush=True)
+     if attempt==4:raise
+     # If a timeout arrived after the last byte, the full ZIP hash still validates it.
+     if output.tell()>end:break
+     time.sleep(min(2**attempt,8))
+
 def api(path):return json.loads(subprocess.check_output(['gh','api',path],text=True))
 def download(repository,run_id,artifact_id,name,destination,source_sha):
  run=api(f'repos/{repository}/actions/runs/{run_id}')
@@ -48,9 +92,9 @@ def download(repository,run_id,artifact_id,name,destination,source_sha):
  if shutil.disk_usage(destination).free<2*artifact['size_in_bytes']+10*1024**3:raise ValueError('Insufficient download/extraction reserve')
  with tempfile.TemporaryDirectory(prefix='.download-',dir=destination) as tmp:
   bundle=Path(tmp)/'artifact.zip'
-  with bundle.open('wb') as output:
-   subprocess.run(['gh','api',f'repos/{repository}/actions/artifacts/{artifact["id"]}/zip'],stdout=output,check=True)
+  transfer(repository,artifact['id'],bundle,artifact['size_in_bytes'])
   if bundle.stat().st_size!=artifact['size_in_bytes']:raise ValueError('Truncated artifact ZIP download')
+  print(json.dumps({'phase':'verify-zip-and-archive','bytes':bundle.stat().st_size}),flush=True)
   result=extract_verified(bundle,destination,expected[7:],source_sha)
  result.update({'artifactId':artifact['id'],'producerRun':int(run_id)})
  return result
