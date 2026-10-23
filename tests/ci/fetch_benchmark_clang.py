@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import platform
 import tarfile
 import time
 import urllib.error
@@ -26,6 +27,7 @@ def download(url):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--destination', type=Path, required=True)
+    parser.add_argument('--host-architecture', choices=('arm64','x86_64'), default=platform.machine())
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     commit = json.loads((root / 'engines/chromium/source-lock.json').read_text())['chromiumCommit']
@@ -35,7 +37,8 @@ def main():
     update = base64.b64decode(download(upstream + 'tools/clang/scripts/update.py?format=TEXT')).decode()
     revision = re.search(r"^CLANG_REVISION = '([a-zA-Z0-9-]+)'", update, re.M)[1]
     subrevision = re.search(r'^CLANG_SUB_REVISION = (\d+)', update, re.M)[1]
-    name = f'Mac_arm64/clang-{revision}-{subrevision}.tar.xz'
+    host = {'arm64':'Mac_arm64','x86_64':'Mac'}[args.host_architecture]
+    name = f'{host}/clang-{revision}-{subrevision}.tar.xz'
     deps = base64.b64decode(download(upstream + 'DEPS?format=TEXT')).decode()
     record = re.search(re.escape(name) + r"',\s*'sha256sum': '([a-f0-9]{64})',\s*'size_bytes': (\d+)", deps)
     if not record:
