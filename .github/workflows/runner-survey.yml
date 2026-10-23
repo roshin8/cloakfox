@@ -3,6 +3,10 @@ name: Browser build runner survey
 on:
   workflow_dispatch:
     inputs:
+      cache_audit_only:
+        description: Read the saved compiler-cache counters without compiling
+        type: boolean
+        default: false
       checkout_preflight_only:
         description: Verify the exact checkpoint-4 recipe checkout without compiling
         type: boolean
@@ -43,7 +47,7 @@ permissions:
 
 jobs:
   survey:
-    if: ${{ !inputs.checkout_preflight_only && !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.cache_audit_only && !inputs.checkout_preflight_only && !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     strategy:
       fail-fast: false
       matrix:
@@ -84,7 +88,7 @@ jobs:
           if-no-files-found: error
 
   chromium-intel-build:
-    if: ${{ !inputs.checkout_preflight_only && inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     permissions:
       contents: read
       actions: read
@@ -94,7 +98,7 @@ jobs:
       resume-run: ${{ inputs.chromium_resume_run }}
 
   metal-prerequisites:
-    if: ${{ !inputs.checkout_preflight_only && inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     runs-on: macos-26-intel
     timeout-minutes: 30
     steps:
@@ -117,7 +121,7 @@ jobs:
           if-no-files-found: warn
 
   xcrun-setup-diagnostic:
-    if: ${{ !inputs.checkout_preflight_only && inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     strategy:
       fail-fast: false
       matrix:
@@ -161,7 +165,7 @@ jobs:
           if-no-files-found: warn
 
   xcrun-fixed-full-setup:
-    if: ${{ !inputs.checkout_preflight_only && inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     runs-on: macos-26-intel
     timeout-minutes: 50
     steps:
@@ -268,7 +272,7 @@ jobs:
           if-no-files-found: warn
 
   checkpoint-roundtrip:
-    if: ${{ !inputs.checkout_preflight_only && inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.checkpoint_roundtrip }}
     permissions:
       contents: read
       actions: read
@@ -276,10 +280,44 @@ jobs:
     uses: ./.github/workflows/checkpoint-roundtrip.yml
 
   checkout-preflight:
-    if: ${{ inputs.checkout_preflight_only }}
+    if: ${{ !inputs.cache_audit_only && inputs.checkout_preflight_only }}
     permissions:
       contents: read
     uses: ./.github/workflows/chromium-checkout-preflight.yml
     with:
       source-sha: 4f155411db66d1934e6926c4bf4c93cfb6561838
       source-key: cc270ce4c2790dc4d2fb295e7721c23321cb3acc4aefa3f934b846eda5d08999
+
+  compiler-cache-audit:
+    if: ${{ inputs.cache_audit_only }}
+    runs-on: macos-26-intel
+    timeout-minutes: 15
+    steps:
+      - name: Install the cache reader
+        run: |
+          brew install ccache
+          ccache --version
+      - name: Restore the exact immutable segment-15 compiler-cache snapshot
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: chromium-ccache-X64-cc270ce4c2790dc4d2fb295e7721c23321cb3acc4aefa3f934b846eda5d08999-39491462098-1-15
+          fail-on-cache-miss: true
+      - name: Read detailed miss and rejection counters
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
+        run: |
+          test '${{ steps.cache.outputs.cache-hit }}' = true
+          mkdir -p "$RUNNER_TEMP/cache-audit-evidence"
+          ccache --show-stats --verbose > "$RUNNER_TEMP/cache-audit-evidence/stats-verbose.txt"
+          ccache --print-stats > "$RUNNER_TEMP/cache-audit-evidence/stats-machine.txt"
+          ccache --version > "$RUNNER_TEMP/cache-audit-evidence/version.txt"
+          cat "$RUNNER_TEMP/cache-audit-evidence/stats-verbose.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chromium-cache-audit-segment15
+          path: ${{ runner.temp }}/cache-audit-evidence/
+          if-no-files-found: warn
+          retention-days: 7
