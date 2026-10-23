@@ -153,21 +153,21 @@ jobs:
           restore-keys: |
             chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-
             chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-
-      - name: Download exact validated cross-run workspace
-        if: ${{ inputs.first && inputs.checkpoint-run != '0' }}
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.checkpoint-run }}
-          artifact-ids: ${{ inputs.checkpoint-artifact }}
-          merge-multiple: true
-          path: ${{ runner.temp }}/checkpoint-in
-      - name: Download previous current-run workspace
-        if: ${{ inputs.checkpoint != '' && !inputs.first }}
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.checkpoint }}
-          path: ${{ runner.temp }}/checkpoint-in
+      - name: Download and verify the exact checkpoint artifact before restore
+        if: ${{ inputs.checkpoint != '' }}
+        timeout-minutes: 90
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_RUN: ${{ inputs.first && inputs.checkpoint-run || github.run_id }}
+          CHECKPOINT_ARTIFACT: ${{ inputs.first && inputs.checkpoint-artifact || '' }}
+          CHECKPOINT_NAME: ${{ inputs.checkpoint }}
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/checkpoint-out"
+          gh api "repos/$GITHUB_REPOSITORY/contents/scripts/ci/chromium_checkpoint_download.py?ref=$GITHUB_SHA" --jq .content | base64 --decode > "$RUNNER_TEMP/chromium-checkpoint-download.py"
+          test -s "$RUNNER_TEMP/chromium-checkpoint-download.py"
+          "$pythonLocation/bin/python3" "$RUNNER_TEMP/chromium-checkpoint-download.py" --repository "$GITHUB_REPOSITORY" --run "$CHECKPOINT_RUN" --artifact-id "$CHECKPOINT_ARTIFACT" --name "$CHECKPOINT_NAME" --source-sha "$SOURCE_SHA" --destination "$RUNNER_TEMP/checkpoint-in" --report "$RUNNER_TEMP/checkpoint-out/checkpoint-download.json"
       - name: Configure identity-bound Clang module caching for continuation
         if: ${{ inputs.checkpoint != '' }}
         timeout-minutes: 2
@@ -303,6 +303,7 @@ jobs:
             ${{ runner.temp }}/checkpoint-out/runner-telemetry*.log
             ${{ runner.temp }}/checkpoint-out/ccache-*.log
             ${{ runner.temp }}/checkpoint-out/ninja-timing.log
+            ${{ runner.temp }}/checkpoint-out/checkpoint-download.json
             ${{ runner.temp }}/checkpoint-out/job-observer.log
             ${{ runner.temp }}/checkpoint-out/runner-telemetry.jsonl
           if-no-files-found: error
