@@ -12,14 +12,14 @@ def run_fixture(root,clang,ccache,receipt):
     policy_path=Path(__file__).resolve().parents[2]/'scripts/ci/chromium_cache_policy.py'
     spec=importlib.util.spec_from_file_location('cache_policy',policy_path);policy=importlib.util.module_from_spec(spec);spec.loader.exec_module(policy)
     values=policy.settings(receipt,context,'cc270ce4c2790dc4d2fb295e7721c23321cb3acc4aefa3f934b846eda5d08999','4f155411db66d1934e6926c4bf4c93cfb6561838')
-    env={**os.environ,'CCACHE_DIR':str(root/'cache'),'CCACHE_LOGFILE':str(root/'ccache-debug.log'),**values}
+    env={**os.environ,'CCACHE_DIR':str(root/'cache'),'CCACHE_LOGFILE':str(root/'ccache-debug.log'),'CCACHE_DEBUG':'true','CCACHE_DEBUGDIR':str(root/'debug'),**values}
     command=[str(ccache),str(clang),'-target','arm64-apple-macos13','-isysroot',sdk,'-std=c++20','-fmodules','-fimplicit-module-maps','-fmodules-cache-path='+str(root/'modules'),'-I'+str(include),'-MD','-MF',str(root/'unit.d'),'-c',str(source),'-o',str(output)]
     results=[]
     def stats():
         return {k:int(v) for k,v in (line.split() for line in subprocess.check_output([str(ccache),'--print-stats'],env=env,text=True).splitlines())}
     def compile(label,hit):
         time.sleep(1.1) # Keep ctime/mtime safety checks enabled for fresh fixture files.
-        before=stats();subprocess.run(command,env=env,check=True,timeout=120);after=stats()
+        before=stats();compiler_before=hashlib.sha256(clang.read_bytes()).hexdigest();subprocess.run(command,env=env,check=True,timeout=120);after=stats();compiler_after=hashlib.sha256(clang.read_bytes()).hexdigest();print(label,'compiler-before',compiler_before,'compiler-after',compiler_after,flush=True)
         hits=after['direct_cache_hit']+after['preprocessed_cache_hit']-before['direct_cache_hit']-before['preprocessed_cache_hit']
         assert hits==int(hit),(label,hits,after)
         if not hit:assert after['cache_miss']==before['cache_miss']+1,(label,after)
