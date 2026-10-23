@@ -21,3 +21,9 @@ class CachePolicy(unittest.TestCase):
             p=Path(tmp);r=p/'receipt';r.write_text(json.dumps({'schemaVersion':1,'identity':{'gitSha':'source'}}))
             with self.assertRaises(ValueError):m.settings(r,p/'out','key','source')
             self.assertFalse((p/'out').exists())
+
+    def test_fourth_worker_requires_high_memory_and_available_cpu(self):
+        self.assertEqual(m.compile_jobs(4,14*1024**3),4)
+        self.assertEqual(m.compile_jobs(4,12*1024**3),3)
+        self.assertEqual(m.compile_jobs(2,14*1024**3),2)
+        self.assertEqual(m.compile_jobs(16,32*1024**3),4)

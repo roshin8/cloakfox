@@ -149,10 +149,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/ccache
-          key: chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.segment }}
+          key: chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.segment }}
           restore-keys: |
-            chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-
-            chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-
+            chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-
+            chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-
       - name: Download exact validated cross-run workspace
         if: ${{ inputs.first && inputs.checkpoint-run != '0' }}
         uses: actions/download-artifact@v4
@@ -168,6 +168,18 @@ jobs:
         with:
           name: ${{ inputs.checkpoint }}
           path: ${{ runner.temp }}/checkpoint-in
+      - name: Configure identity-bound Clang module caching for continuation
+        if: ${{ inputs.checkpoint != '' }}
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+          ENGINE_KEY: ${{ steps.key.outputs.key }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/contents/scripts/ci/chromium_cache_policy.py?ref=$GITHUB_SHA" --jq .content | base64 --decode > "$RUNNER_TEMP/chromium-cache-policy.py"
+          test -s "$RUNNER_TEMP/chromium-cache-policy.py"
+          python3 "$RUNNER_TEMP/chromium-cache-policy.py" --receipt "$RUNNER_TEMP/checkpoint-in/workspace.tar.json" --context "$RUNNER_TEMP/ccache-context.json" --key "$ENGINE_KEY" --source-sha "$SOURCE_SHA" --github-env "$GITHUB_ENV"
       - name: Observe compiler, runner memory and checkpoint upload independently
         env:
           CHROMIUM_SEGMENT: ${{ inputs.segment }}
@@ -183,16 +195,17 @@ jobs:
           CHROMIUM_SEGMENT: ${{ inputs.segment }}
           SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
           CHROMIUM_JOB_OBSERVER: '1'
+          NINJA_STATUS: '[%f/%t elapsed=%e running=%r] '
         run: |
           export PATH="$pythonLocation/bin:$PATH"
           ccache --max-size 5G
-          ccache --show-stats > "$RUNNER_TEMP/checkpoint-out/ccache-before.log"
+          ccache --show-stats --verbose > "$RUNNER_TEMP/checkpoint-out/ccache-before.log"
           ccache --zero-stats
           resume=()
           if [[ "$HAS_CHECKPOINT" == "true" ]]; then
             resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.zst")
           fi
-          GITHUB_SHA="$SOURCE_SHA" "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
+          GITHUB_SHA="$SOURCE_SHA" "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs "${CHROMIUM_COMPILE_JOBS:-3}" --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
       - name: Record compilation-source and controller provenance separately
         env:
           SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
@@ -222,12 +235,16 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/ccache
-          key: chromium-ccache-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.segment }}
+          key: chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.segment }}
       - name: Record compiler-cache hits and misses
         if: always()
         run: |
           mkdir -p "$RUNNER_TEMP/checkpoint-out"
-          ccache --show-stats > "$RUNNER_TEMP/checkpoint-out/ccache-after.log"
+          ccache --show-stats --verbose > "$RUNNER_TEMP/checkpoint-out/ccache-after.log"
+          ccache --print-stats > "$RUNNER_TEMP/checkpoint-out/ccache-counters.log"
+          if [[ -f "$RUNNER_TEMP/chromium-build/chromium/src/out/Release_GN_arm64/.ninja_log" ]]; then
+            cp "$RUNNER_TEMP/chromium-build/chromium/src/out/Release_GN_arm64/.ninja_log" "$RUNNER_TEMP/checkpoint-out/ninja-timing.log"
+          fi
       - name: Publish checkpoint producer lineage
         uses: actions/upload-artifact@v4
         with:
@@ -285,6 +302,7 @@ jobs:
             ${{ runner.temp }}/checkpoint-in/*.json
             ${{ runner.temp }}/checkpoint-out/runner-telemetry*.log
             ${{ runner.temp }}/checkpoint-out/ccache-*.log
+            ${{ runner.temp }}/checkpoint-out/ninja-timing.log
             ${{ runner.temp }}/checkpoint-out/job-observer.log
             ${{ runner.temp }}/checkpoint-out/runner-telemetry.jsonl
           if-no-files-found: error

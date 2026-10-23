@@ -1,7 +1,15 @@
 """Bind Clang module caching to the already verified continuation identity."""
 import argparse
+import os
+import subprocess
 import json
 from pathlib import Path
+
+
+def compile_jobs(cpu_count, memory_bytes):
+    # The measured Intel runs had three compiler workers and <6 GiB peak build RSS.
+    # Use the fourth advertised core only on the measured >=14 GiB host class.
+    return max(1,min(cpu_count,4 if memory_bytes>=14*1024**3 else 3))
 
 
 def settings(receipt, context, engine_key, source_sha):
@@ -24,5 +32,7 @@ if __name__=='__main__':
     parser.add_argument('--github-env',type=Path,required=True)
     args=parser.parse_args()
     values=settings(args.receipt,args.context,args.key,args.source_sha)
+    memory=int(subprocess.check_output(['sysctl','-n','hw.memsize'],text=True))
+    values['CHROMIUM_COMPILE_JOBS']=str(compile_jobs(os.cpu_count() or 1,memory))
     with args.github_env.open('a') as stream:
         for key,value in values.items():stream.write(f'{key}={value}\n')
