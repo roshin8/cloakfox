@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 def run_fixture(root,clang,ccache,receipt):
-    root.mkdir(parents=True,exist_ok=False);include=root/'include';include.mkdir()
+    root.mkdir(parents=True,exist_ok=False);include=root/'include';include.mkdir();(root/'modules').mkdir()
     header=include/'value.h';module=include/'module.modulemap';source=root/'unit.cc';output=root/'unit.o';context=root/'context.json'
     header.write_text('inline constexpr int kValue=7;\n');module.write_text('module Value { header "value.h" export * }\n');source.write_text('#include "value.h"\nint value() { return kValue; }\n');context.write_text('{"source":"one","host":"pinned"}\n')
     sdk=subprocess.check_output(['xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
