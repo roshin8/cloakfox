@@ -363,6 +363,7 @@ jobs:
           name: chromium-module-cache-verification
           path: |
             ${{ runner.temp }}/module-cache-check/fixture/result.json
+            ${{ runner.temp }}/module-cache-check/fixture/ccache-debug.log
             ${{ runner.temp }}/module-cache-check/compiler-provenance.json
           if-no-files-found: warn
           retention-days: 7

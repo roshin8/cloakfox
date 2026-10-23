@@ -12,7 +12,7 @@ def run_fixture(root,clang,ccache,receipt):
     policy_path=Path(__file__).resolve().parents[2]/'scripts/ci/chromium_cache_policy.py'
     spec=importlib.util.spec_from_file_location('cache_policy',policy_path);policy=importlib.util.module_from_spec(spec);spec.loader.exec_module(policy)
     values=policy.settings(receipt,context,'cc270ce4c2790dc4d2fb295e7721c23321cb3acc4aefa3f934b846eda5d08999','4f155411db66d1934e6926c4bf4c93cfb6561838')
-    env={**os.environ,'CCACHE_DIR':str(root/'cache'),**values}
+    env={**os.environ,'CCACHE_DIR':str(root/'cache'),'CCACHE_LOGFILE':str(root/'ccache-debug.log'),**values}
     command=[str(ccache),str(clang),'-target','arm64-apple-macos13','-isysroot',sdk,'-std=c++20','-fmodules','-fimplicit-module-maps','-fmodules-cache-path='+str(root/'modules'),'-I'+str(include),'-MD','-MF',str(root/'unit.d'),'-c',str(source),'-o',str(output)]
     results=[]
     def stats():
