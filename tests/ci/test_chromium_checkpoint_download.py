@@ -68,3 +68,8 @@ class Download(unittest.TestCase):
    def __exit__(self,*a):pass
   with tempfile.TemporaryDirectory() as d,patch.object(m,'signed_url',return_value='https://example.invalid/blob'),patch.object(m.urllib.request,'urlopen',return_value=Response()):
    with self.assertRaises(ValueError):m.transfer('owner/repo',5,Path(d)/'zip',10)
+ def test_valid_archive_must_match_verified_producer_lineage(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=Path(d);z,h=self.fixture(p)
+   with self.assertRaisesRegex(ValueError,'lineage'):m.extract_verified(z,p/'out',h,'source','0'*64)
+   self.assertFalse((p/'out/workspace.tar.zst').exists())

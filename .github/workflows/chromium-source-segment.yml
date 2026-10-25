@@ -52,6 +52,14 @@ jobs:
       complete: ${{ steps.build.outputs.complete }}
       artifact-id: ${{ steps.sdk.outputs.artifact-id }}
     steps:
+      - name: Reserve hosted job time for checkpoint publication
+        working-directory: ${{ runner.temp }}
+        run: |
+          python3 - <<'PYCODE'
+          import os,time
+          with open(os.environ['GITHUB_ENV'],'a') as out:
+              out.write('CHROMIUM_JOB_DEADLINE='+str(int(time.time())+345*60)+'\n')
+          PYCODE
       - name: Check out the immutable compilation recipe
         timeout-minutes: 5
         uses: actions/checkout@v4
@@ -191,12 +199,16 @@ jobs:
       - name: Build or resume pinned native source framework and SDK
         id: build
         env:
+          GH_TOKEN: ${{ github.token }}
           HAS_CHECKPOINT: ${{ inputs.checkpoint != '' }}
           CHROMIUM_SEGMENT: ${{ inputs.segment }}
           SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
           CHROMIUM_JOB_OBSERVER: '1'
           NINJA_STATUS: '[%f/%t elapsed=%e running=%r] '
         run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/contents/scripts/ci/chromium_job_budget.py?ref=$GITHUB_SHA" --jq .content | base64 --decode > "$RUNNER_TEMP/chromium-job-budget.py"
+          test -s "$RUNNER_TEMP/chromium-job-budget.py"
           export PATH="$pythonLocation/bin:$PATH"
           ccache --max-size 5G
           ccache --show-stats --verbose > "$RUNNER_TEMP/checkpoint-out/ccache-before.log"
@@ -205,7 +217,7 @@ jobs:
           if [[ "$HAS_CHECKPOINT" == "true" ]]; then
             resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.zst")
           fi
-          GITHUB_SHA="$SOURCE_SHA" "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs "${CHROMIUM_COMPILE_JOBS:-3}" --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
+          GITHUB_SHA="$SOURCE_SHA" "$pythonLocation/bin/python3" -u "$RUNNER_TEMP/chromium-job-budget.py" scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs "${CHROMIUM_COMPILE_JOBS:-3}" --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
       - name: Record compilation-source and controller provenance separately
         env:
           SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
@@ -303,6 +315,7 @@ jobs:
             ${{ runner.temp }}/checkpoint-out/runner-telemetry*.log
             ${{ runner.temp }}/checkpoint-out/ccache-*.log
             ${{ runner.temp }}/checkpoint-out/ninja-timing.log
+            ${{ runner.temp }}/checkpoint-out/job-budget.json
             ${{ runner.temp }}/checkpoint-out/checkpoint-download.json
             ${{ runner.temp }}/checkpoint-out/job-observer.log
             ${{ runner.temp }}/checkpoint-out/runner-telemetry.jsonl

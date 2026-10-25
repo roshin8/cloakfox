@@ -134,3 +134,18 @@ class CheckpointReuse(unittest.TestCase):
         self.assertIn('ref: ${{ inputs.source-sha || github.sha }}',workflow)
         self.assertIn('path: recipe',workflow)
         self.assertIn('timeout-minutes: 5',workflow.split('name: Check out the immutable compilation recipe',1)[1].split('- uses:',1)[0])
+
+class PublishedTimeoutRecovery(unittest.TestCase):
+    def fixture(self):
+        required=['Check out the immutable compilation recipe','Compute committed engine input identity','Validate CI helpers','Verify and restore exact producer Homebrew tool bytes','Verify offline ARM64 Metal shader compilation and linking','Download and verify the exact checkpoint artifact before restore','Build or resume pinned native source framework and SDK','Record compilation-source and controller provenance separately','Publish checkpoint producer lineage','Preserve unfinished source and compiled objects for next job','Preserve capacity, source provenance and stage logs','Complete job']
+        return {'id':9,'check_run_url':'https://api.github.com/repos/owner/repo/check-runs/99','status':'completed','conclusion':'cancelled','steps':[{'name':n,'conclusion':'success'} for n in required]}
+    def test_only_fully_published_timeout_can_recover(self):
+        m=load();job=self.fixture();notes=[{'annotation_level':'failure','message':'The job has exceeded the maximum execution time of 5h50m0s'}]
+        with patch.object(m,'api',return_value=notes):self.assertTrue(m.published_checkpoint_job('owner/repo',job,{'schema':1,'checkpointSha256':'a'*64}))
+        for change in ['failed-step','missing-upload','other-cancel','missing-hash']:
+            j=self.fixture();n=notes;record={'schema':1,'checkpointSha256':'a'*64}
+            if change=='failed-step':j['steps'][0]['conclusion']='failure'
+            if change=='missing-upload':j['steps']=[x for x in j['steps'] if x['name']!='Preserve unfinished source and compiled objects for next job']
+            if change=='other-cancel':n=[{'annotation_level':'failure','message':'Cancelled by user'}]
+            if change=='missing-hash':record={}
+            with self.subTest(change=change),patch.object(m,'api',return_value=n):self.assertFalse(m.published_checkpoint_job('owner/repo',j,record))

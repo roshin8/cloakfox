@@ -1,5 +1,5 @@
 """Download a repository-owned checkpoint to disk and verify it before handoff."""
-import argparse,hashlib,json,os,shutil,subprocess,tempfile,zipfile,time,urllib.request,urllib.error,http.client
+import argparse,io,re,hashlib,json,os,shutil,subprocess,tempfile,zipfile,time,urllib.request,urllib.error,http.client
 from pathlib import Path
 
 def digest(path):
@@ -8,7 +8,7 @@ def digest(path):
   for chunk in iter(lambda:f.read(8*1024*1024),b''):h.update(chunk)
  return h.hexdigest()
 
-def extract_verified(bundle,destination,expected_digest,source_sha):
+def extract_verified(bundle,destination,expected_digest,source_sha,expected_archive_sha=None):
  if digest(bundle)!=expected_digest:raise ValueError('Artifact ZIP SHA256 mismatch')
  destination=Path(destination);destination.mkdir(parents=True,exist_ok=True)
  with zipfile.ZipFile(bundle) as z:
@@ -18,6 +18,7 @@ def extract_verified(bundle,destination,expected_digest,source_sha):
   if info.file_size>1024*1024:raise ValueError('Oversized checkpoint receipt')
   receipt=json.loads(z.read(info))
   if receipt.get('schemaVersion')!=1 or receipt.get('identity',{}).get('gitSha')!=source_sha:raise ValueError('Checkpoint original source mismatch')
+  if expected_archive_sha and receipt.get('sha256')!=expected_archive_sha:raise ValueError('Checkpoint receipt/producer lineage SHA256 mismatch')
   with tempfile.TemporaryDirectory(prefix='.verified-',dir=destination) as tmp:
    staged=Path(tmp)
    with z.open('workspace.tar.zst') as src,(staged/'workspace.tar.zst').open('wb') as out:shutil.copyfileobj(src,out,8*1024*1024)
@@ -71,6 +72,23 @@ def transfer(repository,artifact_id,bundle,total):
      time.sleep(min(2**attempt,8))
 
 def api(path):return json.loads(subprocess.check_output(['gh','api',path],text=True))
+def producer_hash(repository,run,name,source_sha):
+ number=int(name.rsplit('-',1)[1]);rows=[]
+ for page in range(1,11):
+  batch=api(f'repos/{repository}/actions/runs/{run["id"]}/artifacts?per_page=100&page={page}')['artifacts'];rows+=batch
+  if len(batch)<100:break
+ matches=[a for a in rows if a['name']==f'chromium-checkpoint-producer-{number}']
+ if len(matches)!=1:raise ValueError('Missing exact checkpoint producer lineage')
+ artifact=matches[0];owner=artifact.get('workflow_run',{})
+ if artifact.get('expired') or artifact.get('size_in_bytes',0)>65536 or owner.get('id')!=run['id'] or owner.get('head_sha')!=run['head_sha']:raise ValueError('Invalid checkpoint producer ownership')
+ data=subprocess.check_output(['gh','api',f'repos/{repository}/actions/artifacts/{artifact["id"]}/zip'],timeout=90)
+ if len(data)>65536 or artifact.get('digest')!='sha256:'+hashlib.sha256(data).hexdigest():raise ValueError('Invalid checkpoint producer digest')
+ with zipfile.ZipFile(io.BytesIO(data)) as z:
+  if z.namelist()!=['checkpoint-producer.json']:raise ValueError('Invalid checkpoint producer files')
+  record=json.loads(z.read('checkpoint-producer.json'))
+ if record.get('schema')!=1 or record.get('sourceSha')!=source_sha or record.get('workflowSha')!=run['head_sha'] or record.get('run')!=run['id'] or record.get('runAttempt')!=run['run_attempt'] or record.get('segment')!=number or not re.fullmatch('[0-9a-f]{64}',record.get('checkpointSha256','')):raise ValueError('Checkpoint producer identity mismatch')
+ return record['checkpointSha256']
+
 def download(repository,run_id,artifact_id,name,destination,source_sha):
  run=api(f'repos/{repository}/actions/runs/{run_id}')
  if artifact_id:
@@ -95,7 +113,7 @@ def download(repository,run_id,artifact_id,name,destination,source_sha):
   transfer(repository,artifact['id'],bundle,artifact['size_in_bytes'])
   if bundle.stat().st_size!=artifact['size_in_bytes']:raise ValueError('Truncated artifact ZIP download')
   print(json.dumps({'phase':'verify-zip-and-archive','bytes':bundle.stat().st_size}),flush=True)
-  result=extract_verified(bundle,destination,expected[7:],source_sha)
+  result=extract_verified(bundle,destination,expected[7:],source_sha,producer_hash(repository,run,name,source_sha))
  result.update({'artifactId':artifact['id'],'producerRun':int(run_id)})
  return result
 

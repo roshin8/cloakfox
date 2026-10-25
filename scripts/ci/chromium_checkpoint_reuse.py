@@ -56,6 +56,29 @@ def lineage(repository, artifact, run):
     return value
 
 
+def published_checkpoint_job(repository,job,record):
+    if job.get('status')!='completed':return False
+    if job.get('conclusion')=='success':return True
+    if job.get('conclusion')!='cancelled' or (record or {}).get('schema')!=1 or not re.fullmatch('[0-9a-f]{64}',(record or {}).get('checkpointSha256','')):return False
+    required=['Check out the immutable compilation recipe','Compute committed engine input identity',
+              'Validate CI helpers','Verify and restore exact producer Homebrew tool bytes',
+              'Verify offline ARM64 Metal shader compilation and linking',
+              'Download and verify the exact checkpoint artifact before restore',
+              'Build or resume pinned native source framework and SDK',
+              'Record compilation-source and controller provenance separately',
+              'Publish checkpoint producer lineage',
+              'Preserve unfinished source and compiled objects for next job',
+              'Preserve capacity, source provenance and stage logs','Complete job']
+    steps=job.get('steps',[])
+    if any(s.get('conclusion') not in ('success','skipped') for s in steps):return False
+    if any(len([s for s in steps if s.get('name')==name and s.get('conclusion')=='success'])!=1 for name in required):return False
+    prefix=f'https://api.github.com/repos/{repository}/check-runs/'
+    url=job.get('check_run_url','')
+    if not url.startswith(prefix) or not url[len(prefix):].isdigit():return False
+    notes=api(f'repos/{repository}/check-runs/{url[len(prefix):]}/annotations?per_page=100')
+    failures=[n for n in notes if n.get('annotation_level')=='failure']
+    return len(notes)<100 and len(failures)==1 and bool(re.fullmatch(r'The job has exceeded the maximum execution time of \d+h\d+m\d+s',failures[0].get('message','')))
+
 def resolve(repository, run_id):
     run=api(f'repos/{repository}/actions/runs/{int(run_id)}')
     if run.get('status')!='completed':raise ValueError('Producer run is still active; do not duplicate it')
@@ -88,7 +111,7 @@ def resolve(repository, run_id):
         if type(stage) is not int or not 1<=stage<=12:raise ValueError('Invalid producer stage')
         name='source' if stage==1 else f'source{stage}'
         source_jobs=[j for j in jobs if j.get('name','').split(' / ')[-2:]==[name,'segment']]
-        if not any(j.get('status')=='completed' and j.get('conclusion')=='success' for j in source_jobs):continue
+        if len(source_jobs)!=1 or not published_checkpoint_job(repository,source_jobs[0],record):continue
         sha=record['sourceSha'] if record else run['head_sha']
         key=revision_key(sha)
         if record and (record.get('segment')!=number or record.get('key')!=key):
