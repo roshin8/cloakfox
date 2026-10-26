@@ -1,0 +1,53 @@
+name: Chromium pinned recipe checkout verification
+on:
+  workflow_call:
+    inputs:
+      source-sha:
+        type: string
+        required: true
+      source-key:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  checkout:
+    runs-on: macos-26-intel
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: recipe
+    steps:
+      - name: Check out the immutable compilation recipe
+        timeout-minutes: 5
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source-sha }}
+          path: recipe
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Verify original source objects and exact engine input key
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.source-sha }}
+          EXPECTED_SOURCE_KEY: ${{ inputs.source-key }}
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, subprocess
+          from pathlib import Path
+          sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          assert sha == os.environ['EXPECTED_SOURCE_SHA'], 'Recipe SHA mismatch'
+          assert not subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],text=True).strip(), 'Recipe checkout changed'
+          key=json.loads(subprocess.check_output(['python3','scripts/ci/engine_artifact.py','key','--kind','chromium'],text=True))['key']
+          assert key == os.environ['EXPECTED_SOURCE_KEY'], 'Original recipe engine key mismatch'
+          result={'verified':True,'sourceSha':sha,'engineKey':key,'controllerSha':os.environ['GITHUB_SHA']}
+          print(json.dumps(result,indent=2))
+          (Path(os.environ['RUNNER_TEMP'])/'recipe-checkout.json').write_text(json.dumps(result,indent=2)+'\n')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chromium-recipe-checkout
+          path: ${{ runner.temp }}/recipe-checkout.json
+          if-no-files-found: error
+          retention-days: 7

@@ -6,6 +6,27 @@ on:
       segment:
         type: number
         required: true
+      first:
+        type: boolean
+        default: false
+      stage:
+        type: number
+        default: 1
+      source-sha:
+        type: string
+        default: ''
+      checkpoint-run:
+        type: string
+        default: '0'
+      checkpoint-artifact:
+        type: string
+        default: ''
+      tools-artifact:
+        type: string
+        default: ''
+      tools-name:
+        type: string
+        default: ''
       checkpoint:
         type: string
         default: ''
@@ -17,27 +38,56 @@ on:
 
 permissions:
   contents: read
+  actions: read
   checks: write
 
 jobs:
   segment:
-    runs-on: macos-26
+    runs-on: macos-26-intel
     timeout-minutes: 350
+    defaults:
+      run:
+        working-directory: recipe
     outputs:
       complete: ${{ steps.build.outputs.complete }}
       artifact-id: ${{ steps.sdk.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Reserve hosted job time for checkpoint publication
+        working-directory: ${{ runner.temp }}
+        run: |
+          python3 - <<'PYCODE'
+          import os,time
+          with open(os.environ['GITHUB_ENV'],'a') as out:
+              out.write('CHROMIUM_JOB_DEADLINE='+str(int(time.time())+345*60)+'\n')
+          PYCODE
+      - name: Check out the immutable compilation recipe
+        timeout-minutes: 5
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source-sha || github.sha }}
+          path: recipe
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.10'
+      - name: Require the higher-memory standard Intel build host
+        run: |
+          python3 - <<'PYCODE'
+          import platform, subprocess
+          memory = int(subprocess.check_output(['sysctl', '-n', 'hw.memsize'], text=True))
+          assert platform.machine() == 'x86_64', 'Chromium source compilation requires the selected Intel host'
+          assert memory >= 12 * 1024**3, 'Chromium source compilation requires at least 12 GiB host RAM'
+          print(f'Intel build host memory: {memory / 1024**3:.1f} GiB; target remains ARM64')
+          PYCODE
       - name: Compute committed engine input identity
         id: key
         run: python3 scripts/ci/engine_artifact.py key --kind chromium
+      - name: Install checkpoint codec before CI helper tests
+        run: brew install zstd
       - name: Validate CI helpers
         run: python3 -m unittest discover -s tests/ci -v
       - name: Reclaim hosted Mac space and require full build capacity
-        run: python3 scripts/ci/prepare_macos.py --output "$RUNNER_TEMP/capacity.json"
+        run: python3 scripts/ci/prepare_macos.py --preserve-active-xcode --output "$RUNNER_TEMP/capacity.json"
       - name: Publish capacity assessment before the long build
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,68 +100,186 @@ jobs:
         run: |
           export CCACHE_DIR="$RUNNER_TEMP/ccache"
           echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
-          brew install cmake ninja ccache
+          brew install cmake ninja ccache zstd
           ccache --max-size 5G
-      - name: Snapshot exact same-run Homebrew build tools
-        if: inputs.segment == 1
-        run: python3 scripts/ci/chromium_host_tools.py snapshot --directory "$RUNNER_TEMP/host-tools"
-      - name: Publish immutable same-run Homebrew build tools
-        if: inputs.segment == 1
-        uses: actions/upload-artifact@v4
+      - name: Download exact cross-run producer Homebrew artifact
+        if: ${{ inputs.first && inputs.checkpoint-run != '0' }}
+        uses: actions/download-artifact@v4
         with:
-          name: chromium-host-tools-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/host-tools/
-          compression-level: 0
-          if-no-files-found: error
-          retention-days: 2
-      - name: Download exact first-segment Homebrew build tools
-        if: inputs.segment > 1
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.checkpoint-run }}
+          artifact-ids: ${{ inputs.tools-artifact }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/host-tools
+      - name: Download exact current-run Homebrew build tools
+        if: ${{ !inputs.first }}
         uses: actions/download-artifact@v4
         with:
           name: chromium-host-tools-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/host-tools
-      - name: Verify and restore exact first-segment Homebrew tool bytes
-        if: inputs.segment > 1
-        run: python3 scripts/ci/chromium_host_tools.py restore --directory "$RUNNER_TEMP/host-tools"
+      - name: Verify and restore exact producer Homebrew tool bytes
+        if: ${{ !inputs.first || inputs.checkpoint-run != '0' }}
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+          TOOLS_RUN: ${{ inputs.first && inputs.checkpoint-run != '0' && inputs.checkpoint-run || github.run_id }}
+        run: GITHUB_SHA="$SOURCE_SHA" GITHUB_RUN_ID="$TOOLS_RUN" python3 scripts/ci/chromium_host_tools.py restore --directory "$RUNNER_TEMP/host-tools"
+      - name: Bind restored tools to this continuation run
+        if: inputs.first
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+        run: GITHUB_SHA="$SOURCE_SHA" python3 scripts/ci/chromium_host_tools.py snapshot --directory "$RUNNER_TEMP/current-host-tools"
+      - name: Publish immutable same-run Homebrew build tools
+        if: inputs.first
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-host-tools-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/current-host-tools/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+      - name: Install the separate Xcode Metal toolchain on every segment
+        timeout-minutes: 20
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Verify offline ARM64 Metal shader compilation and linking
+        timeout-minutes: 5
+        run: python3 scripts/ci/metal_toolchain.py --directory "$RUNNER_TEMP/metal-preflight"
+      - name: Preserve toolchain preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-metal-preflight-${{ inputs.segment }}
+          path: ${{ runner.temp }}/metal-preflight/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Verify real Ninja object reuse across checkpoint handoff
         run: '"$pythonLocation/bin/python3" tests/ci/checkpoint_ninja_fixture.py'
       - name: Restore compiler cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/ccache
-          key: chromium-arm64-${{ runner.os }}-${{ hashFiles('engines/chromium/*lock.json', 'engines/chromium/patches/*.patch') }}
-          restore-keys: chromium-arm64-${{ runner.os }}-
-      - name: Download previous same-run workspace
-        if: inputs.checkpoint != ''
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.checkpoint }}
-          path: ${{ runner.temp }}/checkpoint-in
-      - name: Build or resume pinned native source framework and SDK
-        id: build
+          key: chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.segment }}
+          restore-keys: |
+            chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-
+            chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-
+      - name: Download and verify the exact checkpoint artifact before restore
+        if: ${{ inputs.checkpoint != '' }}
+        timeout-minutes: 90
         env:
-          HAS_CHECKPOINT: ${{ inputs.checkpoint != '' }}
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_RUN: ${{ inputs.first && inputs.checkpoint-run || github.run_id }}
+          CHECKPOINT_ARTIFACT: ${{ inputs.first && inputs.checkpoint-artifact || '' }}
+          CHECKPOINT_NAME: ${{ inputs.checkpoint }}
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/checkpoint-out"
+          gh api "repos/$GITHUB_REPOSITORY/contents/scripts/ci/chromium_checkpoint_download.py?ref=$GITHUB_SHA" --jq .content | base64 --decode > "$RUNNER_TEMP/chromium-checkpoint-download.py"
+          test -s "$RUNNER_TEMP/chromium-checkpoint-download.py"
+          "$pythonLocation/bin/python3" "$RUNNER_TEMP/chromium-checkpoint-download.py" --repository "$GITHUB_REPOSITORY" --run "$CHECKPOINT_RUN" --artifact-id "$CHECKPOINT_ARTIFACT" --name "$CHECKPOINT_NAME" --source-sha "$SOURCE_SHA" --destination "$RUNNER_TEMP/checkpoint-in" --report "$RUNNER_TEMP/checkpoint-out/checkpoint-download.json"
+      - name: Configure identity-bound Clang module caching for continuation
+        if: ${{ inputs.checkpoint != '' }}
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+          ENGINE_KEY: ${{ steps.key.outputs.key }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/contents/scripts/ci/chromium_cache_policy.py?ref=$GITHUB_SHA" --jq .content | base64 --decode > "$RUNNER_TEMP/chromium-cache-policy.py"
+          test -s "$RUNNER_TEMP/chromium-cache-policy.py"
+          python3 "$RUNNER_TEMP/chromium-cache-policy.py" --receipt "$RUNNER_TEMP/checkpoint-in/workspace.tar.json" --context "$RUNNER_TEMP/ccache-context.json" --key "$ENGINE_KEY" --source-sha "$SOURCE_SHA" --github-env "$GITHUB_ENV"
+      - name: Observe compiler, runner memory and checkpoint upload independently
+        env:
           CHROMIUM_SEGMENT: ${{ inputs.segment }}
           CHROMIUM_TELEMETRY_TOKEN: ${{ github.token }}
         run: |
+          mkdir -p "$RUNNER_TEMP/checkpoint-out"
+          RUNNER_TRACKING_ID="" nohup "$pythonLocation/bin/python3" -u scripts/ci/chromium_observer.py --root "$RUNNER_TEMP/chromium-build" --evidence "$RUNNER_TEMP/checkpoint-out" --minutes 350 > "$RUNNER_TEMP/checkpoint-out/job-observer.log" 2>&1 < /dev/null &
+          echo $! > "$RUNNER_TEMP/checkpoint-out/job-observer.pid"
+      - name: Build or resume pinned native source framework and SDK
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAS_CHECKPOINT: ${{ inputs.checkpoint != '' }}
+          CHROMIUM_SEGMENT: ${{ inputs.segment }}
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+          CHROMIUM_JOB_OBSERVER: '1'
+          NINJA_STATUS: '[%f/%t elapsed=%e running=%r] '
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/contents/scripts/ci/chromium_job_budget.py?ref=$GITHUB_SHA" --jq .content | base64 --decode > "$RUNNER_TEMP/chromium-job-budget.py"
+          test -s "$RUNNER_TEMP/chromium-job-budget.py"
           export PATH="$pythonLocation/bin:$PATH"
+          ccache --max-size 5G
+          ccache --show-stats --verbose > "$RUNNER_TEMP/checkpoint-out/ccache-before.log"
+          ccache --zero-stats
           resume=()
           if [[ "$HAS_CHECKPOINT" == "true" ]]; then
-            resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.gz")
+            resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.zst")
           fi
-          "$pythonLocation/bin/python3" -u scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs 3 --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.gz" "${resume[@]}"
+          GITHUB_SHA="$SOURCE_SHA" "$pythonLocation/bin/python3" -u "$RUNNER_TEMP/chromium-job-budget.py" scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs "${CHROMIUM_COMPILE_JOBS:-3}" --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
+      - name: Record compilation-source and controller provenance separately
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
+          ENGINE_KEY: ${{ steps.key.outputs.key }}
+          STAGE: ${{ inputs.stage }}
+          SEGMENT: ${{ inputs.segment }}
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, subprocess
+          from pathlib import Path
+          source=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          assert source == os.environ['SOURCE_SHA']
+          record={'schema':1,'sourceSha':source,'workflowSha':os.environ['GITHUB_SHA'],
+                  'run':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+                  'stage':int(os.environ['STAGE']),'segment':int(os.environ['SEGMENT']),
+                  'key':os.environ['ENGINE_KEY']}
+          output=Path(os.environ['RUNNER_TEMP'])/'checkpoint-out'
+          receipt=output/'workspace.tar.json'
+          if receipt.exists():
+              data=json.loads(receipt.read_text())
+              assert data['identity']['gitSha']==source
+              record['checkpointSha256']=data['sha256']
+          (output/'checkpoint-producer.json').write_text(json.dumps(record,indent=2)+'\n')
+          PYCODE
+      - name: Save cumulative compiler-cache snapshot
+        if: steps.build.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: chromium-ccache-modules-v1-${{ runner.arch }}-${{ steps.key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.segment }}
+      - name: Record compiler-cache hits and misses
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/checkpoint-out"
+          ccache --show-stats --verbose > "$RUNNER_TEMP/checkpoint-out/ccache-after.log"
+          ccache --print-stats > "$RUNNER_TEMP/checkpoint-out/ccache-counters.log"
+          if [[ -f "$RUNNER_TEMP/chromium-build/chromium/src/out/Release_GN_arm64/.ninja_log" ]]; then
+            cp "$RUNNER_TEMP/chromium-build/chromium/src/out/Release_GN_arm64/.ninja_log" "$RUNNER_TEMP/checkpoint-out/ninja-timing.log"
+          fi
+      - name: Publish checkpoint producer lineage
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-checkpoint-producer-${{ inputs.segment }}
+          path: ${{ runner.temp }}/checkpoint-out/checkpoint-producer.json
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
       - name: Preserve unfinished source and compiled objects for next job
         if: steps.build.outputs.complete == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: chromium-workspace-${{ inputs.segment }}
-          path: ${{ runner.temp }}/checkpoint-out/
+          path: |
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.zst
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.json
           compression-level: 0
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 7
       - name: Seal completed SDK and original source provenance
         if: steps.build.outputs.complete == 'true'
         run: |
+          cp "$RUNNER_TEMP/checkpoint-out/checkpoint-producer.json" "$RUNNER_TEMP/chromium-build/engine-package/checkpoint-producer.json"
           cp "$RUNNER_TEMP/checkpoint-out/current-identity.json" "$RUNNER_TEMP/chromium-build/engine-package/host-identity.json"
           python3 scripts/ci/engine_artifact.py seal --kind chromium --directory "$RUNNER_TEMP/chromium-build/engine-package"
       - name: Publish immutable source SDK
@@ -124,6 +292,15 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 7
+      - name: Finish independent whole-job observation
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/checkpoint-out"
+          touch "$RUNNER_TEMP/checkpoint-out/job-observer.stop"
+          for attempt in {1..25}; do
+            if ! kill -0 "$(cat "$RUNNER_TEMP/checkpoint-out/job-observer.pid")" 2>/dev/null; then break; fi
+            sleep 1
+          done
       - name: Preserve capacity, source provenance and stage logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -136,6 +313,11 @@ jobs:
             ${{ runner.temp }}/checkpoint-out/*.json
             ${{ runner.temp }}/checkpoint-in/*.json
             ${{ runner.temp }}/checkpoint-out/runner-telemetry*.log
+            ${{ runner.temp }}/checkpoint-out/ccache-*.log
+            ${{ runner.temp }}/checkpoint-out/ninja-timing.log
+            ${{ runner.temp }}/checkpoint-out/job-budget.json
+            ${{ runner.temp }}/checkpoint-out/checkpoint-download.json
+            ${{ runner.temp }}/checkpoint-out/job-observer.log
             ${{ runner.temp }}/checkpoint-out/runner-telemetry.jsonl
           if-no-files-found: error
           retention-days: 14

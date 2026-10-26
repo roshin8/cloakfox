@@ -1,0 +1,80 @@
+name: Verify native Chromium checkpoint roundtrip
+on:
+  workflow_call:
+permissions:
+  contents: read
+  actions: read
+  checks: write
+jobs:
+  roundtrip:
+    runs-on: macos-26-intel
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Preserve selected Xcode and reclaim only unused hosted installations
+        run: python3 scripts/ci/prepare_macos.py --preserve-active-xcode --output "$RUNNER_TEMP/checkpoint-capacity.json"
+      - name: Install native archive prerequisites
+        run: brew install zstd
+      - name: Test native format, compatibility and security boundaries
+        run: |
+          python3 -m unittest discover -s tests/ci -p test_chromium_native_checkpoint.py -v
+          python3 -m unittest discover -s tests/ci -p test_chromium_checkpoint.py -v
+          python3 -m unittest discover -s tests/ci -p test_chromium_observer.py -v
+      - name: Verify immutable checkpoint producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/checkpoint-roundtrip"
+          gh api repos/roshin8/cloakfox/actions/artifacts/12158630195 > "$RUNNER_TEMP/checkpoint-roundtrip/artifact.json"
+          gh api repos/roshin8/cloakfox/actions/jobs/117786073932 > "$RUNNER_TEMP/checkpoint-roundtrip/job.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'checkpoint-roundtrip'
+          artifact=json.loads((root/'artifact.json').read_text())
+          job=json.loads((root/'job.json').read_text())
+          assert artifact['name']=='chromium-workspace-1' and not artifact['expired']
+          assert artifact['workflow_run']['id']==39165014832
+          assert artifact['workflow_run']['head_sha']=='284e0c27ac7078cf047615c88e5512725071b46e'
+          assert job['run_id']==39165014832 and job['conclusion']=='success'
+          PY
+      - name: Observe download and full restore-save-restore lifecycle independently
+        env:
+          CHROMIUM_TELEMETRY_TOKEN: ${{ github.token }}
+        run: |
+          RUNNER_TRACKING_ID="" nohup "$pythonLocation/bin/python3" -u scripts/ci/checkpoint_roundtrip.py observe "$RUNNER_TEMP/checkpoint-roundtrip" > "$RUNNER_TEMP/checkpoint-roundtrip/observer.log" 2>&1 < /dev/null &
+          echo $! > "$RUNNER_TEMP/checkpoint-roundtrip/observer.pid"
+      - name: Download preserved checkpoint without rebuilding
+        timeout-minutes: 30
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 39165014832
+          artifact-ids: 12158630195
+          merge-multiple: true
+          path: ${{ runner.temp }}/checkpoint-roundtrip-input
+      - name: Verify original restore, native handoff and exact restored manifest
+        timeout-minutes: 190
+        run: python3 -u scripts/ci/checkpoint_roundtrip.py run "$RUNNER_TEMP/checkpoint-roundtrip" --incoming "$RUNNER_TEMP/checkpoint-roundtrip-input"
+      - name: Finish independent observation
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/checkpoint-roundtrip"
+          touch "$RUNNER_TEMP/checkpoint-roundtrip/stop"
+          sleep 3
+      - name: Preserve checkpoint verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-native-checkpoint-roundtrip
+          path: |
+            ${{ runner.temp }}/checkpoint-roundtrip/*.json
+            ${{ runner.temp }}/checkpoint-roundtrip/*.jsonl
+            ${{ runner.temp }}/checkpoint-roundtrip/*.log
+            ${{ runner.temp }}/checkpoint-capacity.json
+          compression-level: 1
+          if-no-files-found: warn
+          retention-days: 7

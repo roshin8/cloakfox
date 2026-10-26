@@ -3,7 +3,7 @@ import importlib.util
 import contextlib
 import io
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import json
 from pathlib import Path
 import selectors
@@ -19,6 +19,51 @@ SCRIPT = Path(__file__).resolve().parents[2] / 'scripts/ci/chromium_source.py'
 
 
 class ChromiumProgress(unittest.TestCase):
+    def test_checkpoint_allows_ninja_more_than_thirty_seconds_to_stop_cleanly(self):
+        spec = importlib.util.spec_from_file_location('pipeline', SCRIPT)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        process = Mock(pid=123, returncode=2)
+        def wait(timeout):
+            if timeout < 60:
+                raise subprocess.TimeoutExpired('ninja', timeout)
+            return 2
+        process.wait.side_effect = wait
+        with patch.object(module.os, 'killpg') as send:
+            module.interrupt_for_checkpoint(process)
+        send.assert_called_once_with(123, signal.SIGINT)
+
+    def test_checkpoint_signal_permission_race_accepts_only_confirmed_clean_exit(self):
+        spec = importlib.util.spec_from_file_location('pipeline', SCRIPT)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        process = Mock(pid=123, returncode=2)
+        process.poll.return_value = None
+        process.wait.side_effect = [subprocess.TimeoutExpired('ninja', 420), 2]
+        with patch.object(module.os, 'killpg', side_effect=[None, PermissionError('group disappeared')]):
+            module.interrupt_for_checkpoint(process)
+        self.assertEqual(process.wait.call_args_list[-1].kwargs['timeout'], 30)
+
+    def test_checkpoint_signal_permission_error_never_accepts_unknown_or_failed_exit(self):
+        spec = importlib.util.spec_from_file_location('pipeline', SCRIPT)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        for outcome in (subprocess.TimeoutExpired('ninja', 30), 1):
+            with self.subTest(outcome=str(outcome)):
+                process = Mock(pid=123, returncode=1)
+                process.poll.return_value = None
+                process.wait.side_effect = [subprocess.TimeoutExpired('ninja', 420), outcome]
+                with patch.object(module.os, 'killpg', side_effect=[None, PermissionError('denied')]):
+                    with self.assertRaisesRegex(RuntimeError, 'cleanly'):
+                        module.interrupt_for_checkpoint(process)
+
+    def test_checkpoint_never_archives_after_forced_kill(self):
+        spec = importlib.util.spec_from_file_location('pipeline', SCRIPT)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        process = Mock(pid=123, returncode=-signal.SIGKILL)
+        process.poll.return_value = None
+        process.wait.side_effect = [subprocess.TimeoutExpired('ninja', 420), -signal.SIGKILL]
+        with patch.object(module.os, 'killpg'):
+            with self.assertRaisesRegex(RuntimeError, 'cleanly'):
+                module.interrupt_for_checkpoint(process)
+
     def test_blocked_actions_console_cannot_block_compiler_deadline(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

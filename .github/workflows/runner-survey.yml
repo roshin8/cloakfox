@@ -2,6 +2,19 @@ name: Browser build runner survey
 
 on:
   workflow_dispatch:
+    inputs:
+      intel_build_probe:
+        description: Verify free Intel Mac capacity and ARM64 cross-compilation
+        type: boolean
+        default: false
+      checkpoint_upload_only:
+        description: Diagnose transfer of the exact successful checkpoint without compiling
+        type: boolean
+        default: false
+      diagnostic_only:
+        description: Run focused existing-app diagnostics without rebuilding engines
+        type: boolean
+        default: false
   push:
     branches: [codex/firefox-158-port]
     paths:
@@ -14,10 +27,11 @@ permissions:
 
 jobs:
   survey:
+    if: ${{ !inputs.diagnostic_only && !inputs.checkpoint_upload_only && !inputs.intel_build_probe }}
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-26, xcode-27]
+        runner: [macos-26]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
     steps:
@@ -52,3 +66,191 @@ jobs:
             before/runner-capabilities.json
             after/runner-capabilities.json
           if-no-files-found: error
+
+  runtime-diagnostic:
+    if: ${{ inputs.diagnostic_only && !inputs.checkpoint_upload_only && !inputs.intel_build_probe }}
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Verify the fixed diagnostic producer
+        run: |
+          gh api repos/roshin8/cloakfox/actions/runs/39004787714 > "$RUNNER_TEMP/producer.json"
+          python3 - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          run=json.loads((Path(os.environ['RUNNER_TEMP'])/'producer.json').read_text())
+          assert run['head_sha']=='73b9b4ea95465c374750c4a8ee3798546f1cb738'
+          assert run['repository']['full_name']=='roshin8/cloakfox'
+          PYCODE
+          gh api repos/roshin8/cloakfox/actions/jobs/117319635556 --jq '.conclusion' | python3 -c 'import sys; assert sys.stdin.read().strip()=="success"'
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '12092350521'
+          run-id: '39004787714'
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/diagnostic-dmg
+      - name: Restore and verify the existing app
+        run: |
+          set -euo pipefail
+          dmg=$(find "$RUNNER_TEMP/diagnostic-dmg" -name '*.dmg' -print -quit)
+          test -n "$dmg"
+          hdiutil attach "$dmg" -mountpoint "$RUNNER_TEMP/diagnostic-mount" -nobrowse -readonly
+          mkdir -p "$RUNNER_TEMP/diagnostic-app"
+          cp -R "$RUNNER_TEMP/diagnostic-mount/Cloakfox.app" "$RUNNER_TEMP/diagnostic-app/"
+          hdiutil detach "$RUNNER_TEMP/diagnostic-mount"
+          codesign --verify --deep --strict "$RUNNER_TEMP/diagnostic-app/Cloakfox.app"
+          python3 scripts/ci/sign_canonical_gpu.py verify --path "$RUNNER_TEMP/diagnostic-app/Cloakfox.app/Contents/Resources/canonical-gpu" --commit 73b9b4ea95465c374750c4a8ee3798546f1cb738
+      - name: Record exact AppKit pixel format and framebuffer capabilities
+        timeout-minutes: 2
+        run: |
+          mkdir -p "$RUNNER_TEMP/runtime-diagnostic/persona"
+          clang scripts/ci/native_nsopengl_diagnostic.m -framework AppKit -framework OpenGL -o "$RUNNER_TEMP/runtime-diagnostic/nsopengl-probe"
+          "$RUNNER_TEMP/runtime-diagnostic/nsopengl-probe" > "$RUNNER_TEMP/runtime-diagnostic/nsopengl.jsonl"
+      - name: Install disposable probe dependencies
+        run: |
+          python3 -m pip install -r tests/fingerprint/requirements-runtime.txt
+          brew install geckodriver
+      # This fixture explicitly defaults to headless, as in the failed producer.
+      - name: Reproduce the unchanged persona assertions with click evidence
+        timeout-minutes: 5
+        env:
+          CLOAKFOX_BIN: ${{ runner.temp }}/diagnostic-app/Cloakfox.app/Contents/MacOS/cloakfox
+          REPORT_DIR: ${{ runner.temp }}/runtime-diagnostic/persona
+        run: python3 -u tests/fingerprint/probe_persona_generation.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-runtime-diagnostic
+          path: |
+            ${{ runner.temp }}/runtime-diagnostic/
+            ${{ runner.temp }}/producer.json
+          if-no-files-found: error
+          retention-days: 7
+
+  checkpoint-upload-diagnostic:
+    if: ${{ inputs.checkpoint_upload_only && !inputs.intel_build_probe }}
+    runs-on: macos-26
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Test independent transfer observer
+        run: python3 -m unittest discover -s tests/ci -p test_checkpoint_upload_diagnostic.py -v
+      - name: Start independent observation through download and upload
+        env:
+          CHROMIUM_TELEMETRY_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/transfer-diagnostic"
+          echo download > "$RUNNER_TEMP/transfer-diagnostic/phase"
+          RUNNER_TRACKING_ID="" nohup "$pythonLocation/bin/python3" -u scripts/ci/checkpoint_upload_diagnostic.py observe "$RUNNER_TEMP/transfer-diagnostic" > "$RUNNER_TEMP/transfer-diagnostic/observer.log" 2>&1 < /dev/null &
+          echo $! > "$RUNNER_TEMP/transfer-diagnostic/pid"
+      - name: Verify original artifact producer and exact artifact identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/roshin8/cloakfox/actions/artifacts/12089892751 > "$RUNNER_TEMP/transfer-diagnostic/artifact.json"
+          gh api repos/roshin8/cloakfox/actions/jobs/117263705488 > "$RUNNER_TEMP/transfer-diagnostic/producer-job.json"
+          python3 - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])/'transfer-diagnostic'
+          artifact = json.loads((root/'artifact.json').read_text())
+          assert artifact['id'] == 12089892751 and artifact['name'] == 'chromium-workspace-1'
+          assert artifact['workflow_run']['id'] == 38972153983
+          assert artifact['workflow_run']['head_sha'] == '43aede189510fe56f98744bd7ecf11f894445285'
+          assert not artifact['expired']
+          job = json.loads((root/'producer-job.json').read_text())
+          assert job['run_id'] == 38972153983 and job['conclusion'] == 'success'
+          PYCODE
+      - uses: actions/download-artifact@v4
+        timeout-minutes: 25
+        with:
+          artifact-ids: '12089892751'
+          merge-multiple: true
+          run-id: '38972153983'
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/checkpoint-transfer
+      - name: Verify exact checkpoint bytes without extraction or compilation
+        run: |
+          python3 scripts/ci/checkpoint_upload_diagnostic.py verify "$RUNNER_TEMP/checkpoint-transfer" > "$RUNNER_TEMP/transfer-diagnostic/verified-checkpoint.json"
+          echo upload > "$RUNNER_TEMP/transfer-diagnostic/phase"
+      - name: Reproduce the failed upload path using the existing 13.65 GB checkpoint
+        timeout-minutes: 15
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-upload-diagnostic-${{ github.run_id }}
+          path: ${{ runner.temp }}/checkpoint-transfer/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Finish independent observation
+        if: always()
+        run: |
+          echo finished > "$RUNNER_TEMP/transfer-diagnostic/phase"
+          touch "$RUNNER_TEMP/transfer-diagnostic/stop"
+          for attempt in {1..25}; do
+            if ! kill -0 "$(cat "$RUNNER_TEMP/transfer-diagnostic/pid")" 2>/dev/null; then break; fi
+            sleep 1
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-transfer-evidence
+          path: ${{ runner.temp }}/transfer-diagnostic/
+          if-no-files-found: error
+          retention-days: 7
+
+  intel-build-probe:
+    if: ${{ inputs.intel_build_probe }}
+    runs-on: macos-26-intel
+    timeout-minutes: 10
+    steps:
+      - name: Verify real host capacity and ARM64 compiler output
+        run: |
+          mkdir -p "$RUNNER_TEMP/intel-build-probe"
+          python3 - <<'PYCODE'
+          import json, os, platform, shutil, subprocess
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])/'intel-build-probe'
+          def run(*args):
+              return subprocess.check_output(args, text=True, timeout=60).strip()
+          report = {'architecture': platform.machine(), 'memoryBytes': int(run('sysctl','-n','hw.memsize')),
+                    'cpuCount': os.cpu_count(), 'freeBytes': shutil.disk_usage(root).free,
+                    'xcode': run('xcodebuild','-version'), 'sdk': run('xcrun','--show-sdk-version'),
+                    'homebrewPrefix': run('brew','--prefix')}
+          try:
+              assert report['architecture'] == 'x86_64'
+              assert report['memoryBytes'] >= 12 * 1024**3
+              assert report['homebrewPrefix'] == '/usr/local'
+              source = root/'probe.c'
+              source.write_text('int cloakfox_cross_compile_probe(void) { return 42; }\n')
+              output = root/'probe.dylib'
+              run('xcrun','clang','-target','arm64-apple-macos13','-dynamiclib',str(source),'-o',str(output))
+              run('xcrun','lipo',str(output),'-verify_arch','arm64')
+              report['arm64Dylib'] = run('file',str(output))
+              report['success'] = True
+          finally:
+              (root/'result.json').write_text(json.dumps(report,indent=2)+'\n')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intel-arm64-build-capability
+          path: ${{ runner.temp }}/intel-build-probe/
+          if-no-files-found: error
+          retention-days: 7

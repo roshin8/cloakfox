@@ -21,10 +21,26 @@ def unused_xcodes(applications, developer):
                   if not p.is_symlink() and p.resolve() != selected)
 
 
+def cleanup_targets(obsolete, developer, home, *, preserve_active=False):
+    if preserve_active:
+        return list(obsolete)
+    # Preserve the selected compiler, toolchains and MacOSX.platform. Only mobile
+    # targets and disposable simulator data are irrelevant to these desktop jobs.
+    mobile = ('iPhoneOS.platform', 'iPhoneSimulator.platform', 'AppleTVOS.platform',
+              'AppleTVSimulator.platform', 'WatchOS.platform', 'WatchSimulator.platform',
+              'XROS.platform', 'XRSimulator.platform')
+    candidates = list(obsolete) + [developer / 'Platforms' / name for name in mobile]
+    candidates += [home / 'Library/Developer/CoreSimulator',
+                   Path('/Library/Developer/CoreSimulator/Caches'),
+                   Path('/Library/Developer/CoreSimulator/Images')]
+    return candidates
+
+
 def main():
     from runner_probe import probe
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--preserve-active-xcode', action='store_true', help='Retain selected Xcode platforms and CoreSimulator state')
     args = parser.parse_args()
     require_hosted(os.environ)
     if platform.system() != 'Darwin':
@@ -32,15 +48,7 @@ def main():
     before = probe(Path.cwd())
     developer = Path(subprocess.check_output(['xcode-select', '-p'], text=True).strip())
     obsolete = unused_xcodes(Path('/Applications'), developer)
-    # Preserve the selected compiler, toolchains and MacOSX.platform. Only mobile
-    # targets and disposable simulator data are irrelevant to these desktop jobs.
-    mobile = ('iPhoneOS.platform', 'iPhoneSimulator.platform', 'AppleTVOS.platform',
-              'AppleTVSimulator.platform', 'WatchOS.platform', 'WatchSimulator.platform',
-              'XROS.platform', 'XRSimulator.platform')
-    candidates = obsolete + [developer / 'Platforms' / name for name in mobile]
-    candidates += [Path.home() / 'Library/Developer/CoreSimulator',
-                   Path('/Library/Developer/CoreSimulator/Caches'),
-                   Path('/Library/Developer/CoreSimulator/Images')]
+    candidates = cleanup_targets(obsolete, developer, Path.home(), preserve_active=args.preserve_active_xcode)
     removed = []
     for target in candidates:
         if target.exists() and not target.is_symlink():

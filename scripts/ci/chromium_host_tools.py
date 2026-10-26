@@ -17,7 +17,7 @@ import subprocess
 import tarfile
 import tempfile
 
-TOOLS = {'cmake', 'ninja', 'ccache'}
+TOOLS = {'cmake', 'ninja', 'ccache', 'zstd'}
 
 
 def digest(path):
@@ -165,10 +165,17 @@ def restore(source, packages, root, commit, run_id):
             raise ValueError('Restored tool identity mismatch')
 
 
+def homebrew_root():
+    roots = {'arm64': Path('/opt/homebrew'), 'x86_64': Path('/usr/local')}
+    if platform.machine() not in roots:
+        raise ValueError('Unsupported macOS build host architecture')
+    return roots[platform.machine()]
+
+
 def hosted_packages():
-    if os.environ.get('GITHUB_ACTIONS') != 'true' or platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        raise ValueError('Tool snapshot requires GitHub Actions Darwin arm64')
-    root = Path('/opt/homebrew')
+    if os.environ.get('GITHUB_ACTIONS') != 'true' or platform.system() != 'Darwin' or platform.machine() not in ('arm64', 'x86_64'):
+        raise ValueError('Tool snapshot requires GitHub Actions Darwin arm64 or x86_64')
+    root = homebrew_root()
     if root.resolve(strict=True) != root or (root / 'Cellar').resolve(strict=True) != root / 'Cellar' or (root / 'opt').resolve(strict=True) != root / 'opt':
         raise ValueError('Unexpected Homebrew root')
     def output(argv):

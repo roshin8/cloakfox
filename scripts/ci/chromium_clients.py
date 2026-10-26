@@ -26,10 +26,20 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def restore_sdk(package, destination, producer_sha):
+def restore_sdk(package, destination, producer_sha, verified_manifest=None):
     record = json.loads((package / 'source-provenance.json').read_text())
     archive = package / 'source-sdk.tar.gz'
-    if record.get('gitSha') != producer_sha or record.get('sdkArchiveSha256') != digest(archive):
+    source_sha = producer_sha
+    lineage_path = package / 'checkpoint-producer.json'
+    if lineage_path.exists() and verified_manifest is not None:
+        lineage = json.loads(lineage_path.read_text())
+        if (lineage.get('workflowSha') != producer_sha
+                or verified_manifest.get('producerSha') != producer_sha
+                or str(lineage.get('run')) != verified_manifest.get('producerRun')
+                or lineage.get('key') != verified_manifest.get('key')):
+            raise ValueError('SDK continuation lineage mismatch')
+        source_sha = lineage.get('sourceSha')
+    if record.get('gitSha') != source_sha or record.get('sdkArchiveSha256') != digest(archive):
         raise ValueError('SDK producer/archive mismatch')
     destination.mkdir(parents=True, exist_ok=False)
     checkpoint = load('chromium_checkpoint')
@@ -63,8 +73,8 @@ def main():
     args = parser.parse_args()
     artifacts = load('engine_artifact')
     key = artifacts.input_key(ROOT, 'chromium')
-    artifacts.verify(args.package, 'chromium', key, args.producer_sha, args.producer_run)
-    sdk, record = restore_sdk(args.package, args.root, args.producer_sha)
+    manifest = artifacts.verify(args.package, 'chromium', key, args.producer_sha, args.producer_run)
+    sdk, record = restore_sdk(args.package, args.root, args.producer_sha, manifest)
     pipeline = load('chromium_source').Pipeline(args.root)
     pipeline.run('baseline-sdk', [sys.executable, ENGINE / 'fetch_cef.py', '--cache-dir', args.root / 'sdk-template'])
     lock = json.loads((ENGINE / 'cef-lock.json').read_text())

@@ -4,6 +4,9 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import sys
+import time
+import shlex
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -31,7 +34,31 @@ def main():
         subprocess.run(['ninja', '-C', str(root)], check=True)
         obj = root / 'compiled.o'
         original, stamp = obj.read_bytes(), obj.stat().st_mtime_ns
-        archive = base / 'checkpoint/workspace.tar.gz'
+        # Exercise actual Ninja's interrupt/drain behavior before the expensive
+        # browser build. A live command deliberately needs >30 seconds to clean
+        # up, reproducing the former premature checkpoint escalation.
+        pipeline = load('chromium_source')
+        holder = root / 'hold.py'
+        holder.write_text("import signal,time,pathlib\n"
+                          "def stop(*args):\n"
+                          "    time.sleep(35)\n"
+                          "    pathlib.Path('cleanup-complete').write_text('done')\n"
+                          "    raise SystemExit(0)\n"
+                          "signal.signal(signal.SIGINT, stop)\n"
+                          "signal.signal(signal.SIGTERM, stop)\n"
+                          "print('slow cleanup fixture ready', flush=True)\n"
+                          "while True: time.sleep(.1)\n")
+        original_ninja = (root / 'build.ninja').read_text()
+        (root / 'build.ninja').write_text(original_ninja +
+            'rule hold\n  command = ' + shlex.quote(sys.executable) + ' hold.py\nbuild hold.done: hold\n')
+        before_stop = time.monotonic()
+        complete = pipeline.Pipeline(root).run('shutdown-fixture', ['ninja', '-C', root, 'hold.done'],
+                                               time_budget_seconds=5)
+        if complete or not (root / 'cleanup-complete').exists() or time.monotonic() - before_stop < 35:
+            raise RuntimeError('Actual Ninja did not drain slow child cleanup before checkpoint')
+        (root / 'build.ninja').write_text(original_ninja)
+        print('PASS: real Ninja clean checkpoint waits for >30-second child shutdown')
+        archive = base / 'checkpoint/workspace.tar.zst'
         checkpoint.save(root, archive, identity, provenance={'runnerImage': 'fixture-image-A'})
         shutil.rmtree(root)  # Only the fixture-owned temporary workspace.
         checkpoint.restore(root, archive, identity)

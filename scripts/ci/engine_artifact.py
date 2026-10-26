@@ -21,9 +21,9 @@ INPUTS = {
         'engines/chromium/apply_*_patch.py', 'engines/chromium/patches',
         'engines/chromium/fetch_cef.py', 'scripts/ci/chromium_source.py',
         'scripts/ci/chromium_checkpoint.py', 'scripts/ci/chromium_host_identity.py',
-        'scripts/ci/chromium_host_tools.py',
+        'scripts/ci/chromium_host_tools.py', 'scripts/ci/metal_toolchain.py',
         'scripts/ci/prepare_macos.py', 'scripts/ci/runner_probe.py',
-        'scripts/ci/engine_artifact.py', '.github/workflows/chromium-engine.yml',
+        'scripts/ci/engine_artifact.py', 'scripts/ci/chromium_checkpoint_reuse.py', '.github/workflows/chromium-engine.yml',
         '.github/workflows/chromium-source-segment.yml'],
     'gecko': ['Makefile', 'upstream.sh', 'patches', 'additions', 'settings', 'branding',
         'assets', 'bundle', '*mozconfig*', 'scripts', '.github/workflows/gecko-engine.yml',
@@ -36,8 +36,8 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def input_key(root, kind):
-    listing = subprocess.check_output(['git', '-C', str(root), 'ls-tree', '-r', '-z', 'HEAD'])
+def input_key(root, kind, revision='HEAD'):
+    listing = subprocess.check_output(['git', '-C', str(root), 'ls-tree', '-r', '-z', revision])
     selected = []
     for entry in listing.split(b'\0'):
         if not entry:
@@ -86,11 +86,14 @@ def verify(directory, kind, key, producer_sha, producer_run):
 
 def trusted_run(run, repository, kind):
     paths = {'.github/workflows/build-macos.yml', f'.github/workflows/{kind}-engine.yml'}
+    dedicated = (kind == 'chromium' and run.get('event') == 'workflow_dispatch'
+                 and run.get('head_branch') == 'codex/chromium-intel-build'
+                 and run.get('path') in ('.github/workflows/runner-survey.yml', '.github/workflows/chromium-engine.yml'))
     return (run.get('repository', {}).get('full_name') == repository
             and run.get('head_repository', {}).get('full_name') == repository
             and run.get('event') in ('push', 'workflow_dispatch')
-            and run.get('head_branch') in ('main', 'codex/firefox-158-port')
-            and run.get('path') in paths)
+            and (dedicated or (run.get('head_branch') in ('main', 'codex/firefox-158-port')
+                              and run.get('path') in paths)))
 
 
 def completed_gate(jobs, kind):

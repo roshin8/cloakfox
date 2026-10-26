@@ -25,6 +25,52 @@ POLL_INTERVAL = 1
 PROGRESS_INTERVAL = 30
 
 
+def interrupt_for_checkpoint(process):
+    # Ninja forwards the interrupt to its own subcommands and waits for them.
+    # Allow bounded cleanup before escalation; a forced stop is never reusable.
+    try:
+        os.killpg(process.pid, signal.SIGINT)
+    except ProcessLookupError:
+        process.wait(timeout=30)
+        return
+    try:
+        process.wait(timeout=420)
+        return
+    except subprocess.TimeoutExpired:
+        if process.poll() is not None:
+            return
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (PermissionError, ProcessLookupError) as error:
+        # The group may disappear/change while wait and kill race. Only a
+        # confirmed normal interrupt exit can become a checkpoint afterwards.
+        try:
+            process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError('Compiler did not stop cleanly for checkpoint') from error
+        if process.returncode not in (0, -signal.SIGINT, 2, 130):
+            raise RuntimeError('Compiler did not stop cleanly for checkpoint') from error
+        return
+    process.wait(timeout=30)
+    raise RuntimeError('Compiler did not stop cleanly for checkpoint: forced kill')
+
+
+def cef_arm64_config(gn, args, environment):
+    # CEF's Python generator reads os.environ directly, rather than the env
+    # mapping used for child commands. Scope the target flags to this call.
+    keys = ('CEF_ENABLE_ARM64', 'GN_OUT_CONFIGS')
+    previous = {key: os.environ.get(key) for key in keys}
+    try:
+        os.environ.update({key: environment[key] for key in keys})
+        return gn.GetAllPlatformConfigs(args)['Release_GN_arm64']
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
 class ActionsConsole:
     """Best-effort console mirror; the original evidence files stay lossless.
 
@@ -196,13 +242,13 @@ class Pipeline:
                     if (time_budget_seconds is not None and now - started >= time_budget_seconds
                             and not storage_error and process.poll() is None):
                         print(f'CHECKPOINT stopping owned {name} at its time budget', flush=True)
-                        os.killpg(process.pid, signal.SIGINT)
                         try:
-                            process.wait(timeout=30)
-                        except subprocess.TimeoutExpired:
-                            os.killpg(process.pid, signal.SIGKILL)
-                            process.wait()
-                            raise RuntimeError('Compiler did not stop cleanly for checkpoint')
+                            interrupt_for_checkpoint(process)
+                        except (RuntimeError, OSError, subprocess.SubprocessError) as error:
+                            status.update(state='failed', error=str(error), exitCode=process.poll(),
+                                          finished=time.time(), elapsedSeconds=round(time.monotonic() - started, 1))
+                            (self.logs / 'stage.json').write_text(json.dumps(status, indent=2))
+                            raise
                         interrupted_for_checkpoint = process.returncode in (-signal.SIGINT, 2, 130)
                     if now - last_report >= PROGRESS_INTERVAL:
                         status.update(elapsedSeconds=round(now - started, 1),
@@ -258,7 +304,7 @@ class Pipeline:
                         DEPOT_TOOLS_UPDATE='0', GIT_CEILING_DIRECTORIES=str(self.root),
                         CIPD_CACHE_DIR=str(self.root / 'cipd-cache'),
                         VPYTHON_VIRTUALENV_ROOT=str(self.root / 'vpython-cache'),
-                        GN_OUT_CONFIGS='Release_GN_arm64')
+                        GN_OUT_CONFIGS='Release_GN_arm64', CEF_ENABLE_ARM64='1')
 
     def prepare(self):
         lock = json.loads((ENGINE / 'source-lock.json').read_text())
@@ -322,7 +368,7 @@ class Pipeline:
         if shutil.which('ccache'):
             args['cc_wrapper'] = shutil.which('ccache')
         # Runtime Metal stays enabled and tested, matching the verified local path.
-        config = gn.GetAllPlatformConfigs(args)['Release_GN_arm64']
+        config = cef_arm64_config(gn, args, self.env)
         (out / 'args.gn').write_text(gn.GetConfigFileContents(config) + '\n')
         self.run('gn', [source / 'buildtools/mac/gn', 'gen', out, '--root=' + str(source)], source)
         (self.logs / 'args.gn').write_text((out / 'args.gn').read_text())
@@ -394,7 +440,7 @@ def main():
         parser.error('compile-minutes must be 1–240')
     if not args.checkpoint_out:
         parser.error('--checkpoint-out is required to preserve unfinished compilation')
-    if os.environ.get('GITHUB_ACTIONS') == 'true':
+    if os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('CHROMIUM_JOB_OBSERVER') != '1':
         observer_spec = importlib.util.spec_from_file_location('chromium_observer', Path(__file__).with_name('chromium_observer.py'))
         observer_module = importlib.util.module_from_spec(observer_spec)
         observer_spec.loader.exec_module(observer_module)

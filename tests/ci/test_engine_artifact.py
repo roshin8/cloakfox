@@ -53,6 +53,17 @@ class EngineArtifact(unittest.TestCase):
             recipe.write_text('changed restore policy'); self.commit(root)
             self.assertNotEqual(before,api.input_key(root,'chromium'))
 
+    def test_metal_preflight_recipe_changes_invalidate_native_sdk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); self.git(root,'init','-q')
+            (root/'scripts/ci').mkdir(parents=True)
+            (root/'engines/chromium/patches').mkdir(parents=True)
+            (root/'engines/chromium/patches/a.patch').write_text('stable native input')
+            recipe=root/'scripts/ci/metal_toolchain.py'; recipe.write_text('original')
+            self.commit(root); before=api.input_key(root,'chromium')
+            recipe.write_text('changed restore policy'); self.commit(root)
+            self.assertNotEqual(before,api.input_key(root,'chromium'))
+
     def test_gecko_key_includes_bundled_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -143,6 +154,16 @@ class EngineArtifact(unittest.TestCase):
         for change in ({'event':'pull_request'},{'head_branch':'untrusted'},{'path':'.github/workflows/test.yml'},
                        {'head_repository':{'full_name':'other/fork'}}):
             with self.subTest(change=change):self.assertFalse(api.trusted_run({**run,**change},'roshin8/cloakfox','chromium'))
+
+    def test_dedicated_intel_sdk_producer_is_trusted_only_for_manual_chromium(self):
+        run={'repository':{'full_name':'owner/repo'},'head_repository':{'full_name':'owner/repo'},
+             'event':'workflow_dispatch','head_branch':'codex/chromium-intel-build',
+             'path':'.github/workflows/runner-survey.yml'}
+        self.assertTrue(api.trusted_run(run,'owner/repo','chromium'))
+        self.assertFalse(api.trusted_run(run,'owner/repo','gecko'))
+        for change in [{'event':'pull_request'},{'event':'push'},{'path':'.github/workflows/other.yml'},
+                       {'head_repository':{'full_name':'evil/fork'}}]:
+            self.assertFalse(api.trusted_run({**run,**change},'owner/repo','chromium'))
 
     def test_completed_engine_gate_required_even_if_unrelated_parent_failed(self):
         self.assertTrue(api.completed_gate([{'name':'chromium / engine / chromium-engine-complete','conclusion':'success','status':'completed'}],'chromium'))

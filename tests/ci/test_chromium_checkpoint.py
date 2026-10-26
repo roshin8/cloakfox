@@ -24,6 +24,38 @@ def load():
 
 
 class Checkpoints(unittest.TestCase):
+    def test_writer_metadata_is_bounded_and_preserves_hardlinks_and_nanoseconds(self):
+        module=load()
+        writer=module.WriteOnlyTarFile
+        peaks={'members':0,'inodes':0}
+        class Measured(writer):
+            def addfile(self,*args,**kwargs):
+                result=super().addfile(*args,**kwargs)
+                peaks['members']=max(peaks['members'],len(self.members))
+                peaks['inodes']=max(peaks['inodes'],len(self.inodes))
+                return result
+        with tempfile.TemporaryDirectory() as folder:
+            base=Path(folder); root=base/'workspace'; root.mkdir()
+            for number in range(128):
+                (root/f'file-{number:03}').write_bytes(b'pinned object')
+            first=root/'hard-a'; first.write_bytes(b'hardlinked object')
+            os.link(first,root/'hard-b')
+            (root/'symbolic').symlink_to('hard-a')
+            stamp=1700000000123456789
+            os.utime(first,ns=(stamp,stamp))
+            archive=base/'handoff/workspace.tar.gz'
+            capacity=SimpleNamespace(free=20*module.GIB)
+            with patch.object(module,'WriteOnlyTarFile',Measured), patch.object(module.shutil,'disk_usage',return_value=capacity):
+                module.save(root,archive,{'gitSha':'fixture'})
+                self.assertLessEqual(peaks['members'],1)
+                self.assertEqual(peaks['inodes'],1,'Only genuine hardlinks need inode metadata')
+                shutil.rmtree(root)
+                module.restore(root,archive,{'gitSha':'fixture'})
+            self.assertEqual((root/'hard-a').stat().st_ino,(root/'hard-b').stat().st_ino)
+            self.assertEqual((root/'hard-a').stat().st_mtime_ns,stamp)
+            self.assertEqual((root/'symbolic').read_bytes(),b'hardlinked object')
+            self.assertEqual(len(list(root.glob('file-*'))),128)
+
     def test_different_runner_provenance_can_resume_only_identical_host_bytes(self):
         module = load()
         host_spec = importlib.util.spec_from_file_location('host_identity', PATH.with_name('chromium_host_identity.py'))

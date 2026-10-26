@@ -138,9 +138,23 @@ def install_provenance(inputs):
     return receipts
 
 
+def metal_toolchains(output):
+    # Xcode 26 installs Metal outside Xcode.app. Bind the entire resolved
+    # toolchain, including libraries and headers, rather than version labels.
+    metal = {}
+    for tool in ('metal', 'metallib'):
+        executable = Path(output(['xcrun', '--sdk', 'macosx', '--find', tool])).resolve(strict=True)
+        root = next((p for p in executable.parents if p.suffix == '.xctoolchain'), None)
+        if root is None:
+            raise ValueError('Metal tool is outside a fingerprintable toolchain: ' + str(executable))
+        if str(root) not in metal:
+            metal[str(root)] = tree_identity(root)
+    return metal
+
+
 def collect(developer):
-    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        raise ValueError('Chromium hosted checkpoints require macOS arm64')
+    if platform.system() != 'Darwin' or platform.machine() not in ('arm64', 'x86_64'):
+        raise ValueError('Chromium hosted checkpoints require macOS arm64 or x86_64')
 
     def output(command):
         return subprocess.check_output(command, text=True).strip()
@@ -150,19 +164,20 @@ def collect(developer):
     xcode = Path(developer).resolve().parents[1]
     if xcode.suffix != '.app':
         raise ValueError('A full selected Xcode application is required')
-    formulas = {'cmake', 'ninja', 'ccache'}
+    formulas = {'cmake', 'ninja', 'ccache', 'zstd'}
     formulas.update(output(['brew', 'deps', '--installed', '--formula', '--union', *sorted(formulas)]).splitlines())
     packages = {}
     for formula in sorted(formulas):
         packages[formula] = tree_identity(output(['brew', '--prefix', formula]), homebrew_package=True)
     commands = {}
-    for name in ('cmake', 'ninja', 'ccache'):
+    for name in ('cmake', 'ninja', 'ccache', 'zstd'):
         executable = shutil.which(name)
         if not executable or not Path(executable).resolve().is_relative_to(packages[name]['path']):
             raise ValueError('Build tool resolves outside fingerprinted package: ' + name)
         commands[name] = str(Path(executable).resolve())
     return {
         'schemaVersion': 1,
+        'metalToolchains': metal_toolchains(output),
         'macos': output(['sw_vers', '-productVersion']),
         'macosBuild': output(['sw_vers', '-buildVersion']),
         'architecture': platform.machine(),
