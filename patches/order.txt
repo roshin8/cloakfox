@@ -220,17 +220,25 @@ urlbarprovider-interventions.patch
 canvas-complete-renderer.patch
 cloakfox-native-engine-host.patch
 
+# Local camera picker nicknames; original sources remain visible.
 cloakfox-camera-nicknames.patch
+
+# Website camera label presets and per-device names, separate from picker names.
 cloakfox-neutral-camera-labels.patch
 cloakfox-capture-label-scope.patch
 cloakfox-audio-website-labels.patch
 cloakfox-camera-exposure.patch
 cloakfox-microphone-exposure.patch
 
-cloakfox-site-data-container-scope.patch
-cloakfox-trust-panel-site-data-scope.patch
-cloakfox-container-site-cache.patch
-
 cloakfox-macos-stable-toolbar.patch
 cloakfox-macos-colored-window-buttons.patch
 cloakfox-macos-bundle-icon.patch
+
+# Offer current-container and profile-wide site-data clearing.
+cloakfox-site-data-container-scope.patch
+
+# Scope choice in Firefox 158 Trust Panel.
+cloakfox-trust-panel-site-data-scope.patch
+
+# Clear website caches without crossing container boundaries.
+cloakfox-container-site-cache.patch

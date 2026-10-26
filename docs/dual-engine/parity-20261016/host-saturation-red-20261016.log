@@ -1,0 +1,19 @@
+test_owned_fixture_reaches_native_parent_without_cef_window (test_native_host_surface.NativeHostSurface.test_owned_fixture_reaches_native_parent_without_cef_window) ... FAIL
+
+======================================================================
+FAIL: test_owned_fixture_reaches_native_parent_without_cef_window (test_native_host_surface.NativeHostSurface.test_owned_fixture_reaches_native_parent_without_cef_window)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_native_host_surface.py", line 25, in test_owned_fixture_reaches_native_parent_without_cef_window
+    self.assertEqual(result.returncode,0,result.stderr[-5000:])
+AssertionError: 1 != 0 : [60279:7967193:1016/153830.972414:ERROR:../../../Users/zeus/cloakfox-builds/chromium/full-source/chromium/src/chrome/browser/mac/code_sign_clone_manager.mm:98] error removing quarantine attribute "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/X/"
+[60279:7967193:1016/153830.972974:ERROR:../../../Users/zeus/cloakfox-builds/chromium/full-source/chromium/src/chrome/browser/mac/code_sign_clone_manager.mm:326] clonefile "/Volumes/CloakfoxChromiumBuild/source-build/identity-companion-build/Release/CloakfoxChromium.app", "/private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/X/org.cloakfox.chromium.prototype.code_sign_clone/code_sign_clone.CNbM0p/CloakfoxChromium.app.bundle": Cross-device link (18)
+2026-10-16 15:38:31.084 CloakfoxChromium[60279:7967152] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/org.cloakfox.chromium.prototype.savedState
+[60279:7967152:1016/153831.197139:ERROR:cef/libcef/browser/osr/web_contents_view_osr.cc:53] Not implemented reached in virtual gfx::NativeWindow CefWebContentsViewOSR::GetTopLevelNativeWindow() const. 
+Final static frame lost after native queue saturation
+
+
+----------------------------------------------------------------------
+Ran 1 test in 6.862s
+
+FAILED (failures=1)

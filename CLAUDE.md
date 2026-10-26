@@ -68,6 +68,24 @@ extension code (that pre-pivot design was removed):
   `CloakfoxPersonas`, `CloakfoxBFNetwork` (BrowserForge Bayesian net),
   `CloakfoxSeedSync` (parent → `Services.cpmm.sharedData` for the actors).
 
+### Website-facing device labels
+
+Audio & media settings support per-device names and fallback labels for cameras,
+microphones and speakers. Preferences use `cloakfox.<camera|microphone|speaker>.website_label_*`.
+Native MediaManager applies labels only when generic media privacy is configured;
+raw-ID maps never change public device IDs or permission filtering. Physical
+inventory helpers are ChromeOnly and independently require system callers.
+Display capture labels must remain native: screen/window/browser are video
+inputs too, but must never inherit camera labels (sites validate monitor sharing).
+
+Camera exposure uses `mediaDevices:cameraDevices` (a JSON-array string) in the
+selected container's overrides. Missing means automatic system order; an explicit
+array selects up to the maximum, and `[]` blocks all cameras. Legacy single
+`mediaDevices:cameraDevice` values are retained until the user saves the new UI.
+`CloakfoxCameraExposure.hpp` applies the camera maximum/selection to website
+enumeration and pre-permission capture candidates. System-principal capture and
+display capture are excluded. Existing streams are not forcibly stopped.
+
 ### Site media compatibility
 
 `CloakfoxHackerRankMediaChild` is a separate compatibility actor, registered
@@ -79,6 +97,16 @@ The application has no public recovery API: discovery uses the existing store
 capabilities and getAV getter signature, without hard-coded bundle IDs/export
 names. Site changes can invalidate this adapter; unsupported shapes are left
 alone. `cloakfox.compat.hackerrank_media=false` disables it on the next load.
+
+`CloakfoxCoderPadMediaChild` is restricted to CoderPad's HTTPS `/*/zoom_room`
+documents, including iframe use. For verified Zoom SDK 2.5.0 / media
+7.1.0.15306, it selects the existing canvas sender when the combined worker
+cannot consume VideoFrame messages without a track processor. A muted native
+self-preview reuses the authorized stream in the current local participant's
+player. It never starts capture, creates a client, changes permissions or
+transport, or alters remote players/browser APIs. Discovery avoids fixed module
+IDs and Symbol names; unknown versions are untouched. To opt out, set
+`cloakfox.compat.coderpad_media=false` and reload.
 
 ## Critical Constraints
 

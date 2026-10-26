@@ -1,0 +1,45 @@
+✔ a valid response can span reads (0.93325ms)
+✔ buffered responses remain independently framed (0.099792ms)
+✔ EOF cannot be mistaken for an acknowledgement (0.2305ms)
+✔ valid JSON over the limit is rejected even with a newline in the same read (0.249084ms)
+✔ an unterminated oversized response is rejected (0.777ms)
+✔ the exact permitted line size remains usable (1.026041ms)
+✔ a location shortcut targets chrome, without sending page input (0.24175ms)
+✔ stale or closed owners cannot focus the address bar (0.096625ms)
+✔ queued input is discarded after tab selection without a route revision change (0.089959ms)
+✔ queued input is discarded after disconnection without a route revision change (0.108375ms)
+✔ queued input is discarded after owner document replacement without a route revision change (0.093416ms)
+✔ queued input is discarded after window closure without a route revision change (0.071916ms)
+✔ queued input is discarded after chrome focus change without a route revision change (0.046458ms)
+✔ queued input is discarded after window deactivation without a route revision change (0.047291ms)
+✔ queued input is discarded after window modal without a route revision change (0.057125ms)
+✔ queued input is discarded after tab modal without a route revision change (0.072125ms)
+✔ a browser is reserved during startup and cancellation releases that owner (1.051333ms)
+✖ input waiting behind an RPC is revalidated before writing to the helper (0.812833ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 17
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 107.95325
+
+✖ failing tests:
+
+test at tests/engines/test_host_response_bounds.mjs:96:1
+✖ input waiting behind an RPC is revalidated before writing to the helper (0.812833ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:106:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,9 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry
+Native host guards: {"pref": true, "sameDoc": true, "system": true}
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/probe_same_window_host.py", line 124, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/probe_same_window_host.py", line 77, in main
+    assert result.get('cancelled') is True,'Closing the startup owner did not cancel its native launch'
+AssertionError: Closing the startup owner did not cancel its native launch

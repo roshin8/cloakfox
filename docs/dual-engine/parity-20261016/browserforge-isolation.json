@@ -1,0 +1,81 @@
+{
+  "checks": [
+    "initial: private storage cleared after last private window closes",
+    "initial: cookies/localStorage/IndexedDB/CacheStorage/service workers isolated",
+    "initial: WebGL2 shaders compile and render the expected pixel",
+    "initial: actual macOS renderer sandbox enforced",
+    "initial: camera/microphone/location denied before hardware access",
+    "initial: malformed container IDs rejected",
+    "restart: private storage cleared after last private window closes",
+    "restart: cookies/localStorage/IndexedDB/CacheStorage/service workers isolated",
+    "restart: WebGL2 shaders compile and render the expected pixel",
+    "restart: actual macOS renderer sandbox enforced",
+    "restart: camera/microphone/location denied before hardware access",
+    "restart: malformed container IDs rejected"
+  ],
+  "url": "http://127.0.0.1:53614/",
+  "backend": {
+    "canvasReadbackVersion": 1,
+    "cefVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+    "chromiumVersion": "154.0.8037.98",
+    "configRequiresRestart": true,
+    "configSchemaVersion": 1,
+    "engine": "chromium",
+    "event": "ready",
+    "identityPrivacyVersion": 2,
+    "nativePolicyGroups": {
+      "audioMedia": 0,
+      "displayFonts": 0,
+      "graphics": 0,
+      "identity": 0,
+      "inputHardening": 0,
+      "mediaNetwork": 0,
+      "packagingServices": 0,
+      "regionPermissions": 0,
+      "storagePolicies": 0,
+      "timingMath": 0
+    },
+    "privacyPatched": false,
+    "probeEnabled": true,
+    "releaseEligible": false,
+    "requiredPolicySchemaVersion": 2,
+    "supportedPersonaOptions": [
+      "canvas",
+      "blockWebGPUReadback",
+      "navigator",
+      "language",
+      "timezone"
+    ],
+    "testKeychain": true,
+    "testQuicRoute": false,
+    "version": 1,
+    "webglPrivacyVersion": 1,
+    "webgpuPixelReadbackVersion": 1,
+    "webgpuPrivacyVersion": 1,
+    "windowless": false,
+    "workerCanvasPrivacyVersion": 1
+  },
+  "identity": {
+    "appVersion": "5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "chrome": "object",
+    "firefox": "undefined",
+    "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "webgl": true,
+    "webgpu": true
+  },
+  "graphics": {
+    "error": 0,
+    "pixel": [
+      255,
+      0,
+      0,
+      255
+    ],
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)"
+  },
+  "sandbox": {
+    "rendererCount": 6,
+    "outsideProfileWriteDenied": true,
+    "parentControlAllowed": true
+  }
+}

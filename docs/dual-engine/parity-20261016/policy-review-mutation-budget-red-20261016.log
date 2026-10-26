@@ -1,0 +1,80 @@
+test_acknowledgement_binds_exact_owner_and_revision_without_seed (test_engine_policy_contract.PolicyContract.test_acknowledgement_binds_exact_owner_and_revision_without_seed) ... ok
+test_acknowledgement_uses_the_same_cumulative_resource_budget (test_engine_policy_contract.PolicyContract.test_acknowledgement_uses_the_same_cumulative_resource_budget) ... FAIL
+test_callbacks_cannot_change_the_snapshot_seen_by_later_validators (test_engine_policy_contract.PolicyContract.test_callbacks_cannot_change_the_snapshot_seen_by_later_validators) ... FAIL
+test_callbacks_cannot_replace_later_native_validators (test_engine_policy_contract.PolicyContract.test_callbacks_cannot_replace_later_native_validators) ... FAIL
+test_complete_contract_keeps_an_immutable_private_copy (test_engine_policy_contract.PolicyContract.test_complete_contract_keeps_an_immutable_private_copy) ... ok
+test_default_container_mapping_and_private_ownership_are_strict (test_engine_policy_contract.PolicyContract.test_default_container_mapping_and_private_ownership_are_strict) ... ok
+test_false_or_ambiguous_native_validation_cannot_acknowledge_a_group (test_engine_policy_contract.PolicyContract.test_false_or_ambiguous_native_validation_cannot_acknowledge_a_group) ... ok
+test_group_config_failure_has_no_sensitive_exception_payload (test_engine_policy_contract.PolicyContract.test_group_config_failure_has_no_sensitive_exception_payload) ... ok
+test_missing_or_old_group_rejects_in_either_presentation (test_engine_policy_contract.PolicyContract.test_missing_or_old_group_rejects_in_either_presentation) ... ok
+test_non_json_and_oversized_payloads_reject_before_group_validation (test_engine_policy_contract.PolicyContract.test_non_json_and_oversized_payloads_reject_before_group_validation) ... ok
+test_prepared_owner_and_revision_cannot_be_replayed_or_retargeted (test_engine_policy_contract.PolicyContract.test_prepared_owner_and_revision_cannot_be_replayed_or_retargeted) ... ok
+test_self_reported_capability_cannot_replace_a_native_validator (test_engine_policy_contract.PolicyContract.test_self_reported_capability_cannot_replace_a_native_validator) ... ok
+test_total_node_budget_rejects_before_unbounded_serialization (test_engine_policy_contract.PolicyContract.test_total_node_budget_rejects_before_unbounded_serialization) ... FAIL
+test_unknown_group_and_missing_protections_reject_even_master_off (test_engine_policy_contract.PolicyContract.test_unknown_group_and_missing_protections_reject_even_master_off) ... ok
+test_unknown_missing_fields_and_wrong_scalar_types_reject (test_engine_policy_contract.PolicyContract.test_unknown_missing_fields_and_wrong_scalar_types_reject) ... ok
+test_unsupported_presentation_never_uses_another_mode (test_engine_policy_contract.PolicyContract.test_unsupported_presentation_never_uses_another_mode) ... ok
+
+======================================================================
+FAIL: test_acknowledgement_uses_the_same_cumulative_resource_budget (test_engine_policy_contract.PolicyContract.test_acknowledgement_uses_the_same_cumulative_resource_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_engine_policy_contract.py", line 158, in test_acknowledgement_uses_the_same_cumulative_resource_budget
+    with self.assertRaises(ValueError):result.validate_ack(ack)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/engines/shared/engine_policy.py", line 153, in validate_ack
+    if json.dumps(reply, sort_keys=True, allow_nan=False) != json.dumps(expected, sort_keys=True):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/unittest/mock.py", line 1134, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/unittest/mock.py", line 1138, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/unittest/mock.py", line 1193, in _execute_mock_call
+    raise effect
+AssertionError: Oversized ack reached serialization
+
+======================================================================
+FAIL: test_callbacks_cannot_change_the_snapshot_seen_by_later_validators (test_engine_policy_contract.PolicyContract.test_callbacks_cannot_change_the_snapshot_seen_by_later_validators)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_engine_policy_contract.py", line 134, in test_callbacks_cannot_change_the_snapshot_seen_by_later_validators
+    with self.assertRaises(ValueError):self.validate(value,caps,validators=validators)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_callbacks_cannot_replace_later_native_validators (test_engine_policy_contract.PolicyContract.test_callbacks_cannot_replace_later_native_validators)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_engine_policy_contract.py", line 143, in test_callbacks_cannot_replace_later_native_validators
+    with self.assertRaises(ValueError):self.validate(value,caps,validators=validators)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_total_node_budget_rejects_before_unbounded_serialization (test_engine_policy_contract.PolicyContract.test_total_node_budget_rejects_before_unbounded_serialization)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_engine_policy_contract.py", line 150, in test_total_node_budget_rejects_before_unbounded_serialization
+    with self.assertRaises(ValueError):self.validate(value,caps,validators=validators)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_engine_policy_contract.py", line 26, in validate
+    return policy.validate_policy(*args,**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/engines/shared/engine_policy.py", line 197, in validate_policy
+    json.dumps(owner, sort_keys=True) != json.dumps(expected_owner, sort_keys=True)):
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/unittest/mock.py", line 1134, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/unittest/mock.py", line 1138, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/unittest/mock.py", line 1193, in _execute_mock_call
+    raise effect
+AssertionError: Oversized tree reached serialization
+
+----------------------------------------------------------------------
+Ran 16 tests in 1.955s
+
+FAILED (failures=4)

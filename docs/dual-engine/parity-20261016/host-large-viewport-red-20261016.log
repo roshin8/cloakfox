@@ -1,0 +1,115 @@
+✔ a valid response can span reads (1.635792ms)
+✔ buffered responses remain independently framed (0.130583ms)
+✔ EOF cannot be mistaken for an acknowledgement (1.310917ms)
+✔ valid JSON over the limit is rejected even with a newline in the same read (0.7075ms)
+✔ an unterminated oversized response is rejected (1.323958ms)
+✔ the exact permitted line size remains usable (1.335792ms)
+✔ a location shortcut targets chrome, without sending page input (0.784584ms)
+✔ stale or closed owners cannot focus the address bar (0.285458ms)
+✔ queued input is discarded after tab selection without a route revision change (0.125959ms)
+✔ queued input is discarded after disconnection without a route revision change (0.362791ms)
+✔ queued input is discarded after owner document replacement without a route revision change (0.161125ms)
+✔ queued input is discarded after window closure without a route revision change (0.058666ms)
+✔ queued input is discarded after chrome focus change without a route revision change (0.053958ms)
+✔ queued input is discarded after window deactivation without a route revision change (0.041542ms)
+✔ queued input is discarded after window modal without a route revision change (0.052042ms)
+✔ queued input is discarded after tab modal without a route revision change (0.047291ms)
+✔ a browser is reserved during startup and cancellation releases that owner (1.257917ms)
+✔ input queued behind an RPC is revalidated after a tab change (0.213458ms)
+✔ input queued behind an RPC is revalidated after a viewport change (0.046125ms)
+✔ input queued behind an RPC is revalidated after a configuration change (0.039667ms)
+✔ input queued behind an RPC is revalidated after a token change (0.041458ms)
+✔ hiding a tab preserves its renderer size and does not resize it to one pixel (0.893959ms)
+✖ large viewport 2560x1440 preserves presentation/input coordinates (1.377625ms)
+✖ large viewport 4096x2160 preserves presentation/input coordinates (0.158916ms)
+✖ large viewport 1200.4x800.4 preserves presentation/input coordinates (0.269458ms)
+✖ oversized surfaces fail before native allocation instead of stretching (0.103709ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 22
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 143.256625
+
+✖ failing tests:
+
+test at tests/engines/test_host_response_bounds.mjs:130:3
+✖ large viewport 2560x1440 preserves presentation/input coordinates (1.377625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   2048,
+  -   2560,
+      1440
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:143:12)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 2048, 1440 ],
+    expected: [ 2560, 1440 ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/engines/test_host_response_bounds.mjs:130:3
+✖ large viewport 4096x2160 preserves presentation/input coordinates (0.158916ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   2048,
+  +   2048
+  -   4096,
+  -   2160
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:143:12)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 2048, 2048 ],
+    expected: [ 4096, 2160 ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/engines/test_host_response_bounds.mjs:130:3
+✖ large viewport 1200.4x800.4 preserves presentation/input coordinates (0.269458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '1200.4px'
+  - '1200px'
+         ^
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:144:12)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '1200.4px',
+    expected: '1200px',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/engines/test_host_response_bounds.mjs:148:1
+✖ oversized surfaces fail before native allocation instead of stretching (0.103709ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:150:3)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /viewport.*bounds/i,
+    operator: 'rejects',
+    diff: 'simple'
+  }

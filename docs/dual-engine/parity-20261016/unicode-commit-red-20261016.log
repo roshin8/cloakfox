@@ -1,0 +1,14 @@
+test_committed_unicode_preserves_text_and_rejects_invalid_payloads (test_editing_keyboard.EditingKeyboard.test_committed_unicode_preserves_text_and_rejects_invalid_payloads) ... FAIL
+
+======================================================================
+FAIL: test_committed_unicode_preserves_text_and_rejects_invalid_payloads (test_editing_keyboard.EditingKeyboard.test_committed_unicode_preserves_text_and_rejects_invalid_payloads)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_editing_keyboard.py", line 29, in test_committed_unicode_preserves_text_and_rejects_invalid_payloads
+    self.assertTrue(reply['ok'],reply)
+AssertionError: False is not true : {'error': 'Unsupported command option', 'id': 6, 'ok': False, 'version': 1}
+
+----------------------------------------------------------------------
+Ran 1 test in 0.921s
+
+FAILED (failures=1)

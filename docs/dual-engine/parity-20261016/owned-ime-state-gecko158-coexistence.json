@@ -1,0 +1,61 @@
+{
+  "checks": [
+    "Concurrent same-origin cookies/localStorage/IndexedDB stay engine- and container-owned; canvas reads stable",
+    "Private Chromium destruction/regeneration does not alter persistent Gecko/Chromium state",
+    "Gecko remains usable after companion shutdown",
+    "Companion restart preserves its own state and remains usable after Gecko shutdown"
+  ],
+  "gecko": {
+    "buildID": "20261015182935",
+    "cloakfoxEnabled": true,
+    "resistFingerprinting": false,
+    "version": "158.0-beta.26"
+  },
+  "chromium": {
+    "canvasReadbackVersion": 1,
+    "cefVersion": "154.2.34+g14c5a08+chromium-154.0.8037.98",
+    "chromiumVersion": "154.0.8037.98",
+    "configRequiresRestart": true,
+    "configSchemaVersion": 1,
+    "engine": "chromium",
+    "event": "ready",
+    "fixtureNetworkVersion": 1,
+    "identityPrivacyVersion": 2,
+    "initialSnapshotVersion": 1,
+    "nativePolicyGroups": {
+      "audioMedia": 0,
+      "displayFonts": 0,
+      "graphics": 0,
+      "identity": 0,
+      "inputHardening": 0,
+      "mediaNetwork": 0,
+      "packagingServices": 0,
+      "regionPermissions": 0,
+      "storagePolicies": 0,
+      "timingMath": 0
+    },
+    "ownedImeStateVersion": 1,
+    "ownedImeVersion": 1,
+    "privacyPatched": false,
+    "probeEnabled": true,
+    "releaseEligible": false,
+    "requiredPolicySchemaVersion": 2,
+    "supportedPersonaOptions": [
+      "canvas",
+      "blockWebGPUReadback",
+      "navigator",
+      "language",
+      "timezone"
+    ],
+    "testKeychain": true,
+    "testQuicRoute": false,
+    "version": 1,
+    "webglPrivacyVersion": 1,
+    "webgpuPixelReadbackVersion": 1,
+    "webgpuPrivacyVersion": 1,
+    "windowless": false,
+    "workerCanvasPrivacyVersion": 1
+  },
+  "versionedConfigVerified": true,
+  "status": "passed"
+}

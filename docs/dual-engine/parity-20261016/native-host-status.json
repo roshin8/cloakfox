@@ -1,0 +1,337 @@
+{
+  "recordedAt": "2026-10-17T01:27:09.984740+00:00",
+  "platform": "macOS arm64",
+  "implementationPlanComplete": false,
+  "releaseEligible": false,
+  "installedAppModified": false,
+  "scope": "Experimental owned-loopback native viewport, not production engine switching or full Chromium privacy parity",
+  "chromiumVersion": "154.0.8037.98",
+  "geckoDevelopmentBuild": {
+    "buildID": "20261016152215",
+    "cloakfoxEnabled": true,
+    "pref": true,
+    "resistFingerprinting": false,
+    "sameDoc": true,
+    "system": true,
+    "version": "158.0-beta.26"
+  },
+  "candidate": "/Volumes/CloakfoxChromiumBuild/source-build/identity-companion-build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium",
+  "candidateSha256": "24774244f740284ddcb8f8d42a7c0c36a5e784dd13d42edfdb8653ad60490ac6",
+  "frameworkSha256": "d1c7b99c9c512f12ec87fff78f52072989c9f76780745fbeeac66ee689807298",
+  "geckoDevelopmentXulSha256": "120001b70255cbba2b6476deafbd06ec238cce323054299faeec0757fee494ee",
+  "engineSuite": {
+    "tests": 111,
+    "failures": 0,
+    "skips": 0,
+    "seconds": 130.381,
+    "log": "native-host-letterbox-full-suite-20261016.log",
+    "scope": "Implemented native Chromium features only; not full parity"
+  },
+  "nodeSuite": {
+    "tests": 317,
+    "failures": 0,
+    "skips": 0,
+    "log": "owner-focus-node-suite-20261016.log",
+    "scope": "Before new optional Gecko compositor prototype"
+  },
+  "geckoPython": {
+    "unitPasses": 127,
+    "initialSkips": 14,
+    "subtestsPassed": 13,
+    "previouslySkippedNativeTestsPassed": 14,
+    "remainingSkips": 0,
+    "logs": [
+      "gecko-python-host-regression-20261016.log",
+      "gecko-native-extra-host-regression-20261016.log"
+    ]
+  },
+  "cppTests": {
+    "tests": 2,
+    "failures": 0,
+    "command": "ctest --test-dir /Volumes/CloakfoxChromiumBuild/source-build/identity-companion-build --output-on-failure"
+  },
+  "sameWindow": {
+    "fixturePassed": true,
+    "realNativeTyping": [
+      "a"
+    ],
+    "wrongTabHidden": true,
+    "helperDeathRevoked": true,
+    "startupCancelledWithoutOrphan": true,
+    "reports": [
+      "native-host-gecko-20261016.json",
+      "native-host-real-input-20261016.json",
+      "native-unique-owner-green-20261016.json",
+      "native-unique-owner-green-20261016.live.json",
+      "native-queue-owner-green-20261016.json",
+      "native-letterbox-resize-green-20261016.json",
+      "native-letterbox-input-green-20261016.json"
+    ],
+    "nativeInputReliabilityVerified": false,
+    "firstClickAndChromeInputFixturePassed": true,
+    "duplicateOwnerRejected": true,
+    "letterboxResizeFixturePassed": true,
+    "hiddenRendererSizePreserved": true,
+    "tabRestorationPassed": true
+  },
+  "coexistence": {
+    "status": "passed",
+    "report": "native-host-coexistence-20261016.json"
+  },
+  "review": {
+    "scope": "Read-only current uncommitted experimental host boundary and engine-intent primitives",
+    "initialFindings": 3,
+    "findingsReproducedAndFixed": 3,
+    "additionalAuthorParserBoundsFixVerified": true,
+    "wholePortReviewComplete": false,
+    "focusFollowup": {
+      "findings": 2,
+      "addressed": [
+        "Queued valid-route input after owner/focus changes",
+        "Duplicate browser native ownership selects a covered helper"
+      ],
+      "tests": "17 actual-module tests plus rebuilt native single-click/chrome input/startup cancel/duplicate owner/tab hide/helper death fixture passed",
+      "scope": "Experimental host focus integration, not whole-branch privacy acceptance"
+    }
+  },
+  "unresolvedObservations": [
+    {
+      "description": "One earlier suite hit CEF teardown watchdog after WebGPU assertions passed; cause not identified. Five instrumented repeats and final full suite passed.",
+      "failedLog": "same-window-full-engine-suite-green-20261016.log",
+      "diagnosticLog": "webgpu-teardown-diagnostic-20261016.log"
+    },
+    {
+      "description": "Legacy native-view presentation can still cover chrome popups; opt-in Gecko-compositor presentation passed real address-bar popup visibility and input isolation. Full popup allocation/IME/AX/drag-drop/retina/video/general navigation acceptance remains pending."
+    }
+  ],
+  "remaining": [
+    "Native host IME/accessibility, popup/drag/drop, retina/video/occlusion and general navigation acceptance",
+    "Complete schema2/native capability registry and full BrowserForge projection",
+    "Remaining display/fonts, canonical canvas/GPU, audio, clocks, devices/input, permissions/media/WebRTC/proxy and browser/network privacy groups",
+    "Production helper provenance/Keychain/controller and actual UA-driven switching",
+    "Whole-port review, physical consent/capture tests, installed dual-engine release and matching DMG"
+  ],
+  "sourceSha256": {
+    "additions/browser/components/cloakfox/CloakfoxEngineHost.sys.mjs": "596c18ae9fe77cec12f530a40b705345619a0cca90a99240e2c5bdae0f6a365e",
+    "additions/cloakcfg/engine-host/surface_launch_mac.h": "1933242220c96bb7d7ccd2441f9e37790e0ec9d9d8ee4381a2caaf5d9b3a7f81",
+    "additions/cloakcfg/engine-host/surface_launch_mac.mm": "bff8725853f19f7a662c387c30b0d5e82bc665e90127b6d6af7a61d4e6227c61",
+    "additions/cloakcfg/engine-host/surface_transport_mac.h": "7cb45c90330a0810f0c8cf0d2676dd4f4a14bcdf595a81feeacab9a552396eec",
+    "additions/cloakcfg/engine-host/surface_transport_mac.mm": "71e34ec91ca607717aae2ec8a25859913772d48c2ef422e0853a0eeffd49a3c0",
+    "additions/widget/cocoa/CloakfoxEngineHost.h": "1a4855f6693ed46d59eb43dc70b44df685b51d441fec404a05cda3cf188e29d2",
+    "additions/widget/cocoa/CloakfoxEngineHost.mm": "efe8a06c87b4a5136bd0a238be6d22db4c537de4e4f8e5de0729f9bb1deb54b6",
+    "additions/widget/nsICloakfoxEngineHost.idl": "3f4fcf70f160e24c2229412eac4f03394484bc259aa9e33db1813834c57debeb",
+    "engines/chromium/CMakeLists.txt": "51ae7d475d6c8e778e23b5ad16fbdee731030aaa1550806a971ad17d40e5015c",
+    "engines/chromium/src/browser_client.cc": "9f7d0e3855de15fac56ae273a9664e847e282d40d83ebdba1526fd78807bc4a1",
+    "engines/chromium/src/browser_client.h": "44954f29af99130ba9e1fa2ca706608fbeb9f1c0ad95988a0426c7db72181959",
+    "engines/chromium/src/container_paths.cc": "75c3ed76894dcd73c9f0aa6b056d3bfe6e5d37cf5f056609d60b07f24909f535",
+    "engines/chromium/src/container_paths.h": "b2081cb9dfda701ffff844a3f8c0a172599dc82d04a58f104d5a824992d11c91",
+    "engines/chromium/src/control_channel.cc": "35ad99ff776c57c091b9d7a9cd636f368fc3b1d4c60a6ec01aa85bf820227f26",
+    "engines/chromium/src/control_channel.h": "9c58764f2d7b82468febf5a1fe41525973c776fee5701ee68e939a9daf4388cd",
+    "engines/chromium/src/main_mac.mm": "b88bf66e4cc75e1f6af5b0d8f4eaa1b4be1d97695dfaf0be0a566873e645b0f2",
+    "engines/chromium/src/offscreen_client.cc": "af8202b1ec085056393ab55b67e04a5b7fd6f86d9ccb43c879aea3cd319ac48f",
+    "engines/chromium/src/offscreen_client.h": "019da5d429afa993d732c90b5920198a534dc2a3a8ed0f431a3c53d7fd964e4a",
+    "engines/chromium/src/persona_config.cc": "79e986edb749e0bb7bf38b0f2640c48f84a856d73f117ab10f92b26a6c6d2c9b",
+    "engines/chromium/src/persona_config.h": "cf85036aefd3e05c43a904a11c1e2065e167e39fd85af29f40a0a173eb3828b3",
+    "engines/chromium/src/process_helper_mac.cc": "0144206e6652a81c5efd5565a5a30cde3068145c5da04a63021f7be0e39597f7",
+    "engines/shared/engine_policy.py": "4e4e091459f9e5588ea6a5d7fd0e9998e5c4f66b4b0ad727af95c2877da15051",
+    "engines/shared/persona_config.py": "8bb420c0b9650331226d95702a150881fdfb29110afcb9da7cce5bac7faabbaa",
+    "patches/cloakfox-native-engine-host.patch": "b12b5e2fcec0925c1fce6a9b0bd5d8bef6929ae23c4040342a742d5544513e7b"
+  },
+  "sourceHashesScope": "Historical earlier host checkpoint retained below; current reviewed host and schema2 contract source hashes are scoped separately in latestVerification. BrowserForge CPU increment source/build is pending native runtime verification.",
+  "compositorPrototype": {
+    "enabledByDefault": true,
+    "installed": false,
+    "runtimeVerified": true,
+    "baseline": "native-gecko-compositor-red-20261016.log",
+    "sourceBuildInProgress": false,
+    "scope": "Owned loopback only; native window/input/epoch/resize/lifetime plus CUA popup visibility verified",
+    "reports": [
+      "epoch-bounds-green-20261016.json",
+      "epoch-bounds-ui-20261016.json"
+    ],
+    "reviewFindingsFixed": [
+      "Retired viewport epoch pixels",
+      "Large viewport display/input mismatch"
+    ],
+    "defaultScope": "Development local-fixture API only; service pref still defaults off in normal browsing"
+  },
+  "latestVerification": {
+    "scope": "Host repairs/presentation and shared contract; not production engine switching or full native privacy parity",
+    "reports": [
+      "epoch-bounds-green-20261016.json",
+      "epoch-bounds-ui-20261016.json",
+      "separate-host-green-20261016.json"
+    ],
+    "chromiumImplementedFeatureTests": {
+      "passes": 125,
+      "seconds": 118.008,
+      "skips": 0,
+      "log": "policy-registry-engine-full-20261016.log",
+      "scope": "Before subsequent contract repair tests and pending BrowserForge CPU increment"
+    },
+    "currentContractAndIntentTests": {
+      "passes": 21,
+      "log": "policy-review-final-green-20261016.log"
+    },
+    "nodeTests": 334,
+    "geckoPythonTests": 141,
+    "geckoPythonSubtests": 13,
+    "cppTests": 2,
+    "geckoGeometryFailures": [],
+    "settingsPreferenceRuntime": "presentation-settings-runtime-20261016.log",
+    "sourceHashes": {
+      "additions/browser/components/cloakfox/CloakfoxEngineHost.sys.mjs": "f99d3fff019b1741c2ccccef1cea9494e8bdf7709234a25af72c1406a28af247",
+      "additions/widget/cocoa/CloakfoxEngineHost.mm": "2005a35752100c78e25f72b84f80cbf6d735454f88226f5e3a276b27ce58ea5a",
+      "additions/widget/nsICloakfoxEngineHost.idl": "260f4fb9926a8dfd31a2d513b50213ce5b288f0a1c988fd45c04ac3afc262650",
+      "additions/browser/components/cloakfox/CloakfoxEnginePreferences.sys.mjs": "59012431c4a65114390f40d1e58e711a8f2eb2f54a2c01ca38aab5e0e2792b88",
+      "engines/shared/engine_policy.py": "31528acf53c376e90a3b36f5fbe89f0a9dfeb84dac99453bb3036dddcf251578",
+      "engines/shared/privacy_contract.json": "bd79d0872f918a5dc9644538dbe70e0a75c87eba32c97397727b16adbbc57c47"
+    },
+    "defaultCompositorReport": "default-compositor-green-20261016.json"
+  },
+  "pendingBrowserForgeCPU": {
+    "scope": "Partial native identity version2; not complete BrowserForge parity",
+    "range": [
+      1,
+      128
+    ],
+    "defaultsUnchanged": [
+      4,
+      8,
+      16
+    ],
+    "oldHelperRefusesNewCounts": true,
+    "sourcePatch": "engines/chromium/browserforge-patch-lock.json",
+    "statusFile": "/Volumes/CloakfoxChromiumBuild/source-build/browserforge-build-status.json",
+    "runtimeVerified": true,
+    "previousSDKAndAppPreserved": true,
+    "allRealmCountsPassed": [
+      2,
+      12,
+      24
+    ],
+    "fullAcceptancePending": false,
+    "engineTests": 135,
+    "cppTests": 2,
+    "frameworkSha256": "8cc6dc16a34d6d718bcafdecf5ff30fdc9def8ca2f38e2d76d561b34aee31c86",
+    "report": "browserforge-build-status.json",
+    "candidateSha256": "45d7eaa3c9985247f001a3ddd42b5207a181354df717b72eb249e8164dc25e76"
+  },
+  "presentationPreference": {
+    "scope": "Per-container saved preference ready for production controller; actual local-fixture modes tested independently",
+    "default": "same-window",
+    "alternatives": [
+      "same-window",
+      "separate-window"
+    ],
+    "privacyPreferenceWrites": false,
+    "installed": false
+  },
+  "nativeEditingVerification": {
+    "scope": "Bounded native editing keys only; full IME/AX remain pending",
+    "testsPassed": true,
+    "installed": false,
+    "reports": [
+      "editing-host-ui-20261016.json",
+      "native-scroll-host-20261016.json",
+      "browserforge-separate-host-20261016.json"
+    ],
+    "typedSequence": [
+      "a",
+      "ac",
+      "a",
+      "ab"
+    ],
+    "scrollPixels": 900,
+    "nodeControlsPasses": 31,
+    "fullCandidateSuitePending": false,
+    "sourceHashes": {
+      "additions/widget/cocoa/CloakfoxEngineHost.mm": "ad81ca1063f8414913857d71b0e62dee1e0019d15e0f84cd7151ec32e739301b",
+      "engines/chromium/src/browser_client.cc": "3a58c6b9ba121f46929fcc27674fe5194e0298481ff93460b47045fb0896398c",
+      "tests/engines/test_editing_keyboard.py": "aa3b0372b8dd597a4f4b2c2036232f82ad8826bba4e365a973e408388996424f"
+    }
+  },
+  "popupVerification": {
+    "scope": "Owned select-widget composition, not general popup windows or full host completion",
+    "testsPassed": true,
+    "installed": false,
+    "engineTests": 137,
+    "seconds": 112.114,
+    "cppTests": 2,
+    "reports": [
+      "popup-host-ui-20261016.json",
+      "video-host-20261016.json"
+    ],
+    "actualPointerSelection": "Second",
+    "nativeVideoFrames": 16,
+    "sourceHashes": {
+      "engines/chromium/src/offscreen_client.h": "7a5842f7f25efaba76954628f3e94b4aa6f80e338a112ae4a58c9441a568a5e3",
+      "engines/chromium/src/offscreen_client.cc": "fecb3228c2416e3e84ff994a8905d37779c70d2a5c290ee5766c03501434e796",
+      "engines/chromium/src/browser_client.cc": "11010528d6ce016eca46f084dd90de57e01d06b9b95f08fb70fae31304756fe5"
+    }
+  },
+  "initialSnapshotVerification": {
+    "statusFile": "initial-snapshot-build-status.json",
+    "runtimeTests": 143,
+    "runtimeFailures": 0,
+    "runtimeSkips": 0,
+    "runtimeSeconds": 118.72,
+    "cppTests": 2,
+    "frameworkSha256": "664e3c9ffd70c9cdfead81a37565dd5b76e401e077ac80e1ec98e3bd45d36960",
+    "sameWindowReport": "initial-snapshot-host-20261016.json",
+    "separateWindowReport": "initial-snapshot-separate-host-20261016.json",
+    "sdkMismatchRefused": true,
+    "scope": "Partial immutable initial snapshot v1, not schema2 or complete group parity"
+  },
+  "fixtureNetworkReviewFix": {
+    "review": "current-boundary-review-20261016.md",
+    "status": "Verified: RED to GREEN and full suite plus both presentations",
+    "nativeLock": "engines/chromium/fixture-network-patch-lock.json",
+    "regression": "page/dedicated/shared/service-worker socket escaped before fix; same-origin socket positive controls",
+    "legacySameWindowRefusal": "legacy-fixture-network-refused-20261016.json",
+    "legacySeparateWindowRefusal": "legacy-separate-fixture-network-refused-20261016.json",
+    "engineNodePassed": 44,
+    "geckoNodePassed": 305,
+    "geckoPythonPassed": 141,
+    "geckoSubtestsPassed": 13,
+    "geckoPythonSeconds": 77.78,
+    "runtimeTests": 145,
+    "runtimeSeconds": 113.961,
+    "runtimeFailures": 0,
+    "runtimeSkips": 0,
+    "cppTests": 2,
+    "frameworkSha256": "88502bc147486e07e88e6080a82ca6d95240ce656bac3b21c199e35e9908e79a",
+    "sameWindowReport": "fixture-network-host-20261016.json",
+    "separateWindowReport": "fixture-network-separate-host-20261016.json"
+  },
+  "ownedImeVerification": {
+    "status": "Automated development increment verified; physical IME pending",
+    "engineTests": 154,
+    "engineSeconds": 118.494,
+    "cppTests": 2,
+    "engineNodePassed": 61,
+    "geckoNodePassed": 305,
+    "geckoPythonPassed": 141,
+    "geckoSubtestsPassed": 13,
+    "geckoPythonSeconds": 71.87,
+    "frameworkSha256": "7b2a1d9a925fd91685af30bfadaae61e70ca480f372ac9ac84e7c67c6ef07b85",
+    "clientSha256": "132fee23fdd3e2e42731782af7a1008be8987c355a557f94db0d7f4239ad4c3c",
+    "lock": "engines/chromium/owned-ime-state-patch-lock.json",
+    "sdkVersion": "154.2.34+g14c5a08+chromium-154.0.8037.98",
+    "review": "owned-ime-boundary-review-20261016.md",
+    "sameWindowReport": "owned-ime-state-host-20261016.json",
+    "legacyInputStateGateRefusal": "owned-ime-state-legacy-refused-20261016.json",
+    "physicalInput": "Incomplete: computer-use tool reports Mac locked; unlock question pending",
+    "coldStart": "Not accepted: first cold development clone delayed before main/dyld; later warm runs passed",
+    "fullPortComplete": false,
+    "installed": false,
+    "sourceHashes": {
+      "engines/chromium/src/browser_client.cc": "dafe39ba10e59deae4b34e0f6db3f1e9b2f6bca3a92460c620f9d7e76edd5d31",
+      "engines/chromium/src/process_helper_mac.cc": "583cfaddebb7fb64a582cf14ff2bce6359a9a38f69192e0495e9d0f307fdaecc",
+      "additions/widget/cocoa/CloakfoxEngineHost.mm": "41d8202623a3735f79a7b229576e3cf603d2fb0e62f2b8abfff31ced31d86872",
+      "additions/widget/cocoa/CloakfoxTextInputClient.mm": "1dfc3b03f7ad5bf033e4e16a2811e67d58793e42882c7b12ad4e31a15250830a",
+      "additions/browser/components/cloakfox/CloakfoxEngineHost.sys.mjs": "8c54dddf2f7573113dfac2a1611948cdded490c30c481548af48e22850dba822"
+    },
+    "separateWindowReport": "owned-ime-state-separate-host-20261016.json"
+  }
+}

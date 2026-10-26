@@ -1,0 +1,56 @@
+✔ a valid response can span reads (1.205ms)
+✔ buffered responses remain independently framed (0.105083ms)
+✔ EOF cannot be mistaken for an acknowledgement (0.265834ms)
+✔ valid JSON over the limit is rejected even with a newline in the same read (0.252583ms)
+✔ an unterminated oversized response is rejected (0.783167ms)
+✔ the exact permitted line size remains usable (1.094833ms)
+✔ a location shortcut targets chrome, without sending page input (0.209458ms)
+✔ stale or closed owners cannot focus the address bar (0.100625ms)
+✔ queued input is discarded after tab selection without a route revision change (0.083083ms)
+✔ queued input is discarded after disconnection without a route revision change (0.114083ms)
+✔ queued input is discarded after owner document replacement without a route revision change (0.076208ms)
+✔ queued input is discarded after window closure without a route revision change (0.052ms)
+✔ queued input is discarded after chrome focus change without a route revision change (0.055584ms)
+✔ queued input is discarded after window deactivation without a route revision change (0.047042ms)
+✔ queued input is discarded after window modal without a route revision change (0.052666ms)
+✔ queued input is discarded after tab modal without a route revision change (0.058041ms)
+✔ a browser is reserved during startup and cancellation releases that owner (1.126917ms)
+✔ input queued behind an RPC is revalidated after a tab change (0.152541ms)
+✔ input queued behind an RPC is revalidated after a viewport change (0.043209ms)
+✔ input queued behind an RPC is revalidated after a configuration change (0.045208ms)
+✔ input queued behind an RPC is revalidated after a token change (0.043834ms)
+✖ hiding a tab preserves its renderer size and does not resize it to one pixel (2.479375ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 21
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 111.817333
+
+✖ failing tests:
+
+test at tests/engines/test_host_response_bounds.mjs:115:1
+✖ hiding a tab preserves its renderer size and does not resize it to one pixel (2.479375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  +   height: 1,
+  -   height: 800,
+      visible: false,
+  +   width: 1
+  -   width: 1200
+    }
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:124:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { width: 1, height: 1, visible: false },
+    expected: { width: 1200, height: 800, visible: false },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

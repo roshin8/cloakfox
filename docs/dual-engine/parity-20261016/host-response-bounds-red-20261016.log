@@ -1,0 +1,30 @@
+✔ a valid response can span reads (1.19275ms)
+✔ buffered responses remain independently framed (0.106167ms)
+✔ EOF cannot be mistaken for an acknowledgement (0.250667ms)
+✖ valid JSON over the limit is rejected even with a newline in the same read (1.54325ms)
+✔ an unterminated oversized response is rejected (0.559666ms)
+✔ the exact permitted line size remains usable (0.66025ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 103.167875
+
+✖ failing tests:
+
+test at tests/engines/test_host_response_bounds.mjs:20:1
+✖ valid JSON over the limit is rejected even with a newline in the same read (1.54325ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:21:3)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /Oversized native response/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

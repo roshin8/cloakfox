@@ -1,0 +1,253 @@
+{
+  "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+  "runtimeBuild": "20261015182935",
+  "date": "2026-10-16",
+  "settingsScope": "disposable profiles only; saved user preferences and profiles unchanged",
+  "privacyHardeningDisabled": false,
+  "cases": [
+    {
+      "session": "shared",
+      "case": "original-1",
+      "cloakfoxEnabled": true,
+      "changedConfigKeys": [],
+      "httpResponses": [
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "server": "",
+          "status": 200
+        },
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "server": "",
+          "status": 403
+        }
+      ],
+      "page": {
+        "url": "https://www.aa.com/",
+        "title": "Access Denied",
+        "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+        "platform": "Win32",
+        "uaData": [
+          {
+            "brand": "Not_A Brand",
+            "version": "99"
+          },
+          {
+            "brand": "Chromium",
+            "version": "146"
+          },
+          {
+            "brand": "Google Chrome",
+            "version": "146"
+          }
+        ]
+      }
+    },
+    {
+      "session": "shared",
+      "case": "firefox-1",
+      "cloakfoxEnabled": true,
+      "changedConfigKeys": [
+        "headers.User-Agent",
+        "navigator.appVersion",
+        "navigator.userAgent"
+      ],
+      "httpResponses": [
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+          "server": "",
+          "status": 403
+        }
+      ],
+      "page": {
+        "url": "https://www.aa.com/",
+        "title": "Access Denied",
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+        "platform": "Win32",
+        "uaData": null
+      }
+    },
+    {
+      "session": "shared",
+      "case": "original-2",
+      "cloakfoxEnabled": true,
+      "changedConfigKeys": [],
+      "httpResponses": [
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "server": "",
+          "status": 200
+        },
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "server": "",
+          "status": 403
+        }
+      ],
+      "page": {
+        "url": "https://www.aa.com/",
+        "title": "Access Denied",
+        "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+        "platform": "Win32",
+        "uaData": [
+          {
+            "brand": "Not_A Brand",
+            "version": "99"
+          },
+          {
+            "brand": "Chromium",
+            "version": "146"
+          },
+          {
+            "brand": "Google Chrome",
+            "version": "146"
+          }
+        ]
+      }
+    },
+    {
+      "session": "shared",
+      "case": "firefox-2",
+      "cloakfoxEnabled": true,
+      "changedConfigKeys": [
+        "headers.User-Agent",
+        "navigator.appVersion",
+        "navigator.userAgent"
+      ],
+      "httpResponses": [
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+          "server": "",
+          "status": 403
+        }
+      ],
+      "page": {
+        "url": "https://www.aa.com/",
+        "title": "Access Denied",
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+        "platform": "Win32",
+        "uaData": null
+      }
+    },
+    {
+      "session": "fresh",
+      "case": "firefox-fresh",
+      "cloakfoxEnabled": true,
+      "changedConfigKeys": [
+        "headers.User-Agent",
+        "navigator.appVersion",
+        "navigator.userAgent"
+      ],
+      "httpResponses": [
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+          "server": "",
+          "status": 200
+        },
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+          "server": "",
+          "status": 301
+        },
+        {
+          "path": "/homePage.do",
+          "requestUA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+          "server": "",
+          "status": 200
+        }
+      ],
+      "page": {
+        "url": "https://www.aa.com/homePage.do",
+        "title": "American Airlines - Airline tickets and low fares at aa.com",
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+        "platform": "Win32",
+        "uaData": null
+      }
+    },
+    {
+      "session": "fresh",
+      "case": "original-fresh",
+      "cloakfoxEnabled": true,
+      "changedConfigKeys": [],
+      "httpResponses": [
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "server": "",
+          "status": 200
+        },
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "server": "",
+          "status": 403
+        }
+      ],
+      "page": {
+        "url": "https://www.aa.com/",
+        "title": "Access Denied",
+        "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+        "platform": "Win32",
+        "uaData": [
+          {
+            "brand": "Not_A Brand",
+            "version": "99"
+          },
+          {
+            "brand": "Chromium",
+            "version": "146"
+          },
+          {
+            "brand": "Google Chrome",
+            "version": "146"
+          }
+        ]
+      }
+    },
+    {
+      "session": "fresh",
+      "case": "firefox-confirm-fresh",
+      "cloakfoxEnabled": true,
+      "changedConfigKeys": [
+        "headers.User-Agent",
+        "navigator.appVersion",
+        "navigator.userAgent"
+      ],
+      "httpResponses": [
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+          "server": "",
+          "status": 200
+        },
+        {
+          "path": "/",
+          "requestUA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+          "server": "",
+          "status": 301
+        },
+        {
+          "path": "/homePage.do",
+          "requestUA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+          "server": "",
+          "status": 200
+        }
+      ],
+      "page": {
+        "url": "https://www.aa.com/homePage.do",
+        "title": "American Airlines - Airline tickets and low fares at aa.com",
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+        "platform": "Win32",
+        "uaData": null
+      }
+    }
+  ]
+}

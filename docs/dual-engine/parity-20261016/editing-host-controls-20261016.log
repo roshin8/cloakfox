@@ -1,0 +1,39 @@
+✔ presentation defaults to same-window and remains container-owned (1.794166ms)
+✔ invalid container IDs never alias Default or another owner (0.731209ms)
+✔ invalid modes cannot mutate the saved presentation or any privacy setting (0.454792ms)
+✔ a malformed stored mode uses same-window without rewriting user policy (0.655875ms)
+✔ a valid response can span reads (0.924083ms)
+✔ buffered responses remain independently framed (0.092458ms)
+✔ EOF cannot be mistaken for an acknowledgement (0.246042ms)
+✔ valid JSON over the limit is rejected even with a newline in the same read (0.935083ms)
+✔ an unterminated oversized response is rejected (0.928958ms)
+✔ the exact permitted line size remains usable (1.123208ms)
+✔ a location shortcut targets chrome, without sending page input (0.331042ms)
+✔ stale or closed owners cannot focus the address bar (0.109916ms)
+✔ queued input is discarded after tab selection without a route revision change (0.101958ms)
+✔ queued input is discarded after disconnection without a route revision change (0.122667ms)
+✔ queued input is discarded after owner document replacement without a route revision change (0.069ms)
+✔ queued input is discarded after window closure without a route revision change (0.053125ms)
+✔ queued input is discarded after chrome focus change without a route revision change (0.0695ms)
+✔ queued input is discarded after window deactivation without a route revision change (0.041583ms)
+✔ queued input is discarded after window modal without a route revision change (0.047375ms)
+✔ queued input is discarded after tab modal without a route revision change (0.04475ms)
+✔ a browser is reserved during startup and cancellation releases that owner (1.32125ms)
+✔ input queued behind an RPC is revalidated after a tab change (0.150708ms)
+✔ input queued behind an RPC is revalidated after a viewport change (0.05525ms)
+✔ input queued behind an RPC is revalidated after a configuration change (0.042959ms)
+✔ input queued behind an RPC is revalidated after a token change (0.040416ms)
+✔ hiding a tab preserves its renderer size and does not resize it to one pixel (0.846208ms)
+✔ large viewport 2560x1440 preserves presentation/input coordinates (0.139834ms)
+✔ large viewport 4096x2160 preserves presentation/input coordinates (0.05ms)
+✔ large viewport 1200.4x800.4 preserves presentation/input coordinates (0.074167ms)
+✔ oversized surfaces fail before native allocation instead of stretching (0.09975ms)
+✔ unknown presentation modes reject before launching a helper (0.586417ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 107.303209

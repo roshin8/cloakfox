@@ -1,0 +1,20 @@
+test_serialization_never_revisits_the_mutable_original (test_engine_policy_contract.PolicyContract.test_serialization_never_revisits_the_mutable_original) ... ERROR
+
+======================================================================
+ERROR: test_serialization_never_revisits_the_mutable_original (test_engine_policy_contract.PolicyContract.test_serialization_never_revisits_the_mutable_original)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_engine_policy_contract.py", line 172, in test_serialization_never_revisits_the_mutable_original
+    result=self.validate(value,caps,validators=validators)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_engine_policy_contract.py", line 26, in validate
+    return policy.validate_policy(*args,**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/engines/shared/engine_policy.py", line 270, in validate_policy
+    raise ValueError('Native privacy configuration rejected: ' + name) from None
+ValueError: Native privacy configuration rejected: graphics
+
+----------------------------------------------------------------------
+Ran 1 test in 0.038s
+
+FAILED (errors=1)

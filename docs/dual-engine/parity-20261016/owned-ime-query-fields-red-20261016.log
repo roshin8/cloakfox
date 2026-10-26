@@ -1,0 +1,82 @@
+✔ a valid response can span reads (1.576083ms)
+✔ buffered responses remain independently framed (0.0945ms)
+✔ EOF cannot be mistaken for an acknowledgement (0.236917ms)
+✔ valid JSON over the limit is rejected even with a newline in the same read (0.23325ms)
+✔ an unterminated oversized response is rejected (0.570875ms)
+✔ the exact permitted line size remains usable (0.670666ms)
+✔ a location shortcut targets chrome, without sending page input (0.1835ms)
+✔ stale or closed owners cannot focus the address bar (0.087166ms)
+✔ queued input is discarded after tab selection without a route revision change (0.074416ms)
+✔ queued input is discarded after disconnection without a route revision change (0.104125ms)
+✔ queued input is discarded after owner document replacement without a route revision change (0.057709ms)
+✔ queued input is discarded after window closure without a route revision change (0.044917ms)
+✔ queued input is discarded after chrome focus change without a route revision change (0.038875ms)
+✔ queued input is discarded after window deactivation without a route revision change (0.035166ms)
+✔ queued input is discarded after window modal without a route revision change (0.039083ms)
+✔ queued input is discarded after tab modal without a route revision change (0.042583ms)
+✔ a browser is reserved during startup and cancellation releases that owner (1.163042ms)
+✔ input queued behind an RPC is revalidated after a tab change (0.174083ms)
+✔ input queued behind an RPC is revalidated after a viewport change (0.053291ms)
+✔ input queued behind an RPC is revalidated after a configuration change (0.043083ms)
+✔ input queued behind an RPC is revalidated after a token change (0.039458ms)
+✔ hiding a tab preserves its renderer size and does not resize it to one pixel (0.854208ms)
+✔ large viewport 2560x1440 preserves presentation/input coordinates (0.141417ms)
+✔ large viewport 4096x2160 preserves presentation/input coordinates (0.054125ms)
+✔ large viewport 1200.4x800.4 preserves presentation/input coordinates (0.060125ms)
+✔ oversized surfaces fail before native allocation instead of stretching (0.122084ms)
+✔ unknown presentation modes reject before launching a helper (0.521083ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.669125ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.402583ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.361791ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.380375ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.368292ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.395208ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.356083ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.369292ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.365791ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.35375ms)
+✔ the authenticated fixture origin is bound before configuration and first navigation (0.645208ms)
+✔ native focus state is received while no RPC is pending (7.414042ms)
+✔ an interleaved focus event cannot consume an RPC acknowledgement (0.418584ms)
+✔ foreign and stale editing state cannot update an owned native view (0.06575ms)
+✔ malformed owned editing state is rejected without native state calls (0.197584ms)
+✔ closing the owner rejects an outstanding RPC and drains its reader (0.395208ms)
+✔ owned composition cancellation survives tab focus retirement without allowing text (0.120708ms)
+✔ owned composition cancellation survives chrome focus retirement without allowing text (0.042167ms)
+✔ owned composition cancellation survives window focus retirement without allowing text (0.036833ms)
+✖ editing-state queries send only the owned protocol fields, without viewport dimensions (1.507042ms)
+ℹ tests 47
+ℹ suites 0
+ℹ pass 46
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 125.212875
+
+✖ failing tests:
+
+test at tests/engines/test_host_response_bounds.mjs:271:1
+✖ editing-state queries send only the owned protocol fields, without viewport dimensions (1.507042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'browser',
+      'configRevision',
+  +   'height',
+      'token',
+      'viewportRevision',
+  +   'width'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:277:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'browser', 'configRevision', 'height', 'token', 'viewportRevision', 'width' ],
+    expected: [ 'browser', 'configRevision', 'token', 'viewportRevision' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

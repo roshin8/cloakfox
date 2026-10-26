@@ -29,7 +29,7 @@ Gecko158 additions missing from the old157 checklist include AudioWorklet privac
 <!-- BEGIN GENERATED GECKO158 INVENTORY -->
 ## Active Gecko158 source inventory
 
-Canonical patch resolver: 145 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
+Canonical patch resolver: 158 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
 
 Canvas/GPU/config entries have partial Chromium equivalents described above. Gecko UI, branding, build and compatibility patches can be engine-specific; no patch is mechanically applied to Chromium.
 
@@ -123,6 +123,7 @@ Canvas/GPU/config entries have partial Chromium equivalents described above. Gec
 - `patches/cloakfox-math-data-correctness.patch`
 - `patches/cloakfox-math-data-toggle.patch`
 - `patches/cloakfox-hackerrank-media-recovery.patch`
+- `patches/cloakfox-coderpad-media.patch`
 - `patches/cloakfox-appearance-profile.patch`
 - `patches/cloakfox-screen-presentation.patch`
 - `patches/cloakfox-testdome-screen-management.patch`
@@ -178,6 +179,18 @@ Canvas/GPU/config entries have partial Chromium equivalents described above. Gec
 - `patches/librewolf/urlbarprovider-interventions.patch`
 - `patches/canvas-complete-renderer.patch`
 - `patches/cloakfox-native-engine-host.patch`
+- `patches/cloakfox-camera-nicknames.patch`
+- `patches/cloakfox-neutral-camera-labels.patch`
+- `patches/cloakfox-capture-label-scope.patch`
+- `patches/cloakfox-audio-website-labels.patch`
+- `patches/cloakfox-camera-exposure.patch`
+- `patches/cloakfox-microphone-exposure.patch`
+- `patches/cloakfox-macos-stable-toolbar.patch`
+- `patches/cloakfox-macos-colored-window-buttons.patch`
+- `patches/cloakfox-macos-bundle-icon.patch`
+- `patches/cloakfox-site-data-container-scope.patch`
+- `patches/cloakfox-trust-panel-site-data-scope.patch`
+- `patches/cloakfox-container-site-cache.patch`
 
 ## Optional/privacy preference inventory
 
@@ -209,26 +222,63 @@ Literal cloakfox.opt / cloakfox.webrtc names plus dynamically constructed userOp
 
 All id/data-pref bindings from component HTML, including secondary settings panels. This is a UI audit checklist; the Chromium companion does not expose the Gecko settings UI. Dynamic panels/API fields still require manual review.
 
+- `allow-website`
 - `cfx-appearance-permissions`
 - `cfx-appearance-restart`
 - `cfx-appearance-reveal`
 - `cfx-appearance-status`
 - `cfx-browser-families`
 - `cfx-browser-family-help`
+- `cfx-camera-configuration`
+- `cfx-camera-device-form`
+- `cfx-camera-device-name`
+- `cfx-camera-device-refresh`
+- `cfx-camera-device-reset`
+- `cfx-camera-device-save`
+- `cfx-camera-device-status`
+- `cfx-camera-exposure-controls`
+- `cfx-camera-exposure-devices`
+- `cfx-camera-exposure-form`
+- `cfx-camera-exposure-heading`
+- `cfx-camera-exposure-help`
+- `cfx-camera-exposure-mode`
+- `cfx-camera-exposure-refresh`
+- `cfx-camera-exposure-save`
+- `cfx-camera-exposure-status`
+- `cfx-camera-website-custom`
+- `cfx-camera-website-custom-form`
+- `cfx-camera-website-custom-help`
+- `cfx-camera-website-device`
+- `cfx-camera-website-heading`
+- `cfx-camera-website-help`
+- `cfx-camera-website-label`
+- `cfx-camera-website-save`
+- `cfx-camera-website-status`
+- `cfx-check-similarity`
 - `cfx-chromium-presentation`
 - `cfx-chromium-presentation-help`
 - `cfx-chromium-presentation-status`
 - `cfx-chromium-status`
 - `cfx-clear`
 - `cfx-clear-overrides`
+- `cfx-colored-inactive-buttons`
 - `cfx-consistency-inspector`
 - `cfx-container-gpu-status`
 - `cfx-container-select`
 - `cfx-dns-settings`
 - `cfx-enabled`
+- `cfx-engine-settings`
 - `cfx-engine-title`
 - `cfx-engine-version`
 - `cfx-firefox-appearance`
+- `cfx-font-custom`
+- `cfx-font-effective`
+- `cfx-font-generated`
+- `cfx-font-reset`
+- `cfx-font-save`
+- `cfx-font-settings`
+- `cfx-font-source`
+- `cfx-font-status`
 - `cfx-forget-data`
 - `cfx-forget-status`
 - `cfx-generate-help`
@@ -238,8 +288,36 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-help-clipboard-masking`
 - `cfx-help-focus-masking`
 - `cfx-help-math-data-noise`
+- `cfx-identity-help`
+- `cfx-identity-maintenance`
 - `cfx-identity-status`
 - `cfx-ip-lookup`
+- `cfx-maintenance-title`
+- `cfx-microphone-configuration`
+- `cfx-microphone-device-form`
+- `cfx-microphone-device-name`
+- `cfx-microphone-device-refresh`
+- `cfx-microphone-device-reset`
+- `cfx-microphone-device-save`
+- `cfx-microphone-device-status`
+- `cfx-microphone-exposure-controls`
+- `cfx-microphone-exposure-devices`
+- `cfx-microphone-exposure-form`
+- `cfx-microphone-exposure-heading`
+- `cfx-microphone-exposure-help`
+- `cfx-microphone-exposure-mode`
+- `cfx-microphone-exposure-refresh`
+- `cfx-microphone-exposure-save`
+- `cfx-microphone-exposure-status`
+- `cfx-microphone-website-custom`
+- `cfx-microphone-website-custom-form`
+- `cfx-microphone-website-custom-help`
+- `cfx-microphone-website-device`
+- `cfx-microphone-website-heading`
+- `cfx-microphone-website-help`
+- `cfx-microphone-website-label`
+- `cfx-microphone-website-save`
+- `cfx-microphone-website-status`
 - `cfx-network-apply`
 - `cfx-network-detected`
 - `cfx-network-follow-identity`
@@ -252,6 +330,7 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-persona-hardware`
 - `cfx-persona-help`
 - `cfx-persona-os-current`
+- `cfx-persona-similarity`
 - `cfx-persona-version`
 - `cfx-privacy-settings`
 - `cfx-profile-confidence`
@@ -273,6 +352,24 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-screen-origins-reset`
 - `cfx-screen-origins-save`
 - `cfx-screen-origins-status`
+- `cfx-similarity-results`
+- `cfx-similarity-summary`
+- `cfx-speaker-configuration`
+- `cfx-speaker-device-form`
+- `cfx-speaker-device-name`
+- `cfx-speaker-device-refresh`
+- `cfx-speaker-device-reset`
+- `cfx-speaker-device-save`
+- `cfx-speaker-device-status`
+- `cfx-speaker-website-custom`
+- `cfx-speaker-website-custom-form`
+- `cfx-speaker-website-custom-help`
+- `cfx-speaker-website-device`
+- `cfx-speaker-website-heading`
+- `cfx-speaker-website-help`
+- `cfx-speaker-website-label`
+- `cfx-speaker-website-save`
+- `cfx-speaker-website-status`
 - `cfx-status-label`
 - `cfx-template-settings`
 - `cfx-tracking-settings`
@@ -281,6 +378,7 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-update-readiness`
 - `cfx-webrtc-mode`
 - `cfx-workspace-settings`
+- `cloakfox.appearance.colored_inactive_buttons`
 - `cloakfox.appearance.firefox`
 - `cloakfox.compat.screen_management`
 - `cloakfox.experimental.canvas_pipeline`
@@ -328,6 +426,7 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `guidance`
 - `heading`
 - `ip`
+- `matching-profiles-heading`
 - `once`
 - `recheck`
 - `sec-appearance`
@@ -351,9 +450,13 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 
 Gecko privileged actors are not installed in Chromium. Equivalent privacy behavior must use appropriate native Chromium hooks.
 
+- `additions/browser/components/cloakfox/actors/CloakfoxCoderPadMediaChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxContainerBulkChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxContainerProxyEditorChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxFeatureDetectChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxGamepadChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxHackerRankMediaChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxIPProbeChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxKeyboardChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxMathChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxMediaQueryChild.sys.mjs`

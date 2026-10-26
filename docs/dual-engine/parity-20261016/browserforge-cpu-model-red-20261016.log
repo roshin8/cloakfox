@@ -1,0 +1,19 @@
+test_browserforge_processor_counts_do_not_fall_back_to_host_values (test_identity_config.IdentityConfig.test_browserforge_processor_counts_do_not_fall_back_to_host_values) ... ERROR
+
+======================================================================
+ERROR: test_browserforge_processor_counts_do_not_fall_back_to_host_values (test_identity_config.IdentityConfig.test_browserforge_processor_counts_do_not_fall_back_to_host_values)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_config.py", line 75, in test_browserforge_processor_counts_do_not_fall_back_to_host_values
+    self.assertEqual(validate_snapshot(config)['persona']['presentation']['hardwareConcurrency'],count)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/engines/shared/persona_config.py", line 79, in validate_snapshot
+    validate_presentation(persona['presentation'])
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/engines/shared/persona_config.py", line 36, in validate_presentation
+    raise ValueError('Unsupported hardware concurrency')
+ValueError: Unsupported hardware concurrency
+
+----------------------------------------------------------------------
+Ran 1 test in 0.003s
+
+FAILED (errors=1)

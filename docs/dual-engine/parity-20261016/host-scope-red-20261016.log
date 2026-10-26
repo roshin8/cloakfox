@@ -1,0 +1,22 @@
+test_fixture_cannot_reach_another_origin_or_follow_redirects (test_native_host_surface.NativeHostSurface.test_fixture_cannot_reach_another_origin_or_follow_redirects) ... FAIL
+test_owned_fixture_reaches_native_parent_without_cef_window (test_native_host_surface.NativeHostSurface.test_owned_fixture_reaches_native_parent_without_cef_window) ... ok
+
+======================================================================
+FAIL: test_fixture_cannot_reach_another_origin_or_follow_redirects (test_native_host_surface.NativeHostSurface.test_fixture_cannot_reach_another_origin_or_follow_redirects)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_native_host_surface.py", line 71, in test_fixture_cannot_reach_another_origin_or_follow_redirects
+    self.assertEqual(received,[],'Experimental fixture escaped its permitted origin')
+AssertionError: Lists differ: ['/image', '/fetch', '/redirected', '/redirected', '/worker', '/service'] != []
+
+First list contains 6 additional elements.
+First extra element 0:
+'/image'
+
+- ['/image', '/fetch', '/redirected', '/redirected', '/worker', '/service']
++ [] : Experimental fixture escaped its permitted origin
+
+----------------------------------------------------------------------
+Ran 2 tests in 14.530s
+
+FAILED (failures=1)

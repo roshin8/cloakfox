@@ -1,0 +1,30 @@
+test_select_popup_is_owned_composited_and_retired (test_offscreen_rendering.OffscreenRendering.test_select_popup_is_owned_composited_and_retired) ... 
+  test_select_popup_is_owned_composited_and_retired (test_offscreen_rendering.OffscreenRendering.test_select_popup_is_owned_composited_and_retired) (shared=False) ... FAIL
+  test_select_popup_is_owned_composited_and_retired (test_offscreen_rendering.OffscreenRendering.test_select_popup_is_owned_composited_and_retired) (shared=True) ... FAIL
+
+======================================================================
+FAIL: test_select_popup_is_owned_composited_and_retired (test_offscreen_rendering.OffscreenRendering.test_select_popup_is_owned_composited_and_retired) (shared=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_offscreen_rendering.py", line 203, in test_select_popup_is_owned_composited_and_retired
+    click();frame=popup(True)
+                  ^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_offscreen_rendering.py", line 199, in popup
+    self.fail('Popup paint state did not settle: '+str(frame))
+AssertionError: Popup paint state did not settle: {'configRevision': 1, 'container': '1', 'cornerBGRA': [91, 37, 13, 255], 'id': 185, 'ok': True, 'paintSource': 'cpu', 'private': False, 'size': [1000, 720], 'topLevelWindow': False, 'version': 1}
+
+======================================================================
+FAIL: test_select_popup_is_owned_composited_and_retired (test_offscreen_rendering.OffscreenRendering.test_select_popup_is_owned_composited_and_retired) (shared=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_offscreen_rendering.py", line 203, in test_select_popup_is_owned_composited_and_retired
+    click();frame=popup(True)
+                  ^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_offscreen_rendering.py", line 199, in popup
+    self.fail('Popup paint state did not settle: '+str(frame))
+AssertionError: Popup paint state did not settle: {'configRevision': 1, 'container': '1', 'cornerBGRA': [91, 37, 13, 255], 'id': 184, 'ok': True, 'paintSource': 'iosurface', 'private': False, 'size': [1000, 720], 'topLevelWindow': False, 'version': 1}
+
+----------------------------------------------------------------------
+Ran 1 test in 11.896s
+
+FAILED (failures=2)

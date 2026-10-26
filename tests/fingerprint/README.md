@@ -52,6 +52,15 @@ With `CLOAKFOX_BIN` and optional `FIREFOX_BIN` pointing to the current/stock app
   `probe_privacy_timing_controls.py`: native timeline/observer coherence, explicit
   marks, all worker kinds, stable delayed getters and reload controls. These
   fixtures explicitly enable resource timing; its product default remains off.
+- `probe_detached_frame_timers.py`: saved iframe timers rebound to a live
+  window after iframe teardown, including callbacks, arguments, cancellation
+  and native receiver checks. Reproduces the Sentry Replay/reCAPTCHA scheduling
+  failure with a local fixture and disposable profiles, without contacting
+  a CAPTCHA or signup service.
+- `probe_worker_debugger_startup.py`: opens the native debugger before loading
+  a loopback worker fixture and verifies the worker delivers its startup message.
+  Covers the worker-only preference-service crash that stalled CoderPad's editor
+  initialization with DevTools open.
 - `probe_privacy_media_hdr.py` and `probe_privacy_settings_ownership.py`: fake
   hardware only, native permission gating, actual backing selection, generic
   labels, device-ID origin/container isolation, HDR/CSS controls and live UI.
@@ -641,3 +650,89 @@ Chrome identity and verifies that identity selection remains independent from
 the separate rendering-engine control. Custom User-Agent text remains an
 Advanced override. The probe is included in
 `run_daily_driver.py` and uses a disposable profile.
+
+
+## CoderPad camera frame and local-preview compatibility
+
+`CloakfoxCoderPadMediaChild` matches HTTPS `app.coderpad.io/*/zoom_room*`,
+including embedded call frames. The workaround is gated to Zoom SDK 2.5.0
+and media package 7.1.0.15306. In the affected combined-worker/no-track-processor
+case it selects Zoom's existing canvas sender and displays the authorized
+camera stream in a muted native local preview. It never starts capture or
+changes transport, permissions, browser APIs or remote players. Unknown
+versions are untouched. Opt out with `cloakfox.compat.coderpad_media=false`
+and reload the call.
+
+`node --test tests/fingerprint/test_coderpad_media.mjs` checks fallback,
+preview ownership, camera stop/switch, teardown, late initialization, client
+replacement, version guards and opt-out. The installed-actor probe uses
+loopback HTTPS, synthetic canvas video, disposable profiles and local DNS:
+
+```sh
+CLOAKFOX_BIN=/path/to/Cloakfox.app/Contents/MacOS/cloakfox \
+  python3 tests/fingerprint/probe_coderpad_media.py
+```
+
+It checks native cross-realm stream binding/playback, iframe loads, repeated
+navigation, origin/path exclusion and opt-out without contacting CoderPad or
+opening camera/microphone/screen devices. The live check confirmed outgoing
+encoding at 14 fps, remote receipt, and a visible local preview.
+
+### Display capture label regression
+
+`python3 tests/fingerprint/test_capture_label_scope.py` compiles the native
+MediaManager masking branch in a small harness. It checks camera/microphone/
+speaker privacy while preserving monitor/window/tab capture labels. No devices
+are opened. `CLOAKFOX_BIN=... python3 tests/fingerprint/probe_capture_label_scope.py`
+checks generic/custom camera and microphone labels in the native binary using
+synthetic devices only. On Turing, verify a user-authorized entire-screen share is accepted;
+window/tab sharing must still be rejected. Screen capture previously acquired
+the generic camera label, causing Turing to reject a successful capture.
+
+### Website-facing audio labels
+
+`CLOAKFOX_BIN=... python3 tests/fingerprint/probe_audio_website_labels.py`
+checks the chrome-only physical audio inventory, native microphone track and
+speaker enumeration labels, per-device overrides, stable IDs, camera isolation,
+and settings save/validation/persistence. Microphone and camera capture use
+synthetic sources; no physical capture or playback occurs. Speaker inventory
+requires an available audio output. `node --test
+tests/fingerprint/test_media_website_labels.mjs` checks all three settings
+controllers including defaults, invalid labels, duplicate names and placeholders.
+
+Audio & media contains separate Camera, Microphone and Speaker label sections.
+Saved names apply across containers when generic media labels are enabled.
+Websites retain ordinary permission filtering; labels never grant access.
+Screen/window/tab capture names remain native. Reload website tabs after changes.
+
+### Camera exposure and capture selection
+
+`python3 tests/fingerprint/test_camera_exposure_policy.py` compiles the shared
+native camera policy. `CLOAKFOX_BIN=... python3
+tests/fingerprint/probe_camera_exposure.py` uses synthetic capture to check
+selected/missing cameras, zero limits, privileged preview isolation, per-container
+selection persistence and native container isolation. It never opens a real camera.
+Camera access for this container in Audio & media selects up to the configured
+maximum using checkboxes, or Automatic (system order up to that maximum). This is separate from
+global website-facing device names. Disconnecting an explicitly selected camera
+does not fall back to another. Reload sites and stop existing streams after edits.
+
+Device limits, camera selection and website-facing labels are grouped per device
+inside Audio & media → Media & surfaces → Advanced field overrides. Camera and
+audio label names remain global; exposure limits and camera selection use the
+container being edited. Runtime camera probes check the placement after each
+matching maximum.
+
+### IP lookup route choice
+
+Connections & proxies → IP conflict management offers Background and Tab lookup routes.
+Background remains the default. Tab probes use temporary hidden, unselected tabs in the
+requested container, so tab-based proxy extensions receive a real tab ID.
+Switching invalidates cached results and warning contexts, cancels pending probes,
+and rejects stale completions. Saved visit history remains scoped to its lookup mode.
+Private windows are never used as probe hosts; probe tabs never count as visits.
+
+Run `node --test tests/fingerprint/test_ip_conflicts_dual.mjs` and
+`CLOAKFOX_BIN=/Applications/Cloakfox.app/Contents/MacOS/cloakfox python tests/fingerprint/probe_ip_check_routes.py`.
+The latter uses local TLS fixtures in a disposable profile and tests native proxies,
+tab-based extension routes, blocked routes, cache invalidation, UI wiring and cleanup.

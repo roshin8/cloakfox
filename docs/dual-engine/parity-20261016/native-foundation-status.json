@@ -1,0 +1,66 @@
+{
+  "recordedAt": "2026-10-16T19:49:51.564085+00:00",
+  "platform": "macOS arm64",
+  "originalPipelineInterrupted": true,
+  "recoveryStatus": "implemented-feature tests passed",
+  "implementationPlanComplete": false,
+  "releaseEligible": false,
+  "installedAppModified": false,
+  "chromiumVersion": "154.0.8037.98",
+  "gecko": {
+    "buildID": "20261015182935",
+    "cloakfoxEnabled": true,
+    "resistFingerprinting": false,
+    "version": "158.0-beta.26"
+  },
+  "candidate": "/Volumes/CloakfoxChromiumBuild/source-build/identity-companion-build/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium",
+  "candidateSha256": "6d118d5998745bd87b27cd8949d34bee069d785f8a3bd06d08a96d6039ebadfd",
+  "frameworkSha256": "d1c7b99c9c512f12ec87fff78f52072989c9f76780745fbeeac66ee689807298",
+  "engineSuite": {
+    "tests": 105,
+    "failures": 0,
+    "skips": 0,
+    "log": "windowless-full-suite-20261016.log"
+  },
+  "cppTests": {
+    "tests": 2,
+    "failures": 0,
+    "log": "surface-ctest-20261016.log"
+  },
+  "coexistence": {
+    "checks": 4,
+    "status": "passed",
+    "protectionEnabledVerified": true,
+    "rawCanvasRefusedInBothEngines": true
+  },
+  "review": {
+    "scope": "native windowless/launch/surface foundation",
+    "actionableFindingsRemaining": 0,
+    "popupFindingReproducedAndCorrected": true,
+    "wholePortReviewComplete": false
+  },
+  "remaining": [
+    "Gecko native viewport integration and native CEF surface publication",
+    "Production launch, permissions and helper-death revocation",
+    "Complete shared policy schema and every remaining Chromium protection group",
+    "Actual same-window engine routing, full acceptance, installed release and DMG"
+  ],
+  "sourceSha256": {
+    "engines/chromium/src/browser_client.cc": "7057ddbb6074dc59cf29e458ab778040e0979fd45955c70e1176a1db15b62f69",
+    "engines/chromium/src/browser_client.h": "207c1961620faa7401c3d45ccb7fb811fd7fba3bfaf8a990c92e761981937d76",
+    "engines/chromium/src/container_paths.cc": "75c3ed76894dcd73c9f0aa6b056d3bfe6e5d37cf5f056609d60b07f24909f535",
+    "engines/chromium/src/container_paths.h": "b2081cb9dfda701ffff844a3f8c0a172599dc82d04a58f104d5a824992d11c91",
+    "engines/chromium/src/control_channel.cc": "35ad99ff776c57c091b9d7a9cd636f368fc3b1d4c60a6ec01aa85bf820227f26",
+    "engines/chromium/src/control_channel.h": "9c58764f2d7b82468febf5a1fe41525973c776fee5701ee68e939a9daf4388cd",
+    "engines/chromium/src/main_mac.mm": "d41364b559219744787dc0a6660259fbda1b63f2b9ee9893b557e764f7e7351a",
+    "engines/chromium/src/offscreen_client.cc": "7e5a5c330afe16c2770bee98a39c4de793ed3423479bb67019881173894753da",
+    "engines/chromium/src/offscreen_client.h": "e782944bc483d3ce4a9ba0f398da66a395eb5d14fcc19a15da3c916cf6f3ace5",
+    "engines/chromium/src/persona_config.cc": "79e986edb749e0bb7bf38b0f2640c48f84a856d73f117ab10f92b26a6c6d2c9b",
+    "engines/chromium/src/persona_config.h": "cf85036aefd3e05c43a904a11c1e2065e167e39fd85af29f40a0a173eb3828b3",
+    "engines/chromium/src/process_helper_mac.cc": "0144206e6652a81c5efd5565a5a30cde3068145c5da04a63021f7be0e39597f7",
+    "engines/chromium/src/surface_launch_mac.h": "6539a6b71eb150a15fc6680a9260fb12ed1321b23c915c41642c8507c4fc2a65",
+    "engines/chromium/src/surface_launch_mac.mm": "1ac9888a31da20316b4aaa9475fc91fd9bc585a871195a757ce1ea4ea717cd56",
+    "engines/chromium/src/surface_transport_mac.h": "67727d8dfdc9fe42cdc1eb0c25d2102d2688787803a3106c6baae9923bd609d2",
+    "engines/chromium/src/surface_transport_mac.mm": "99d13b57a2531a9effa53ec9883163ac300607d6977fc3f85808cdb1dce2d8cf"
+  }
+}

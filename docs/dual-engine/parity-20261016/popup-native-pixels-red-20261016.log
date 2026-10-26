@@ -1,0 +1,21 @@
+test_popup_pixels_arrive_and_retire_on_owned_native_surface (test_native_host_surface.NativeHostSurface.test_popup_pixels_arrive_and_retire_on_owned_native_surface) ... FAIL
+
+======================================================================
+FAIL: test_popup_pixels_arrive_and_retire_on_owned_native_surface (test_native_host_surface.NativeHostSurface.test_popup_pixels_arrive_and_retire_on_owned_native_surface)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_native_host_surface.py", line 19, in test_popup_pixels_arrive_and_retire_on_owned_native_surface
+    self.check_owned_fixture(popup=True)
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_native_host_surface.py", line 33, in check_owned_fixture
+    self.assertEqual(result.returncode,0,result.stderr[-5000:])
+AssertionError: 1 != 0 : [37132:8685562:1016/175001.547597:ERROR:../../../Users/zeus/cloakfox-builds/chromium/full-source/chromium/src/chrome/browser/mac/code_sign_clone_manager.mm:98] error removing quarantine attribute "/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/X/"
+[37132:8685562:1016/175001.549194:ERROR:../../../Users/zeus/cloakfox-builds/chromium/full-source/chromium/src/chrome/browser/mac/code_sign_clone_manager.mm:326] clonefile "/Volumes/CloakfoxChromiumBuild/source-build/browserforge-companion-build/Release/CloakfoxChromium.app", "/private/var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/X/org.cloakfox.chromium.prototype.code_sign_clone/code_sign_clone.DZrHde/CloakfoxChromium.app.bundle": Cross-device link (18)
+2026-10-16 17:50:01.633 CloakfoxChromium[37132:8685536] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/org.cloakfox.chromium.prototype.savedState
+[37132:8685536:1016/175001.723346:ERROR:cef/libcef/browser/osr/web_contents_view_osr.cc:53] Not implemented reached in virtual gfx::NativeWindow CefWebContentsViewOSR::GetTopLevelNativeWindow() const. 
+Native popup did not paint
+
+
+----------------------------------------------------------------------
+Ran 1 test in 4.143s
+
+FAILED (failures=1)

@@ -1,0 +1,18 @@
+test_accelerated_surface_is_read_from_owned_callback_copy (test_offscreen_rendering.OffscreenRendering.test_accelerated_surface_is_read_from_owned_callback_copy) ... ok
+test_owned_pixels_render_without_top_level_cef_window (test_offscreen_rendering.OffscreenRendering.test_owned_pixels_render_without_top_level_cef_window) ... ok
+test_popup_cannot_escape_unattached_windowless_host (test_offscreen_rendering.OffscreenRendering.test_popup_cannot_escape_unattached_windowless_host) ... FAIL
+test_unconfigured_open_is_rejected_before_navigation (test_offscreen_rendering.OffscreenRendering.test_unconfigured_open_is_rejected_before_navigation) ... ok
+test_viewport_and_input_remain_revision_bound (test_offscreen_rendering.OffscreenRendering.test_viewport_and_input_remain_revision_bound) ... ok
+
+======================================================================
+FAIL: test_popup_cannot_escape_unattached_windowless_host (test_offscreen_rendering.OffscreenRendering.test_popup_cannot_escape_unattached_windowless_host)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_offscreen_rendering.py", line 133, in test_popup_cannot_escape_unattached_windowless_host
+    self.assertTrue(opened['result']['result']['value'])
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 5 tests in 3.313s
+
+FAILED (failures=1)

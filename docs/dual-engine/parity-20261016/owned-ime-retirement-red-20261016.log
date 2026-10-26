@@ -1,0 +1,119 @@
+✔ a valid response can span reads (1.455125ms)
+✔ buffered responses remain independently framed (0.103292ms)
+✔ EOF cannot be mistaken for an acknowledgement (0.233166ms)
+✔ valid JSON over the limit is rejected even with a newline in the same read (0.229667ms)
+✔ an unterminated oversized response is rejected (0.533625ms)
+✔ the exact permitted line size remains usable (0.770792ms)
+✔ a location shortcut targets chrome, without sending page input (0.177291ms)
+✔ stale or closed owners cannot focus the address bar (0.092167ms)
+✔ queued input is discarded after tab selection without a route revision change (0.074417ms)
+✔ queued input is discarded after disconnection without a route revision change (0.097375ms)
+✔ queued input is discarded after owner document replacement without a route revision change (0.058375ms)
+✔ queued input is discarded after window closure without a route revision change (0.045166ms)
+✔ queued input is discarded after chrome focus change without a route revision change (0.039167ms)
+✔ queued input is discarded after window deactivation without a route revision change (0.036458ms)
+✔ queued input is discarded after window modal without a route revision change (0.039667ms)
+✔ queued input is discarded after tab modal without a route revision change (0.041667ms)
+✔ a browser is reserved during startup and cancellation releases that owner (1.161542ms)
+✔ input queued behind an RPC is revalidated after a tab change (0.162375ms)
+✔ input queued behind an RPC is revalidated after a viewport change (0.054084ms)
+✔ input queued behind an RPC is revalidated after a configuration change (0.037334ms)
+✔ input queued behind an RPC is revalidated after a token change (0.035292ms)
+✔ hiding a tab preserves its renderer size and does not resize it to one pixel (0.828792ms)
+✔ large viewport 2560x1440 preserves presentation/input coordinates (0.143792ms)
+✔ large viewport 4096x2160 preserves presentation/input coordinates (0.060666ms)
+✔ large viewport 1200.4x800.4 preserves presentation/input coordinates (0.064875ms)
+✔ oversized surfaces fail before native allocation instead of stretching (0.110542ms)
+✔ unknown presentation modes reject before launching a helper (0.553334ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.627542ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.449541ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.418209ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.377ms)
+✔ same-window refuses missing or invalid native fixture network capability before configuration (0.430875ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.366ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.348834ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.379125ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.367208ms)
+✔ separate-window refuses missing or invalid native fixture network capability before configuration (0.357458ms)
+✔ the authenticated fixture origin is bound before configuration and first navigation (0.600875ms)
+✔ native focus state is received while no RPC is pending (7.53625ms)
+✔ an interleaved focus event cannot consume an RPC acknowledgement (0.4235ms)
+✔ foreign and stale editing state cannot update an owned native view (0.058917ms)
+✔ malformed owned editing state is rejected without native state calls (0.189792ms)
+✔ closing the owner rejects an outstanding RPC and drains its reader (0.404916ms)
+✖ owned composition cancellation survives tab focus retirement without allowing text (0.732584ms)
+✖ owned composition cancellation survives chrome focus retirement without allowing text (0.106041ms)
+✖ owned composition cancellation survives window focus retirement without allowing text (0.076792ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 43
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114.530833
+
+✖ failing tests:
+
+test at tests/engines/test_host_response_bounds.mjs:261:4
+✖ owned composition cancellation survives tab focus retirement without allowing text (0.732584ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:264:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/engines/test_host_response_bounds.mjs:261:4
+✖ owned composition cancellation survives chrome focus retirement without allowing text (0.106041ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:264:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/engines/test_host_response_bounds.mjs:261:4
+✖ owned composition cancellation survives window focus retirement without allowing text (0.076792ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_host_response_bounds.mjs:264:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

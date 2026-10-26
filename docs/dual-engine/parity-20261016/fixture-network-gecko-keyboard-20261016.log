@@ -1,0 +1,71 @@
+{
+  "runtime": {
+    "build": "20261016175738",
+    "enabled": true
+  },
+  "checks": [
+    {
+      "existing": 1,
+      "name": "existing listener after source frame removal",
+      "pass": true
+    },
+    {
+      "calls": 1,
+      "name": "borrowed non-key add/remove after source frame removal",
+      "pass": true
+    },
+    {
+      "counts": [
+        1,
+        1,
+        1
+      ],
+      "name": "borrowed methods support Window, element and standalone EventTarget",
+      "pass": true
+    },
+    {
+      "errors": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "name": "invalid receivers still throw",
+      "pass": true
+    },
+    {
+      "bumped": 4,
+      "name": "borrowed key add/remove retains recipient cadence",
+      "own": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "pass": true,
+      "raw": [
+        427,
+        427,
+        427,
+        427
+      ],
+      "stamps": [
+        467.2843959681049,
+        461.6716359666196,
+        470.9725786760037,
+        457.8710383516153
+      ]
+    },
+    {
+      "before": 1,
+      "existing": 1,
+      "name": "borrowed remove clears registration made before removal",
+      "pass": true
+    },
+    {
+      "name": "retained document listener removal after same-origin navigation",
+      "pass": true,
+      "retained": 0
+    }
+  ]
+}

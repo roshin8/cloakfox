@@ -1,0 +1,14 @@
+test_browserforge_processor_counts_reach_all_realms_before_script (test_identity_privacy.IdentityPrivacy.test_browserforge_processor_counts_reach_all_realms_before_script) ... FAIL
+
+======================================================================
+FAIL: test_browserforge_processor_counts_reach_all_realms_before_script (test_identity_privacy.IdentityPrivacy.test_browserforge_processor_counts_reach_all_realms_before_script)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_identity_privacy.py", line 76, in test_browserforge_processor_counts_reach_all_realms_before_script
+    self.assertGreaterEqual(self.app.ready.get('identityPrivacyVersion',0),2,'BrowserForge CPU extension is not built')
+AssertionError: 1 not greater than or equal to 2 : BrowserForge CPU extension is not built
+
+----------------------------------------------------------------------
+Ran 1 test in 6.019s
+
+FAILED (failures=1)

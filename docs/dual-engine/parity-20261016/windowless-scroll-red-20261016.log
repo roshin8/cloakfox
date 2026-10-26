@@ -1,0 +1,20 @@
+test_accelerated_surface_is_read_from_owned_callback_copy (test_offscreen_rendering.OffscreenRendering.test_accelerated_surface_is_read_from_owned_callback_copy) ... ok
+test_native_scroll_delivery (test_offscreen_rendering.OffscreenRendering.test_native_scroll_delivery) ... FAIL
+test_owned_pixels_render_without_top_level_cef_window (test_offscreen_rendering.OffscreenRendering.test_owned_pixels_render_without_top_level_cef_window) ... ok
+test_popup_cannot_escape_unattached_windowless_host (test_offscreen_rendering.OffscreenRendering.test_popup_cannot_escape_unattached_windowless_host) ... ok
+test_unconfigured_open_is_rejected_before_navigation (test_offscreen_rendering.OffscreenRendering.test_unconfigured_open_is_rejected_before_navigation) ... ok
+test_viewport_and_input_remain_revision_bound (test_offscreen_rendering.OffscreenRendering.test_viewport_and_input_remain_revision_bound) ... ok
+test_windowless_requires_explicit_development_options (test_offscreen_rendering.OffscreenRendering.test_windowless_requires_explicit_development_options) ... ok
+
+======================================================================
+FAIL: test_native_scroll_delivery (test_offscreen_rendering.OffscreenRendering.test_native_scroll_delivery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_offscreen_rendering.py", line 130, in test_native_scroll_delivery
+    self.assertTrue(scrolled['ok'],scrolled)
+AssertionError: False is not true : {'error': 'Unsupported command option', 'id': 7, 'ok': False, 'version': 1}
+
+----------------------------------------------------------------------
+Ran 7 tests in 15.408s
+
+FAILED (failures=1)

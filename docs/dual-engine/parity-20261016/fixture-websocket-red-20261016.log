@@ -1,0 +1,21 @@
+test_fixture_websockets_stay_on_the_bound_origin_in_all_realms (test_native_host_surface.NativeHostSurface.test_fixture_websockets_stay_on_the_bound_origin_in_all_realms) ... FAIL
+
+======================================================================
+FAIL: test_fixture_websockets_stay_on_the_bound_origin_in_all_realms (test_native_host_surface.NativeHostSurface.test_fixture_websockets_stay_on_the_bound_origin_in_all_realms)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_native_host_surface.py", line 120, in test_fixture_websockets_stay_on_the_bound_origin_in_all_realms
+    self.assertEqual(outside_hits,[],'WebSocket escaped the immutable fixture origin')
+AssertionError: Lists differ: ['/page', '/shared', '/dedicated', '/service'] != []
+
+First list contains 4 additional elements.
+First extra element 0:
+'/page'
+
+- ['/page', '/shared', '/dedicated', '/service']
++ [] : WebSocket escaped the immutable fixture origin
+
+----------------------------------------------------------------------
+Ran 1 test in 1.427s
+
+FAILED (failures=1)

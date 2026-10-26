@@ -1,0 +1,9 @@
+The geckodriver version (0.36.0) detected in PATH at /opt/homebrew/bin/geckodriver might not be compatible with the detected firefox version (158.0.26); currently, geckodriver 0.37.1 is recommended for firefox 158.*, so it is advised to delete the driver in PATH and retry
+Native host guards: {"buildID": "20261016152215", "cloakfoxEnabled": true, "pref": true, "resistFingerprinting": false, "sameDoc": true, "system": true, "version": "158.0-beta.26"}
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/probe_same_window_host.py", line 241, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/probe_same_window_host.py", line 126, in main
+    assert cleared==[0,0,0,0],f'Stale viewport pixels survived epoch change: {cleared}'
+AssertionError: Stale viewport pixels survived epoch change: [13, 37, 91, 255]

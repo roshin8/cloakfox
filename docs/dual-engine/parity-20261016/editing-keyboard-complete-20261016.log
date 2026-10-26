@@ -1,0 +1,18 @@
+test_editing_keys_preserve_selection_and_reject_invalid_requests (test_editing_keyboard.EditingKeyboard.test_editing_keys_preserve_selection_and_reject_invalid_requests) ... FAIL
+
+======================================================================
+FAIL: test_editing_keys_preserve_selection_and_reject_invalid_requests (test_editing_keyboard.EditingKeyboard.test_editing_keys_preserve_selection_and_reject_invalid_requests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_editing_keyboard.py", line 63, in test_editing_keys_preserve_selection_and_reject_invalid_requests
+    wait_for('area.value', '\n')
+  File "/Users/zeus/.codex/worktrees/firefox-158-port/cloakfox/tests/engines/test_editing_keyboard.py", line 51, in wait_for
+    self.assertEqual(actual, expected)
+AssertionError: '' != '\n'
++ 
+
+
+----------------------------------------------------------------------
+Ran 1 test in 6.150s
+
+FAILED (failures=1)
