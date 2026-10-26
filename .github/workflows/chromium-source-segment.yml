@@ -257,18 +257,57 @@ jobs:
           if [[ -f "$RUNNER_TEMP/chromium-build/chromium/src/out/Release_GN_arm64/.ninja_log" ]]; then
             cp "$RUNNER_TEMP/chromium-build/chromium/src/out/Release_GN_arm64/.ninja_log" "$RUNNER_TEMP/checkpoint-out/ninja-timing.log"
           fi
-      - name: Publish checkpoint producer lineage
+      - name: Upload producer artifact (attempt 1)
+        id: producer_upload_1
+        continue-on-error: true
+        timeout-minutes: 5
         uses: actions/upload-artifact@v4
         with:
+          overwrite: true
           name: chromium-checkpoint-producer-${{ inputs.segment }}
           path: ${{ runner.temp }}/checkpoint-out/checkpoint-producer.json
           compression-level: 0
           if-no-files-found: error
           retention-days: 7
-      - name: Preserve unfinished source and compiled objects for next job
-        if: steps.build.outputs.complete == 'false'
+      - name: Upload producer artifact (attempt 2)
+        id: producer_upload_2
+        if: steps.producer_upload_1.outcome == 'failure'
+        continue-on-error: true
+        timeout-minutes: 5
         uses: actions/upload-artifact@v4
         with:
+          overwrite: true
+          name: chromium-checkpoint-producer-${{ inputs.segment }}
+          path: ${{ runner.temp }}/checkpoint-out/checkpoint-producer.json
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload producer artifact (attempt 3)
+        id: producer_upload_3
+        if: steps.producer_upload_2.outcome == 'failure'
+        timeout-minutes: 5
+        uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: chromium-checkpoint-producer-${{ inputs.segment }}
+          path: ${{ runner.temp }}/checkpoint-out/checkpoint-producer.json
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish checkpoint producer lineage
+        run: |
+          if [[ "${{ steps.producer_upload_1.outcome == 'success' || steps.producer_upload_2.outcome == 'success' || steps.producer_upload_3.outcome == 'success' }}" != "true" ]]; then
+            echo "Checkpoint publication failed after three bounded attempts" >&2
+            exit 1
+          fi
+      - name: Upload workspace artifact (attempt 1)
+        id: workspace_upload_1
+        if: steps.build.outputs.complete == 'false'
+        continue-on-error: true
+        timeout-minutes: 20
+        uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
           name: chromium-workspace-${{ inputs.segment }}
           path: |
             ${{ runner.temp }}/checkpoint-out/workspace.tar.zst
@@ -276,6 +315,42 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 7
+      - name: Upload workspace artifact (attempt 2)
+        id: workspace_upload_2
+        if: steps.build.outputs.complete == 'false' && steps.workspace_upload_1.outcome == 'failure'
+        continue-on-error: true
+        timeout-minutes: 20
+        uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: chromium-workspace-${{ inputs.segment }}
+          path: |
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.zst
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.json
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload workspace artifact (attempt 3)
+        id: workspace_upload_3
+        if: steps.build.outputs.complete == 'false' && steps.workspace_upload_2.outcome == 'failure'
+        timeout-minutes: 20
+        uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: chromium-workspace-${{ inputs.segment }}
+          path: |
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.zst
+            ${{ runner.temp }}/checkpoint-out/workspace.tar.json
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve unfinished source and compiled objects for next job
+        if: steps.build.outputs.complete == 'false'
+        run: |
+          if [[ "${{ steps.workspace_upload_1.outcome == 'success' || steps.workspace_upload_2.outcome == 'success' || steps.workspace_upload_3.outcome == 'success' }}" != "true" ]]; then
+            echo "Checkpoint publication failed after three bounded attempts" >&2
+            exit 1
+          fi
       - name: Seal completed SDK and original source provenance
         if: steps.build.outputs.complete == 'true'
         run: |
