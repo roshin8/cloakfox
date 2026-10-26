@@ -34,6 +34,7 @@ import { applyPrivacyPolicy } from "resource:///modules/CloakfoxPrivacyPolicy.sy
 //             (Firefox has no native float pref; we serialize)
 //   "bool"   → checkbox; cloak_cfg encodes presence-as-true
 export const KEY_TYPES = {
+  "fonts": "font-list",
   // ── per-vector hash seeds ──
   "canvas:seed":        "int",
   "audio:seed":         "int",
@@ -149,6 +150,9 @@ export function readOverrides(ucid) {
         const s = Services.prefs.getStringPref(fullName, "");
         const f = parseFloat(s);
         if (!Number.isNaN(f)) out[child] = f;
+      } else if (type === "font-list") {
+        const value = JSON.parse(Services.prefs.getStringPref(fullName, "[]"));
+        if (Array.isArray(value) && value.length && value.every(font => typeof font === "string" && font.trim())) out[child] = value;
       } else {
         out[child] = Services.prefs.getStringPref(fullName, "");
       }
@@ -231,6 +235,8 @@ export function setOverride(ucid, key, value) {
 /** Validate a complete preset/reset before writing any of its fields. */
 export function setOverrides(ucid, changes) {
   for (const [key, value] of Object.entries(changes)) {
+    if (key === "fonts" && value !== undefined && value !== null && value !== "" &&
+        (!Array.isArray(value) || !value.length || value.length > 512 || !value.every(font => typeof font === "string" && font.trim() && font.length <= 200 && !/[\r\n\0]/.test(font)))) throw new Error("Provide 1–512 valid font names");
     if (!(key in KEY_TYPES)) throw new Error(`Unknown cloak_cfg key: ${key}`);
     if (value === undefined || value === null || value === "") continue;
     if (["int", "float"].includes(KEY_TYPES[key]) && !Number.isFinite(Number(value))) throw new Error("Invalid numeric override");
@@ -268,7 +274,9 @@ function writeOverride(ucid, key, value) {
     Services.prefs.setIntPref(fullName, count);
     return;
   }
-  if (type === "int") {
+  if (type === "font-list") {
+    Services.prefs.setStringPref(fullName, JSON.stringify(value));
+  } else if (type === "int") {
     Services.prefs.setIntPref(fullName, parseInt(value, 10));
   } else if (type === "bool") {
     Services.prefs.setBoolPref(fullName, Boolean(value));

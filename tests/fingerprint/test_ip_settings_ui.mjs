@@ -5,16 +5,18 @@ import {runInNewContext} from 'node:vm';
 const source = readFileSync(new URL('../../additions/browser/components/cloakfox/content/network-settings.js', import.meta.url), 'utf8');
 function renderSettings(rows, history = []) {
   const elements = new Map();
-  const element = () => ({textContent: '', children: [], listeners: {}, style: {}, value: '0',
+  const element = () => ({textContent: '', children: [], listeners: {}, style: {}, dataset: {}, value: '',
+    querySelectorAll(selector) {const matches=[];const walk=node=>{if(node.className?.split(' ').includes(selector.slice(1)))matches.push(node);for(const child of node.children||[])walk(child);};this.children.forEach(walk);return matches;},
+    querySelector(selector) {return this.querySelectorAll(selector)[0];},
     append(...children) { this.children.push(...children); },
     replaceChildren() { this.children = []; this.textContent = ''; },
     setAttribute() {}, addEventListener(type, handler) {this.listeners[type] = handler;},
   });
   const get = id => {if (!elements.has(id)) elements.set(id, element()); return elements.get(id);};
   const main = element();
-  const monitor = {getIPRules: () => ({mode: 'all', include: [], exclude: []}), ipHistory: () => history, ipExceptions: () => [], ipConflictResults: () => rows};
+  const monitor = {getIPCheckRoute: () => 'background', setIPCheckRoute() {}, getIPRules: () => ({mode: 'all', include: [], exclude: []}), ipHistory: () => history, ipExceptions: () => [], ipConflictResults: () => rows};
   runInNewContext(source, {
-    ChromeUtils: {importESModule: path => path.includes('NetworkPolicy') ? {getContainerNetwork: () => ({mode: 0, proxyURL: '', webrtcMode: 0})} : path.includes('IPConflicts') ? monitor : {ContextualIdentityService: {getPublicIdentities: () => [{userContextId: 1, name: 'Work'}]}}},
+    ChromeUtils: {importESModule: path => path.includes('NetworkPolicy') ? {getContainerNetwork: () => ({mode: 0, proxyURL: '', webrtcMode: 0})} : path.includes('IPConflicts') ? monitor : {ContextualIdentityService: {getPublicIdentities: () => [{userContextId: 1, name: 'Work'}],getUserContextLabel: () => 'Work'}}},
     Services: {prefs: {getBoolPref: () => false, getStringPref: (_key, fallback) => fallback}, obs: {addObserver() {}}},
     document: {getElementById: get, createElement: element, createTextNode: textContent => ({textContent, children: []}), querySelector: () => main, addEventListener() {}},
     window: {addEventListener() {}}, Option: function(textContent, value) {return {textContent, value, children: []};},

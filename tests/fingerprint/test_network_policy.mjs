@@ -16,7 +16,7 @@ function load(entries = {}, resolveContainerProxy) {
     setIntPref: (k,v) => prefs.set(k,v), setStringPref: (k,v) => prefs.set(k,v),
   }};
   const service = {newProxyInfoWithAuth(...args) {proxies.push(args);return {args};},newProxyInfo(...args) {proxies.push(args);return {args};},registerChannelFilter(f){filter=f;}};
-  const context=vm.createContext({Services,URL,TextEncoder,btoa:s=>Buffer.from(s,'binary').toString('base64'),ChromeUtils:{importESModule:()=>({resolveContainerProxy,initIPConflicts(){}}),generateQI:()=>()=>{}},Cc:{'@mozilla.org/network/protocol-proxy-service;1':{getService:()=>service}},Ci:{nsIProtocolProxyService:{},nsIProxyInfo:{TRANSPARENT_PROXY_RESOLVES_HOST:1,ALWAYS_TUNNEL_VIA_PROXY:2}},Cr:{NS_ERROR_PROXY_CONNECTION_REFUSED:42}});
+  const context=vm.createContext({Services,URL,TextEncoder,btoa:s=>Buffer.from(s,'binary').toString('base64'),ChromeUtils:{importESModule:()=>({resolveContainerProxy,initIPConflicts(){},initContainerProxyEditor(){},initProxyIndicator(){}}),generateQI:()=>()=>{}},Cc:{'@mozilla.org/network/protocol-proxy-service;1':{getService:()=>service}},Ci:{nsIProtocolProxyService:{},nsIProxyInfo:{TRANSPARENT_PROXY_RESOLVES_HOST:1,ALWAYS_TUNNEL_VIA_PROXY:2}},Cr:{NS_ERROR_PROXY_CONNECTION_REFUSED:42}});
   let source=readFileSync(new URL('../../additions/browser/components/cloakfox/CloakfoxNetworkPolicy.sys.mjs',import.meta.url),'utf8').replaceAll('export function','function');
   vm.runInContext(source+'\nthis.api={normalizeProxyURL,getContainerNetwork,setContainerNetwork,initCloakfoxNetworkPolicy};',context);
   context.api.initCloakfoxNetworkPolicy();

@@ -30,10 +30,15 @@ export function listBrowserVersions(family, capabilities = {}) {
   if (!definition?.engine) return [];
   const current = major(capabilities[family]?.version || capabilities[definition.engine]?.version);
   if (!current) return [];
+  // Firefox and Chromium-family majors ship frequently, so nine adjacent
+  // releases stays useful without presenting very stale identities. Safari
+  // majors span much longer periods and therefore use a smaller window.
+  const releaseCount = definition.engine === "webkit" ? 3 : 9;
   return Object.freeze([
-    ...[0, 1, 2, 3].map(offset => Object.freeze({
+    ...Array.from({ length: releaseCount }, (_, offset) => Object.freeze({
       value: String(current - offset),
-      label: offset === 0 ? `${current} (current)` : String(current - offset),
+      label: offset === 0 ? `${current} (current)`
+        : offset >= 4 ? `${current - offset} (older)` : String(current - offset),
       confidence: offset <= 2 ? "high" : "lower",
     })),
     Object.freeze({ value: "random-recent", label: "Random recent", confidence: "high" }),

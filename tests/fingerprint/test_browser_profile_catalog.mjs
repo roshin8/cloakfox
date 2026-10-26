@@ -22,11 +22,18 @@ test("identity families stay selectable independently from the active engine", (
   assert.equal(families.find(item => item.id === "custom").available, false);
 });
 
-test("Firefox versions include current through minus three and random recent", () => {
+test("Firefox versions include a useful recent history and random recent", () => {
   const versions = listBrowserVersions("firefox", capabilities);
-  assert.deepEqual(versions.map(item => item.value), ["158", "157", "156", "155", "random-recent"]);
+  assert.deepEqual(versions.map(item => item.value),
+    ["158", "157", "156", "155", "154", "153", "152", "151", "150", "random-recent"]);
   assert.deepEqual(versions.slice(0, 3).map(item => item.confidence), ["high", "high", "high"]);
   assert.equal(versions[3].confidence, "lower");
+  assert.equal(versions[4].label, "154 (older)");
+});
+
+test("Safari version history stays narrow because its majors span longer periods", () => {
+  const versions = listBrowserVersions("safari", capabilities);
+  assert.deepEqual(versions.map(item => item.value), ["26", "25", "24", "random-recent"]);
 });
 
 test("normalization rejects stale or unsupported selections without guessing", () => {

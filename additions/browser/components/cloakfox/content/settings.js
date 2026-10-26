@@ -1,6 +1,8 @@
+import { initMediaWebsiteLabels, initCameraExposure, initMicrophoneExposure } from "./media-label-controls.mjs";
 import { getPersonaHardwareFamilies } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
 import { listBrowserFamilies, listBrowserVersions, normalizeBrowserSelection } from "resource:///modules/CloakfoxBrowserProfiles.sys.mjs";
 import { PRESETS, browserValues, screenValues, languageValues, gpuValues } from "./settings-presets.mjs";
+import { findSimilarPersonas, comparePersonaTraits } from "./persona-similarity.mjs";
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -155,7 +157,7 @@ function getContainers() {
   const list = [{ ucid: 0, name: "Default (no container)" }];
   try {
     for (const id of ContextualIdentityService.getPublicIdentities()) {
-      list.push({ ucid: id.userContextId, name: id.name || `Container ${id.userContextId}` });
+      list.push({ ucid: id.userContextId, name: ContextualIdentityService.getUserContextLabel(id.userContextId) || id.name || `Container ${id.userContextId}` });
     }
   } catch (_e) { /* CIS may be unavailable */ }
   return list;
@@ -167,6 +169,70 @@ function getCloakCfg(ucid) {
   const raw = Services.prefs.getStringPref(cloakCfgPref(ucid), "");
   if (!raw) return null;
   try { return JSON.parse(raw); } catch (_e) { return null; }
+}
+
+function effectiveSimilarityConfig(ucid) {
+  const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
+  if (seed) return JSON.parse(buildCloakCfg(seed, ucid));
+  return getCloakCfg(ucid);
+}
+
+function renderPersonaSimilarity() {
+  const summary = document.getElementById("cfx-similarity-summary");
+  const results = document.getElementById("cfx-similarity-results");
+  const ucid = Number(document.getElementById("cfx-container-select").value);
+  const currentName = getContainers().find(container => Number(container.ucid) === ucid)?.name || "Current container";
+  results.replaceChildren();
+  let candidate;
+  try { candidate = effectiveSimilarityConfig(ucid); }
+  catch (error) { summary.textContent = "Could not read this identity: " + error.message; return; }
+  if (!candidate) { summary.textContent = "This container has no applied identity. Generate or apply one first."; return; }
+  let compared = 0, matches = 0, unavailable = 0;
+  for (const container of getContainers()) {
+    if (Number(container.ucid) === ucid) continue;
+    const row = document.createElement("details"); row.className = "similarity-result similarity-bar-row";
+    const barSummary = document.createElement("summary");
+    const name = document.createElement("strong"); name.textContent = container.name;
+    barSummary.append(name);
+    const indicator = document.createElement("span"); indicator.className = "similarity-expand-label"; indicator.textContent = "View matching fields";
+    const detail = document.createElement("div"); detail.className = "similarity-detail";
+    try {
+      const cfg = effectiveSimilarityConfig(container.ucid);
+      const comparison = comparePersonaTraits(candidate, cfg);
+      if (!cfg || comparison.compared < 90) {
+        unavailable++;
+        detail.textContent = cfg ? "Not enough comparable fields." : "No applied identity yet.";
+      } else {
+        compared++;
+        if (comparison.tooClose) { matches++; row.classList.add("similarity-close"); }
+        const score = document.createElement("span");
+        score.className = "similarity-score";
+        score.textContent = `${comparison.score}/100${comparison.tooClose ? " · Close match" : ""}`;
+        barSummary.title = `${container.name}: ${comparison.score}/100 trait overlap. Click to view matching fields.`;
+        const track = document.createElement("span"); track.className = "similarity-bar-track";
+        track.setAttribute("aria-hidden", "true");
+        const fill = document.createElement("span"); fill.className = "similarity-bar-fill";
+        fill.style.width = `${comparison.score}%`; track.append(fill);
+        barSummary.append(score, track);
+        const fields = document.createElement("dl");
+        fields.className = "similarity-shared-fields";
+        for (const field of comparison.sharedFields) {
+          const label = document.createElement("dt");
+          label.textContent = FIELD_LABELS[field.key] || ({"webGl:vendor":"Graphics vendor","webGl:renderer":"Graphics renderer",fonts:"Fonts"})[field.key] || field.key;
+          const technical = document.createElement("small"); technical.textContent = field.key; label.append(technical);
+          const value = document.createElement("dd");
+          value.textContent = Array.isArray(field.value) ? field.value.join(", ") : String(field.value);
+          fields.append(label, value);
+        }
+        const sharedHeading = document.createElement("p");
+        sharedHeading.textContent = comparison.sharedFields.length ? "Same values in both containers" : "No matching fields.";
+        detail.append(sharedHeading, fields);
+      }
+    } catch (_error) { unavailable++; detail.textContent = "Identity could not be read; not compared."; }
+    barSummary.append(indicator);
+    row.append(barSummary, detail); results.append(row);
+  }
+  summary.textContent = `Checking: ${currentName}. ${matches ? `${matches} close match${matches === 1 ? "" : "es"} found` : compared ? "No close matches found" : "No other identities available to compare"}. Compared with ${compared} other container${compared === 1 ? "" : "s"}.${unavailable ? ` ${unavailable} unavailable or incomplete.` : ""}`;
 }
 
 // Truncate a long string to display length for readability — full
@@ -340,6 +406,12 @@ const FIELD_CHOICES = {
   "AudioContext:maxChannelCount": [2, 6, 8],
 };
 const FIELD_LABELS = {
+  "navigator.userAgent": "User-Agent",
+  "navigator.appVersion": "App version",
+  "navigator.oscpu": "Operating system / CPU",
+  "headers.User-Agent": "User-Agent header",
+  "navigator.language": "Browser language",
+  "headers.Accept-Language": "Preferred languages header",
   "navigator.platform": "Platform", "navigator.hardwareConcurrency": "CPU cores",
   "navigator:maxTouchPoints": "Touch points", "screen.width": "Screen width",
   "screen.height": "Screen height", "window.devicePixelRatio": "Pixel density",
@@ -363,11 +435,18 @@ function fmtValue(key, v) {
 function makeRow(label, key, cfg, ucid, overrides, onChange) {
   const row = document.createElement("div");
   row.className = "spoof-row dyn";
+  if (["mediaDevices:micros", "mediaDevices:webcams", "mediaDevices:speakers"].includes(key)) row.classList.add("media-device-limit");
 
   const k = document.createElement("span");
   k.className = "k";
   k.textContent = FIELD_LABELS[key] || label;
   k.title = key;
+  if (["navigator.userAgent", "navigator.appVersion", "navigator.oscpu", "headers.User-Agent", "navigator.language", "headers.Accept-Language"].includes(key)) {
+    k.classList.add("identity-field-label");
+    const technical = document.createElement("small");
+    technical.textContent = key;
+    k.append(technical);
+  }
 
   const rawVal = cfg ? cfg[key] : undefined;
   const isBool = KEY_TYPES[key] === "bool";
@@ -432,6 +511,35 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     row.append(k, picker, actions);
     return row;
   }
+  const managedIdentity = ["navigator.userAgent", "navigator.appVersion", "navigator.oscpu", "headers.User-Agent"].includes(key);
+  if (managedIdentity) {
+    const field = document.createElement("div");
+    field.className = "identity-managed-field";
+    const value = document.createElement("span");
+    value.className = "identity-field-value";
+    value.textContent = sval;
+    value.title = String(rawVal ?? sval);
+    const tools = document.createElement("div");
+    tools.className = "identity-field-tools";
+    const link = document.createElement("a");
+    link.href = "#cfx-persona-panel";
+    link.textContent = "Edit in Identity generator →";
+    const custom = document.createElement("button");
+    custom.type = "button";
+    custom.className = "identity-custom-override";
+    custom.textContent = key in overrides ? "Edit custom override" : "Custom override";
+    custom.setAttribute("aria-label", `${custom.textContent}: ${label}`);
+    custom.addEventListener("click", () => {
+      value.replaceWith(v);
+      tools.hidden = true;
+      openEditMode();
+    });
+    tools.append(link, custom);
+    if (key in overrides) value.classList.add("v-overridden");
+    field.append(value, tools);
+    row.append(k, field, actions);
+    return row;
+  }
   v.addEventListener("click", openEditMode);
 
   function openEditMode() {
@@ -492,9 +600,65 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
   return row;
 }
 
+function mountMediaDeviceTabs(grid, advanced, panels) {
+  const labels = { microphone: "Microphones", camera: "Cameras", speaker: "Speakers" };
+  const kinds = Object.keys(labels), buttons = new Map();
+  const tabs = document.createElement("div"); tabs.className = "media-device-tabs";
+  tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", "Media device categories");
+  function activate(kind, focus = false, persist = true) {
+    if (!panels.has(kind)) return;
+    grid.dataset.mediaDeviceTab = kind;
+    for (const [name, panel] of panels) {
+      const chosen = name === kind;
+      panel.hidden = !chosen;
+      buttons.get(name).setAttribute("aria-selected", String(chosen));
+      buttons.get(name).tabIndex = chosen ? 0 : -1;
+    }
+    if (persist) {
+      const url = new URL(location.href); url.hash = `cfx-${kind}-configuration`;
+      history.replaceState({...history.state, mediaDeviceTab:kind}, "", url);
+    }
+    if (focus) buttons.get(kind).focus();
+  }
+  for (const kind of kinds) {
+    const button = document.createElement("button"); button.type = "button";
+    button.id = `cfx-device-tab-${kind}`; button.textContent = labels[kind];
+    button.setAttribute("role", "tab"); button.setAttribute("aria-controls", panels.get(kind).id);
+    button.addEventListener("click", () => activate(kind));
+    button.addEventListener("keydown", event => {
+      const i = kinds.indexOf(kind);
+      const target = event.key === "ArrowRight" ? kinds[(i+1)%kinds.length]
+        : event.key === "ArrowLeft" ? kinds[(i+kinds.length-1)%kinds.length]
+        : event.key === "Home" ? kinds[0] : event.key === "End" ? kinds.at(-1) : null;
+      if (target) { event.preventDefault(); activate(target,true); }
+    });
+    panels.get(kind).setAttribute("aria-labelledby",button.id);
+    tabs.append(button); buttons.set(kind,button);
+  }
+  const hashKind = location.hash.match(/^#cfx-(camera|microphone|speaker)-/)?.[1];
+  activate(grid.dataset.mediaDeviceTab || hashKind || history.state?.mediaDeviceTab || "camera",false,false);
+  const group = document.createElement("div"); group.className = "media-device-group";
+  panels.get(kinds[0]).before(group);
+  group.append(tabs, ...panels.values());
+  grid._selectMediaDeviceTab = activate;
+}
+window.addEventListener("hashchange", () => {
+  const target = document.getElementById(location.hash.slice(1));
+  const panel = target?.closest(".media-device-panel");
+  if (panel) document.getElementById("grp-media")?._selectMediaDeviceTab?.(panel.dataset.device,false,false);
+});
+
 function populateGrid(id, cfg, rows, ucid, overrides, onChange) {
   const grid = document.getElementById(id);
   if (!grid) return;
+  // Preserve live device controls while rebuilding their maximum rows.
+  // Moving the same nodes keeps drafts, focus targets and event handlers.
+  const deviceControls = id === "grp-media" ? new Map([
+    ["mediaDevices:micros", document.getElementById("cfx-microphone-configuration")],
+    ["mediaDevices:webcams", document.getElementById("cfx-camera-configuration")],
+    ["mediaDevices:speakers", document.getElementById("cfx-speaker-configuration")],
+  ]) : new Map();
+  for (const controls of deviceControls.values()) controls?.remove();
   // Clear existing children EXCEPT static elements declared in HTML
   // (e.g. timezone group has a <select>; we never wipe that).
   Array.from(grid.querySelectorAll(".spoof-row.dyn")).forEach(n => n.remove());
@@ -503,10 +667,25 @@ function populateGrid(id, cfg, rows, ucid, overrides, onChange) {
   grid.querySelector(".advanced-fields")?.remove();
   const advanced = document.createElement("details"); advanced.className = "advanced-fields"; advanced.open = wasOpen ?? !Services.prefs.getBoolPref("cloakfox.ui.collapse_advanced", false);
   const summary = document.createElement("summary"); summary.textContent = "Advanced field overrides"; advanced.append(summary);
+  if (id === "grp-media") {
+    const note = document.createElement("p"); note.className = "media-device-note";
+    note.textContent = "Device limits and camera access apply to this container. Website-facing names apply across containers when generic media labels are enabled. Reload websites after changes; existing streams keep their current labels.";
+    advanced.append(note);
+  }
+  const devicePanels = new Map();
   for (const [label, key] of rows) {
     const row = makeRow(label, key, cfg, ucid, overrides, onChange);
     (["grp-graphics", "grp-locale", "grp-geo", "grp-network"].includes(id) || FIELD_CHOICES[key] || KEY_TYPES[key] === "bool" ? grid : advanced).appendChild(row);
+    const controls = deviceControls.get(key);
+    if (controls) {
+      const kind = key === "mediaDevices:micros" ? "microphone" : key === "mediaDevices:webcams" ? "camera" : "speaker";
+      const panel = document.createElement("section"); panel.className = "media-device-panel";
+      panel.id = `cfx-device-panel-${kind}`; panel.dataset.device = kind;
+      panel.setAttribute("role", "tabpanel"); panel.tabIndex = 0;
+      advanced.append(panel); panel.append(row,controls); devicePanels.set(kind,panel);
+    }
   }
+  if (devicePanels.size) mountMediaDeviceTabs(grid,advanced,devicePanels);
   if (advanced.children.length > 1) grid.append(advanced);
 }
 
@@ -602,8 +781,16 @@ function updateHeadline(cfg, seedB64) {
   const renderer = cfg["webGl:backend_profile"] === true
     ? "WebGL compatible profile"
     : (cfg["webGl:renderer"] || "?").slice(0, 50);
+  const ua = String(cfg["navigator.userAgent"] || "");
+  const browserMatch = ua.match(/(?:Edg|Chromium|Chrome|Firefox|Version)\/(\d+)/);
+  const browser = ua.includes("Edg/") ? "Edge"
+    : ua.includes("Chromium/") ? "Chromium"
+    : ua.includes("Chrome/") ? "Chrome"
+    : ua.includes("Firefox/") ? "Firefox"
+    : ua.includes("Safari/") ? "Safari" : "Browser";
+  const browserLabel = `${browser}${browserMatch ? ` ${browserMatch[1]}` : ""}`;
   const tag = shortSeedTag(seedB64);
-  el.textContent = `${platform} · ${w}×${h}@${dpr}x · ${hwc}-core · ${renderer}${tag ? "  " + tag : ""}`;
+  el.textContent = `${browserLabel} · ${platform} · ${w}×${h}@${dpr}x · ${hwc}-core · ${renderer}${tag ? "  " + tag : ""}`;
 }
 
 // ── timezone list ───────────────────────────────────────────────────
@@ -620,6 +807,11 @@ const TIMEZONES = [
 // ── wire up UI ──────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("cfx-check-similarity").addEventListener("click", renderPersonaSimilarity);
+  document.getElementById("cfx-container-select").addEventListener("change", () => {
+    document.getElementById("cfx-similarity-results").replaceChildren();
+    document.getElementById("cfx-similarity-summary").textContent = "Not checked for this container. Select Check similarity.";
+  });
   function updateNetworkProfile() {
     const ucid = Number(document.getElementById("cfx-container-select").value) || 0;
     const pref = `cloakfox.container.${ucid}.network_follow_identity`;
@@ -734,7 +926,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   // ?ucid=N deep-link from the popup.
   try {
-    const requested = new URLSearchParams(window.location.search).get("ucid");
+    const requested = history.state?.editingContainer ?? new URLSearchParams(window.location.search).get("ucid");
     if (requested !== null) {
       const target = String(parseInt(requested, 10) || 0);
       if (Array.from(selectEl.options).some(o => o.value === target)) {
@@ -766,6 +958,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateBrowserPreview() {
+    document.getElementById("cfx-applied-identity-details")?.remove();
+    document.querySelector(".profile-preview-label").textContent = "Generate a new identity";
     const browser = selectedBrowser();
     const versionSelect = document.getElementById("cfx-persona-version");
     const version = versionSelect.selectedOptions[0];
@@ -794,6 +988,47 @@ document.addEventListener("DOMContentLoaded", () => {
     const selection = normalizeBrowserSelection({ browser, version: versionSelect.value }, browserCapabilities());
     generateNew.disabled = !selection;
     generateNew.title = selection ? "" : "Choose a supported identity profile.";
+  }
+
+  function showAppliedIdentity(cfg) {
+    if (!cfg) return;
+    const ua = cfg["navigator.userAgent"] || "";
+    const os = /Windows/.test(ua) ? "Windows" : /Macintosh|Mac OS/.test(ua) ? "macOS" : /Linux|X11/.test(ua) ? "Linux" : cfg["navigator.platform"] || "Unknown OS";
+    const browser = ua.match(/(?:Firefox|Edg|Chromium|Chrome|Version)\/[\d.]+/g)?.at(-1)?.replace("/", " ") || "Applied identity";
+    document.querySelector(".profile-preview-label").textContent = "Applied identity";
+    document.getElementById("cfx-profile-preview-text").textContent = `${browser} · ${os}`;
+    document.getElementById("cfx-profile-preview-ua").textContent = ua;
+    const chips = [browser, os];
+    if (cfg["screen.width"] && cfg["screen.height"]) chips.push(`${cfg["screen.width"]} × ${cfg["screen.height"]}`);
+    if (cfg["window.devicePixelRatio"]) chips.push(`${Number(cfg["window.devicePixelRatio"]).toFixed(2).replace(/\.?0+$/, "")}× pixel density`);
+    if (cfg["navigator.hardwareConcurrency"]) chips.push(`${cfg["navigator.hardwareConcurrency"]} CPU cores`);
+    if (cfg["webGl:renderer"]) chips.push(cfg["webGl:renderer"]);
+    const overrideCount = Object.keys(readOverrides(Number(selectEl.value))).length;
+    chips.push(overrideCount ? `${overrideCount} manual override${overrideCount === 1 ? "" : "s"} active` : "No manual overrides");
+    document.getElementById("cfx-profile-preview-traits").replaceChildren(...chips.map(text => {
+      const chip = document.createElement("span"); chip.textContent = text.length > 48 ? text.slice(0, 45) + "…" : text; chip.title = text; return chip;
+    }));
+    document.getElementById("cfx-applied-identity-details")?.remove();
+    const details = document.createElement("details"); details.id = "cfx-applied-identity-details";
+    const summary = document.createElement("summary"); summary.textContent = "View identity details";
+    const values = document.createElement("dl");
+    const ucid = Number(selectEl.value);
+    const entries = [
+      ["Language", cfg["navigator.language"] || cfg["locale:language"]],
+      ["Timezone", Services.prefs.getStringPref(tzPref(ucid), "UTC (default)")],
+      ["Audio sample rate", cfg["AudioContext:sampleRate"] ? `${cfg["AudioContext:sampleRate"]} Hz` : null],
+      ["Audio channels", cfg["AudioContext:maxChannelCount"]],
+      ["Fonts", Array.isArray(cfg.fonts) ? `${cfg.fonts.length} configured fonts` : null],
+    ];
+    for (const [label, value] of entries) {
+      if (value === undefined || value === null || value === "") continue;
+      const term = document.createElement("dt"); term.textContent = label;
+      const description = document.createElement("dd"); description.textContent = String(value);
+      values.append(term, description);
+    }
+    const similarity = document.createElement("a"); similarity.href = "#cfx-persona-similarity"; similarity.textContent = "View persona similarity results →";
+    details.append(summary, values, similarity);
+    document.querySelector(".profile-preview-copy").append(details);
   }
 
   function renderBrowserPicker(ucid) {
@@ -835,8 +1070,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     select.value = [...select.options].some(option => option.value === saved) ? saved : select.options[0]?.value || "";
     updateBrowserPreview();
+    if (document.documentElement.dataset.identityBrowser !== family) {
+      document.documentElement.dataset.identityBrowser = family;
+      window.dispatchEvent(new CustomEvent("cloakfox-browser-family-change", { detail: { family } }));
+    }
   }
 
+  let refreshCameraExposure = () => {};
+  let refreshMicrophoneExposure = () => {};
   function refreshContainer() {
     const ucid = parseInt(selectEl.value, 10) || 0;
     presentationEl.value = getChromiumPresentation(ucid);
@@ -847,6 +1088,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
     const onEdit = () => { rebuildCloakCfg(ucid); refreshContainer(); };
 
+    const generatedFonts = seedB64 ? fillPersonaKeys(seedB64, ucid) : {};
+    const fontUA = generatedFonts["navigator.userAgent"] || "";
+    const fontOS = /Windows/.test(fontUA) ? "Windows" : /Macintosh|Mac OS/.test(fontUA) ? "macOS" : /Linux|X11/.test(fontUA) ? "Linux" : "Not generated";
+    document.getElementById("cfx-font-source").textContent = `Persona source OS: ${fontOS} · ${"fonts" in overrides ? "Custom font override active" : "Using generated fonts"}`;
+    for (const [id, fonts] of [["cfx-font-generated", generatedFonts.fonts], ["cfx-font-effective", cfg?.fonts]]) {
+      const target = document.getElementById(id); target.replaceChildren();
+      if (!Array.isArray(fonts)) { target.textContent = "No configured font list."; continue; }
+      for (const font of fonts) { const chip = document.createElement("span"); chip.textContent = font; target.append(chip); }
+    }
+    document.getElementById("cfx-font-custom").value = (overrides.fonts || generatedFonts.fonts || []).join("\n");
+    document.getElementById("cfx-font-save").onclick = () => {
+      try {
+        const fonts = [...new Set(document.getElementById("cfx-font-custom").value.split(/\n/).map(value => value.trim()).filter(Boolean))];
+        setOverride(ucid, "fonts", fonts); rebuildCloakCfg(ucid); refreshContainer();
+        document.getElementById("cfx-font-status").textContent = "Custom font list saved. Reload website tabs.";
+      } catch (error) { document.getElementById("cfx-font-status").textContent = error.message; }
+    };
+    document.getElementById("cfx-font-reset").onclick = () => {
+      try { clearOverride(ucid, "fonts"); rebuildCloakCfg(ucid); refreshContainer(); document.getElementById("cfx-font-status").textContent = "Generated fonts restored. Reload website tabs."; }
+      catch (error) { document.getElementById("cfx-font-status").textContent = error.message; }
+    };
     const mode = personaOSMode(ucid);
     const osLabels = { windows:"Windows", macos:"macOS", linux:"Linux", legacy:"all" };
     const hostLabel = { Darwin:"macOS", WINNT:"Windows", Linux:"Linux" }[Services.appinfo.OS];
@@ -891,8 +1153,22 @@ document.addEventListener("DOMContentLoaded", () => {
       indicator.dataset.count = String(overrideCount);
     }
     if (clearOvBtn) clearOvBtn.hidden = overrideCount === 0;
+    refreshCameraExposure();
+    refreshMicrophoneExposure();
   }
-  selectEl.addEventListener("change", refreshContainer);
+  selectEl.addEventListener("change", () => {
+    // Preserve this settings tab's editing target on reload, independently of
+    // other settings tabs. Keep category hashes and other query parameters.
+    const url = new URL(window.location.href);
+    url.searchParams.set("ucid", selectEl.value);
+    const state = {...history.state, editingContainer:selectEl.value};
+    // about: documents can reject changing the query via the History API.
+    // Save per-tab state first so a rejected URL rewrite cannot lose selection
+    // or prevent the remaining container-scoped controls from refreshing.
+    history.replaceState(state, "");
+    try { history.replaceState(state, "", url.href); } catch (_error) { /* state persists on reload */ }
+    refreshContainer();
+  });
   document.addEventListener("cfx-region-changed", refreshContainer);
   refreshContainer();
 
@@ -1017,8 +1293,64 @@ document.addEventListener("DOMContentLoaded", () => {
       Services.prefs.savePrefFile(null);
       refreshContainer();
       succeeded = true;
-      status.textContent = `${index === -1 ? "Generated and applied" : "Applied selected profile"} · ${shortSeedTag(seed)}.${clearOverrides ? " Field overrides cleared." : ""} Reload website tabs to use it.`;
-      status.className = "identity-status identity-success";
+      showAppliedIdentity(getCloakCfg(ucid));
+      renderPersonaSimilarity();
+      status.textContent = "";
+      document.getElementById("cfx-persona-similarity-warning")?.remove();
+      const comparisons = getContainers().map(container => {
+        let cfg = getCloakCfg(container.ucid);
+        const savedSeed = Services.prefs.getStringPref(masterSeedPref(container.ucid), "");
+        if (savedSeed) {
+          try { cfg = JSON.parse(buildCloakCfg(savedSeed, container.ucid)); }
+          catch (error) { Cu.reportError(`Could not compare container ${container.ucid}: ${error.message}`); }
+        }
+        return {...container, cfg};
+      });
+      const similar = findSimilarPersonas(getCloakCfg(ucid), comparisons, ucid);
+      if (similar.length) {
+        const warning = document.createElement("div");
+        warning.id = "cfx-persona-similarity-warning";
+        warning.setAttribute("role", "alert");
+        const title = document.createElement("strong");
+        title.textContent = "This identity closely resembles another container";
+        const explanation = document.createElement("p");
+        explanation.textContent = "Identity applied. Generate again or choose different graphics or screen settings for more separation. This compares configured traits; it is not a tracking probability.";
+        const list = document.createElement("ul");
+        for (const match of similar) {
+          const item = document.createElement("li");
+          item.textContent = `${match.name}: ${match.score}/100 trait overlap. Shared: ${match.shared.join(", ")}.`;
+          list.append(item);
+        }
+        warning.append(title, explanation, list);
+        status.after(warning);
+      }
+      document.getElementById("cfx-identity-toast")?.remove();
+      const toast = document.createElement("div");
+      toast.id = "cfx-identity-toast";
+      toast.className = "identity-toast";
+      toast.setAttribute("role", "status");
+      toast.setAttribute("aria-live", "polite");
+      const message = document.createElement("div");
+      const heading = document.createElement("strong");
+      heading.textContent = `${index === -1 ? "New identity applied" : "Selected profile applied"} · ${shortSeedTag(seed)}`;
+      const reminder = document.createElement("p");
+      reminder.textContent = `${clearOverrides ? "Manual field overrides replaced. " : ""}Reload website tabs to use this identity.`;
+      message.append(heading, reminder);
+      if (similar.length) {
+        toast.classList.add("identity-toast-warning");
+        reminder.textContent += ` Similar identity found in ${similar.map(item => item.name).join(", ")}. See the comparison warning in Identity generator.`;
+      }
+      const dismiss = document.createElement("button");
+      dismiss.type = "button";
+      dismiss.textContent = "Dismiss";
+      dismiss.addEventListener("click", () => toast.remove());
+      toast.append(message, dismiss);
+      document.body.append(toast);
+      // Keep confirmation available long enough to read; hovering or focusing
+      // it preserves it until the user dismisses it.
+      if (!similar.length) setTimeout(() => {
+        if (!toast.matches(":hover, :focus-within")) toast.remove();
+      }, 10000);
       const hero = document.querySelector(".current-persona-strip");
       if (hero) {
         hero.classList.remove("hero-flash");
@@ -1167,6 +1499,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (pref === "cloakfox.opt.container_rendering_profiles") setContainerGPUProfilesEnabled(el.checked);
         else if (pref === "cloakfox.experimental.canvas_pipeline" && !el.checked && Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) throw new Error("Disable container GPU profiles before disabling their canonical backend");
         else Services.prefs.setBoolPref(pref, el.checked);
+        if (pref === "cloakfox.appearance.colored_inactive_buttons") {
+          Services.prefs.savePrefFile(null);
+          return;
+        }
         document.getElementById("cfx-container-gpu-status").textContent = "Reload pages and restart workers to apply GPU policy changes.";
       } catch (error) {
         el.checked = Services.prefs.getBoolPref(pref, false);
@@ -1196,6 +1532,54 @@ document.addEventListener("DOMContentLoaded", () => {
   initAppearanceControls().catch(error => {
     document.getElementById("cfx-appearance-status").textContent = `Could not read application appearance: ${error.message}`;
   });
+  for (const kind of ["camera", "microphone", "speaker"]) {
+    initMediaWebsiteLabels(kind, { document, navigator, prefs: Services.prefs, Option });
+  }
+  refreshCameraExposure = initCameraExposure({ document, navigator,
+    getContext: () => {
+      const ucid = Number(selectEl.value) || 0, cfg = getCloakCfg(ucid) || {};
+      let ids = null;
+      if (cfg["mediaDevices:cameraDevices"]) {
+        try {
+          const parsed = JSON.parse(cfg["mediaDevices:cameraDevices"]);
+          ids = Array.isArray(parsed) && parsed.every(id=>typeof id === "string" && id) ? parsed : [];
+        } catch (_) { ids = []; }
+      } else if (cfg["mediaDevices:cameraDevice"]) ids = [cfg["mediaDevices:cameraDevice"]];
+      const maximum = cfg["mediaDevices:webcams"];
+      const limit = Number.isInteger(maximum) && maximum >= 0 ? Math.min(maximum,64) : 1;
+      return { id: ucid, ids, limit };
+    },
+    save: ids => {
+      const ucid = Number(selectEl.value) || 0;
+      setOverrides(ucid, { "mediaDevices:cameraDevice": "",
+        "mediaDevices:cameraDevices": ids === null ? "" : JSON.stringify(ids) });
+      rebuildCloakCfg(ucid);
+      Services.prefs.savePrefFile(null);
+      refreshContainer();
+    },
+  });
+  refreshMicrophoneExposure = initMicrophoneExposure({ document, navigator,
+    getContext: () => {
+      const ucid = Number(selectEl.value) || 0, cfg = getCloakCfg(ucid) || {};
+      let ids = null;
+      if (cfg["mediaDevices:microphoneDevices"]) {
+        try {
+          const parsed = JSON.parse(cfg["mediaDevices:microphoneDevices"]);
+          ids = Array.isArray(parsed) && parsed.every(id=>typeof id === "string" && id) ? parsed : [];
+        } catch (_) { ids = []; }
+      }
+      const maximum = cfg["mediaDevices:micros"];
+      const limit = Number.isInteger(maximum) && maximum >= 0 ? Math.min(maximum,64) : 1;
+      return { id: ucid, ids, limit };
+    },
+    save: ids => {
+      const ucid = Number(selectEl.value) || 0;
+      setOverrides(ucid, { "mediaDevices:microphoneDevices": ids === null ? "" : JSON.stringify(ids) });
+      rebuildCloakCfg(ucid);
+      Services.prefs.savePrefFile(null);
+      refreshContainer();
+    },
+  });
 
 });
 
@@ -1208,8 +1592,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const details = [...main.querySelectorAll(":scope > details")];
   details.forEach((node, index) => { node.id ||= `cfx-reference-${index}`; });
   const categories = [
-    {id:"identity",label:"Persona & identity",description:"Choose a BrowserForge persona for this container, then customize its identity fields.",panels:["cfx-persona-panel","sec-identity"]},
-    {id:"display",label:"Display & graphics",description:"Customize screen geometry, virtual screens, pixel density and the graphics identity.",panels:["sec-display","sec-screen-management","sec-graphics","sec-appearance"]},
+    {id:"identity",label:"Persona & identity",description:"Generate an identity, edit its reported fields, choose an engine, reset data, or open help.",panels:["cfx-persona-panel","sec-identity","cfx-font-settings","cfx-persona-similarity","sec-appearance","sec-screen-management","cfx-engine-settings","cfx-identity-maintenance","cfx-identity-help"]},
+    {id:"display",label:"Display & graphics",description:"Customize screen geometry, virtual screens, pixel density and the graphics identity.",panels:["sec-display","sec-graphics"]},
     {id:"region",label:"Language & region",description:"Coordinate language, timezone and optional location for this container.",panels:["cfx-region-settings","sec-locale","sec-geo"]},
     {id:"media",label:"Audio & media",description:"Control audio characteristics, media capabilities and exposed device surfaces.",panels:["sec-audio","sec-media"]},
     {id:"connections",label:"Connections & proxies",description:"Choose this container’s connection policy and manage saved proxy routes.",panels:["sec-network-policy","cfx-proxy-manager","cfx-ip-conflict-panel"]},
@@ -1294,19 +1678,47 @@ document.addEventListener("DOMContentLoaded", () => {
   tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", "Settings sections");
   const identitySummary = hero.querySelector(".hero-row");
   identitySummary.classList.add("current-persona-strip");
-  header.after(identitySummary, tabs);
+  const contextHeader = document.createElement("div");
+  contextHeader.className = "focused-context-header";
+  contextHeader.append(identitySummary, tabs);
+  header.after(contextHeader);
   // Match the fixed navigation offset to the toolbar even when controls wrap.
   const topbar = document.querySelector(".topbar");
   new ResizeObserver(() => document.body.style.setProperty("--settings-topbar-height", `${topbar.offsetHeight}px`)).observe(topbar);
   const groups = new Map();
   const selectedPanels = new Map();
+  // History state is scoped to this settings tab and survives a refresh.
+  const savedPanels = history.state?.settingsPanels;
+  if (savedPanels && typeof savedPanels === "object") {
+    for (const category of categories) {
+      const panel = savedPanels[category.id];
+      if (category.panels.includes(panel)) selectedPanels.set(category.id, panel);
+    }
+  }
+  function selectSettingsPanel(category, id) {
+    selectedPanels.set(category, id);
+    history.replaceState({...history.state, settingsPanels:Object.fromEntries(selectedPanels)}, "");
+  }
+  const chromiumFamilies = new Set(["chrome", "edge", "chromium"]);
+  function panelSupportsSelectedBrowser(id) {
+    const family = document.documentElement.dataset.identityBrowser ||
+      document.querySelector(".browser-family-tile.is-selected")?.dataset.browser || "firefox";
+    if (id === "sec-appearance") return family === "firefox";
+    if (id === "cfx-engine-settings" || id === "sec-screen-management") return chromiumFamilies.has(family);
+    return true;
+  }
   function ensureGroups() {
     for (const category of categories) for (const id of category.panels) {
       const panel = document.getElementById(id);
       if (!panel || groups.has(id)) continue;
       const group = document.createElement("details"); group.className = "settings-group"; group.open = true;
       const summary = document.createElement("summary");
-      summary.textContent = id === "cfx-persona-panel" ? "BrowserForge profile" : (panel.querySelector("h2, h3, summary")?.textContent.trim() || category.label);
+      summary.textContent = id === "cfx-persona-panel" ? "Identity generator"
+        : id === "sec-identity" ? "Browser fields"
+        : id === "cfx-engine-settings" ? "Engine"
+        : id === "cfx-identity-help" ? "Help"
+        : id === "cfx-identity-maintenance" ? "Reset & data"
+        : (panel.querySelector("h2, h3, summary")?.textContent.trim() || category.label);
       panel.before(group); group.append(summary, panel); groups.set(id, group);
     }
   }
@@ -1329,7 +1741,7 @@ document.addEventListener("DOMContentLoaded", () => {
     link.prepend(icon);
     link.addEventListener("click", event => {
       event.preventDefault(); search.value = ""; active = category.id;
-      history.pushState(null,"",`#category-${active}`); render();
+      history.pushState(history.state,"",`#category-${active}`); render();
       if (layout.value === "grouped") groups.get(category.panels.find(id => groups.has(id)))?.scrollIntoView({behavior:"smooth",block:"start"});
       else { title.focus({preventScroll:true}); window.scrollTo(0,0); }
     });
@@ -1337,12 +1749,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   function render() {
     ensureGroups();
+    // Keep DOM, keyboard and visual order aligned with the sidebar. Only move
+    // nodes that are out of place so the mutation observer settles after a pass.
+    let previousGroup = contextHeader;
+    for (const category of categories) for (const id of category.panels) {
+      const group = groups.get(id);
+      if (!group) continue;
+      if (previousGroup.nextElementSibling !== group) previousGroup.after(group);
+      previousGroup = group;
+    }
     document.documentElement.dataset.theme = theme.value;
     document.body.dataset.layout = layout.value;
     document.body.dataset.category = active;
     const query = search.value.trim().toLocaleLowerCase();
     const currentCategory = categories.find(item => item.id === active);
-    const available = currentCategory.panels.filter(id => groups.has(id));
+    const available = currentCategory.panels.filter(id => groups.has(id) && panelSupportsSelectedBrowser(id));
     const selected = selectedPanels.get(active);
     const selectedId = available.includes(selected) ? selected : available[0];
     tabs.hidden = layout.value !== "console" || !!query || available.length < 2;
@@ -1355,13 +1776,13 @@ document.addEventListener("DOMContentLoaded", () => {
         button.id = `tab-${id}`; button.dataset.panel = id; button.setAttribute("role", "tab");
         button.setAttribute("aria-controls", id);
         button.textContent = groups.get(id).firstElementChild.textContent;
-        button.addEventListener("click", () => { selectedPanels.set(active, id); render(); });
+        button.addEventListener("click", () => { selectSettingsPanel(active, id); render(); });
         button.addEventListener("keydown", event => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
           event.preventDefault();
           const index = available.indexOf(id);
           const next = event.key === "Home" ? 0 : event.key === "End" ? available.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + available.length) % available.length;
-          selectedPanels.set(active, available[next]); render(); tabs.children[next].focus();
+          selectSettingsPanel(active, available[next]); render(); tabs.children[next].focus();
         });
         tabs.append(button);
       }
@@ -1375,7 +1796,8 @@ document.addEventListener("DOMContentLoaded", () => {
       let matches = 0;
       for (const id of category.panels) {
         const panel = document.getElementById(id); if (!panel) continue;
-        const match = query ? `${category.label} ${panel.textContent}`.toLocaleLowerCase().includes(query) : layout.value === "grouped" || category.id === active;
+        const supported = panelSupportsSelectedBrowser(id);
+        const match = supported && (query ? `${category.label} ${panel.textContent}`.toLocaleLowerCase().includes(query) : layout.value === "grouped" || category.id === active);
         const visible = match && (query || layout.value === "grouped" || id === selectedId);
         panel.hidden = !visible;
         const group = groups.get(id); group.hidden = !visible;
@@ -1405,7 +1827,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (category) {
       active = category.id;
       const panelId = category.panels.find(id => id === hash || document.getElementById(id)?.contains(document.getElementById(hash)));
-      if (panelId) { selectedPanels.set(active, panelId); if (groups.has(panelId)) groups.get(panelId).open = true; }
+      if (panelId) { selectSettingsPanel(active, panelId); if (groups.has(panelId)) groups.get(panelId).open = true; }
     }
     search.value = ""; render();
     const target = document.getElementById(hash);
@@ -1414,6 +1836,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   search.addEventListener("input",render);
+  // Hold the current category through its gaps; switch only when the next
+  // category's first visible section crosses the reading line below the toolbar.
+  let scrollTrackingFrame = 0;
+  function trackVisibleCategory() {
+    scrollTrackingFrame = 0;
+    if (layout.value !== "grouped" || search.value.trim()) return;
+    const readingLine = topbar.getBoundingClientRect().bottom + 24;
+    let nearest = null;
+    for (const category of categories) {
+      const firstGroup = category.panels.map(id => groups.get(id)).find(group =>
+        group && !group.hidden && group.getClientRects().length);
+      if (!firstGroup) continue;
+      if (!nearest) nearest = category.id;
+      if (firstGroup.getBoundingClientRect().top <= readingLine) nearest = category.id;
+      else break;
+    }
+    if (!nearest) return;
+    active = nearest;
+    for (const [id, link] of links) {
+      if (id === active) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    }
+  }
+  window.addEventListener("scroll", () => {
+    if (!scrollTrackingFrame) scrollTrackingFrame = requestAnimationFrame(trackVisibleCategory);
+  }, {passive:true});
+  window.addEventListener("resize", () => {
+    if (!scrollTrackingFrame) scrollTrackingFrame = requestAnimationFrame(trackVisibleCategory);
+  });
+  window.addEventListener("cloakfox-browser-family-change", render);
   window.addEventListener("hashchange",followHash);
   window.addEventListener("popstate",followHash);
   // Container workflows mount asynchronously. Classify newly mounted panels too.

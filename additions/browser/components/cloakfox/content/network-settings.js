@@ -61,7 +61,13 @@ loadNetwork();
   const check=document.createElement('button');check.type='button';check.id='cfx-ip-check';check.textContent='Check all containers now';panel.append(check);
   const results=document.createElement('p');results.id='cfx-ip-results';results.setAttribute('role','status');panel.append(results);
   document.querySelector('main').append(panel);
-  const identities=()=>[{userContextId:0,name:'Default'},...ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService.getPublicIdentities()];
+  const identities=()=>{
+    const {ContextualIdentityService:service}=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs');
+    return [{userContextId:0,name:'Default (no container)'},...service.getPublicIdentities().map(identity=>({
+      userContextId:identity.userContextId,
+      name:service.getUserContextLabel(identity.userContextId)||identity.name||`Container ${identity.userContextId}`,
+    }))];
+  };
 
   function selectField(labelText, choices) {
     const label=document.createElement('label');label.textContent=labelText;
@@ -113,24 +119,76 @@ loadNetwork();
   action('Allow IP',()=>{ipMonitor.setIPException(exceptionInput.value,true);exceptionInput.value='';});
   const exceptionList=document.createElement('div');panel.append(exceptionList);
   const historyTitle=document.createElement('h3');historyTitle.textContent='Website IP visit history';panel.append(historyTitle);
+  const historyHelp=document.createElement('p');historyHelp.className='ip-history-help';
+  historyHelp.textContent='Saved observations, not a list of conflicts. Each record shows the public IP observed when a container visited a website. IPv4 and IPv6 are separate records. The same address may appear on several websites.';panel.append(historyHelp);
   action('Clear all IP records',()=>ipMonitor.clearIPHistory());
+  const historyFilterLabel=document.createElement('label');historyFilterLabel.className='ip-history-filter';historyFilterLabel.textContent='Filter visit history';
+  const historyFilter=document.createElement('input');historyFilter.type='search';historyFilter.placeholder='Website, container or IP address';historyFilterLabel.append(historyFilter);panel.append(historyFilterLabel);
+  const historyCount=document.createElement('p');historyCount.className='ip-history-filter-status';historyCount.setAttribute('role','status');historyCount.setAttribute('aria-live','polite');panel.append(historyCount);
   const historyList=document.createElement('div');panel.append(historyList);
+  const websiteOpenState=new Map();
+  function filterHistory(){
+    const query=historyFilter.value.trim().toLocaleLowerCase();
+    let websites=0,records=0;
+    for(const website of historyList.querySelectorAll('.ip-history-website')){
+      let visible=0;
+      for(const row of website.querySelectorAll('.ip-history-record')){
+        row.hidden=!!query&&!row.dataset.search.includes(query);
+        if(!row.hidden)visible++;
+      }
+      website.hidden=visible===0;
+      website.querySelector('.ip-website-count').textContent=`${visible} record${visible===1?'':'s'}`;
+      if(visible){websites++;records+=visible;}
+      website.open=query?visible>0:!!websiteOpenState.get(website.dataset.hostname);
+    }
+    historyCount.textContent=query?`${records} matching records across ${websites} websites${records?'':'. Try a different filter.'}`:`${websites} websites · ${records} records. Expand a website to view its observations.`;
+  }
+  historyFilter.addEventListener('input',filterHistory);
   function displayHistory(){
     const all=identities(),names=new Map(all.map(item=>[item.userContextId,item.name]));
     exceptionList.replaceChildren();
     for(const ip of ipMonitor.ipExceptions()){const row=document.createElement('div');row.className='ip-record';row.append(document.createTextNode(ip+' '));action('Remove exception',()=>ipMonitor.setIPException(ip,false),row);exceptionList.append(row);}
     if(!exceptionList.children.length)exceptionList.textContent='No IP exceptions.';
     historyList.replaceChildren();
+    const websiteGroups=new Map();
     for(const record of ipMonitor.ipHistory()){
-      const row=document.createElement('div');row.className='ip-record';
-      const heading=document.createElement('strong');heading.textContent=(record.ip.includes(':')?'IPv6: ':'IPv4: ')+record.ip+' · '+(names.get(record.ucid)||'Deleted container')+' · '+(record.hostname||'Legacy record — not used for warnings');row.append(heading);
-      const meta=document.createElement('p');meta.textContent=`First: ${new Date(record.firstAccessed).toLocaleString()} · Last: ${new Date(record.lastAccessed).toLocaleString()} · ${record.accessCount} observations`;row.append(meta);
-      const owner=document.createElement('select');owner.setAttribute('aria-label','Assign '+record.ip+' to container');for(const item of all)owner.append(new Option(item.name,item.userContextId));owner.value=String(record.ucid);row.append(owner);
-      action('Reassign',()=>ipMonitor.reassignIP(record.ip,Number(owner.value),record.ucid,record.hostname??''),row);action('Delete record',()=>ipMonitor.clearIPHistory(record.ip,record.ucid,record.hostname??''),row);action('Allow IP',()=>ipMonitor.setIPException(record.ip,true),row);
+      const hostname=record.hostname||'';
+      let website=websiteGroups.get(hostname);
+      if(!website){
+        website=document.createElement('details');website.className='ip-history-website';website.dataset.hostname=hostname;
+        const title=document.createElement('summary');
+        const name=document.createElement('strong');name.textContent=hostname||'Legacy records — not used for warnings';
+        const count=document.createElement('span');count.className='ip-website-count';title.append(name,count);website.append(title);
+        website.open=!!websiteOpenState.get(hostname);
+        website.addEventListener('toggle',()=>{if(!historyFilter.value.trim()&&website.isConnected)websiteOpenState.set(hostname,website.open);});
+        websiteGroups.set(hostname,website);historyList.append(website);
+      }
+      const row=document.createElement('div');row.className='ip-record ip-history-record';
+      const header=document.createElement('div');header.className='ip-history-record-header';
+      const container=document.createElement('strong');container.className='ip-history-container';container.textContent=names.get(record.ucid)||'Deleted container';header.append(container);row.append(header);
+      row.dataset.search=`${hostname} ${container.textContent} ${record.ip}`.toLocaleLowerCase();
+      const address=document.createElement('p');address.className='ip-history-address';
+      const family=document.createElement('span');family.textContent=record.ip.includes(':')?'IPv6':'IPv4';
+      const ip=document.createElement('code');ip.textContent=record.ip;address.append(family,ip);row.append(address);
+      const meta=document.createElement('p');meta.className='ip-history-meta';meta.textContent=`First seen ${new Date(record.firstAccessed).toLocaleString()} · Last seen ${new Date(record.lastAccessed).toLocaleString()} · ${record.accessCount} observations`;row.append(meta);
+      const edit=document.createElement('div');edit.className='ip-record-actions';edit.hidden=true;
+      const editButton=document.createElement('button');editButton.type='button';editButton.className='ip-history-edit';editButton.textContent='Edit';editButton.setAttribute('aria-label',`Edit ${container.textContent} ${family.textContent} record for ${hostname||'legacy history'}`);editButton.setAttribute('aria-expanded','false');
+      editButton.onclick=()=>{edit.hidden=!edit.hidden;editButton.textContent=edit.hidden?'Edit':'Done';editButton.setAttribute('aria-expanded',String(!edit.hidden));};header.append(editButton);
+      const editHelp=document.createElement('p');editHelp.textContent='Reassign changes which container owns this saved observation; it does not change the container’s IP or connection.';edit.append(editHelp);
+      const ownerLabel=document.createElement('label');ownerLabel.textContent='Assign record to';
+      const owner=document.createElement('select');owner.setAttribute('aria-label','Assign '+record.ip+' to container');for(const item of all)owner.append(new Option(item.name,item.userContextId));
+      if(!names.has(record.ucid)) owner.append(new Option('Deleted container (current record)',String(record.ucid)));
+      owner.value=String(record.ucid);ownerLabel.append(owner);edit.append(ownerLabel);
+      const buttons=document.createElement('div');buttons.className='ip-history-actions';edit.append(buttons);
+      action('Reassign record',()=>ipMonitor.reassignIP(record.ip,Number(owner.value),record.ucid,record.hostname??''),buttons);
+      action('Delete record',()=>ipMonitor.clearIPHistory(record.ip,record.ucid,record.hostname??''),buttons);
+      action('Allow this IP globally',()=>ipMonitor.setIPException(record.ip,true),buttons);
+      const allowHelp=document.createElement('p');allowHelp.textContent='Allow this IP globally suppresses conflicts for this address across containers. Delete removes only this saved record.';edit.append(allowHelp);row.append(edit);
       const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Recent URLs';details.append(summary);
-      for(const url of record.urls){const line=document.createElement('p');line.textContent=url;details.append(line);}row.append(details);historyList.append(row);
+      for(const url of record.urls){const line=document.createElement('p');line.textContent=url;details.append(line);}row.append(details);website.append(row);
     }
     if(!historyList.children.length)historyList.textContent='No recorded website visits. History is collected on checked website visits.';
+    filterHistory();
   }
 
   function displayIPs(){
@@ -165,7 +223,7 @@ loadNetwork();
     catch(error){results.textContent='Check failed: '+error.message;}
     finally{check.disabled=false;}
   });
-  const observer={observe:displayIPs};Services.obs.addObserver(observer,'cloakfox-ip-conflicts-updated');
+  const observer={observe(){checkRoute.value=ipMonitor.getIPCheckRoute();displayIPs();}};Services.obs.addObserver(observer,'cloakfox-ip-conflicts-updated');
   window.addEventListener('unload',()=>Services.obs.removeObserver(observer,'cloakfox-ip-conflicts-updated'),{once:true});
   containerSelect.addEventListener('change',displayIPs);document.addEventListener('cfx-network-changed',displayIPs);displayIPs();
 }
