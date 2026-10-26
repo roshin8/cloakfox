@@ -189,6 +189,34 @@ class IdentityPrivacy(unittest.TestCase):
                 accepted=self.app.rpc('applyConfig',config=retry)
                 self.assertTrue(accepted['ok'],accepted)
 
+    def test_regional_validation_rejects_aliases_and_private_extensions(self):
+        # Bypass the Python store deliberately: the native boundary must enforce
+        # the policy too, before constructing a context or starting a renderer.
+        cases = ({'timezone':'Asia/Calcutta'}, {'timezone':'Europe/Kiev'},
+                 {'languages':['en-x-foo']}, {'languages':['en-a-foo']})
+        for index, changes in enumerate(cases):
+            config=self.store.get(str(300+index),'chromium')
+            config['persona']['presentation']={**PRESET,**changes}
+            ack=self.app.rpc('applyConfig',config=config)
+            self.assertFalse(ack['ok'],ack)
+            self.assertIn('Cannot create container context',str(ack.get('error','')),ack)
+            config['persona']['presentation']=dict(PRESET)
+            self.assertTrue(self.app.rpc('applyConfig',config=config)['ok'])
+
+    def test_variant_and_unicode_extension_keep_page_and_worker_identity(self):
+        for index, tag in enumerate(('sl-rozaj','en-US-u-hc-h23')):
+            preset={**PRESET,'languages':[tag],'timezone':'Europe/Paris'}
+            _,browser=self.configured(str(310+index),preset)
+            page=self.read(browser)
+            self.assertEqual(page['language'],tag)
+            self.assertEqual(page['languages'],[tag])
+            self.assertEqual(page['timezone'],'Europe/Paris')
+            worker=self.app.evaluate(browser,"new Promise(r=>{const w=new Worker('/worker.js');w.onmessage=e=>{w.terminate();r(e.data)};w.postMessage(1)})")
+            self.assertEqual(worker['first'],page)
+            if tag.endswith('hc-h23'):
+                self.assertEqual(self.app.evaluate(browser,
+                    "new Intl.DateTimeFormat(undefined,{hour:'numeric'}).resolvedOptions().hourCycle"), 'h23')
+
     def test_every_sampling_preset_is_accepted_by_the_engine(self):
         # Sampling may only ever produce personas this engine can render: a
         # preset it refuses would leave a container that can never start, and

@@ -1,0 +1,33 @@
+{
+  "state": "native-framework-build-running",
+  "runtimeVerified": false,
+  "date": "2026-10-15",
+  "baseCommit": "5be9c114e5",
+  "unitCommand": "python3 -m unittest discover -s tests/engines -p test_*.py -v",
+  "prebuildUnitTestsRun": 26,
+  "runtimeClassSkips": 11,
+  "syntaxImplementationUnits": 12,
+  "syntaxPassed": true,
+  "sourcePatchReplay": "passed, including inherited hashes and tamper rejection",
+  "nativeBaselineRed": "new runtime tests correctly failed old framework missing identityPrivacyVersion",
+  "statusFile": "/Volumes/CloakfoxChromiumBuild/source-build/identity-build-status.json",
+  "pipelineSnapshot": {
+    "state": "running",
+    "stage": "framework",
+    "pid": 54253,
+    "started": 1792113513.971385,
+    "sourceRoot": "/Users/zeus/cloakfox-builds/chromium/full-source/chromium/src",
+    "outputRoot": "/Volumes/CloakfoxChromiumBuild/source-build/out/Release_GN_arm64",
+    "sdk": "/Volumes/CloakfoxChromiumBuild/source-build/identity-built-sdk",
+    "runtimeTestsPassed": false,
+    "preservesExistingSdkAndApp": true,
+    "log": "/Volumes/CloakfoxChromiumBuild/source-build/logs/identity-framework.log",
+    "stageStarted": 1792113514.039988,
+    "childPid": 54255,
+    "lastPassed": "source-hashes"
+  },
+  "frameworkInstalledSha256": "a7cd6e1b16a8a2bb555e03a616a4be0f727ba97c590f9d5572c660db64ab20ed",
+  "newSdkNotInstalled": true,
+  "geckoSourcesChanged": false,
+  "monitor": "watch-chromium-identity-build; periodic thread check; full runtime pass still required"
+}

@@ -66,7 +66,7 @@ void validatePresentation(CefRefPtr<CefDictionaryValue> value) {
     if (languages->GetType(index) != VTYPE_STRING)
       throw std::runtime_error("Unsupported language list");
     const auto tag = languages->GetString(index).ToString();
-    if (tag.empty() || tag.size() > 35 || !seen.insert(tag).second)
+    if (tag.empty() || tag.size() > 128 || !seen.insert(tag).second)
       throw std::runtime_error("Unsupported language list");
   }
   const auto timezone = value->GetString("timezone").ToString();

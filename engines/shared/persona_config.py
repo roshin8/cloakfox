@@ -4,8 +4,8 @@ Only implemented portable option names belong in v1. A backend must additionally
 check its own capability report before accepting a snapshot. The store is the
 controller authority, not a second browser profile or an engine adapter.
 
-Language and timezone values are checked here for canonical shape: only tags and
-zones a current browser reports are accepted, while the engine's own ICU data
+Language tags are checked here for bounded structure; timezone IDs must be in
+the pinned IANA regional table and installed tzdata. The engine's own ICU data
 remains the authority for what it can render, and the engine refuses an unusable
 locale or zone before any page exists instead of falling back to the host.
 """
@@ -68,16 +68,13 @@ LOCALE_PRESETS = (
     (('zh-CN', 'zh'), 'Asia/Shanghai'),
     (('zh-TW', 'zh'), 'Asia/Taipei'),
 )
-# Canonical BCP 47 shape language[-Script][-REGION]. Lowercase language,
-# Titlecase script and uppercase region are what a real browser reports; any
-# other casing would hand a site a tag no real client sends.
-LANGUAGE_TAG = re.compile(r'[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-[A-Z]{2}|-[0-9]{3})?')
-# Canonical IANA ids are Area/Location, or UTC. The tz database's legacy
-# top-level aliases (US/Eastern, CET, Japan, …) are real zones no current
-# browser reports, so a persona must not claim one; the canonical areas are a
-# fixed, small set.
-ZONE_ID = re.compile(r'(?:(?:Africa|America|Antarctica|Arctic|Asia|Atlantic|Australia|Europe|Indian|Pacific)'
-                     r'/[A-Z][A-Za-z0-9_+-]*(?:/[A-Z][A-Za-z0-9_+-]*)?|UTC)')
+# Structural admission for language[-Script][-REGION][-variant...][-u-extension].
+# Semantic canonicalization and renderability remain native ICU's authority.
+# Private-use/other singleton extensions are deliberately unsupported.
+LANGUAGE_TAG = re.compile(
+    r'[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-[A-Z]{2}|-[0-9]{3})?'
+    r'(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*'
+    r'(?:-u(?:-[a-z0-9]{2,8})+)?')
 MAX_LANGUAGES = 4
 # Canonical retina-plausible desktop panels (width, height, availWidth, availHeight).
 # Avail height reserves a menu bar so the presentation stays internally coherent.
@@ -98,14 +95,37 @@ DISPLAY_FIELDS = ('screenWidth', 'screenHeight', 'screenAvailWidth', 'screenAvai
 
 @functools.lru_cache(maxsize=1)
 def canonical_timezones():
-    """IANA zones whose id is one a real browser reports for that location."""
-    return frozenset(zone for zone in zoneinfo.available_timezones() if ZONE_ID.fullmatch(zone))
+    """Pinned tzdb regional identifiers, intersected with installed timezone data.
+
+    ZoneInfo existence also admits Link aliases, so it is not a canonicality
+    check. Missing data fails closed; no host-zone fallback is permitted.
+    """
+    data = json.loads(Path(__file__).with_name('canonical_timezones.json').read_text())
+    return frozenset(data['zones']) & zoneinfo.available_timezones()
+
+
+def structured_language_tag(tag):
+    if type(tag) is not str or len(tag) > 128 or LANGUAGE_TAG.fullmatch(tag) is None:
+        return False
+    base, _, extension = tag.partition('-u-')
+    variants = [part for part in base.split('-')[1:]
+                if len(part) >= 5 or (len(part) == 4 and part[0].isdigit())]
+    if len(set(variants)) != len(variants):
+        return False
+    parts = extension.split('-') if extension else []
+    keys = [part for part in parts if len(part) == 2]
+    attributes = []
+    for part in parts:
+        if len(part) == 2:
+            break
+        attributes.append(part)
+    return len(keys) == len(set(keys)) and len(attributes) == len(set(attributes))
 
 
 def language_list(value):
-    """Validate a navigator.languages list: 1–4 distinct canonical BCP 47 tags."""
+    """Admit 1–4 distinct structured tags; native ICU verifies semantics."""
     if type(value) is not list or not 1 <= len(value) <= MAX_LANGUAGES \
-            or any(type(tag) is not str or LANGUAGE_TAG.fullmatch(tag) is None for tag in value) \
+            or any(not structured_language_tag(tag) for tag in value) \
             or len(set(value)) != len(value):
         raise ValueError('Unsupported language list')
     return value
@@ -113,8 +133,11 @@ def language_list(value):
 
 def language_fallbacks(primary):
     """The language tag followed by its progressively broader prefixes."""
-    parts = primary.split('-')
-    return ['-'.join(parts[:size]) for size in range(len(parts), 0, -1)]
+    language_list([primary])
+    base = primary.split('-u-', 1)[0]
+    parts = base.split('-')
+    fallbacks = ['-'.join(parts[:size]) for size in range(len(parts), 0, -1)]
+    return ([primary] if primary != base else []) + fallbacks
 
 
 def validate_timezone(value):

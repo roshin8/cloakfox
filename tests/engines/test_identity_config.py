@@ -28,7 +28,7 @@ class IdentityConfig(unittest.TestCase):
             a=PersonaStore(Path(folder)).get('1','chromium')
             self.assertIn('presentation',a['persona'])
             for key,bad in [('hardwareConcurrency',True),('hardwareConcurrency',1024),
-                            ('deviceMemory',3),('languages',['xx-invalid']),
+                            ('deviceMemory',3),('languages',['xx-INVALID']),
                             ('languages',['en-US','en-US']),('timezone','Etc/Unknown'),
                             ('userAgent','Fake Chrome'),('platform','Win32')]:
                 value=copy.deepcopy(a); value['persona']['presentation'][key]=bad
@@ -63,6 +63,35 @@ class IdentityConfig(unittest.TestCase):
                     value['persona']['presentation']['languages']=languages
                     value['persona']['presentation']['timezone']=timezone
                     with self.assertRaises(ValueError):validate_snapshot(value)
+
+    def test_variants_and_unicode_extensions_have_safe_structure(self):
+        from engines.shared.persona_config import language_list, language_fallbacks
+        for tag in ('sl-rozaj', 'en-US-u-hc-h23', 'de-DE-u-co-phonebk'):
+            self.assertEqual(language_list([tag]), [tag])
+        self.assertEqual(language_fallbacks('en-US-u-hc-h23'), ['en-US-u-hc-h23', 'en-US', 'en'])
+        for tag in ('en-US-u', 'en-US-u-hc-h23-u-ca-gregory', 'en-US-u-hc-h23-hc-h12',
+                    'en-US\r\nX-Test:yes', 'sl-rozaj-rozaj', 'en_US', 'EN-us'):
+            with self.subTest(tag=tag), self.assertRaises(ValueError):
+                language_list([tag])
+
+    def test_timezone_links_are_not_canonical_persona_values(self):
+        from engines.shared.persona_config import validate_timezone
+        for alias in ('Asia/Calcutta', 'Europe/Kiev', 'US/Eastern', 'Asia/Katmandu'):
+            with self.subTest(alias=alias), self.assertRaises(ValueError):
+                validate_timezone(alias)
+        for zone in ('Asia/Kolkata', 'Europe/Kyiv', 'Asia/Kathmandu', 'UTC'):
+            self.assertEqual(validate_timezone(zone), zone)
+
+    def test_missing_timezone_data_fails_closed(self):
+        from unittest.mock import patch
+        from engines.shared.persona_config import canonical_timezones, validate_timezone
+        canonical_timezones.cache_clear()
+        try:
+            with patch('engines.shared.persona_config.zoneinfo.available_timezones',return_value=set()):
+                with self.assertRaises(ValueError):
+                    validate_timezone('Europe/Paris')
+        finally:
+            canonical_timezones.cache_clear()
 
     def test_sampling_presets_are_themselves_canonical(self):
         # A typo in the sampling table would otherwise surface only for the
