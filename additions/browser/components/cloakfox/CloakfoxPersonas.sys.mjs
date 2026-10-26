@@ -87,6 +87,7 @@ const NAV_IDENTITY = {
 const CANONICAL_FONTS = {
   windows: {
     base: [
+      "Noto Sans Math",
       "Arial", "Arial Black", "Bahnschrift", "Calibri", "Cambria",
       "Cambria Math", "Comic Sans MS", "Consolas", "Constantia", "Corbel",
       "Courier New", "Ebrima", "Franklin Gothic Medium", "Gadugi", "Georgia",
@@ -105,6 +106,7 @@ const CANONICAL_FONTS = {
   },
   macos: {
     base: [
+      "Noto Sans Math",
       "American Typewriter", "Andale Mono", "Apple Color Emoji", "Arial",
       "Arial Black", "Arial Narrow", "Arial Unicode MS", "Avenir",
       "Avenir Next", "Baskerville", "Big Caslon", "Bodoni 72", "Bradley Hand",
@@ -124,6 +126,7 @@ const CANONICAL_FONTS = {
   },
   linux: {
     base: [
+      "Noto Sans Math",
       "Cantarell", "DejaVu Sans", "DejaVu Sans Mono", "DejaVu Serif",
       "FreeMono", "FreeSans", "FreeSerif", "Liberation Mono",
       "Liberation Sans", "Liberation Serif", "Noto Color Emoji", "Noto Mono",
@@ -433,6 +436,11 @@ export function migratePersonaVersion(keys) {
       out.fonts = [...new Set([...canonical.base, ...retainedOptional])].sort();
       for (const [key, slot] of genericKeys) out[key] = expected[slot];
     }
+  }
+  // A shipped, uniform fallback for styled mathematical Unicode letters.
+  // Explicit custom font overrides are applied later and remain authoritative.
+  if (typeof ua === "string" && generatedUA.test(ua) && Array.isArray(out.fonts) && !out.fonts.includes("Noto Sans Math")) {
+    out.fonts = [...out.fonts, "Noto Sans Math"].sort();
   }
   return out;
 }

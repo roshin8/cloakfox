@@ -528,7 +528,7 @@
 +       {u"NotoColorEmoji.ttf", u"NotoSans.ttf", u"NotoSansArabic.ttf",
 +        u"NotoSansHebrew.ttf", u"NotoSansDevanagari.ttf",
 +        u"NotoSansBengali.ttf", u"NotoSansThai.ttf", u"NotoSansArmenian.ttf",
-+        u"NotoSansGeorgian.ttf", u"NotoSansSC.ttf"}) {
++        u"NotoSansGeorgian.ttf", u"NotoSansSC.ttf", u"NotoSansMath.ttf"}) {
 +    mCanonicalTextFallbacks.AppendElement(LoadCanonicalCanvasFont(name));
 +  }
    return mCanonicalText.get();
@@ -5138,7 +5138,7 @@
 +    "NotoColorEmoji.ttf",   "DejaVuSans.ttf",     "NotoSans.ttf",
 +    "NotoSansArabic.ttf",   "NotoSansHebrew.ttf", "NotoSansDevanagari.ttf",
 +    "NotoSansBengali.ttf",  "NotoSansThai.ttf",   "NotoSansArmenian.ttf",
-+    "NotoSansGeorgian.ttf", "NotoSansSC.ttf"};
++    "NotoSansGeorgian.ttf", "NotoSansSC.ttf", "NotoSansMath.ttf"};
  
 +// A finite file map prevents CSS names becoming filesystem paths. Unknown
 +// names use the next CSS family or the fixed canonical generic fallback.
@@ -5166,7 +5166,7 @@
 +      {"impact", "Impact.ttf"},
 +      {"menlo", "Menlo.ttf"},
 +      {"monaco", "Monaco.ttf"},
-+      {"noto sans", "NotoSans.ttf"},
++      {"noto sans", "NotoSans.ttf"}, {"noto sans math", "NotoSansMath.ttf"},
 +      {"noto color emoji", "NotoColorEmoji.ttf"},
 +      {"segoe ui", "SegoeUI.ttf"},
 +      {"tahoma", "Tahoma.ttf"},

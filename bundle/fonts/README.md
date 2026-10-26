@@ -1,6 +1,6 @@
 # Cloakfox bundled fonts
 
-The pack contains 31 redistributable open font files. Some are renamed
+The pack contains 33 redistributable open font files. Some are renamed
 substitutes for CSS family names; they are **not authentic proprietary OS
 fonts**. Firefox loads them through native bundled-font support. The files live
 in `macos/` for historical reasons and the build currently stages this pack on
@@ -52,3 +52,5 @@ Rebuilding the pack with `scripts/build-font-pack.py` fetches upstream sources.
 Those URLs are not immutable; review resulting bytes, embedded metadata and
 license changes before accepting a new manifest. No fonts were downloaded or
 replaced when this manifest was introduced.
+
+Noto Sans Math supplies mathematical styled letters and digits (including Unicode bold product headings) uniformly across personas.

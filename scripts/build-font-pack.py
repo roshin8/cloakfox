@@ -40,6 +40,7 @@ SELAWIK_ZIP = "https://github.com/microsoft/Selawik/releases/download/1.01/Selaw
 # real names (universal fallback fonts personas legitimately have). Copied
 # as-is, no rename. Variable-font URLs are URL-encoded ([wght] -> %5Bwght%5D).
 NOTO = {
+    "NotoSansMath": "ofl/notosansmath/NotoSansMath-Regular.ttf",
     "NotoSans": "ofl/notosans/NotoSans%5Bwdth,wght%5D.ttf",
     "NotoSansArabic": "ofl/notosansarabic/NotoSansArabic%5Bwdth,wght%5D.ttf",
     "NotoSansHebrew": "ofl/notosanshebrew/NotoSansHebrew%5Bwdth,wght%5D.ttf",

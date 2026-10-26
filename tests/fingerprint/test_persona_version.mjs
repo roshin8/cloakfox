@@ -58,7 +58,7 @@ for (const version of ['155.0.1', '156.0a1', '157.0b3', '155.2.0esr']) {
 }
 test('startup migrates legacy identity only and keeps seeds and unrelated cfg', () => {
   const h = harness(); const before = legacy(); setExisting(h, before); h.start();
-  assert.deepEqual(legacyProjection(h.cfg()), { ...before, "fingerprint:secret": seed, 'navigator.userAgent': ua('155.0'), 'headers.User-Agent': ua('155.0'), 'navigator.appVersion': ua('155.0').slice(8) });
+  assert.deepEqual(legacyProjection(h.cfg()), { ...before, fonts: ["Arial", "Noto Sans Math"], "fingerprint:secret": seed, 'navigator.userAgent': ua('155.0'), 'headers.User-Agent': ua('155.0'), 'navigator.appVersion': ua('155.0').slice(8) });
   for (const name of ['math_seed','keyboard_seed','timing_seed']) assert.equal(h.prefs.get(`cloakfox.container.7.${name}`), seed);
   const first = h.prefs.get('cloakfox.s.cloak_cfg_7'); h.start(); assert.equal(h.prefs.get('cloakfox.s.cloak_cfg_7'), first);
 });
@@ -82,7 +82,7 @@ test('explicit Firefox-shaped UA and header overrides remain on their chosen ver
   for (const key of ['navigator.userAgent', 'headers.User-Agent', 'navigator.appVersion']) {
     h.prefs.set(`cloakfox.container.7.override.${key}`, legacy()[key]);
   }
-  h.start(); assert.deepEqual(legacyProjection(h.cfg()), { ...legacy(), "fingerprint:secret": seed });
+  h.start(); assert.deepEqual(legacyProjection(h.cfg()), { ...legacy(), fonts: ["Arial", "Noto Sans Math"], "fingerprint:secret": seed });
 });
 test('font-key upgrade also migrates identity without losing existing values', () => {
   const h = harness(); const before = legacy(); delete before.fonts;
@@ -273,4 +273,11 @@ test('customized, partial, and renderer-mismatched legacy GPU tables survive mig
     change(before);setExisting(h,before);h.start(); const after=h.cfg();
     for (const key of ['webGl:parameters','webGl2:parameters']) assert.deepEqual(after[key],before[key]);
   }
+});
+
+test('Unicode math fallback upgrades generated fonts without changing explicit font overrides', () => {
+  const h = harness(); setExisting(h, legacy()); h.start();
+  assert.ok(h.cfg().fonts.includes('Noto Sans Math'));
+  h.prefs.set('cloakfox.container.7.override.fonts', JSON.stringify(['Arial']));
+  h.start(); assert.deepEqual(Array.from(h.cfg().fonts), ['Arial']);
 });
