@@ -307,6 +307,7 @@ async function buildFirefoxCopy(status) {
     info.CFBundleExecutable = "firefox";
     info.CFBundleIdentifier += ".appearance.firefox";
     info.CFBundleGetInfoString = `Firefox ${Services.appinfo.version}`;
+    info.CFBundleIconFile = "firefox.icns";
     delete info.CFBundleIconName; // The original asset catalog must not win.
     await writePlist(PathUtils.join(stage, "Contents", "Info.plist"), info);
     for (const archive of [PathUtils.join(resources, "omni.ja"), PathUtils.join(resources, "browser", "omni.ja")]) {

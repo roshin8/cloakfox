@@ -1,0 +1,133 @@
+--- a/widget/cocoa/nsCocoaWindow.mm
++++ b/widget/cocoa/nsCocoaWindow.mm
+@@ -8799,6 +8799,112 @@
+   return false;
+ }
+ 
++// AppKit's layer-backed traffic lights can ignore the window appearance hook.
++// Replay the active native bitmap above that layer; the real NSButton continues to
++// own hit testing, accessibility, actions, hover, and enabled state.
++@interface CloakfoxWindowButtonArtwork : NSView {
++  NSBitmapImageRep* mActiveArtwork;
++  NSSize mArtworkSize;
++  CGFloat mArtworkScale;
++  NSString* mArtworkAppearance;
++}
++- (void)captureActiveArtwork;
++@end
++
++@implementation CloakfoxWindowButtonArtwork
++- (NSView*)hitTest:(NSPoint)aPoint { return nil; }
++- (BOOL)isAccessibilityElement { return NO; }
++- (BOOL)isFlipped { return self.superview.isFlipped; }
++- (void)updateTrackingAreas {
++  for (NSTrackingArea* area in self.trackingAreas) [self removeTrackingArea:area];
++  [super updateTrackingAreas];
++  auto* area = [[NSTrackingArea alloc] initWithRect:NSZeroRect
++      options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways |
++              NSTrackingInVisibleRect owner:self userInfo:nil];
++  [self addTrackingArea:area];
++  [area release];
++}
++- (void)mouseEntered:(NSEvent*)aEvent { [self setNeedsDisplay:YES]; }
++- (void)mouseExited:(NSEvent*)aEvent {
++  [self setNeedsDisplay:YES];
++  if (self.window.keyWindow) {
++    [mActiveArtwork release]; mActiveArtwork = nil;
++    [self performSelector:@selector(captureActiveArtwork) withObject:nil afterDelay:0];
++  }
++}
++
++- (void)viewDidMoveToWindow {
++  [super viewDidMoveToWindow];
++  [[NSNotificationCenter defaultCenter] removeObserver:self];
++  if (self.window) {
++    for (NSString* name in @[NSWindowDidBecomeKeyNotification,
++                            NSWindowDidResignKeyNotification,
++                            NSWindowDidBecomeMainNotification,
++                            NSWindowDidResignMainNotification,
++                            NSWindowDidUpdateNotification,
++                            NSWindowDidChangeBackingPropertiesNotification]) {
++      [[NSNotificationCenter defaultCenter] addObserver:self
++          selector:@selector(windowAppearanceChanged:) name:name object:self.window];
++    }
++  }
++}
++- (void)windowAppearanceChanged:(NSNotification*)aNotification {
++  if (self.window.keyWindow &&
++      (!mActiveArtwork || !NSEqualSizes(mArtworkSize, self.bounds.size) ||
++       mArtworkScale != self.window.backingScaleFactor ||
++       ![mArtworkAppearance isEqual:self.effectiveAppearance.name])) {
++    [NSObject cancelPreviousPerformRequestsWithTarget:self
++        selector:@selector(captureActiveArtwork) object:nil];
++    [self performSelector:@selector(captureActiveArtwork) withObject:nil afterDelay:0];
++  }
++  if (![aNotification.name isEqual:NSWindowDidUpdateNotification])
++    [self setNeedsDisplay:YES];
++}
++- (void)captureActiveArtwork {
++  NSButton* button = (NSButton*)self.superview;
++  if (!self.window.keyWindow || !button.enabled || self.window.attachedSheet ||
++      NSIsEmptyRect(self.bounds)) return;
++  NSPoint pointer = [button.superview convertPoint:self.window.mouseLocationOutsideOfEventStream
++                                         fromView:nil];
++  if (NSPointInRect(pointer, button.superview.bounds)) return;
++  // Hide only our transparent overlay while asking AppKit to rasterize its
++  // actual layer-backed button. Preserve the native pixel dimensions and alpha.
++  self.hidden = YES;
++  NSBitmapImageRep* bitmap = [button bitmapImageRepForCachingDisplayInRect:button.bounds];
++  [button cacheDisplayInRect:button.bounds toBitmapImageRep:bitmap];
++  self.hidden = NO;
++  [mActiveArtwork release]; mActiveArtwork = [bitmap retain];
++  mArtworkSize = self.bounds.size;
++  mArtworkScale = self.window.backingScaleFactor;
++  [mArtworkAppearance release]; mArtworkAppearance = [self.effectiveAppearance.name copy];
++  [self setNeedsDisplay:YES];
++}
++- (void)dealloc {
++  [[NSNotificationCenter defaultCenter] removeObserver:self];
++  [NSObject cancelPreviousPerformRequestsWithTarget:self];
++  [mActiveArtwork release];
++  [mArtworkAppearance release];
++  [super dealloc];
++}
++- (void)drawRect:(NSRect)aRect {
++  NSButton* button = (NSButton*)self.superview;
++  if (!mozilla::Preferences::GetBool("cloakfox.appearance.colored_inactive_buttons", true) ||
++      ![button isKindOfClass:[NSButton class]] || !button.enabled ||
++      self.window.keyWindow || self.window.attachedSheet) {
++    return;
++  }
++  // Let AppKit draw hover symbols itself when the pointer reaches the button.
++  NSPoint pointer = [self convertPoint:self.window.mouseLocationOutsideOfEventStream
++                              fromView:nil];
++  if (NSPointInRect(pointer, self.bounds)) return;
++  if (mActiveArtwork && NSEqualSizes(mArtworkSize, self.bounds.size) &&
++      mArtworkScale == self.window.backingScaleFactor &&
++      [mArtworkAppearance isEqual:self.effectiveAppearance.name]) {
++    [mActiveArtwork drawInRect:self.bounds];
++  }
++}
++@end
++
+ @implementation ToolbarWindow
+ 
+ - (id)initWithContentRect:(NSRect)aChildViewRect
+@@ -8838,6 +8944,17 @@
+                                  backing:aBufferingType
+                                    defer:aFlag])) {
+     mWindowButtonsRect = NSZeroRect;
++    for (NSNumber* type in @[@(NSWindowCloseButton), @(NSWindowMiniaturizeButton),
++                             @(NSWindowZoomButton)]) {
++      NSButton* button = [self standardWindowButton:(NSWindowButton)type.unsignedIntegerValue];
++      if (!button) continue;
++      auto* artwork = [[CloakfoxWindowButtonArtwork alloc] initWithFrame:button.bounds];
++      artwork.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++      [button addSubview:artwork];
++      [artwork release];
++    }
++
++
+     mFullscreenTitlebarTracker = [[FullscreenTitlebarTracker alloc] init];
+     // revealAmount is an undocumented property of
+     // NSTitlebarAccessoryViewController that updates whenever the menubar

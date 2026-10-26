@@ -1,0 +1,31 @@
+--- a/browser/themes/osx/browser.css
++++ b/browser/themes/osx/browser.css
+@@ -72,11 +72,23 @@
+   list-style-image: none;
+ }
+ 
+-/* Inactive elements are faded out on OSX */
+-.toolbarbutton-1:not(:hover):-moz-window-inactive,
+-.bookmark-item:not(:hover):-moz-window-inactive,
+-:root:not([customizing]) .toolbarbutton-1:-moz-window-inactive[disabled] {
+-  opacity: 0.5;
++/* Cloakfox keeps browser chrome readable when another application is active.
++ * This is visual only: native focus and capture/permission indicators stay real.
++ * Disabled controls retain their ordinary shared toolbar styling. */
++:root {
++  --toolbox-background-color-inactive: var(--toolbox-background-color) !important;
++  --toolbox-text-color-inactive: var(--toolbox-text-color) !important;
++  --inactive-titlebar-opacity: 1 !important;
++  --lwt-accent-color-inactive: var(--lwt-accent-color) !important;
++}
++
++/* Native titlebar vibrancy changes on deactivation; use the same opaque surface
++ * for both states so recordings and app switching have identical chrome. */
++@media (-moz-native-theme) {
++  :root[customtitlebar]:not([lwtheme], [macOSNativeFullscreen]) body {
++    background-color: var(--toolbox-background-color) !important;
++    &::after { appearance: none; }
++  }
+ }
+ 
+ /* Address bar */
