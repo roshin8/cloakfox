@@ -1,7 +1,7 @@
 diff --git a/devtools/server/actors/thread.js b/devtools/server/actors/thread.js
 --- a/devtools/server/actors/thread.js
 +++ b/devtools/server/actors/thread.js
-@@ -385,17 +385,18 @@
+@@ -385,17 +385,20 @@
    isAttached() {
      return !!this.alreadyAttached;
    }
@@ -11,7 +11,9 @@ diff --git a/devtools/server/actors/thread.js b/devtools/server/actors/thread.js
      // Note that the client avoids trying to call attach if already attached.
      // But just in case, avoid any possible duplicate call to attach.
 -    if (this.alreadyAttached) {
-+    let forceDetach = Services.prefs.getBoolPref("librewolf.debugger.force_detach", false);
++    const forceDetach =
++      !isWorker &&
++      Services.prefs.getBoolPref("librewolf.debugger.force_detach", false);
 +    if (this.alreadyAttached || forceDetach) {
        return;
      }

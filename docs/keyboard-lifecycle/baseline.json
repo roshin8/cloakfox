@@ -1,0 +1,28 @@
+{
+  "runtime": {
+    "build": "20261015182935",
+    "enabled": true
+  },
+  "checks": [
+    {
+      "existing": 0,
+      "name": "existing listener after source frame removal",
+      "pass": false
+    },
+    {
+      "error": "InvalidStateError: An exception was thrown",
+      "name": "borrowed non-key add/remove after source frame removal",
+      "pass": false
+    },
+    {
+      "error": "InvalidStateError: An exception was thrown",
+      "name": "borrowed key add/remove retains recipient cadence",
+      "pass": false
+    },
+    {
+      "error": "InvalidStateError: An exception was thrown",
+      "name": "borrowed remove clears registration made before removal",
+      "pass": false
+    }
+  ]
+}

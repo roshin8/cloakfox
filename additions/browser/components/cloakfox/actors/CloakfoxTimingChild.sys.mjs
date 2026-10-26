@@ -23,6 +23,19 @@ import { actorSiteSeed } from "resource:///modules/CloakfoxSiteSeed.sys.mjs";
 const MAX_JITTER_MS = 2;
 const RAF_NOISE_MS = 0.1;
 
+// A page can retain a timer from a removed iframe and bind it to a live
+// window (Sentry Replay does this). Chrome's references into the removed
+// realm become dead wrappers after teardown. Dispatch to the recipient's
+// hooks before touching any captured native functions or exporting callbacks.
+const realmHooks = new WeakMap();
+
+function recipientHooks(target) {
+  if (target === null || (typeof target !== "object" && typeof target !== "function")) {
+    return null;
+  }
+  return realmHooks.get(Cu.getGlobalForObject(Cu.waiveXrays(target)));
+}
+
 function makePRNG(seedBytes) {
   let s0 = 0n, s1 = 0n;
   for (let i = 0; i < 16; i++) s0 = (s0 << 8n) | BigInt(seedBytes[i] || 0);
@@ -89,7 +102,11 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
     // off-by-one and capped jitter at MAX_JITTER_MS - 1, which with
     // MAX_JITTER_MS = 2 meant only {0, 1}.
     const origSetTimeout = pageWin.setTimeout;
-    pageWin.setTimeout = setNativeIdentity(Cu.exportFunction(function (handler, timeout, ...args) {
+    const wrappedTimeout = Cu.exportFunction(function (handler, timeout, ...args) {
+      const hooks = recipientHooks(this);
+      if (hooks && hooks.timeout !== wrappedTimeout) {
+        return hooks.timeout.call(this, handler, timeout, ...args);
+      }
       // Let the page's native binding perform non-number conversion. Coercing
       // a Symbol/BigInt here throws a chrome error which exportFunction must
       // sanitize, changing TypeError into InvalidStateError for the page.
@@ -98,28 +115,42 @@ export class CloakfoxTimingChild extends JSWindowActorChild {
       }
       const jitter = Math.floor(prng() * (MAX_JITTER_MS + 1));
       return origSetTimeout.call(this, handler, (timeout || 0) + jitter, ...args);
-    }, pageWin, { defineAs: "setTimeout", functionName: "setTimeout", allowConstruct: false }), origSetTimeout.name, origSetTimeout.length);
+    }, pageWin, { defineAs: "setTimeout", functionName: "setTimeout", allowConstruct: false });
+    setNativeIdentity(wrappedTimeout, origSetTimeout.name, origSetTimeout.length);
 
     // Wrap setInterval — same treatment.
     const origSetInterval = pageWin.setInterval;
-    pageWin.setInterval = setNativeIdentity(Cu.exportFunction(function (handler, timeout, ...args) {
+    const wrappedInterval = Cu.exportFunction(function (handler, timeout, ...args) {
+      const hooks = recipientHooks(this);
+      if (hooks && hooks.interval !== wrappedInterval) {
+        return hooks.interval.call(this, handler, timeout, ...args);
+      }
       if (timeout !== undefined && typeof timeout !== "number") {
         return origSetInterval.call(this, handler, timeout, ...args);
       }
       const jitter = Math.floor(prng() * (MAX_JITTER_MS + 1));
       return origSetInterval.call(this, handler, (timeout || 0) + jitter, ...args);
-    }, pageWin, { defineAs: "setInterval", functionName: "setInterval", allowConstruct: false }), origSetInterval.name, origSetInterval.length);
+    }, pageWin, { defineAs: "setInterval", functionName: "setInterval", allowConstruct: false });
+    setNativeIdentity(wrappedInterval, origSetInterval.name, origSetInterval.length);
 
     // Wrap requestAnimationFrame — add sub-ms noise to the callback's
     // timestamp argument without delaying the actual frame.
     const origRAF = pageWin.requestAnimationFrame;
+    let wrappedRAF;
     if (typeof origRAF === "function") {
-      pageWin.requestAnimationFrame = setNativeIdentity(Cu.exportFunction(function (callback) {
+      wrappedRAF = Cu.exportFunction(function (callback) {
+        const hooks = recipientHooks(this);
+        if (hooks && hooks.raf !== wrappedRAF) {
+          return hooks.raf.call(this, callback);
+        }
         return origRAF.call(this, Cu.exportFunction(function (ts) {
           return callback.call(this, ts + prng() * RAF_NOISE_MS);
         }, pageWin));
-      }, pageWin, { defineAs: "requestAnimationFrame", functionName: "requestAnimationFrame", allowConstruct: false }), origRAF.name, origRAF.length);
+      }, pageWin, { defineAs: "requestAnimationFrame", functionName: "requestAnimationFrame", allowConstruct: false });
+      setNativeIdentity(wrappedRAF, origRAF.name, origRAF.length);
     }
-
+    realmHooks.set(Cu.getGlobalForObject(pageWin), {
+      timeout: wrappedTimeout, interval: wrappedInterval, raf: wrappedRAF,
+    });
   }
 }
