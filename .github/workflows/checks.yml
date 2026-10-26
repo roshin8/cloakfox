@@ -8,7 +8,8 @@ permissions:
 
 jobs:
   unit-tests:
-    runs-on: ubuntu-latest
+    # Linux validation is deferred; retain shared checks on the active platform.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -21,6 +22,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Install native checkpoint archive tools
+        run: brew install zstd
 
       - name: Install unit and transport fixture dependencies
         run: python3 -m pip install pytest -r tests/network/requirements-wire.txt

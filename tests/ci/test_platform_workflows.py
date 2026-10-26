@@ -50,6 +50,12 @@ class PlatformWorkflows(unittest.TestCase):
         self.assertIn('needs: build-linux', linux['fingerprint-tests-linux'])
         self.assertNotIn('chromium', linux)
 
+    def test_shared_checks_use_macos_while_linux_is_deferred(self):
+        shared = jobs('checks.yml')['unit-tests']
+        self.assertIn('runs-on: macos-26', shared)
+        self.assertNotIn('ubuntu-', shared)
+        self.assertIn('brew install zstd', shared)
+
     def test_current_apps_rebuild_and_runtime_gates_survive_engine_reuse(self):
         chromium = jobs('chromium.yml')
         self.assertIn('uses: ./.github/workflows/chromium-engine.yml', chromium['engine'])
