@@ -1,0 +1,107 @@
+--- a/browser/base/content/browser-trustPanel.js
++++ b/browser/base/content/browser-trustPanel.js
+@@ -170,6 +170,7 @@
+    */
+   #qwacStatusPromise = null;
+ 
++  #clearSiteDataTarget = null;
+   #uri = null;
+   #uriHasHost = null;
+   #pageExtensionPolicy = null;
+@@ -1011,6 +1012,20 @@
+   }
+ 
+   async #showClearCookiesSubview(event) {
++    const browser = gBrowser.selectedBrowser;
++    const { userContextId, privateBrowsingId } = browser.contentPrincipal.originAttributes;
++    this.#clearSiteDataTarget = {
++      browser,
++      baseDomain: SiteDataManager.getBaseDomainFromHost(this.#uri.host),
++      userContextId,
++      privateBrowsingId,
++    };
++    const containerName = userContextId
++      ? ContextualIdentityService.getUserContextLabel(userContextId)
++      : "Default (no container)";
++    document.getElementById("trustpanel-clear-cookie-current").label =
++      `This container: ${containerName}`;
++    document.getElementById("trustpanel-clear-cookie-scope").value = "container";
+     document.l10n.setAttributes(
+       document.getElementById("trustpanel-clearcookiesView"),
+       "trustpanel-clear-cookies-header",
+@@ -1145,10 +1160,51 @@
+     return false;
+   }
+ 
+-  #clearSiteData() {
+-    let baseDomain = SiteDataManager.getBaseDomainFromHost(this.#uri.host);
+-    SiteDataManager.remove(baseDomain);
+-    this.#hidePopup();
++  async #clearSiteData() {
++    const target = this.#clearSiteDataTarget;
++    const scope = document.getElementById("trustpanel-clear-cookie-scope").value;
++    if (!target || target.browser !== gBrowser.selectedBrowser ||
++        !["container", "all"].includes(scope)) {
++      return;
++    }
++    const button = document.getElementById("trustpanel-clear-cookie-clear");
++    if (button.disabled) {
++      return;
++    }
++    button.disabled = true;
++    try {
++      if (scope === "all") {
++        await SiteDataManager.remove(target.baseDomain);
++      } else {
++        // Full-clear also includes cleaners that ignore container patterns.
++        // Use only container-aware cookies and storage cleaners here.
++        await new Promise((resolve, reject) => {
++          Services.clearData.deleteDataFromSite(
++            target.baseDomain,
++            { userContextId: target.userContextId, privateBrowsingId: target.privateBrowsingId },
++            true,
++            Ci.nsIClearDataService.CLEAR_COOKIES |
++              Ci.nsIClearDataService.CLEAR_DOM_STORAGES,
++            failedFlags => {
++              if (failedFlags) {
++                reject(new Error(`Site data clearing failed: ${failedFlags}`));
++              } else {
++                resolve();
++              }
++            }
++          );
++        });
++        await SiteDataManager.updateSites();
++      }
++      this.#clearSiteDataTarget = null;
++      this.#hidePopup();
++    } catch (error) {
++      console.error(error);
++      Services.prompt.alert(window, "Could not clear site data",
++        "Some website data could not be cleared. Please try again.");
++    } finally {
++      button.disabled = false;
++    }
+   }
+ 
+   #toggleTrackingProtection() {
+--- a/browser/components/controlcenter/content/trustPanel.inc.xhtml
++++ b/browser/components/controlcenter/content/trustPanel.inc.xhtml
+@@ -131,6 +131,17 @@
+       <toolbarseparator></toolbarseparator>
+       <vbox class="trustpanel-section">
+         <label data-l10n-id="trustpanel-clear-cookies-description"></label>
++        <radiogroup id="trustpanel-clear-cookie-scope" value="container"
++                    aria-label="Where to clear website data" style="margin-block: 12px;">
++          <radio id="trustpanel-clear-cookie-current" value="container" label="This container"/>
++          <description style="margin-inline-start: 28px; margin-block: 4px 12px; opacity: 0.8;">
++            Clear cookies and website storage here. Other containers keep their data.
++          </description>
++          <radio value="all" label="All containers in this profile"/>
++          <description style="margin-inline-start: 28px; margin-block: 4px; opacity: 0.8;">
++            Clear this website’s cookies, storage and caches across all containers, including Default.
++          </description>
++        </radiogroup>
+         <html:moz-button-group>
+           <html:moz-button data-l10n-id="trustpanel-clear-cookies-subview-button-cancel" id="trustpanel-clear-cookie-cancel"></html:moz-button>
+           <html:moz-button type="primary" data-l10n-id="trustpanel-clear-cookies-subview-button-clear"  id="trustpanel-clear-cookie-clear"></html:moz-button>

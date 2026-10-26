@@ -1,0 +1,135 @@
+--- a/toolkit/components/cleardata/ClearDataService.sys.mjs
++++ b/toolkit/components/cleardata/ClearDataService.sys.mjs
+@@ -479,9 +479,61 @@
+     Services.cache2.clearOriginsByPrincipal(httpsPrincipal);
+   },
+ 
+-  async deleteBySite(aSchemelessSite, _aOriginAttributesPattern) {
+-    // TODO: aOriginAttributesPattern
+-    Services.cache2.clearBaseDomain(aSchemelessSite);
++  async deleteBySite(aSchemelessSite, aOriginAttributesPattern = {}) {
++    if (!Object.keys(aOriginAttributesPattern).length) {
++      Services.cache2.clearBaseDomain(aSchemelessSite);
++      return;
++    }
++
++    // clearBaseDomain ignores origin attributes. Walk both disk and memory
++    // caches, match the site AND container, and doom only individual entries.
++    const visit = start => new Promise((resolve, reject) => {
++      const tasks = [];
++      let failure;
++      start({
++        onCacheStorageInfo() {},
++        onCacheEntryInfo(uri, idEnhance, _size, _altSize, _fetchCount,
++                         _modified, _expires, _pinned, info) {
++          try {
++            if (!hasSite({ host: uri.host, originAttributes: info.originAttributes },
++                         aSchemelessSite, aOriginAttributesPattern)) {
++              return;
++            }
++            // Memory-only entries can use a separate storage table. Evict
++            // both stores with the same full context and cache entry key.
++            for (const storage of [Services.cache2.diskCacheStorage(info),
++                                   Services.cache2.memoryCacheStorage(info)]) {
++              tasks.push(new Promise(done => {
++                storage.asyncDoomURI(uri, idEnhance, {
++                  onCacheEntryDoomed(status) {
++                    if (!Components.isSuccessCode(status) && status !== Cr.NS_ERROR_NOT_AVAILABLE) {
++                      failure = new Error(`Cache entry clearing failed: ${status}`);
++                    }
++                    done();
++                  },
++                });
++              }).catch(error => { failure = error; }));
++            }
++          } catch (error) {
++            // Non-web cache entries have no host and cannot match a website.
++            if (error.result !== Cr.NS_ERROR_FAILURE) {
++              failure = error;
++            }
++          }
++        },
++        onCacheEntryVisitCompleted() {
++          Promise.all(tasks).then(() => failure ? reject(failure) : resolve());
++        },
++        QueryInterface: ChromeUtils.generateQI(["nsICacheStorageVisitor"]),
++      });
++    });
++    await Promise.all([
++      visit(visitor => Services.cache2.asyncVisitAllStorages(visitor, true)),
++      // The disk-index walker misses memory-only entries. The memory walker
++      // visits all memory contexts and supplies each entry's actual load info.
++      visit(visitor => Services.cache2.memoryCacheStorage(Services.loadContextInfo.default)
++        .asyncVisitStorage(visitor, true)),
++    ]);
+   },
+ 
+   deleteByPrincipal(aPrincipal) {
+--- a/browser/base/content/browser-siteIdentity.js
++++ b/browser/base/content/browser-siteIdentity.js
+@@ -484,7 +484,7 @@
+       window,
+       "Clear cookies and site data",
+       `Clear data for ${baseDomain} and its subdomains?\n\n` +
+-        `This container (${containerName}): clear cookies and website storage only here. Other containers keep their data.\n\n` +
++        `This container (${containerName}): clear cookies, website storage and cache only here. Other containers keep their data.\n\n` +
+         "All containers: clear cookies, website storage and caches across this Cloakfox profile.\n\n" +
+         "You may be signed out in the selected scope.",
+       prompt.BUTTON_TITLE_IS_STRING * prompt.BUTTON_POS_0 +
+@@ -499,15 +499,18 @@
+     );
+ 
+     if (choice === 0) {
+-      // The full-clear mask includes unscoped cache, HSTS and authentication
+-      // cleaners. Only use cleaners that support the container pattern here.
++      // Keep global HSTS and authentication cleaners out of the scoped mask.
+       await new Promise((resolve, reject) => {
+         Services.clearData.deleteDataFromSite(
+           baseDomain,
+           { userContextId, privateBrowsingId },
+           true,
+           Ci.nsIClearDataService.CLEAR_COOKIES |
+-            Ci.nsIClearDataService.CLEAR_DOM_STORAGES,
++            Ci.nsIClearDataService.CLEAR_DOM_STORAGES |
++            Ci.nsIClearDataService.CLEAR_NETWORK_CACHE |
++            Ci.nsIClearDataService.CLEAR_IMAGE_CACHE |
++            Ci.nsIClearDataService.CLEAR_JS_CACHE |
++            Ci.nsIClearDataService.CLEAR_CSS_CACHE,
+           failedFlags => failedFlags
+             ? reject(new Error(`Site data clearing failed: ${failedFlags}`))
+             : resolve()
+--- a/browser/base/content/browser-trustPanel.js
++++ b/browser/base/content/browser-trustPanel.js
+@@ -1176,15 +1176,18 @@
+       if (scope === "all") {
+         await SiteDataManager.remove(target.baseDomain);
+       } else {
+-        // Full-clear also includes cleaners that ignore container patterns.
+-        // Use only container-aware cookies and storage cleaners here.
++        // Include only cleaners that respect the site and container pattern.
+         await new Promise((resolve, reject) => {
+           Services.clearData.deleteDataFromSite(
+             target.baseDomain,
+             { userContextId: target.userContextId, privateBrowsingId: target.privateBrowsingId },
+             true,
+             Ci.nsIClearDataService.CLEAR_COOKIES |
+-              Ci.nsIClearDataService.CLEAR_DOM_STORAGES,
++              Ci.nsIClearDataService.CLEAR_DOM_STORAGES |
++            Ci.nsIClearDataService.CLEAR_NETWORK_CACHE |
++            Ci.nsIClearDataService.CLEAR_IMAGE_CACHE |
++            Ci.nsIClearDataService.CLEAR_JS_CACHE |
++            Ci.nsIClearDataService.CLEAR_CSS_CACHE,
+             failedFlags => {
+               if (failedFlags) {
+                 reject(new Error(`Site data clearing failed: ${failedFlags}`));
+--- a/browser/components/controlcenter/content/trustPanel.inc.xhtml
++++ b/browser/components/controlcenter/content/trustPanel.inc.xhtml
+@@ -135,7 +135,7 @@
+                     aria-label="Where to clear website data" style="margin-block: 12px;">
+           <radio id="trustpanel-clear-cookie-current" value="container" label="This container"/>
+           <description style="margin-inline-start: 28px; margin-block: 4px 12px; opacity: 0.8;">
+-            Clear cookies and website storage here. Other containers keep their data.
++            Clear cookies, website storage and cache here. Other containers keep their data.
+           </description>
+           <radio value="all" label="All containers in this profile"/>
+           <description style="margin-inline-start: 28px; margin-block: 4px; opacity: 0.8;">
