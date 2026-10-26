@@ -1,0 +1,172 @@
+diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
+--- a/dom/media/MediaManager.cpp
++++ b/dom/media/MediaManager.cpp
+@@ -3449,15 +3449,51 @@
+       principal->OriginAttributesRef().mUserContextId);
+   const auto flag = cfg.find("mediaDevices:enabled");
+   const bool maskLabels = flag != cfg.end() && flag->is_boolean();
++  // Website label settings are separate from permission-picker nicknames.
++  const int32_t cameraLabelStyle = Preferences::GetInt(
++      "cloakfox.camera.website_label_style", 0);
++  const auto normalizeCameraLabel = [](nsString& label) {
++    // Match String.prototype.trim() in the settings editor, including Unicode.
++    const auto labelSpace = [](char16_t ch) {
++      return (ch >= 0x09 && ch <= 0x0d) || ch == 0x20 || ch == 0xa0 ||
++             ch == 0x1680 || (ch >= 0x2000 && ch <= 0x200a) || ch == 0x2028 ||
++             ch == 0x2029 || ch == 0x202f || ch == 0x205f || ch == 0x3000 ||
++             ch == 0xfeff;
++    };
++    uint32_t start = 0, end = label.Length();
++    while (start < end && labelSpace(label[start])) ++start;
++    while (end > start && labelSpace(label[end - 1])) --end;
++    label = Substring(label, start, end - start);
++    if (label.Length() > 128) label.Truncate();
++    for (uint32_t i = 0; i < label.Length(); ++i) {
++      const char16_t ch = label.CharAt(i);
++      if (ch < 0x20 || ch == 0x7f) {
++        label.Truncate();
++        break;
++      }
++    }
++  };
++  nsString cameraCustomLabel;
++  Preferences::GetString("cloakfox.camera.website_label_custom", cameraCustomLabel);
++  normalizeCameraLabel(cameraCustomLabel);
++  nsAutoCString cameraLabelMap;
++  Preferences::GetCString("cloakfox.camera.website_label_map", cameraLabelMap);
++  auto cameraLabels = nlohmann::json::parse(cameraLabelMap.get(), nullptr, false);
++  if (!cameraLabels.is_object() || cameraLabels.size() > 64) {
++    cameraLabels = nlohmann::json::object();
++  }
+   bool persist =
+       IsActivelyCapturingOrHasAPermission(windowId) && !resistFingerprinting;
+   return media::GetPrincipalKey(principalInfo, persist)
+       ->Then(
+           GetMainThreadSerialEventTarget(), __func__,
+           [rawDevices = std::move(aDevices), windowId,
+-           resistFingerprinting, maskLabels](const nsCString& aOriginKey) {
++           resistFingerprinting, maskLabels,
++           cameraLabelStyle, cameraCustomLabel, cameraLabels,
++           normalizeCameraLabel](const nsCString& aOriginKey) {
+             MOZ_ASSERT(!aOriginKey.IsEmpty());
+             RefPtr anonymized = new LocalMediaDeviceSetRefCnt();
++            uint32_t cameraIndex = 0;
+             for (const RefPtr<MediaDevice>& device : *rawDevices) {
+               nsString name = device->mRawName;
+               if (name.Find(u"AirPods"_ns) != -1) {
+@@ -3472,6 +3508,43 @@
+                 nsRFPService::GetMediaDeviceName(name, device->mKind);
+                 id = name;
+                 id.AppendInt(windowId);
++              }
++              if (maskLabels && device->mMediaSource == MediaSourceEnum::Camera) {
++                ++cameraIndex;
++                // Do this after RFP derives its identifier, so label choices
++                // cannot change IDs, matching, constraints, or camera selection.
++                switch (cameraLabelStyle) {
++                  case 1:
++                    name = u"Camera "_ns;
++                    name.AppendInt(cameraIndex);
++                    break;
++                  case 2:
++                  case 3:
++                  case 4:
++                    if (cameraLabelStyle == 4) {
++                      if (cameraCustomLabel.IsEmpty()) break;
++                      name = cameraCustomLabel;
++                    } else {
++                      name = cameraLabelStyle == 2 ? u"Desk camera"_ns
++                                                  : u"Room camera"_ns;
++                    }
++                    if (cameraIndex > 1) {
++                      name.Append(u" "_ns);
++                      name.AppendInt(cameraIndex);
++                    }
++                    break;
++                  default:
++                    break;
++                }
++                const auto entry = cameraLabels.find(
++                    NS_ConvertUTF16toUTF8(device->mRawID).get());
++                if (entry != cameraLabels.end() && entry->is_string()) {
++                  const auto value = entry->get<std::string>();
++                  nsString deviceLabel = NS_ConvertUTF8toUTF16(
++                      nsDependentCSubstring(value.data(), value.size()));
++                  normalizeCameraLabel(deviceLabel);
++                  if (!deviceLabel.IsEmpty()) name = deviceLabel;
++                }
+               }
+               // An empty id represents a virtual default device, for which
+               // the exposed deviceId is the empty string.
+diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
+--- a/dom/media/MediaDevices.cpp
++++ b/dom/media/MediaDevices.cpp
+@@ -186,6 +186,34 @@
+           [](RefPtr<MediaMgrError>&& aError) {
+             return StreamPromise::CreateAndReject(std::move(aError), __func__);
+           });
++}
++
++already_AddRefed<Promise> MediaDevices::GetCloakfoxCameras(
++    CallerType aCallerType, ErrorResult& aRv) {
++  nsCOMPtr<nsIGlobalObject> global = xpc::NativeGlobal(GetWrapper());
++  RefPtr<Promise> promise = Promise::Create(global, aRv);
++  if (aRv.Failed()) return nullptr;
++  if (aCallerType != CallerType::System) {
++    promise->MaybeRejectWithNotAllowedError("Camera inventory is browser-only.");
++    return promise.forget();
++  }
++  // Inventory only: no stream is opened and no permission is granted.
++  MediaManager::Get()->GetPhysicalDevices()->Then(
++      GetCurrentSerialEventTarget(), __func__,
++      [promise](RefPtr<const MediaDeviceSetRefCnt> aDevices) {
++        nsTArray<CloakfoxCameraDevice> cameras;
++        for (const auto& device : *aDevices) {
++          if (device->mMediaSource != MediaSourceEnum::Camera) continue;
++          auto& camera = *cameras.AppendElement();
++          camera.mDeviceId = device->mRawID;
++          camera.mLabel = device->mRawName;
++        }
++        promise->MaybeResolve(cameras);
++      },
++      [promise](RefPtr<MediaMgrError>&&) {
++        promise->MaybeRejectWithNotReadableError("Could not list cameras.");
++      });
++  return promise.forget();
+ }
+ 
+ already_AddRefed<Promise> MediaDevices::EnumerateDevices(ErrorResult& aRv) {
+diff --git a/dom/media/MediaDevices.h b/dom/media/MediaDevices.h
+--- a/dom/media/MediaDevices.h
++++ b/dom/media/MediaDevices.h
+@@ -66,6 +66,9 @@
+                                      CallerType aCallerType);
+ 
+   already_AddRefed<Promise> EnumerateDevices(ErrorResult& aRv);
++
++  already_AddRefed<Promise> GetCloakfoxCameras(CallerType aCallerType,
++                                             ErrorResult& aRv);
+ 
+   already_AddRefed<Promise> GetDisplayMedia(
+       const DisplayMediaStreamConstraints& aConstraints, CallerType aCallerType,
+diff --git a/dom/webidl/MediaDevices.webidl b/dom/webidl/MediaDevices.webidl
+--- a/dom/webidl/MediaDevices.webidl
++++ b/dom/webidl/MediaDevices.webidl
+@@ -31,6 +31,17 @@
+ dictionary AudioOutputOptions {
+   DOMString deviceId = "";
+ };
++
++// Browser settings inventory. Raw identifiers never enter the website API.
++dictionary CloakfoxCameraDevice {
++  required DOMString deviceId;
++  required DOMString label;
++};
++
++partial interface MediaDevices {
++  [ChromeOnly, NewObject, NeedsCallerType]
++  Promise<sequence<CloakfoxCameraDevice>> getCloakfoxCameras();
++};
+ // https://w3c.github.io/mediacapture-output/#mediadevices-extensions
+ partial interface MediaDevices {
+   [SecureContext, Pref="media.setsinkid.enabled", NewObject, NeedsCallerType]

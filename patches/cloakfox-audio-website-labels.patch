@@ -1,0 +1,161 @@
+diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
+--- a/dom/media/MediaManager.cpp
++++ b/dom/media/MediaManager.cpp
+@@ -3482,6 +3482,27 @@
+   if (!cameraLabels.is_object() || cameraLabels.size() > 64) {
+     cameraLabels = nlohmann::json::object();
+   }
++  struct AudioLabelConfig {
++    int32_t style = 0;
++    nsString custom;
++    nlohmann::json labels;
++  };
++  const auto readAudioLabels = [&](const char* kind) {
++    AudioLabelConfig result;
++    const std::string prefix = std::string("cloakfox.") + kind + ".website_label_";
++    result.style = Preferences::GetInt((prefix + "style").c_str(), 0);
++    Preferences::GetString((prefix + "custom").c_str(), result.custom);
++    normalizeCameraLabel(result.custom);
++    nsAutoCString map;
++    Preferences::GetCString((prefix + "map").c_str(), map);
++    result.labels = nlohmann::json::parse(map.get(), nullptr, false);
++    if (!result.labels.is_object() || result.labels.size() > 64) {
++      result.labels = nlohmann::json::object();
++    }
++    return result;
++  };
++  const auto microphoneLabels = readAudioLabels("microphone");
++  const auto speakerLabels = readAudioLabels("speaker");
+   bool persist =
+       IsActivelyCapturingOrHasAPermission(windowId) && !resistFingerprinting;
+   return media::GetPrincipalKey(principalInfo, persist)
+@@ -3490,10 +3511,10 @@
+           [rawDevices = std::move(aDevices), windowId,
+            resistFingerprinting, maskLabels,
+            cameraLabelStyle, cameraCustomLabel, cameraLabels,
+-           normalizeCameraLabel](const nsCString& aOriginKey) {
++           microphoneLabels, speakerLabels, normalizeCameraLabel](const nsCString& aOriginKey) {
+             MOZ_ASSERT(!aOriginKey.IsEmpty());
+             RefPtr anonymized = new LocalMediaDeviceSetRefCnt();
+-            uint32_t cameraIndex = 0;
++            uint32_t cameraIndex = 0, microphoneIndex = 0, speakerIndex = 0;
+             for (const RefPtr<MediaDevice>& device : *rawDevices) {
+               nsString name = device->mRawName;
+               if (name.Find(u"AirPods"_ns) != -1) {
+@@ -3550,6 +3571,39 @@
+                       nsDependentCSubstring(value.data(), value.size()));
+                   normalizeCameraLabel(deviceLabel);
+                   if (!deviceLabel.IsEmpty()) name = deviceLabel;
++                }
++              }
++              const bool microphone =
++                  device->mMediaSource == MediaSourceEnum::Microphone;
++              const bool speaker = device->mKind == MediaDeviceKind::Audiooutput;
++              if (maskLabels && (microphone || speaker)) {
++                const auto& audio = microphone ? microphoneLabels : speakerLabels;
++                const uint32_t index = microphone ? ++microphoneIndex : ++speakerIndex;
++                if (audio.style == 1) {
++                  name = microphone ? u"Microphone "_ns : u"Speaker "_ns;
++                  name.AppendInt(index);
++                } else if (audio.style == 2 || audio.style == 3 ||
++                           (audio.style == 4 && !audio.custom.IsEmpty())) {
++                  if (audio.style == 4) {
++                    name = audio.custom;
++                  } else if (audio.style == 2) {
++                    name = microphone ? u"Desk microphone"_ns : u"Desk speakers"_ns;
++                  } else {
++                    name = microphone ? u"Room microphone"_ns : u"Room speakers"_ns;
++                  }
++                  if (index > 1) {
++                    name.Append(u" "_ns);
++                    name.AppendInt(index);
++                  }
++                }
++                const auto entry = audio.labels.find(
++                    NS_ConvertUTF16toUTF8(device->mRawID).get());
++                if (entry != audio.labels.end() && entry->is_string()) {
++                  const auto value = entry->get<std::string>();
++                  nsString label = NS_ConvertUTF8toUTF16(
++                      nsDependentCSubstring(value.data(), value.size()));
++                  normalizeCameraLabel(label);
++                  if (!label.IsEmpty()) name = label;
+                 }
+               }
+               // An empty id represents a virtual default device, for which
+diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
+--- a/dom/media/MediaDevices.cpp
++++ b/dom/media/MediaDevices.cpp
+@@ -186,6 +186,38 @@
+           [](RefPtr<MediaMgrError>&& aError) {
+             return StreamPromise::CreateAndReject(std::move(aError), __func__);
+           });
++}
++
++already_AddRefed<Promise> MediaDevices::GetCloakfoxAudioDevices(
++    CallerType aCallerType, ErrorResult& aRv) {
++  nsCOMPtr<nsIGlobalObject> global = xpc::NativeGlobal(GetWrapper());
++  RefPtr<Promise> promise = Promise::Create(global, aRv);
++  if (aRv.Failed()) return nullptr;
++  if (aCallerType != CallerType::System) {
++    promise->MaybeRejectWithNotAllowedError("Audio inventory is browser-only.");
++    return promise.forget();
++  }
++  // Physical inventory only. This never opens a stream or grants permission.
++  MediaManager::Get()->GetPhysicalDevices()->Then(
++      GetCurrentSerialEventTarget(), __func__,
++      [promise](RefPtr<const MediaDeviceSetRefCnt> aDevices) {
++        nsTArray<CloakfoxAudioDevice> devices;
++        for (const auto& device : *aDevices) {
++          const bool microphone =
++              device->mMediaSource == MediaSourceEnum::Microphone;
++          const bool speaker = device->mKind == MediaDeviceKind::Audiooutput;
++          if (!microphone && !speaker) continue;
++          auto& entry = *devices.AppendElement();
++          entry.mDeviceId = device->mRawID;
++          entry.mLabel = device->mRawName;
++          entry.mKind = microphone ? u"audioinput"_ns : u"audiooutput"_ns;
++        }
++        promise->MaybeResolve(devices);
++      },
++      [promise](RefPtr<MediaMgrError>&&) {
++        promise->MaybeRejectWithNotReadableError("Could not list audio devices.");
++      });
++  return promise.forget();
+ }
+ 
+ already_AddRefed<Promise> MediaDevices::GetCloakfoxCameras(
+diff --git a/dom/media/MediaDevices.h b/dom/media/MediaDevices.h
+--- a/dom/media/MediaDevices.h
++++ b/dom/media/MediaDevices.h
+@@ -66,6 +66,9 @@
+                                      CallerType aCallerType);
+ 
+   already_AddRefed<Promise> EnumerateDevices(ErrorResult& aRv);
++
++  already_AddRefed<Promise> GetCloakfoxAudioDevices(CallerType aCallerType,
++                                                ErrorResult& aRv);
+ 
+   already_AddRefed<Promise> GetCloakfoxCameras(CallerType aCallerType,
+                                              ErrorResult& aRv);
+diff --git a/dom/webidl/MediaDevices.webidl b/dom/webidl/MediaDevices.webidl
+--- a/dom/webidl/MediaDevices.webidl
++++ b/dom/webidl/MediaDevices.webidl
+@@ -33,6 +33,18 @@
+ };
+ 
+ // Browser settings inventory. Raw identifiers never enter the website API.
++dictionary CloakfoxAudioDevice {
++  required DOMString deviceId;
++  required DOMString label;
++  required DOMString kind;
++};
++
++partial interface MediaDevices {
++  [ChromeOnly, NewObject, NeedsCallerType]
++  Promise<sequence<CloakfoxAudioDevice>> getCloakfoxAudioDevices();
++};
++
++// Browser settings inventory. Raw identifiers never enter the website API.
+ dictionary CloakfoxCameraDevice {
+   required DOMString deviceId;
+   required DOMString label;

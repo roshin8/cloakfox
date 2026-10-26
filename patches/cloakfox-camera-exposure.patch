@@ -1,0 +1,61 @@
+diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
+--- a/dom/media/MediaManager.cpp
++++ b/dom/media/MediaManager.cpp
+@@ -4,6 +4,7 @@
+ 
+ #include "MediaManager.h"
+ #include "CloakfoxSiteSeed.hpp"
++#include "CloakfoxCameraExposure.hpp"
+ 
+ #include "AudioCaptureTrack.h"
+ #include "AudioDeviceInfo.h"
+@@ -3449,6 +3450,7 @@
+       principal->OriginAttributesRef().mUserContextId);
+   const auto flag = cfg.find("mediaDevices:enabled");
+   const bool maskLabels = flag != cfg.end() && flag->is_boolean();
++  const bool enforceCameraExposure = !principal->IsSystemPrincipal();
+   // Website label settings are separate from permission-picker nicknames.
+   const int32_t cameraLabelStyle = Preferences::GetInt(
+       "cloakfox.camera.website_label_style", 0);
+@@ -3511,11 +3513,17 @@
+           [rawDevices = std::move(aDevices), windowId,
+            resistFingerprinting, maskLabels,
+            cameraLabelStyle, cameraCustomLabel, cameraLabels,
+-           microphoneLabels, speakerLabels, normalizeCameraLabel](const nsCString& aOriginKey) {
++           microphoneLabels, speakerLabels, cfg, enforceCameraExposure, normalizeCameraLabel](const nsCString& aOriginKey) {
+             MOZ_ASSERT(!aOriginKey.IsEmpty());
+             RefPtr anonymized = new LocalMediaDeviceSetRefCnt();
+             uint32_t cameraIndex = 0, microphoneIndex = 0, speakerIndex = 0;
++            CloakfoxCameraExposure cameraExposure(cfg);
+             for (const RefPtr<MediaDevice>& device : *rawDevices) {
++              if (enforceCameraExposure &&
++                  device->mMediaSource == MediaSourceEnum::Camera &&
++                  !cameraExposure.AllowCamera(NS_ConvertUTF16toUTF8(device->mRawID).get())) {
++                continue;
++              }
+               nsString name = device->mRawName;
+               if (name.Find(u"AirPods"_ns) != -1) {
+                 name = u"AirPods"_ns;
+diff --git a/dom/media/MediaDevices.cpp b/dom/media/MediaDevices.cpp
+--- a/dom/media/MediaDevices.cpp
++++ b/dom/media/MediaDevices.cpp
+@@ -30,6 +30,7 @@
+ #include "nsQueryObject.h"
+ #include "MaskConfig.hpp"
+ #include "CloakfoxSiteSeed.hpp"
++#include "CloakfoxCameraExposure.hpp"
+ 
+ namespace mozilla::dom {
+ 
+@@ -448,7 +449,11 @@
+                             cap("mediaDevices:webcams"),
+                             cap("mediaDevices:speakers")};
+   uint32_t counts[] = {0, 0, 0};
++  CloakfoxCameraExposure cameraExposure(cfg);
+   exposed->RemoveElementsBy([&](const auto& device) {
++    if (device->mMediaSource == MediaSourceEnum::Camera) {
++      return !cameraExposure.AllowCamera(NS_ConvertUTF16toUTF8(device->mRawID).get());
++    }
+     const size_t kind = device->mKind == MediaDeviceKind::Audioinput ? 0 :
+                         device->mKind == MediaDeviceKind::Videoinput ? 1 : 2;
+     return counts[kind]++ >= limits[kind];

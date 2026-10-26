@@ -1,0 +1,35 @@
+--- a/dom/media/MediaDevices.cpp
++++ b/dom/media/MediaDevices.cpp
+@@ -450,9 +450,13 @@
+                             cap("mediaDevices:speakers")};
+   uint32_t counts[] = {0, 0, 0};
+   CloakfoxCameraExposure cameraExposure(cfg);
++            CloakfoxCameraExposure microphoneExposure(cfg, true);
+   exposed->RemoveElementsBy([&](const auto& device) {
+     if (device->mMediaSource == MediaSourceEnum::Camera) {
+       return !cameraExposure.AllowCamera(NS_ConvertUTF16toUTF8(device->mRawID).get());
++    }
++    if (device->mMediaSource == MediaSourceEnum::Microphone) {
++      return !microphoneExposure.AllowCamera(NS_ConvertUTF16toUTF8(device->mRawID).get());
+     }
+     const size_t kind = device->mKind == MediaDeviceKind::Audioinput ? 0 :
+                         device->mKind == MediaDeviceKind::Videoinput ? 1 : 2;
+--- a/dom/media/MediaManager.cpp
++++ b/dom/media/MediaManager.cpp
+@@ -3518,10 +3518,16 @@
+             RefPtr anonymized = new LocalMediaDeviceSetRefCnt();
+             uint32_t cameraIndex = 0, microphoneIndex = 0, speakerIndex = 0;
+             CloakfoxCameraExposure cameraExposure(cfg);
++            CloakfoxCameraExposure microphoneExposure(cfg, true);
+             for (const RefPtr<MediaDevice>& device : *rawDevices) {
+               if (enforceCameraExposure &&
+                   device->mMediaSource == MediaSourceEnum::Camera &&
+                   !cameraExposure.AllowCamera(NS_ConvertUTF16toUTF8(device->mRawID).get())) {
++                continue;
++              }
++              if (enforceCameraExposure &&
++                  device->mMediaSource == MediaSourceEnum::Microphone &&
++                  !microphoneExposure.AllowCamera(NS_ConvertUTF16toUTF8(device->mRawID).get())) {
+                 continue;
+               }
+               nsString name = device->mRawName;

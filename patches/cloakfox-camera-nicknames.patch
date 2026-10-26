@@ -1,0 +1,34 @@
+diff --git a/browser/actors/WebRTCParent.sys.mjs b/browser/actors/WebRTCParent.sys.mjs
+--- a/browser/actors/WebRTCParent.sys.mjs
++++ b/browser/actors/WebRTCParent.sys.mjs
+@@ -7,6 +7,7 @@
+ const lazy = {};
+ 
+ ChromeUtils.defineESModuleGetters(lazy, {
++  getCameraDisplayName: "resource:///modules/CloakfoxCameraNames.sys.mjs",
+   PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
+   SitePermissions: "resource:///modules/SitePermissions.sys.mjs",
+   webrtcUI: "resource:///modules/webrtcUI.sys.mjs",
+@@ -872,7 +873,10 @@
+         let defaultIndex = 0;
+ 
+         for (let device of devices) {
+-          let item = addDeviceToList(list, device.name, device.deviceIndex);
++          let displayName = IDPrefix == "webRTC-selectCamera"
++            ? lazy.getCameraDisplayName(device.name)
++            : device.name;
++          let item = addDeviceToList(list, displayName, device.deviceIndex);
+           // Add deviceId property for camera devices so that we can preview them on selection.
+           if (IDPrefix == "webRTC-selectCamera") {
+             item.deviceId = device.rawId;
+@@ -894,7 +898,9 @@
+         let label = doc.getElementById(labelID);
+         if (devices.length == 1) {
+           describedByIDs.push(`${IDPrefix}-icon`, labelID);
+-          label.value = devices[0].name;
++          label.value = IDPrefix == "webRTC-selectCamera"
++            ? lazy.getCameraDisplayName(devices[0].name)
++            : devices[0].name;
+           label.hidden = false;
+           list.hidden = true;
+         } else {

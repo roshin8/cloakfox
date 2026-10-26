@@ -1,0 +1,18 @@
+diff --git a/dom/media/MediaManager.cpp b/dom/media/MediaManager.cpp
+--- a/dom/media/MediaManager.cpp
++++ b/dom/media/MediaManager.cpp
+@@ -3500,7 +3500,13 @@
+                 name = u"AirPods"_ns;
+               }
+ 
+-              if (maskLabels) {
++              // Display capture is a video input too, but is not a camera.
++              // Keep its source label so sites can distinguish a monitor from
++              // a window or tab after the user grants screen sharing.
++              if (maskLabels &&
++                  (device->mMediaSource == MediaSourceEnum::Camera ||
++                   device->mMediaSource == MediaSourceEnum::Microphone ||
++                   device->mKind == MediaDeviceKind::Audiooutput)) {
+                 nsRFPService::GetMediaDeviceName(name, device->mKind);
+               }
+               nsString id = device->mRawID;
