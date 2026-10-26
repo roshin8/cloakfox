@@ -63,7 +63,7 @@ if (!warning) {
     button.setAttribute('aria-busy', 'true');
     status.textContent = button.id === 'recheck' ? 'Checking your public IP…' : 'Applying your choice…';
     try {
-      const result=await monitor.resolveIPWarning(token,button.id);
+      const result=await monitor.resolveIPWarning(token,button.id === 'allow-website' ? 'website' : button.id);
       if (button.id === 'recheck') {
         const updated = monitor.getIPWarning(token);
         if (updated) renderComparison(updated);

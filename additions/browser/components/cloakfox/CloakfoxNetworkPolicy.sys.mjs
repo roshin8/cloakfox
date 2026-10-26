@@ -160,5 +160,9 @@ export function initCloakfoxNetworkPolicy() {
     /^cloakfox\.container\.(\d+)\.(?:network_mode|webrtc_mode|proxy_url)$/.exec(name)?.[1]).filter(Boolean));
   for (const id of ids) publishNativePolicy(Number(id));
   registered = true;
+  try {
+    ChromeUtils.importESModule('resource:///modules/CloakfoxContainerProxyEditor.sys.mjs').initContainerProxyEditor();
+    ChromeUtils.importESModule('resource:///modules/CloakfoxProxyIndicator.sys.mjs').initProxyIndicator();
+  } catch(error) { Cu.reportError(error); }
   ChromeUtils.importESModule('resource:///modules/CloakfoxIPConflicts.sys.mjs').initIPConflicts();
 }

@@ -67,6 +67,20 @@ loadNetwork();
     const label=document.createElement('label');label.textContent=labelText;
     const select=document.createElement('select');for(const [value,text] of choices)select.append(new Option(text,value));label.append(select);panel.append(label);return select;
   }
+  const checkRoute=selectField('IP lookup route',[
+    ['background','Background route — native Cloakfox routing'],
+    ['tab','Tab route — Multi-Account Containers / tab-based proxies'],
+  ]);
+  checkRoute.id='cfx-ip-check-route';checkRoute.value=ipMonitor.getIPCheckRoute();
+  const routeHelp=document.createElement('p');
+  routeHelp.textContent='Tab route uses temporary hidden background tabs in each container. Background route uses internal requests. Both measure the IP-check service; website-specific proxy rules may use another route. Switching clears cached checks; saved visit history is retained separately by lookup route.';
+  panel.append(routeHelp);
+  const routeStatus=document.createElement('p');routeStatus.id='cfx-ip-route-status';routeStatus.setAttribute('role','status');panel.append(routeStatus);
+  checkRoute.addEventListener('change',()=>{
+    ipMonitor.setIPCheckRoute(checkRoute.value);
+    routeStatus.textContent='Route changed. Cached results cleared. Run a fresh check or visit a website with automatic checking enabled.';
+    displayIPs();
+  });
   const response=selectField('When a conflict is detected',[['warning','Show warning page'],['notification','Show notification only']]);
   response.value=Services.prefs.getStringPref('cloakfox.ip_conflicts.response','warning');
   response.onchange=()=>{Services.prefs.setStringPref('cloakfox.ip_conflicts.response',response.value);Services.prefs.savePrefFile(null);};

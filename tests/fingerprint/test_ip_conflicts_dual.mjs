@@ -14,6 +14,7 @@ async function harness() {
  globalThis.Cr={NS_ERROR_NET_TIMEOUT:1,NS_ERROR_FILE_TOO_BIG:2};
  globalThis.Components={isSuccessCode:s=>s===0}; globalThis.Cu={reportError:e=>{throw e;}};
  globalThis.ChromeUtils={importESModule(path){
+  if(path.includes('PrivateBrowsingUtils'))return {PrivateBrowsingUtils:{isWindowPrivate:w=>!!w.isPrivate}};
   if(path.includes('NetworkPolicy'))return {getContainerNetwork:()=>({mode:0})};
   if(path.includes('Timer'))return {setTimeout:()=>1,clearTimeout(){}};
   return {NetUtil:{readInputStreamToString:s=>s,newChannel(options){
@@ -33,7 +34,7 @@ async function harness() {
   win.gBrowser.listener.onLocationChange(browser,{isTopLevel:true},null,{scheme:'https',spec:url});
   await new Promise(r=>setImmediate(r));return browser;
  }
- return {m,prefs,calls,replies,addresses,visit};
+ return {m,prefs,calls,replies,addresses,visit,windows};
 }
 test('dual measurements preserve routing/privacy, cache and each address family',async()=>{
  const {m,calls,addresses}=await harness();addresses();
@@ -64,6 +65,32 @@ test('IPv6-only hostname warning retains unknown family on recheck and records b
 test('IP action exempts only matching addresses, and cross-host observations never warn',async()=>{
  const {m,addresses,visit}=await harness();addresses();m.recordIPAccess('2001:db8::1',9,'https://example.com/');
  const browser=await visit(2);const token=browser.currentURI.spec.split('token=')[1];await m.resolveIPWarning(token,'ip');assert.deepEqual(m.ipExceptions(),['2001:db8::1']);assert.equal(m.ipHistory().filter(r=>r.ucid===2).length,2);
+});
+test('website action excludes the warning hostname only in its container and preserves other rules',async()=>{
+ const {m,addresses,visit,prefs,calls}=await harness();addresses();
+ m.setIPRules({mode:'selected',include:['example.com','other.test'],exclude:['existing.test']});
+ m.recordIPAccess('192.0.2.1',9,'https://example.com/');
+ const browser=await visit(2);const token=browser.currentURI.spec.split('token=')[1];
+ assert.deepEqual(await m.resolveIPWarning(token,'website'),{continued:true});
+ assert.equal(browser.currentURI.spec,'https://example.com/path?secret=1');
+ assert.deepEqual(m.getIPRules(2),{mode:'selected',include:['example.com','other.test'],exclude:['existing.test','example.com']});
+ assert.deepEqual(m.getIPRules(),{mode:'selected',include:['example.com','other.test'],exclude:['existing.test']});
+ assert.equal(m.shouldCheckWebsite(2,'https://sub.example.com/'),false);
+ assert.equal(m.shouldCheckWebsite(2,'https://other.test/'),true);
+ assert.equal(m.shouldCheckWebsite(3,'https://example.com/'),true);
+ assert.deepEqual(m.ipExceptions(),[]);
+ assert.equal(prefs.has('cloakfox.container.2.allow_shared_ip'),false);
+ assert.equal(m.hasTemporaryIPAllowance(2),false);
+ assert.equal(calls.length,2);
+ await assert.rejects(m.resolveIPWarning(token,'website'),/expired/);
+});
+test('website action refuses a full exclusion list rather than dropping an existing rule',async()=>{
+ const {m,addresses,visit}=await harness();addresses();
+ const exclude=Array.from({length:200},(_,i)=>`host${i}.test`);
+ m.setIPRules({mode:'all',include:[],exclude},2);m.recordIPAccess('192.0.2.1',9,'https://example.com/');
+ const browser=await visit(2);const token=browser.currentURI.spec.split('token=')[1];
+ await assert.rejects(m.resolveIPWarning(token,'website'),/limit/i);
+ assert.deepEqual(m.getIPRules(2).exclude,exclude);assert.ok(browser.currentURI.spec.includes('ip-warning.html'));
 });
 test('actual visits record both addresses without creating unscoped history',async()=>{
  const {m,addresses,visit}=await harness();addresses();m.recordIPAccess('2001:db8::1',9,'https://elsewhere.test/');
@@ -117,4 +144,62 @@ test('route results list each matching family and deduplicate aggregate containe
  const {m,addresses,prefs}=await harness();addresses();await m.checkContainerIP(1);await m.checkContainerIP(2);
  const row=m.ipConflictResults().find(r=>r.ucid===1);assert.deepEqual(row.matches,[{ip:'192.0.2.1',family:'ipv4',conflicts:[2]},{ip:'2001:db8::1',family:'ipv6',conflicts:[2]}]);assert.deepEqual(row.conflicts,[2]);
  prefs.set('cloakfox.container.2.network_epoch',1);assert.deepEqual(m.ipConflictResults()[0].matches,[]);assert.deepEqual(m.ipConflictResults()[0].conflicts,[]);
+});
+
+test('switching lookup route clears cached results and rejects invalid modes',async()=>{
+ const {m,addresses}=await harness();addresses();
+ assert.equal(m.getIPCheckRoute(),'background');
+ await m.checkContainerIP(2);assert.equal(m.ipConflictResults().length,1);
+ assert.throws(()=>m.setIPCheckRoute('anything'),/Invalid/);
+ m.setIPCheckRoute('tab');assert.equal(m.getIPCheckRoute(),'tab');
+ assert.deepEqual(m.ipConflictResults(),[]);
+ m.setIPCheckRoute('background');
+ assert.deepEqual(m.ipConflictResults(),[]);
+});
+test('route changes discard in-flight checks without repopulating the cache',async()=>{
+ const {m,addresses}=await harness();addresses();
+ const old=m.checkContainerIP(2);
+ m.setIPCheckRoute('tab');
+ const result=await old;
+ assert.equal(result.ip,null);assert.match(result.error,/Route changed/);
+ assert.deepEqual(m.ipConflictResults(),[]);
+});
+test('tab mode uses real container tabs, never background channels, and closes probes',async()=>{
+ const {m,windows,calls}=await harness();
+ const opened=[],removed=[];
+ globalThis.Ci.nsIWebProgress={NOTIFY_STATE_WINDOW:1};
+ globalThis.Ci.nsIWebNavigation={LOAD_FLAGS_BYPASS_CACHE:256};
+ globalThis.Ci.nsIWebProgressListener={STATE_STOP:1,STATE_IS_WINDOW:2};
+ globalThis.ChromeUtils.registerWindowActor=()=>{};
+ globalThis.ChromeUtils.generateQI=()=>()=>{};
+ const win={gBrowser:{
+  addTab(_url,options){
+   let listener;
+   const browser={isConnected:true,addProgressListener(l){listener=l;},removeProgressListener(){},
+    loadURI(uri){assert.equal(tab.hidden,true,'Probe must be hidden before navigation');this.currentURI=uri;this.browsingContext.currentWindowGlobal={getActor:()=>({sendQuery:async()=>({url:uri.spec,body:JSON.stringify({ip:uri.spec.includes('api6.')?'2001:db8::1':'192.0.2.2'})})})};queueMicrotask(()=>listener.onStateChange({isTopLevel:true},null,3,0));},
+    browsingContext:{},currentURI:{spec:'about:blank'}};
+   const tab={linkedBrowser:browser};opened.push({options,tab});return tab;
+  },hideTab(tab){tab.hidden=true;},removeTab(tab){removed.push(tab);},
+ },addEventListener(){}};
+ windows.push(win);Services.wm.getMostRecentWindow=()=>win;
+ m.setIPCheckRoute('tab');
+ const result=await m.checkContainerIP(16);
+ assert.equal(result.ipv4,'192.0.2.2');assert.equal(result.ipv6,'2001:db8::1');
+ assert.equal(calls.length,0);assert.equal(opened.length,2);assert.equal(removed.length,2);
+ assert.ok(opened.every(({options,tab})=>options.userContextId===16 && options.skipBackgroundNotify===true && tab.hidden && tab.linkedBrowser.__cloakfoxIPProbe));
+ const stale=m.checkContainerIP(16,{force:true});m.setIPCheckRoute('background');
+ assert.equal((await stale).ip,null);assert.equal(removed.length,4);
+ assert.deepEqual(m.ipConflictResults(),[]);
+});
+
+test('saved history is retained but never compared across lookup modes',async()=>{
+ const {m}=await harness();
+ m.recordIPAccess('192.0.2.1',2,'https://example.com/');
+ m.setIPCheckRoute('tab');
+ assert.deepEqual(m.conflictForIP(3,'192.0.2.1','https://example.com/'),[]);
+ m.recordIPAccess('192.0.2.1',4,'https://example.com/');
+ assert.deepEqual(m.conflictForIP(3,'192.0.2.1','https://example.com/'),[4]);
+ m.setIPCheckRoute('background');
+ assert.deepEqual(m.conflictForIP(3,'192.0.2.1','https://example.com/'),[2]);
+ assert.equal(m.ipHistory().length,2);
 });

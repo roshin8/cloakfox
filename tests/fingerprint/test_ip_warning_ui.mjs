@@ -18,11 +18,13 @@ function renderWarning(initial, recheck) {
     if (!elements.has(id)) elements.set(id, element());
     return elements.get(id);
   };
-  const buttons = ['recheck', 'once', 'container', 'ip'].map(id => Object.assign(get(id), {id}));
+  const buttons = ['recheck', 'once', 'allow-website', 'container', 'ip'].map(id => Object.assign(get(id), {id}));
+  const actions = [];
   let warning = {id: 1, url: 'https://example.com/private', ip: '192.0.2.10', conflicts: [2], ...initial};
   const monitor = {
     getIPWarning: () => warning,
-    async resolveIPWarning() {
+    async resolveIPWarning(token, action) {
+      actions.push([token, action]);
       warning = {...warning, ...(recheck?.warning || {ip: '2001:db8::1', conflicts: [2, 3]})};
       if (recheck?.result) return recheck.result;
       return {conflict: true, ip: warning.ip};
@@ -36,8 +38,17 @@ function renderWarning(initial, recheck) {
     Services: {prefs: {getStringPref: () => 'light'}},
     document: {getElementById: get, querySelectorAll: () => buttons, createElement: element, documentElement: {dataset: {}}},
   });
+  get.actions = actions;
   return get;
 }
+
+test('website button resolves a hostname exception without overwriting the destination label', async () => {
+  const get = renderWarning({}, {result: {continued: true}});
+  await get('allow-website').listeners.click();
+  assert.deepEqual(get.actions, [['test', 'website']]);
+  assert.equal(get('website').textContent, 'example.com');
+  assert.equal(get('warning-status').textContent, 'Returning to the website…');
+});
 
 function assertLookupExplanation(get, previousContainers) {
   assert.match(get('heading').textContent, /public IP lookups/i);
