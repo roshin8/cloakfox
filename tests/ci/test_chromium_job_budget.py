@@ -2,6 +2,13 @@ import importlib.util,unittest
 from pathlib import Path
 p=Path(__file__).resolve().parents[2]/'scripts/ci/chromium_job_budget.py';s=importlib.util.spec_from_file_location('budget',p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class Budget(unittest.TestCase):
+ def test_workflow_uses_recovered_time_without_reducing_publication_reserve(self):
+  workflow=Path(__file__).resolve().parents[2]/'.github/workflows/chromium-source-segment.yml'
+  self.assertIn('--compile-minutes 240',workflow.read_text())
+  self.assertEqual(m.compile_seconds(240*60,345*60,60*60),195*60)
+  self.assertEqual(m.compile_seconds(240*60,345*60,120*60),135*60)
+  self.assertEqual(m.compile_seconds(240*60,345*60,300*60),0)
+
  def test_remaining_job_time_reserves_checkpoint_and_never_extends_requested(self):
   self.assertEqual(m.compile_seconds(180*60,350*60,128*60),132*60)
   self.assertEqual(m.compile_seconds(180*60,350*60,30*60),180*60)

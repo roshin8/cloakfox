@@ -1,5 +1,7 @@
 """Download a repository-owned checkpoint to disk and verify it before handoff."""
 import argparse,io,re,hashlib,json,os,shutil,subprocess,tempfile,zipfile,time,urllib.request,urllib.error,http.client
+from concurrent.futures import ThreadPoolExecutor,as_completed
+import threading
 from pathlib import Path
 
 def digest(path):
@@ -9,7 +11,9 @@ def digest(path):
  return h.hexdigest()
 
 def extract_verified(bundle,destination,expected_digest,source_sha,expected_archive_sha=None):
+ started=time.monotonic()
  if digest(bundle)!=expected_digest:raise ValueError('Artifact ZIP SHA256 mismatch')
+ zip_seconds=time.monotonic()-started
  destination=Path(destination);destination.mkdir(parents=True,exist_ok=True)
  with zipfile.ZipFile(bundle) as z:
   entries=z.infolist()
@@ -21,11 +25,15 @@ def extract_verified(bundle,destination,expected_digest,source_sha,expected_arch
   if expected_archive_sha and receipt.get('sha256')!=expected_archive_sha:raise ValueError('Checkpoint receipt/producer lineage SHA256 mismatch')
   with tempfile.TemporaryDirectory(prefix='.verified-',dir=destination) as tmp:
    staged=Path(tmp)
-   with z.open('workspace.tar.zst') as src,(staged/'workspace.tar.zst').open('wb') as out:shutil.copyfileobj(src,out,8*1024*1024)
-   if digest(staged/'workspace.tar.zst')!=receipt['sha256']:raise ValueError('Checkpoint archive SHA256 mismatch')
+   archive_hash=hashlib.sha256();extract_started=time.monotonic()
+   with z.open('workspace.tar.zst') as src,(staged/'workspace.tar.zst').open('wb') as out:
+    for chunk in iter(lambda:src.read(8*1024*1024),b''):
+     out.write(chunk);archive_hash.update(chunk)
+   if archive_hash.hexdigest()!=receipt['sha256']:raise ValueError('Checkpoint archive SHA256 mismatch')
+   extract_seconds=time.monotonic()-extract_started
    (staged/'workspace.tar.json').write_text(json.dumps(receipt)+'\n')
    for name in ['workspace.tar.zst','workspace.tar.json']:os.replace(staged/name,destination/name)
- return {'verified':True,'sourceSha':source_sha,'artifactSha256':expected_digest,'archiveSha256':receipt['sha256'],'archiveBytes':(destination/'workspace.tar.zst').stat().st_size}
+ return {'zipVerificationSeconds':round(zip_seconds,3),'archiveExtractionAndVerificationSeconds':round(extract_seconds,3),'verified':True,'sourceSha':source_sha,'artifactSha256':expected_digest,'archiveSha256':receipt['sha256'],'archiveBytes':(destination/'workspace.tar.zst').stat().st_size}
 
 def signed_url(repository,artifact_id):
  class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -41,14 +49,26 @@ def signed_url(repository,artifact_id):
   if not location.startswith('https://'):raise ValueError('Non-HTTPS artifact redirect')
   return location
 
-def transfer(repository,artifact_id,bundle,total):
- # Bounded ranges keep a timeout from discarding the entire multi-GB transfer.
- # Fresh signed URLs avoid retrying expired redirects; credentials stay on api.github.com.
- bundle=Path(bundle);bundle.touch(exist_ok=False);started=time.monotonic();last_log=started
- with bundle.open('r+b') as output:
-  while output.tell()<total:
-   end=min(output.tell()+256*1024*1024,total)-1
+def transfer(repository,artifact_id,bundle,total,*,workers=4,range_bytes=256*1024*1024):
+ # Independent bounded ranges use separate file handles: no shared seek position.
+ # All workers must finish before full ZIP/CRC/archive integrity verification.
+ if type(workers) is not int or not 1<=workers<=4 or type(range_bytes) is not int or range_bytes<=0 or type(total) is not int or total<=0:
+  raise ValueError('Invalid bounded download configuration')
+ bundle=Path(bundle);bundle.touch(exist_ok=False)
+ started=time.monotonic();last_log=started;written=0
+ lock=threading.Lock();stop=threading.Event()
+ def progress(size,phase='download',**extra):
+  nonlocal written,last_log
+  with lock:
+   written+=size;now=time.monotonic()
+   if phase!='download' or now-last_log>=30 or extra.get('rangeComplete'):
+    print(json.dumps({'phase':phase,'bytes':written,'totalBytes':total,'workers':workers,'elapsedSeconds':round(now-started,1),**extra}),flush=True);last_log=now
+ def transfer_range(bounds):
+  first,end=bounds
+  with bundle.open('r+b') as output:
+   output.seek(first)
    for attempt in range(5):
+    if stop.is_set():return
     start=output.tell()
     try:
      request=urllib.request.Request(signed_url(repository,artifact_id),headers={'Range':f'bytes={start}-{end}'})
@@ -56,20 +76,30 @@ def transfer(repository,artifact_id,bundle,total):
       if response.status!=206 or response.headers.get('Content-Range')!=f'bytes {start}-{end}/{total}':raise ValueError('Artifact range response mismatch')
       remaining=end-start+1
       while remaining:
+       if stop.is_set():return
        chunk=response.read(min(8*1024*1024,remaining))
        if not chunk:raise OSError('Truncated artifact range')
-       output.write(chunk);remaining-=len(chunk)
-       now=time.monotonic()
-       if now-last_log>=30:
-        print(json.dumps({'phase':'download','bytes':output.tell(),'totalBytes':total,'elapsedSeconds':round(now-started,1)}),flush=True);last_log=now
-     print(json.dumps({'phase':'download','bytes':output.tell(),'totalBytes':total,'elapsedSeconds':round(time.monotonic()-started,1)}),flush=True)
-     break
-    except (OSError,http.client.HTTPException) as e:
-     print(json.dumps({'phase':'download-retry','bytes':output.tell(),'totalBytes':total,'attempt':attempt+1,'errorType':type(e).__name__}),flush=True)
+       if len(chunk)>remaining:raise ValueError('Artifact response exceeds requested range')
+       output.write(chunk);remaining-=len(chunk);progress(len(chunk))
+     progress(0,rangeComplete=True,rangeStart=first,rangeEnd=end)
+     return
+    except (OSError,http.client.HTTPException) as error:
+     progress(0,'download-retry',rangeStart=first,resumeOffset=output.tell(),attempt=attempt+1,errorType=type(error).__name__)
      if attempt==4:raise
-     # If a timeout arrived after the last byte, the full ZIP hash still validates it.
-     if output.tell()>end:break
-     time.sleep(min(2**attempt,8))
+     if output.tell()>end:return
+     # Cooperative wait lets another worker's validation failure cancel retries.
+     if stop.wait(min(2**attempt,8)):return
+ ranges=[(start,min(start+range_bytes,total)-1) for start in range(0,total,range_bytes)]
+ with ThreadPoolExecutor(max_workers=workers) as pool:
+  pending=[pool.submit(transfer_range,bounds) for bounds in ranges]
+  try:
+   for future in as_completed(pending):future.result()
+  except BaseException:
+   stop.set()
+   for future in pending:future.cancel()
+   raise
+ if written!=total or bundle.stat().st_size!=total:raise ValueError('Incomplete artifact range download')
+ return {'downloadSeconds':round(time.monotonic()-started,3),'downloadWorkers':workers,'downloadRangeBytes':range_bytes,'downloadBytes':written}
 
 def api(path):return json.loads(subprocess.check_output(['gh','api',path],text=True))
 def producer_hash(repository,run,name,source_sha):
@@ -110,10 +140,11 @@ def download(repository,run_id,artifact_id,name,destination,source_sha):
  if shutil.disk_usage(destination).free<2*artifact['size_in_bytes']+10*1024**3:raise ValueError('Insufficient download/extraction reserve')
  with tempfile.TemporaryDirectory(prefix='.download-',dir=destination) as tmp:
   bundle=Path(tmp)/'artifact.zip'
-  transfer(repository,artifact['id'],bundle,artifact['size_in_bytes'])
+  transfer_metrics=transfer(repository,artifact['id'],bundle,artifact['size_in_bytes']) or {}
   if bundle.stat().st_size!=artifact['size_in_bytes']:raise ValueError('Truncated artifact ZIP download')
   print(json.dumps({'phase':'verify-zip-and-archive','bytes':bundle.stat().st_size}),flush=True)
   result=extract_verified(bundle,destination,expected[7:],source_sha,producer_hash(repository,run,name,source_sha))
+  result.update(transfer_metrics)
  result.update({'artifactId':artifact['id'],'producerRun':int(run_id)})
  return result
 

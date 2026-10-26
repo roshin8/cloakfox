@@ -217,7 +217,7 @@ jobs:
           if [[ "$HAS_CHECKPOINT" == "true" ]]; then
             resume=(--resume "$RUNNER_TEMP/checkpoint-in/workspace.tar.zst")
           fi
-          GITHUB_SHA="$SOURCE_SHA" "$pythonLocation/bin/python3" -u "$RUNNER_TEMP/chromium-job-budget.py" scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs "${CHROMIUM_COMPILE_JOBS:-3}" --compile-minutes 180 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
+          GITHUB_SHA="$SOURCE_SHA" "$pythonLocation/bin/python3" -u "$RUNNER_TEMP/chromium-job-budget.py" scripts/ci/chromium_source.py --root "$RUNNER_TEMP/chromium-build" --jobs "${CHROMIUM_COMPILE_JOBS:-3}" --compile-minutes 240 --checkpoint-out "$RUNNER_TEMP/checkpoint-out/workspace.tar.zst" "${resume[@]}"
       - name: Record compilation-source and controller provenance separately
         env:
           SOURCE_SHA: ${{ inputs.source-sha || github.sha }}
