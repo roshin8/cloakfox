@@ -1,5 +1,6 @@
 """Check cache eviction in a disposable Cloakfox profile; no real websites used."""
 import json
+import os
 import tempfile
 from pathlib import Path
 from selenium import webdriver
@@ -9,7 +10,7 @@ from selenium.webdriver.firefox.service import Service
 with tempfile.TemporaryDirectory(prefix='cloakfox-cache-scope-') as profile:
     Path(profile, 'user.js').write_text('user_pref("browser.profiles.enabled",false);\n')
     options = Options()
-    options.binary_location = '/Applications/Cloakfox.app/Contents/MacOS/cloakfox'
+    options.binary_location = os.environ['CLOAKFOX_BIN']
     for arg in ['-headless', '-no-remote', '-profile', profile, '-purgecaches']:
         options.add_argument(arg)
     driver = webdriver.Firefox(options=options, service=Service(service_args=['--allow-system-access'], log_output=str(Path(profile, 'gecko.log'))))

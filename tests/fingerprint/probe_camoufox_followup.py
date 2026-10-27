@@ -32,6 +32,17 @@ def main():
         profile.mkdir()
         d = launch(profile, Path(tmp) / 'gecko.log')
         try:
+            # The configured capacity must remain bounded by this backend. Measure
+            # a native control in this disposable loopback-only profile, rather
+            # than assuming every supported GPU can advertise eight samples.
+            d.execute_script("Services.prefs.setBoolPref('cloakfox.enabled', false)")
+            d.set_context('content')
+            d.get('http://127.0.0.1:' + str(server.server_port))
+            native_samples = d.execute_script("const gl=document.createElement('canvas').getContext('webgl2'); return gl && gl.getParameter(gl.MAX_SAMPLES);")
+            assert isinstance(native_samples, int) and native_samples > 0, native_samples
+            print('CONTROL native WebGL2 MAX_SAMPLES', native_samples)
+            d.set_context('chrome')
+            d.execute_script("Services.prefs.setBoolPref('cloakfox.enabled', true)")
             cfg = {'fingerprint:secret': 'A'*43 + '=', 'audio:seed': 12345, 'webGl:renderer': 'local-owner-renderer',
                    'webGl:vendor': 'local-owner-vendor'}
             params = {'3107': [True]*4, '2978': [0,0,300,150],
@@ -67,7 +78,7 @@ def main():
                 check(got and got['attrs']['alpha'] is False and got['attrs']['depth'] is False
                       and got['attrs']['stencil'] is True and got['attrs']['preserveDrawingBuffer'] is True,
                       kind + ' actual context attributes', got)
-                check(got and (kind == 'webgl2' and got['versionOnly']==8 and got['versionError']==0
+                check(got and (kind == 'webgl2' and got['versionOnly']==min(8, native_samples) and got['versionError']==0
                       or kind == 'webgl' and got['versionOnly'] is None and got['versionError']==1280),
                       kind + ' version gates', got)
                 check(got and got['anisotropy'] is None and got['extError']==1280,

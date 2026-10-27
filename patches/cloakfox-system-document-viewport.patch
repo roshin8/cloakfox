@@ -1,0 +1,55 @@
+diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
+--- a/dom/base/nsGlobalWindowInner.cpp
++++ b/dom/base/nsGlobalWindowInner.cpp
+@@ -3792,7 +3792,11 @@
+ 
+ double nsGlobalWindowInner::GetInnerWidth(CallerType aCallerType,
+                                           ErrorResult& aError) {
+-  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++  // Privileged about documents are content windows too. Keep their UI native;
++  // ordinary and opaque web documents still use the configured presentation.
++  if (!IsChromeWindow() &&
++      (!mDoc || !mDoc->NodePrincipal()->IsSystemPrincipal()) &&
++      !UseCloakfoxLetterboxing(mDoc)) {
+     if (auto value = MaskConfig::GetDouble("window.innerWidth"))
+       return value.value();
+   }
+@@ -3809,7 +3813,11 @@
+ 
+ double nsGlobalWindowInner::GetInnerHeight(CallerType aCallerType,
+                                            ErrorResult& aError) {
+-  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++  // Privileged about documents are content windows too. Keep their UI native;
++  // ordinary and opaque web documents still use the configured presentation.
++  if (!IsChromeWindow() &&
++      (!mDoc || !mDoc->NodePrincipal()->IsSystemPrincipal()) &&
++      !UseCloakfoxLetterboxing(mDoc)) {
+     if (auto value = MaskConfig::GetDouble("window.innerHeight"))
+       return value.value();
+   }
+@@ -3826,7 +3834,11 @@
+ 
+ int32_t nsGlobalWindowInner::GetOuterWidth(CallerType aCallerType,
+                                            ErrorResult& aError) {
+-  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++  // Privileged about documents are content windows too. Keep their UI native;
++  // ordinary and opaque web documents still use the configured presentation.
++  if (!IsChromeWindow() &&
++      (!mDoc || !mDoc->NodePrincipal()->IsSystemPrincipal()) &&
++      !UseCloakfoxLetterboxing(mDoc)) {
+     if (auto value = MaskConfig::GetInt32("window.outerWidth")) {
+       return value.value();
+     }
+@@ -3837,7 +3849,11 @@
+ 
+ int32_t nsGlobalWindowInner::GetOuterHeight(CallerType aCallerType,
+                                             ErrorResult& aError) {
+-  if (!IsChromeWindow() && !UseCloakfoxLetterboxing(mDoc)) {
++  // Privileged about documents are content windows too. Keep their UI native;
++  // ordinary and opaque web documents still use the configured presentation.
++  if (!IsChromeWindow() &&
++      (!mDoc || !mDoc->NodePrincipal()->IsSystemPrincipal()) &&
++      !UseCloakfoxLetterboxing(mDoc)) {
+     if (auto value = MaskConfig::GetInt32("window.outerHeight")) {
+       return value.value();
+     }

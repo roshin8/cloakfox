@@ -54,4 +54,4 @@ def run(output):
  output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(result,indent=2)+'\n')
  return result
 if __name__=='__main__':
- parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=ROOT/'docs/canvas-pipeline-completion/media-codec-corpus.json');args=parser.parse_args();result=run(args.output);print(f'{len(result["cases"])} real codec corpus cases passed')
+ parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=Path(os.environ['REPORT_DIR'])/'media-codec-corpus.json' if os.environ.get('REPORT_DIR') else ROOT/'docs/canvas-pipeline-completion/media-codec-corpus.json');args=parser.parse_args();result=run(args.output);print(f'{len(result["cases"])} real codec corpus cases passed')

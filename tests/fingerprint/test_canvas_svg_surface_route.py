@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 ROOT=Path(__file__).resolve().parents[2]
 def test_actual_svg_surface_flags():
- s=(ROOT/'firefox-src/dom/canvas/CanvasRenderingContext2D.cpp').read_text();a=s.index('uint32_t sfeFlags = nsLayoutUtils::SFE_WANT_FIRST_FRAME_IF_IMAGE',s.index('void CanvasRenderingContext2D::DrawImage'));b=s.index('\n    if (offscreenCanvas)',a);body=s[a:b]
+ s=(ROOT/'firefox-src/dom/canvas/CanvasRenderingContext2D.cpp').read_text();a=s.index('uint32_t sfeFlags = nsLayoutUtils::SFE_WANT_FIRST_FRAME_IF_IMAGE',s.index('void CanvasRenderingContext2D::DrawImage'));b=s.index('\n    }',s.index('if (mCanonicalCanvasBacking)',a))+len('\n    }');body=s[a:b]
  code='''#include <cstdint>
 #include <cassert>
 namespace nsLayoutUtils {enum {SFE_WANT_FIRST_FRAME_IF_IMAGE=1,SFE_NO_RASTERIZING_VECTORS=2,SFE_ALLOW_UNCROPPED_UNSCALED=4};}

@@ -1,0 +1,147 @@
+{
+  "state": "stopped-harness-setup",
+  "binary": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/Cloakfox.app/Contents/MacOS/cloakfox",
+  "headless": true,
+  "version": "Cloakfox Cloakfox 159.0-beta.1",
+  "started": "2026-10-27T21:12:36.074383+00:00",
+  "deferred": {
+    "probe_camera_nicknames.py": "Physical camera/native picker; may prompt outside headless browser",
+    "probe_appearance_restart.py": "NSWorkspace relaunch can activate an app despite headless environment",
+    "probe_privacy_enforcement.py": "Real display-capture negative path may reach OS chooser on regression",
+    "probe_cpp_first.py": "Historical DMG mounting/copying; not the newly built159 binary",
+    "probe_cpp_first_priority.py": "Historical DMG mounting/copying; not the newly built159 binary",
+    "probe_signature_selection.py": "Requires independent Chromium reference, not Firefox-only acceptance",
+    "probe_regions.py": "Real geolocation path may prompt for macOS Location Services",
+    "probe_per_container.py": "Real geolocation path may prompt for macOS Location Services",
+    "probe_chrome_network_baseline.py": "Independent stock Chrome reference, not a test of the new Firefox159 binary"
+  },
+  "results": [
+    {
+      "probe": "probe_network_identity.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 4.83
+    },
+    {
+      "probe": "probe_realm_privacy.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.23
+    },
+    {
+      "probe": "probe_language_scopes.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.24
+    },
+    {
+      "probe": "probe_worker_debugger_startup.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.62
+    },
+    {
+      "probe": "probe_navigator_coherence.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 4.76
+    },
+    {
+      "probe": "probe_webgpu_null_safety.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.18
+    },
+    {
+      "probe": "probe_site_data_scope.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.73
+    },
+    {
+      "probe": "probe_site_data_cache_scope.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.25
+    },
+    {
+      "probe": "probe_about_dialog.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.23
+    },
+    {
+      "probe": "probe_actor_stealth.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.75
+    },
+    {
+      "probe": "probe_actors.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.43
+    },
+    {
+      "probe": "probe_alps_identity.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 0.35
+    },
+    {
+      "probe": "probe_appearance.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.3
+    },
+    {
+      "probe": "probe_appearance_profile.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.16
+    },
+    {
+      "probe": "probe_audio_website_labels.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.72
+    },
+    {
+      "probe": "probe_audioworklet_privacy.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.72
+    },
+    {
+      "probe": "probe_background_activity.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.99
+    },
+    {
+      "probe": "probe_bitmap_export_protection.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.68
+    },
+    {
+      "probe": "probe_browser_profile_picker.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.77
+    },
+    {
+      "probe": "probe_bulk_containers.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 1.97
+    },
+    {
+      "probe": "probe_bundled_blocker.py",
+      "code": 1,
+      "outcome": "failed",
+      "seconds": 2.19
+    }
+  ],
+  "reason": "Firefox159 requires test-only privileged automation environment; ALPS fixture not yet built"
+}

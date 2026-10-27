@@ -3,6 +3,7 @@
 Uses real native APIs and a loopback fixture in a disposable profile. Requires
 CLOAKFOX_BIN and geckodriver. Native file pickers are not exercised.
 """
+from contextlib import ExitStack
 import http.server
 import json
 import tempfile
@@ -72,8 +73,14 @@ def main():
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     driver = None
+    def quit_driver():
+        nonlocal driver
+        if driver:
+            current=driver;driver=None
+            current.quit()
     try:
-        with tempfile.TemporaryDirectory(prefix="cloakfox-templates-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="cloakfox-templates-") as temporary, ExitStack() as cleanup:
+            cleanup.callback(quit_driver)
             root = Path(temporary)
             profile = root / "profile"
             profile.mkdir()
@@ -172,8 +179,7 @@ return id;
                               "identityStableAfterRestart": True}), flush=True)
             print("PASS: templates create fresh persistent identities without copying login state", flush=True)
     finally:
-        if driver:
-            driver.quit()
+        quit_driver()
         server.shutdown()
         server.server_close()
 

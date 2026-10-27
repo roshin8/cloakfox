@@ -30,10 +30,12 @@ def main():
         def read(key):
             return chrome("return JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_0'))[arguments[0]]", key)
         try:
-            d.set_context('content'); d.get('about:cloakfox#sec-media')
+            d.set_context('content'); d.get('about:cloakfox#cfx-microphone-configuration')
             WebDriverWait(d, 15).until(lambda x: x.execute_script("return document.querySelector('#grp-media select[data-key=\"mediaDevices:enabled\"]') !== null"))
             assert d.execute_script("return document.querySelector('[data-pref=\"cloakfox.opt.hdr_masking\"]').checked"), 'HDR control missing/default off'
             seed = chrome("return Services.prefs.getStringPref('cloakfox.container.0.math_seed')")
+            microphone=d.find_element(By.ID,'cfx-device-tab-microphone')
+            d.execute_script('arguments[0].scrollIntoView({block:"center"})',microphone);microphone.click()
             cap=d.find_element(By.CSS_SELECTOR,'#grp-media .k[title="mediaDevices:micros"]').find_element(By.XPATH,'..').find_element(By.CSS_SELECTOR,'.v')
             d.execute_script('arguments[0].scrollIntoView({block:"center"})',cap);cap.click()
             limits = d.execute_script("const i=document.querySelector('#grp-media .row-input');return [i.min,i.max,i.step]")

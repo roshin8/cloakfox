@@ -66,7 +66,11 @@ def main():
    for width, theme in [(1100, 'light'), (420, 'dark')]:
     d.set_window_size(width, 900)
     d.execute_script('document.documentElement.dataset.theme=arguments[0]', theme)
-    assert d.execute_script('return document.documentElement.scrollWidth <= innerWidth')
+    try:
+     WebDriverWait(d,5).until(lambda d:d.execute_script('return document.documentElement.scrollWidth <= innerWidth'))
+    except Exception:
+     print('OVERFLOW',d.execute_script("return {innerWidth,scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,overflow:[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth).map(e=>[e.tagName,e.id,e.className,e.getBoundingClientRect().right])}"),flush=True)
+     raise
     d.save_screenshot(str(out/('ip-warning-' + theme + '.png')))
    d.set_context('chrome')
    token=d.execute_script("return new URL(Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser.currentURI.spec).searchParams.get('token');")

@@ -12,14 +12,13 @@ JAR_MANIFESTS += ["jar.mn"]
 # roverfox.s.* extension prefs into the new cpp-first cloakfox.s.*
 # namespace. Idempotent.
 EXTRA_JS_MODULES += [
-    "CloakfoxContainerProxyEditor.sys.mjs",
-    "CloakfoxContainerBulk.sys.mjs",
-    "CloakfoxProxyIndicator.sys.mjs",
     "CloakfoxAppearance.sys.mjs",
     "CloakfoxBayesianNetwork.sys.mjs",
     "CloakfoxBFNetwork.sys.mjs",
     "CloakfoxBrowserProfiles.sys.mjs",
     "CloakfoxCameraNames.sys.mjs",
+    "CloakfoxContainerBulk.sys.mjs",
+    "CloakfoxContainerProxyEditor.sys.mjs",
     "CloakfoxContainerWorkflows.sys.mjs",
     "CloakfoxDNS.sys.mjs",
     "CloakfoxEngineHost.sys.mjs",
@@ -37,6 +36,7 @@ EXTRA_JS_MODULES += [
     "CloakfoxPersonas.sys.mjs",
     "CloakfoxPrefMigration.sys.mjs",
     "CloakfoxPrivacyPolicy.sys.mjs",
+    "CloakfoxProxyIndicator.sys.mjs",
     "CloakfoxProxyManager.sys.mjs",
     "CloakfoxRegions.sys.mjs",
     "CloakfoxReleaseStatus.sys.mjs",
@@ -70,16 +70,16 @@ FINAL_TARGET_FILES.appearance += [
 # declaratively via toolkit/modules/ActorManagerParent.sys.mjs (see
 # patches/cpp-first-math-actor-registration.patch).
 FINAL_TARGET_FILES.actors += [
-    "actors/CloakfoxContainerProxyEditorChild.sys.mjs",
-    "actors/CloakfoxContainerBulkChild.sys.mjs",
-    "actors/CloakfoxContainerProxyEditorParent.sys.mjs",
-    "actors/CloakfoxIPProbeChild.sys.mjs",
     "actors/CloakfoxCoderPadMediaChild.sys.mjs",
+    "actors/CloakfoxContainerBulkChild.sys.mjs",
+    "actors/CloakfoxContainerProxyEditorChild.sys.mjs",
+    "actors/CloakfoxContainerProxyEditorParent.sys.mjs",
     "actors/CloakfoxFeatureDetectChild.sys.mjs",
     "actors/CloakfoxFeatureDetectParent.sys.mjs",
     "actors/CloakfoxGamepadChild.sys.mjs",
     "actors/CloakfoxGamepadParent.sys.mjs",
     "actors/CloakfoxHackerRankMediaChild.sys.mjs",
+    "actors/CloakfoxIPProbeChild.sys.mjs",
     "actors/CloakfoxKeyboardChild.sys.mjs",
     "actors/CloakfoxKeyboardParent.sys.mjs",
     "actors/CloakfoxMathChild.sys.mjs",

@@ -1,0 +1,32 @@
+ 0:00.30 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.30 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+Error running mach:
+
+    mach build
+
+The error occurred in the implementation of the invoked mach command.
+
+This should never occur and is likely a bug in the implementation of that
+command.
+You can invoke ``./mach busted`` to check if this issue is already on file. If it
+isn't, please use ``./mach busted file build`` to report it. If ``./mach busted`` is
+misbehaving, you can also inspect the dependencies of bug 1543241.
+
+If filing a bug, please include the full output of mach, including this error
+message.
+
+The details of the failure are as follows:
+
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/python/mach/mach/main.py", line 430, in _run
+    return Registrar._run_command_handler(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/python/mach/mach/registrar.py", line 124, in _run_command_handler
+    result = fn(instance, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/python/mozbuild/mozbuild/build_commands.py", line 283, in build
+    if not _set_priority(command_context, priority, verbose):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/python/mozbuild/mozbuild/build_commands.py", line 56, in _set_priority
+    os.nice(niceness)
+PermissionError: [Errno 1] Operation not permitted

@@ -163,6 +163,9 @@ jobs:
           if-no-files-found: error
 
   fingerprint-tests-linux:
+    env:
+      # Firefox159 gates privileged Marionette access behind this test-only opt-in.
+      MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1'
     needs: build-linux
     runs-on: ubuntu-latest
     steps:

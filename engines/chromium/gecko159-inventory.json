@@ -158,7 +158,9 @@
     "patches/cloakfox-macos-bundle-icon.patch",
     "patches/cloakfox-site-data-container-scope.patch",
     "patches/cloakfox-trust-panel-site-data-scope.patch",
-    "patches/cloakfox-container-site-cache.patch"
+    "patches/cloakfox-container-site-cache.patch",
+    "patches/cloakfox-apple-linker-detection.patch",
+    "patches/cloakfox-system-document-viewport.patch"
   ],
   "preferences": [
     "cloakfox.opt.canvas_render_privacy",
@@ -533,7 +535,7 @@
     "patches/cloakfox-media-device-privacy.patch": "459368217479f238bde671caef87c96f861d3acb6e6eee5375b7854b13072463",
     "patches/cloakfox-hdr-exposure-privacy.patch": "1ac09dfe8f924e134936069f85a65c8c31809b86ce4c584103dd8ffc88c2ab34",
     "patches/cloakfox-network-profile.patch": "f6b41f667f78a30fd2e3f4ca4a7a0f5bebe68cad157066b34d861c12aba5f8b3",
-    "patches/cloakfox-network-conformance.patch": "57f8f2c0fbe70625b6e02a3b0c310ca815420b0863a58c199c639a7ce97d1ce2",
+    "patches/cloakfox-network-conformance.patch": "2ddb3366f8ff1cc361c654ec20c429f4b83f18d8a9ba0aeaed9d05e3b05b8873",
     "patches/cloakfox-graphics-gap-fix.patch": "5a1be122e1635b251964512a349d88bd6143527c6952530a7595b96e033e392d",
     "patches/cloakfox-fontface-native-loading.patch": "89a3ea6a0b0bb06ae00b854c501f7a22a412d9ddd7fa4b612bf72b0f4937f535",
     "patches/cloakfox-font-whitelist-parent.patch": "f15e1f58616360386449465954950cf8ab97feea86f011c69ada303fafda8068",
@@ -586,6 +588,8 @@
     "patches/cloakfox-site-data-container-scope.patch": "ceac1908e856815c0f30770d270ab7a4ada73166df6c453199d2a6ee62d7f688",
     "patches/cloakfox-trust-panel-site-data-scope.patch": "062b5cc41655d51a21d3c728caadac90d1249f803e9240e63af5b2cb6ccb34d0",
     "patches/cloakfox-container-site-cache.patch": "e086e7a8063d108f693de320d0e23472dde360040453f56fc68c1b19f6eeb594",
+    "patches/cloakfox-apple-linker-detection.patch": "be811e463bb913e89ab5e71a0bb61429d356a82a1454ff8d32be42786f671067",
+    "patches/cloakfox-system-document-viewport.patch": "e9a3a9ff00ff093ad2fe28b7be2ffdde29ff60977d81b13e4c55a94ebdc9e304",
     "additions/browser/components/cloakfox/CloakfoxAppearance.sys.mjs": "ca73338a1505025e06604f0489dd6eb90db7818807774b463211fc7ed58da297",
     "additions/browser/components/cloakfox/CloakfoxBFNetwork.sys.mjs": "564a9dc342a08c9bfe00de75ba09d62bbb857a870e0ae3f59d10b305bb00d728",
     "additions/browser/components/cloakfox/CloakfoxBayesianNetwork.sys.mjs": "f55d9c3bf2b74f10d2fa8abfedc2a0b00c302ff812ca6d672a98aa90b7b9e9b2",
@@ -671,7 +675,7 @@
     "additions/browser/components/cloakfox/content/tracking-settings.js": "60901a25cfc29f22a1b225f4b9e5ed4f7812d4497fddffe3fd09cdc8c16fdb03",
     "additions/browser/components/cloakfox/content/workspace-settings.js": "6137e3e42919583e845982de72285d0e0b92a3b14e8e5d5d71bfc8ff5c99558d",
     "settings/cloakfox.cfg": "35bacf11d95d8cda0afd31e6fc3a2aa8bfbd3044849a59c1ebeeccc74e4a2912",
-    "patches/order.txt": "94d0ac7b3dbeb80d2252ef34ef5bbce8b1da448e0352e21460759ebaa949821c",
+    "patches/order.txt": "9411ab4c121eb71a447acb23b4f170d619a7b4caf296a6478a8329a46d84efc0",
     "scripts/_mixin.py": "65e504efc33d4b808f668e927662bc0f9a444fdbb87f063131a5a0a374703290",
     "upstream.sh": "868f08756a60af538cd43050ce391b4a19c291ed10f2d5c796ee1f95a9d4f809"
   }

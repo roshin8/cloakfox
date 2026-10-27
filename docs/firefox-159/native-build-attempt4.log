@@ -1,0 +1,38 @@
+ 0:00.25 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.25 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.34 Clobber not needed.
+ 0:00.39 W Adding make options from /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j2
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:00.39 /usr/bin/make -f client.mk -j2 -s
+ 0:01.18 ./buildid.h.stub
+ 0:01.18 ./source-repo.h.stub
+ 0:01.33 ./application.ini.stub
+ 0:01.44 ./application.ini.h.stub
+ 0:01.91 ./buildid.h.stub
+ 0:01.91 ./source-repo.h.stub
+ 0:02.08 mfbt
+ 0:02.56 W In file included from /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/mfbt/Unified_cpp_mfbt0.cpp:20:
+ 0:02.56 E /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/mfbt/FloatingPoint.cpp:24:21: error: use of undeclared identifier 'FLT_MAX'
+ 0:02.56 E    24 |   if (Abs(aValue) > FLT_MAX) {
+ 0:02.56 E       |                     ^~~~~~~
+ 0:02.77 E 1 error generated.
+ 0:02.79 E make[4]: *** [Unified_cpp_mfbt0.o] Error 1
+ 0:02.79 E make[4]: *** Waiting for unfinished jobs....
+ 0:02.80 mozglue/baseprofiler
+ 0:02.97 E make[3]: *** [mfbt/target-objects] Error 2
+ 0:02.97 E make[3]: *** Waiting for unfinished jobs....
+ 0:05.49 E make[2]: *** [compile] Error 2
+ 0:05.49 E make[1]: *** [default] Error 2
+ 0:05.49 E make: *** [build] Error 2
+ 0:05.59 W 0 compiler warnings present.
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261027_145805.json

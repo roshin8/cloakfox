@@ -1,0 +1,41 @@
+diff --git a/build/moz.configure/toolchain.configure b/build/moz.configure/toolchain.configure
+--- a/build/moz.configure/toolchain.configure
++++ b/build/moz.configure/toolchain.configure
+@@ -1947,6 +1947,20 @@
+             if retcode == 1 and "Logging ld64 options" in stderr:
+                 kind = "ld64"
+ 
++            elif retcode == 1 and target.kernel == "Darwin" and linker in (None, "ld64"):
++                # New Apple linkers no longer honor LD_PRINT_OPTIONS. Identify
++                # the same selected linker through its explicit version banner;
++                # actual link viability remains checked by configure below.
++                version_cmd = cmd_base + linker_flag + ["-Wl,-v"] + toolchain_flags
++                version_code, version_out, version_err = get_cmd_output(*version_cmd, env=env)
++                prefix = "@(#)PROGRAM:ld PROJECT:ld-"
++                banners = [line[len(prefix):] for line in (version_out + version_err).splitlines()
++                           if line.startswith(prefix)]
++                if (version_code != 1 or len(banners) != 1 or not banners[0] or
++                        not all(part.isascii() and part.isdecimal() for part in banners[0].split("."))):
++                    return None
++                kind = "ld64"
++
+             elif retcode != 0:
+                 return None
+ 
+@@ -1961,6 +1975,16 @@
+                 kind = "gold"
+ 
+             elif "LLD" in stdout:
++                if target.kernel == "Darwin":
++                    # A linker version alone does not establish SDK support.
++                    # Reject incompatible TAPI readers before choosing a linker
++                    # for host tools as well as the target application.
++                    link_cmd = cmd_base + linker_flag + toolchain_flags + [
++                        "-dynamiclib", "-x", "c", os.devnull, "-o", os.devnull,
++                    ]
++                    link_code, _, _ = get_cmd_output(*link_cmd, env=env)
++                    if link_code != 0:
++                        return None
+                 kind = "lld"
+ 
+             else:

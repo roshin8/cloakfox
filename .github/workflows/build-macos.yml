@@ -37,6 +37,8 @@ jobs:
     needs: build-macos
     env:
       GECKO_BUILD_SHA: ${{ needs.build-macos.outputs.producer-sha }}
+      # Firefox159 gates privileged Marionette access behind this test-only opt-in.
+      MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1'
       # WebGPU requires the macOS GPU process; retain the normal sandbox.
       CLOAKFOX_HEADFUL: '1'
     runs-on: macos-26
@@ -120,6 +122,13 @@ jobs:
           system_profiler SPDisplaysDataType > "$RUNNER_TEMP/native-cgl-diagnostic/displays.txt" 2>&1
           clang scripts/ci/native_cgl_diagnostic.c -framework OpenGL -o "$RUNNER_TEMP/native-cgl-diagnostic/probe" > "$RUNNER_TEMP/native-cgl-diagnostic/build.log" 2>&1
           "$RUNNER_TEMP/native-cgl-diagnostic/probe" > "$RUNNER_TEMP/native-cgl-diagnostic/cgl.jsonl" 2>&1
+
+      - name: Stage matching stock Firefox reference privately
+        run: |
+          set -euo pipefail
+          reference_version=$(sed -n 's/^version=//p' upstream.sh)
+          python3 scripts/ci/gecko_reference.py --version "$reference_version" --output-dir "$RUNNER_TEMP/gecko-stock-reference"
+          echo "FIREFOX_BIN=$RUNNER_TEMP/gecko-stock-reference/Firefox.app/Contents/MacOS/firefox" >> "$GITHUB_ENV"
 
       - name: Required CreepJS and FingerprintJS audit
         id: libraries

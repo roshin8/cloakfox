@@ -1,0 +1,76 @@
+ 0:00.27 W Warnings in third-party code are being suppressed from the terminal output. Use --show-all-warnings or --verbose to see them.
+ 0:00.27 W All warnings will still be dumped to /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/warnings_*.json at the end of the build.
+ 0:00.39 Clobber not needed.
+ 0:01.04 W Adding make options from /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/mozconfig
+    MOZ_CRASHREPORTER=0
+    MOZ_DATA_REPORTING=0
+    MOZ_SERVICES_HEALTHREPORT=0
+    MOZ_TELEMETRY_REPORTING=0
+    MOZ_INSTALLER=0
+    MOZ_AUTOMATION_INSTALLER=0
+    MOZ_MAKE_FLAGS=-j2
+    MOZ_OBJDIR=/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    OBJDIR=/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin
+    FOUND_MOZCONFIG=/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/mozconfig
+    export FOUND_MOZCONFIG
+ 0:01.04 /usr/bin/make -f client.mk -j2 -s
+ 0:02.33 ./buildid.h.stub
+ 0:02.33 ./source-repo.h.stub
+ 0:02.48 ./application.ini.stub
+ 0:02.79 ./application.ini.h.stub
+ 0:03.12 ./buildid.h.stub
+ 0:03.12 ./source-repo.h.stub
+ 0:03.33 ./application.ini.stub
+ 0:03.76 ./application.ini.h.stub
+ 0:16.99 toolkit/library/buildid.cpp.stub
+ 0:18.17 browser/app/Info.plist.stub
+ 0:18.76 dom/base
+ 0:19.28 toolkit/library
+ 0:19.58 browser/app
+ 0:19.79 browser/app/cloakfox
+ 0:30.92 toolkit/library/build/XUL
+ 0:33.35 ./newtab-sources.stamp.stub
+ 0:35.15 ./dependentlibs.list.stub
+ 0:35.30 ./buildid.h.stub
+ 0:35.30 ./source-repo.h.stub
+ 0:35.40 ./built_in_addons.json.stub
+ 0:35.53 ./application.ini.stub
+ 0:35.65 ./application.ini.h.stub
+ 0:40.12 ./vendor.bundle.js.stub
+ 0:40.20 ./activity-stream.css.stub
+ 0:44.17 vendor:
+ 0:44.17   asset vendor.bundle.js 399 KiB [emitted] [minimized] (name: main)
+ 0:44.17   runtime modules 2.49 KiB 5 modules
+ 0:44.17   orphan modules 682 bytes [orphan] 1 module
+ 0:44.17   modules by path ../../../third_party/node/node_modules/ 1.14 MiB
+ 0:44.17     modules by path ../../../third_party/node/node_modules/react-transition-group/esm/ 54.2 KiB 9 modules
+ 0:44.17     modules by path ../../../third_party/node/node_modules/react-dom/ 1 MiB 7 modules
+ 0:44.17     modules by path ../../../third_party/node/node_modules/@babel/runtime/helpers/esm/*.js 1.23 KiB 5 modules
+ 0:44.17     modules by path ../../../third_party/node/node_modules/prop-types/ 2.58 KiB 3 modules
+ 0:44.17     modules by path ../../../third_party/node/node_modules/dom-helpers/esm/*.js 1.57 KiB 3 modules
+ 0:44.17     modules by path ../../../third_party/node/node_modules/react/ 17 KiB 2 modules
+ 0:44.17     modules by path ../../../third_party/node/node_modules/use-sync-external-store/ 2.81 KiB 2 modules
+ 0:44.17     modules by path ../../../third_party/node/node_modules/scheduler/ 10.1 KiB 2 modules
+ 0:44.17     ../../../third_party/node/node_modules/react-redux/dist/react-redux.mjs 36.6 KiB [built] [code generated]
+ 0:44.17     ../../../third_party/node/node_modules/redux/dist/redux.mjs 16.4 KiB [built] [code generated]
+ 0:44.17   ./content-src/vendor.mjs 1.62 KiB [built] [code generated]
+ 0:44.17   vendor (webpack 5.109.0) compiled successfully in 2783 ms
+ 0:44.17 activity-stream:
+ 0:44.17   asset activity-stream.bundle.js 1.27 MiB [emitted] (name: main)
+ 0:44.17   orphan modules 1.23 MiB [orphan] 163 modules
+ 0:44.17   runtime modules 1.55 KiB 5 modules
+ 0:44.17   ./content-src/activity-stream.jsx + 163 modules 1.23 MiB [not cacheable] [built] [code generated]
+ 0:44.17   activity-stream (webpack 5.109.0) compiled successfully in 2741 ms
+ 0:47.81 ./buildid.h.stub
+ 0:47.81 ./source-repo.h.stub
+ 0:47.95 ./application.ini.stub
+ 0:48.24 ./application.ini.h.stub
+ 0:48.38 browser/app/Info.plist.stub
+ 0:52.52 W 0 compiler warnings present.
+ 0:52.55 W Overall system resources - Wall time: 52s; CPU: 56%; Read bytes: 1660940288; Write bytes: 2025267200; Read time: 53729; Write time: 1843
+ 0:52.55 W Swap in/out (MB): 2396.078125/0.0
+ 0:52.55 To view a profile of the build, run |mach resource-usage|.
+ 0:52.55 Your build was successful!
+ 0:52.55 To take your build for a test drive, run: |mach run|
+ 0:52.55 For more information on what to do now, see https://firefox-source-docs.mozilla.org/setup/contributing_code.html
+Streaming resource usage profile to: /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/.mozbuild/logs/build/profile_log_20261027_164552.json

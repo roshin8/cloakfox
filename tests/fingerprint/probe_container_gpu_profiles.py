@@ -1,6 +1,6 @@
 """Real native profile enforcement across BrowserForge families and owners.
 
-Headed, disposable local profiles only. No camera/screen grants or assessment.
+Disposable local profiles; native hardware subcases are inconclusive headless. No camera/screen grants or assessment.
 """
 import functools
 import hashlib
@@ -14,6 +14,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from probe_container_workflows import chrome,open_site
+from probe_canvas_canonical_gpu import headless_webgpu_unavailable
 from probe_webgl_backend_profile import INSPECT,READBACK,WORKER_RUN,WORKER_SOURCE
 
 HTML=b'<!doctype html><title>Native container GPU profile test</title>'
@@ -24,7 +25,7 @@ class Handler(BaseHTTPRequestHandler):
  def log_message(self,*args):pass
 READ=INSPECT+"return ['webgl','webgl2'].map(k=>{const g=document.createElement('canvas').getContext(k),v=inspect(g);if(g)g.getExtension('WEBGL_lose_context')?.loseContext();return v;});"
 GPU=r'''const done=arguments[arguments.length-1];(async()=>{
- if(!navigator.gpu)return {available:false};const a=await navigator.gpu.requestAdapter();if(!a)return {available:false};
+ if(!navigator.gpu)return {available:false,reason:'navigator.gpu absent'};const a=await navigator.gpu.requestAdapter();if(!a)return {available:false,reason:'no adapter'};
  const cap=a.limits.maxBufferSize;let aboveRejected=false;try{const d=await a.requestDevice({requiredLimits:{maxBufferSize:cap+1}});d.destroy()}catch{aboveRejected=true;}
  const d=await a.requestDevice({requiredLimits:{maxBufferSize:cap}});d.pushErrorScope('validation');d.createBuffer({size:cap+4,usage:GPUBufferUsage.COPY_DST});const allocationError=await d.popErrorScope();
  const info=a.info;const r={available:true,maxBufferSize:cap,deviceBufferSize:d.limits.maxBufferSize,aboveRejected,allocationRejected:!!allocationError,info:[info.vendor,info.architecture,info.description,info.device]};d.destroy();return r;
@@ -32,9 +33,14 @@ GPU=r'''const done=arguments[arguments.length-1];(async()=>{
 
 def main():
  out=Path(os.environ.get('REPORT_DIR','/tmp/cfx-container-gpu-profiles'));out.mkdir(parents=True,exist_ok=True)
- binary=os.environ['CLOAKFOX_BIN'];report={'binary':binary,'xulSHA256':hashlib.sha256((Path(binary).parent/'XUL').read_bytes()).hexdigest(),'checks':[],'cases':[]}
+ binary=os.environ['CLOAKFOX_BIN'];report={'binary':binary,'xulSHA256':hashlib.sha256((Path(binary).parent/'XUL').read_bytes()).hexdigest(),'checks':[],'cases':[],'inconclusive':[]}
  server=ThreadingHTTPServer(('127.0.0.1',0),Handler);threading.Thread(target=server.serve_forever,daemon=True).start()
  def check(ok,name):report['checks'].append({'pass':bool(ok),'name':name});print(('PASS 'if ok else'FAIL ')+name,flush=True)
+ def gpu_check(ok,value,name):
+  if headless_webgpu_unavailable(value,report['nativeWebGPU']):
+   report['inconclusive'].append({'name':name,'reason':'No headless native WebGPU adapter'})
+   print('INCONCLUSIVE '+name,flush=True)
+  else:check(ok,name)
  def save():(out/'result.json').write_text(json.dumps(report,indent=2)+'\n')
  try:
   with tempfile.TemporaryDirectory(prefix='cfx-native-profiles-')as profile:
@@ -45,6 +51,10 @@ def main():
    try:
     d.set_script_timeout(45)
     report['runtime']=chrome(d,'return {version:Services.appinfo.version,buildID:Services.appinfo.appBuildID};')
+    chrome(d,"Services.prefs.setBoolPref('cloakfox.enabled',false);")
+    d.set_context('content');d.get(f'http://127.0.0.1:{server.server_port}/native-control')
+    report['nativeWebGPU']=d.execute_async_script(GPU)
+    chrome(d,"Services.prefs.setBoolPref('cloakfox.enabled',true);")
     families=[('apple','macos',6144),('intel','windows',4096),('amd','windows',7168),('nvidia','windows',8192)]
     ids=chrome(d,"return Array.from({length:8},(_,i)=>cis.create('Native profile '+i,'fingerprint','blue').userContextId);")
     # Make every existing disposable owner eligible without rotating its secrets.
@@ -68,7 +78,7 @@ def main():
         check(g['caps']['MAX_TEXTURE_SIZE']==texture and g['below']==0 and g['above']==1281 and g['renderbufferAbove']==1281,prefix+' actual texture/renderbuffer ceilings enforced')
         check(g['shaderAbove'] is False and g['attribAbove']==1281 and g['textureUnitAbove']==1281,prefix+' actual shader/attribute/unit ceilings enforced')
         check(g['working']==g['extensions'] and g['invalidPrecision'] is None and g['invalidError']==1280,prefix+' extension and precision validation preserved')
-       check(gpu.get('available') and gpu.get('aboveRejected') and gpu.get('allocationRejected') and gpu.get('deviceBufferSize')==gpu.get('maxBufferSize'),f'{family}/{offset}/{host}: WebGPU adapter/device/buffer limits enforced')
+       gpu_check(gpu.get('available') and gpu.get('aboveRejected') and gpu.get('allocationRejected') and gpu.get('deviceBufferSize')==gpu.get('maxBufferSize'),gpu,f'{family}/{offset}/{host}: WebGPU adapter/device/buffer limits enforced')
        if gpu.get('available')and not gl[0].get('missing'):check(gpu['maxBufferSize']==gl[0]['caps']['MAX_VERTEX_UNIFORM_VECTORS']*1024*1024,f'{family}/{offset}/{host}: both GPU APIs use same owner/site variant')
       check(samples[0]==samples[2],f'{family}/{offset}: site return restores captured profile')
       worker=d.execute_async_script(WORKER_RUN)
@@ -89,10 +99,12 @@ def main():
     owner=ids[-1]
     chrome(d,"const k='cloakfox.s.cloak_cfg_'+arguments[0],c=JSON.parse(Services.prefs.getStringPref(k));c['privacy:policy']={version:1,preset:'standard',exceptions:[{site:'http://127.0.0.1',expiresAt:Date.now()+600000,vectors:['canvas']}]};Services.prefs.setStringPref(k,JSON.stringify(c));",owner)
     d.set_context('content');d.refresh();exempt=d.execute_script(READ);exemptgpu=d.execute_async_script(GPU)
-    check(all(not g.get('missing')for g in exempt) and exemptgpu.get('available'),'canvas exception preserves native GPU profile creation')
+    check(all(not g.get('missing')for g in exempt),'canvas exception preserves native WebGL profile creation')
+    gpu_check(exemptgpu.get('available'),exemptgpu,'canvas exception preserves native WebGPU profile creation')
     # New contexts must fail closed on an incorrect owner, not use ctx0/native.
     owner=ids[-1];chrome(d,"const k='cloakfox.s.cloak_cfg_'+arguments[0],c=JSON.parse(Services.prefs.getStringPref(k));c['rendering:gpu_profile'].owner=0;Services.prefs.setStringPref(k,JSON.stringify(c));",owner)
-    d.set_context('content');d.refresh();missing=d.execute_script("return document.createElement('canvas').getContext('webgl')===null;");gpu=d.execute_async_script(GPU);check(missing and gpu.get('available')is False,'wrong-owner descriptor fails closed in both GPU APIs')
+    d.set_context('content');d.refresh();missing=d.execute_script("return document.createElement('canvas').getContext('webgl')===null;");gpu=d.execute_async_script(GPU);check(missing,'wrong-owner descriptor fails closed in WebGL')
+    gpu_check(gpu.get('available')is False,gpu,'wrong-owner descriptor fails closed in WebGPU')
     chrome(d,"ChromeUtils.importESModule('resource:///modules/CloakfoxOverrides.sys.mjs').setContainerGPUProfilesEnabled(false);")
     d.set_context('content');d.refresh();legacy=d.execute_script(READ);check(all(g.get('identity',[None,None])[1]=='WebGL'for g in legacy),'toggle off restores existing protected generic profile')
     # Reopen the same disposable profile; do not regenerate its persona or keys.
@@ -105,8 +117,10 @@ def main():
     restored=d.execute_script(READ);restoredgpu=d.execute_async_script(GPU)
     persisted=chrome(d,"return {enabled:Services.prefs.getBoolPref('cloakfox.opt.container_rendering_profiles',false),cfg:JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_'+arguments[0]))};",ids[0])
     check(actual==ids[0] and persisted['enabled'] and persisted['cfg']['rendering:gpu_profile']==saved['rendering:gpu_profile'] and persisted['cfg']['fingerprint:secret']==saved['fingerprint:secret'],'profile toggle, owner, persona and secret persist across restart')
-    check(restored==report['cases'][0]['samples'][0]['gl'] and restoredgpu==report['cases'][0]['samples'][0]['webgpu'],'native GPU resources retain same owner/site profile across restart')
+    check(restored==report['cases'][0]['samples'][0]['gl'],'native WebGL resources retain same owner/site profile across restart')
+    gpu_check(restoredgpu==report['cases'][0]['samples'][0]['webgpu'],restoredgpu,'native WebGPU resources retain same owner/site profile across restart')
    finally:d.quit()
  finally:server.shutdown();server.server_close();save()
- return int(any(not c['pass']for c in report['checks']))
+ if any(not c['pass']for c in report['checks']):return 1
+ return 2 if report['inconclusive'] else 0
 if __name__=='__main__':raise SystemExit(main())

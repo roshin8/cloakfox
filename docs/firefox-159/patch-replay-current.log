@@ -1,0 +1,1104 @@
+
+PATCH all-addons-private-mode.patch
+patching file 'toolkit/components/extensions/Extension.sys.mjs'
+
+PATCH anti-font-fingerprinting.patch
+patching file 'dom/base/FontSpacingSeedManager.cpp'
+patching file 'dom/base/FontSpacingSeedManager.h'
+patching file 'dom/base/RoverfoxStorageManager.cpp'
+patching file 'dom/base/RoverfoxStorageManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+patching file 'dom/canvas/OffscreenCanvas.cpp'
+patching file 'dom/webidl/Window.webidl'
+patching file 'dom/workers/WorkerPrivate.h'
+patching file 'gfx/src/nsFontMetrics.cpp'
+patching file 'gfx/src/nsFontMetrics.h'
+patching file 'gfx/thebes/gfxFont.cpp'
+patching file 'gfx/thebes/gfxFont.h'
+patching file 'gfx/thebes/gfxHarfBuzzShaper.cpp'
+patching file 'gfx/thebes/gfxTextRun.cpp'
+patching file 'gfx/thebes/gfxTextRun.h'
+patching file 'layout/base/nsLayoutUtils.cpp'
+patching file 'layout/base/nsLayoutUtils.h'
+patching file 'layout/base/nsPresContext.cpp'
+patching file 'layout/generic/MathMLTextRunFactory.cpp'
+patching file 'layout/generic/nsTextFrame.cpp'
+patching file 'layout/generic/nsTextRunTransformations.cpp'
+patching file 'layout/mathml/nsMathMLChar.cpp'
+patching file 'toolkit/components/resistfingerprinting/FontVisibilityProvider.h'
+
+PATCH audio-context-spoofing.patch
+patching file 'dom/media/CubebUtils.cpp'
+patching file 'dom/media/moz.build'
+patching file 'dom/media/webaudio/AudioContext.cpp'
+patching file 'dom/media/webaudio/moz.build'
+
+PATCH audio-fingerprint-manager.patch
+patching file 'dom/base/AudioFingerprintManager.cpp'
+patching file 'dom/base/AudioFingerprintManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/media/webaudio/AnalyserNode.cpp'
+patching file 'dom/media/webaudio/AudioBuffer.cpp'
+patching file 'dom/media/webaudio/moz.build'
+patching file 'dom/webidl/Window.webidl'
+
+PATCH browser-init.patch
+patching file 'browser/base/content/browser-init.js'
+
+PATCH builtin-extension.patch
+patching file 'browser/extensions/moz.build'
+
+PATCH canvas-spoofing.patch
+patching file 'dom/base/CanvasFingerprintManager.cpp'
+patching file 'dom/base/CanvasFingerprintManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+patching file 'dom/canvas/CanvasUtils.cpp'
+patching file 'dom/canvas/moz.build'
+patching file 'dom/webidl/Window.webidl'
+
+PATCH chromeutil.patch
+patching file 'dom/base/ChromeUtils.cpp'
+patching file 'dom/base/ChromeUtils.h'
+patching file 'dom/chrome-webidl/ChromeUtils.webidl'
+
+PATCH clipboard-spoofing.patch
+patching file 'dom/events/Clipboard.cpp'
+patching file 'dom/events/moz.build'
+
+PATCH codecs-spoofing.patch
+patching file 'dom/media/mediaelement/HTMLMediaElement.cpp'
+patching file 'dom/media/mediaelement/moz.build'
+
+PATCH document-lastmodified-spoofing.patch
+patching file 'dom/base/Document.cpp'
+
+PATCH config.patch
+patching file 'browser/installer/package-manifest.in'
+patching file 'lw/moz.build'
+patching file moz.build
+
+PATCH cross-process-storage.patch
+patching file 'dom/ipc/ContentParent.cpp'
+patching file 'dom/ipc/ContentParent.h'
+patching file 'dom/ipc/PContent.ipdl'
+patching file 'ipc/ipdl/sync-messages.ini'
+patching file 'modules/libpref/Preferences.cpp'
+
+PATCH domrect-spoofing.patch
+patching file 'dom/base/Element.cpp'
+
+PATCH fingerprint-injection.patch
+patching file 'browser/app/moz.build'
+patching file 'dom/base/Element.cpp'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsHistory.cpp'
+patching file 'dom/base/nsScreen.cpp'
+patching file 'dom/battery/BatteryManager.cpp'
+patching file 'dom/battery/moz.build'
+patching file 'dom/workers/WorkerNavigator.cpp'
+patching file 'dom/workers/moz.build'
+
+PATCH font-hijacker.patch
+patching file 'gfx/thebes/gfxPlatformFontList.cpp'
+patching file 'gfx/thebes/moz.build'
+No such line 304 in input file, ignoring
+patching file 'layout/style/FontFace.cpp'
+patching file 'layout/style/FontFaceImpl.cpp'
+patching file 'layout/style/FontFaceImpl.h'
+patching file 'layout/style/moz.build'
+
+PATCH font-list-spoofing.patch
+patching file 'dom/base/FontListManager.cpp'
+patching file 'dom/base/FontListManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/webidl/Window.webidl'
+patching file 'gfx/thebes/gfxPlatformFontList.cpp'
+patching file 'gfx/thebes/gfxTextRun.cpp'
+patching file 'layout/style/FontFaceSet.cpp'
+
+PATCH font-bundle-packaging.patch
+patching file 'browser/installer/package-manifest.in'
+
+PATCH system-font-spoofing.patch
+patching file 'gfx/thebes/gfxMacPlatformFontList.mm'
+patching file 'gfx/thebes/gfxPlatformFontList.cpp'
+
+PATCH force-default-pointer.patch
+patching file 'layout/style/nsMediaFeatures.cpp'
+
+PATCH geolocation-spoofing.patch
+patching file 'dom/geolocation/Geolocation.cpp'
+patching file 'dom/geolocation/GeolocationPosition.cpp'
+patching file 'dom/geolocation/moz.build'
+patching file 'dom/system/NetworkGeolocationProvider.sys.mjs'
+
+PATCH http2-fingerprint-spoofing.patch
+patching file 'netwerk/protocol/http/Http2Compression.cpp'
+patching file 'netwerk/protocol/http/Http2Compression.h'
+patching file 'netwerk/protocol/http/Http2Session.cpp'
+
+PATCH indexeddb-spoofing.patch
+patching file 'dom/indexedDB/IDBFactory.cpp'
+patching file 'dom/indexedDB/moz.build'
+
+PATCH locale-spoofing.patch
+patching file 'browser/base/content/browser-init.js'
+patching file 'intl/components/moz.build'
+patching file 'intl/components/src/Locale.cpp'
+patching file 'intl/components/src/Locale.h'
+patching file 'intl/locale/OSPreferences.cpp'
+
+PATCH macos-sandbox-crash-fix.patch
+patching file 'dom/ipc/ContentParent.cpp'
+
+PATCH media-capabilities-spoofing.patch
+patching file 'dom/media/mediacapabilities/MediaCapabilities.cpp'
+patching file 'dom/media/mediacapabilities/moz.build'
+
+PATCH media-features-spoofing.patch
+patching file 'layout/style/nsMediaFeatures.cpp'
+
+PATCH media-device-spoofing.patch
+patching file 'dom/media/MediaDevices.cpp'
+
+PATCH mediasource-istypesupported-spoofing.patch
+patching file 'dom/media/mediasource/MediaSource.cpp'
+patching file 'dom/media/mediasource/moz.build'
+
+PATCH navigator-extra-spoofing.patch
+patching file 'dom/base/Navigator.cpp'
+
+PATCH cloakfox-webgpu-null-safety.patch
+patching file 'dom/base/Navigator.cpp'
+patching file 'dom/base/Navigator.h'
+patching file 'dom/webidl/WebGPU.webidl'
+patching file 'dom/workers/WorkerNavigator.cpp'
+patching file 'dom/workers/WorkerNavigator.h'
+
+PATCH navigator-spoofing.patch
+patching file 'dom/base/Navigator.cpp'
+patching file 'dom/base/NavigatorManager.cpp'
+patching file 'dom/base/NavigatorManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/webidl/Window.webidl'
+patching file 'dom/workers/WorkerNavigator.cpp'
+
+PATCH network-patches.patch
+patching file 'netwerk/protocol/http/moz.build'
+patching file 'netwerk/protocol/http/nsHttpHandler.cpp'
+
+PATCH notification-spoofing.patch
+patching file 'dom/notification/Notification.cpp'
+patching file 'dom/notification/moz.build'
+
+PATCH permissions-spoofing.patch
+patching file 'dom/permission/PermissionStatus.cpp'
+patching file 'dom/permission/moz.build'
+
+PATCH range-domrect-spoofing.patch
+patching file 'dom/base/AbstractRange.cpp'
+
+PATCH screen-orientation-spoofing.patch
+patching file 'dom/base/ScreenOrientation.cpp'
+
+PATCH screen-spoofing.patch
+patching file 'dom/base/ScreenDimensionManager.cpp'
+patching file 'dom/base/ScreenDimensionManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/base/nsScreen.cpp'
+patching file 'dom/webidl/Window.webidl'
+patching file 'gfx/src/moz.build'
+patching file 'gfx/src/nsDeviceContext.cpp'
+patching file 'layout/style/nsMediaFeatures.cpp'
+
+PATCH shadow-root-bypass.patch
+patching file 'dom/webidl/Element.webidl'
+
+PATCH speech-voices-spoofing.patch
+patching file 'dom/base/SpeechVoicesManager.cpp'
+patching file 'dom/base/SpeechVoicesManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/media/webspeech/synth/SpeechSynthesis.cpp'
+patching file 'dom/media/webspeech/synth/moz.build'
+patching file 'dom/webidl/Window.webidl'
+
+PATCH storage-estimate-spoofing.patch
+patching file 'dom/quota/StorageManager.cpp'
+patching file 'dom/quota/moz.build'
+
+PATCH svg-bbox-spoofing.patch
+patching file 'dom/svg/SVGGraphicsElement.cpp'
+
+PATCH svg-geometry-spoofing.patch
+patching file 'dom/svg/SVGGeometryElement.cpp'
+
+PATCH svg-metrics-spoofing.patch
+patching file 'dom/svg/SVGTextContentElement.cpp'
+patching file 'dom/svg/moz.build'
+
+PATCH text-metrics-spoofing.patch
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+
+PATCH timing-jitter-spoofing.patch
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+
+PATCH timezone-spoofing.patch
+patching file 'dom/base/TimezoneManager.cpp'
+patching file 'dom/base/TimezoneManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/base/nsGlobalWindowOuter.cpp'
+patching file 'dom/base/nsJSUtils.cpp'
+patching file 'dom/base/nsJSUtils.h'
+patching file 'dom/webidl/Window.webidl'
+patching file 'dom/workers/WorkerPrivate.cpp'
+patching file 'js/public/Date.h'
+patching file 'js/src/vm/DateTime.cpp'
+
+PATCH vibration-spoofing.patch
+patching file 'dom/base/Navigator.cpp'
+
+PATCH visual-viewport-spoofing.patch
+patching file 'dom/base/VisualViewport.cpp'
+
+PATCH voice-spoofing.patch
+patching file 'dom/media/webspeech/synth/moz.build'
+patching file 'dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp'
+
+PATCH webgl-spoofing.patch
+patching file 'dom/base/WebGLParamsManager.cpp'
+patching file 'dom/base/WebGLParamsManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+patching file 'dom/canvas/ClientWebGLContext.h'
+patching file 'dom/canvas/moz.build'
+patching file 'dom/webidl/Window.webidl'
+
+PATCH webgl-readback-noise.patch
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+
+PATCH websocket-spoofing.patch
+patching file 'dom/websocket/WebSocket.cpp'
+patching file 'dom/websocket/moz.build'
+
+PATCH webrtc-ip-spoofing.patch
+patching file 'dom/base/WebRTCIPManager.cpp'
+patching file 'dom/base/WebRTCIPManager.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.cpp'
+patching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.h'
+patching file 'dom/media/webrtc/jsapi/moz.build'
+patching file 'dom/webidl/Window.webidl'
+
+PATCH cloakfox-webrtc-network-policy.patch
+patching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.cpp'
+patching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.h'
+
+PATCH window-name-spoofing.patch
+patching file 'dom/base/nsGlobalWindowOuter.cpp'
+
+PATCH cloakfox-enabled-staticpref.patch
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+patching file 'modules/libpref/moz.build'
+
+PATCH cloak-config-webidl.patch
+patching file 'cloakcfg/MaskConfig.hpp'
+patching file 'dom/base/CloakConfigOverlay.cpp'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/webidl/Window.webidl'
+
+PATCH unified-maskconfig.patch
+patching file 'dom/base/AudioFingerprintManager.cpp'
+patching file 'dom/base/CanvasFingerprintManager.cpp'
+patching file 'dom/base/FontSpacingSeedManager.cpp'
+patching file 'dom/base/ScreenDimensionManager.cpp'
+patching file 'dom/base/WebGLParamsManager.cpp'
+patching file 'dom/base/WebRTCIPManager.cpp'
+
+PATCH http3-fingerprint-spoofing.patch
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+patching file 'netwerk/protocol/http/Http3Session.cpp'
+patching file 'netwerk/socket/neqo_glue/NeqoHttp3Conn.h'
+patching file 'netwerk/socket/neqo_glue/src/lib.rs'
+patching file 'third_party/rust/neqo-http3/.cargo-checksum.json'
+patching file 'third_party/rust/neqo-http3/src/conn_params.rs'
+patching file 'third_party/rust/neqo-http3/src/lib.rs'
+patching file 'third_party/rust/neqo-http3/src/settings.rs'
+
+PATCH http2-profile-webidl.patch
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/webidl/Window.webidl'
+
+PATCH cpp-first-pref-reader.patch
+patching file 'dom/base/RoverfoxStorageManager.cpp'
+patching file 'dom/base/RoverfoxStorageManager.h'
+
+PATCH cpp-first-pref-migration.patch
+patching file 'browser/components/BrowserGlue.sys.mjs'
+
+PATCH cpp-first-actors-registration.patch
+patching file 'toolkit/modules/ActorManagerParent.sys.mjs'
+
+PATCH cpp-first-about-cloakfox.patch
+patching file 'browser/components/about/AboutRedirector.cpp'
+patching file 'browser/components/about/components.conf'
+patching file 'browser/components/moz.build'
+
+PATCH cpp-first-error-stack-depth.patch
+patching file 'js/src/vm/ErrorObject.h'
+
+PATCH cpp-first-worker-spoofers.patch
+patching file 'dom/workers/WorkerPrivate.cpp'
+
+PATCH cloakfox-optional-assets-car.patch
+patching file 'browser/app/moz.build'
+patching file 'toolkit/moz.configure'
+
+PATCH worker-container-identity.patch
+patching file 'cloakcfg/MaskConfig.hpp'
+patching file 'dom/base/RoverfoxStorageManager.cpp'
+patching file 'dom/workers/WorkerNavigator.cpp'
+patching file 'dom/workers/WorkerPrivate.cpp'
+
+PATCH cloakfox-letterboxing.patch
+patching file 'browser/base/content/browser-init.js'
+patching file 'docshell/base/BrowsingContext.cpp'
+patching file 'docshell/base/BrowsingContext.h'
+patching file 'dom/base/Element.cpp'
+patching file 'dom/base/ScreenOrientation.cpp'
+patching file 'dom/base/VisualViewport.cpp'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/base/nsGlobalWindowOuter.cpp'
+patching file 'dom/base/nsScreen.cpp'
+patching file 'layout/base/nsPresContext.cpp'
+patching file 'layout/style/nsMediaFeatures.cpp'
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+patching file 'toolkit/components/resistfingerprinting/RFPHelper.sys.mjs'
+
+PATCH cloakfox-container-forget.patch
+patching file 'browser/components/sessionstore/SessionFile.sys.mjs'
+patching file 'browser/components/sessionstore/SessionSaver.sys.mjs'
+patching file 'browser/components/sessionstore/SessionStore.sys.mjs'
+patching file 'browser/components/sessionstore/SessionWriter.sys.mjs'
+
+PATCH cloakfox-scoped-data-clear.patch
+patching file 'toolkit/components/cleardata/ClearDataService.sys.mjs'
+patching file 'toolkit/components/cleardata/nsIClearDataService.idl'
+
+PATCH cloakfox-strict-proxy-guard.patch
+patching file 'netwerk/base/nsProtocolProxyService.cpp'
+
+PATCH site-fingerprint-isolation.patch
+patching file 'dom/base/AbstractRange.cpp'
+patching file 'dom/base/Element.cpp'
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+patching file 'dom/canvas/CanvasUtils.cpp'
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+patching file 'dom/media/webaudio/AnalyserNode.cpp'
+patching file 'dom/media/webaudio/AudioBuffer.cpp'
+patching file 'dom/svg/SVGGeometryElement.cpp'
+patching file 'dom/svg/SVGGraphicsElement.cpp'
+patching file 'dom/svg/SVGTextContentElement.cpp'
+patching file 'dom/workers/WorkerPrivate.cpp'
+patching file 'gfx/thebes/gfxFont.cpp'
+patching file 'gfx/thebes/gfxFont.h'
+patching file 'gfx/thebes/gfxHarfBuzzShaper.cpp'
+patching file 'gfx/thebes/gfxTextRun.cpp'
+patching file 'gfx/thebes/gfxTextRun.h'
+patching file 'layout/base/moz.build'
+patching file 'layout/base/nsPresContext.cpp'
+patching file 'layout/base/nsPresContext.h'
+patching file 'toolkit/components/resistfingerprinting/FontVisibilityProvider.h'
+
+PATCH cloakfox-upstream-hardening.patch
+patching file 'browser/components/sessionstore/SessionStore.sys.mjs'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/events/TouchEvent.cpp'
+patching file 'dom/events/moz.build'
+patching file 'dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp'
+patching file 'dom/webidl/Window.webidl'
+patching file 'gfx/thebes/gfxHarfBuzzShaper.cpp'
+patching file 'gfx/thebes/gfxMacPlatformFontList.mm'
+patching file 'gfx/thebes/gfxPlatformFontList.cpp'
+patching file 'gfx/thebes/gfxPlatformFontList.h'
+patching file 'gfx/thebes/gfxTextRun.cpp'
+patching file 'gfx/thebes/gfxUserFontSet.cpp'
+patching file 'layout/base/nsLayoutUtils.cpp'
+patching file 'layout/style/nsMediaFeatures.cpp'
+
+PATCH cloakfox-region-policy-proxy.patch
+patching file 'dom/base/AbstractRange.cpp'
+patching file 'dom/base/Element.cpp'
+patching file 'dom/base/Navigator.cpp'
+patching file 'dom/base/TimezoneManager.cpp'
+patching file 'dom/base/TimezoneManager.h'
+patching file 'dom/base/nsGlobalWindowOuter.cpp'
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+patching file 'dom/geolocation/Geolocation.cpp'
+patching file 'dom/geolocation/GeolocationPosition.cpp'
+patching file 'dom/svg/SVGGraphicsElement.cpp'
+patching file 'dom/svg/SVGTextContentElement.cpp'
+patching file 'dom/system/NetworkGeolocationProvider.sys.mjs'
+patching file 'dom/workers/WorkerNavigator.cpp'
+patching file 'dom/workers/WorkerPrivate.cpp'
+patching file 'intl/components/src/Locale.cpp'
+patching file 'intl/components/src/Locale.h'
+patching file 'netwerk/base/nsProtocolProxyService.cpp'
+patching file 'netwerk/protocol/http/HttpBaseChannel.cpp'
+patching file 'netwerk/protocol/http/nsHttpChannelAuthProvider.cpp'
+patching file 'netwerk/protocol/http/nsHttpHandler.cpp'
+
+PATCH cloakfox-privacy-completion.patch
+patching file 'build/moz.configure/update-programs.configure'
+patching file 'dom/base/RoverfoxStorageManager.cpp'
+patching file 'dom/base/RoverfoxStorageManager.h'
+patching file 'dom/workers/WorkerPrivate.cpp'
+patching file 'modules/libpref/Preferences.cpp'
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+patching file 'netwerk/base/nsIOService.cpp'
+patching file 'netwerk/dns/GetAddrInfo.cpp'
+patching file 'netwerk/dns/nsHostResolver.cpp'
+patching file 'toolkit/components/antitracking/URLQueryStrippingListService.sys.mjs'
+patching file 'toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.cpp'
+patching file 'toolkit/components/antitracking/bouncetrackingprotection/BounceTrackingAllowList.h'
+
+PATCH cloakfox-window-activity.patch
+patching file 'docshell/base/BrowsingContext.cpp'
+patching file 'docshell/base/BrowsingContext.h'
+patching file 'dom/base/Document.cpp'
+patching file 'dom/base/Document.h'
+patching file 'dom/base/DocumentOrShadowRoot.cpp'
+patching file 'dom/base/DocumentOrShadowRoot.h'
+patching file 'dom/base/nsFocusManager.cpp'
+patching file 'dom/base/nsFocusManager.h'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/events/PendingFullscreenEvent.h'
+patching file 'dom/webidl/Document.webidl'
+patching file 'dom/webidl/DocumentOrShadowRoot.webidl'
+patching file 'dom/workers/WorkerPrivate.cpp'
+patching file 'layout/base/nsRefreshDriver.cpp'
+patching file 'layout/base/nsRefreshDriver.h'
+patching file 'layout/style/GeckoBindings.cpp'
+patching file 'layout/style/GeckoBindings.h'
+patching file 'layout/style/res/html.css'
+patching file 'layout/style/res/ua.css'
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+patching file 'servo/components/style/gecko/non_ts_pseudo_class_list.rs'
+patching file 'servo/components/style/gecko/wrapper.rs'
+
+PATCH cloakfox-appearance.patch
+patching file 'browser/components/BrowserGlue.sys.mjs'
+patching file 'browser/installer/package-manifest.in'
+patching file 'toolkit/xre/MacLaunchHelper.mm'
+patching file 'toolkit/xre/nsCommandLineServiceMac.mm'
+
+PATCH cloakfox-clipboard-signals.patch
+patching file 'dom/base/Document.cpp'
+patching file 'dom/base/Document.h'
+patching file 'dom/events/EventDispatcher.cpp'
+patching file 'dom/events/InputEvent.cpp'
+patching file 'dom/events/InputEvent.h'
+patching file 'dom/webidl/InputEvent.webidl'
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+
+PATCH cloakfox-pointer-activity.patch
+patching file 'dom/events/EventStateManager.cpp'
+patching file 'dom/events/EventStateManager.h'
+
+PATCH cloakfox-hover-activity.patch
+patching file 'dom/base/Document.cpp'
+patching file 'dom/events/EventStateManager.cpp'
+patching file 'dom/events/EventStateManager.h'
+patching file 'dom/ipc/BrowserBridgeParent.cpp'
+patching file 'widget/MouseEvents.h'
+patching file 'widget/nsGUIEventIPC.h'
+
+PATCH cloakfox-native-worker-math.patch
+patching file 'dom/workers/WorkerPrivate.cpp'
+
+PATCH cloakfox-exported-function-identity.patch
+patching file 'js/xpconnect/src/ExportHelpers.cpp'
+patching file 'js/xpconnect/src/xpcprivate.h'
+
+PATCH cloakfox-live-worker-math.patch
+patching file 'dom/workers/WorkerPrivate.cpp'
+
+PATCH cloakfox-bundled-font-rendering.patch
+patching file 'gfx/2d/ScaledFontMac.cpp'
+
+PATCH cloakfox-user-agent-data.patch
+patching file 'dom/base/Navigator.cpp'
+patching file 'dom/base/Navigator.h'
+patching file 'dom/base/NavigatorUAData.cpp'
+patching file 'dom/base/NavigatorUAData.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/webidl/Navigator.webidl'
+patching file 'dom/webidl/NavigatorUAData.webidl'
+patching file 'dom/webidl/WorkerNavigator.webidl'
+patching file 'dom/webidl/moz.build'
+patching file 'dom/workers/WorkerNavigator.cpp'
+patching file 'dom/workers/WorkerNavigator.h'
+
+PATCH cloakfox-math-data-correctness.patch
+patching file 'dom/workers/WorkerPrivate.cpp'
+
+PATCH cloakfox-math-data-toggle.patch
+patching file 'dom/workers/WorkerPrivate.cpp'
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+
+PATCH cloakfox-hackerrank-media-recovery.patch
+patching file 'toolkit/modules/ActorManagerParent.sys.mjs'
+
+PATCH cloakfox-coderpad-media.patch
+patching file 'toolkit/modules/ActorManagerParent.sys.mjs'
+
+PATCH cloakfox-appearance-profile.patch
+patching file 'toolkit/profile/nsToolkitProfileService.cpp'
+
+PATCH cloakfox-screen-presentation.patch
+patching file 'dom/base/CloakfoxScreenPresentation.cpp'
+patching file 'dom/base/CloakfoxScreenPresentation.h'
+patching file 'dom/base/NavigatorUAData.cpp'
+patching file 'dom/base/NavigatorUAData.h'
+patching file 'dom/base/ScreenOrientation.cpp'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/base/nsScreen.cpp'
+patching file 'dom/base/nsScreen.h'
+
+PATCH cloakfox-testdome-screen-management.patch
+patching file 'dom/base/CloakfoxScreenAccess.h'
+patching file 'dom/base/CloakfoxScreenPresentation.cpp'
+patching file 'dom/base/ScreenDetailed.cpp'
+patching file 'dom/base/ScreenDetailed.h'
+patching file 'dom/base/ScreenDetails.cpp'
+patching file 'dom/base/ScreenDetails.h'
+patching file 'dom/base/moz.build'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/base/nsGlobalWindowInner.h'
+patching file 'dom/base/nsScreen.cpp'
+patching file 'dom/base/nsScreen.h'
+patching file 'dom/bindings/Bindings.conf'
+patching file 'dom/security/permissionspolicy/PermissionsPolicyUtils.cpp'
+patching file 'dom/webidl/Screen.webidl'
+patching file 'dom/webidl/ScreenDetailed.webidl'
+patching file 'dom/webidl/ScreenDetails.webidl'
+patching file 'dom/webidl/Window.webidl'
+patching file 'dom/webidl/moz.build'
+
+PATCH cloakfox-window-management-permission.patch
+patching file 'dom/base/Document.cpp'
+patching file 'dom/permission/PermissionStatus.cpp'
+patching file 'dom/permission/PermissionUtils.cpp'
+patching file 'dom/permission/Permissions.cpp'
+patching file 'dom/security/permissionspolicy/PermissionsPolicy.cpp'
+patching file 'dom/security/permissionspolicy/PermissionsPolicy.h'
+patching file 'dom/security/permissionspolicy/PermissionsPolicyUtils.cpp'
+patching file 'dom/security/permissionspolicy/PermissionsPolicyUtils.h'
+patching file 'dom/webidl/Permissions.webidl'
+
+PATCH cloakfox-screen-orientation-events.patch
+patching file 'dom/base/ScreenOrientation.cpp'
+
+PATCH cloakfox-webgl-live-state-followup.patch
+patching file 'cloakcfg/MaskConfig.hpp'
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+patching file 'dom/canvas/ClientWebGLContext.h'
+
+PATCH cloakfox-audio-analyser-copy-followup.patch
+patching file 'dom/media/webaudio/AnalyserNode.cpp'
+patching file 'dom/media/webaudio/AnalyserNode.h'
+
+PATCH cloakfox-speech-error-followup.patch
+patching file 'dom/media/webspeech/synth/nsSynthVoiceRegistry.cpp'
+
+PATCH cloakfox-stock-resource-followup.patch
+patching file 'browser/base/content/browser-main.js'
+patching file 'browser/base/jar.mn'
+patching file 'browser/components/BrowserComponents.manifest'
+patching file 'toolkit/crashreporter/jar.mn'
+
+PATCH cloakfox-windows-manifest-followup.patch
+patching file 'browser/app/cloakfox.exe.manifest'
+
+PATCH performance-timeline-timing.patch
+patching file 'dom/performance/LargestContentfulPaint.cpp'
+patching file 'dom/performance/LargestContentfulPaint.h'
+patching file 'dom/performance/Performance.cpp'
+patching file 'dom/performance/Performance.h'
+patching file 'dom/performance/PerformanceContainerTiming.cpp'
+patching file 'dom/performance/PerformanceContainerTiming.h'
+patching file 'dom/performance/PerformanceEntry.h'
+patching file 'dom/performance/PerformanceEventTiming.cpp'
+patching file 'dom/performance/PerformanceEventTiming.h'
+patching file 'dom/performance/PerformanceNavigationTiming.cpp'
+patching file 'dom/performance/PerformanceNavigationTiming.h'
+patching file 'dom/performance/PerformancePaintTiming.cpp'
+patching file 'dom/performance/PerformancePaintTiming.h'
+patching file 'dom/performance/PerformanceResourceTiming.cpp'
+patching file 'dom/performance/PerformanceResourceTiming.h'
+patching file 'dom/performance/PerformanceTiming.cpp'
+patching file 'dom/performance/PerformanceTiming.h'
+patching file 'dom/performance/moz.build'
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+patching file moz.build
+
+PATCH cloakfox-media-device-privacy.patch
+patching file 'dom/media/MediaDevices.cpp'
+patching file 'dom/media/MediaManager.cpp'
+
+PATCH cloakfox-hdr-exposure-privacy.patch
+patching file 'layout/style/nsMediaFeatures.cpp'
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+
+PATCH cloakfox-network-profile.patch
+patching file 'netwerk/base/moz.build'
+patching file 'netwerk/protocol/http/Http2Session.cpp'
+patching file 'netwerk/protocol/http/Http2Session.h'
+patching file 'netwerk/protocol/http/Http3Session.cpp'
+patching file 'netwerk/protocol/http/QuicSocketControl.cpp'
+patching file 'netwerk/protocol/http/QuicSocketControl.h'
+patching file 'netwerk/protocol/http/nsHttpConnectionInfo.cpp'
+patching file 'netwerk/protocol/http/nsHttpConnectionInfo.h'
+patching file 'netwerk/protocol/http/nsHttpConnectionMgr.cpp'
+patching file 'netwerk/socket/neqo_glue/src/lib.rs'
+patching file 'security/manager/ssl/nsNSSIOLayer.cpp'
+patching file 'third_party/rust/neqo-http3/.cargo-checksum.json'
+patching file 'third_party/rust/neqo-http3/src/settings.rs'
+patching file 'third_party/rust/neqo-transport/.cargo-checksum.json'
+patching file 'third_party/rust/neqo-transport/src/connection/mod.rs'
+patching file 'third_party/rust/nss-rs/.cargo-checksum.json'
+patching file 'third_party/rust/nss-rs/src/agent.rs'
+patching file 'third_party/rust/nss-rs/src/ssl.rs'
+
+PATCH cloakfox-network-conformance.patch
+patching file 'netwerk/protocol/http/Http2Session.cpp'
+patching file 'netwerk/protocol/http/Http2Session.h'
+patching file 'netwerk/socket/neqo_glue/src/lib.rs'
+patching file 'security/manager/ssl/CommonSocketControl.cpp'
+patching file 'security/manager/ssl/NSSSocketControl.cpp'
+patching file 'security/manager/ssl/NSSSocketControl.h'
+patching file 'security/manager/ssl/nsITLSSocketControl.idl'
+patching file 'security/manager/ssl/nsNSSIOLayer.cpp'
+patching file 'security/nss/lib/ssl/ssl.h'
+patching file 'security/nss/lib/ssl/ssl3con.c'
+patching file 'security/nss/lib/ssl/ssl3ecc.c'
+patching file 'security/nss/lib/ssl/ssl3ext.c'
+patching file 'security/nss/lib/ssl/ssl3ext.h'
+patching file 'security/nss/lib/ssl/ssl3exthandle.c'
+patching file 'security/nss/lib/ssl/sslexp.h'
+patching file 'security/nss/lib/ssl/sslimpl.h'
+patching file 'security/nss/lib/ssl/sslnonce.c'
+patching file 'security/nss/lib/ssl/sslsock.c'
+patching file 'security/nss/lib/ssl/sslt.h'
+patching file 'security/nss/lib/ssl/tls13con.c'
+patching file 'security/nss/lib/ssl/tls13ech.c'
+patching file 'security/nss/lib/ssl/tls13exthandle.c'
+patching file 'third_party/rust/neqo-http3/.cargo-checksum.json'
+patching file 'third_party/rust/neqo-http3/src/connection.rs'
+patching file 'third_party/rust/neqo-transport/.cargo-checksum.json'
+patching file 'third_party/rust/neqo-transport/src/connection/mod.rs'
+patching file 'third_party/rust/neqo-transport/src/connection/params.rs'
+patching file 'third_party/rust/neqo-transport/src/path.rs'
+patching file 'third_party/rust/neqo-transport/src/pmtud.rs'
+patching file 'third_party/rust/neqo-transport/src/tparams.rs'
+patching file 'third_party/rust/nss-rs/.cargo-checksum.json'
+patching file 'third_party/rust/nss-rs/bindings/bindings.toml'
+patching file 'third_party/rust/nss-rs/src/agent.rs'
+patching file 'third_party/rust/nss-rs/src/ssl.rs'
+
+PATCH cloakfox-graphics-gap-fix.patch
+patching file 'dom/base/CanvasFingerprintManager.cpp'
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+
+PATCH cloakfox-fontface-native-loading.patch
+patching file 'layout/style/FontFace.cpp'
+patching file 'layout/style/FontFaceImpl.cpp'
+patching file 'layout/style/FontFaceImpl.h'
+
+PATCH cloakfox-font-whitelist-parent.patch
+patching file 'gfx/thebes/gfxPlatformFontList.cpp'
+
+PATCH cloakfox-inherited-realm-privacy.patch
+patching file 'dom/ipc/WindowGlobalActor.cpp'
+patching file 'dom/ipc/WindowGlobalActor.h'
+patching file 'dom/ipc/WindowGlobalChild.h'
+patching file 'dom/ipc/WindowGlobalParent.h'
+patching file 'dom/ipc/jsactor/JSWindowActorProtocol.cpp'
+patching file 'dom/ipc/jsactor/JSWindowActorProtocol.h'
+patching file 'dom/workers/WorkerNavigator.cpp'
+
+PATCH cloakfox-native-realm-presentation.patch
+patching file 'dom/base/Navigator.cpp'
+patching file 'dom/base/Navigator.h'
+patching file 'dom/webidl/WebGPU.webidl'
+patching file 'dom/workers/WorkerNavigator.cpp'
+patching file 'dom/workers/WorkerNavigator.h'
+
+PATCH cloakfox-language-identity.patch
+patching file 'dom/base/Navigator.cpp'
+patching file 'dom/base/Navigator.h'
+patching file 'dom/base/nsGlobalWindowInner.cpp'
+patching file 'dom/workers/RuntimeService.cpp'
+patching file 'dom/workers/RuntimeService.h'
+patching file 'dom/workers/WorkerNavigator.cpp'
+patching file 'dom/workers/WorkerNavigator.h'
+
+PATCH cloakfox-request-identity-and-mask-storage.patch
+patching file 'dom/base/CloakConfigOverlay.cpp'
+patching file 'dom/base/RoverfoxStorageManager.cpp'
+patching file 'dom/base/RoverfoxStorageManager.h'
+patching file 'dom/base/WebRTCIPManager.cpp'
+patching file 'netwerk/protocol/http/HttpBaseChannel.cpp'
+patching file 'netwerk/protocol/http/HttpConnectionUDP.cpp'
+patching file 'netwerk/protocol/http/nsHttpChannel.cpp'
+patching file 'netwerk/protocol/http/nsHttpConnection.cpp'
+patching file 'netwerk/protocol/http/nsHttpHandler.cpp'
+patching file 'netwerk/protocol/http/nsHttpHandler.h'
+
+PATCH cloakfox-websocket-privacy.patch
+patching file 'dom/websocket/WebSocket.cpp'
+
+PATCH cloakfox-websocket-headers.patch
+patching file 'netwerk/protocol/websocket/WebSocketChannel.cpp'
+patching file 'netwerk/protocol/websocket/moz.build'
+
+PATCH cloakfox-proxy-resolver-errors.patch
+patching file 'netwerk/base/nsIProtocolProxyService.idl'
+patching file 'netwerk/base/nsProtocolProxyService.cpp'
+patching file 'netwerk/base/nsProtocolProxyService.h'
+
+PATCH cloakfox-turn-proxy-privacy.patch
+patching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.cpp'
+patching file 'dom/media/webrtc/jsapi/PeerConnectionImpl.h'
+patching file 'dom/media/webrtc/transport/ipc/WebrtcTCPSocket.cpp'
+patching file 'netwerk/protocol/http/nsHttpChannel.cpp'
+
+PATCH cloakfox-privacy-enforcement.patch
+patching file 'dom/media/MediaDevices.cpp'
+
+PATCH cloakfox-screen-permission-effective-state.patch
+patching file 'dom/permission/PermissionStatus.cpp'
+
+PATCH cloakfox-hackerrank-actor-process-safety.patch
+patching file 'toolkit/modules/ActorManagerParent.sys.mjs'
+
+PATCH cloakfox-pointer-hover-retention.patch
+patching file 'dom/events/EventStateManager.cpp'
+
+PATCH cloakfox-firefox158-compat.patch
+patching file 'dom/base/CloakfoxScreenPresentation.cpp'
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+
+PATCH cloakfox-audioworklet-privacy.patch
+patching file 'dom/media/webaudio/AudioWorkletNode.cpp'
+patching file 'dom/media/webaudio/AudioParamTimeline.h'
+
+PATCH cloakfox-css-media-privacy.patch
+patching file 'layout/style/nsMediaFeatures.cpp'
+patching file 'dom/base/nsScreen.cpp'
+
+PATCH cloakfox-client-hints-headers.patch
+patching file 'netwerk/protocol/http/CloakfoxClientHints.h'
+patching file 'dom/base/Document.cpp'
+patching file 'dom/security/PolicyContainer.cpp'
+patching file 'dom/security/PolicyContainer.h'
+patching file 'dom/security/permissionspolicy/PermissionsPolicyUtils.cpp'
+patching file 'dom/security/permissionspolicy/PermissionsPolicyUtils.h'
+patching file 'dom/workers/WorkerLoadInfo.h'
+patching file 'dom/workers/WorkerPrivate.cpp'
+patching file 'dom/workers/remoteworkers/RemoteWorkerChild.cpp'
+patching file 'ipc/glue/PBackgroundSharedTypes.ipdlh'
+patching file 'netwerk/protocol/http/HttpBaseChannel.cpp'
+patching file 'netwerk/protocol/http/HttpBaseChannel.h'
+patching file 'netwerk/protocol/http/moz.build'
+patching file 'netwerk/protocol/http/nsHttpChannel.cpp'
+patching file 'netwerk/protocol/http/nsHttpHandler.cpp'
+
+PATCH cloakfox-webcodecs-privacy.patch
+patching file 'dom/media/webcodecs/WebCodecsUtils.cpp'
+patching file 'dom/media/webcodecs/moz.build'
+
+PATCH cloakfox-chromium-identity-coherence.patch
+patching file 'dom/base/NavigatorUAData.cpp'
+patching file 'dom/base/Navigator.cpp'
+
+PATCH cloakfox-canvas-api-consistency.patch
+patching file 'dom/base/CanvasFingerprintManager.cpp'
+patching file 'dom/base/CanvasFingerprintManager.h'
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+
+PATCH cloakfox-webgl-capability-consistency.patch
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+
+PATCH cloakfox-webgl-backed-capacities.patch
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+
+PATCH canvas-render-privacy.patch
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+patching file 'dom/canvas/CanvasRenderingContext2D.h'
+
+PATCH cloakfox-webgl-backend-profile.patch
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+patching file 'dom/canvas/ClientWebGLContext.h'
+patching file 'dom/canvas/WebGL2ContextState.cpp'
+patching file 'dom/canvas/WebGLContext.cpp'
+patching file 'dom/canvas/WebGLContextGL.cpp'
+patching file 'dom/canvas/WebGLContextValidate.cpp'
+patching file 'dom/canvas/WebGLShaderValidator.cpp'
+patching file 'dom/canvas/WebGLTypes.h'
+
+PATCH canvas-canonical-backing.patch
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+patching file 'dom/canvas/CanvasRenderingContext2D.h'
+
+PATCH cloakfox-font-fallback-first-draw.patch
+patching file 'gfx/thebes/gfxPlatformFontList.cpp'
+
+PATCH canvas-canonical-text.patch
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+patching file 'dom/canvas/CanvasRenderingContext2D.h'
+patching file 'dom/canvas/moz.build'
+
+PATCH canvas-pixel-provenance.patch
+patching file 'gfx/2d/moz.build'
+patching file 'dom/canvas/ImageBitmap.cpp'
+patching file 'dom/canvas/ImageBitmap.h'
+patching file 'dom/canvas/ImageBitmapRenderingContext.cpp'
+patching file 'dom/canvas/ImageBitmapRenderingContext.h'
+
+PATCH canvas-gpu-provenance.patch
+patching file 'dom/canvas/WebGLContext.cpp'
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+
+PATCH bootstrap.patch
+patching file 'python/mozversioncontrol/mozversioncontrol/repo/source.py'
+
+PATCH custom-ubo-assets-bootstrap-location.patch
+patching file 'toolkit/components/extensions/parent/ext-storage.js'
+
+PATCH dbus_name.patch
+patching file 'toolkit/components/remote/nsDBusRemoteClient.cpp'
+patching file 'toolkit/components/remote/nsDBusRemoteServer.cpp'
+
+PATCH devtools-bypass.patch
+patching file 'devtools/server/actors/thread.js'
+patching file 'devtools/server/actors/webconsole/listeners/console-api.js'
+
+PATCH disable-data-reporting-at-compile-time.patch
+patching file 'browser/moz.configure'
+patching file 'python/mach/mach/telemetry.py'
+
+PATCH mozilla_dirs.patch
+patching file 'toolkit/components/extensions/NativeManifests.sys.mjs'
+patching file 'toolkit/xre/nsXREDirProvider.cpp'
+patching file 'xpcom/build/nsXULAppAPI.h'
+
+PATCH urlbarprovider-interventions.patch
+patching file 'browser/components/urlbar/UrlbarProviderInterventions.sys.mjs'
+
+PATCH canvas-complete-renderer.patch
+patching file Cargo.lock
+patching file 'browser/installer/package-manifest.in'
+patching file 'browser/moz.build'
+patching file 'dom/base/AbstractRange.cpp'
+patching file 'dom/base/Element.cpp'
+patching file 'dom/canvas/CanvasRenderingContext2D.cpp'
+patching file 'dom/canvas/CanvasRenderingContext2D.h'
+patching file 'dom/canvas/CanvasUtils.cpp'
+patching file 'dom/canvas/CanvasUtils.h'
+patching file 'dom/canvas/ClientWebGLContext.cpp'
+patching file 'dom/canvas/ClientWebGLContext.h'
+patching file 'dom/canvas/ImageBitmap.cpp'
+patching file 'dom/canvas/ImageBitmap.h'
+patching file 'dom/canvas/ImageBitmapRenderingContext.cpp'
+patching file 'dom/canvas/ImageBitmapRenderingContext.h'
+patching file 'dom/canvas/OffscreenCanvas.cpp'
+patching file 'dom/canvas/OffscreenCanvas.h'
+patching file 'dom/canvas/WebGLContext.cpp'
+patching file 'dom/canvas/WebGLContextValidate.cpp'
+patching file 'dom/canvas/WebGLTypes.h'
+patching file 'dom/canvas/nsICanvasRenderingContextInternal.cpp'
+patching file 'dom/canvas/nsICanvasRenderingContextInternal.h'
+patching file 'dom/html/HTMLCanvasElement.cpp'
+patching file 'dom/media/ImageConversion.cpp'
+patching file 'dom/media/ImageConversion.h'
+patching file 'dom/media/ipc/RemoteImageHolder.cpp'
+patching file 'dom/media/ipc/RemoteMediaManagerChild.cpp'
+patching file 'dom/media/platforms/PDMFactory.cpp'
+patching file 'dom/media/platforms/agnostic/VPXDecoder.cpp'
+patching file 'dom/media/platforms/agnostic/VPXDecoder.h'
+patching file 'dom/media/platforms/apple/AppleDecoderModule.cpp'
+patching file 'dom/media/platforms/ffmpeg/FFmpegDecoderModule.h'
+patching file 'dom/media/platforms/ffmpeg/FFmpegLibWrapper.cpp'
+patching file 'dom/media/platforms/ffmpeg/FFmpegLibWrapper.h'
+patching file 'dom/media/platforms/ffmpeg/FFmpegVideoDecoder.cpp'
+patching file 'dom/media/platforms/ffmpeg/FFmpegVideoDecoder.h'
+patching file 'dom/media/webcodecs/VideoFrame.cpp'
+patching file 'dom/media/webrtc/libwebrtcglue/WebrtcMediaDataDecoderCodec.cpp'
+patching file 'dom/webgpu/Adapter.cpp'
+patching file 'dom/webgpu/Adapter.h'
+patching file 'dom/webgpu/Buffer.cpp'
+patching file 'dom/webgpu/CanvasContext.cpp'
+patching file 'dom/webgpu/CanvasContext.h'
+patching file 'dom/webgpu/Device.cpp'
+patching file 'dom/webgpu/Device.h'
+patching file 'dom/webgpu/ExternalTexture.cpp'
+patching file 'dom/webgpu/Instance.cpp'
+patching file 'dom/webgpu/Instance.h'
+patching file 'dom/webgpu/Queue.cpp'
+patching file 'dom/webgpu/ipc/WebGPUChild.cpp'
+patching file 'dom/webgpu/ipc/WebGPUParent.cpp'
+patching file 'dom/webgpu/moz.build'
+patching file 'gfx/2d/2D.h'
+patching file 'gfx/2d/DrawTargetRecording.cpp'
+patching file 'gfx/2d/DrawTargetSkia.cpp'
+patching file 'gfx/gl/GLContextProviderEGL.cpp'
+patching file 'gfx/gl/GLContextTypes.h'
+patching file 'gfx/gl/GLLibraryEGL.cpp'
+patching file 'gfx/gl/GLLibraryEGL.h'
+patching file 'gfx/gl/SharedSurface.cpp'
+patching file 'gfx/gl/moz.build'
+patching file 'gfx/ipc/GfxMessageUtils.h'
+patching file 'gfx/layers/BufferTexture.cpp'
+patching file 'gfx/layers/ImageContainer.cpp'
+patching file 'gfx/layers/ImageContainer.h'
+patching file 'gfx/layers/MacIOSurfaceHelpers.cpp'
+patching file 'gfx/layers/MacIOSurfaceHelpers.h'
+patching file 'gfx/layers/MacIOSurfaceImage.cpp'
+patching file 'gfx/layers/ipc/LayersSurfaces.ipdlh'
+patching file 'gfx/layers/ipc/SharedSurfacesChild.cpp'
+patching file 'gfx/layers/ipc/SharedSurfacesParent.cpp'
+patching file 'gfx/thebes/gfxFont.cpp'
+patching file 'gfx/thebes/gfxFont.h'
+patching file 'gfx/thebes/gfxFontEntry.h'
+patching file 'gfx/thebes/gfxHarfBuzzShaper.cpp'
+patching file 'gfx/thebes/gfxTextRun.cpp'
+patching file 'gfx/thebes/gfxTextRun.h'
+patching file 'gfx/thebes/gfxUtils.cpp'
+patching file 'gfx/thebes/moz.build'
+patching file 'gfx/wgpu_bindings/Cargo.toml'
+patching file 'gfx/wgpu_bindings/src/client.rs'
+patching file 'gfx/wgpu_bindings/src/lib.rs'
+patching file 'gfx/wgpu_bindings/src/server.rs'
+patching file 'gfx/ycbcr/YCbCrUtils.cpp'
+patching file 'gfx/ycbcr/YCbCrUtils.h'
+patching file 'gfx/ycbcr/moz.build'
+patching file 'image/Decoder.cpp'
+patching file 'image/Decoder.h'
+patching file 'image/FrameAnimator.cpp'
+patching file 'image/FrameAnimator.h'
+patching file 'image/ISurfaceProvider.h'
+patching file 'image/RasterImage.cpp'
+patching file 'image/RasterImage.h'
+patching file 'image/VectorImage.cpp'
+patching file 'image/VectorImage.h'
+patching file 'image/decoders/nsAVIFDecoder.cpp'
+patching file 'image/decoders/nsJPEGDecoder.cpp'
+patching file 'image/decoders/nsJXLDecoder.cpp'
+patching file 'image/decoders/nsPNGDecoder.cpp'
+patching file 'image/decoders/nsWebPDecoder.cpp'
+patching file 'image/imgFrame.cpp'
+patching file 'layout/base/nsLayoutUtils.cpp'
+patching file 'layout/base/nsPresContext.cpp'
+patching file 'media/ffvpx/README_MOZILLA'
+patching file 'media/ffvpx/config_override.h'
+patching file 'media/ffvpx/libavcodec/codec_list.c'
+patching file 'media/ffvpx/libavcodec/libdav1d.c'
+patching file 'media/ffvpx/libavcodec/moz.build'
+patching file 'media/ffvpx/libavutil/avutil.symbols'
+patching file 'media/ffvpx/libavutil/moz.build'
+patching file 'modules/libpref/init/StaticPrefList.yaml'
+patching file 'python/mozbuild/mozpack/executables.py'
+patching file 'python/mozbuild/mozpack/files.py'
+patching file 'third_party/rust/wgpu-hal/.cargo-checksum.json'
+patching file 'third_party/rust/wgpu-hal/src/vulkan/instance.rs'
+
+PATCH cloakfox-native-engine-host.patch
+patching file 'widget/moz.build'
+patching file 'widget/cocoa/moz.build'
+patching file 'widget/cocoa/components.conf'
+patching file 'widget/cocoa/nsCocoaWindow.mm'
+
+PATCH cloakfox-camera-nicknames.patch
+patching file 'browser/actors/WebRTCParent.sys.mjs'
+
+PATCH cloakfox-neutral-camera-labels.patch
+patching file 'dom/media/MediaManager.cpp'
+patching file 'dom/media/MediaDevices.cpp'
+patching file 'dom/media/MediaDevices.h'
+patching file 'dom/webidl/MediaDevices.webidl'
+
+PATCH cloakfox-capture-label-scope.patch
+patching file 'dom/media/MediaManager.cpp'
+
+PATCH cloakfox-audio-website-labels.patch
+patching file 'dom/media/MediaManager.cpp'
+patching file 'dom/media/MediaDevices.cpp'
+patching file 'dom/media/MediaDevices.h'
+patching file 'dom/webidl/MediaDevices.webidl'
+
+PATCH cloakfox-camera-exposure.patch
+patching file 'dom/media/MediaManager.cpp'
+patching file 'dom/media/MediaDevices.cpp'
+
+PATCH cloakfox-microphone-exposure.patch
+patching file 'dom/media/MediaDevices.cpp'
+patching file 'dom/media/MediaManager.cpp'
+
+PATCH cloakfox-macos-stable-toolbar.patch
+patching file 'browser/themes/osx/browser.css'
+
+PATCH cloakfox-macos-colored-window-buttons.patch
+patching file 'widget/cocoa/nsCocoaWindow.mm'
+
+PATCH cloakfox-macos-bundle-icon.patch
+patching file 'browser/app/macbuild/Contents/Info.plist.in'
+
+PATCH cloakfox-site-data-container-scope.patch
+patching file 'browser/base/content/browser-siteIdentity.js'
+patching file 'toolkit/components/cleardata/ClearDataService.sys.mjs'
+
+PATCH cloakfox-trust-panel-site-data-scope.patch
+patching file 'browser/base/content/browser-trustPanel.js'
+patching file 'browser/components/controlcenter/content/trustPanel.inc.xhtml'
+
+PATCH cloakfox-container-site-cache.patch
+patching file 'toolkit/components/cleardata/ClearDataService.sys.mjs'
+patching file 'browser/base/content/browser-siteIdentity.js'
+patching file 'browser/base/content/browser-trustPanel.js'
+patching file 'browser/components/controlcenter/content/trustPanel.inc.xhtml'
+
+PATCH cloakfox-apple-linker-detection.patch
+patching file 'build/moz.configure/toolchain.configure'
+
+PATCH cloakfox-system-document-viewport.patch
+patching file 'dom/base/nsGlobalWindowInner.cpp'

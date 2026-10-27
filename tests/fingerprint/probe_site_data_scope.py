@@ -1,5 +1,6 @@
 """Verify site-data clearing isolation using only a disposable profile/local site."""
 import json
+import os
 import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -26,7 +27,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='cloakfox-site-data-') as profile:
         Path(profile, 'user.js').write_text('user_pref("browser.profiles.enabled", false);\nuser_pref("privacy.userContext.enabled", true);\n')
         options = Options()
-        options.binary_location = '/Applications/Cloakfox.app/Contents/MacOS/cloakfox'
+        options.binary_location = os.environ['CLOAKFOX_BIN']
         for arg in ['-headless', '-no-remote', '-profile', profile, '-purgecaches']:
             options.add_argument(arg)
         driver = webdriver.Firefox(options=options, service=Service(service_args=['--allow-system-access'], log_output=str(Path(profile, 'gecko.log'))))

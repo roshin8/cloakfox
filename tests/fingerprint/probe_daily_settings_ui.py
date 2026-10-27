@@ -41,7 +41,9 @@ def main():
             driver.execute_script("document.getElementById('cfx-network-apply').click()")
             wait.until(lambda d: d.find_element(By.ID,'cfx-route-status').text.startswith('Saved'))
             category('identity')
-            driver.execute_script("document.querySelector('.profile-maintenance').open=true")
+            driver.execute_script("document.querySelector('[data-panel=cfx-identity-maintenance]').click()")
+            driver.execute_script("document.getElementById('cfx-identity-maintenance').scrollIntoView({block:'center',behavior:'instant'})")
+            wait.until(lambda d:d.find_element(By.ID,'cfx-identity-maintenance').is_displayed())
             assert 'Forget container data' in driver.find_element(By.ID,'cfx-forget-data').text
             category('containers')
             assert 'encrypted' in driver.find_element(By.ID,'cfx-container-workflows').text.lower()
