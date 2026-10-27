@@ -3,7 +3,7 @@ name: Build Cloakfox macOS
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/firefox-158-port]
+    branches: [main, codex/firefox-158-port, codex/firefox-159-port]
     paths-ignore: ['docs/**', '**/*.md']
     tags: ['v*']
   pull_request:
@@ -229,7 +229,7 @@ jobs:
           hdiutil attach artifacts/gecko/Cloakfox-macos-arm64.dmg -mountpoint /tmp/coexist-gecko -nobrowse -readonly
           cp -R /tmp/coexist-gecko/Cloakfox.app apps/
           hdiutil detach /tmp/coexist-gecko
-      - name: Concurrent Gecko 158 and Chromium persona and storage checks
+      - name: Concurrent Gecko and Chromium persona and storage checks
         run: |
           python3 tests/engines/probe_dual_engine_coexistence.py \
             --gecko-binary "$PWD/apps/Cloakfox.app/Contents/MacOS/cloakfox" \
