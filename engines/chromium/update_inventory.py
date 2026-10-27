@@ -12,8 +12,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts._mixin import list_patches
 
-START = '<!-- BEGIN GENERATED GECKO158 INVENTORY -->'
-END = '<!-- END GENERATED GECKO158 INVENTORY -->'
+START = '<!-- BEGIN GENERATED GECKO INVENTORY -->'
+END = '<!-- END GENERATED GECKO INVENTORY -->'
 
 
 def collect_inventory(root):
@@ -30,9 +30,10 @@ def collect_inventory(root):
         preferences.update('cloakfox.opt.' + name for name in re.findall(r'\buserOpt\([\'"]([\w]+)[\'"]', text))
         if path.suffix == '.html':
             bindings.update(re.findall(r'(?:id|data-pref)=[\'"]([^\'"]+)[\'"]', text))
-    inputs = patches + sources + [root / 'patches/order.txt', root / 'scripts/_mixin.py']
+    inputs = patches + sources + [root / 'patches/order.txt', root / 'scripts/_mixin.py', root / 'upstream.sh']
+    version = re.search(r'^version=(\d+(?:\.\d+){1,3})$', (root / 'upstream.sh').read_text(), re.M).group(1)
     return {
-        'geckoVersion': '158.0',
+        'geckoVersion': version,
         'patches': [str(path.relative_to(root)) for path in patches],
         'preferences': sorted(preferences),
         'settingsBindings': sorted(bindings),
@@ -42,12 +43,12 @@ def collect_inventory(root):
 
 
 def render_appendix(data):
-    lines = [START, '## Active Gecko158 source inventory', '',
+    lines = [START, f"## Active Gecko {data['geckoVersion']} source inventory", '',
         f"Canonical patch resolver: {len(data['patches'])} active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.", '',
         'Canvas/GPU/config entries have partial Chromium equivalents described above. Gecko UI, branding, build and compatibility patches can be engine-specific; no patch is mechanically applied to Chromium.', '']
     lines += [f'- `{path}`' for path in data['patches']]
     lines += ['', '## Optional/privacy preference inventory', '',
-        'Literal cloakfox.opt / cloakfox.webrtc names plus dynamically constructed userOpt names from maintained158 modules, defaults and HTML. These are Gecko names; matching semantics remain pending unless the group table says otherwise.', '']
+        'Literal cloakfox.opt / cloakfox.webrtc names plus dynamically constructed userOpt names from maintained Gecko modules, defaults and HTML. These are Gecko names; matching semantics remain pending unless the group table says otherwise.', '']
     lines += [f'- `{name}`' for name in data['preferences']]
     lines += ['', '## Settings surface inventory', '',
         'All id/data-pref bindings from component HTML, including secondary settings panels. This is a UI audit checklist; the Chromium companion does not expose the Gecko settings UI. Dynamic panels/API fields still require manual review.', '']
@@ -62,11 +63,14 @@ def main():
     root = Path(__file__).resolve().parents[2]
     data = collect_inventory(root)
     directory = root / 'engines/chromium'
-    (directory / 'gecko158-inventory.json').write_text(json.dumps(data, indent=2) + '\n')
+    (directory / ('gecko' + data['geckoVersion'].split('.')[0] + '-inventory.json')).write_text(json.dumps(data, indent=2) + '\n')
     path = directory / 'feature-inventory.md'
     text = path.read_text()
-    before, rest = text.split(START, 1)
-    _, after = rest.split(END, 1)
+    marker = re.search(r'<!-- BEGIN GENERATED GECKO(?:[0-9]+)? INVENTORY -->', text)
+    ending = re.search(r'<!-- END GENERATED GECKO(?:[0-9]+)? INVENTORY -->', text)
+    if not marker or not ending or marker.end() > ending.start():
+        raise ValueError('Missing or malformed Gecko inventory block')
+    before, after = text[:marker.start()], text[ending.end():]
     path.write_text(before + render_appendix(data) + after)
     print(f"Inventoried {len(data['patches'])} patches, {len(data['preferences'])} preferences, {len(data['settingsBindings'])} HTML bindings, {len(data['actors'])} actors")
 

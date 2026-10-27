@@ -632,15 +632,10 @@ diff --git a/dom/webidl/ScreenDetails.webidl b/dom/webidl/ScreenDetails.webidl
 diff --git a/dom/webidl/Window.webidl b/dom/webidl/Window.webidl
 --- a/dom/webidl/Window.webidl
 +++ b/dom/webidl/Window.webidl
-@@ -1097,8 +1097,13 @@
-   [Pref="dom.origin_agent_cluster.enabled"] readonly attribute boolean originAgentCluster;
+@@ -1104,3 +1104,8 @@
  };
  
- // https://wicg.github.io/document-picture-in-picture/#api
- partial interface Window {
-   [SameObject, SecureContext, Pref="dom.documentpip.enabled"]
-   readonly attribute DocumentPictureInPicture documentPictureInPicture;
- };
+ Window includes PushManagerAttribute;
 +
 +partial interface Window {
 +  [SecureContext, Func="mozilla::dom::CloakfoxScreenAccess::IsEnabled", Throws]

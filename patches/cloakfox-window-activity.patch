@@ -35,31 +35,17 @@ diff --git a/docshell/base/BrowsingContext.cpp b/docshell/base/BrowsingContext.c
 diff --git a/docshell/base/BrowsingContext.h b/docshell/base/BrowsingContext.h
 --- a/docshell/base/BrowsingContext.h
 +++ b/docshell/base/BrowsingContext.h
-@@ -119,16 +119,18 @@
-   FIELD(SuspendMediaWhenInactive, bool)                                       \
-   /* If true, we're within the nested event loop in window.open, and this     \
-    * context may not be used as the target of a load */                       \
-   FIELD(PendingInitialization, bool)                                          \
-   /* Indicates if the browser window is active for the purpose of the         \
-    * :-moz-window-inactive pseudoclass. Only read from or set on the          \
-    * top BrowsingContext. */                                                  \
-   FIELD(IsActiveBrowserWindowInternal, bool)                                  \
+@@ -130,6 +130,9 @@
+    * top BrowsingContext. */                                                   \
+   FIELD(IsActiveBrowserWindowInternal, bool,                                   \
+         {.mTopOnly = true, .mCanSet = CanSet::ParentOnly})                     \
 +  /* Top-only remembered content focus path, including remote frames. */      \
-+  FIELD(CloakfoxLogicalFocusedContextId, uint64_t)                              \
-   FIELD(OpenerPolicy, nsILoadInfo::CrossOriginOpenerPolicy)                   \
-   /* Current opener for the BrowsingContext. Weak reference */                \
-   FIELD(OpenerId, uint64_t)                                                   \
-   FIELD(OnePermittedSandboxedNavigatorId, uint64_t)                           \
-   FIELD(CurrentInnerWindowId, uint64_t)                                       \
-   FIELD(HadOriginalOpener, bool)                                              \
-   /* Was this window created by a webpage through window.open or an anchor    \
-    * link? In general, windows created this way may be manipulated (e.g.      \
-@@ -1278,16 +1280,36 @@
-   void SendCommitTransaction(ContentParent* aParent,
-                              const BaseTransaction& aTxn, uint64_t aEpoch);
-   void SendCommitTransaction(ContentChild* aChild, const BaseTransaction& aTxn,
-                              uint64_t aEpoch);
- 
++  FIELD(CloakfoxLogicalFocusedContextId, uint64_t,                             \
++        {.mTopOnly = true, .mCanSet = CanSet::Custom})                   \
+   FIELD(OpenerPolicy, nsILoadInfo::CrossOriginOpenerPolicy,                    \
+         {.mCanSet = CanSet::Custom})                                           \
+   /* Current opener for the BrowsingContext. Weak reference */                 \
+@@ -1349,6 +1352,26 @@
    // Update dependents if the activeness of this BC was explicitly changed.
    void ActivenessChanged(bool aIsActive);
  
@@ -86,20 +72,10 @@ diff --git a/docshell/base/BrowsingContext.h b/docshell/base/BrowsingContext.h
    using CanSetResult = syncedcontext::CanSetResult;
  
    // Overload `DidSet` to get notifications for a particular field being set.
-   //
-   // You can also overload the variant that gets the old value if you need it.
-   template <size_t I>
-   void DidSet(FieldIndex<I>) {}
-   template <size_t I, typename T>
 diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
 --- a/dom/base/Document.cpp
 +++ b/dom/base/Document.cpp
-@@ -2,16 +2,17 @@
-  * License, v. 2.0. If a copy of the MPL was not distributed with this
-  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
- 
- /*
-  * Base class for all our document implementations.
+@@ -7,6 +7,7 @@
   */
  
  #include "mozilla/dom/Document.h"
@@ -107,17 +83,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
  #include "MaskConfig.hpp"
  
  #include <inttypes.h>
- #include <stdlib.h>
- #include <string.h>
- 
- #include <algorithm>
- #include <cstddef>
-@@ -1649,16 +1650,20 @@
- 
-   // void state used to differentiate an empty source from an unselected source
-   mPreloadPictureFoundSource.SetIsVoid(true);
- 
-   RecomputeLanguageFromCharset();
+@@ -1656,6 +1657,10 @@
  
    mPreloadReferrerInfo = new dom::ReferrerInfo(nullptr);
    mReferrerInfo = new dom::ReferrerInfo(nullptr);
@@ -128,17 +94,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
  }
  
  #ifndef ANDROID
- // unused by GeckoView
- static bool IsAboutErrorPage(nsGlobalWindowInner* aWin, const char* aSpec) {
-   if (NS_WARN_IF(!aWin)) {
-     return false;
-   }
-@@ -2466,16 +2471,20 @@
-         mPageloadEventData.set_tlsHandshakeTime(
-             static_cast<uint32_t>(tlsHandshakeTime.ToMilliseconds()));
-       }
-     }
-   }
+@@ -2527,6 +2532,10 @@
  }
  
  Document::~Document() {
@@ -149,17 +105,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    MOZ_LOG(gDocumentLeakPRLog, LogLevel::Debug, ("DOCUMENT %p destroyed", this));
    MOZ_ASSERT(!IsTopLevelContentDocument() || !IsResourceDoc(),
               "Can't be top-level and a resource doc at the same time");
- 
-   NS_ASSERTION(!mIsShowing, "Destroying a currently-showing document");
- 
-   if (IsTopLevelContentDocument()) {
-     RemoveToplevelLoadingDocument(this);
-@@ -4999,16 +5008,89 @@
-     return false;
-   }
- 
-   if (!fm->IsInActiveWindow(bc)) {
-     return false;
+@@ -5058,6 +5067,79 @@
    }
  
    return fm->IsSameOrAncestor(bc, fm->GetFocusedBrowsingContext());
@@ -239,17 +185,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
  }
  
  bool Document::ThisDocumentHasFocus() const {
-   nsFocusManager* fm = nsFocusManager::GetFocusManager();
-   return fm && fm->GetFocusedWindow() &&
-          fm->GetFocusedWindow()->GetExtantDoc() == this;
- }
- 
-@@ -7860,16 +7942,19 @@
- 
- void Document::TakeVideoFrameRequestCallbacks(
-     nsTArray<RefPtr<HTMLVideoElement>>& aVideoCallbacks) {
-   MOZ_ASSERT(aVideoCallbacks.IsEmpty());
-   mFrameRequestManager.Take(aVideoCallbacks);
+@@ -7919,6 +8001,9 @@
  }
  
  bool Document::ShouldThrottleFrameRequests() const {
@@ -259,17 +195,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    if (mStaticCloneCount > 0) {
      // Even if we're not visible, a static clone may be, so run at full speed.
      return false;
-   }
- 
-   if (Hidden() && !StaticPrefs::layout_testing_top_level_always_active()) {
-     // We're not visible (probably in a background tab or the bf cache).
-     return true;
-@@ -12957,16 +13042,20 @@
-     }
- 
-     // Set mIsShowing before firing events, in case those event handlers
-     // move us around.
-     mIsShowing = true;
+@@ -13012,6 +13097,10 @@
      mVisible = true;
  
      UpdateVisibilityState();
@@ -280,17 +206,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    }
  
    NotifyActivityChanged();
- 
-   EnumerateExternalResources([aPersisted](Document& aExternalResource)
-                                  MOZ_CAN_RUN_SCRIPT_BOUNDARY_LAMBDA {
-                                    aExternalResource.OnPageShow(aPersisted,
-                                                                 nullptr);
-@@ -13665,17 +13754,18 @@
-       mState |= DocumentState::RTL_LOCALE;
-     } else {
-       mState |= DocumentState::LTR_LOCALE;
-     }
-   }
+@@ -13728,7 +13817,8 @@
  
    if (aMaybeChangedStates.HasState(DocumentState::WINDOW_INACTIVE)) {
      BrowsingContext* bc = GetBrowsingContext();
@@ -300,17 +216,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
        mState |= DocumentState::WINDOW_INACTIVE;
      } else {
        mState &= ~DocumentState::WINDOW_INACTIVE;
-     }
-   }
- 
-   const DocumentState changedStates = oldStates ^ mState;
-   if (aNotify && !changedStates.IsEmpty()) {
-@@ -17630,18 +17720,21 @@
-     // 1. If document's visibility state equals visibilityState, then return.
-     return;
-   }
-   // 2. Set document's visibility state to visibilityState.
-   mVisibilityState = visibilityState;
+@@ -17706,8 +17796,11 @@
    if (aDispatchEvent == DispatchVisibilityChange::Yes) {
      // 3. Fire an event named visibilitychange at document, with its bubbles
      // attribute initialized to true.
@@ -324,11 +230,6 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    }
    // TODO 4. Run the screen orientation change steps with document.
  
-   // 5. Run the view transition page visibility change steps with document.
-   // https://drafts.csswg.org/css-view-transitions/#view-transition-page-visibility-change-steps
-   const bool visible = !Hidden();
-   if (mActiveViewTransition && !visible) {
-     // The mActiveViewTransition check is an optimization: We don't allow
 diff --git a/dom/base/Document.h b/dom/base/Document.h
 --- a/dom/base/Document.h
 +++ b/dom/base/Document.h

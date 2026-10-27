@@ -1,0 +1,79 @@
+.....From /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmphbzqf6ju/source
+ * branch            ec194d0a41d2a19644a6774aacce134178414f3c -> FETCH_HEAD
+HEAD is now at ec194d0 fixture
+.HTTP 503Pinned fetch transport failed; retry 2/3
+HTTP 503Pinned fetch transport failed; retry 3/3
+HTTP 503fatal: remote error: upload-pack: not our ref.error: RPC failed; HTTP 503 curl 22Pinned fetch transport failed; retry 2/3
+From /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmpfh1kgu0y/source
+ * branch            ec194d0a41d2a19644a6774aacce134178414f3c -> FETCH_HEAD
+HEAD is now at ec194d0 fixture
+..CHECKPOINT saved bytes=409 seconds=0.0
+CHECKPOINT TEST phase=restore-original
+CHECKPOINT restored seconds=0.0
+CHECKPOINT TEST phase=manifest-before
+CHECKPOINT TEST phase=native-save
+CHECKPOINT preflight verified 1 contained or pinned SDK symlinks
+CHECKPOINT native archive bytes=0
+CHECKPOINT saved native bytes=381 seconds=0.2
+CHECKPOINT TEST phase=release-diagnostic-copy
+CHECKPOINT TEST phase=restore-native
+CHECKPOINT restored seconds=0.0
+CHECKPOINT TEST phase=manifest-after
+CHECKPOINT TEST phase=verified
+.......CHECKPOINT saved bytes=333 seconds=0.0
+CHECKPOINT restored seconds=0.0
+CHECKPOINT saved bytes=328 seconds=0.0
+...CHECKPOINT saved bytes=316 seconds=0.0
+.CHECKPOINT saved bytes=317 seconds=0.0
+.CHECKPOINT preflight verified 2 contained or pinned SDK symlinks
+CHECKPOINT saved bytes=470 seconds=0.0
+CHECKPOINT restored seconds=0.0
+.CHECKPOINT preflight verified 1 contained or pinned SDK symlinks
+CHECKPOINT saved bytes=536 seconds=0.0
+CHECKPOINT restored seconds=0.0
+..CHECKPOINT saved bytes=6185 seconds=0.0
+CHECKPOINT restored seconds=0.0
+.....{"phase": "download-retry", "bytes": 3, "totalBytes": 10, "attempt": 1, "errorType": "TimeoutError"}
+{"phase": "download", "bytes": 10, "totalBytes": 10, "elapsedSeconds": 0.0}
+........................Verified current app and source/SDK/embedded framework SHA256: 923d08a629576330ea08fd4c153342efaf561724e8ff49cbf1b5f9c7f38fa0b7
+Verified current app and source/SDK/embedded framework SHA256: 923d08a629576330ea08fd4c153342efaf561724e8ff49cbf1b5f9c7f38fa0b7
+STAGE tarball_deps.patch-check
+
+STAGE tarball_deps.patch-check passed: exit=0 elapsed=1.0s
+STAGE tarball_deps.patch
+
+STAGE tarball_deps.patch passed: exit=0 elapsed=1.0s
+........................JOB BUDGET {"deadline": 21000, "compileSeconds": 7920, "requestedSeconds": 10800, "checkpointReserveSeconds": 5400}
+.CHECKPOINT preflight verified 1 contained or pinned SDK symlinks
+CHECKPOINT native archive bytes=0
+CHECKPOINT saved native bytes=524 seconds=0.2
+CHECKPOINT restored seconds=0.0
+.CHECKPOINT preflight verified 0 contained or pinned SDK symlinks
+CHECKPOINT native archive bytes=0
+..CHECKPOINT preflight verified 1 contained or pinned SDK symlinks
+CHECKPOINT native archive bytes=0
+CHECKPOINT saved native bytes=446 seconds=0.2
+CHECKPOINT restored seconds=0.0
+............STAGE fixture
+compiling
+CHECKPOINT stopping owned fixture at its time budget
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+KeyboardInterrupt
+
+STAGE fixture checkpoint: exit=-2 elapsed=0.1s
+.....STAGE fixture
+failure detail
+
+STAGE fixture failed: exit=7 elapsed=1.0s
+.STAGE fixture
+direct child failed
+
+STAGE fixture failed: exit=7 elapsed=0.1s
+......................Native test inputs: 11 files, 922 bytes
+Verified same-commit native test inputs: commit
+..............................
+----------------------------------------------------------------------
+Ran 151 tests in 9.099s
+
+OK

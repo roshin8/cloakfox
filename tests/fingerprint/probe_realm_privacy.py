@@ -110,7 +110,7 @@ def main():
                 service_args=['--allow-system-access'], log_output=str(root/'gecko.log')))
             driver.set_script_timeout(20)
             observations['browserInfo']=chrome(driver,'return {version:Services.appinfo.version,buildID:Services.appinfo.appBuildID}')
-            assert observations['browserInfo']['version'].startswith('158.'),observations['browserInfo']
+            assert observations['browserInfo']['version'].startswith('159.'),observations['browserInfo']
             try:
                 url = f'http://127.0.0.1:{server.server_port}/'
                 default = driver.current_window_handle

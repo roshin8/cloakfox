@@ -20,7 +20,7 @@ Three layers:
 ## Build
 
 ```bash
-make fetch           # Download Firefox 158.0 source tarball
+make fetch           # Download pinned Firefox source tarball
 make setup-minimal   # Extract source + copy additions/ (policies, cloakcfg, extension)
 make dir             # Apply all patches (ordered via patches/order.txt)
 make extension       # Build Cloakfox Shield extension in-place

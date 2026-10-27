@@ -1,8 +1,8 @@
-> Maintained Gecko158 comparison, refreshed 2026-10-15. The companion runs alongside Gecko; shared settings/tabs and full privacy parity remain pending.
+> Maintained Gecko159 source comparison, refreshed 2026-10-27. The companion runs alongside Gecko; shared settings/tabs and full privacy parity remain pending.
 
 # Chromium privacy port inventory
 
-Baseline: maintained `codex/firefox-158-port` Gecko sources at `7df5f6ee5a` (158.0), including the installed-browser audit and canonical canvas renderer work. The machine-readable [source manifest](gecko158-inventory.json) records the actual current patch/module/UI hashes. Refresh with `python3 engines/chromium/update_inventory.py`; an engine test detects stale inventory.
+Baseline: Firefox 159.0 source port on `codex/firefox-159-port`. The [current source manifest](gecko159-inventory.json) records exact patch/module/UI hashes; the retained Gecko158 manifest is historical. Source replay and source tests do not attest native Chromium coverage or a completed Firefox runtime build.
 
 The original binary SDK remains unpatched. The source-built companion has partial native canvas/worker/GPU privacy plus the v1 shared config foundation. `privacyPatched` stays false. Current config tests use actual native hooks, owned loopback fixtures and disposable profiles; they do not establish parity for the other groups.
 
@@ -26,8 +26,8 @@ Gecko158 additions missing from the old157 checklist include AudioWorklet privac
 | Tracking/query stripping, bounce protection, site exceptions/presets | Browser/network policy integration | Not ported |
 | Container/settings UI, appearance, bookmarks/passwords, security updates | Shared controller and engine capability mapping; engine-owned sensitive stores | Not integrated |
 
-<!-- BEGIN GENERATED GECKO158 INVENTORY -->
-## Active Gecko158 source inventory
+<!-- BEGIN GENERATED GECKO INVENTORY -->
+## Active Gecko 159.0 source inventory
 
 Canonical patch resolver: 158 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
 
@@ -194,7 +194,7 @@ Canvas/GPU/config entries have partial Chromium equivalents described above. Gec
 
 ## Optional/privacy preference inventory
 
-Literal cloakfox.opt / cloakfox.webrtc names plus dynamically constructed userOpt names from maintained158 modules, defaults and HTML. These are Gecko names; matching semantics remain pending unless the group table says otherwise.
+Literal cloakfox.opt / cloakfox.webrtc names plus dynamically constructed userOpt names from maintained Gecko modules, defaults and HTML. These are Gecko names; matching semantics remain pending unless the group table says otherwise.
 
 - `cloakfox.opt.canvas_render_privacy`
 - `cloakfox.opt.clipboard_disabled`
@@ -467,7 +467,7 @@ Gecko privileged actors are not installed in Chromium. Equivalent privacy behavi
 - `additions/browser/components/cloakfox/actors/CloakfoxTimingChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxWebGPUChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxWebRTCChild.sys.mjs`
-<!-- END GENERATED GECKO158 INVENTORY -->
+<!-- END GENERATED GECKO INVENTORY -->
 
 ## Shared config capability boundary
 

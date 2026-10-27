@@ -1,17 +1,12 @@
 diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/components/sessionstore/SessionStore.sys.mjs
 --- a/browser/components/sessionstore/SessionStore.sys.mjs
 +++ b/browser/components/sessionstore/SessionStore.sys.mjs
-@@ -4676,17 +4676,21 @@
-    * Marks a window so that its tabs are left out when the previous session is
-    * restored at startup.
-    *
-    * @param {Window} aWindow
-    *        Window reference
+@@ -4917,7 +4917,11 @@
     */
    maybeDontRestoreTabs(aWindow) {
      // Don't restore the tabs if we restore the session at startup
--    this.#windows[aWindow.__SSi]._maybeDontRestoreTabs = true;
-+    const winData = aWindow.__SSi && this.#windows[aWindow.__SSi];
+-    this.#windows[this.#windowIds.get(aWindow)]._maybeDontRestoreTabs = true;
++    const winData = this.#windows[this.#windowIds.get(aWindow)];
 +    if (!winData) {
 +      return;
 +    }
@@ -19,11 +14,6 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
    }
  
    #isLastRestorableWindow() {
-     return (
-       Object.values(this.#windows).filter(winData => !winData.isPrivate)
-         .length == 1 &&
-       !this.#closedWindows.some(win => win._shouldRestore || false)
-     );
 diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
 --- a/dom/base/nsGlobalWindowInner.cpp
 +++ b/dom/base/nsGlobalWindowInner.cpp

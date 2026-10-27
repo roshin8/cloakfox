@@ -1,6 +1,7 @@
+diff --git a/widget/cocoa/nsCocoaWindow.mm b/widget/cocoa/nsCocoaWindow.mm
 --- a/widget/cocoa/nsCocoaWindow.mm
 +++ b/widget/cocoa/nsCocoaWindow.mm
-@@ -8799,6 +8799,112 @@
+@@ -8891,6 +8891,112 @@
    return false;
  }
  
@@ -113,7 +114,7 @@
  @implementation ToolbarWindow
  
  - (id)initWithContentRect:(NSRect)aChildViewRect
-@@ -8838,6 +8944,17 @@
+@@ -8930,6 +9036,15 @@
                                   backing:aBufferingType
                                     defer:aFlag])) {
      mWindowButtonsRect = NSZeroRect;
@@ -126,8 +127,6 @@
 +      [button addSubview:artwork];
 +      [artwork release];
 +    }
-+
-+
+ 
      mFullscreenTitlebarTracker = [[FullscreenTitlebarTracker alloc] init];
      // revealAmount is an undocumented property of
-     // NSTitlebarAccessoryViewController that updates whenever the menubar

@@ -1191,12 +1191,7 @@ diff --git a/gfx/thebes/gfxHarfBuzzShaper.cpp b/gfx/thebes/gfxHarfBuzzShaper.cpp
 diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
 --- a/gfx/thebes/gfxTextRun.cpp
 +++ b/gfx/thebes/gfxTextRun.cpp
-@@ -13,31 +13,35 @@
- #include "gfxGlyphExtents.h"
- #include "gfxHarfBuzzShaper.h"
- #include "gfxPlatformFontList.h"
- #include "gfxUserFontSet.h"
- #include "mozilla/ClearOnShutdown.h"
+@@ -19,11 +19,13 @@
  #include "mozilla/Likely.h"
  #include "mozilla/MruCache.h"
  #include "mozilla/ServoStyleSet.h"
@@ -1210,10 +1205,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  #include "mozilla/gfx/2D.h"
  #include "mozilla/gfx/Logging.h"  // for gfxCriticalError
  #include "mozilla/gfx/PathHelpers.h"
- #include "mozilla/intl/Locale.h"
- #include "mozilla/intl/String.h"
- #include "mozilla/intl/UnicodeProperties.h"
- #include "nsLayoutUtils.h"
+@@ -34,6 +36,8 @@
  #include "nsStyleConsts.h"
  #include "nsStyleUtil.h"
  #include "nsUnicodeProperties.h"
@@ -1222,17 +1214,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  
  #ifdef XP_WIN
  #  include "gfxWindowsPlatform.h"
- #endif
- 
- using namespace mozilla;
- using namespace mozilla::gfx;
- using namespace mozilla::intl;
-@@ -139,35 +143,37 @@
-          aLength * sizeof(CompressedGlyph));
- 
-   return storage;
- }
- 
+@@ -147,25 +151,27 @@
  already_AddRefed<gfxTextRun> gfxTextRun::Create(
      const gfxTextRunFactory::Parameters* aParams, uint32_t aLength,
      gfxFontGroup* aFontGroup, gfx::ShapedTextFlags aFlags,
@@ -1263,17 +1245,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
        mShapingState(eShapingState_Normal) {
    NS_ASSERTION(mAppUnitsPerDevUnit > 0, "Invalid app unit scale");
    NS_ADDREF(mFontGroup);
- 
- #ifndef RELEASE_OR_BETA
-   gfxTextPerfMetrics* tp = aFontGroup->GetTextPerfMetrics();
-   if (tp) {
-     tp->current.textrunConst++;
-@@ -1568,17 +1574,17 @@
- 
-   gfx::ShapedTextFlags flags =
-       gfx::ShapedTextFlags::TEXT_IS_8BIT | aOrientation;
-   bool vertical =
-       !!(GetFlags() & gfx::ShapedTextFlags::TEXT_ORIENT_VERTICAL_UPRIGHT);
+@@ -1577,7 +1583,7 @@
    gfxFontShaper::RoundingFlags roundingFlags =
        aFont->GetRoundOffsetsToPixels(aDrawTarget);
    aFont->ProcessSingleSpaceShapedWord(
@@ -1282,17 +1254,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
        [&](gfxShapedWord* aShapedWord) {
          const GlyphRun* prevRun = TrailingGlyphRun();
          bool isCJK = prevRun && prevRun->mFont == aFont &&
-                              prevRun->mOrientation == aOrientation
-                          ? prevRun->mIsCJK
-                          : false;
-         AddGlyphRun(aFont, FontMatchType::Kind::kUnspecified, aCharIndex, false,
-                     aOrientation, isCJK);
-@@ -1866,16 +1872,32 @@
-       mDevToCssSize(aDevToCssSize),
-       mUserFontSet(aUserFontSet),
-       mTextPerf(aTextPerf),
-       mPageLang(gfxPlatformFontList::GetFontPrefLangFor(aLanguage)),
-       mExplicitLanguage(aExplicitLanguage),
+@@ -1875,6 +1881,22 @@
        mFontVariantEmoji(aVariantEmoji) {
    // We don't use SetUserFontSet() here, as we want to unconditionally call
    // EnsureFontList() rather than only do UpdateUserFonts() if it changed.
@@ -1315,17 +1277,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  }
  
  gfxFontGroup::~gfxFontGroup() {
-   // Should not be dropped by stylo
-   MOZ_ASSERT(!Servo_IsWorkerThread());
- }
- 
- static StyleGenericFontFamily GetDefaultGeneric(nsAtom* aLanguage) {
-@@ -2460,22 +2482,22 @@
-     uint32_t aAppUnitsPerDevUnit) {
-   // only use U+2010 if it is supported by the first font in the group;
-   // it's better to use ASCII '-' from the primary font than to fall back to
-   // U+2010 from some other, possibly poorly-matching face
-   static const char16_t hyphen = 0x2010;
+@@ -2469,12 +2491,12 @@
    RefPtr<gfxFont> font = GetFirstValidFont(uint32_t(hyphen));
    if (font->HasCharacter(hyphen)) {
      return MakeTextRun(&hyphen, 1, aDrawTarget, aAppUnitsPerDevUnit, aFlags,
@@ -1340,17 +1292,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  }
  
  gfxFloat gfxFontGroup::GetHyphenWidth(
-     const gfxTextRun::PropertyProvider* aProvider) {
-   if (mHyphenWidth < 0) {
-     RefPtr<DrawTarget> dt(aProvider->GetDrawTarget());
-     if (dt) {
-       RefPtr<gfxTextRun> hyphRun(
-@@ -2486,17 +2508,17 @@
-   }
-   return mHyphenWidth;
- }
- 
- template <typename T>
+@@ -2495,7 +2517,7 @@
  already_AddRefed<gfxTextRun> gfxFontGroup::MakeTextRun(
      const T* aString, uint32_t aLength, const Parameters* aParams,
      gfx::ShapedTextFlags aFlags, nsTextFrameUtils::Flags aFlags2,
@@ -1359,17 +1301,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
    if (aLength == 0) {
      return MakeEmptyTextRun(aParams, aFlags, aFlags2);
    }
-   if (aLength == 1 && aString[0] == ' ') {
-     return MakeSpaceTextRun(aParams, aFlags, aFlags2);
-   }
- 
-   if constexpr (sizeof(T) == sizeof(uint8_t)) {
-@@ -2505,38 +2527,43 @@
- 
-   if (MOZ_UNLIKELY(GetStyle()->AdjustedSizeMustBeZero())) {
-     // Short-circuit for size-0 fonts, as Windows and ATSUI can't handle
-     // them, and always create at least size 1 fonts, i.e. they still
-     // render something for size 0 fonts.
+@@ -2514,8 +2536,13 @@
      return MakeBlankTextRun(aString, aLength, aParams, aFlags, aFlags2);
    }
  
@@ -1384,15 +1316,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
    if (!textRun) {
      return nullptr;
    }
- 
-   InitTextRun(aParams->mDrawTarget, textRun.get(), aString, aLength, aMFR);
- 
-   textRun->FetchGlyphExtents(aParams->mDrawTarget);
- 
-   return textRun.forget();
- }
- 
- // MakeTextRun instantiations (needed by Linux64 base-toolchain build).
+@@ -2531,11 +2558,11 @@
  template already_AddRefed<gfxTextRun> gfxFontGroup::MakeTextRun(
      const uint8_t* aString, uint32_t aLength, const Parameters* aParams,
      gfx::ShapedTextFlags aFlags, nsTextFrameUtils::Flags aFlags2,
@@ -1406,17 +1330,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  
  // ComputeRanges instantiation (used by
  // gfxPlatformFontList::ListFontsUsedForString).
- template void gfxFontGroup::ComputeRanges(nsTArray<TextRange>&, const char16_t*,
-                                           uint32_t, Script,
-                                           gfx::ShapedTextFlags);
- 
- // Helper to get a hashtable that maps tags to Script codes, created on first
-@@ -2593,18 +2620,19 @@
-                       const std::pair<const nsAtom*, Script>& aValue) {
-       return aKey == aValue.first;
-     }
-   };
- 
+@@ -2602,8 +2629,9 @@
    static LangScriptCache sCache;
    static RWLock sLock("LangScriptCache lock");
  
@@ -1428,17 +1342,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  
    {
      // Try to use a cached value without taking an exclusive lock.
-     AutoReadLock lock(sLock);
-     auto p = sCache.Lookup(aLanguage);
-     if (p) {
-       return p.Data().second;
-     }
-@@ -3079,17 +3107,17 @@
-       firstFont->HasCharacter(kEllipsisChar[0])
-           ? nsDependentString(kEllipsisChar, std::size(kEllipsisChar) - 1)
-           : nsDependentString(kASCIIPeriodsChar,
-                               std::size(kASCIIPeriodsChar) - 1);
- 
+@@ -3088,7 +3116,7 @@
    Parameters params = {aRefDrawTarget, nullptr, nullptr,
                         nullptr,        0,       aAppUnitsPerDevPixel};
    return MakeTextRun(ellipsis.BeginReading(), ellipsis.Length(), &params,
@@ -1447,17 +1351,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  }
  
  already_AddRefed<gfxFont> gfxFontGroup::FindFallbackFaceForChar(
-     gfxFontFamily* aFamily, uint32_t aCh, uint32_t aNextCh,
-     FontPresentation aPresentation) {
-   GlobalFontMatch data(aCh, aNextCh, mStyle, aPresentation);
-   aFamily->SearchAllFontsForChar(&data);
-   gfxFontEntry* fe = data.mBestMatch;
-@@ -3487,17 +3515,17 @@
-       // For platform fonts, but not user fonts, consider intra-family
-       // fallback to handle styles with reduced character sets (see
-       // also above).
-       gfxFontEntry* fe = ff.FontEntry();
-       if (fe && !fe->mIsUserFontContainer && !fe->IsUserFont()) {
+@@ -3496,7 +3524,7 @@
          font = FindFallbackFaceForChar(ff, aCh, aNextCh, presentation);
          if (font) {
            if (CheckCandidate(font,
@@ -1466,11 +1360,6 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
              return font.forget();
            }
          }
-       }
-     }
-   }
- 
-   if (fontListLength == 0) {
 diff --git a/gfx/thebes/gfxTextRun.h b/gfx/thebes/gfxTextRun.h
 --- a/gfx/thebes/gfxTextRun.h
 +++ b/gfx/thebes/gfxTextRun.h

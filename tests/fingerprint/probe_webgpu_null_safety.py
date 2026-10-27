@@ -83,7 +83,7 @@ def run_case(binary, root, case, enabled, disabled):
         driver.set_script_timeout(15)
         try:
             info = chrome(driver, "return {version:Services.appinfo.version,buildID:Services.appinfo.appBuildID}")
-            assert info["version"].startswith("158."), info
+            assert info["version"].startswith("159."), info
             results.append({"browserInfo": info})
             config = chrome(driver, """
                 const key='cloakfox.s.cloak_cfg_0';

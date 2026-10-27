@@ -110,7 +110,7 @@ def main():
                         mask:{canvasSeed:cfg['canvas:seed'],validSecret,
                           policy:cfg['privacy:policy']??null}};""")
                     assert identity["name"] == ("Firefox" if stock else "Cloakfox"), identity
-                    assert identity["version"].startswith("158."), identity
+                    assert identity["version"].startswith("158." if stock else "159."), identity
                     assert identity["enabled"] is enabled, identity
                     protected = enabled and not stock
                     if protected:

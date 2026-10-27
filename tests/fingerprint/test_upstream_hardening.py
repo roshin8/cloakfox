@@ -218,13 +218,18 @@ int main() {
 import assert from 'node:assert/strict';
 class Store {
   #windows = {tracked: {}};
+  #windowIds = new WeakMap();
+  constructor(trackedWindow) { this.#windowIds.set(trackedWindow, 'tracked'); }
   get tracked() { return this.#windows.tracked; }
   """ + method + """
 }
-const store = new Store();
+const trackedWindow = {};
+const store = new Store(trackedWindow);
 store.maybeDontRestoreTabs({});
 store.maybeDontRestoreTabs({__SSi: 'gone'});
 store.maybeDontRestoreTabs({__SSi: 'tracked'});
+assert.equal(store.tracked._maybeDontRestoreTabs, undefined);
+store.maybeDontRestoreTabs(trackedWindow);
 assert.equal(store.tracked._maybeDontRestoreTabs, true);
 """], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)

@@ -121,25 +121,15 @@ diff --git a/docshell/base/BrowsingContext.cpp b/docshell/base/BrowsingContext.c
 diff --git a/docshell/base/BrowsingContext.h b/docshell/base/BrowsingContext.h
 --- a/docshell/base/BrowsingContext.h
 +++ b/docshell/base/BrowsingContext.h
-@@ -1581,16 +1581,18 @@
-   bool CanSet(FieldIndex<IDX_ForceOffline>, bool aNewValue,
-               ContentParent* aSource);
- 
-   bool CanSet(FieldIndex<IDX_InnerSizeSpoofedForRFP>, const CSSIntSize&,
-               ContentParent*) {
-     return IsTop();
-   }
+@@ -1359,6 +1359,8 @@
+   template <size_t I, typename T>
+   void DidSet(FieldIndex<I>, T&& aOldValue) {}
  
 +  void DidSet(FieldIndex<IDX_InnerSizeSpoofedForRFP>, CSSIntSize aOldValue);
 +
-   bool CanSet(FieldIndex<IDX_EmbeddedInContentDocument>, bool,
-               ContentParent* aSource) {
-     return CheckOnlyEmbedderCanSet(aSource);
-   }
+   void DidSet(FieldIndex<IDX_SessionStoreEpoch>, uint32_t aOldValue);
  
-   bool CanSet(FieldIndex<IDX_IPAddressSpace>, nsILoadInfo::IPAddressSpace,
-               ContentParent*) {
-     return XRE_IsParentProcess();
+   // Ensure that opener is in the same BrowsingContextGroup.
 diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
 --- a/dom/base/Element.cpp
 +++ b/dom/base/Element.cpp
@@ -166,12 +156,7 @@ diff --git a/dom/base/Element.cpp b/dom/base/Element.cpp
 diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
 --- a/dom/base/ScreenOrientation.cpp
 +++ b/dom/base/ScreenOrientation.cpp
-@@ -700,50 +700,58 @@
-                                       mFullscreenListener,
-                                       /* useCapture */ true);
-   }
- 
-   mFullscreenListener = nullptr;
+@@ -728,7 +728,9 @@
  }
  
  OrientationType ScreenOrientation::DeviceType(CallerType aCallerType) const {
@@ -182,16 +167,7 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
            aCallerType, GetRelevantGlobal(), RFPTarget::ScreenOrientation)) {
      Document* doc = GetResponsibleDocument();
      BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
-     if (!bc) {
-       return nsRFPService::GetDefaultOrientationType();
-     }
-     if (bc->GetOrientationLock() == hal::ScreenOrientation::None) {
-       CSSIntSize size = bc->TopInnerSizeSpoofedForRFP();
-       return nsRFPService::ViewportSizeToOrientationType(size.width,
-                                                          size.height);
-     }
-   }
-   return mType;
+@@ -745,7 +747,9 @@
  }
  
  uint16_t ScreenOrientation::DeviceAngle(CallerType aCallerType) const {
@@ -202,16 +178,7 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
            aCallerType, GetRelevantGlobal(), RFPTarget::ScreenOrientation)) {
      Document* doc = GetResponsibleDocument();
      BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
-     if (!bc) {
-       return 0;
-     }
-     if (bc->GetOrientationLock() == hal::ScreenOrientation::None) {
-       CSSIntSize size = bc->TopInnerSizeSpoofedForRFP();
-       return nsRFPService::ViewportSizeToAngle(size.width, size.height);
-     }
-   }
-   return mAngle;
- }
+@@ -762,6 +766,10 @@
  
  OrientationType ScreenOrientation::GetType(CallerType aCallerType,
                                             ErrorResult& aRv) const {
@@ -222,17 +189,7 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
    // Cloakfox: always landscape-primary on desktop profiles
    if (auto v = MaskConfig::GetString("screen:orientation:type")) {
      const std::string& s = v.value();
-     if (s == "landscape-primary") return OrientationType::Landscape_primary;
-     if (s == "landscape-secondary") return OrientationType::Landscape_secondary;
-     if (s == "portrait-primary") return OrientationType::Portrait_primary;
-     if (s == "portrait-secondary") return OrientationType::Portrait_secondary;
-   }
-@@ -761,16 +769,20 @@
-     CSSIntSize size = bc->TopInnerSizeSpoofedForRFP();
-     return nsRFPService::ViewportSizeToOrientationType(size.width, size.height);
-   }
-   return orientation;
- }
+@@ -789,6 +797,10 @@
  
  uint16_t ScreenOrientation::GetAngle(CallerType aCallerType,
                                       ErrorResult& aRv) const {
@@ -243,11 +200,6 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
    Document* doc = GetResponsibleDocument();
    BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
    if (!bc) {
-     aRv.Throw(NS_ERROR_UNEXPECTED);
-     return 0;
-   }
- 
-   uint16_t angle = static_cast<uint16_t>(bc->GetCurrentOrientationAngle());
 diff --git a/dom/base/VisualViewport.cpp b/dom/base/VisualViewport.cpp
 --- a/dom/base/VisualViewport.cpp
 +++ b/dom/base/VisualViewport.cpp
@@ -601,12 +553,7 @@ diff --git a/dom/base/nsGlobalWindowInner.cpp b/dom/base/nsGlobalWindowInner.cpp
 diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
 --- a/dom/base/nsGlobalWindowInner.h
 +++ b/dom/base/nsGlobalWindowInner.h
-@@ -671,16 +671,20 @@
-     return mDocumentPiP;
-   }
- 
-   mozilla::dom::DocumentPictureInPicture* DocumentPictureInPicture();
- 
+@@ -684,6 +684,10 @@
    // https://w3c.github.io/webappsec-secure-contexts/#dom-window-issecurecontext
    bool IsSecureContext() const;
  
@@ -617,11 +564,6 @@ diff --git a/dom/base/nsGlobalWindowInner.h b/dom/base/nsGlobalWindowInner.h
    mozilla::dom::External* External();
  
    mozilla::dom::Worklet* GetPaintWorklet(mozilla::ErrorResult& aRv);
- 
-   // Audio fingerprint seed for per-context audio fingerprinting
-   void SetAudioFingerprintSeed(uint32_t seed, mozilla::ErrorResult& aRv);
- 
-   // Screen dimension methods for per-context screen spoofing
 diff --git a/dom/base/nsGlobalWindowOuter.cpp b/dom/base/nsGlobalWindowOuter.cpp
 --- a/dom/base/nsGlobalWindowOuter.cpp
 +++ b/dom/base/nsGlobalWindowOuter.cpp

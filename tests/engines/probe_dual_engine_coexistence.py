@@ -1,4 +1,4 @@
-"""Run Gecko 158 and CEF concurrently against one owned origin and private roots."""
+"""Run Gecko 159 and CEF concurrently against one owned origin and private roots."""
 import argparse
 import http.server
 import json
@@ -77,7 +77,7 @@ def main():
             driver.set_context('chrome')
             try:info=driver.execute_script('return {version:Services.appinfo.version,buildID:Services.appinfo.appBuildID,cloakfoxEnabled:Services.prefs.getBoolPref("cloakfox.enabled"),resistFingerprinting:Services.prefs.getBoolPref("privacy.resistFingerprinting")}')
             finally:driver.set_context('content')
-            assert info['version'].startswith('158.'),info
+            assert info['version'].startswith('159.'),info
             assert info['cloakfoxEnabled'] is True and info['resistFingerprinting'] is False,info
             report['gecko']=info
             app=Companion(args.chromium_binary.resolve(),chromium_root)
@@ -100,8 +100,8 @@ def main():
             exact(gecko(),None)
             first=open_cef('1',url);second=open_cef('2',url)
             for browser in (first,second):exact(cef(browser),None)
-            a=gecko('gecko158');b=cef(first,'chromium1');c=cef(second,'chromium2')
-            exact(a,'gecko158');exact(b,'chromium1');exact(c,'chromium2')
+            a=gecko('gecko159');b=cef(first,'chromium1');c=cef(second,'chromium2')
+            exact(a,'gecko159');exact(b,'chromium1');exact(c,'chromium2')
             driver.refresh();assert gecko()==a
             assert cef(first)==b and cef(second)==c
             report['checks'].append('Concurrent same-origin cookies/localStorage/IndexedDB stay engine- and container-owned; canvas reads stable')
@@ -109,7 +109,7 @@ def main():
             assert app.rpc('close',browser=private)['ok'];app.wait(lambda x:x.get('event')=='closed' and x.get('browser')==private)
             store.forget_private('1','chromium')
             private=open_cef('1',url,private=True);exact(cef(private),None)
-            exact(gecko(),'gecko158');exact(cef(first),'chromium1')
+            exact(gecko(),'gecko159');exact(cef(first),'chromium1')
             report['checks'].append('Private Chromium destruction/regeneration does not alter persistent Gecko/Chromium state')
             app.close();app=None
             driver.refresh();assert gecko()==a
