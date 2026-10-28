@@ -6,6 +6,7 @@ export class CloakfoxContainerProxyEditorParent extends JSWindowActorParent {
     const api=ChromeUtils.importESModule('resource:///modules/CloakfoxContainerProxyEditor.sys.mjs');
     if (message.name==='Read') return api.readMACProxy(message.data);
     if (message.name==='Save') return api.saveMACProxy(message.data);
+    if(message.name==='CloseSelectedTabs')return ChromeUtils.importESModule('resource:///modules/CloakfoxContainerTabs.sys.mjs').closeSelectedContainerTabs(this,message.data);
     const bulk=ChromeUtils.importESModule('resource:///modules/CloakfoxContainerBulk.sys.mjs');
     if(message.name==='BulkList')return bulk.listBulkContainers();
     if(message.name==='BulkProxy')return bulk.applyBulkProxy(message.data);
