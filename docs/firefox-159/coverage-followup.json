@@ -1,0 +1,415 @@
+{
+  "date": "2026-10-28",
+  "scope": "Known Firefox159 regression probe inventory; not source coverage or every possible settings combination",
+  "baseAcceptance": "acceptance.json",
+  "candidate": {
+    "source": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/Cloakfox.app",
+    "copy": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-viewport/Cloakfox.app",
+    "nativeFilesIdentical": {
+      "Contents/MacOS/cloakfox": "38da5601627ed7aec37c137e2bd19216d81b477d4ab20562e762d417f83ade6f",
+      "Contents/MacOS/XUL": "a020a8207b2afd038c98233bb27e205042aa2232e1058522cc2f4004d6f4430d",
+      "Contents/Resources/canonical-gpu/manifest.json": "c6156ce3ddf2c7df8e6b95d142fc07f915c32c697a5bf3a11ee9229c0e05cad2",
+      "Contents/Resources/canonical-gpu/libEGL_cloakfox_canonical.dylib": "049ba7e2449b060fb1a847f20e2e691f0cefe8695edd1979b0200a7b7a8ff53f",
+      "Contents/Resources/canonical-gpu/libGLESv2_cloakfox_canonical.dylib": "e7809c314167f50440958c285b3d87a391f16833cd3a9811fd11bde8fa7b9163",
+      "Contents/Resources/canonical-gpu/libvk_swiftshader.dylib": "932a2fee966160092e518f002699161c64b7a9b2429fdf12bf9b8d086e7876e5"
+    },
+    "selfContained": true,
+    "installed": false
+  },
+  "headless": true,
+  "productionPreferencesChanged": false,
+  "passedProbeCount": 161,
+  "totalKnownProbes": 163,
+  "inconclusiveProbes": 0,
+  "remaining": {
+    "probe_appearance_restart.py": "NSWorkspace relaunch can activate an app despite headless environment",
+    "probe_privacy_enforcement.py": "Real display-capture negative path may reach OS chooser on regression"
+  },
+  "additionalResults": [
+    {
+      "probe": "probe_canvas_canonical_gpu.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_container_gpu_profiles.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_container_rendering_feasibility.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_webgpu_canvas_owner.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_cpp_first.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_cpp_first_priority.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_signature_selection.py",
+      "chromeReference": false,
+      "code": 0
+    },
+    {
+      "probe": "probe_signature_selection.py",
+      "chromeReference": true,
+      "code": 0
+    },
+    {
+      "probe": "probe_chrome_network_baseline.py",
+      "chromeReference": false,
+      "code": 0
+    },
+    {
+      "probe": "probe_regions.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_per_container.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_camera_nicknames.py",
+      "code": 0
+    }
+  ],
+  "probeSourceSHA256": {
+    "probe_about_dialog.py": "251aef9c3fdfde0f0521ee07624ca98e4218334d1297ff45232eb418316d4312",
+    "probe_actor_stealth.py": "71465d0d2b7537dac2b9abd4b66fa2b647f4f1eeab33bbf4fa186fba7233ff58",
+    "probe_actors.py": "e2164ca47b0e48f469d67c3881430235ed42fb95dd8bb710df06a764cf8b4cc0",
+    "probe_alps_identity.py": "1e77e13f2d5440e7d38e51f4a69ca06c9dd79c9ca3e8e4ec0f9da9e0a9c7f437",
+    "probe_appearance.py": "7e364e95f5737a683ca9c184e3c7f9a22c23ef5df916c1d09c3c41f56f064d1c",
+    "probe_appearance_profile.py": "1e2fbafab8a267d2522f55e57cb8863f35b6564d880b3b12503f184414a66b40",
+    "probe_audio_website_labels.py": "9672a9bb363c6a8b2f9c42ec6d72ec76fc495089bdd27d6af926b8e09410bdbf",
+    "probe_audioworklet_privacy.py": "ca104d0bed8bd8d481951723039023555c905d73eaa5433c8c487f9e9429814c",
+    "probe_background_activity.py": "04a3a04f29260c61abc5de78c4637f79715ce2c298989c59683cf3a1b258e4b8",
+    "probe_bitmap_export_protection.py": "d3a5ccb979702d605f9cce7838ad8b59703b8597b46101c5549796eca22e159a",
+    "probe_browser_profile_picker.py": "d5b6569710dcda20b9991c85ffa0d46712c1ecc62a0b8b480f15075815116683",
+    "probe_bulk_containers.py": "b82a80ab70cb2042261cc195d88c6b6eb2875918c72c983208b71aabee246110",
+    "probe_bundled_blocker.py": "43a4186b235ef42e0fdd95f59e8fe129f4a1d65dc14fea838e1669d67c6813ad",
+    "probe_bundled_containers.py": "a82c5d5a624c408aa57334b4d5b5178c62e2863bd3b7bdf404236a807b7ba1f5",
+    "probe_bundled_font_rendering.py": "8b6e9571b691b61c5af4c4b15dc7c492acb7bf5700477ecd128e7497af4ecb64",
+    "probe_bundled_fonts.py": "f84ee711aa62165ec46f48832f798ffe688999a519937f83c006cf3a1a999627",
+    "probe_camera_exposure.py": "78af628fb9dbaedb9af8e2b700acd25ac2b52dddf3f94a48c5f0d0c82c355ebb",
+    "probe_camera_nicknames.py": "9026e2b736da5d73af4abac340813285b52cbf4c860d24ad4e376adf678b70f9",
+    "probe_camera_website_labels.py": "0ecf59b9b457c8596965ecb51a5408ac1ceedda68c501e9f16b12dc91ea5bed4",
+    "probe_camoufox_followup.py": "92b687e48d3c2de36392849ec5d8d4822a5fff69a347bbb634598370519c2de2",
+    "probe_camoufox_speech_errors.py": "ec5c571f12c771dd8040835e9a2762bf067df5f3fb58ca7e4d5a2e04f516837c",
+    "probe_canonical_gpu_standalone.py": "56298d6acac3048bc1f6d5f7da1d41c41c58a1a602150be0b68ba144edad5113",
+    "probe_canvas_canonical_adversarial.py": "2d56539ebfc1420b5a35aa1c67d014d61a49b0b1866b9974ef2093505e9a3307",
+    "probe_canvas_canonical_backing.py": "4552ee2d0da5403427f896bc3a0601ab05fa11ccd620d6c99afbb4ea90ddd0a0",
+    "probe_canvas_canonical_capture.py": "e3749ec1d27661585e1e166fcda377293abcd4b129a165fac8ed10419bf76179",
+    "probe_canvas_canonical_encoders.py": "f100366fe4fe4fb6d31aba1e4f54ce6763918340583a7f6046d916192ef31e0c",
+    "probe_canvas_canonical_fonts.py": "0b8ee3dd3398722b4d4b74964b3fb5e16e5cf129b3bff5b5aff6f0ba6e7727b1",
+    "probe_canvas_canonical_gpu.py": "658fe4d2947424ab15e2ccd965813670f9214ed81e7d1e5e2b55d6ede0022c0c",
+    "probe_canvas_canonical_images.py": "dbdf303f8f005aeeedc3e4bb7cd5a964d0b713c23edeb2ce26607cd559bf3e2c",
+    "probe_canvas_canonical_media_codecs.py": "0317d5bb5d9de6c1163ffc101079ce5f2d1deabb57ceed88e8952c5349ba9978",
+    "probe_canvas_canonical_performance.py": "018de62a0f010147b604e674114b065c0c53821dac4dc350e9f980dd6197aca8",
+    "probe_canvas_canonical_raw_video.py": "8f26f304fe3ddeb55413db6bd06b7f4b79d1da7798140be83e5a44b1abc3f359",
+    "probe_canvas_canonical_svg_golden.py": "38533b67a432041cc95360bbcf007393a8dd0218b1f1fe4d63e9f40414e6cb68",
+    "probe_canvas_canonical_text.py": "2b6ac6e3747690d62493888ed21e71f3a4d2645ed6238170c36a5ca432d16972",
+    "probe_canvas_capture_fallback.py": "d2b504919b4547951a1414f9dacdb196e36cdd2e703cd37a4f82771fceeb80ba",
+    "probe_canvas_consistency.py": "790d2ade1181006e8fb7e87d1661b29cffc88e49024915706d8e73e91521e2fe",
+    "probe_canvas_first_glyph.py": "c65f015dc94c6fa84c5b500cfcea8cb0af33de23a1c633af88b9af2c074d494a",
+    "probe_canvas_owner_transfer.py": "234ec77501538f67afa6316a75752beeb312fdb605a2ab454cd7f57e5ffb266f",
+    "probe_canvas_pipeline_baseline.py": "47f660e347e3f091cee67a3010d02a47ff1a39e9b46867f3222f31007d929e9e",
+    "probe_canvas_pixel_transfers.py": "2b9e52b156fb3368a7fa0855f0c60d0d287f29a47f17d3cd42fb61566656cd0a",
+    "probe_canvas_render_privacy.py": "5956055f2f588014cd05c33f80a1ef0e02886ade700ce4f81ba6e1187d3fb8a8",
+    "probe_canvas_unseeded_guards.py": "1de04f38b8a521cb385867fd133c14d40be505576f6aca71d87f481bae7205c8",
+    "probe_capture_label_scope.py": "443c800e9682880f51c0259f24f0ebe2a737f8e80aaf2fa372dbe8fbdea51642",
+    "probe_chrome_network_baseline.py": "c1fcf9676b238d632ef39883fd25524d4b19fb57db92b078c8e3124816a1e83e",
+    "probe_clipboard_masking.py": "2cff836a68908adcdb846d51459bb8c88a0866e04bd768a09a8d5505ca9daded",
+    "probe_coderpad_media.py": "a859a39f026049487b4a0dadf159bad772c0398ad28738e8547de49dfa167493",
+    "probe_container_fonts.py": "1d11759a238d2bc9f114789c15e52122cd1e2b51db156bda6d1e55a702f03ca4",
+    "probe_container_gpu_profiles.py": "eed704b44578b25c80a67b6602aeae0c130f9a1e0c949a05e9bbc4c3f94f11da",
+    "probe_container_isolation.py": "cd05a030dd6fbcaf986538bdaab043e5a091067276f1daa661b46648d1bb92fb",
+    "probe_container_rendering_feasibility.py": "e22ad86c6f31b6d5fcd6d147be7b651c9b10498e5ddd9cd16075b5aeabc99bfd",
+    "probe_container_workflows.py": "8a3df75645dcb35bf70c9f233927586cf3c28fb3506b0f9c8696cd99c24614b4",
+    "probe_cpp_first.py": "6c8a92a3f5b1890743018133336c48778c9ad5432ffba2cc0c381f313da2e95a",
+    "probe_cpp_first_priority.py": "8de6748c1b6f57256e7e223092ba479af6b93732709d1327b25ff5812ccda4fd",
+    "probe_css_media_privacy.py": "88a71ffaef0cec545ed2fa33e0b3e95eaac5592cb6fa7f2d1413793e039560df",
+    "probe_daily_defaults.py": "f4f4e4f3c6874a8101b703fa38c2966f7439f5365c20fa4cba5eff5c23cfcecf",
+    "probe_daily_settings_ui.py": "a931f617987cf35997b3c3a5b9ab1cdc86fb760469403bd1cbafb16114ded201",
+    "probe_detached_frame_timers.py": "d2f41b9b3b18b8b1d0b499bc0f0eb60e0998245502400ef8d91c3be8569bec7c",
+    "probe_dns_network.py": "f72232fd62d98f1fdc9a39b8dfc53770142d92d4ac7004de3621786f6ca231ed",
+    "probe_dom_geometry_consistency.py": "789126f40a42c0c1dfcd0f02715c2e356354d00efa4a9743fdfcc57bcd83bfe3",
+    "probe_ech_identity.py": "34a6d57cb01e2ebfc5de596a6a78862a15c3b2f7d2345e283b9e280d36325755",
+    "probe_enabled_killswitch.py": "f29109391de2fa6df4fa0ffef3dcad8c20a89fa79abdfdb0ba603af619f91d24",
+    "probe_engine_presentation.py": "5b97da0c90d1768caf3a59143df432e5e36eae4012d715c1ce1d53f4049d03c1",
+    "probe_firefox158_features.py": "94ac1463ee950d3e6b664e7d55305fd84ec08784929cfc74c7abf3a20d26e9e6",
+    "probe_focus_masking.py": "157c286fa1e073d0673cf5a06770e246630143622cedbb55d877cc4fbf240ac8",
+    "probe_font_allowlist.py": "3e7bae162da506eb4ad9d4d9cbca0ed7bd57daa8c4ac7e7de79226f4514d34d6",
+    "probe_font_metric_noise.py": "118b3f274f7a6f434aded40cfb74eb76316ffd7ee5ee54678bbb35ea749d4aa9",
+    "probe_fontface_loading.py": "6f4fec090d8a042c9d60fbdfa78a291d8cfb75458fd7884afc2b1faff779a31e",
+    "probe_fullscreen_gate.py": "2303d1f242e2fa447ab8365c730d798c866fdec1ff094e1497cb69e3cf479e86",
+    "probe_generation_clear_overrides.py": "2fae62ddeae0069b7f604ffeaef0b7f4d3d24dfadbf096c6365be7ff6398d6aa",
+    "probe_graphics_optins_settings.py": "713fdb830702313efcb972b94fd1a08f964c2a56f896e9e091db3ae5bfebb936",
+    "probe_graphics_privacy.py": "aa1cc2bc1f8509503506b05dd728860fd0ff7db02224f55fcc524425dbba3879",
+    "probe_h2_per_container.py": "77f8dc9dc554c7f47532bb76bae1905f890ebfff8a7d43971d17bbf93c73eac0",
+    "probe_hackerrank_media_recovery.py": "d83d3f1796f823591c1e92983d876a631dc9a2f00916f979ed3b55c77a59dce9",
+    "probe_host_personas.py": "5e5f863e7c3c399044e27f05a3adb797138e604e992095b905f161c094ae2c59",
+    "probe_identifier_leaks.py": "7df5d37c399c9ad6f567c05e31f8afa69e9c46c6cc0ea84d70b37d9ec82e9260",
+    "probe_identity_forget.py": "a19d585f6e5aa601422d625e201f89630506d1131f158819859c942375cb2e24",
+    "probe_identity_network_gaps.py": "09d62f49b664259f4ededc336abb582ab113d021eca3a192c1aca07cd40a6984",
+    "probe_ip_check_routes.py": "6caa95d56880b3e1b36473a29bd3e96323c38d5e36c14d949284f7270c23497e",
+    "probe_ip_conflict_settings.py": "fc8f1cdf66c2433077ee90edac3824575b4457419042921d91cd13f4ea26dd4d",
+    "probe_ip_conflicts.py": "7516191b354b44c7fbaef9d45e082467c1f412a4ff5c9045c458c3b9e1d00bee",
+    "probe_js_spoofers.py": "743aa038ef9df73b5721f93c8e5652ddae273f14fe11e2a27d2170cb257daed8",
+    "probe_keyboard_actor.py": "5e2621196f353da0ca7f0db8b2c1d0d028be8a12f1ebd1b1a2b47cb273f92fde",
+    "probe_keyboard_lifecycle.py": "759986419604aa3ecbe7207d4868794f55bcc6dca8c98d68f32ca8696c9b365c",
+    "probe_language_scopes.py": "7e5dc35e40a942176e4038444587be7031715a54a441a528cb5b9199b694a6f6",
+    "probe_letterboxing.py": "2089c89f8546c491666561e01c1ae711be827bbb6a0b1753ed846c3db0def2aa",
+    "probe_locale_tags.py": "49db1c0a183571b5137741fff09adbebb8f495864f1f5449900e6541c8ff4f0f",
+    "probe_mac_proxy_auth.py": "ef3aa903420c659aa2db04935668232ff5beed30b5156c73426eeae079d19106",
+    "probe_math_data_noise.py": "5e37f26a071ffbc52a8a5b78458b5a131c0988732db68ed7e00d4f38ee5e9c8d",
+    "probe_media_capabilities.py": "62f881d14b8a9b7cfcc339f311e0c8a0a1faa3092f52afac83d0d5a4112278e3",
+    "probe_media_permissions.py": "2fd70f35c04930c7a63fe3f3dd1eb46582a953b58a123653a8ed91e618d4043f",
+    "probe_microphone_exposure.py": "f7a4de68b1950e578980e4febb801de40d3684bfb8f1f50bf3152ecc6adbefe9",
+    "probe_monaco_focus.py": "76b9f7e647336b02e5e18f94fa4908350467d5b7719df78f1cc24028c7df2579",
+    "probe_native_webrtc_policy.py": "f330159c33c5886a9b6adcf2aaa7ae8f4e738538bc8270311938dcfb0e9153fb",
+    "probe_navigator_coherence.py": "7ac40df691a402763cf9ea2abffe2dd56bf6d0ffea80ba3c1e7cc26bbdbc46f4",
+    "probe_network_identity.py": "10139d1314a958fdedba2316e91989b28e8fc9fe0349ba62eeb9da0791e0c190",
+    "probe_network_policy.py": "f7a5224e123c6da4b425db261d811cd257fb3b21166bf4945ccb333a949a1cf0",
+    "probe_network_profile_controls.py": "6ec77e6dc43cd1432756f2a8953f4ef10558c3e2a5503764bbd4af1bc7d7ce44",
+    "probe_network_profile_settings.py": "adb867346f483c8cb69710a7a6a925d597a8ef43b62f5eef2dc36ba1c803f076",
+    "probe_network_quic.py": "f44a8b13e8c3005779c715b2c9fe86ace14231451028725fac5ba6aef62d7e8c",
+    "probe_network_resumption.py": "f2772878ea1418ff857e140a3f65371624d255355d9a09147c693b6de1e8b4b3",
+    "probe_network_transports.py": "b55cd839db4b8fb430f01d27e589e6dcf8b1125cbc51c0872278b0c864ac5ce0",
+    "probe_network_wire.py": "7033acf70022724e6b1f7e948610cbe3d178f2ddd6ed3de007ef7cc31fcaa830",
+    "probe_packaged_resource_inventory.py": "d419ee929bed598b68aeec54f6abc8a36fe547e0ef0b18a36d18297a6342b51d",
+    "probe_per_container.py": "95c811b634cb9f033fdf9fd327d13d55542963b6c6a2116bf306d7f6ff61ee82",
+    "probe_performance_timeline.py": "a76ec3f7112c40dde0fd7fd7ec74cdda4c928e65c3f61e80d5c524cc1b39dfb9",
+    "probe_permissions_workspaces.py": "ec23e63bd320fb28e86f18c8ac1f5daa8295ebdd93145ad63e216c0ef460667d",
+    "probe_persona_generation.py": "a576a964d0881fafdc6f2cc1b75e26cd2f8eaf77d0c2daabc5aa85700eee931f",
+    "probe_persona_version.py": "2f446ca9d6c400446d48814236837d194b4a6c42b05f439968629d2c04702da5",
+    "probe_pointer_activity.py": "018b2663b41ac9f2582ca92f763e45a81dea6dda5ef55536819b964e57eecf4f",
+    "probe_privacy_inspector.py": "bca4537b6856bb0757d9659f8c0621de6533c28767343d04675c4770b05cd6e0",
+    "probe_privacy_media_hdr.py": "098b9bd102d1cd9584c28f8cf7189a6ecf7889b2ea231f3a81f2674d69a633c2",
+    "probe_privacy_settings_ownership.py": "f474a052d68f069d8cdebd662b41603d088e0b84a548bc5901e402163e318d47",
+    "probe_privacy_timing_controls.py": "840ffd3381bf71263d7b06a436233590d1fbeac88c1240f8ab844cdb993ac2da",
+    "probe_privileged_viewport.py": "a78627b6c0896f1715ef73e1b5b6c103f93a0ccc4dcc354e2ec4b2965f9be437",
+    "probe_proxy_manager.py": "a7ed291da9d72c3034757e9e89b8e9e6dcdd4f75fb547ffb1a5cb11596ceb9e8",
+    "probe_quic_identity.py": "7e4d8e2d364d23620a5c18630d28a562769a8dce95a6913458a7a0fa6e52d078",
+    "probe_quic_resumption.py": "dac6c9fb41035bb125538ab1dd271d216db76cb90529130f9de8aff0116893d5",
+    "probe_quic_wire.py": "4280e0694aee49fe7dc0ab96a6bdbf2ce7be055b02a6ddaa274da244ac154997",
+    "probe_realm_privacy.py": "fdd07184d7c76547263133dfc4e45a7352b7cb0dfceae3ed03e43e00cf1b7ec2",
+    "probe_regions.py": "6e097e1c8344654ef4327bdba23ba9063879ee3771d5ab33cd99828cea0cd2e7",
+    "probe_screen_management.py": "a9f63bd1e0d27b05ec89af5a35d64db8e89999d90d61846ac77c0adc546255cb",
+    "probe_screen_management_settings.py": "c4085351e8ad7ec4af54d2007d1b0067147b43f132efd9969291a8f82f6a772a",
+    "probe_screen_presentation.py": "3f8ef6e97205b165e436c49033cd7e78beffb8d214fc369dd0e22aa847862e67",
+    "probe_settings_navigation.py": "22985e0426cee366ba26693688f5c906f08213fa9015c88ba9786d6133799f01",
+    "probe_settings_overrides.py": "db30cbd78f4af4456d36ec487e15b8fe897f33a9634a2fd6ba708576c1c8794b",
+    "probe_settings_presets.py": "f71d1f80b650de9b350ca44f7f3cb241b9e821457b0eaf3a96b622c0bb217d87",
+    "probe_shared_permissions.py": "cde6f84dc8536dff1aa0885c40e3d44d5e25d1c5b65a138258f4e4b7d7cee57d",
+    "probe_signature_selection.py": "9b91378a7fe3ca7efaae96114cbf347d16b350c0f808cc997cc0cbce80f0255d",
+    "probe_site_data_cache_scope.py": "3403e04fac6768b7505f0a07d401607b28161ce7c4a1042b3949837f72b7be63",
+    "probe_site_data_scope.py": "d8cd19bfcb5b1faa4b52cbf611e8daa2cc9aa2c4c0ae71994645a8b994088473",
+    "probe_site_isolation.py": "0ec49a63b5817166b5e911695aaa2f5ac8d7d6e605b63250d4063503f842c4ca",
+    "probe_speech_mediaquery.py": "540c76a80f40fbb1b29866a281afdd970883ad49368cce75cc0be4b3eabd8d1b",
+    "probe_stealth.py": "032353eac348a7ad4ab98193b46bb6630b9691e2476bc211fb2ef7ed11351e9a",
+    "probe_strict_graphics_settings.py": "4f44721b81ab530cb9051b703462daf0af349026b9e88dae9c6319c7091ccbc5",
+    "probe_templates.py": "d6298143dd59ede9a6aaf5f7cdd88c8ef3cf2c50b6cf899947aca9e829fd9148",
+    "probe_testdome_recording.py": "0d805f94773eb144ded28f0223723621bd0bfb0ce8fbd8e348c0f0ba36ab663d",
+    "probe_timing_jitter.py": "989c33b80436733f56c2f0dac7276cf52c5e31254564999fed7b166fdbec71e7",
+    "probe_tracking_protection.py": "49c10a40d4cd7ded0c15f8b9a3bfd0c46294ebeaf851d7108a078b647e1764ab",
+    "probe_turn_proxy_negotiation.py": "b89befc263b9956a41671babcdd9d4fd712a5f2d6036378250e0360b1ac2fbac",
+    "probe_turn_proxy_privacy.py": "a5d558d7b6ca10901fa9a8c4f7167781792fd188b2cd663ad062ca2f7518f26b",
+    "probe_untested_vectors.py": "87cd89dcda7956ace2c7484da00491f35ab9f755de3f311150804f587191b93d",
+    "probe_upstream_hardening.py": "a1d2505e6dba6fca9fb3e37cfa6aeccdc5d6cc97041f70da04b61b2fc53c01e1",
+    "probe_user_agent_data.py": "9dae0bc437a9f247af7ba5dca66f726a2c8f2e808616d7f695b0bde82b8509df",
+    "probe_webcodecs_privacy.py": "1f690bfed11846642c3424cba3556e2f91daf6ebc48ff9b831f54164b8c6280d",
+    "probe_webgl_backend_profile.py": "eb98e06289ea0ff5e5775a39ecc585426f9f02f90e76ba5fce3a0e7f888401ae",
+    "probe_webgl_consistency.py": "dd781dd5fa3de9fe0f63d4b138138efe1888ccd1ba66b13b084e62d27c7657a1",
+    "probe_webgl_readback.py": "293c0d335ef66d054442d3cc0be9ad822b97da6e6cedc5863df68bfefe80ebb1",
+    "probe_webgl_tables.py": "414d464933e1a2155f7fcabd36b3d7da5b7daecaae51364c46400c961fc20c68",
+    "probe_webgpu_canvas_owner.py": "08236aabf58da3232ca9d534f8c48b25351708e773774cbcaf1eae6aae83d0ff",
+    "probe_webgpu_null_safety.py": "778f3b0aa03129f99a712031d9ed511f76c5b36f67753df5feeff27acd867bf3",
+    "probe_webrtc_leak.py": "d4abad5255230f1e19f77b4dbe61b667795d9de51362e101da83442eb4b96a98",
+    "probe_website_appearance.py": "0825e2a67c655eac21450a44818cbbe50f8fd83721c7386b2eb383a9246b5271",
+    "probe_websocket_privacy.py": "4f5583760d0302464f5cafc50cd3925efdba12bd3539639aa80ea8e90551449d",
+    "probe_websocket_routes.py": "33003fd8a279b89bf99b9e58009c110ce43ecbf7991ef3e898c6f3d17e7f07c7",
+    "probe_window_geometry_tz.py": "34bfacaffa098f4a40752d4ce9d0643b850f26ee524f95c673370f58416fce3f",
+    "probe_worker_canvas.py": "00ffee42696ed5db2c63224ee6ea72d813aaa19aaa07c0d6325b9a2d3fd6a2d2",
+    "probe_worker_container.py": "fb3553e1025e9d21327b7707ecc9b29cf1c7884e0dff3dbfb9b61f35b318ce14",
+    "probe_worker_debugger_startup.py": "cbfa4ae1f0e0fe3e31180600e1d870d8f0b784e270b4a02ffa4c70ab055258af",
+    "probe_worker_lifecycle.py": "5a680fe6ce5b641e120e452ecd21fc80e24cff81405cbc1d4da782052b5b6fc8",
+    "probe_worker_timeline.py": "5c4b60e92b19396a24b760d12fe72975576c1a84718802e3058385da2af720c9",
+    "probe_workers.py": "9c3f211b451fb28d80d53606289eae8944900a9caafbc89a440dd4250644556e"
+  },
+  "headlessGPUControl": [
+    {
+      "allowHeadlessGPU": false,
+      "result": {
+        "available": false,
+        "reason": "no adapter"
+      }
+    },
+    {
+      "allowHeadlessGPU": true,
+      "result": {
+        "available": true,
+        "info": {
+          "architecture": "",
+          "vendor": ""
+        }
+      }
+    }
+  ],
+  "claim100Percent": false,
+  "cameraScenarioScope": "Actual synthetic parent picker, reset and restart; website label separation with master off. Other protected media-label probes remain in original acceptance.",
+  "review": "Independent read-only review found no actionable bug in final test changes.",
+  "enabledWebGPULibraryAudits": [
+    {
+      "canonical": "0",
+      "webgpuEnabled": true,
+      "code": 0
+    },
+    {
+      "canonical": "1",
+      "webgpuEnabled": true,
+      "code": 0
+    }
+  ],
+  "libraryEvidence": [
+    {
+      "canonical": "0",
+      "webgpuEnabled": true,
+      "checksPassed": 472,
+      "checksFailed": 0,
+      "caseCount": 8,
+      "rawReport": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/reports/firefox159-coverage-followup/library-webgpu-0/probe_fingerprint_libraries/results.json",
+      "rawSHA256": "57bbe7be7f8a035d962fdcb42f63bf717febbd3daffff1481fffacf4682ff6d7",
+      "provenance": {
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "binary": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-viewport/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": false,
+          "gpu_backend_profiles": false,
+          "canonical_2d": false
+        },
+        "webgpuEnabled": true,
+        "containerGPUProfiles": false,
+        "runtime": {
+          "buildID": "20261027164555",
+          "os": "Darwin",
+          "version": "159.0-beta.1"
+        }
+      }
+    },
+    {
+      "canonical": "1",
+      "webgpuEnabled": true,
+      "checksPassed": 464,
+      "checksFailed": 0,
+      "caseCount": 8,
+      "rawReport": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/reports/firefox159-coverage-followup/library-webgpu-1/probe_fingerprint_libraries/results.json",
+      "rawSHA256": "bb37012c4e6d107e66fc24b32097b3ad0aa4f1341fc575984a1d6ce223be11b1",
+      "provenance": {
+        "creepjsCommit": "10aa6724cd33a1015db1574211890518cd04f0cc",
+        "fingerprintjsVersion": "5.3.0",
+        "creepjsBundleSHA256": "80f43f364bd973bc03cb5b82de033ce28b2bbb145cb04237632a46ef040a92be",
+        "fingerprintjsBundleSHA256": "d0f995ec254a44b9e297155f082028024fc236bf8dd1d601388440cd8bef8538",
+        "binary": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-viewport/Cloakfox.app/Contents/MacOS/cloakfox",
+        "graphicsModes": {
+          "canvas_render_privacy": false,
+          "gpu_backend_profiles": false,
+          "canonical_2d": true
+        },
+        "webgpuEnabled": true,
+        "containerGPUProfiles": false,
+        "runtime": {
+          "buildID": "20261027164555",
+          "os": "Darwin",
+          "version": "159.0-beta.1"
+        },
+        "canonicalCrossScopePixels": [
+          {
+            "pair": [
+              "default",
+              "A"
+            ],
+            "library": "fingerprintjs",
+            "equal": false
+          },
+          {
+            "pair": [
+              "default",
+              "A"
+            ],
+            "library": "creepjs",
+            "equal": false
+          },
+          {
+            "pair": [
+              "A",
+              "B"
+            ],
+            "library": "fingerprintjs",
+            "equal": false
+          },
+          {
+            "pair": [
+              "A",
+              "B"
+            ],
+            "library": "creepjs",
+            "equal": false
+          },
+          {
+            "pair": [
+              "A",
+              "A-other-site"
+            ],
+            "library": "fingerprintjs",
+            "equal": false
+          },
+          {
+            "pair": [
+              "A",
+              "A-other-site"
+            ],
+            "library": "creepjs",
+            "equal": false
+          },
+          {
+            "pair": [
+              "Chrome",
+              "Chrome-other-site"
+            ],
+            "library": "fingerprintjs",
+            "equal": false
+          },
+          {
+            "pair": [
+              "Chrome",
+              "Chrome-other-site"
+            ],
+            "library": "creepjs",
+            "equal": false
+          }
+        ]
+      }
+    }
+  ],
+  "preservation": {
+    "earlierCheckpointsExist": true,
+    "chromiumNativeInputKey": "bbc651dcf5cbe4321f5fd1728eb40f2a20f7547053009258d96764370804dfcf",
+    "otherCheckoutCurrentHead": "42813d2863624f61c77ba3bcd824af1ca1ac957e",
+    "otherCheckoutHasIndependentProgress": true,
+    "otherCheckoutModifiedByThisWork": false,
+    "buildsCancelledOrRestarted": false
+  },
+  "checksPassedDuringFollowup": {
+    "geckoHelperUnitTests": 26,
+    "cameraNicknameUnitTests": 3
+  },
+  "libraryProbeSourceSHA256": "76288d458a7fa72be254d5c3c2523991241ceae513a7e8b249abd9d6363f424a"
+}

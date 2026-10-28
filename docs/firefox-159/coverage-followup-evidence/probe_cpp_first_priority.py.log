@@ -1,0 +1,12 @@
+[setup] using CLOAKFOX_BIN: /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-viewport/Cloakfox.app/Contents/MacOS/cloakfox
+
+[test] Run 1: cloakfox.s.cloak_cfg_0 = {'canvas:seed':11111}
+[test] canvas hash A: 300a1ff41f25f4ccd02570cdee67c7887225a1c874b255d41014b85567d6c8c8
+
+[test] Run 2: cloakfox.s.cloak_cfg_0 = {'canvas:seed':99999}
+[test] canvas hash B: 6471cccfd58061c2a4d8c66946e8f90de78305ccac141e6a6d95f5297ae35422
+
+=== Result ===
+PASS — different cpp-first seeds produce different canvas outputs.
+  seed=11111 → 300a1ff41f25f4cc...
+  seed=99999 → 6471cccfd58061c2...

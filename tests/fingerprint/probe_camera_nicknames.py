@@ -1,59 +1,74 @@
-"""Check browser-only camera nicknames using a disposable profile and local origin.
-Requires an active OBS Virtual Camera; never allows or records camera capture.
+"""Native browser-picker nicknames with synthetic media and an owned profile.
+
+No physical camera, OBS installation, removed settings controls or OS picker is
+required. This checks browser-only naming, website separation and persistence.
 """
-import tempfile,json,threading,os
-from pathlib import Path
-from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.firefox.service import Service
+import json
 from selenium.webdriver.support.ui import WebDriverWait
-class Handler(BaseHTTPRequestHandler):
- def do_GET(self):
-  self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers();self.wfile.write(b'<!doctype html><title>Camera nickname check</title>Local camera picker check')
- def log_message(self,*args):pass
-s=ThreadingHTTPServer(('127.0.0.1',0),Handler);threading.Thread(target=s.serve_forever,daemon=True).start()
-with tempfile.TemporaryDirectory(prefix='cloakfox-camera-nicknames-') as p:
- Path(p,'user.js').write_text('user_pref("cloakfox.enabled", false);\n')
- o=Options();o.binary_location=os.environ['CLOAKFOX_BIN']
- for a in ['-profile',p,'-purgecaches','-no-remote']:o.add_argument(a)
- d=webdriver.Firefox(options=o,service=Service(service_args=['--allow-system-access'],log_output=str(Path(p)/'gecko.log')))
- def js(code,*args):return d.execute_script(code,*args)
- try:
-  d.set_window_size(1100,850)
-  d.get('about:cloakfox#sec-media')
-  WebDriverWait(d,20).until(lambda _:js("return !!document.querySelector('[data-camera-field=name]')"))
-  js("document.querySelector('[data-camera-field=name]').value='OBS Virtual Camera';document.querySelector('[data-camera-field=nickname]').value='Desk setup';document.getElementById('cfx-camera-save').click()")
-  assert 'saved' in js("return document.getElementById('cfx-camera-status').textContent")
-  d.refresh()
-  WebDriverWait(d,20).until(lambda _:js("return document.querySelector('[data-camera-field=nickname]')?.value==='Desk setup'"))
-  assert js("return document.querySelector('[data-camera-field=nickname]').getBoundingClientRect().width>0")
-  print('PASS visible UI save and refresh persistence',flush=True)
-  js("document.getElementById('cfx-camera-heading').scrollIntoView({block:'center'})")
-  d.execute_async_script("const done=arguments[arguments.length-1];document.querySelector('.camera-nicknames').scrollIntoView({block:'start',behavior:'instant'});setTimeout(done,300)")
-  if os.environ.get('REPORT_DIR'):
-   Path(os.environ['REPORT_DIR']).mkdir(parents=True,exist_ok=True)
-   d.find_element('css selector','.camera-nicknames').screenshot(str(Path(os.environ['REPORT_DIR'])/'camera-nicknames-desktop.png'))
-  assert js("return [...document.querySelectorAll('.camera-nickname-row input')].every(x=>x.getBoundingClientRect().right<=innerWidth)")
-  d.set_window_size(660,850)
-  js("document.getElementById('cfx-camera-heading').scrollIntoView({block:'center'})")
-  d.execute_async_script("const done=arguments[arguments.length-1];document.querySelector('.camera-nicknames').scrollIntoView({block:'start',behavior:'instant'});setTimeout(done,300)")
-  if os.environ.get('REPORT_DIR'):
-   Path(os.environ['REPORT_DIR']).mkdir(parents=True,exist_ok=True)
-   d.find_element('css selector','.camera-nicknames').screenshot(str(Path(os.environ['REPORT_DIR'])/'camera-nicknames-narrow.png'))
-  assert js("return [...document.querySelectorAll('.camera-nickname-row input')].every(x=>x.getBoundingClientRect().right<=innerWidth)")
-  print('PASS desktop and narrow input layout',flush=True)
-  d.get('http://127.0.0.1:'+str(s.server_port)+'/')
-  js('navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(s=>s.getTracks().forEach(t=>t.stop())).catch(()=>{});')
-  d.set_context('chrome')
-  labels=WebDriverWait(d,20).until(lambda _:js("return Array.from(document.getElementById('webRTC-selectCamera-menupopup')?.children||[]).map(x=>x.getAttribute('label'))") or False)
-  assert 'Desk setup · OBS Virtual Camera' in labels,labels
-  assert 'FaceTime HD Camera' in labels,labels
-  print('PASS native picker labels '+json.dumps(labels),flush=True)
-  d.set_context('content');d.get('about:cloakfox#sec-media')
-  WebDriverWait(d,20).until(lambda _:js("return !!document.querySelector('[data-camera-field=name]')"))
-  js("document.getElementById('cfx-camera-reset').click()")
-  d.refresh()
-  WebDriverWait(d,20).until(lambda _:js("return document.querySelector('[data-camera-field=nickname]')?.value===''") )
-  print('PASS restore original names persists',flush=True)
- finally:d.quit();s.shutdown()
+from screen_management_fixture import ScreenManagementFixture
+
+RAW = 'Cloakfox synthetic camera'
+NICKNAME = 'Desk caméra 📷'
+
+
+def inspect_picker(f, expected, origin=None):
+    d = f.driver
+    d.get(origin or f.origin)
+    f.chrome("Services.perms.removeFromPrincipal(gBrowser.selectedBrowser.contentPrincipal,'camera')")
+    d.execute_script("navigator.mediaDevices.getUserMedia({video:true}).then(s=>{window.captureOutcome='stream';s.getTracks().forEach(t=>t.stop())},e=>window.captureOutcome=e.name+': '+e.message);")
+    def picker_ready(_):
+        return f.chrome("return document.getElementById('webRTC-selectCamera-single-device-label')?.value") == expected
+    try:
+        WebDriverWait(d, 20).until(picker_ready)
+    except Exception:
+        print('PICKER DIAGNOSTIC', f.chrome("return {label:document.getElementById('webRTC-selectCamera-single-device-label')?.value,menu:[...document.querySelectorAll('#webRTC-selectCamera-menupopup > *')].map(e=>e.getAttribute('label'))}"), flush=True)
+        print('CAPTURE', d.execute_script('return window.captureOutcome'), flush=True)
+        raise
+    assert f.chrome("return [...document.querySelectorAll('#webRTC-selectCamera-menupopup > *')].map(e=>e.getAttribute('label')).includes(arguments[0])", expected)
+
+
+def main():
+    with ScreenManagementFixture() as f:
+        f.set_master(False)
+        f.pref('media.navigator.streams.fake', True)
+        f.pref('media.navigator.permission.fake', True)
+        f.pref('media.navigator.permission.disabled', False)
+        f.pref('media.getusermedia.fake-camera-name', RAW)
+        f.pref('cloakfox.camera.nicknames', json.dumps({RAW: NICKNAME}))
+        d = f.driver
+        expected = NICKNAME + ' · ' + RAW
+        inspect_picker(f, expected)
+        print('PASS native single-device label and menu preserve nickname plus original source', flush=True)
+
+        # Leave the prompt without granting physical-device access. The provider
+        # is synthetic throughout, including the subsequent actual stream.
+        d.get(f.origin + '/?after-prompt')
+        f.chrome("Services.perms.addFromPrincipal(gBrowser.selectedBrowser.contentPrincipal,'camera',Services.perms.ALLOW_ACTION)")
+        observed = d.execute_async_script("""const done=arguments[0];navigator.mediaDevices.getUserMedia({video:true})
+          .then(async s=>{try{done({track:s.getVideoTracks()[0].label,labels:(await navigator.mediaDevices.enumerateDevices()).filter(x=>x.kind==='videoinput').map(x=>x.label)})}finally{s.getTracks().forEach(t=>t.stop())}},e=>done({error:e.name}));""")
+        assert observed == {'track': RAW, 'labels': [RAW]}, observed
+        print('PASS browser nickname never replaces website track/enumeration labels', flush=True)
+        f.pref('cloakfox.camera.nicknames', '{}')
+        inspect_picker(f, RAW, f.origin.replace(str(f.https_port), str(f.alternate_port)))
+        f.pref('cloakfox.camera.nicknames', json.dumps({RAW: NICKNAME}))
+        f.chrome('Services.prefs.savePrefFile(null)')
+        # Reuse only this disposable profile. Stop before relaunch; no NSWorkspace
+        # appearance restart or installed application is involved.
+        profile = f.chrome('return Services.dirsvc.get("ProfD",Ci.nsIFile).path')
+        d.quit(); f.driver = None
+        from selenium import webdriver
+        from selenium.webdriver.firefox.options import Options
+        from selenium.webdriver.firefox.service import Service
+        import os, shutil
+        options = Options(); options.binary_location = f.binary
+        options.accept_insecure_certs = True  # Only this fixture's owned TLS origin.
+        options.add_argument('-headless'); options.add_argument('-profile'); options.add_argument(profile)
+        f.driver = webdriver.Firefox(options=options, service=Service(
+            executable_path=os.environ.get('GECKODRIVER') or shutil.which('geckodriver'),
+            service_args=['--allow-system-access'], log_output=str(f.report_path/'restart.log')))
+        inspect_picker(f, expected)
+        print('PASS reset restores original source and saved mapping survives profile restart', flush=True)
+
+
+if __name__ == '__main__':
+    main()

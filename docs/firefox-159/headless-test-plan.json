@@ -29,6 +29,7 @@
     "probe_bundled_font_rendering.py",
     "probe_bundled_fonts.py",
     "probe_camera_exposure.py",
+    "probe_camera_nicknames.py",
     "probe_camera_website_labels.py",
     "probe_camoufox_followup.py",
     "probe_camoufox_speech_errors.py",
@@ -54,6 +55,7 @@
     "probe_canvas_render_privacy.py",
     "probe_canvas_unseeded_guards.py",
     "probe_capture_label_scope.py",
+    "probe_chrome_network_baseline.py",
     "probe_clipboard_masking.py",
     "probe_coderpad_media.py",
     "probe_container_fonts.py",
@@ -61,6 +63,8 @@
     "probe_container_isolation.py",
     "probe_container_rendering_feasibility.py",
     "probe_container_workflows.py",
+    "probe_cpp_first.py",
+    "probe_cpp_first_priority.py",
     "probe_css_media_privacy.py",
     "probe_daily_defaults.py",
     "probe_daily_settings_ui.py",
@@ -111,6 +115,7 @@
     "probe_network_transports.py",
     "probe_network_wire.py",
     "probe_packaged_resource_inventory.py",
+    "probe_per_container.py",
     "probe_performance_timeline.py",
     "probe_permissions_workspaces.py",
     "probe_persona_generation.py",
@@ -126,6 +131,7 @@
     "probe_quic_resumption.py",
     "probe_quic_wire.py",
     "probe_realm_privacy.py",
+    "probe_regions.py",
     "probe_screen_management.py",
     "probe_screen_management_settings.py",
     "probe_screen_presentation.py",
@@ -133,6 +139,7 @@
     "probe_settings_overrides.py",
     "probe_settings_presets.py",
     "probe_shared_permissions.py",
+    "probe_signature_selection.py",
     "probe_site_data_cache_scope.py",
     "probe_site_data_scope.py",
     "probe_site_isolation.py",
@@ -168,16 +175,10 @@
     "probe_workers.py"
   ],
   "deferred": {
-    "probe_camera_nicknames.py": "Physical camera/native picker; may prompt outside headless browser",
     "probe_appearance_restart.py": "NSWorkspace relaunch can activate an app despite headless environment",
-    "probe_privacy_enforcement.py": "Real display-capture negative path may reach OS chooser on regression",
-    "probe_cpp_first.py": "Historical DMG mounting/copying; not the newly built159 binary",
-    "probe_cpp_first_priority.py": "Historical DMG mounting/copying; not the newly built159 binary",
-    "probe_signature_selection.py": "Requires independent Chromium reference, not Firefox-only acceptance",
-    "probe_regions.py": "Real geolocation path may prompt for macOS Location Services",
-    "probe_per_container.py": "Real geolocation path may prompt for macOS Location Services",
-    "probe_chrome_network_baseline.py": "Independent stock Chrome reference, not a test of the new Firefox159 binary"
+    "probe_privacy_enforcement.py": "Real display-capture negative path may reach OS chooser on regression"
   },
   "libraryAudit": "Separately against pinned local CreepJS/FingerprintJS fixtures",
-  "siteDataProbeTarget": "Both scope probes now require the explicit CLOAKFOX_BIN; no installed-app fallback"
+  "siteDataProbeTarget": "Both scope probes now require the explicit CLOAKFOX_BIN; no installed-app fallback",
+  "webgpuHeadless": "The four hardware probes enable layers.gpu-process.allow-headless only in owned headless test profiles; sandbox and blocklist remain unchanged."
 }

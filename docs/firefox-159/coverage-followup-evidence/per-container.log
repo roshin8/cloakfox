@@ -1,0 +1,68 @@
+=== default container ===
+{
+  "math_pi": 3.141592653589793,
+  "math_sin_jitter": 0.47942553860414433,
+  "tz": "UTC",
+  "history_length": 12,
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0",
+  "platform": "Win32",
+  "oscpu": "Windows NT 10.0; Win64; x64",
+  "hwc": 8,
+  "lang": "en-US",
+  "inner": "1200x600",
+  "outer": "1200x600",
+  "screen": "1200x600",
+  "avail": "1200x600",
+  "dpr": 2,
+  "dim_coherent": true,
+  "webgl_vendor": "Google Inc. (NVIDIA)",
+  "webgl_renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+  "canvas_hash": "9b15bcbb",
+  "geo_pending": true,
+  "audio_sum": "106.24024904"
+}
+
+=== named container ===
+{
+  "math_pi": 3.141592653589793,
+  "math_sin_jitter": 0.4794255386043566,
+  "tz": "UTC",
+  "history_length": 50,
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0",
+  "platform": "MacIntel",
+  "oscpu": "Intel Mac OS X 10.15",
+  "hwc": 8,
+  "lang": "en-US",
+  "inner": "1200x600",
+  "outer": "1200x600",
+  "screen": "1200x600",
+  "avail": "1200x600",
+  "dpr": 2,
+  "dim_coherent": true,
+  "webgl_vendor": "Apple",
+  "webgl_renderer": "Apple M1, or similar",
+  "canvas_hash": "5e29d0d3",
+  "geo_pending": true,
+  "audio_sum": "106.25596580"
+}
+
+OK  math_sin_jitter: A=0.47942553860414433 vs B=0.4794255386043566 (different ✓)
+OK  canvas_hash: A=9b15bcbb vs B=5e29d0d3 (different ✓)
+OK  audio_sum: A=106.24024904 vs B=106.25596580 (different ✓)
+
+Persona-derived signals (may collide with 3 personas per OS):
+  ua: A='Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0' ≠ B='Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0'
+  platform: A='Win32' ≠ B='MacIntel'
+  hwc: A=8 = B=8
+  inner: A='1200x600' = B='1200x600'
+  outer: A='1200x600' = B='1200x600'
+  screen: A='1200x600' = B='1200x600'
+  avail: A='1200x600' = B='1200x600'
+  dpr: A=2 = B=2
+  webgl_renderer: A='ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar' ≠ B='Apple M1, or similar'
+  webgl_vendor: A='Google Inc. (NVIDIA)' ≠ B='Apple'
+  geo_lat: A=None = B=None
+  geo_lng: A=None = B=None
+
+
+ALL PER-CONTAINER VARIANCE CHECKS PASS

@@ -27,6 +27,8 @@ def main():
  try:
   with tempfile.TemporaryDirectory(prefix='cfx-gpu-owner-')as profile:
    o=Options();o.binary_location=report['binary']
+   # Exercise real WebGPU while remaining headless; keep sandbox/blocklist defaults.
+   if os.environ.get('MOZ_HEADLESS') == '1': o.set_preference('layers.gpu-process.allow-headless',True)
    for a in ['-profile',profile,'-purgecaches']:o.add_argument(a)
    o.set_preference('dom.webgpu.enabled',True);o.set_preference('dom.disable_open_during_load',False);o.set_preference('privacy.resistFingerprinting',False)
    d=webdriver.Firefox(options=o,service=Service('/opt/homebrew/bin/geckodriver',service_args=['--allow-system-access'],log_output=str(out/'gecko.log')))

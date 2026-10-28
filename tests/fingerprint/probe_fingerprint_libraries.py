@@ -70,6 +70,8 @@ def main():
                 options.set_preference('privacy.resistFingerprinting', False)
                 if webgpu_enabled:
                     options.set_preference('dom.webgpu.enabled', True)
+                    if os.environ.get('MOZ_HEADLESS') == '1':
+                        options.set_preference('layers.gpu-process.allow-headless', True)
                 for name, value in graphics_modes.items():
                     options.set_preference('cloakfox.experimental.canvas_pipeline' if name == 'canonical_2d' else 'cloakfox.opt.' + name, value)
                 driver = webdriver.Firefox(options=options, service=Service(

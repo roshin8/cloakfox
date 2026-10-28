@@ -45,6 +45,8 @@ def main():
  try:
   with tempfile.TemporaryDirectory(prefix='cfx-native-profiles-')as profile:
    options=Options();options.binary_location=binary
+   # Exercise real WebGPU while remaining headless; keep sandbox/blocklist defaults.
+   if os.environ.get('MOZ_HEADLESS') == '1': options.set_preference('layers.gpu-process.allow-headless',True)
    for arg in ['-profile',profile,'-purgecaches']:options.add_argument(arg)
    options.set_preference('cloakfox.enabled',True);options.set_preference('cloakfox.experimental.canvas_pipeline',True);options.set_preference('dom.webgpu.enabled',True)
    d=webdriver.Firefox(options=options,service=Service('/opt/homebrew/bin/geckodriver',service_args=['--allow-system-access'],log_output=str(out/'gecko.log')))

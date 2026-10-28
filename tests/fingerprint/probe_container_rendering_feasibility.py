@@ -50,6 +50,8 @@ def main():
     try:
         with tempfile.TemporaryDirectory(prefix='cfx-profile-feasibility-') as profile:
             options=Options();options.binary_location=binary
+            # Exercise real WebGPU while remaining headless; keep sandbox/blocklist defaults.
+            if os.environ.get('MOZ_HEADLESS') == '1': options.set_preference('layers.gpu-process.allow-headless',True)
             for arg in ['-purgecaches','-profile',profile]:options.add_argument(arg)
             options.set_preference('cloakfox.enabled',True)
             options.set_preference('cloakfox.experimental.canvas_pipeline',True)
