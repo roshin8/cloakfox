@@ -23,14 +23,16 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
         driver.set_context('content');driver.get(url)
         wait=WebDriverWait(driver,15)
         wait.until(lambda _:driver.execute_script("return !!document.getElementById('cfx-bulk-select');"))
+        assert driver.execute_script("return document.getElementById('cfx-bulk-select').parentElement.id==='cfx-bulk-footer';"), 'selection entry belongs in the footer'
         driver.find_element('id','cfx-bulk-select').click()
         for i in ids[1:3]:driver.find_element('css selector',f'tr[data-cookie-store-id="firefox-container-{i}"]').click()
         assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 2
+        assert driver.execute_script("const f=document.getElementById('cfx-bulk-footer').getBoundingClientRect(),p=document.getElementById('container-picker-panel').getBoundingClientRect(),l=document.querySelector('#container-picker-panel>.scrollable').getBoundingClientRect();return Math.abs(f.bottom-p.bottom)<2 && l.bottom<=f.top+1;"), 'actions must remain below the scrolling list at the panel bottom'
         driver.find_element('id','cfx-bulk-apply-open').click()
         wait.until(lambda _:driver.execute_script("return document.getElementById('cfx-bulk-source').options.length>1;"))
         driver.execute_script("document.getElementById('cfx-bulk-source').value=arguments[0];",str(ids[0]))
         driver.find_element('id','cfx-bulk-apply').click()
-        wait.until(lambda _:'Proxy applied to 2' in driver.execute_script("return document.getElementById('cfx-bulk-tools').textContent"))
+        wait.until(lambda _:'Proxy applied to 2' in driver.execute_script("return document.getElementById('cfx-bulk-footer').textContent"))
         driver.set_context('chrome')
         result=driver.execute_async_script("const done=arguments[arguments.length-1];ChromeUtils.importESModule('resource:///modules/CloakfoxContainerProxyEditor.sys.mjs').macProxyStorage().then(async s=>done((await s.db.get('proxifiedContainersKey')).proxifiedContainersKey));")
         source=next(r['proxy'] for r in result if r['cookieStoreId']==f'firefox-container-{ids[0]}')
@@ -40,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
         assert not any(r['cookieStoreId']==f'firefox-container-{ids[3]}' for r in result)
         driver.set_context('content')
         driver.find_element('id','cfx-bulk-remove').click()
-        wait.until(lambda _:'Removed proxy assignments from 2' in driver.execute_script("return document.getElementById('cfx-bulk-tools').textContent"))
+        wait.until(lambda _:'Removed proxy assignments from 2' in driver.execute_script("return document.getElementById('cfx-bulk-footer').textContent"))
         driver.find_element('id','cfx-bulk-delete-open').click()
         wait.until(lambda _:'Target A' in driver.find_element('id','cfx-bulk-delete-names').text)
         assert 'Target B' in driver.find_element('id','cfx-bulk-delete-names').text
@@ -48,7 +50,7 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
         assert driver.execute_script("const s=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService;return arguments[0].every(id=>!!s.getPublicIdentityFromId(id));",ids)
         driver.set_context('content')
         driver.find_element('id','cfx-bulk-delete-confirm').click()
-        wait.until(lambda _:'Deleted 2 containers.' in driver.execute_script("return document.getElementById('cfx-bulk-tools').textContent"))
+        wait.until(lambda _:'Deleted 2 containers.' in driver.execute_script("return document.getElementById('cfx-bulk-footer').textContent"))
         driver.set_context('chrome')
         existing=driver.execute_script("const s=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService;return arguments[0].map(id=>!!s.getPublicIdentityFromId(id));",ids)
         assert existing==[True,False,False,True],existing

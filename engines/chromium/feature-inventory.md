@@ -29,7 +29,7 @@ Gecko158 additions missing from the old157 checklist include AudioWorklet privac
 <!-- BEGIN GENERATED GECKO158 INVENTORY -->
 ## Active Gecko158 source inventory
 
-Canonical patch resolver: 158 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
+Canonical patch resolver: 160 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
 
 Canvas/GPU/config entries have partial Chromium equivalents described above. Gecko UI, branding, build and compatibility patches can be engine-specific; no patch is mechanically applied to Chromium.
 
@@ -191,6 +191,8 @@ Canvas/GPU/config entries have partial Chromium equivalents described above. Gec
 - `patches/cloakfox-site-data-container-scope.patch`
 - `patches/cloakfox-trust-panel-site-data-scope.patch`
 - `patches/cloakfox-container-site-cache.patch`
+- `patches/cloakfox-container-colors.patch`
+- `patches/cloakfox-quick-container.patch`
 
 ## Optional/privacy preference inventory
 
@@ -453,6 +455,7 @@ Gecko privileged actors are not installed in Chromium. Equivalent privacy behavi
 - `additions/browser/components/cloakfox/actors/CloakfoxCoderPadMediaChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxContainerBulkChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxContainerProxyEditorChild.sys.mjs`
+- `additions/browser/components/cloakfox/actors/CloakfoxContainerTabsChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxFeatureDetectChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxGamepadChild.sys.mjs`
 - `additions/browser/components/cloakfox/actors/CloakfoxHackerRankMediaChild.sys.mjs`
