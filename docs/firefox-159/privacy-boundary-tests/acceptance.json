@@ -1,0 +1,75 @@
+{
+  "binary": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-coherent-gpu/Cloakfox.app/Contents/MacOS/cloakfox",
+  "headless": true,
+  "productionChanges": false,
+  "installedApplicationChanged": false,
+  "newProbes": [
+    {
+      "probe": "probe_container_storage_channels.py",
+      "checks": 70,
+      "failures": 0,
+      "report": "tests/fingerprint/reports/firefox159-privacy-boundaries/probe_container_storage_channels/result.json",
+      "sha256": "3971923ecf26a004bba227d60a9f0f1086da0dee07a8190fb87e643ac1720a7b",
+      "sourceSHA256": "f024323619a2945eb5e093e4c7f6bfefb437883fbe4dff7598de77c9c872bcea"
+    },
+    {
+      "probe": "probe_webrtc_codec_coherence.py",
+      "checks": 54,
+      "failures": 0,
+      "report": "tests/fingerprint/reports/firefox159-privacy-boundaries/probe_webrtc_codec_coherence/result.json",
+      "sha256": "c1e07c51bae860d2fb6dd62bcae73d8f4b23ad07e01ee13a63aeee2fe17dd944",
+      "sourceSHA256": "317953cd0ef0b4170477bc81bd483027898fafe36b1dc6396bae38a5db2cebc0"
+    },
+    {
+      "probe": "probe_graphics_settings_atomicity.py",
+      "checks": 25,
+      "failures": 0,
+      "report": "tests/fingerprint/reports/firefox159-privacy-boundaries/probe_graphics_settings_atomicity/result.json",
+      "sha256": "b097f16136dbf5ef8ef07b7dc1fabbec192f701c979d0692b7dd056717e34f62",
+      "sourceSHA256": "53c96d2a3cf34ee56f63222e98cfa3b04a6a44e361428659719675545aefee25"
+    }
+  ],
+  "regressionProbes": [
+    {
+      "probe": "probe_worker_lifecycle.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_site_isolation.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_websocket_routes.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_native_webrtc_policy.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_identity_forget.py",
+      "code": 0
+    },
+    {
+      "probe": "probe_bundled_font_rendering.py",
+      "code": 0
+    }
+  ],
+  "chromiumInputKey": "bbc651dcf5cbe4321f5fd1728eb40f2a20f7547053009258d96764370804dfcf",
+  "checkpointPreserved": true,
+  "regressionSuites": {
+    "python": {
+      "passed": 157,
+      "seconds": 79.02
+    },
+    "node": {
+      "passed": 369
+    }
+  },
+  "newAssertionCount": 149,
+  "review": {
+    "reviewer": "review159_checkpoint",
+    "actionableFindings": 0,
+    "scope": "Three new probes, read-only review. No runtime/browser/build activity by reviewer."
+  }
+}
