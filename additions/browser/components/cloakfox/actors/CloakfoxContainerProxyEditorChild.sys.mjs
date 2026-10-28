@@ -29,7 +29,27 @@ export class CloakfoxContainerProxyEditorChild extends JSWindowActorChild {
         padding:8px; font:inherit;
       }
     `;
+    layout.textContent+=`
+      #edit-container-panel-choose-color .usercontext-icon {
+        inline-size:22px;block-size:22px;border-radius:50%;
+        background:var(--identity-icon-color);filter:none;
+        box-shadow:inset 0 0 0 1px rgb(255 255 255 / .2);
+      }
+    `;
     doc.head.append(layout);
+    const palette=doc.getElementById('edit-container-panel-choose-color');
+    if(palette){
+      const labelColors=()=>{
+        for(const input of palette.querySelectorAll('input[type=radio]')){
+          const label=input.value.charAt(0).toUpperCase()+input.value.slice(1);
+          input.setAttribute('aria-label',label);
+          input.parentElement.title=label;
+        }
+      };
+      this.paletteObserver=new doc.defaultView.MutationObserver(labelColors);
+      this.paletteObserver.observe(palette,{childList:true,subtree:true});labelColors();
+    }
+
     let cookieStoreId=null, current=null, loading=false, saving=false, request=0;
     const group=doc.createElement('div');group.id='cfx-mac-auth';
     group.style.cssText='display:grid;gap:12px;margin:16px 0;text-align:start;';
@@ -108,5 +128,5 @@ export class CloakfoxContainerProxyEditorChild extends JSWindowActorChild {
     this.observer.observe(panel,{attributes:true,attributeFilter:['class']});
     if(visible())void load();
   }
-  didDestroy(){this.observer?.disconnect();this.bulkCleanup?.();this.tabSelectionCleanup?.();}
+  didDestroy(){this.observer?.disconnect();this.paletteObserver?.disconnect();this.bulkCleanup?.();this.tabSelectionCleanup?.();}
 }

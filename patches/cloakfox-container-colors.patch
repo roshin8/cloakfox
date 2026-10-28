@@ -1,0 +1,490 @@
+--- a/toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs
++++ b/toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs
+@@ -25,63 +25,147 @@
+ export const CONTAINER_COLORS = [
+   {
+     name: "gray",
+-    code: "#7c7c7d",
+-    codeNova: "#949297",
++    code: "#d4d4dc",
++    codeNova: "#d4d4dc",
+     l10nId: "user-context-color-gray",
+   },
+   {
+     name: "yellow",
+     code: "#ffcb00",
+-    codeNova: "#db820e",
++    codeNova: "#e29a3c",
+     l10nId: "user-context-color-yellow",
+   },
+   {
+     name: "orange",
+     code: "#ff9f00",
+-    codeNova: "#f4682c",
++    codeNova: "#f78c5f",
+     l10nId: "user-context-color-orange",
+   },
+   {
+     name: "red",
+-    code: "#ff613d",
+-    codeNova: "#ed566e",
++    code: "#ff876c",
++    codeNova: "#f38a9b",
+     l10nId: "user-context-color-red",
+   },
+   {
+     name: "pink",
+-    code: "#ff4bda",
+-    codeNova: "#db54bf",
++    code: "#ff74e3",
++    codeNova: "#e689d3",
+     l10nId: "user-context-color-pink",
+   },
+   {
+     name: "purple",
+-    code: "#af51f5",
+-    codeNova: "#b864ee",
++    code: "#cc90f9",
++    codeNova: "#cd91f3",
+     l10nId: "user-context-color-purple",
+   },
+   {
+     name: "violet",
+-    code: "#764edd",
+-    codeNova: "#9871ff",
++    code: "#b29cec",
++    codeNova: "#b599ff",
+     l10nId: "user-context-color-violet",
+   },
+   {
+     name: "blue",
+-    code: "#37adff",
+-    codeNova: "#5a87fd",
++    code: "#3fb0ff",
++    codeNova: "#85a6fe",
+     l10nId: "user-context-color-blue",
+   },
+   {
+     name: "cyan",
+     code: "#00c79a",
+-    codeNova: "#10a4ca",
++    codeNova: "#40b6d5",
+     l10nId: "user-context-color-cyan",
+   },
+   {
+     name: "green",
+     code: "#51cd00",
+-    codeNova: "#11ae84",
++    codeNova: "#39bc99",
+     l10nId: "user-context-color-green",
++  },
++  {
++    name: "navy",
++    code: "#99a8cd",
++    codeNova: "#99a8cd",
++    l10nId: "user-context-color-navy",
++  },
++  {
++    name: "teal",
++    code: "#6eb5b3",
++    codeNova: "#6eb5b3",
++    l10nId: "user-context-color-teal",
++  },
++  {
++    name: "olive",
++    code: "#9eb14e",
++    codeNova: "#9eb14e",
++    l10nId: "user-context-color-olive",
++  },
++  {
++    name: "burgundy",
++    code: "#d797ab",
++    codeNova: "#d797ab",
++    l10nId: "user-context-color-burgundy",
++  },
++  {
++    name: "brown",
++    code: "#c8a27b",
++    codeNova: "#c8a27b",
++    l10nId: "user-context-color-brown",
++  },
++  {
++    name: "slate",
++    code: "#91aeb7",
++    codeNova: "#91aeb7",
++    l10nId: "user-context-color-slate",
++  },
++  {
++    name: "coral",
++    code: "#ee917e",
++    codeNova: "#ee917e",
++    l10nId: "user-context-color-coral",
++  },
++  {
++    name: "apricot",
++    code: "#e8b673",
++    codeNova: "#e8b673",
++    l10nId: "user-context-color-apricot",
++  },
++  {
++    name: "mint",
++    code: "#79c7a3",
++    codeNova: "#79c7a3",
++    l10nId: "user-context-color-mint",
++  },
++  {
++    name: "ice",
++    code: "#9ad4df",
++    codeNova: "#9ad4df",
++    l10nId: "user-context-color-ice",
++  },
++  {
++    name: "lavender",
++    code: "#b6a6db",
++    codeNova: "#b6a6db",
++    l10nId: "user-context-color-lavender",
++  },
++  {
++    name: "blush",
++    code: "#e8a8cb",
++    codeNova: "#e8a8cb",
++    l10nId: "user-context-color-blush",
++  },
++  {
++    name: "sand",
++    code: "#c7b38c",
++    codeNova: "#c7b38c",
++    l10nId: "user-context-color-sand",
++  },
++  {
++    name: "charcoal",
++    code: "#edf1f7",
++    codeNova: "#edf1f7",
++    l10nId: "user-context-color-charcoal",
+   },
+ ];
+ 
+--- a/browser/components/contextualidentity/content/usercontext.css
++++ b/browser/components/contextualidentity/content/usercontext.css
+@@ -12,12 +12,12 @@
+                                                 preferences list, tab-row indicators)
+    --identity-stroke-color shade 40            (tab stroke, URL-bar badge, all-tabs indicator, preferences color swatches) */
+ .identity-color-blue {
+-  --identity-tab-color: #37adff;
+-  --identity-icon-color: #37adff;
++  --identity-tab-color: #3fb0ff;
++  --identity-icon-color: #3fb0ff;
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-blue-60), var(--color-blue-20));
+-    --identity-stroke-color: var(--color-blue-40);
++    --identity-stroke-color: #85a6fe;
+   }
+ }
+ 
+@@ -27,7 +27,7 @@
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-cyan-60), var(--color-cyan-20));
+-    --identity-stroke-color: var(--color-cyan-40);
++    --identity-stroke-color: #40b6d5;
+   }
+ }
+ 
+@@ -37,7 +37,7 @@
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-green-60), var(--color-green-20));
+-    --identity-stroke-color: var(--color-green-40);
++    --identity-stroke-color: #39bc99;
+   }
+ }
+ 
+@@ -47,7 +47,7 @@
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-yellow-60), var(--color-yellow-20));
+-    --identity-stroke-color: var(--color-yellow-40);
++    --identity-stroke-color: #e29a3c;
+   }
+ }
+ 
+@@ -57,57 +57,198 @@
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-orange-60), var(--color-orange-20));
+-    --identity-stroke-color: var(--color-orange-40);
++    --identity-stroke-color: #f78c5f;
+   }
+ }
+ 
+ .identity-color-red {
+-  --identity-tab-color: #ff613d;
+-  --identity-icon-color: #ff613d;
++  --identity-tab-color: #ff876c;
++  --identity-icon-color: #ff876c;
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-red-60), var(--color-red-20));
+-    --identity-stroke-color: var(--color-red-40);
++    --identity-stroke-color: #f38a9b;
+   }
+ }
+ 
+ .identity-color-pink {
+-  --identity-tab-color: #ff4bda;
+-  --identity-icon-color: #ff4bda;
++  --identity-tab-color: #ff74e3;
++  --identity-icon-color: #ff74e3;
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-pink-60), var(--color-pink-20));
+-    --identity-stroke-color: var(--color-pink-40);
++    --identity-stroke-color: #e689d3;
+   }
+ }
+ 
+ .identity-color-purple {
+-  --identity-tab-color: #af51f5;
+-  --identity-icon-color: #af51f5;
++  --identity-tab-color: #cc90f9;
++  --identity-icon-color: #cc90f9;
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-purple-60), var(--color-purple-20));
+-    --identity-stroke-color: var(--color-purple-40);
++    --identity-stroke-color: #cd91f3;
+   }
+ }
+ 
+ .identity-color-violet {
+-  --identity-tab-color: #764edd;
+-  --identity-icon-color: #764edd;
++  --identity-tab-color: #b29cec;
++  --identity-icon-color: #b29cec;
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-violet-60), var(--color-violet-20));
+-    --identity-stroke-color: var(--color-violet-40);
++    --identity-stroke-color: #b599ff;
+   }
+ }
+ 
+ .identity-color-gray {
+-  --identity-tab-color: currentColor;
+-  --identity-icon-color: currentColor;
++  --identity-tab-color: #d4d4dc;
++  --identity-icon-color: #d4d4dc;
+ 
+   @media -moz-pref("browser.nova.enabled") {
+     --identity-fill-color: light-dark(var(--color-gray-60), var(--color-gray-20));
+-    --identity-stroke-color: var(--color-gray-40);
++    --identity-stroke-color: #d4d4dc;
++  }
++}
++
++/* Additional Cloakfox colors keep separate hues and lightness levels. */
++.identity-color-navy {
++  --identity-tab-color: #99a8cd;
++  --identity-icon-color: #99a8cd;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #526caa;
++    --identity-stroke-color: #99a8cd;
++  }
++}
++
++.identity-color-teal {
++  --identity-tab-color: #6eb5b3;
++  --identity-icon-color: #6eb5b3;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #007d79;
++    --identity-stroke-color: #6eb5b3;
++  }
++}
++
++.identity-color-olive {
++  --identity-tab-color: #9eb14e;
++  --identity-icon-color: #9eb14e;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #879f24;
++    --identity-stroke-color: #9eb14e;
++  }
++}
++
++.identity-color-burgundy {
++  --identity-tab-color: #d797ab;
++  --identity-icon-color: #d797ab;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #b74669;
++    --identity-stroke-color: #d797ab;
++  }
++}
++
++.identity-color-brown {
++  --identity-tab-color: #c8a27b;
++  --identity-icon-color: #c8a27b;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #b07a43;
++    --identity-stroke-color: #c8a27b;
++  }
++}
++
++.identity-color-slate {
++  --identity-tab-color: #91aeb7;
++  --identity-icon-color: #91aeb7;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #608996;
++    --identity-stroke-color: #91aeb7;
++  }
++}
++
++.identity-color-coral {
++  --identity-tab-color: #ee917e;
++  --identity-icon-color: #ee917e;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #ee917e;
++    --identity-stroke-color: #ee917e;
++  }
++}
++
++.identity-color-apricot {
++  --identity-tab-color: #e8b673;
++  --identity-icon-color: #e8b673;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #e8b673;
++    --identity-stroke-color: #e8b673;
++  }
++}
++
++.identity-color-mint {
++  --identity-tab-color: #79c7a3;
++  --identity-icon-color: #79c7a3;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #79c7a3;
++    --identity-stroke-color: #79c7a3;
++  }
++}
++
++.identity-color-ice {
++  --identity-tab-color: #9ad4df;
++  --identity-icon-color: #9ad4df;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #9ad4df;
++    --identity-stroke-color: #9ad4df;
++  }
++}
++
++.identity-color-lavender {
++  --identity-tab-color: #b6a6db;
++  --identity-icon-color: #b6a6db;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #b6a6db;
++    --identity-stroke-color: #b6a6db;
++  }
++}
++
++.identity-color-blush {
++  --identity-tab-color: #e8a8cb;
++  --identity-icon-color: #e8a8cb;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #e8a8cb;
++    --identity-stroke-color: #e8a8cb;
++  }
++}
++
++.identity-color-sand {
++  --identity-tab-color: #c7b38c;
++  --identity-icon-color: #c7b38c;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #c7b38c;
++    --identity-stroke-color: #c7b38c;
++  }
++}
++
++.identity-color-charcoal {
++  --identity-tab-color: #edf1f7;
++  --identity-icon-color: #edf1f7;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #525660;
++    --identity-stroke-color: #edf1f7;
+   }
+ }
+ 
+--- a/toolkit/locales/en-US/toolkit/global/contextual-identity.ftl
++++ b/toolkit/locales/en-US/toolkit/global/contextual-identity.ftl
+@@ -53,6 +53,36 @@
+ user-context-color-gray =
+     .label = Gray
+ 
++user-context-color-navy =
++    .label = Navy
++user-context-color-teal =
++    .label = Teal
++user-context-color-olive =
++    .label = Olive
++user-context-color-burgundy =
++    .label = Burgundy
++user-context-color-brown =
++    .label = Brown
++user-context-color-slate =
++    .label = Slate
++
++user-context-color-coral =
++    .label = Coral
++user-context-color-apricot =
++    .label = Apricot
++user-context-color-mint =
++    .label = Mint
++user-context-color-ice =
++    .label = Ice blue
++user-context-color-lavender =
++    .label = Lavender
++user-context-color-blush =
++    .label = Blush
++user-context-color-sand =
++    .label = Sand
++user-context-color-charcoal =
++    .label = Charcoal
++
+ ## Container icons, shown as selectable swatches in the container
+ ## creation/edit dialog.
+ 
+--- a/browser/components/enterprisepolicies/schemas/policies-schema.json
++++ b/browser/components/enterprisepolicies/schemas/policies-schema.json
+@@ -794,7 +794,21 @@
+                   { "const": "pink", "title": "Pink" },
+                   { "const": "purple", "title": "Purple" },
+                   { "const": "violet", "title": "Violet" },
+-                  { "const": "gray", "title": "Gray" }
++                  { "const": "gray", "title": "Gray" },
++                  { "const": "navy", "title": "Navy" },
++                  { "const": "teal", "title": "Teal" },
++                  { "const": "olive", "title": "Olive" },
++                  { "const": "burgundy", "title": "Burgundy" },
++                  { "const": "brown", "title": "Brown" },
++                  { "const": "slate", "title": "Slate" },
++                  { "const": "coral", "title": "Coral" },
++                  { "const": "apricot", "title": "Apricot" },
++                  { "const": "mint", "title": "Mint" },
++                  { "const": "ice", "title": "Ice blue" },
++                  { "const": "lavender", "title": "Lavender" },
++                  { "const": "blush", "title": "Blush" },
++                  { "const": "sand", "title": "Sand" },
++                  { "const": "charcoal", "title": "Charcoal" }
+                 ]
+               }
+             },
