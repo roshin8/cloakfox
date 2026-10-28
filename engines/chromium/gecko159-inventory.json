@@ -160,7 +160,8 @@
     "patches/cloakfox-trust-panel-site-data-scope.patch",
     "patches/cloakfox-container-site-cache.patch",
     "patches/cloakfox-apple-linker-detection.patch",
-    "patches/cloakfox-system-document-viewport.patch"
+    "patches/cloakfox-system-document-viewport.patch",
+    "patches/cloakfox-coherent-gpu-catalog.patch"
   ],
   "preferences": [
     "cloakfox.opt.canvas_render_privacy",
@@ -590,6 +591,7 @@
     "patches/cloakfox-container-site-cache.patch": "e086e7a8063d108f693de320d0e23472dde360040453f56fc68c1b19f6eeb594",
     "patches/cloakfox-apple-linker-detection.patch": "be811e463bb913e89ab5e71a0bb61429d356a82a1454ff8d32be42786f671067",
     "patches/cloakfox-system-document-viewport.patch": "e9a3a9ff00ff093ad2fe28b7be2ffdde29ff60977d81b13e4c55a94ebdc9e304",
+    "patches/cloakfox-coherent-gpu-catalog.patch": "de5d3667edb4867a9caaba12fc13286fe8deec1c8f96586f0613d3fc06d392ae",
     "additions/browser/components/cloakfox/CloakfoxAppearance.sys.mjs": "ca73338a1505025e06604f0489dd6eb90db7818807774b463211fc7ed58da297",
     "additions/browser/components/cloakfox/CloakfoxBFNetwork.sys.mjs": "564a9dc342a08c9bfe00de75ba09d62bbb857a870e0ae3f59d10b305bb00d728",
     "additions/browser/components/cloakfox/CloakfoxBayesianNetwork.sys.mjs": "f55d9c3bf2b74f10d2fa8abfedc2a0b00c302ff812ca6d672a98aa90b7b9e9b2",
@@ -601,7 +603,8 @@
     "additions/browser/components/cloakfox/CloakfoxDNS.sys.mjs": "45207140c0e93dc0f5b4f5f8f53c8935465d43e7688103683e454e40613ce4b9",
     "additions/browser/components/cloakfox/CloakfoxEngineHost.sys.mjs": "8c54dddf2f7573113dfac2a1611948cdded490c30c481548af48e22850dba822",
     "additions/browser/components/cloakfox/CloakfoxEnginePreferences.sys.mjs": "59012431c4a65114390f40d1e58e711a8f2eb2f54a2c01ca38aab5e0e2792b88",
-    "additions/browser/components/cloakfox/CloakfoxGPUProfiles.sys.mjs": "09a899dedee8855c210ab8c24fe27c4ed1a35155594aa731a8b4412c0a33fbfb",
+    "additions/browser/components/cloakfox/CloakfoxGPUCatalog.sys.mjs": "5e709b68e5093ef676edc77266dab26f3060b480ec347396bd9517db66e55c13",
+    "additions/browser/components/cloakfox/CloakfoxGPUProfiles.sys.mjs": "c951862045089b94e07517b2c3d2ac5de07e41b7482306ea29f395b0636af528",
     "additions/browser/components/cloakfox/CloakfoxHostPersona.sys.mjs": "07c4969b08af1754838181478846790f16d178620749bbb0bc6904e5770c3be9",
     "additions/browser/components/cloakfox/CloakfoxIPConflicts.sys.mjs": "24d78ed8b928f845b98709d3c7e44ee0be1a023622e8efb1fb28468c9f9ce339",
     "additions/browser/components/cloakfox/CloakfoxIdentityActions.sys.mjs": "a6a8d937442d48f1ae2d0104627acc900aa8a308989139c7029b54bc0718fad6",
@@ -669,13 +672,13 @@
     "additions/browser/components/cloakfox/content/region-settings.js": "513ba8813ca45c4ac377b29de75f2b5708bd113f270e3d6e6ff8fd54ee0a8c1a",
     "additions/browser/components/cloakfox/content/release-status.js": "0be1766dcc0aa0267d4d8209384bd976d5be4ed2c62c41d89bde093a03536b13",
     "additions/browser/components/cloakfox/content/settings-presets.mjs": "c3bae07fb322b97427d132c6dd4bc4b6d46ceb391f318dd21de4f8744c588319",
-    "additions/browser/components/cloakfox/content/settings.html": "83760135a6a07b34d20863b42ba288049e957f800e52a577b2e4940b0b34e99e",
+    "additions/browser/components/cloakfox/content/settings.html": "5b078e2d113ae033dfaa8be20c5d6aa3fb55389274e2b11e709dbc6dab0fb466",
     "additions/browser/components/cloakfox/content/settings.js": "c63e612cf5d73ba630d8b93ecda5497c3a9eebb835c5b87a2806049a9ab189fa",
     "additions/browser/components/cloakfox/content/template-settings.js": "76e9d2ae6d4ea782b4ecc0534a33642f5af5471ee0059232e4a5e82c700f7389",
     "additions/browser/components/cloakfox/content/tracking-settings.js": "60901a25cfc29f22a1b225f4b9e5ed4f7812d4497fddffe3fd09cdc8c16fdb03",
     "additions/browser/components/cloakfox/content/workspace-settings.js": "6137e3e42919583e845982de72285d0e0b92a3b14e8e5d5d71bfc8ff5c99558d",
     "settings/cloakfox.cfg": "35bacf11d95d8cda0afd31e6fc3a2aa8bfbd3044849a59c1ebeeccc74e4a2912",
-    "patches/order.txt": "9411ab4c121eb71a447acb23b4f170d619a7b4caf296a6478a8329a46d84efc0",
+    "patches/order.txt": "fbc5525b518317aec643afd130f76718266426b4eaabe64c984947573a1ffa95",
     "scripts/_mixin.py": "65e504efc33d4b808f668e927662bc0f9a444fdbb87f063131a5a0a374703290",
     "upstream.sh": "868f08756a60af538cd43050ce391b4a19c291ed10f2d5c796ee1f95a9d4f809"
   }

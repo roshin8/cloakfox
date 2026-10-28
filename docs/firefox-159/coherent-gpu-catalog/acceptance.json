@@ -1,0 +1,250 @@
+{
+  "scope": "coherent executable capability profiles with canonical rendering; not vendor-driver emulation",
+  "headless": true,
+  "physicalMediaRetested": false,
+  "installedApplicationChanged": false,
+  "reports": {
+    "probe_container_gpu_profiles.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_container_gpu_profiles.py.log",
+      "sha256": "be23f0e7caec35f09c813ab729285a3d39ac537a4d784fcf96a5d0177c59c8dd",
+      "passLines": 385
+    },
+    "probe_canvas_canonical_gpu.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_canvas_canonical_gpu.py.log",
+      "sha256": "9d4082ae0901ea18d32d9297b123616537888abd731b65a65c40479f8118d495",
+      "passLines": 103
+    },
+    "probe_container_rendering_feasibility.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_container_rendering_feasibility.py.log",
+      "sha256": "7d2fd462882cf9edee8f7bc9a88a5b770aed99c65449ff6f8f011157f7600a72",
+      "passLines": 25
+    },
+    "probe_webgl_backend_profile.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_webgl_backend_profile.py.log",
+      "sha256": "2d013af0783cab72b2ef6a3a98f2a523b02fc6788396b5ea8611fd526e7df36c",
+      "passLines": 42
+    },
+    "probe_webgpu_canvas_owner.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_webgpu_canvas_owner.py.log",
+      "sha256": "5aa8121e7770d41926f21385b076587cb90355619ad7cea062b17d5cc44441c3",
+      "passLines": 8
+    },
+    "probe_canvas_owner_transfer.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_canvas_owner_transfer.py.log",
+      "sha256": "24041a56d975510ba96638b82ee0c01b5a2a9e5f9fe18ae76644ce5a233c02d7",
+      "passLines": 4
+    },
+    "probe_strict_graphics_settings.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_strict_graphics_settings.py.log",
+      "sha256": "bd5029657935c1c1d3dbd1426680d5f7cb8185b45c2678c77f6579cea30ecce9",
+      "passLines": 10
+    },
+    "probe_graphics_optins_settings.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_graphics_optins_settings.py.log",
+      "sha256": "c85985ef6ea11fcb8bbb773a9720eca2a22f0f2dd7cd3df35c8efe6cf93f3f87",
+      "passLines": 13
+    },
+    "probe_graphics_privacy.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_graphics_privacy.py.log",
+      "sha256": "ff74568fbcd9520a8c3cceb624f686297ee17303c8fc5d6c075091000695d4c5",
+      "passLines": 60
+    },
+    "probe_webgl_readback.py": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_webgl_readback.py.log",
+      "sha256": "36b32a231e6b2b3e4951b407fb51a5098879352323184668a5eb565740a14550",
+      "passLines": 1
+    },
+    "libraries-canonical-0": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/libraries-canonical-0/probe_fingerprint_libraries/results.json",
+      "sha256": "a2511c73533aac85ede9c3ded48e8f75ebe5e551e1c846f9a2b8993861419b8e"
+    },
+    "libraries-canonical-1": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/libraries-canonical-1/probe_fingerprint_libraries/results.json",
+      "sha256": "c889f3a928a0f725e0061585991cb20ee31454e9dffd52067e75f3e70d9738d9"
+    },
+    "profileDetails": {
+      "path": "tests/fingerprint/reports/firefox159-coherent-gpu/probe_container_gpu_profiles/result.json",
+      "sha256": "e28daacb91178535e351a1e4f420d7b4816f51847597cc55e23f160edc5e3ddb"
+    }
+  },
+  "libraries": {
+    "libraries-canonical-0": {
+      "cases": 8,
+      "repeats": 3,
+      "checks": 472,
+      "failures": [],
+      "libraryExecutions": 48
+    },
+    "libraries-canonical-1": {
+      "cases": 8,
+      "repeats": 3,
+      "checks": 464,
+      "failures": [],
+      "libraryExecutions": 48
+    }
+  },
+  "nativeProfiles": {
+    "checks": 385,
+    "failures": [],
+    "inconclusive": [],
+    "cases": [
+      {
+        "family": "apple",
+        "owner": 6,
+        "descriptor": {
+          "catalog": [
+            1
+          ],
+          "family": "apple",
+          "owner": 6,
+          "renderer": "Apple M1, or similar",
+          "vendor": "Apple",
+          "version": 2
+        },
+        "texture": 4096,
+        "bufferBytes": 268435456
+      },
+      {
+        "family": "apple",
+        "owner": 7,
+        "descriptor": {
+          "catalog": [
+            1,
+            2
+          ],
+          "family": "apple",
+          "owner": 7,
+          "renderer": "Apple M1, or similar",
+          "vendor": "Apple",
+          "version": 2
+        },
+        "texture": 8192,
+        "bufferBytes": 536870912
+      },
+      {
+        "family": "intel",
+        "owner": 8,
+        "descriptor": {
+          "catalog": [
+            1
+          ],
+          "family": "intel",
+          "owner": 8,
+          "renderer": "ANGLE (Intel, Intel(R) HD Graphics 400 Direct3D11 vs_5_0 ps_5_0), or similar",
+          "vendor": "Google Inc. (Intel)",
+          "version": 2
+        },
+        "texture": 4096,
+        "bufferBytes": 268435456
+      },
+      {
+        "family": "intel",
+        "owner": 9,
+        "descriptor": {
+          "catalog": [
+            1,
+            2
+          ],
+          "family": "intel",
+          "owner": 9,
+          "renderer": "ANGLE (Intel, Intel(R) HD Graphics 400 Direct3D11 vs_5_0 ps_5_0), or similar",
+          "vendor": "Google Inc. (Intel)",
+          "version": 2
+        },
+        "texture": 8192,
+        "bufferBytes": 536870912
+      },
+      {
+        "family": "amd",
+        "owner": 10,
+        "descriptor": {
+          "catalog": [
+            1
+          ],
+          "family": "amd",
+          "owner": 10,
+          "renderer": "ANGLE (AMD, Radeon R9 200 Series Direct3D11 vs_5_0 ps_5_0), or similar",
+          "vendor": "Google Inc. (AMD)",
+          "version": 2
+        },
+        "texture": 4096,
+        "bufferBytes": 268435456
+      },
+      {
+        "family": "amd",
+        "owner": 11,
+        "descriptor": {
+          "catalog": [
+            1,
+            2
+          ],
+          "family": "amd",
+          "owner": 11,
+          "renderer": "ANGLE (AMD, Radeon R9 200 Series Direct3D11 vs_5_0 ps_5_0), or similar",
+          "vendor": "Google Inc. (AMD)",
+          "version": 2
+        },
+        "texture": 8192,
+        "bufferBytes": 536870912
+      },
+      {
+        "family": "nvidia",
+        "owner": 12,
+        "descriptor": {
+          "catalog": [
+            1
+          ],
+          "family": "nvidia",
+          "owner": 12,
+          "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+          "vendor": "Google Inc. (NVIDIA)",
+          "version": 2
+        },
+        "texture": 4096,
+        "bufferBytes": 268435456
+      },
+      {
+        "family": "nvidia",
+        "owner": 13,
+        "descriptor": {
+          "catalog": [
+            1,
+            2
+          ],
+          "family": "nvidia",
+          "owner": 13,
+          "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+          "vendor": "Google Inc. (NVIDIA)",
+          "version": 2
+        },
+        "texture": 8192,
+        "bufferBytes": 536870912
+      }
+    ]
+  },
+  "regressionSuites": {
+    "python": {
+      "passed": 157,
+      "seconds": 72.54
+    },
+    "node": {
+      "passed": 369
+    },
+    "geckoCI": {
+      "passed": 26
+    },
+    "targetedNativePython": {
+      "passed": 9,
+      "subtests": 6
+    }
+  },
+  "sourceHashes": {
+    "additions/cloakcfg/gpu-profile-catalog.json": "bbcd83a98714e63d0bdc53c03ff0ce275f63e6cc72f9d1d0c275ab39f29bebfb",
+    "additions/cloakcfg/CloakfoxGPUCatalog.hpp": "d9ef0473b9151b670241d1917d5e3d26e5bb9bea60e0bd1bdce679af62c26768",
+    "additions/cloakcfg/CloakfoxGPUProfileCore.hpp": "a2b609d37dac8f882fc86aaad94847e22e10fdfbe668ae3f25d2bc4ed966e7b7",
+    "additions/cloakcfg/CloakfoxGPUProfile.hpp": "d3df4387e54f09496b073e600c188f07f386a3073d22455f159af17e6fddc326",
+    "additions/browser/components/cloakfox/CloakfoxGPUCatalog.sys.mjs": "5e709b68e5093ef676edc77266dab26f3060b480ec347396bd9517db66e55c13",
+    "additions/browser/components/cloakfox/CloakfoxGPUProfiles.sys.mjs": "c951862045089b94e07517b2c3d2ac5de07e41b7482306ea29f395b0636af528",
+    "patches/cloakfox-coherent-gpu-catalog.patch": "de5d3667edb4867a9caaba12fc13286fe8deec1c8f96586f0613d3fc06d392ae"
+  }
+}

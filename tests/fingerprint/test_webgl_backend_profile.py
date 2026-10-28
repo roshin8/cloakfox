@@ -54,11 +54,16 @@ struct Context {
  }
 };
 int main(){
- for(unsigned family=1;family<=4;family++)for(unsigned variant=0;variant<256;variant++){
+ for(unsigned family=1;family<=4;family++)for(unsigned variant=1;variant<=2;variant++){
   Context c;c.mOptions.cloakfoxPersonaProfile=(family<<8)|variant;assert(c.apply());
   auto p=CloakfoxGPUProfile::Decode(c.mOptions.cloakfoxPersonaProfile);assert(p);
   assert(c.limits.maxTex2dSize==p->texture && c.mGLMaxVertexUniformVectors==p->vertexUniforms && c.mGLMaxFragmentUniformVectors==p->fragmentUniforms);
+  assert(c.limits.maxTexUnits==p->combinedTexUnits && c.mGLMaxFragmentTextureImageUnits==p->fragmentTexUnits);
+  assert(c.mGLMaxVertexOutputVectors==p->vertexOutputs && c.mGLMaxFragmentInputVectors==p->fragmentInputs);
+  assert(c.limits.maxTex3dSize==p->texture3d && c.limits.maxTexArrayLayers==p->arrayLayers);
+  assert(c.limits.maxColorDrawBuffers==p->drawBuffers && c.limits.maxUniformBufferBindings==p->uniformBufferBindings);
   Context weak;weak.mOptions=c.mOptions;weak.limits.maxTex2dSize=p->texture-1;assert(!weak.apply());
+  Context weakShader;weakShader.mOptions=c.mOptions;weakShader.mGLMaxVertexUniformVectors=p->vertexUniforms-1;assert(!weakShader.apply());
  }
  Context invalid;invalid.mOptions.cloakfoxPersonaProfile=0x500;assert(!invalid.apply());
  Context gl2; assert(gl2.apply());

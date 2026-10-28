@@ -1,0 +1,57 @@
+diff --git a/dom/canvas/WebGLContextValidate.cpp b/dom/canvas/WebGLContextValidate.cpp
+--- a/dom/canvas/WebGLContextValidate.cpp
++++ b/dom/canvas/WebGLContextValidate.cpp
+@@ -433,19 +433,19 @@
+     ok &= RestrictCap(&limits.maxTexCubeSize, texture);
+     ok &= RestrictCap(&mGLMaxRenderbufferSize, texture);
+     ok &= RestrictCap(&limits.maxViewportDim, persona ? texture : uint32_t{4096});
+-    ok &= RestrictCap(&limits.maxVertexAttribs, uint32_t{16u});
+-    ok &= RestrictCap(&limits.maxTexUnits, uint32_t{32u});
+-    ok &= RestrictCap(&mGLMaxVertexTextureImageUnits, uint32_t{16u});
+-    ok &= RestrictCap(&mGLMaxFragmentTextureImageUnits, uint32_t{16u});
++    ok &= RestrictCap(&limits.maxVertexAttribs, persona ? persona->vertexAttribs : uint32_t{16u});
++    ok &= RestrictCap(&limits.maxTexUnits, persona ? persona->combinedTexUnits : uint32_t{32u});
++    ok &= RestrictCap(&mGLMaxVertexTextureImageUnits, persona ? persona->vertexTexUnits : uint32_t{16u});
++    ok &= RestrictCap(&mGLMaxFragmentTextureImageUnits, persona ? persona->fragmentTexUnits : uint32_t{16u});
+     ok &= RestrictCap(&mGLMaxVertexUniformVectors, vertexUniforms);
+     ok &= RestrictCap(&mGLMaxFragmentUniformVectors, fragmentUniforms);
+-    ok &= RestrictCap(&mGLMaxVertexOutputVectors, uint32_t{16u});
+-    ok &= RestrictCap(&mGLMaxFragmentInputVectors, uint32_t{15u});
++    ok &= RestrictCap(&mGLMaxVertexOutputVectors, persona ? persona->vertexOutputs : uint32_t{16u});
++    ok &= RestrictCap(&mGLMaxFragmentInputVectors, persona ? persona->fragmentInputs : uint32_t{15u});
+     if (gl2) {
+-      ok &= RestrictCap(&limits.maxTex3dSize, uint32_t{256});
+-      ok &= RestrictCap(&limits.maxTexArrayLayers, uint32_t{256});
+-      ok &= RestrictCap(&limits.maxUniformBufferBindings, uint32_t{24});
+-      ok &= RestrictCap(&limits.maxColorDrawBuffers, uint32_t{4});
++      ok &= RestrictCap(&limits.maxTex3dSize, persona ? persona->texture3d : uint32_t{256});
++      ok &= RestrictCap(&limits.maxTexArrayLayers, persona ? persona->arrayLayers : uint32_t{256});
++      ok &= RestrictCap(&limits.maxUniformBufferBindings, persona ? persona->uniformBufferBindings : uint32_t{24});
++      ok &= RestrictCap(&limits.maxColorDrawBuffers, persona ? persona->drawBuffers : uint32_t{4});
+     }
+     ok &= limits.lineWidthRange[0] <= 1 && limits.lineWidthRange[1] >= 1;
+     ok &= limits.pointSizeRange[0] <= 1 && limits.pointSizeRange[1] >= 63;
+diff --git a/dom/webgpu/Adapter.cpp b/dom/webgpu/Adapter.cpp
+--- a/dom/webgpu/Adapter.cpp
++++ b/dom/webgpu/Adapter.cpp
+@@ -325,14 +325,14 @@
+   if (const auto code = mParent->PersonaProfile()) {
+     // Adapter and requestDevice validation use the same captured limit object.
+     // All candidate values meet core WebGPU defaults; never raise the backend.
+-    const uint64_t bufferCap = (uint64_t{256} + (code & 255)) * 1024 * 1024;
++    const auto persona = CloakfoxGPUProfile::Decode(code);
+     auto& limits = *mLimits->mFfi;
+-    mPersonaProfileSupported = CloakfoxGPUProfile::Decode(code).has_value() &&
+-        IsCanonicalGpu() && limits.max_buffer_size >= bufferCap &&
+-        limits.max_storage_buffer_binding_size >= (uint64_t{128} * 1024 * 1024);
++    mPersonaProfileSupported = persona && IsCanonicalGpu() &&
++        limits.max_buffer_size >= persona->bufferBytes &&
++        limits.max_storage_buffer_binding_size >= persona->storageBytes;
+     if (mPersonaProfileSupported) {
+-      limits.max_buffer_size = bufferCap;
+-      limits.max_storage_buffer_binding_size = uint64_t{128} * 1024 * 1024;
++      limits.max_buffer_size = persona->bufferBytes;
++      limits.max_storage_buffer_binding_size = persona->storageBytes;
+     }
+   }
+   // We clamp limits to defaults when requestDevice is called, but
