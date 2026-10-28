@@ -1,5 +1,5 @@
 {
-  "mode": "headless-only",
+  "mode": "headless-suite-with-explicitly-authorized-native-checks",
   "requiredEnvironment": {
     "MOZ_HEADLESS": "1",
     "CLOAKFOX_HEADFUL": "unset",
@@ -174,11 +174,14 @@
     "probe_worker_timeline.py",
     "probe_workers.py"
   ],
-  "deferred": {
-    "probe_appearance_restart.py": "NSWorkspace relaunch can activate an app despite headless environment",
-    "probe_privacy_enforcement.py": "Real display-capture negative path may reach OS chooser on regression"
-  },
+  "deferred": {},
   "libraryAudit": "Separately against pinned local CreepJS/FingerprintJS fixtures",
   "siteDataProbeTarget": "Both scope probes now require the explicit CLOAKFOX_BIN; no installed-app fallback",
-  "webgpuHeadless": "The four hardware probes enable layers.gpu-process.allow-headless only in owned headless test profiles; sandbox and blocklist remain unchanged."
+  "webgpuHeadless": "The four hardware probes enable layers.gpu-process.allow-headless only in owned headless test profiles; sandbox and blocklist remain unchanged.",
+  "nativeChecks": {
+    "authorizedByUser": true,
+    "probe_appearance_restart.py": "Headed disposable app/profile; real NSWorkspace restart",
+    "probe_privacy_enforcement.py": "Headless browser with native picker path permitted; disabled capture rejected before chooser",
+    "automaticHeadlessRunner": "Not rerun automatically; completion evidence is in scenario-acceptance-final.json"
+  }
 }

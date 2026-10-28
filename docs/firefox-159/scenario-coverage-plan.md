@@ -31,3 +31,14 @@ and per-site identity, workers/realm startup, invalid ownership, native/resource
 validation, media consent, synthetic media, cache/storage isolation, network
 headers/transports/proxy routes, timing, fonts, canvas and geometry. This statement
 is a feature map, not a claim that every combination of all settings is tested.
+
+## Authorized native completion
+
+- [x] User authorized both native UI checks.
+- [x] Privacy-enforcement probe passed unchanged.
+- [x] Appearance test uses the actual styled label; full native restart passed.
+- [x] Final receipt records163/163 known probes, preserving earlier failures.
+
+The previous headless-only exclusions above describe the initial constraint;
+explicit authorization allowed these two checks to complete. No universal or
+source-coverage percentage is claimed.

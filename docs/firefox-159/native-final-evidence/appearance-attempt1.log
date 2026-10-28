@@ -1,0 +1,25 @@
+Applying appearance: True
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/probe_appearance_restart.py", line 204, in <module>
+    main()
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/probe_appearance_restart.py", line 58, in main
+    toggle.click()
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/runtime-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webelement.py", line 112, in click
+    self._execute(Command.CLICK_ELEMENT)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/runtime-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webelement.py", line 504, in _execute
+    return self._parent.execute(command, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/runtime-venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py", line 506, in execute
+    self.error_handler.check_response(response)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/runtime-venv/lib/python3.12/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.ElementClickInterceptedException: Message: Element <input id="cfx-firefox-appearance" type="checkbox"> is not clickable at point (279,281) because another element <span> obscures it; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+RemoteError@chrome://remote/content/shared/RemoteError.sys.mjs:14:8
+WebDriverError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:169:5
+ElementClickInterceptedError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:321:5
+webdriverClickElement@chrome://remote/content/marionette/interaction.sys.mjs:178:11
+interaction.clickElement@chrome://remote/content/marionette/interaction.sys.mjs:134:11
+clickElement@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:338:29
+receiveMessage@chrome://remote/content/marionette/actors/MarionetteCommandsChild.sys.mjs:210:31
+

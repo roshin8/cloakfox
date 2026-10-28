@@ -1,6 +1,6 @@
 # Firefox 159 scenario coverage follow-up — 2026-10-28
 
-161 of the 163 discovered regression probes now have passing results for the
+163 of the 163 discovered regression probes now have passing results for the
 explicit Firefox 159 candidate. There are no remaining GPU inconclusives. This
 is coverage of the known probe inventory, not 100% of every privacy feature,
 setting combination, possible browser execution path, or source line/branch.
@@ -32,24 +32,31 @@ Original acceptance receipts and earlier failures remain unchanged.
   off, and reopens the picker after reset and profile restart. Protected website
   media-label scenarios remain covered by the original separate probes.
 
-## Still unverified
+## Native checks completed with user authorization
 
-1. `probe_appearance_restart.py`: actual appearance switch/relaunch through
-   NSWorkspace can activate an application even when its browser is headless.
-2. `probe_privacy_enforcement.py`: the actual display-capture negative path can
-   reach native capture permission/chooser UI if the policy regresses. Existing
-   individual permission, fake-media and routing probes do not replace this
-   complete combined flow.
+The user explicitly authorized the two remaining native UI checks. The unchanged
+privacy-enforcement probe passed, including disabled screen capture/output
+selection rejecting before chooser, location consent, container isolation,
+WebRTC startup and opt-out behavior, and persistence.
 
-These two are not marked passed or waived. The user was asked whether to permit
-those native UI checks; no permission is inferred from elapsed time. Successful
-native permission/capture integration also requires an explicitly selected real
-source, so a headless mock cannot establish complete end-to-end coverage.
+The first appearance attempt failed before restart because Selenium clicked the
+checkbox covered by its styled label. The test now clicks the actual visible
+associated label and waits for checked state; no product code was changed.
+The full headed test passed: both appearance directions, native process name and
+bundle path, same disposable profile and tabs, extension metadata/toolbar/popup,
+and fresh original-app launch honoring the saved choice. Nine appearance helper
+unit tests also passed. The original failure is retained in native-final-evidence.
+
+`scenario-acceptance-final.json` records all163 current probe source hashes and
+resolves the earlier exclusions. A passed negative capture-policy test does not
+certify a successful real screen-sharing session. Synthetic-device checks do not
+certify physical camera/microphone hardware. Neither counts nor the probe list
+prove every possible setting combination or guarantee absence of all privacy leaks.
 
 ## Evidence and preservation
 
-`coverage-followup.json` reconciles all 163 discovered probes, records current
-source hashes, library results and the exact two exclusions. Supporting results
+`coverage-followup.json` reconciles the earlier163-probe inventory, records current
+source hashes, library results and the earlier two exclusions. Supporting results
 and logs are in `coverage-followup-evidence/`. Large raw library reports remain
 in the ignored reports directory with their SHA256 hashes recorded in the small
 library summaries. The 26 targeted Gecko helper tests and three camera-nickname
