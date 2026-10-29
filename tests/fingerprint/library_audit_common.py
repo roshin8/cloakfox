@@ -127,3 +127,18 @@ def validate_native_controls(first, second):
             equal = a['fingerprint']['canvas2d']['dataURI'] == b['fingerprint']['canvas2d']['dataURI']
         checks.append({'pass': equal, 'label': library + ': master-off output ignores different container seeds'})
     return checks
+
+
+def observed_gpu_recognized(fingerprint):
+    """A missing collector is not evidence of recognized graphics capabilities."""
+    canvas = fingerprint.get('canvasWebgl')
+    trash = fingerprint.get('trash')
+    if not isinstance(canvas, dict) or not canvas.get('$hash') or not isinstance(trash, dict):
+        return False
+    params = canvas.get('parameters')
+    if not isinstance(params, dict) or not params.get('UNMASKED_RENDERER_WEBGL'):
+        return False
+    if not all(key in params for key in ('MAX_TEXTURE_SIZE', 'MAX_VIEWPORT_DIMS', 'MAX_ELEMENT_INDEX', 'MAX_TEXTURE_LOD_BIAS')):
+        return False
+    warnings = trash.get('trashBin')
+    return isinstance(warnings, list) and not any(w.get('value') in ('suspicious gpu', 'suspicious capabilities') for w in warnings)

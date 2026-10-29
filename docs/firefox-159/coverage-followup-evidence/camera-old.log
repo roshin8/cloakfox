@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/probe_camera_nicknames.py", line 25, in <module>
+    WebDriverWait(d,20).until(lambda _:js("return !!document.querySelector('[data-camera-field=name]')"))
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/runtime-venv/lib/python3.12/site-packages/selenium/webdriver/support/wait.py", line 121, in until
+    raise TimeoutException(message, screen, stacktrace)
+selenium.common.exceptions.TimeoutException: Message: 
+

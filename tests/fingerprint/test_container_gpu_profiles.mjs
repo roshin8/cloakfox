@@ -41,3 +41,13 @@ test('preset changes validate the complete update before deleting any saved fiel
  context.setOverrides(6,{'webGl:vendor':'AMD','webGl:renderer':'AMD Radeon'});
  assert.equal(values.get(branch+'webGl:renderer'),'AMD Radeon');
 });
+
+test('whole catalog eligibility filters ceilings without independently randomizing limits',()=>{
+ const all=createGPUProfile(config('Apple M1'),6);
+ assert.equal(all.version,2);assert.deepEqual(all.catalog,[1,2]);
+ const smaller=createGPUProfile({...config('Apple M1'),'webGl:parameters':{'3379':4096}},6);
+ assert.deepEqual(smaller.catalog,[1]);
+ assert.throws(()=>createGPUProfile({...config('AMD Radeon'),'webGl2:parameters':{'3379':4095}},6));
+ assert.throws(()=>createGPUProfile({...config('NVIDIA GTX 980'),'webGl:parameters':{'3386':[4096,100]}},6));
+ assert.deepEqual(createGPUProfile({...config('Intel UHD'),'webGl:parameters':{'3386':[4096,4096]}},6).catalog,[1]);
+});

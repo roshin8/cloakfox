@@ -3,6 +3,7 @@
 Uses real native APIs and a loopback fixture in a disposable profile. Requires
 CLOAKFOX_BIN and geckodriver. Native file pickers are not exercised.
 """
+from contextlib import ExitStack
 import http.server
 import json
 import tempfile
@@ -72,8 +73,14 @@ def main():
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     driver = None
+    def quit_driver():
+        nonlocal driver
+        if driver:
+            current=driver;driver=None
+            current.quit()
     try:
-        with tempfile.TemporaryDirectory(prefix="cloakfox-templates-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="cloakfox-templates-") as temporary, ExitStack() as cleanup:
+            cleanup.callback(quit_driver)
             root = Path(temporary)
             profile = root / "profile"
             profile.mkdir()
@@ -96,6 +103,7 @@ Services.prefs.setIntPref('network.proxy.type',0);
             template = chrome(driver, IMPORTS + """
 regions.setRegion(0,{version:1,locale:'de-DE',languages:['de-DE','de'],timezone:'Europe/Berlin',geolocation:null});
 privacy.setPrivacyPolicy(0,{version:1,preset:'compatibility',exceptions:[]});
+Services.prefs.setStringPref('cloakfox.container.0.persona_source','browserforge');
 Services.prefs.setIntPref('cloakfox.container.0.persona_index',5);
 ChromeUtils.importESModule('resource:///modules/CloakfoxSeedSync.sys.mjs').refreshContainerConfig(0);
 return templates.saveTemplate(templates.captureTemplate(0,'Disposable template',[])).settings;
@@ -172,8 +180,7 @@ return id;
                               "identityStableAfterRestart": True}), flush=True)
             print("PASS: templates create fresh persistent identities without copying login state", flush=True)
     finally:
-        if driver:
-            driver.quit()
+        quit_driver()
         server.shutdown()
         server.server_close()
 

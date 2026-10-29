@@ -64,7 +64,14 @@ def verify_integrity_manifest(directory):
         if name not in manifest['files']:
             raise ValueError(f'required GPU library absent from manifest: {name}')
     revisions = manifest.get('revisions', {})
-    if (manifest.get('rendererVersion') != 1 or manifest.get('platform') != 'macos-arm64'
+    version=manifest.get('rendererVersion')
+    if type(version) is not int or version not in (1,2):
+        raise ValueError('GPU renderer version mismatch')
+    if version==2:
+        expected={name:digest(RESOURCES/name) for name in ('canonical-only.patch','command-line-tools.patch','reference-capacity-angle.patch','reference-capacity-swiftshader.patch')}
+        if manifest.get('capacityProfile')!='reference-v1' or manifest.get('localPatches')!=expected:
+            raise ValueError('Reference GPU backend patch provenance mismatch')
+    if (manifest.get('platform') != 'macos-arm64'
             or revisions.get('.') != ANGLE_REVISION
             or revisions.get('third_party/SwiftShader') != SWIFTSHADER_REVISION
             or manifest.get('hostRendererFallback') is not False
@@ -160,6 +167,8 @@ def apply_patch(checkout_dir, patch):
 def build(work, jobs, live_logs=False):
     angle = work / 'angle'
     apply_patch(angle, RESOURCES / 'canonical-only.patch')
+    apply_patch(angle, RESOURCES / 'reference-capacity-angle.patch')
+    apply_patch(angle / 'third_party/SwiftShader', RESOURCES / 'reference-capacity-swiftshader.patch')
     if output(['xcode-select', '-print-path'], angle).endswith('/CommandLineTools'):
         apply_patch(angle / 'build', RESOURCES / 'command-line-tools.patch')
     target = angle / 'out/Canonical'
@@ -181,6 +190,15 @@ def build(work, jobs, live_logs=False):
             with (work / (name + '.log')).open('w') as log:
                 run(command, angle, stdout=log, stderr=subprocess.STDOUT)
     run([sys.executable, str(ROOT / 'tests/fingerprint/probe_canonical_gpu_standalone.py'), str(target)], ROOT)
+    probe_reference_execution(angle, target)
+
+
+def probe_reference_execution(angle, target):
+    """Substantiate expanded resources with rasterization, shaders and resolve."""
+    executable = target / 'canonical-gpu-reference-test'
+    run(['c++', '-std=c++17', '-I', str(angle / 'include'),
+         str(ROOT / 'tests/fingerprint/canonical_gpu_reference.cpp'), '-o', str(executable)], ROOT)
+    run([str(executable), str(target.resolve())], ROOT)
 
 
 def stage(work, destination):
@@ -188,6 +206,7 @@ def stage(work, destination):
     target = angle / 'out/Canonical'
     # Validate the actual CPU producer before copying any deployable artifact.
     run([sys.executable, str(ROOT / 'tests/fingerprint/probe_canonical_gpu_standalone.py'), str(target)], ROOT)
+    probe_reference_execution(angle, target)
     if destination.exists():
         raise ValueError(f'stage destination already exists: {destination}; verify or choose a fresh destination')
     destination.mkdir(parents=True)
@@ -217,7 +236,7 @@ def stage(work, destination):
     for name in ('LICENSE-APACHE', 'LICENSE-MIT'):
         shutil.copy2(renderdoc / name, renderdoc_notices / name)
     shutil.copy2(RESOURCES / 'args.gn', destination / 'args.gn')
-    metadata = {'rendererVersion': 1, 'platform': 'macos-arm64', 'backend': 'ANGLE Vulkan / SwiftShader CPU',
+    metadata = {'rendererVersion': 2, 'capacityProfile': 'reference-v1', 'platform': 'macos-arm64', 'backend': 'ANGLE Vulkan / SwiftShader CPU',
                 'hostRendererFallback': False, 'driverEnvironmentMutation': False, 'revisions': revisions,
                 'localPatches': {p.name: digest(p) for p in sorted(RESOURCES.glob('*.patch'))},
                 'integrityScope': 'Verify before packaging; signed application validates loaded library code. No cross-host pixel identity claim.'}

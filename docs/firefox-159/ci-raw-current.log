@@ -1,0 +1,234 @@
+.....From /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmpc2h7672p/source
+ * branch            d2e21f52c8695883d694a2d00955f91b8d5e28cf -> FETCH_HEAD
+HEAD is now at d2e21f5 fixture
+.HTTP 503Pinned fetch transport failed; retry 2/3
+HTTP 503Pinned fetch transport failed; retry 3/3
+HTTP 503fatal: remote error: upload-pack: not our ref.error: RPC failed; HTTP 503 curl 22Pinned fetch transport failed; retry 2/3
+From /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/tmpwf_309ls/source
+ * branch            d2e21f52c8695883d694a2d00955f91b8d5e28cf -> FETCH_HEAD
+HEAD is now at d2e21f5 fixture
+..CHECKPOINT saved bytes=426 seconds=0.0
+CHECKPOINT TEST phase=restore-original
+CHECKPOINT restored seconds=0.0
+CHECKPOINT TEST phase=manifest-before
+CHECKPOINT TEST phase=native-save
+CHECKPOINT preflight verified 1 contained or pinned SDK symlinks
+CHECKPOINT native archive bytes=0
+CHECKPOINT saved native bytes=364 seconds=0.2
+CHECKPOINT TEST phase=release-diagnostic-copy
+CHECKPOINT TEST phase=restore-native
+CHECKPOINT restored seconds=0.0
+CHECKPOINT TEST phase=manifest-after
+CHECKPOINT TEST phase=verified
+.......EE.EECHECKPOINT preflight verified 2 contained or pinned SDK symlinks
+ECHECKPOINT preflight verified 1 contained or pinned SDK symlinks
+E.CHECKPOINT saved bytes=6051 seconds=0.0
+CHECKPOINT restored seconds=0.0
+.....{"phase": "download-retry", "bytes": 3, "totalBytes": 10, "attempt": 1, "errorType": "TimeoutError"}
+{"phase": "download", "bytes": 10, "totalBytes": 10, "elapsedSeconds": 0.0}
+........................Verified current app and source/SDK/embedded framework SHA256: 923d08a629576330ea08fd4c153342efaf561724e8ff49cbf1b5f9c7f38fa0b7
+Verified current app and source/SDK/embedded framework SHA256: 923d08a629576330ea08fd4c153342efaf561724e8ff49cbf1b5f9c7f38fa0b7
+STAGE tarball_deps.patch-check
+
+STAGE tarball_deps.patch-check failed: exit=-15 elapsed=1.0s
+E.E.E...................JOB BUDGET {"deadline": 21000, "compileSeconds": 7920, "requestedSeconds": 10800, "checkpointReserveSeconds": 5400}
+.CHECKPOINT preflight verified 1 contained or pinned SDK symlinks
+CHECKPOINT native archive bytes=0
+CHECKPOINT saved native bytes=551 seconds=0.2
+CHECKPOINT restored seconds=0.0
+ECHECKPOINT preflight verified 0 contained or pinned SDK symlinks
+CHECKPOINT native archive bytes=0
+..CHECKPOINT preflight verified 1 contained or pinned SDK symlinks
+CHECKPOINT native archive bytes=0
+CHECKPOINT saved native bytes=467 seconds=0.2
+CHECKPOINT restored seconds=0.0
+............STAGE fixture
+
+STAGE fixture failed: exit=-15 elapsed=0.0s
+E....STAGE fixture
+
+STAGE fixture failed: exit=-15 elapsed=1.0s
+FSTAGE fixture
+
+STAGE fixture failed: exit=-15 elapsed=0.0s
+F............................Native test inputs: 11 files, 931 bytes
+Verified same-commit native test inputs: commit
+................................
+======================================================================
+ERROR: test_different_runner_provenance_can_resume_only_identical_host_bytes (test_chromium_checkpoint.Checkpoints.test_different_runner_provenance_can_resume_only_identical_host_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_checkpoint.py", line 78, in test_different_runner_provenance_can_resume_only_identical_host_bytes
+    module.save(root, archive, identity, provenance={'runnerImage': 'image-A'})
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 146, in save
+    return _save_gzip(root, archive, identity, provenance)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 100, in _save_gzip
+    require_space(archive.parent)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_external_symlink_is_rejected (test_chromium_checkpoint.Checkpoints.test_external_symlink_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_checkpoint.py", line 164, in test_external_symlink_is_rejected
+    module.save(root, base / 'checkpoint/workspace.tar.gz', {})
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 146, in save
+    return _save_gzip(root, archive, identity, provenance)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 100, in _save_gzip
+    require_space(archive.parent)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_rejects_changed_archive_or_wrong_identity_without_extracting (test_chromium_checkpoint.Checkpoints.test_rejects_changed_archive_or_wrong_identity_without_extracting)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_checkpoint.py", line 129, in test_rejects_changed_archive_or_wrong_identity_without_extracting
+    module.save(root, archive, identity)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 146, in save
+    return _save_gzip(root, archive, identity, provenance)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 100, in _save_gzip
+    require_space(archive.parent)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_reserve_rejects_checkpoint_creation_and_extraction (test_chromium_checkpoint.Checkpoints.test_reserve_rejects_checkpoint_creation_and_extraction)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_checkpoint.py", line 177, in test_reserve_rejects_checkpoint_creation_and_extraction
+    module.save(root, archive, {})
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 146, in save
+    return _save_gzip(root, archive, identity, provenance)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 100, in _save_gzip
+    require_space(archive.parent)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_roundtrip_preserves_objects_timestamps_and_links (test_chromium_checkpoint.Checkpoints.test_roundtrip_preserves_objects_timestamps_and_links)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_checkpoint.py", line 110, in test_roundtrip_preserves_objects_timestamps_and_links
+    module.save(root, archive, identity)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 146, in save
+    return _save_gzip(root, archive, identity, provenance)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 100, in _save_gzip
+    require_space(archive.parent)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_verified_host_sdk_links_are_recreated_only_after_extract (test_chromium_checkpoint.Checkpoints.test_verified_host_sdk_links_are_recreated_only_after_extract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_checkpoint.py", line 213, in test_verified_host_sdk_links_are_recreated_only_after_extract
+    module.save(root, archive, identity)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 146, in save
+    return _save_gzip(root, archive, identity, provenance)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 100, in _save_gzip
+    require_space(archive.parent)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_upstream_tarball_patches_apply_without_a_b_prefix (test_chromium_ci.CiInputs.test_upstream_tarball_patches_apply_without_a_b_prefix)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_ci.py", line 158, in test_upstream_tarball_patches_apply_without_a_b_prefix
+    api.Pipeline(root).apply_archive_patch(patch, root)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_source.py", line 299, in apply_archive_patch
+    self.run(patch.name + '-check', ['git', 'apply', '-p0', '--check', patch], cwd)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_source.py", line 283, in run
+    raise RuntimeError(storage_error)
+RuntimeError: Stopped owned CI stage before exhausting the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_continued_sdk_source_requires_sealed_controller_lineage (test_chromium_clients.ChromiumClients.test_continued_sdk_source_requires_sealed_controller_lineage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_clients.py", line 46, in test_continued_sdk_source_requires_sealed_controller_lineage
+    api.restore_sdk(package,root/'restored','controller',manifest)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_clients.py", line 51, in restore_sdk
+    checkpoint.require_space(destination, member.size)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_restored_sdk_preserves_producer_and_validates_source_sdk_bytes (test_chromium_clients.ChromiumClients.test_restored_sdk_preserves_producer_and_validates_source_sdk_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_clients.py", line 31, in test_restored_sdk_preserves_producer_and_validates_source_sdk_bytes
+    sdk,record=api.restore_sdk(package,root/'restored','producer')
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_clients.py", line 51, in restore_sdk
+    checkpoint.require_space(destination, member.size)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_native_excludes_only_verified_external_sdk_links (test_chromium_native_checkpoint.NativeCheckpoint.test_native_excludes_only_verified_external_sdk_links)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_native_checkpoint.py", line 63, in test_native_excludes_only_verified_external_sdk_links
+    m.save(root,base/'bad/workspace.tar.zst',identity)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 154, in save
+    require_space(archive.parent)
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_checkpoint.py", line 27, in require_space
+    raise RuntimeError('Checkpoint would exhaust the 10 GiB storage reserve')
+RuntimeError: Checkpoint would exhaust the 10 GiB storage reserve
+
+======================================================================
+ERROR: test_budget_interrupt_is_checkpoint_not_build_success (test_chromium_progress.ChromiumProgress.test_budget_interrupt_is_checkpoint_not_build_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_progress.py", line 225, in test_budget_interrupt_is_checkpoint_not_build_success
+    complete = module.Pipeline(root).run('fixture', [sys.executable, '-u', '-c',
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/scripts/ci/chromium_source.py", line 283, in run
+    raise RuntimeError(storage_error)
+RuntimeError: Stopped owned CI stage before exhausting the 10 GiB storage reserve
+
+======================================================================
+FAIL: test_failure_keeps_output_and_nonzero_status (test_chromium_progress.ChromiumProgress.test_failure_keeps_output_and_nonzero_status)
+----------------------------------------------------------------------
+RuntimeError: Stopped owned CI stage before exhausting the 10 GiB storage reserve
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_progress.py", line 163, in test_failure_keeps_output_and_nonzero_status
+    with self.assertRaisesRegex(RuntimeError, 'fixture failed: 7'):
+AssertionError: "fixture failed: 7" does not match "Stopped owned CI stage before exhausting the 10 GiB storage reserve"
+
+======================================================================
+FAIL: test_inherited_log_does_not_hide_direct_child_failure (test_chromium_progress.ChromiumProgress.test_inherited_log_does_not_hide_direct_child_failure)
+----------------------------------------------------------------------
+RuntimeError: Stopped owned CI stage before exhausting the 10 GiB storage reserve
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/ci/test_chromium_progress.py", line 186, in test_inherited_log_does_not_hide_direct_child_failure
+    with self.assertRaisesRegex(RuntimeError, 'fixture failed: 7'):
+AssertionError: "fixture failed: 7" does not match "Stopped owned CI stage before exhausting the 10 GiB storage reserve"
+
+----------------------------------------------------------------------
+Ran 160 tests in 8.543s
+
+FAILED (failures=2, errors=11)

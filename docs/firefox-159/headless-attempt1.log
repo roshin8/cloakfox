@@ -1,0 +1,63 @@
+RUN probe_network_identity.py
+{'probe': 'probe_network_identity.py', 'code': 1, 'outcome': 'failed', 'seconds': 4.83}
+RUN probe_realm_privacy.py
+{'probe': 'probe_realm_privacy.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.23}
+RUN probe_language_scopes.py
+{'probe': 'probe_language_scopes.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.24}
+RUN probe_worker_debugger_startup.py
+{'probe': 'probe_worker_debugger_startup.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.62}
+RUN probe_navigator_coherence.py
+{'probe': 'probe_navigator_coherence.py', 'code': 1, 'outcome': 'failed', 'seconds': 4.76}
+RUN probe_webgpu_null_safety.py
+{'probe': 'probe_webgpu_null_safety.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.18}
+RUN probe_site_data_scope.py
+{'probe': 'probe_site_data_scope.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.73}
+RUN probe_site_data_cache_scope.py
+{'probe': 'probe_site_data_cache_scope.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.25}
+RUN probe_about_dialog.py
+{'probe': 'probe_about_dialog.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.23}
+RUN probe_actor_stealth.py
+{'probe': 'probe_actor_stealth.py', 'code': 0, 'outcome': 'passed', 'seconds': 5.75}
+RUN probe_actors.py
+{'probe': 'probe_actors.py', 'code': 0, 'outcome': 'passed', 'seconds': 5.43}
+RUN probe_alps_identity.py
+{'probe': 'probe_alps_identity.py', 'code': 1, 'outcome': 'failed', 'seconds': 0.35}
+RUN probe_appearance.py
+{'probe': 'probe_appearance.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.3}
+RUN probe_appearance_profile.py
+{'probe': 'probe_appearance_profile.py', 'code': 0, 'outcome': 'passed', 'seconds': 3.16}
+RUN probe_audio_website_labels.py
+{'probe': 'probe_audio_website_labels.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.72}
+RUN probe_audioworklet_privacy.py
+{'probe': 'probe_audioworklet_privacy.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.72}
+RUN probe_background_activity.py
+{'probe': 'probe_background_activity.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.99}
+RUN probe_bitmap_export_protection.py
+{'probe': 'probe_bitmap_export_protection.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.68}
+RUN probe_browser_profile_picker.py
+{'probe': 'probe_browser_profile_picker.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.77}
+RUN probe_bulk_containers.py
+{'probe': 'probe_bulk_containers.py', 'code': 1, 'outcome': 'failed', 'seconds': 1.97}
+RUN probe_bundled_blocker.py
+{'probe': 'probe_bundled_blocker.py', 'code': 1, 'outcome': 'failed', 'seconds': 2.19}
+RUN probe_bundled_containers.py
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/run_all.py", line 96, in run_probe
+    code = process.wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/subprocess.py", line 2040, in _wait
+    time.sleep(delay)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/cloakfox159-run-headless.py", line 31, in <module>
+    code,text=run_all.run_probe(path,900)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/run_all.py", line 116, in run_probe
+    os.killpg(process.pid, signal.SIGKILL)
+PermissionError: [Errno 1] Operation not permitted

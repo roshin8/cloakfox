@@ -1,0 +1,291 @@
+{
+  "binary": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-coherent-gpu/Cloakfox.app/Contents/MacOS/cloakfox",
+  "headless": true,
+  "checks": [
+    {
+      "name": "privacy master enabled",
+      "pass": true
+    },
+    {
+      "name": "A has actual requested owner",
+      "pass": true
+    },
+    {
+      "name": "A initially has no foreign local",
+      "pass": true
+    },
+    {
+      "name": "A initially has no foreign session",
+      "pass": true
+    },
+    {
+      "name": "A initially has no foreign idb",
+      "pass": true
+    },
+    {
+      "name": "A initially has no foreign cache",
+      "pass": true
+    },
+    {
+      "name": "A initially has no foreign document or request cookie",
+      "pass": true
+    },
+    {
+      "name": "B has actual requested owner",
+      "pass": true
+    },
+    {
+      "name": "B initially has no foreign local",
+      "pass": true
+    },
+    {
+      "name": "B initially has no foreign session",
+      "pass": true
+    },
+    {
+      "name": "B initially has no foreign idb",
+      "pass": true
+    },
+    {
+      "name": "B initially has no foreign cache",
+      "pass": true
+    },
+    {
+      "name": "B initially has no foreign document or request cookie",
+      "pass": true
+    },
+    {
+      "name": "A2 has actual requested owner",
+      "pass": true
+    },
+    {
+      "name": "A2 initially has no foreign local",
+      "pass": true
+    },
+    {
+      "name": "A2 initially has no foreign session",
+      "pass": true
+    },
+    {
+      "name": "A2 initially has no foreign idb",
+      "pass": true
+    },
+    {
+      "name": "A2 initially has no foreign cache",
+      "pass": true
+    },
+    {
+      "name": "A2 initially has no foreign document or request cookie",
+      "pass": true
+    },
+    {
+      "name": "A after write retains own local",
+      "pass": true
+    },
+    {
+      "name": "A after write retains own idb",
+      "pass": true
+    },
+    {
+      "name": "A after write retains own cache",
+      "pass": true
+    },
+    {
+      "name": "A after write document and request cookies use own container",
+      "pass": true
+    },
+    {
+      "name": "A after write sessionStorage is scoped to the correct tab",
+      "pass": true
+    },
+    {
+      "name": "B after A writes has no foreign local",
+      "pass": true
+    },
+    {
+      "name": "B after A writes has no foreign session",
+      "pass": true
+    },
+    {
+      "name": "B after A writes has no foreign idb",
+      "pass": true
+    },
+    {
+      "name": "B after A writes has no foreign cache",
+      "pass": true
+    },
+    {
+      "name": "B after A writes has no foreign document or request cookie",
+      "pass": true
+    },
+    {
+      "name": "identical SharedWorker URL/name has separate container state",
+      "pass": true
+    },
+    {
+      "name": "B after own write retains own local",
+      "pass": true
+    },
+    {
+      "name": "B after own write retains own idb",
+      "pass": true
+    },
+    {
+      "name": "B after own write retains own cache",
+      "pass": true
+    },
+    {
+      "name": "B after own write document and request cookies use own container",
+      "pass": true
+    },
+    {
+      "name": "B after own write sessionStorage is scoped to the correct tab",
+      "pass": true
+    },
+    {
+      "name": "same-owner new tab retains own local",
+      "pass": true
+    },
+    {
+      "name": "same-owner new tab retains own idb",
+      "pass": true
+    },
+    {
+      "name": "same-owner new tab retains own cache",
+      "pass": true
+    },
+    {
+      "name": "same-owner new tab document and request cookies use own container",
+      "pass": true
+    },
+    {
+      "name": "same-owner new tab sessionStorage is scoped to the correct tab",
+      "pass": true
+    },
+    {
+      "name": "same-owner SharedWorker positive control sees the live state",
+      "pass": true
+    },
+    {
+      "name": "same-owner BroadcastChannel positive control delivers",
+      "pass": true
+    },
+    {
+      "name": "BroadcastChannel does not cross containers",
+      "pass": true
+    },
+    {
+      "name": "reverse BroadcastChannel message stays in its container",
+      "pass": true
+    },
+    {
+      "name": "A reload retains own local",
+      "pass": true
+    },
+    {
+      "name": "A reload retains own idb",
+      "pass": true
+    },
+    {
+      "name": "A reload retains own cache",
+      "pass": true
+    },
+    {
+      "name": "A reload document and request cookies use own container",
+      "pass": true
+    },
+    {
+      "name": "A reload sessionStorage is scoped to the correct tab",
+      "pass": true
+    },
+    {
+      "name": "other-site navigation preserves container owner",
+      "pass": true
+    },
+    {
+      "name": "same owner other origin has no foreign local",
+      "pass": true
+    },
+    {
+      "name": "same owner other origin has no foreign session",
+      "pass": true
+    },
+    {
+      "name": "same owner other origin has no foreign idb",
+      "pass": true
+    },
+    {
+      "name": "same owner other origin has no foreign cache",
+      "pass": true
+    },
+    {
+      "name": "same owner other origin has no foreign document or request cookie",
+      "pass": true
+    },
+    {
+      "name": "SharedWorker does not cross origins",
+      "pass": true
+    },
+    {
+      "name": "A owner survives profile restart",
+      "pass": true
+    },
+    {
+      "name": "A restart retains own local",
+      "pass": true
+    },
+    {
+      "name": "A restart retains own idb",
+      "pass": true
+    },
+    {
+      "name": "A restart retains own cache",
+      "pass": true
+    },
+    {
+      "name": "A restart document and request cookies use own container",
+      "pass": true
+    },
+    {
+      "name": "A restart sessionStorage is scoped to the correct tab",
+      "pass": true
+    },
+    {
+      "name": "A shared-worker memory is not persisted as storage",
+      "pass": true
+    },
+    {
+      "name": "B owner survives profile restart",
+      "pass": true
+    },
+    {
+      "name": "B restart retains own local",
+      "pass": true
+    },
+    {
+      "name": "B restart retains own idb",
+      "pass": true
+    },
+    {
+      "name": "B restart retains own cache",
+      "pass": true
+    },
+    {
+      "name": "B restart document and request cookies use own container",
+      "pass": true
+    },
+    {
+      "name": "B restart sessionStorage is scoped to the correct tab",
+      "pass": true
+    },
+    {
+      "name": "B shared-worker memory is not persisted as storage",
+      "pass": true
+    }
+  ],
+  "runtime": {
+    "buildID": "20261028140958",
+    "enabled": true,
+    "version": "159.0-beta.1"
+  }
+}

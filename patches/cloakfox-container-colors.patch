@@ -1,82 +1,48 @@
 --- a/toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs
 +++ b/toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs
-@@ -25,63 +25,147 @@
- export const CONTAINER_COLORS = [
-   {
-     name: "gray",
+@@ -28,2 +28,2 @@
 -    code: "#7c7c7d",
 -    codeNova: "#949297",
 +    code: "#e2a16b",
 +    codeNova: "#e2a16b",
-     l10nId: "user-context-color-gray",
-   },
-   {
-     name: "yellow",
-     code: "#ffcb00",
+@@ -35 +35 @@
 -    codeNova: "#db820e",
 +    codeNova: "#e29a3c",
-     l10nId: "user-context-color-yellow",
-   },
-   {
-     name: "orange",
-     code: "#ff9f00",
+@@ -41 +41 @@
 -    codeNova: "#f4682c",
 +    codeNova: "#f78c5f",
-     l10nId: "user-context-color-orange",
-   },
-   {
-     name: "red",
+@@ -46,2 +46,2 @@
 -    code: "#ff613d",
 -    codeNova: "#ed566e",
 +    code: "#ff876c",
 +    codeNova: "#f38a9b",
-     l10nId: "user-context-color-red",
-   },
-   {
-     name: "pink",
+@@ -52,2 +52,2 @@
 -    code: "#ff4bda",
 -    codeNova: "#db54bf",
 +    code: "#ff74e3",
 +    codeNova: "#e689d3",
-     l10nId: "user-context-color-pink",
-   },
-   {
-     name: "purple",
+@@ -58,2 +58,2 @@
 -    code: "#af51f5",
 -    codeNova: "#b864ee",
 +    code: "#cc90f9",
 +    codeNova: "#cd91f3",
-     l10nId: "user-context-color-purple",
-   },
-   {
-     name: "violet",
+@@ -64,2 +64,2 @@
 -    code: "#764edd",
 -    codeNova: "#9871ff",
 +    code: "#b29cec",
 +    codeNova: "#b599ff",
-     l10nId: "user-context-color-violet",
-   },
-   {
-     name: "blue",
+@@ -70,2 +70,2 @@
 -    code: "#37adff",
 -    codeNova: "#5a87fd",
 +    code: "#3fb0ff",
 +    codeNova: "#85a6fe",
-     l10nId: "user-context-color-blue",
-   },
-   {
-     name: "cyan",
-     code: "#00c79a",
+@@ -77 +77 @@
 -    codeNova: "#10a4ca",
 +    codeNova: "#40b6d5",
-     l10nId: "user-context-color-cyan",
-   },
-   {
-     name: "green",
-     code: "#51cd00",
+@@ -83 +83 @@
 -    codeNova: "#11ae84",
 +    codeNova: "#39bc99",
-     l10nId: "user-context-color-green",
+@@ -84,0 +85,84 @@
 +  },
 +  {
 +    name: "navy",
@@ -161,123 +127,66 @@
 +    code: "#ed9ad7",
 +    codeNova: "#ed9ad7",
 +    l10nId: "user-context-color-charcoal",
-   },
- ];
- 
 --- a/browser/components/contextualidentity/content/usercontext.css
 +++ b/browser/components/contextualidentity/content/usercontext.css
-@@ -12,12 +12,12 @@
-                                                 preferences list, tab-row indicators)
-    --identity-stroke-color shade 40            (tab stroke, URL-bar badge, all-tabs indicator, preferences color swatches) */
- .identity-color-blue {
+@@ -15,2 +15,2 @@
 -  --identity-tab-color: #37adff;
 -  --identity-icon-color: #37adff;
 +  --identity-tab-color: #3fb0ff;
 +  --identity-icon-color: #3fb0ff;
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-blue-60), var(--color-blue-20));
+@@ -20 +20 @@
 -    --identity-stroke-color: var(--color-blue-40);
 +    --identity-stroke-color: #85a6fe;
-   }
- }
- 
-@@ -27,7 +27,7 @@
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-cyan-60), var(--color-cyan-20));
+@@ -30 +30 @@
 -    --identity-stroke-color: var(--color-cyan-40);
 +    --identity-stroke-color: #40b6d5;
-   }
- }
- 
-@@ -37,7 +37,7 @@
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-green-60), var(--color-green-20));
+@@ -40 +40 @@
 -    --identity-stroke-color: var(--color-green-40);
 +    --identity-stroke-color: #39bc99;
-   }
- }
- 
-@@ -47,7 +47,7 @@
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-yellow-60), var(--color-yellow-20));
+@@ -50 +50 @@
 -    --identity-stroke-color: var(--color-yellow-40);
 +    --identity-stroke-color: #e29a3c;
-   }
- }
- 
-@@ -57,57 +57,198 @@
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-orange-60), var(--color-orange-20));
+@@ -60 +60 @@
 -    --identity-stroke-color: var(--color-orange-40);
 +    --identity-stroke-color: #f78c5f;
-   }
- }
- 
- .identity-color-red {
+@@ -65,2 +65,2 @@
 -  --identity-tab-color: #ff613d;
 -  --identity-icon-color: #ff613d;
 +  --identity-tab-color: #ff876c;
 +  --identity-icon-color: #ff876c;
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-red-60), var(--color-red-20));
+@@ -70 +70 @@
 -    --identity-stroke-color: var(--color-red-40);
 +    --identity-stroke-color: #f38a9b;
-   }
- }
- 
- .identity-color-pink {
+@@ -75,2 +75,2 @@
 -  --identity-tab-color: #ff4bda;
 -  --identity-icon-color: #ff4bda;
 +  --identity-tab-color: #ff74e3;
 +  --identity-icon-color: #ff74e3;
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-pink-60), var(--color-pink-20));
+@@ -80 +80 @@
 -    --identity-stroke-color: var(--color-pink-40);
 +    --identity-stroke-color: #e689d3;
-   }
- }
- 
- .identity-color-purple {
+@@ -85,2 +85,2 @@
 -  --identity-tab-color: #af51f5;
 -  --identity-icon-color: #af51f5;
 +  --identity-tab-color: #cc90f9;
 +  --identity-icon-color: #cc90f9;
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-purple-60), var(--color-purple-20));
+@@ -90 +90 @@
 -    --identity-stroke-color: var(--color-purple-40);
 +    --identity-stroke-color: #cd91f3;
-   }
- }
- 
- .identity-color-violet {
+@@ -95,2 +95,2 @@
 -  --identity-tab-color: #764edd;
 -  --identity-icon-color: #764edd;
 +  --identity-tab-color: #b29cec;
 +  --identity-icon-color: #b29cec;
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-violet-60), var(--color-violet-20));
+@@ -100 +100 @@
 -    --identity-stroke-color: var(--color-violet-40);
 +    --identity-stroke-color: #b599ff;
-   }
- }
- 
- .identity-color-gray {
+@@ -105,2 +105,2 @@
 -  --identity-tab-color: currentColor;
 -  --identity-icon-color: currentColor;
 +  --identity-tab-color: #e2a16b;
 +  --identity-icon-color: #e2a16b;
- 
-   @media -moz-pref("browser.nova.enabled") {
-     --identity-fill-color: light-dark(var(--color-gray-60), var(--color-gray-20));
+@@ -110 +110,142 @@
 -    --identity-stroke-color: var(--color-gray-40);
 +    --identity-stroke-color: #e2a16b;
 +  }
@@ -421,15 +330,9 @@
 +  @media -moz-pref("browser.nova.enabled") {
 +    --identity-fill-color: #525660;
 +    --identity-stroke-color: #ed9ad7;
-   }
- }
- 
 --- a/toolkit/locales/en-US/toolkit/global/contextual-identity.ftl
 +++ b/toolkit/locales/en-US/toolkit/global/contextual-identity.ftl
-@@ -53,6 +53,36 @@
- user-context-color-gray =
-     .label = Gray
- 
+@@ -55,0 +56,30 @@
 +user-context-color-navy =
 +    .label = Navy
 +user-context-color-teal =
@@ -460,15 +363,9 @@
 +user-context-color-charcoal =
 +    .label = Charcoal
 +
- ## Container icons, shown as selectable swatches in the container
- ## creation/edit dialog.
- 
 --- a/browser/components/enterprisepolicies/schemas/policies-schema.json
 +++ b/browser/components/enterprisepolicies/schemas/policies-schema.json
-@@ -794,7 +794,21 @@
-                   { "const": "pink", "title": "Pink" },
-                   { "const": "purple", "title": "Purple" },
-                   { "const": "violet", "title": "Violet" },
+@@ -797 +797,15 @@
 -                  { "const": "gray", "title": "Gray" }
 +                  { "const": "gray", "title": "Gray" },
 +                  { "const": "navy", "title": "Navy" },
@@ -485,6 +382,3 @@
 +                  { "const": "blush", "title": "Blush" },
 +                  { "const": "sand", "title": "Sand" },
 +                  { "const": "charcoal", "title": "Charcoal" }
-                 ]
-               }
-             },

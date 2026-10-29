@@ -1,0 +1,267 @@
+{
+  "status": "PASS",
+  "firefoxVersion": "159.0",
+  "platform": "macOS arm64",
+  "headless": true,
+  "binary": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-native-reference-layout/Cloakfox.app/Contents/MacOS/cloakfox",
+  "xulSHA256": "7a54287b1c98ea8525472228ae0514f0708f59c865ff628db837abd330b6a343",
+  "nativeBuild": "PASS; zero compiler warnings",
+  "runtimePhases": {
+    "native": [
+      {
+        "probe": "probe_gpu_reference_backend_admission.py",
+        "exitCode": 0,
+        "seconds": 0.14
+      },
+      {
+        "probe": "probe_gpu_reference_profiles.py",
+        "exitCode": 0,
+        "seconds": 26.39
+      },
+      {
+        "probe": "probe_touch_document_policy.py",
+        "exitCode": 0,
+        "seconds": 9.6
+      },
+      {
+        "probe": "probe_canonical_geometry.py",
+        "exitCode": 0,
+        "seconds": 28.6
+      },
+      {
+        "probe": "probe_container_rendering_settings.py",
+        "exitCode": 0,
+        "seconds": 19.88
+      }
+    ],
+    "regression": [
+      {
+        "probe": "probe_container_gpu_profiles.py",
+        "exitCode": 0,
+        "seconds": 14.23
+      },
+      {
+        "probe": "probe_canvas_canonical_gpu.py",
+        "exitCode": 0,
+        "seconds": 5.55
+      },
+      {
+        "probe": "probe_container_rendering_feasibility.py",
+        "exitCode": 0,
+        "seconds": 10.21
+      },
+      {
+        "probe": "probe_webgl_backend_profile.py",
+        "exitCode": 0,
+        "seconds": 7.29
+      },
+      {
+        "probe": "probe_webgpu_canvas_owner.py",
+        "exitCode": 0,
+        "seconds": 5.54
+      },
+      {
+        "probe": "probe_canvas_owner_transfer.py",
+        "exitCode": 0,
+        "seconds": 3.83
+      },
+      {
+        "probe": "probe_strict_graphics_settings.py",
+        "exitCode": 0,
+        "seconds": 5.13
+      },
+      {
+        "probe": "probe_graphics_optins_settings.py",
+        "exitCode": 0,
+        "seconds": 5.5
+      },
+      {
+        "probe": "probe_graphics_privacy.py",
+        "exitCode": 0,
+        "seconds": 8.14
+      },
+      {
+        "probe": "probe_webgl_readback.py",
+        "exitCode": 0,
+        "seconds": 41.9
+      },
+      {
+        "probe": "probe_dom_geometry_consistency.py",
+        "exitCode": 0,
+        "seconds": 4.86
+      },
+      {
+        "probe": "probe_font_metric_noise.py",
+        "exitCode": 0,
+        "seconds": 18.81
+      },
+      {
+        "probe": "probe_container_fonts.py",
+        "exitCode": 0,
+        "seconds": 8.3
+      },
+      {
+        "probe": "probe_bundled_font_rendering.py",
+        "exitCode": 0,
+        "seconds": 3.58
+      },
+      {
+        "probe": "probe_canvas_canonical_svg_golden.py",
+        "exitCode": 0,
+        "seconds": 4.59
+      },
+      {
+        "probe": "probe_canvas_canonical_adversarial.py",
+        "exitCode": 0,
+        "seconds": 9.75
+      },
+      {
+        "probe": "probe_screen_presentation.py",
+        "exitCode": 0,
+        "seconds": 5.41
+      },
+      {
+        "probe": "probe_window_geometry_tz.py",
+        "exitCode": 0,
+        "seconds": 11.76
+      },
+      {
+        "probe": "probe_canvas_canonical_text.py",
+        "exitCode": 0,
+        "seconds": 4.58
+      },
+      {
+        "probe": "probe_canvas_canonical_backing.py",
+        "exitCode": 0,
+        "seconds": 7.22
+      },
+      {
+        "probe": "probe_canvas_canonical_fonts.py",
+        "exitCode": 0,
+        "seconds": 16.47
+      },
+      {
+        "probe": "probe_canvas_canonical_performance.py",
+        "exitCode": 0,
+        "seconds": 7.81
+      }
+    ],
+    "libraries": [
+      {
+        "probe": "libraries-reference-layout-0",
+        "exitCode": 0,
+        "seconds": 39.94
+      },
+      {
+        "probe": "libraries-reference-layout-1",
+        "exitCode": 0,
+        "seconds": 40.8
+      }
+    ],
+    "python": [
+      {
+        "probe": "all-python-tests",
+        "exitCode": 0,
+        "seconds": 89.45
+      }
+    ]
+  },
+  "nativeDetails": {
+    "probe_gpu_reference_profiles": {
+      "xulSHA256": "7a54287b1c98ea8525472228ae0514f0708f59c865ff628db837abd330b6a343",
+      "checks": 1035,
+      "failed": 0,
+      "path": "tests/fingerprint/reports/firefox159-native-reference-layout/probe_gpu_reference_profiles/result.json",
+      "sha256": "bd05337e920dd4534e1b7f31153b6d3ae8d5a7da072222b77c893e5bcfbea0eb"
+    },
+    "probe_touch_document_policy": {
+      "xulSHA256": "7a54287b1c98ea8525472228ae0514f0708f59c865ff628db837abd330b6a343",
+      "checks": 32,
+      "failed": 0,
+      "path": "tests/fingerprint/reports/firefox159-native-reference-layout/probe_touch_document_policy/result.json",
+      "sha256": "8aa544e79dc80bd211b2b3fa49de3cf7a04bdb3241aff4f7fb38d5a91b5f80d6"
+    },
+    "probe_container_rendering_settings": {
+      "xulSHA256": "7a54287b1c98ea8525472228ae0514f0708f59c865ff628db837abd330b6a343",
+      "checks": 66,
+      "failed": 0,
+      "path": "tests/fingerprint/reports/firefox159-native-reference-layout/probe_container_rendering_settings/result.json",
+      "sha256": "73abc732ddf961d54258bcc2736edb575a17010c76cc3b2c172175093a740546"
+    },
+    "probe_canonical_geometry": {
+      "xulSHA256": "7a54287b1c98ea8525472228ae0514f0708f59c865ff628db837abd330b6a343",
+      "checks": 0,
+      "failed": 0,
+      "path": "tests/fingerprint/reports/firefox159-native-reference-layout/probe_canonical_geometry/result.json",
+      "sha256": "ec7479cae82d0fc2b0666a31ffb6562adbe4e68dab8ceaec011f8f8a432c23fb",
+      "samples": 32,
+      "paintAndNativeInputSamples": 10,
+      "failures": [],
+      "status": "PASS"
+    }
+  },
+  "pythonTests": 190,
+  "javascriptTests": 381,
+  "ciHelperTests": 16,
+  "libraryModesWithWebGPUEnabled": {
+    "0": {
+      "cases": 8,
+      "repeats": 3,
+      "checks": 472,
+      "failures": [],
+      "libraryExecutions": 48
+    },
+    "1": {
+      "cases": 8,
+      "repeats": 3,
+      "checks": 471,
+      "failures": [],
+      "libraryExecutions": 48
+    }
+  },
+  "orderedPatchReplay": 167,
+  "review": "Independent source reviews; all actionable findings resolved",
+  "sourcePatchSHA256": {
+    "patches/cloakfox-canonical-layout-geometry.patch": "938a0736d5a7d6c5f1f531101b190c37d0c484e688d4c3267ba0f945cad4e55b",
+    "patches/cloakfox-reference-gpu-profiles.patch": "3b8e414b6e05319e52389b7d2fcf1bb22e86e9341c80a3ab21e8783f8f7c087f",
+    "patches/cloakfox-reference-backend-integrity.patch": "b056b555a5cba8d83907451fd6f740c1c6926a5008cb697e208d722df9983719",
+    "patches/cloakfox-touch-document-policy.patch": "7826970297a2bb7527cf3dbe7bfb4131ad29902882fb4e387c8e1bef07ddddda",
+    "patches/cloakfox-canonical-mac-texture-limits.patch": "0bde7e5cd5f3ed1491eaec13483a7f5477ee44376e6e49e89075c03592951ffb",
+    "patches/cloakfox-canonical-font-decoration.patch": "79a4bddae9e130a0e465e5a6312749f091c8c485cb78f78c301d8060b02a6993",
+    "scripts/canonical-gpu/reference-capacity-angle.patch": "b2ded9cf1466f30d2e6a9e2d4fb693a78c35bae03bff0cf9503ea6638ed22a5a",
+    "scripts/canonical-gpu/reference-capacity-swiftshader.patch": "d3b0b552651d9a5109c1fe3edb3197986f677a32cd2f0a6ff3eba23e11e9bada"
+  },
+  "privacyGuardsRetained": [
+    "exact container ownership and existing seeds/secrets",
+    "canonical CPU renderer integrity; no hardware fallback",
+    "protected readback and imported-input ownership",
+    "unsupported geometry paths retain existing protection",
+    "default-off per-container requests and recoverable disabling"
+  ],
+  "limitations": [
+    "Mac-only execution; no cross-OS pixel certification",
+    "Four complete paired reference personas; unsupported pairs rejected",
+    "Canonical public pixels and profile values can coincide; records/secrets/contexts remain independently owned",
+    "CreepJS GPU/capability warnings remain; Chrome-UA tests retain Gecko/SpiderMonkey mismatch",
+    "No physical vendor-driver emulation, installation or DMG creation in this task"
+  ],
+  "checkpointAndChromiumPreservation": {
+    "baseline": "2379ecdb7f15024b194a76cccaee524b9b2e5663",
+    "retainedAncestorCheckpoints": [
+      "0b7287e90e",
+      "a8ef96501b",
+      "bda36bb1c4",
+      "2432ccb872",
+      "0953822b1e",
+      "582de019aa",
+      "36aef7ee7f",
+      "ec1f1158d3",
+      "2379ecdb7f"
+    ],
+    "chromiumCommittedInputKey": "bbc651dcf5cbe4321f5fd1728eb40f2a20f7547053009258d96764370804dfcf",
+    "chromiumInputsModified": false,
+    "chromiumBuildInterrupted": false,
+    "installedAppsModified": false,
+    "personalProfilesModified": false
+  }
+}

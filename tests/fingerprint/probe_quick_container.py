@@ -6,7 +6,7 @@ from probe_daily_defaults import launch
 
 with tempfile.TemporaryDirectory(prefix='cloakfox-quick-container-') as temp:
     root=Path(temp);profile=root/'profile';profile.mkdir()
-    driver=launch(profile,root/'first.log')
+    driver=launch(profile,root/'first.log',purge_caches=True)
     created=[]
     try:
         wait=WebDriverWait(driver,15)
@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-quick-container-') as temp:
     except Exception:
         print(driver.execute_script("return Services.console.getMessageArray().map(m=>m.message).filter(m=>/QuickContainer|TypeError|ReferenceError/.test(m)).slice(-10);"));raise
     finally:driver.quit()
-    driver=launch(profile,root/'second.log')
+    driver=launch(profile,root/'second.log',purge_caches=True)
     try:
         for item in created:
             assert driver.execute_script("const cis=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService;return cis.getPublicIdentityFromId(arguments[0])?.name;",item['userContextId'])==item['name']

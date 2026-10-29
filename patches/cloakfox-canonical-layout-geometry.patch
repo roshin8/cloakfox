@@ -1,0 +1,1151 @@
+diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
+--- a/dom/base/Document.cpp
++++ b/dom/base/Document.cpp
+@@ -11661,8 +11661,15 @@
+   CSSToLayoutDeviceScale layoutDeviceScale =
+       context ? context->CSSToDevPixelScale() : CSSToLayoutDeviceScale(1);
+ 
++  // Canonical layout has a private 1x device context. The MVM still receives
++  // physical display dimensions, so its viewport/minimum-scale calculations
++  // must include the output transform exactly once. Otherwise a 2x display
++  // creates a CSS layout viewport twice as wide as its actual visible area.
++  if (context) {
++    layoutDeviceScale.scale *= context->CloakfoxOutputResolution();
++  }
+   CSSToScreenScale defaultScale =
+-      layoutDeviceScale * LayoutDeviceToScreenScale(1.0);
++      layoutDeviceScale * LayoutDeviceToScreenScale(1.0f);
+ 
+   auto* bc = GetBrowsingContext();
+   const bool inRDM = bc && bc->InRDMPane();
+@@ -21120,6 +21127,9 @@
+ 
+ const LangGroupFontPrefs* Document::GetFontPrefsForLang(
+     nsAtom* aLanguage) const {
++  if (auto* pc = GetPresContext(); pc && pc->CloakfoxCanonicalLayout()) {
++    return StaticPresData::Get()->CanonicalFontPrefs();
++  }
+   nsAtom* lang = aLanguage ? aLanguage : mLanguageFromCharset;
+   return StaticPresData::Get()->GetFontPrefsForLang(lang);
+ }
+diff --git a/dom/svg/SVGGeometryElement.cpp b/dom/svg/SVGGeometryElement.cpp
+--- a/dom/svg/SVGGeometryElement.cpp
++++ b/dom/svg/SVGGeometryElement.cpp
+@@ -342,7 +342,7 @@
+   RefPtr<Path> flat = GetOrBuildPathForMeasuring();
+   float length = flat ? flat->ComputeLength() : 0.f;
+   // Cloakfox: sub-pixel noise to defeat SVG path-length fingerprinting.
+-  if (auto seed = CloakfoxSiteSeed::ForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
++  if (auto seed = CloakfoxSiteSeed::GeometryForDocument(OwnerDoc(), "canvas:seed"); seed.value_or(0)) {
+     uint32_t s = seed.value() ^ static_cast<uint32_t>(length * 1000);
+     s = s * 1664525u + 1013904223u;
+     length += (static_cast<float>(s) / 4294967295.0f - 0.5f) * 0.4f;
+diff --git a/gfx/src/nsDeviceContext.cpp b/gfx/src/nsDeviceContext.cpp
+--- a/gfx/src/nsDeviceContext.cpp
++++ b/gfx/src/nsDeviceContext.cpp
+@@ -99,6 +99,13 @@
+         ComputeAppUnitsPerDevPixelForWidgetScale(scale);
+   }
+ 
++  if (mCloakfoxCanonicalLayout && !mDeviceContextSpec) {
++    mCloakfoxPhysicalScale = float(AppUnitsPerCSSPixel()) /
++                               mAppUnitsPerDevPixelAtUnitFullZoom;
++    mAppUnitsPerDevPixelAtUnitFullZoom = AppUnitsPerCSSPixel();
++    dpi = 96.0f;
++  }
++
+   NS_ASSERTION(dpi != -1.0, "no dpi set");
+ 
+   mAppUnitsPerPhysicalInch =
+@@ -391,11 +398,13 @@
+ bool nsDeviceContext::CheckDPIChange() {
+   int32_t oldDevPixels = mAppUnitsPerDevPixelAtUnitFullZoom;
+   int32_t oldInches = mAppUnitsPerPhysicalInch;
++  float oldPhysicalScale = mCloakfoxPhysicalScale;
+ 
+   SetDPI();
+ 
+   return oldDevPixels != mAppUnitsPerDevPixelAtUnitFullZoom ||
+-         oldInches != mAppUnitsPerPhysicalInch;
++         oldInches != mAppUnitsPerPhysicalInch ||
++         oldPhysicalScale != mCloakfoxPhysicalScale;
+ }
+ 
+ bool nsDeviceContext::SetFullZoom(float aScale) {
+diff --git a/gfx/src/nsDeviceContext.h b/gfx/src/nsDeviceContext.h
+--- a/gfx/src/nsDeviceContext.h
++++ b/gfx/src/nsDeviceContext.h
+@@ -92,6 +92,13 @@
+    */
+   int32_t AppUnitsPerDevPixel() const { return mAppUnitsPerDevPixel; }
+ 
++  // This DC is owned by one document viewer. Keep canonical layout units
++  // separate from the physical output scale; PresShell's resolution transform
++  // supplies that scale to both painting and event coordinate conversion.
++  void EnableCloakfoxCanonicalLayout() { mCloakfoxCanonicalLayout = true; SetDPI(); }
++  float CloakfoxPhysicalScale() const { return mCloakfoxPhysicalScale; }
++  bool IsCloakfoxCanonicalLayout() const { return mCloakfoxCanonicalLayout; }
++
+   static int32_t ComputeAppUnitsPerDevPixelForWidgetScale(
+       mozilla::CSSToLayoutDeviceScale);
+   static int32_t ApplyFullZoomToAPD(int32_t aAppUnitsPerPixel, float aFullZoom);
+@@ -274,6 +281,8 @@
+   mozilla::DesktopToLayoutDeviceScale GetDesktopToDeviceScale();
+ 
+  private:
++  bool mCloakfoxCanonicalLayout = false;
++  float mCloakfoxPhysicalScale = 1.0f;
+   // Private destructor, to discourage deletion outside of Release():
+   ~nsDeviceContext();
+ 
+diff --git a/gfx/src/nsITheme.h b/gfx/src/nsITheme.h
+--- a/gfx/src/nsITheme.h
++++ b/gfx/src/nsITheme.h
+@@ -245,6 +245,7 @@
+ extern already_AddRefed<nsITheme> do_GetNativeThemeDoNotUseDirectly();
+ extern already_AddRefed<nsITheme> do_GetBasicNativeThemeDoNotUseDirectly();
+ extern already_AddRefed<nsITheme> do_GetRDMThemeDoNotUseDirectly();
++extern already_AddRefed<nsITheme> do_GetCloakfoxCanonicalThemeDoNotUseDirectly();
+ 
+ // Native theme creation function, these should never return null.
+ extern already_AddRefed<mozilla::widget::Theme>
+diff --git a/layout/base/GeckoMVMContext.cpp b/layout/base/GeckoMVMContext.cpp
+--- a/layout/base/GeckoMVMContext.cpp
++++ b/layout/base/GeckoMVMContext.cpp
+@@ -71,6 +71,10 @@
+     const ScreenIntSize& aDisplaySize) const {
+   MOZ_ASSERT(mDocument);
+   return mDocument->GetViewportInfo(aDisplaySize);
++}
++
++bool GeckoMVMContext::IsCloakfoxCanonicalLayout() const {
++  return mPresShell && mPresShell->GetPresContext()->CloakfoxCanonicalLayout();
+ }
+ 
+ CSSToLayoutDeviceScale GeckoMVMContext::CSSToDevPixelScale() const {
+diff --git a/layout/base/GeckoMVMContext.h b/layout/base/GeckoMVMContext.h
+--- a/layout/base/GeckoMVMContext.h
++++ b/layout/base/GeckoMVMContext.h
+@@ -38,6 +38,7 @@
+ 
+   nsViewportInfo GetViewportInfo(
+       const ScreenIntSize& aDisplaySize) const override;
++  bool IsCloakfoxCanonicalLayout() const override;
+   CSSToLayoutDeviceScale CSSToDevPixelScale() const override;
+   float GetResolution() const override;
+   bool SubjectMatchesDocument(nsISupports* aSubject) const override;
+diff --git a/layout/base/MVMContext.h b/layout/base/MVMContext.h
+--- a/layout/base/MVMContext.h
++++ b/layout/base/MVMContext.h
+@@ -46,6 +46,9 @@
+ 
+   virtual nsViewportInfo GetViewportInfo(
+       const ScreenIntSize& aDisplaySize) const = 0;
++  // Ordinary contexts retain the historical integer composition rounding.
++  // Only the captured canonical layout profile owns fractional output gutters.
++  virtual bool IsCloakfoxCanonicalLayout() const { return false; }
+   virtual CSSToLayoutDeviceScale CSSToDevPixelScale() const = 0;
+   virtual float GetResolution() const = 0;
+   virtual bool SubjectMatchesDocument(nsISupports* aSubject) const = 0;
+diff --git a/layout/base/MobileViewportManager.cpp b/layout/base/MobileViewportManager.cpp
+--- a/layout/base/MobileViewportManager.cpp
++++ b/layout/base/MobileViewportManager.cpp
+@@ -93,7 +93,7 @@
+   // Use the up-to-date CSS viewport size from viewportInfo rather than
+   // mMobileViewportSize, which may not have been updated yet.
+   CSSToScreenScale intrinsicScale =
+-      ComputeIntrinsicScale(viewportInfo, displaySize, viewportInfo.GetSize());
++      ComputeIntrinsicScale(viewportInfo, ScreenSize(displaySize), viewportInfo.GetSize());
+   MVM_LOG("%p: intrinsic scale based on CSS viewport size is %f", this,
+           intrinsicScale.scale);
+   CSSToLayoutDeviceScale cssToDev = mContext->CSSToDevPixelScale();
+@@ -102,7 +102,7 @@
+ 
+ mozilla::CSSToScreenScale MobileViewportManager::ComputeIntrinsicScale(
+     const nsViewportInfo& aViewportInfo,
+-    const mozilla::ScreenIntSize& aDisplaySize,
++    const mozilla::ScreenSize& aDisplaySize,
+     const mozilla::CSSSize& aViewportOrContentSize) const {
+   CSSToScreenScale intrinsicScale =
+       aViewportOrContentSize.IsEmpty()
+@@ -263,7 +263,7 @@
+     const CSSSize& aViewportSize) {
+   ScreenIntSize displaySize = GetLayoutDisplaySize();
+   nsViewportInfo viewportInfo = mContext->GetViewportInfo(displaySize);
+-  ScreenIntSize compositionSize = GetCompositionSize(displaySize);
++  ScreenSize compositionSize = GetCompositionSize(displaySize);
+ 
+   if (mRestoreResolution) {
+     LayoutDeviceToLayerScale restoreResolution(*mRestoreResolution);
+@@ -432,7 +432,7 @@
+   // so we better be sure we've got a positive zoom factor.
+   MOZ_ASSERT(zoom > CSSToScreenScale(0.0f), "zoom factor must be positive");
+ 
+-  ScreenIntSize compositionSize = GetCompositionSize(displaySize);
++  ScreenSize compositionSize = GetCompositionSize(displaySize);
+   CSSToScreenScale intrinsicScale =
+       ComputeIntrinsicScale(viewportInfo, compositionSize, aContentSize);
+   MVM_LOG("%p: intrinsic scale based on content size is %f", this,
+@@ -490,16 +490,18 @@
+   UpdateVisualViewportSize(aNewZoom);
+ }
+ 
+-ScreenIntSize MobileViewportManager::GetCompositionSize(
++ScreenSize MobileViewportManager::GetCompositionSize(
+     const ScreenIntSize& aDisplaySize) const {
+   if (!mContext) {
+-    return ScreenIntSize();
++    return ScreenSize();
+   }
+ 
+   // FIXME: Bug 1586986 - To update VisualViewport in response to the dynamic
+   // toolbar transition we probably need to include the dynamic toolbar
+   // _current_ height.
+-  ScreenIntSize compositionSize(aDisplaySize);
++  // Preserve fractional physical gutters (17 CSS px * 1.25 = 21.25 px)
++  // until division by zoom; truncation here changes the CSS viewport width.
++  ScreenSize compositionSize(aDisplaySize);
+   ScreenMargin scrollbars =
+       mContext->ScrollbarAreaToExcludeFromCompositionBounds()
+       // Scrollbars are not subject to resolution scaling, so LD pixels =
+@@ -511,6 +513,13 @@
+   compositionSize.height =
+       std::max(0.0f, compositionSize.height - scrollbars.TopBottom());
+ 
++  if (!mContext->IsCloakfoxCanonicalLayout()) {
++    // Keep the previous truncation behavior for ordinary/off contexts.
++    ScreenIntSize legacy;
++    legacy.width = compositionSize.width;
++    legacy.height = compositionSize.height;
++    return ScreenSize(legacy);
++  }
+   return compositionSize;
+ }
+ 
+@@ -747,7 +756,7 @@
+   // TODO: Should we use GetDisplaySizeForVisualViewport() for computing the
+   // intrinsic composition size?
+   ScreenIntSize displaySize = GetLayoutDisplaySize();
+-  ScreenIntSize compositionSize = GetCompositionSize(displaySize);
++  ScreenSize compositionSize = GetCompositionSize(displaySize);
+   CSSToScreenScale intrinsicScale =
+       ComputeIntrinsicScale(mContext->GetViewportInfo(displaySize),
+                             compositionSize, mMobileViewportSize);
+@@ -758,7 +767,7 @@
+ CSSToScreenScale MobileViewportManager::GetIntrinsicScaleForFixedViewport()
+     const {
+   const ScreenIntSize displaySize = GetLayoutDisplaySize();
+-  const ScreenIntSize compositionSize = GetCompositionSize(displaySize);
++  const ScreenSize compositionSize = GetCompositionSize(displaySize);
+   const nsViewportInfo viewportInfo = mContext->GetViewportInfo(displaySize);
+ 
+   CSSSize contentSize{};
+diff --git a/layout/base/MobileViewportManager.h b/layout/base/MobileViewportManager.h
+--- a/layout/base/MobileViewportManager.h
++++ b/layout/base/MobileViewportManager.h
+@@ -202,13 +202,13 @@
+   /* Helper function for ComputeIntrinsicResolution(). */
+   mozilla::CSSToScreenScale ComputeIntrinsicScale(
+       const nsViewportInfo& aViewportInfo,
+-      const mozilla::ScreenIntSize& aDisplaySize,
++      const mozilla::ScreenSize& aDisplaySize,
+       const mozilla::CSSSize& aViewportOrContentSize) const;
+ 
+   /*
+    * Returns the screen size subtracted the scrollbar sizes from |aDisplaySize|.
+    */
+-  mozilla::ScreenIntSize GetCompositionSize(
++  mozilla::ScreenSize GetCompositionSize(
+       const mozilla::ScreenIntSize& aDisplaySize) const;
+ 
+   /*
+diff --git a/layout/base/PresShell.cpp b/layout/base/PresShell.cpp
+--- a/layout/base/PresShell.cpp
++++ b/layout/base/PresShell.cpp
+@@ -10677,6 +10677,7 @@
+   auto clearPendingDidDoReflow =
+       MakeScopeExit([&] { mPendingDidDoReflow = false; });
+ 
++  if (mDirtyRoots.IsEmpty()) mPresContext->CompleteCloakfoxCanonicalLayout();
+   mHiddenContentInForcedLayout.Clear();
+ 
+   HandlePostedReflowCallbacks(aInterruptible);
+@@ -12573,7 +12574,7 @@
+ 
+ bool PresShell::DetermineFontSizeInflationState() {
+   MOZ_ASSERT(mPresContext, "our pres context should not be null");
+-  if (mPresContext->IsChrome()) {
++  if (mPresContext->IsChrome() || mPresContext->CloakfoxCanonicalLayout()) {
+     return false;
+   }
+ 
+diff --git a/layout/base/PresShellWidgetListener.cpp b/layout/base/PresShellWidgetListener.cpp
+--- a/layout/base/PresShellWidgetListener.cpp
++++ b/layout/base/PresShellWidgetListener.cpp
+@@ -131,16 +131,28 @@
+ 
+   // ensure DPI is up-to-date, in case of window being opened and sized
+   // on a non-default-dpi display (bug 829963)
+-  pc->DeviceContext()->CheckDPIChange();
+-  int32_t p2a = pc->AppUnitsPerDevPixel();
++  if (pc->DeviceContext()->CheckDPIChange() && pc->CloakfoxCanonicalLayout()) {
++    // Sync may defer to an already queued UI-resolution notification. Suspend
++    // admission first so a query cannot mistake that transition for an
++    // unsupported, permanently revoked resolution change.
++    pc->BeginCloakfoxCanonicalLayout();
++    pc->UIResolutionChangedSync();
++  }
++  const nsSize size = pc->CloakfoxCanonicalLayout()
++      ? pc->CloakfoxViewportSize(aSize)
++      : LayoutDeviceIntSize::ToAppUnits(aSize, pc->AppUnitsPerDevPixel());
++  if (pc->CloakfoxCanonicalLayout() && pc->GetVisibleArea().Size() != size) {
++    pc->BeginCloakfoxCanonicalLayout();
++  }
+   if (auto* frame = ps->GetRootFrame()) {
+     // Usually the resize would deal with this, but there are some cases (like
+     // web-extension popups) where frames might already be correctly sized etc
+     // due to a call to e.g. nsDocumentViewer::GetContentSize or so.
+     frame->InvalidateFrame();
+   }
+-  ps->SetLayoutViewportSize(LayoutDeviceIntSize::ToAppUnits(aSize, p2a),
+-                            /* aDelay = */ false);
++  // Widget bounds arrive in physical device pixels, including when a late
++  // PuppetWidget resize follows the viewer's already normalized bounds.
++  ps->SetLayoutViewportSize(size, /* aDelay = */ false);
+ 
+   if (nsXULPopupManager* pm = nsXULPopupManager::GetInstance()) {
+     pm->AdjustPopupsOnWindowChange(ps);
+diff --git a/layout/base/StaticPresData.cpp b/layout/base/StaticPresData.cpp
+--- a/layout/base/StaticPresData.cpp
++++ b/layout/base/StaticPresData.cpp
+@@ -32,6 +32,7 @@
+ 
+ StaticPresData::StaticPresData() {
+   mLangService = nsLanguageAtomService::GetService();
++  mCanonicalFontPrefs = MakeUnique<LangGroupFontPrefs>(nsGkAtoms::x_western, true);
+ }
+ 
+ #define MAKE_FONT_PREF_KEY(_pref, _s0, _s1) \
+@@ -60,6 +61,16 @@
+   SystemUi,
+   COUNT
+ };
++
++void LangGroupFontPrefs::InitializeCanonical() {
++  mMinimumFontSize = Length::FromPixels(0);
++  for (nsFont* font : {&mDefaultVariableFont, &mDefaultSerifFont,
++       &mDefaultSansSerifFont, &mDefaultMonospaceFont, &mDefaultCursiveFont,
++       &mDefaultFantasyFont, &mDefaultSystemUiFont}) {
++    font->size = Length::FromPixels(font == &mDefaultMonospaceFont ? 13 : 16);
++    font->sizeAdjust = StyleFontSizeAdjust::None();
++  }
++}
+ 
+ void LangGroupFontPrefs::Initialize() {
+   /* Fetch the font prefs to be used -- see bug 61883 for details.
+diff --git a/layout/base/StaticPresData.h b/layout/base/StaticPresData.h
+--- a/layout/base/StaticPresData.h
++++ b/layout/base/StaticPresData.h
+@@ -18,7 +18,7 @@
+ 
+ struct LangGroupFontPrefs {
+   // Font sizes default to zero; they will be set in GetFontPreferences
+-  explicit LangGroupFontPrefs(nsStaticAtom* aLangGroupAtom)
++  explicit LangGroupFontPrefs(nsStaticAtom* aLangGroupAtom, bool aCanonical = false)
+       : mLangGroup(aLangGroupAtom),
+         mMinimumFontSize({0}),
+         mDefaultVariableFont(StyleGenericFontFamily::Serif, {0}),
+@@ -28,7 +28,7 @@
+         mDefaultCursiveFont(StyleGenericFontFamily::Cursive, {0}),
+         mDefaultFantasyFont(StyleGenericFontFamily::Fantasy, {0}),
+         mDefaultSystemUiFont(StyleGenericFontFamily::SystemUi, {0}) {
+-    Initialize();
++    if (aCanonical) InitializeCanonical(); else Initialize();
+   }
+ 
+   StyleGenericFontFamily GetDefaultGeneric() const {
+@@ -90,6 +90,7 @@
+ 
+  private:
+   void Initialize();
++  void InitializeCanonical();
+ };
+ 
+ /**
+@@ -129,6 +130,7 @@
+    * have a PresContext.
+    */
+   const LangGroupFontPrefs* GetFontPrefsForLang(nsAtom* aLanguage);
++  const LangGroupFontPrefs* CanonicalFontPrefs() const { return mCanonicalFontPrefs.get(); }
+ 
+   void InvalidateFontPrefs() {
+     AutoWriteLock lock(mLock);
+@@ -143,6 +145,7 @@
+   ~StaticPresData() = default;
+   friend class StaticAutoPtr<StaticPresData>;
+ 
++  UniquePtr<LangGroupFontPrefs> mCanonicalFontPrefs;
+   nsLanguageAtomService* mLangService;
+   UniquePtr<LangGroupFontPrefs> mLangGroupFontPrefs MOZ_GUARDED_BY(mLock);
+ 
+diff --git a/layout/base/ViewportUtils.cpp b/layout/base/ViewportUtils.cpp
+--- a/layout/base/ViewportUtils.cpp
++++ b/layout/base/ViewportUtils.cpp
+@@ -235,6 +235,15 @@
+ const nsIFrame* ViewportUtils::IsZoomedContentRoot(const nsIFrame* aFrame) {
+   if (!aFrame) {
+     return nullptr;
++  }
++  // Canonical root scrollparts are painted inside the physical output
++  // container too. Recognize the same one boundary for event-coordinate
++  // walks, rather than treating scrollbar siblings as unscaled chrome.
++  if (ScrollContainerFrame* sf = do_QueryFrame(aFrame->GetParent());
++      sf && sf->IsRootScrollFrameOfDocument() &&
++      aFrame->PresContext()->IsRootContentDocumentCrossProcess() &&
++      aFrame->PresContext()->CloakfoxCanonicalLayout()) {
++    return sf;
+   }
+   if (aFrame->Type() == LayoutFrameType::Canvas ||
+       aFrame->Type() == LayoutFrameType::PageSequence) {
+diff --git a/layout/base/nsDocumentViewer.cpp b/layout/base/nsDocumentViewer.cpp
+--- a/layout/base/nsDocumentViewer.cpp
++++ b/layout/base/nsDocumentViewer.cpp
+@@ -612,16 +612,19 @@
+   AttachToTopLevelWidget();
+ 
+   mPresShell->BeginObservingDocument();
++  if (mPresContext->CloakfoxCanonicalLayout()) {
++    mPresShell->SetResolutionAndScaleTo(mPresContext->CloakfoxOutputResolution(),
++        ResolutionChangeOrigin::MainThreadAdjustment);
++  }
+ 
+   // Initialize our view manager
+ 
+   {
+-    int32_t p2a = mPresContext->AppUnitsPerDevPixel();
+     MOZ_ASSERT(
+-        p2a ==
++        mPresContext->AppUnitsPerDevPixel() ==
+         mPresContext->DeviceContext()->AppUnitsPerDevPixelAtUnitFullZoom());
+ 
+-    const nsSize size = LayoutDevicePixel::ToAppUnits(mBounds.Size(), p2a);
++    const nsSize size = mPresContext->CloakfoxViewportSize(mBounds.Size());
+     mPresContext->SetInitialVisibleArea(nsRect(nsPoint(), size));
+     // We rely on the default zoom not being initialized until here.
+     mPresContext->RecomputeBrowsingContextDependentData();
+@@ -1604,8 +1607,11 @@
+       mPresContext->UIResolutionChangedSync();
+     }
+ 
+-    int32_t p2a = mPresContext->AppUnitsPerDevPixel();
+-    const nsSize size = LayoutDeviceSize::ToAppUnits(mBounds.Size(), p2a);
++    if (mPresContext->CloakfoxCanonicalLayout()) {
++      mPresShell->SetResolutionAndScaleTo(mPresContext->CloakfoxOutputResolution(),
++          ResolutionChangeOrigin::MainThreadAdjustment);
++    }
++    const nsSize size = mPresContext->CloakfoxViewportSize(mBounds.Size());
+     if (boundsChanged && mPresContext->GetVisibleArea().Size() == size) {
+       // If the view/frame tree and prescontext visible area already has the new
+       // size but we did not, then it's likely that we got reflowed in response
+diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
+--- a/layout/base/nsLayoutUtils.cpp
++++ b/layout/base/nsLayoutUtils.cpp
+@@ -8290,6 +8290,7 @@
+ 
+ /* static */
+ bool nsLayoutUtils::FontSizeInflationEnabled(nsPresContext* aPresContext) {
++  if (aPresContext->CloakfoxCanonicalLayout()) return false;
+   PresShell* presShell = aPresContext->GetPresShell();
+   if (!presShell) {
+     return false;
+@@ -8469,9 +8470,18 @@
+   if (scrollContainerFrame->UseOverlayScrollbars()) {
+     return nsMargin();
+   }
+-  return scrollContainerFrame->GetActualScrollbarSizes(
++  const auto margins = scrollContainerFrame->GetActualScrollbarSizes(
+       ScrollContainerFrame::ScrollbarSizesOptions::
+           INCLUDE_VISUAL_VIEWPORT_SCROLLBARS);
++  // Composition, APZ and MVM consumers convert these app units to physical
++  // display pixels. A canonical root paints its classic bars in the same
++  // output transform as content, while its private device context stays 1x.
++  // Account for that transform here, once, for every composition consumer.
++  const float output = presContext->CloakfoxOutputResolution();
++  return nsMargin(NSToCoordRound(margins.top * output),
++                  NSToCoordRound(margins.right * output),
++                  NSToCoordRound(margins.bottom * output),
++                  NSToCoordRound(margins.left * output));
+ }
+ 
+ /* static */
+diff --git a/layout/base/nsPresContext.cpp b/layout/base/nsPresContext.cpp
+--- a/layout/base/nsPresContext.cpp
++++ b/layout/base/nsPresContext.cpp
+@@ -1,4 +1,5 @@
+ #include "CloakfoxSiteSeed.hpp"
++#include "CloakfoxCanonicalGeometry.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -536,6 +537,134 @@
+   static_cast<nsPresContext*>(aSelf)->PreferenceChanged(aPrefName);
+ }
+ 
++bool CloakfoxCanonicalGeometry::Ready(mozilla::dom::Document* doc) {
++  auto* pc = doc ? doc->GetPresContext() : nullptr;
++  return pc && pc->CloakfoxCanonicalGeometryReady();
++}
++
++void nsPresContext::CaptureCloakfoxCanonicalLayout() {
++  mCloakfoxGeometry = MakeUnique<CloakfoxCanonicalGeometry::Lifecycle>();
++  auto* bc = mDocument->GetBrowsingContext();
++  auto systemZoom = LookAndFeel::SystemZoomSettings();
++  const uint32_t ucid = mDocument->NodePrincipal()->OriginAttributesRef().mUserContextId;
++  const auto cfg = CloakfoxSiteSeed::ExactConfig(ucid);
++  // External SVG <use>/paint-server resource documents share their display
++  // document's device context. Their text must use that document's canonical
++  // font preferences too, otherwise resource bounds would reintroduce host
++  // minimum-font metrics into admitted parent SVG geometry.
++  auto* displayDocument = mDocument->GetDisplayDocument();
++  auto* displayContext = displayDocument ? displayDocument->GetPresContext() : nullptr;
++  const bool inherited = displayContext && displayContext->CloakfoxCanonicalLayout();
++  nsAutoString site;
++  if (auto* settings = mDocument->CookieJarSettings()) settings->GetPartitionKey(site);
++  auto* parentDocument = mDocument->GetInProcessParentDocument();
++  auto* parentContext = parentDocument ? parentDocument->GetPresContext() : nullptr;
++  const bool supported = Preferences::GetBool("cloakfox.enabled", true) &&
++      Preferences::GetBool("cloakfox.experimental.canvas_pipeline", false) &&
++      CloakfoxCanonicalGeometry::Requested(cfg, ucid) &&
++      !mDocument->NodePrincipal()->IsSystemPrincipal() &&
++      IsDynamic() && !IsPrintingOrPrintPreview() && bc &&
++      !mDocument->GetDisplayDocument() && !bc->GetInRDMPane() &&
++      bc->FullZoom() == 1.0f && bc->TextZoom() == 1.0f &&
++      systemZoom.mFullZoom == 1.0f && systemZoom.mTextZoom == 1.0f &&
++      bc->OverrideDPPX() == 0.0f &&
++      gfxPlatform::GetPlatform()->GetDefaultContentBackend() == gfx::BackendType::SKIA &&
++      gfxPlatform::GetPlatform()->ScreenReferenceDrawTarget()->GetBackendType() ==
++          gfx::BackendType::SKIA &&
++      CloakfoxSiteSeed::OwnerKey(ucid, mDocument->CookieJarSettings()).has_value();
++  const bool root = supported && bc->IsTop();
++  const bool child = supported && !bc->IsTop() && parentContext &&
++      parentContext->mCloakfoxGeometry && parentContext->mCloakfoxGeometry->Valid() &&
++      parentContext->mCloakfoxCanonicalLayout &&
++      parentDocument->NodePrincipal()->OriginAttributesRef().mUserContextId == ucid &&
++      parentContext->mCloakfoxGeometrySite == site &&
++      parentContext->mCloakfoxGeometryConfig == cfg.dump().c_str();
++  const bool enabled = root || child;
++  mCloakfoxCanonicalOutput = root;
++  mCloakfoxGeometryParent = child ? parentDocument : nullptr;
++  mCloakfoxCanonicalLayout = enabled || inherited;
++  mCloakfoxGeometry->Capture(enabled);
++  if (enabled) {
++    mCloakfoxGeometryConfig.Assign(cfg.dump().c_str());
++    mDocument->CookieJarSettings()->GetPartitionKey(mCloakfoxGeometrySite);
++    mDeviceContext->EnableCloakfoxCanonicalLayout();
++  }
++}
++
++float nsPresContext::CloakfoxOutputResolution() const {
++  return mCloakfoxCanonicalOutput ? mDeviceContext->CloakfoxPhysicalScale() : 1.0f;
++}
++
++nsSize nsPresContext::CloakfoxViewportSize(const LayoutDeviceIntSize& size) const {
++  const float scale = CloakfoxOutputResolution();
++  return nsSize(NSToCoordRound(float(size.width) * AppUnitsPerDevPixel() / scale),
++                NSToCoordRound(float(size.height) * AppUnitsPerDevPixel() / scale));
++}
++
++void nsPresContext::BeginCloakfoxCanonicalLayout() {
++  if (mCloakfoxGeometry) mCloakfoxGeometry->BeginLayout();
++}
++
++void nsPresContext::RevokeCloakfoxCanonicalGeometry() {
++  if (mCloakfoxGeometry) mCloakfoxGeometry->Revoke();
++}
++
++bool nsPresContext::CloakfoxCanonicalGeometryReady() {
++  if (!mCloakfoxGeometry || !mCloakfoxGeometry->Ready()) return false;
++  const uint32_t ucid = mDocument->NodePrincipal()->OriginAttributesRef().mUserContextId;
++  auto* bc = mDocument->GetBrowsingContext();
++  nsAutoString site;
++  mDocument->CookieJarSettings()->GetPartitionKey(site);
++  if (!bc || (!bc->IsTop() && !mCloakfoxGeometryParent) ||
++      bc->GetInRDMPane() || bc->OverrideDPPX() != 0.0f ||
++      bc->FullZoom() != 1.0f || bc->TextZoom() != 1.0f ||
++      site != mCloakfoxGeometrySite ||
++      !Preferences::GetBool("cloakfox.enabled", true) ||
++      !Preferences::GetBool("cloakfox.experimental.canvas_pipeline", false) ||
++      mCloakfoxGeometryConfig != CloakfoxSiteSeed::ExactConfig(ucid).dump().c_str() ||
++      mFullZoom != 1.0f || mTextZoom != 1.0f || mInRDMPane ||
++      IsPrintingOrPrintPreview() || AppUnitsPerDevPixel() != AppUnitsPerCSSPixel() ||
++      mDeviceContext->AppUnitsPerDevPixel() != AppUnitsPerCSSPixel() ||
++      !mPresShell || mPresShell->GetResolution() != CloakfoxOutputResolution()) {
++    RevokeCloakfoxCanonicalGeometry();
++    return false;
++  }
++  if (mCloakfoxCanonicalOutput) {
++    LayoutDeviceIntSize physicalSize;
++    if (!nsLayoutUtils::GetDocumentViewerSize(this, physicalSize)) return false;
++    const nsSize expectedSize = CloakfoxViewportSize(physicalSize);
++    // A widget/viewer resize can arrive after an earlier layout completes.
++    // Never publish exact geometry from a stale physical-pixel viewport, or
++    // while a differently sized layout is still pending. A transient mismatch
++    // stays protected without permanently revoking this captured owner.
++    if (GetVisibleArea().Size() != expectedSize ||
++        mPresShell->MaybePendingLayoutViewportSize() != expectedSize) {
++      return false;
++    }
++  }
++  if (mCloakfoxGeometryParent) {
++    auto* parent = mDocument->GetInProcessParentDocument();
++    if (parent != mCloakfoxGeometryParent || !parent->GetPresContext()) {
++      RevokeCloakfoxCanonicalGeometry();
++      return false;
++    }
++    // Initial child layout can complete before its parent's first reflow.
++    // Remain protected until both generations are complete. A revoked parent
++    // never resurrects, and exact-owner/site checks above remain mandatory.
++    if (!parent->GetPresContext()->CloakfoxCanonicalGeometryReady()) return false;
++  }
++  return true;
++}
++
++void nsPresContext::CompleteCloakfoxCanonicalLayout() {
++  if (mCloakfoxGeometry) {
++    mCloakfoxGeometry->Complete(mFullZoom == 1.0f && mTextZoom == 1.0f &&
++        !mInRDMPane && !IsPrintingOrPrintPreview() && mPresShell &&
++        mPresShell->GetResolution() == CloakfoxOutputResolution());
++    (void)CloakfoxCanonicalGeometryReady();
++  }
++}
++
+ void nsPresContext::RefreshCloakfoxFontIdentity() {
+   MOZ_ASSERT(NS_IsMainThread());
+   const uint32_t ucid = mDocument->NodePrincipal()->OriginAttributesRef().mUserContextId;
+@@ -550,6 +679,17 @@
+   }
+ 
+   nsDependentCString prefName(aPrefName);
++  if (prefName.EqualsLiteral("cloakfox.enabled") ||
++      prefName.EqualsLiteral("cloakfox.experimental.canvas_pipeline")) {
++    RevokeCloakfoxCanonicalGeometry();
++  } else if (prefName.EqualsLiteral("cloakfox.font_identity_epoch") &&
++             mCloakfoxGeometry && mCloakfoxGeometry->Valid()) {
++    // The epoch is process-wide. Updating another container must not revoke
++    // this document's unchanged owner and immutable layout generation.
++    const uint32_t ucid = mDocument->NodePrincipal()->OriginAttributesRef().mUserContextId;
++    if (mCloakfoxGeometryConfig != CloakfoxSiteSeed::ExactConfig(ucid).dump().c_str())
++      RevokeCloakfoxCanonicalGeometry();
++  }
+   if (prefName.EqualsLiteral("cloakfox.enabled") ||
+       prefName.EqualsLiteral("cloakfox.font_identity_epoch") ||
+       prefName.EqualsLiteral("cloakfox.experimental.canvas_pipeline")) {
+@@ -690,6 +830,7 @@
+   MOZ_ASSERT(aDeviceContext);
+ 
+   mDeviceContext = aDeviceContext;
++  CaptureCloakfoxCanonicalLayout();
+   RefreshCloakfoxFontIdentity();
+ 
+   // In certain rare cases (such as changing page mode), we tear down layout
+@@ -1432,6 +1573,7 @@
+     return;
+   }
+ 
++  RevokeCloakfoxCanonicalGeometry();
+   mTextZoom = newZoom;
+ 
+   // Media queries could have changed, since we changed the meaning
+@@ -1446,6 +1588,7 @@
+   if (mInRDMPane == aInRDMPane) {
+     return;
+   }
++  RevokeCloakfoxCanonicalGeometry();
+   mInRDMPane = aInRDMPane;
+   RecomputeTheme();
+   if (mPresShell) {
+@@ -1483,6 +1626,7 @@
+   RefPtr ps = mPresShell;
+   const auto oldSizeDevPixels = LayoutDeviceSize::FromAppUnits(
+       ps->MaybePendingLayoutViewportSize(), mCurAppUnitsPerDevPixel);
++  RevokeCloakfoxCanonicalGeometry();
+   mDeviceContext->SetFullZoom(aZoom);
+ 
+   mFullZoom = aZoom;
+@@ -1502,6 +1646,7 @@
+     return;
+   }
+ 
++  RevokeCloakfoxCanonicalGeometry();
+   mMediaEmulationData.mDPPX = aDPPX;
+   MediaFeatureValuesChanged({MediaFeatureChangeReason::ResolutionChange},
+                             MediaFeatureChangePropagation::JustThisDocument);
+@@ -1825,7 +1970,9 @@
+ 
+ void nsPresContext::EnsureTheme() {
+   MOZ_ASSERT(!mTheme);
+-  if (Document()->ShouldAvoidNativeTheme()) {
++  if (mCloakfoxCanonicalLayout) {
++    mTheme = do_GetCloakfoxCanonicalThemeDoNotUseDirectly();
++  } else if (Document()->ShouldAvoidNativeTheme()) {
+     if (mInRDMPane) {
+       mTheme = do_GetRDMThemeDoNotUseDirectly();
+     } else {
+@@ -1859,6 +2006,7 @@
+ }
+ 
+ bool nsPresContext::UseOverlayScrollbars() const {
++  if (mCloakfoxCanonicalLayout) return false;
+   return LookAndFeel::GetInt(LookAndFeel::IntID::UseOverlayScrollbars) ||
+          mInRDMPane;
+ }
+@@ -1961,6 +2109,27 @@
+   }
+ 
+   if (mPresShell) {
++    // APD remains 60 for a canonical context when the widget output scale
++    // changes. Rebuild from actual viewer device bounds, not the old visible
++    // area or MVM's visual-only cache, even if the device bounds did not resize.
++    if (mCloakfoxCanonicalOutput) {
++      LayoutDeviceIntSize physicalSize;
++      if (nsLayoutUtils::GetDocumentViewerSize(this, physicalSize)) {
++        const nsSize layoutSize = CloakfoxViewportSize(physicalSize);
++        if (mPresShell->GetResolution() != CloakfoxOutputResolution() ||
++            GetVisibleArea().Size() != layoutSize) {
++          mCloakfoxGeometry->BeginLayout();
++          InvalidatePaintedLayers();
++          mPresShell->SetResolutionAndScaleTo(CloakfoxOutputResolution(),
++              ResolutionChangeOrigin::MainThreadAdjustment);
++          mPresShell->SetLayoutViewportSize(layoutSize, false);
++          if (auto* root = mPresShell->GetRootFrame()) {
++            mPresShell->FrameNeedsReflow(root, IntrinsicDirty::None,
++                                       NS_FRAME_IS_DIRTY);
++          }
++        }
++      }
++    }
+     mPresShell->RefreshZoomConstraintsForScreenSizeChange();
+     if (RefPtr<MobileViewportManager> mvm =
+             mPresShell->GetMobileViewportManager()) {
+diff --git a/layout/base/nsPresContext.h b/layout/base/nsPresContext.h
+--- a/layout/base/nsPresContext.h
++++ b/layout/base/nsPresContext.h
+@@ -45,6 +45,8 @@
+ #include "nsTHashtable.h"
+ #include "nsThreadUtils.h"
+ 
++namespace CloakfoxCanonicalGeometry { class Lifecycle; }
++
+ class nsIPrintSettings;
+ class nsDocShell;
+ class nsIDocShell;
+@@ -151,6 +153,16 @@
+   }
+ 
+ 
++  // Normalization is frozen before initial style computation. Admission is
++  // published only after completed layout, and revoked before live transitions.
++  bool CloakfoxCanonicalLayout() const { return mCloakfoxCanonicalLayout; }
++  bool CloakfoxCanonicalGeometryReady();
++  void BeginCloakfoxCanonicalLayout();
++  void CompleteCloakfoxCanonicalLayout();
++  void RevokeCloakfoxCanonicalGeometry();
++  float CloakfoxOutputResolution() const;
++  nsSize CloakfoxViewportSize(const mozilla::LayoutDeviceIntSize&) const;
++
+   enum nsPresContextType : uint8_t {
+     eContext_Galley,        // unpaginated screen presentation
+     eContext_PrintPreview,  // paginated screen presentation
+@@ -1223,6 +1235,15 @@
+   // the PresShell owns a strong reference to the nsPresContext, and is
+   // responsible for nulling this pointer before it is destroyed
+   mozilla::PresShell* MOZ_NON_OWNING_REF mPresShell;  // [WEAK]
++  bool mCloakfoxCanonicalLayout = false; // immutable after Init; Stylo-readable
++  bool mCloakfoxCanonicalOutput = false;
++  // Identity comparison only; dereference the current in-process parent, never
++  // this non-owning token, so a detached child cannot keep a stale admission.
++  mozilla::dom::Document* mCloakfoxGeometryParent = nullptr;
++  mozilla::UniquePtr<CloakfoxCanonicalGeometry::Lifecycle> mCloakfoxGeometry;
++  nsCString mCloakfoxGeometryConfig;
++  nsString mCloakfoxGeometrySite;
++  void CaptureCloakfoxCanonicalLayout();
+   void RefreshCloakfoxFontIdentity();
+   mozilla::Atomic<uint64_t, mozilla::Relaxed> mCloakfoxFontIdentity{0};
+   RefPtr<mozilla::dom::Document> mDocument;
+diff --git a/layout/generic/ScrollContainerFrame.cpp b/layout/generic/ScrollContainerFrame.cpp
+--- a/layout/generic/ScrollContainerFrame.cpp
++++ b/layout/generic/ScrollContainerFrame.cpp
+@@ -3518,8 +3518,14 @@
+   // We can't check will-change budget during display list building phase.
+   // This means that we will build scroll bar layers for out of budget
+   // will-change: scroll position.
++  const bool canonicalRoot = mIsRoot &&
++      PresContext()->IsRootContentDocumentCrossProcess() &&
++      PresContext()->CloakfoxCanonicalLayout();
++  // APZ scrollbar counter-transforms assume that root bars are outside the
++  // zoom container. Canonical bars share its output transform and therefore
++  // use Gecko's ordinary synchronous bar painting and drag path.
+   const mozilla::layers::ScrollableLayerGuid::ViewID scrollTargetId =
+-      aBuilder->BuildCompositorHitTestInfo() && IsScrollingActive()
++      !canonicalRoot && aBuilder->BuildCompositorHitTestInfo() && IsScrollingActive()
+           ? nsLayoutUtils::FindOrCreateIDFor(mScrolledFrame->GetContent())
+           : mozilla::layers::ScrollableLayerGuid::NULL_SCROLL_ID;
+ 
+@@ -3568,9 +3574,9 @@
+     // giant layer covering the whole scrollport if both scrollbars are visible.
+     const bool isOverlayScrollbar =
+         scrollDirection.isSome() && overlayScrollbars;
+-    const bool createLayer =
+-        aCreateLayer || isOverlayScrollbar ||
+-        StaticPrefs::layout_scrollbars_always_layerize_track();
++    const bool createLayer = !canonicalRoot &&
++        (aCreateLayer || isOverlayScrollbar ||
++         StaticPrefs::layout_scrollbars_always_layerize_track());
+ 
+     nsDisplayListCollection partList(aBuilder);
+     {
+@@ -4050,7 +4056,16 @@
+   // Note that this does not apply for overlay scrollbars; those are drawn
+   // in the positioned-elements layer on top of everything else by the call
+   // to AppendScrollPartsTo(..., true) further down.
+-  AppendScrollPartsTo(aBuilder, aLists, createLayersForScrollbars, false);
++  // Pinch zoom normally keeps root scrollbars outside the zoom container.
++  // Canonical output resolution instead represents the physical display
++  // scale: include the root's classic bars in that one transform so their
++  // paint, hit testing and reflow all use the same canonical 17 CSS px gutter.
++  const bool canonicalOutput = isRootContent && PresContext()->CloakfoxCanonicalLayout();
++  if (canonicalOutput) {
++    AppendScrollPartsTo(aBuilder, set, createLayersForScrollbars, false);
++  } else {
++    AppendScrollPartsTo(aBuilder, aLists, createLayersForScrollbars, false);
++  }
+ 
+   mScrollParentID = aBuilder->GetCurrentScrollParentId();
+ 
+@@ -4068,8 +4083,14 @@
+   nsRectCornerRadii radii;
+   const bool haveRadii = GetPaddingBoxBorderRadii(radii);
+   if (mIsRoot) {
++    if (canonicalOutput) {
++      // Include a left-side authored RTL gutter too. The wrapper's physical
++      // composition clip starts at the outer frame origin; only its content
++      // children retain the inset scrollPortClip in canonical layout units.
++      clipRect.MoveTo(aBuilder->ToReferenceFrame(this));
++    }
+     clipRect.SizeTo(nsLayoutUtils::CalculateCompositionSizeForFrame(
+-        this, true /* aSubtractScrollbars */,
++        this, !canonicalOutput /* aSubtractScrollbars */,
+         nullptr /* aOverrideScrollPortSize */,
+         // With the dynamic toolbar, this CalculateCompositionSizeForFrame call
+         // basically expands the region being covered up by the dynamic toolbar,
+@@ -4302,6 +4323,13 @@
+     aBuilder->ForceLayerForScrollParent();
+   }
+ 
++  // Root positioned scrollparts include classic scrollbars: scrollbars.css
++  // gives them position:relative. Canonical bars must join the output container
++  // here too, after content clipping and before that container is serialized.
++  if (canonicalOutput) {
++    AppendScrollPartsTo(aBuilder, set, createLayersForScrollbars, true);
++  }
++
+   MaybeCreateTopLayerAndWrapRootItems(
+       aBuilder, set, willBuildAsyncZoomContainer, capturedByViewTransition,
+       &blendCapture, clipRect, haveRadii ? &radii : nullptr);
+@@ -4315,7 +4343,7 @@
+     if (mZoomableByAPZ ||
+         !GetContent()->GetProperty(nsGkAtoms::MinimalDisplayPort)) {
+       MOZ_ASSERT(DisplayPortUtils::HasNonMinimalDisplayPort(GetContent()) ||
+-                 mZoomableByAPZ);
++                 mZoomableByAPZ || PresContext()->CloakfoxCanonicalLayout());
+       aBuilder->SetContainsNonMinimalDisplayPort();
+     }
+   }
+@@ -4377,7 +4405,9 @@
+   }
+ 
+   // Now display overlay scrollbars and the resizer, if we have one.
+-  AppendScrollPartsTo(aBuilder, set, createLayersForScrollbars, true);
++  if (!canonicalOutput) {
++    AppendScrollPartsTo(aBuilder, set, createLayersForScrollbars, true);
++  }
+ 
+   set.MoveTo(aLists);
+ 
+@@ -4560,7 +4590,8 @@
+     hasDisplayPort = true;
+   }
+ 
+-  mWillBuildScrollableLayer = hasDisplayPort || mZoomableByAPZ;
++  mWillBuildScrollableLayer = hasDisplayPort || mZoomableByAPZ ||
++      (mIsRoot && PresContext()->CloakfoxCanonicalLayout());
+   return mWillBuildScrollableLayer;
+ }
+ 
+@@ -4686,7 +4717,8 @@
+   // the compositor can find the scrollable layer for async scrolling.
+   // If the element is marked 'scrollgrab', also force building of a layer
+   // so that APZ can implement scroll grabbing.
+-  mWillBuildScrollableLayer = hasDisplayPort || mZoomableByAPZ;
++  mWillBuildScrollableLayer = hasDisplayPort || mZoomableByAPZ ||
++      (mIsRoot && PresContext()->CloakfoxCanonicalLayout());
+ 
+ #ifdef DEBUG
+   // A scroll frame that was painted previously without a displayport and gains
+@@ -6202,7 +6234,10 @@
+   // The position of the scrollbar in top-level windows depends on the pref
+   // layout.scrollbar.side. For non-top-level elements, it depends only on the
+   // directionaliy of the element (equivalent to a value of "1" for the pref).
+-  if (!mIsRoot) {
++  if (!mIsRoot || PresContext()->CloakfoxCanonicalLayout()) {
++    // Canonical roots use authored document direction, just like element
++    // scroll containers. Host UI direction and scrollbar-side preferences
++    // must not change the owned layout or its composition gutter.
+     return IsPhysicalLTR();
+   }
+   switch (StaticPrefs::layout_scrollbar_side()) {
+@@ -6949,6 +6984,9 @@
+ 
+ nsMargin ScrollContainerFrame::ScrollbarInsets() const {
+   if (mIsRoot) {
++    // Browser UI/rounded-corner insets arrive in physical widget coordinates.
++    // They must not change canonical document thumb size or drag geometry.
++    if (PresContext()->CloakfoxCanonicalLayout()) return nsMargin();
+     return PresContext()->EmbedderScrollbarInset();
+   }
+   return StyleScrollbarInsets(*Style(), GetWritingMode());
+diff --git a/layout/generic/nsIFrame.cpp b/layout/generic/nsIFrame.cpp
+--- a/layout/generic/nsIFrame.cpp
++++ b/layout/generic/nsIFrame.cpp
+@@ -4218,6 +4218,17 @@
+ 
+   nsRect overflow = aChild->InkOverflowRect();
+ 
++  if (aBuilder->IsForEventDelivery() &&
++      !aBuilder->IsRelativeToLayoutViewport() &&
++      aChild == aChild->PresShell()->GetRootScrollContainerFrame() &&
++      aChild->PresContext()->IsRootContentDocumentCrossProcess() &&
++      aChild->PresContext()->CloakfoxCanonicalLayout()) {
++    // Input reaches the root scrollframe in visual coordinates, before its
++    // async output container converts to layout coordinates. Include the
++    // physical output extent so a right/bottom classic scrollbar is visited.
++    overflow.ScaleRoundOut(aChild->PresContext()->CloakfoxOutputResolution());
++  }
++
+   // On mobile, there may be a dynamic toolbar. The root content document's
+   // root scroll frame's ink overflow rect does not include the toolbar
+   // height, but if the toolbar is hidden, we still want to be able to target
+diff --git a/layout/painting/nsDisplayList.cpp b/layout/painting/nsDisplayList.cpp
+--- a/layout/painting/nsDisplayList.cpp
++++ b/layout/painting/nsDisplayList.cpp
+@@ -700,7 +700,7 @@
+       // But if we have a displayport, expand it to the displayport, so
+       // that async-scrolling the visual viewport within the layout viewport
+       // will not checkerboard.
+-      if (nsIFrame* rootScrollContainerFrame =
++      if (auto* rootScrollContainerFrame =
+               presShell->GetRootScrollContainerFrame()) {
+         nsRect displayport;
+         // Note that the displayport here is already in the right coordinate
+@@ -711,6 +711,15 @@
+                 rootScrollContainerFrame->GetContent(), &displayport,
+                 DisplayPortOptions().With(ContentGeometryType::Fixed))) {
+           dirtyRectRelativeToDirtyFrame = displayport;
++        }
++        if (aFrame->PresContext()->CloakfoxCanonicalLayout() &&
++            aFrame->PresContext()->IsRootContentDocumentCrossProcess()) {
++          // Visual viewport and fixed displayport coordinates start at the
++          // scrollport. Fixed frames are positioned relative to the viewport
++          // frame, so include a canonical classic scrollbar's left/top gutter
++          // before testing their overflow against this culling rectangle.
++          dirtyRectRelativeToDirtyFrame +=
++              rootScrollContainerFrame->GetScrollPortRect().TopLeft();
+         }
+       }
+     }
+@@ -1016,8 +1025,8 @@
+ void nsDisplayListBuilder::UpdateShouldBuildAsyncZoomContainer() {
+   const Document* document = mReferenceFrame->PresContext()->Document();
+   mBuildAsyncZoomContainer = !mIsRelativeToLayoutViewport &&
+-                             !document->Fullscreen() &&
+-                             nsLayoutUtils::AllowZoomingForDocument(document);
++      (document->GetPresContext()->CloakfoxCanonicalLayout() ||
++       (!document->Fullscreen() && nsLayoutUtils::AllowZoomingForDocument(document)));
+ 
+   // If mIsRelativeToLayoutViewport == false, hit-testing on this
+   // display list will take into account the pres shell resolution.
+@@ -4892,6 +4901,18 @@
+ nsRect nsDisplayWrapList::GetBounds(nsDisplayListBuilder* aBuilder,
+                                     bool* aSnap) const {
+   *aSnap = false;
++  if (GetType() == DisplayItemType::TYPE_ASYNC_ZOOM &&
++      aBuilder->IsForEventDelivery() &&
++      !aBuilder->IsRelativeToLayoutViewport() &&
++      mFrame->PresContext()->CloakfoxCanonicalLayout()) {
++    // The display-list hit-test prefilter uses these bounds before the
++    // async-zoom item's HitTest converts its input from visual to layout space.
++    // Include the actual output extent here, and in ancestor wrapper unions,
++    // so physical right/bottom points reach the item's inverse transform.
++    nsRect bounds = mBounds;
++    bounds.ScaleRoundOut(mFrame->PresShell()->GetResolution());
++    return bounds;
++  }
+   return mBounds;
+ }
+ 
+diff --git a/layout/style/GeckoBindings.cpp b/layout/style/GeckoBindings.cpp
+--- a/layout/style/GeckoBindings.cpp
++++ b/layout/style/GeckoBindings.cpp
+@@ -988,6 +988,11 @@
+   // itself, so this will do.
+   new (aDest) nsFont(defaultVariableFont);
+ 
++  if (auto* pc = aDocument->GetPresContext(); pc && pc->CloakfoxCanonicalLayout()) {
++    aDest->family = *Servo_FontFamily_Generic(StyleGenericFontFamily::SansSerif);
++    aDest->size = Length::FromPixels(13);
++    return;
++  }
+   nsLayoutUtils::ComputeSystemFont(aDest, aFontId, defaultVariableFont,
+                                    aDocument);
+ }
+diff --git a/layout/style/GeckoBindings.h b/layout/style/GeckoBindings.h
+--- a/layout/style/GeckoBindings.h
++++ b/layout/style/GeckoBindings.h
+@@ -623,7 +623,8 @@
+ 
+ bool Gecko_MediaFeatures_IsResourceDocument(const mozilla::dom::Document*);
+ bool Gecko_MediaFeatures_InAndroidPipMode(const mozilla::dom::Document*);
+-bool Gecko_MediaFeatures_MatchesPlatform(mozilla::StylePlatform);
++bool Gecko_MediaFeatures_MatchesPlatform(const mozilla::dom::Document*,
++                                         mozilla::StylePlatform);
+ mozilla::StyleGtkThemeFamily Gecko_MediaFeatures_GtkThemeFamily();
+ 
+ void Gecko_GetSafeAreaInsets(const nsPresContext*, float*, float*, float*,
+diff --git a/layout/style/nsMediaFeatures.cpp b/layout/style/nsMediaFeatures.cpp
+--- a/layout/style/nsMediaFeatures.cpp
++++ b/layout/style/nsMediaFeatures.cpp
+@@ -8,6 +8,7 @@
+ #include <cmath>
+ #include "MaskConfig.hpp"
+ #include "CloakfoxSiteSeed.hpp"
++#include "CloakfoxCanonicalGeometry.hpp"
+ #include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/GeckoBindings.h"
+ #include "mozilla/LookAndFeel.h"
+@@ -315,29 +316,28 @@
+   return static_cast<StyleDisplayMode>(browsingContext->DisplayMode());
+ }
+ 
+-bool Gecko_MediaFeatures_MatchesPlatform(StylePlatform aPlatform) {
+-  switch (aPlatform) {
++bool Gecko_MediaFeatures_MatchesPlatform(const Document* aDocument,
++                                         StylePlatform aPlatform) {
+ #if defined(XP_WIN)
+-    case StylePlatform::Windows:
+-      return true;
++  constexpr auto host = StylePlatform::Windows;
+ #elif defined(ANDROID)
+-    case StylePlatform::Android:
+-      return true;
++  constexpr auto host = StylePlatform::Android;
+ #elif defined(MOZ_WIDGET_GTK)
+-    case StylePlatform::Linux:
+-      return true;
++  constexpr auto host = StylePlatform::Linux;
+ #elif defined(XP_MACOSX)
+-    case StylePlatform::Macos:
+-      return true;
++  constexpr auto host = StylePlatform::Macos;
+ #elif defined(XP_IOS)
+-    case StylePlatform::Ios:
+-      return true;
++  constexpr auto host = StylePlatform::Ios;
+ #else
+ #  error "Unknown platform?"
+ #endif
+-    default:
+-      return false;
+-  }
++  // Evaluate all UA -moz-platform rules from this document's immutable layout
++  // profile. In particular, native macOS listbox scrollbar widths and the
++  // non-Windows ruby shaping variant must not change canonical intrinsic sizes.
++  // The same captured flag is read by other Stylo layout/font consumers.
++  auto* pc = aDocument ? aDocument->GetPresContext() : nullptr;
++  return aPlatform == CloakfoxCanonicalGeometry::LayoutPlatform(
++      pc && pc->CloakfoxCanonicalLayout(), host, StylePlatform::Windows);
+ }
+ 
+ bool Gecko_MediaFeatures_PrefersReducedMotion(const Document* aDocument) {
+diff --git a/layout/xul/nsSliderFrame.cpp b/layout/xul/nsSliderFrame.cpp
+--- a/layout/xul/nsSliderFrame.cpp
++++ b/layout/xul/nsSliderFrame.cpp
+@@ -840,6 +840,15 @@
+ }
+ 
+ void nsSliderFrame::StartAPZDrag(WidgetGUIEvent* aEvent) {
++  // Canonical root bars have no APZ scrollbar metadata: they are inside the
++  // physical output transform. Keep mScrollingWithAPZ false so SetupDrag uses
++  // the existing synchronous Gecko path, before any APZ state is committed.
++  if (auto* sf = GetScrollContainerFrame();
++      sf && sf->IsRootScrollFrameOfDocument() &&
++      PresContext()->IsRootContentDocumentCrossProcess() &&
++      PresContext()->CloakfoxCanonicalLayout()) {
++    return;
++  }
+   if (!aEvent->mFlags.mHandledByAPZ) {
+     return;
+   }
+diff --git a/servo/components/style/gecko/media_features.rs b/servo/components/style/gecko/media_features.rs
+--- a/servo/components/style/gecko/media_features.rs
++++ b/servo/components/style/gecko/media_features.rs
+@@ -559,13 +559,13 @@
+     Windows,
+ }
+ 
+-fn eval_moz_platform(_: &Context, query_value: Option<Platform>) -> bool {
++fn eval_moz_platform(context: &Context, query_value: Option<Platform>) -> bool {
+     let query_value = match query_value {
+         Some(v) => v,
+         None => return false,
+     };
+ 
+-    unsafe { bindings::Gecko_MediaFeatures_MatchesPlatform(query_value) }
++    unsafe { bindings::Gecko_MediaFeatures_MatchesPlatform(context.device().document(), query_value) }
+ }
+ 
+ /// Allows front-end CSS to discern gtk theme via media queries.
+diff --git a/widget/Theme.cpp b/widget/Theme.cpp
+--- a/widget/Theme.cpp
++++ b/widget/Theme.cpp
+@@ -111,6 +111,16 @@
+ static StaticRefPtr<Theme> gNativeInstance;
+ static StaticRefPtr<Theme> gNonNativeInstance;
+ static StaticRefPtr<Theme> gRDMInstance;
++static StaticRefPtr<Theme> gCloakfoxCanonicalInstance;
++
++// No LookAndFeel, system-size, platform kind or global scrollbar-style prefs.
++// One fixed drawing implementation supplies the very same metrics to paint
++// and reflow; CSS scrollbar-width/color remain author-controlled.
++class CloakfoxScrollbarDrawing final : public ScrollbarDrawingWin {
++ public:
++  void RecomputeScrollbarParams() override { ConfigureScrollbarSize(17); }
++  bool ShouldDrawScrollbarButtons() override { return false; }
++};
+ 
+ }  // namespace
+ 
+@@ -132,6 +142,14 @@
+     ClearOnShutdown(&gNonNativeInstance);
+   }
+   return do_AddRef(gNonNativeInstance);
++}
++
++already_AddRefed<nsITheme> do_GetCloakfoxCanonicalThemeDoNotUseDirectly() {
++  if (MOZ_UNLIKELY(!gCloakfoxCanonicalInstance)) {
++    gCloakfoxCanonicalInstance = new Theme(MakeUnique<CloakfoxScrollbarDrawing>());
++    ClearOnShutdown(&gCloakfoxCanonicalInstance);
++  }
++  return do_AddRef(gCloakfoxCanonicalInstance);
+ }
+ 
+ already_AddRefed<nsITheme> do_GetNativeThemeDoNotUseDirectly() {

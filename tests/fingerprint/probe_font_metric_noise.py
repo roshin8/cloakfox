@@ -23,7 +23,7 @@ the only thing that can move its width is the per-glyph spacing seed. We give tw
 
   disabled: clean stock Arial width W0 (deterministic — bundled face)
   enabled : W0 + per-glyph spacing; must differ from W0 by >1px, differ between
-            the two seeds, and be stable across launches of one profile
+            the two seeds with a fixed internal test secret, and be stable across launches of one profile
 
 A dead seed leaves enabled within jitter of disabled for BOTH seeds -> FAIL,
 which is exactly the regression the old Arial-on-Linux false pass masked.
@@ -61,6 +61,10 @@ PINNED_FONTS = [
 # Two personas: identical allowlist, different spacing seeds. Distinct, non-zero.
 SPACING_SEED_A = 0x1111_1111
 SPACING_SEED_B = 0x7EED_2222
+# Site-scoped shaping derives its seed with an internal HMAC secret. Pin this
+# disposable fixture too: independently random profile secrets can quantize two
+# different base seeds to the same width, making this two-sample oracle flaky.
+FIXTURE_SECRET = "A" * 43 + "="
 
 # Arial is guaranteed whitelisted (above) and bundled, so it never substitutes;
 # any width change over this long string is pure per-glyph spacing.
@@ -83,6 +87,7 @@ def cloak_cfg(spacing_seed: int) -> str:
     seed, so the measurement isolates per-glyph spacing (see module docstring)."""
     return json.dumps({
         "fonts": sorted(PINNED_FONTS),
+        "fingerprint:secret": FIXTURE_SECRET,
         "fonts:spacing_seed": spacing_seed,
         # font ordering seed — irrelevant to width, present for coherence.
         "font:seed": 12345,
@@ -111,6 +116,12 @@ def measure(bin_path: str, enabled: bool, spacing_seed: int, prof: str) -> float
     d = webdriver.Firefox(options=opts,
                           service=Service(service_args=["--allow-system-access"], log_output=str(Path(prof) / "gd.log")))
     try:
+        d.set_context("chrome")
+        actual = d.execute_script("return JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_0'));")
+        assert actual['fonts:spacing_seed'] == spacing_seed
+        assert actual['fingerprint:secret'] == FIXTURE_SECRET
+        assert actual['fonts'] == sorted(PINNED_FONTS)
+        d.set_context("content")
         d.set_page_load_timeout(30)
         d.get("https://example.com/")
         time.sleep(1.2)

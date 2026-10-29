@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { validatePersonaGeneration, readPersonaGeneration } from "./CloakfoxTemplates.sys.mjs";
+
 const BACKUP_FORMAT = 'cloakfox-identity-settings';
 const ENCRYPTED_FORMAT = 'cloakfox-encrypted-identity-settings';
 const ITERATIONS = 600000;
@@ -37,23 +39,27 @@ function validSeed(value) {
 }
 
 export function validateIdentityBackup(data, schemas = nativeSchemas()) {
-  exactKeys(data, ['format', 'version', 'containers', 'rules', ...(data.version === 2 ? ['sourceOS'] : [])]);
-  if (data.format !== BACKUP_FORMAT || ![1, 2].includes(data.version) ||
+  exactKeys(data, ['format', 'version', 'containers', 'rules', ...(data.version >= 2 ? ['sourceOS'] : [])]);
+  if (data.format !== BACKUP_FORMAT || ![1, 2, 3].includes(data.version) ||
       !Array.isArray(data.containers) || !data.containers.length || data.containers.length > 500 ||
       !Array.isArray(data.rules) || data.rules.length > 5000) throw new Error('Unsupported identity backup');
   if (new TextEncoder().encode(JSON.stringify(data)).length > MAX_BYTES) throw new Error('Identity backup is too large');
   if (data.sourceOS !== undefined && !['macos', 'windows', 'linux'].includes(data.sourceOS)) throw new Error('Invalid backup source OS');
   const ids = new Set();
   for (const record of data.containers) {
-    exactKeys(record, ['sourceId', 'name', 'color', 'icon', 'seeds', 'settings', 'overrides', 'network', ...(data.version === 2 ? ['region', 'policy', 'startPages'] : [])]);
+    exactKeys(record, ['sourceId', 'name', 'color', 'icon', 'seeds', 'settings', 'overrides', 'network', ...(data.version >= 2 ? ['region', 'policy', 'startPages'] : [])]);
     if (!validId(record.sourceId) || ids.has(record.sourceId)) throw new Error('Invalid or duplicate container ID');
     ids.add(record.sourceId);
     if (typeof record.name !== 'string' || !record.name.trim() || record.name.length > 128 ||
         !schemas.colors.includes(record.color) || !schemas.icons.includes(record.icon)) throw new Error('Invalid container identity');
     exactKeys(record.seeds, SEEDS);
     if (!SEEDS.every(key => validSeed(record.seeds[key]))) throw new Error('Invalid identity seed');
-    exactKeys(record.settings, ['timezone', 'persona_index', ...(data.version === 2 ? ['persona_os_mode'] : [])]);
-    if (data.version === 2) {
+    exactKeys(record.settings, ['timezone', 'persona_index', ...(data.version >= 2 ? ['persona_os_mode'] : []), ...(data.version === 3 ? ['persona_source','persona_os','persona_hardware','persona_browser','persona_version'] : [])]);
+    if (data.version === 3) {
+      validatePersonaGeneration(Object.fromEntries(['source','os','hardware','browser','version'].map(key => [key, record.settings['persona_' + key]])));
+      if (record.settings.persona_source === 'fpgen' && record.settings.persona_index >= 0) throw new Error('Pinned previews require BrowserForge');
+    }
+    if (data.version >= 2) {
       if (!['host', 'legacy', 'windows', 'macos', 'linux'].includes(record.settings.persona_os_mode)) throw new Error('Invalid persona OS mode');
       if (record.region !== null) schemas.region(record.region);
       schemas.policy(record.policy);
@@ -76,12 +82,12 @@ export function validateIdentityBackup(data, schemas = nativeSchemas()) {
         type === 'float' && typeof value === 'number' && Number.isFinite(value);
       if (!valid) throw new Error('Invalid persona override');
     }
-    exactKeys(record.network, ['mode', 'proxyURL', 'webrtcMode', ...(data.version === 2 ? ['proxyRef'] : [])]);
+    exactKeys(record.network, ['mode', 'proxyURL', 'webrtcMode', ...(data.version >= 2 ? ['proxyRef'] : [])]);
     const net = record.network;
     if (![0, 1, 2].includes(net.mode) || ![0, 1, 2].includes(net.webrtcMode) || typeof net.proxyURL !== 'string') {
       throw new Error('Invalid connection settings');
     }
-    if (data.version === 2 && !(net.proxyRef === null ||
+    if (data.version >= 2 && !(net.proxyRef === null ||
         (typeof net.proxyRef === 'string' && /^[a-f0-9-]{36}$/.test(net.proxyRef)))) throw new Error('Invalid proxy reference');
     if (net.proxyRef) {
       if (net.mode === 0 || net.proxyURL !== '') throw new Error('Named proxy backups must not contain a fallback endpoint');
@@ -137,7 +143,7 @@ function cipherParams(iv, version) {
   return { name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(BACKUP_FORMAT + ':v' + version), tagLength: 128 };
 }
 export async function encryptIdentityBackup(payload, password, cryptoAPI = crypto) {
-  if (![1, 2].includes(payload?.version)) throw new Error('Unsupported identity backup');
+  if (![1, 2, 3].includes(payload?.version)) throw new Error('Unsupported identity backup');
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
   if (bytes.length > MAX_BYTES) throw new Error('Identity backup is too large');
   const salt = cryptoAPI.getRandomValues(new Uint8Array(16));
@@ -149,7 +155,7 @@ export async function encryptIdentityBackup(payload, password, cryptoAPI = crypt
 }
 export async function decryptIdentityBackup(envelope, password, cryptoAPI = crypto) {
   exactKeys(envelope, ['format', 'version', 'kdf', 'iterations', 'salt', 'iv', 'ciphertext']);
-  if (envelope.format !== ENCRYPTED_FORMAT || ![1, 2].includes(envelope.version) || envelope.kdf !== 'PBKDF2-SHA256' || envelope.iterations !== ITERATIONS) {
+  if (envelope.format !== ENCRYPTED_FORMAT || ![1, 2, 3].includes(envelope.version) || envelope.kdf !== 'PBKDF2-SHA256' || envelope.iterations !== ITERATIONS) {
     throw new Error('Unsupported encrypted identity backup');
   }
   const salt = decode(envelope.salt, 16), iv = decode(envelope.iv, 12);
@@ -259,7 +265,7 @@ export function captureIdentityBackup() {
       const network = getContainerNetwork(id);
       const seeds = Object.fromEntries(SEEDS.map(key => [key, Services.prefs.getStringPref(prefix + key, '')]));
       return { sourceId: id, name: identity.name || cis.getUserContextLabel(id), color: identity.color, icon: identity.icon,
-        seeds, settings: { timezone: Services.prefs.getStringPref(prefix + 'timezone', ''),
+        seeds, settings: { ...Object.fromEntries(Object.entries(readPersonaGeneration(id)).map(([key, value]) => ['persona_' + key, value])), timezone: Services.prefs.getStringPref(prefix + 'timezone', ''),
           persona_index: Services.prefs.getIntPref(prefix + 'persona_index', -1),
           persona_os_mode: Services.prefs.getStringPref(prefix + 'persona_os_mode', 'legacy') },
         region: getRegion(id), policy: getPrivacyPolicy(id),
@@ -268,7 +274,7 @@ export function captureIdentityBackup() {
     });
   const ids = new Set(containers.map(record => record.sourceId));
   const rules = getSiteRules().filter(rule => ids.has(rule.userContextId)).map(rule => ({ host: rule.site, sourceId: rule.userContextId }));
-  return validateIdentityBackup({ format: BACKUP_FORMAT, version: 2, sourceOS: backupOS(Services.appinfo.OS), containers, rules });
+  return validateIdentityBackup({ format: BACKUP_FORMAT, version: 3, sourceOS: backupOS(Services.appinfo.OS), containers, rules });
 }
 
 function nativeRestoreDependencies() {
@@ -309,6 +315,9 @@ function writeRestoredIdentity(id, record, appearanceWarning) {
   // No imported rule can point at the new ID until all its settings are ready.
   Services.prefs.setIntPref(prefix + 'network_mode', 2);
   Services.prefs.setStringPref(prefix + 'persona_os_mode', record.settings.persona_os_mode || 'legacy');
+  for (const [key, fallback] of Object.entries({source:'browserforge',os:'auto',hardware:'auto',browser:'firefox',version:'auto'})) {
+    Services.prefs.setStringPref(prefix + 'persona_' + key, record.settings['persona_' + key] ?? fallback);
+  }
   if (appearanceWarning) Services.prefs.setStringPref(prefix + 'restore_appearance_notice', appearanceWarning.message);
   else Services.prefs.clearUserPref(prefix + 'restore_appearance_notice');
   for (const [key, seed] of Object.entries(record.seeds)) Services.prefs.setStringPref(prefix + key, seed);

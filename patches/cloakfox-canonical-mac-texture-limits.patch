@@ -1,0 +1,15 @@
+--- a/gfx/gl/GLContext.cpp
++++ b/gfx/gl/GLContext.cpp
+@@ -917,7 +917,11 @@
+     // 16k*16k FB except rgba8 without depth/stencil.
+     // The max supported sizes changes based on involved formats.
+     // (RGBA32F more restrictive than RGBA16F)
+-    maxTexSize = 8192;
++    // The immutable canonical policy selects the verified CPU Vulkan library,
++    // whose real 16k allocation/raster paths do not use the Mojave driver.
++    if (!mDesc.canonicalGpu) {
++      maxTexSize = 8192;
++    }
+ #endif
+ #ifdef MOZ_X11
+     if (mVendor == GLVendor::Nouveau) {

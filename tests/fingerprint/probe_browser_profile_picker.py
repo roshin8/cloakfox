@@ -58,8 +58,10 @@ def main():
               os.value = 'Windows'; os.dispatchEvent(new Event('change'));
               document.getElementById('cfx-generate-new').click();
             """)
-            WebDriverWait(driver, 20).until(lambda d: "Generated and applied" in d.execute_script(
-                "return document.getElementById('cfx-identity-status').textContent"))
+            WebDriverWait(driver, 20).until(lambda d: d.execute_script(
+                "return document.querySelector('.profile-preview-label').textContent === 'Applied identity' "
+                "&& document.getElementById('cfx-profile-preview-ua').textContent.includes(arguments[0]) "
+                "&& !document.getElementById('cfx-generate-new').disabled", "Firefox/156.0"))
             driver.get(f"http://127.0.0.1:{server.server_port}/")
             ua, app_version, platform, oscpu = driver.execute_script(
                 "return [navigator.userAgent,navigator.appVersion,navigator.platform,navigator.oscpu]")
@@ -78,8 +80,10 @@ def main():
               os.value = 'Windows'; os.dispatchEvent(new Event('change'));
               document.getElementById('cfx-generate-new').click();
             """)
-            WebDriverWait(driver, 20).until(lambda d: "Generated and applied" in d.execute_script(
-                "return document.getElementById('cfx-identity-status').textContent"))
+            WebDriverWait(driver, 20).until(lambda d: d.execute_script(
+                "return document.querySelector('.profile-preview-label').textContent === 'Applied identity' "
+                "&& document.getElementById('cfx-profile-preview-ua').textContent.includes(arguments[0]) "
+                "&& !document.getElementById('cfx-generate-new').disabled", "Chrome/154.0.0.0"))
             Handler.user_agent = None
             driver.get(f"http://127.0.0.1:{server.server_port}/chrome")
             chrome_ua = driver.execute_script("return navigator.userAgent")

@@ -35,6 +35,7 @@ HERE = Path(__file__).resolve().parent
 # Probes that need a special environment or are one-off spikes rather than
 # regression tests, with the reason they are skipped by default.
 SKIP = {
+    "probe_canonical_geometry_readiness.py": "historical diagnostic; native acceptance is probe_canonical_geometry.py",
     "probe_font_spike.py": "phase-0 spike, needs a hand-staged test font",
     "probe_fingerprint_libraries.py": "required separately in CI after pinned fixture setup",
     "run_all.py": "this driver",

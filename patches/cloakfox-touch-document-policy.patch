@@ -1,0 +1,58 @@
+--- a/dom/events/TouchEvent.cpp
++++ b/dom/events/TouchEvent.cpp
+@@ -10,8 +10,10 @@
+ #include "mozilla/LookAndFeel.h"
+ #include "mozilla/Preferences.h"
+ #include "mozilla/StaticPrefs_dom.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/TouchEvents.h"
+ #include "mozilla/dom/Navigator.h"
++#include "mozilla/dom/Document.h"
+ #include "mozilla/dom/Touch.h"
+ #include "mozilla/dom/TouchListBinding.h"
+ #include "nsContentUtils.h"
+@@ -208,16 +210,33 @@
+   return sIsTouchDeviceSupportPresent;
+ }
+ 
++// Browser widgets and system about: documents must never enter synchronous
++// page-persona storage while constructing their native touch listeners.
++static std::optional<uint32_t> CloakfoxContentTouchPoints(nsIDocShell* aDocShell) {
++  if (!aDocShell || !StaticPrefs::cloakfox_enabled()) return std::nullopt;
++  const auto* document = aDocShell->GetExtantDocument();
++  auto* bc = aDocShell->GetBrowsingContext();
++  if (!document || document->NodePrincipal()->IsSystemPrincipal() ||
++      (bc && bc->IsChrome())) return std::nullopt;
++  // An existing content document without an owner must not reveal the host.
++  if (!bc) return uint32_t{0};
++  const auto raw = CloakConfigOverlay_Get(bc->OriginAttributesRef().mUserContextId);
++  const auto config = nlohmann::json::parse(raw, nullptr, false);
++  if (!config.is_object()) return uint32_t{0};
++  const auto value = config.find("navigator:maxTouchPoints");
++  if (value == config.end() || !value->is_number_unsigned() ||
++      value->get<uint64_t>() > UINT32_MAX) return uint32_t{0};
++  return value->get<uint32_t>();
++}
++
+ // static
+ bool TouchEvent::PrefEnabled(nsIDocShell* aDocShell) {
+   MOZ_DIAGNOSTIC_ASSERT(NS_IsMainThread());
+ 
+-  uint32_t context = 0;
+   auto touchEventsOverride = mozilla::dom::TouchEventsOverride::None;
+   if (aDocShell) {
+     if (BrowsingContext* bc = aDocShell->GetBrowsingContext()) {
+       touchEventsOverride = bc->TouchEventsOverride();
+-      context = bc->OriginAttributesRef().mUserContextId;
+     }
+   }
+ 
+@@ -227,7 +246,7 @@
+   } else if (touchEventsOverride ==
+              mozilla::dom::TouchEventsOverride::Disabled) {
+     enabled = false;
+-  } else if (auto touchPoints = MaskConfig::GetUint32("navigator:maxTouchPoints", context)) {
++  } else if (auto touchPoints = CloakfoxContentTouchPoints(aDocShell)) {
+     // Desktop digitizers expose Touch/TouchEvent, without legacy ontouch* APIs.
+     enabled = touchPoints.value() > 0;
+   } else if (nsContentUtils::ShouldResistFingerprinting(

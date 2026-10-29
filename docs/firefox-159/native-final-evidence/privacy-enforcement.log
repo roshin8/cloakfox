@@ -1,0 +1,16 @@
+PASS disabled enumeration returns empty: 0
+PASS disabled capture rejects before device access: NotAllowedError
+PASS disabled screen capture rejects before chooser: NotAllowedError
+PASS disabled output selection rejects before chooser: NotAllowedError
+PASS location respects denied prompt: 1
+PASS unready WebRTC exposes no direct candidates: 0
+PASS startup guard opt-out restores direct ICE: 4
+PASS approved location still returns persona coordinates: [40, -70]
+PASS media policy stays scoped to its container: 2
+PASS another container retains permitted fake capture: fake stream
+PASS master off restores native capture using fake test devices: fake stream
+PASS master off restores direct ICE gathering: 4
+PASS IP discovery starts disabled in Settings: False
+PASS startup protection starts enabled in Settings: True
+PASS IP discovery choice survives profile restart: True
+PASS restart retains master-off policy: False

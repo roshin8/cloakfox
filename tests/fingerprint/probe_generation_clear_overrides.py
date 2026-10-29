@@ -71,7 +71,7 @@ def main():
                 WebDriverWait(driver, 15).until(lambda d: d.execute_script(
                     "return !document.getElementById(arguments[0]).hasAttribute('aria-busy')", button))
                 assert driver.execute_script(
-                    "return document.getElementById('cfx-identity-status').classList.contains('identity-success')"
+                    "return document.querySelector('.profile-preview-label').textContent === 'Applied identity'"
                 ), driver.execute_script("return document.getElementById('cfx-identity-status').textContent")
 
             other = chrome("""
@@ -107,8 +107,7 @@ def main():
             assert cleared["cfg"]["mediaDevices:enabled"] is False
             assert cleared["cfg"]["navigator:clipboard:disabled"] is True
             assert cleared["other"] == kept["other"], "Cleared another container's overrides"
-            assert "cleared" in driver.execute_script(
-                "return document.getElementById('cfx-identity-status').textContent").lower()
+            assert driver.execute_script("return document.getElementById('cfx-profile-preview-traits').textContent.includes('No manual overrides')")
 
             # The generation option must not change the selected-preview workflow.
             seed_overrides()

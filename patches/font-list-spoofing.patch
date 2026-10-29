@@ -382,12 +382,7 @@ diff --git a/gfx/thebes/gfxPlatformFontList.cpp b/gfx/thebes/gfxPlatformFontList
 diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
 --- a/gfx/thebes/gfxTextRun.cpp
 +++ b/gfx/thebes/gfxTextRun.cpp
-@@ -4,16 +4,18 @@
- 
- #include "gfxTextRun.h"
- 
- #include "SharedFontList-impl.h"
- #include "TextDrawTarget.h"
+@@ -9,6 +9,8 @@
  #include "gfx2DGlue.h"
  #include "gfxContext.h"
  #include "gfxFontConstants.h"
@@ -396,17 +391,7 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
  #include "gfxFontMissingGlyphs.h"
  #include "gfxGlyphExtents.h"
  #include "gfxHarfBuzzShaper.h"
- #include "gfxPlatformFontList.h"
- #include "gfxUserFontSet.h"
- #include "mozilla/ClearOnShutdown.h"
- #include "mozilla/Likely.h"
- #include "mozilla/MruCache.h"
-@@ -1932,16 +1934,18 @@
-   }
- 
-   nsTArray<gfxFontGroup::FamilyFace> mFontList;
- };
- 
+@@ -1941,6 +1943,8 @@
  NS_IMPL_ISUPPORTS(DeferredClearResolvedFonts, nsIRunnable)
  
  void gfxFontGroup::EnsureFontList() {
@@ -415,11 +400,6 @@ diff --git a/gfx/thebes/gfxTextRun.cpp b/gfx/thebes/gfxTextRun.cpp
    // Ensure resolved font instances are valid; discard them if necessary.
    auto* pfl = gfxPlatformFontList::PlatformFontList();
    if (mFontListGeneration != pfl->GetGeneration()) {
-     // Forget cached fonts that may no longer be valid.
-     mLastPrefFamily = FontFamily();
-     mLastPrefFont = nullptr;
-     mDefaultFont = nullptr;
-     mResolvedFonts = false;
 diff --git a/layout/style/FontFaceSet.cpp b/layout/style/FontFaceSet.cpp
 --- a/layout/style/FontFaceSet.cpp
 +++ b/layout/style/FontFaceSet.cpp

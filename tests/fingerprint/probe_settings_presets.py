@@ -26,22 +26,24 @@ def main():
         load()
         assert len(Select(d.find_element(By.ID,'cfx-browser-preset')).options)==117
         assert len(Select(d.find_element(By.ID,'cfx-persona-filter')).options)==4
+        def family(name):
+            reveal('cfx-persona-panel')
+            d.find_element(By.CSS_SELECTOR,f'.browser-family-tile[data-browser="{name}"]').click()
         choose('cfx-browser-preset','win10-firefox-123')
-        reveal('sec-screen-management')
-        assert d.find_element(By.ID,'sec-screen-management').is_displayed(), 'Compatibility settings must remain discoverable'
-        assert 'only apply after' in d.find_element(By.ID,'cfx-chromium-status').text
+        family('firefox')
+        assert d.execute_script("return document.getElementById('sec-screen-management').hidden"), 'Firefox family must hide Chromium-only settings'
         choose('cfx-browser-preset','win10-chrome-122')
-        reveal('sec-screen-management')
+        family('chrome');reveal('sec-screen-management')
         assert d.find_element(By.ID,'sec-screen-management').is_displayed()
-        assert d.execute_script("return document.querySelector('[data-category=display]').getAttribute('aria-current')")=='page'
+        assert d.execute_script("return document.querySelector('.settings-sidebar nav [data-category=identity]').getAttribute('aria-current')")=='page'
         count=d.find_element(By.ID,'cfx-screen-count')
         Select(count).select_by_value('2')
         choose('cfx-browser-preset','win10-firefox-123')
-        reveal('sec-screen-management')
-        assert d.find_element(By.ID,'sec-screen-management').is_displayed()
+        family('firefox')
+        assert d.execute_script("return document.getElementById('sec-screen-management').hidden")
         choose('cfx-browser-preset','win10-chrome-122')
+        family('chrome');reveal('sec-screen-management')
         assert Select(d.find_element(By.ID,'cfx-screen-count')).first_selected_option.get_attribute('value')=='2'
-        reveal('sec-screen-management')
         assert 'Enabled' in d.find_element(By.ID,'cfx-chromium-status').text
         toggle=d.find_element(By.ID,'cfx-screen-management')
         d.execute_script('arguments[0].scrollIntoView({block:"center"})',toggle);toggle.click()

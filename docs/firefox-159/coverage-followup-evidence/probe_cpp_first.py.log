@@ -1,0 +1,46 @@
+[setup] using CLOAKFOX_BIN: /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-viewport/Cloakfox.app/Contents/MacOS/cloakfox
+[profile] seeded with cloakfox.enabled=true + 32-byte math_seed
+[launch] /Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-viewport/Cloakfox.app/Contents/MacOS/cloakfox
+
+[diagnose] chrome-context probe
+[diagnose] {
+  "actor_module_load": "ok",
+  "actor_registered": "ChromeUtils.registeredJSWindowActors not available",
+  "cloakfox_console_errors": [
+    "Warning: attempting to write 6495 bytes to preference cloakfox.s.cloak_cfg_0. This is bad for general performance and memory usage. Such an amount of data should rather be written to an external file.",
+    "Warning: attempting to write 6143 bytes to preference cloakfox.s.cloak_cfg_1. This is bad for general performance and memory usage. Such an amount of data should rather be written to an external file.",
+    "Warning: attempting to write 6533 bytes to preference cloakfox.s.cloak_cfg_2. This is bad for general performance and memory usage. Such an amount of data should rather be written to an external file.",
+    "Warning: attempting to write 6268 bytes to preference cloakfox.s.cloak_cfg_3. This is bad for general performance and memory usage. Such an amount of data should rather be written to an external file.",
+    "Warning: attempting to write 6457 bytes to preference cloakfox.s.cloak_cfg_4. This is bad for general performance and memory usage. Such an amount of data should rather be written to an external file."
+  ],
+  "enabled_pref": true,
+  "seed_pref": "zdxOa+oKkDdGw5tWSPQflgpimfx49TFW3/zJasNnucs="
+}
+
+[probe] https://example.com — expecting perturbed Math
+[probe] page-compartment Math: {
+  "pi": 3.141592653589793,
+  "e": 2.718281828459045,
+  "sin_half": 0.47942553860393505,
+  "cos_zero": 1,
+  "sqrt_two": 1.4142135623733487,
+  "ln2": 0.6931471805599453,
+  "sqrt2": 1.4142135623730951
+}
+
+[probe] about:cloakfox — expecting settings page
+
+=== Summary ===
+  [PASS] Math.PI stays bit-exact (perturbing it is self-flagging) — PI=3.141592653589793, |delta|=0.00e+00
+  [PASS] Math.E stays bit-exact — E=2.718281828459045, |delta|=0.00e+00
+  [PASS] Math.sin(0.5) has trig noise — sin(0.5)=0.47942553860393505, |delta|=2.68e-13
+  [PASS] Math.cos(0) stays integer (no noise on integers) — cos(0)=1
+  [PASS] Math.LN2 stays bit-exact — LN2=0.6931471805599453, |delta|=0.00e+00
+  [PASS] about:cloakfox loads without net error — title='Cloakfox'
+  [PASS] Settings page title set to 'Cloakfox' — title='Cloakfox'
+  [PASS] Primary toggle (#cfx-enabled) present
+  [PASS] Regenerate-seed button (#cfx-regenerate) present
+
+9/9 assertions passed
+
+[cleanup] work dir left at /var/folders/ft/76f9yg5n45x3bvcrbb7kp6yc0000gn/T/cfx-cpp-first-4mivx9xp (delete manually if desired)

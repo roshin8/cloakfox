@@ -1,5 +1,6 @@
 """Exercise category navigation, search, drafts and container context in the app."""
 import json
+import os
 import tempfile
 from pathlib import Path
 from selenium.webdriver.support.ui import WebDriverWait
@@ -46,7 +47,7 @@ def main():
             category('display')
             assert driver.execute_script("const d=document.querySelector('#grp-screen details');d.open=true;return [...d.querySelectorAll('.spoof-row')].every(r=>getComputedStyle(r).display==='grid' && r.getBoundingClientRect().width>d.getBoundingClientRect().width*.9)")
             driver.execute_script("location.hash='cfx-proxy-manager'")
-            WebDriverWait(driver,5).until(lambda d:d.execute_script("return document.querySelector('[data-category=connections]').getAttribute('aria-current')==='page'"))
+            WebDriverWait(driver,5).until(lambda d:d.execute_script("return document.querySelector('.settings-sidebar nav [data-category=connections]').getAttribute('aria-current')==='page'"))
             assert driver.execute_script("return document.getElementById('cfx-settings-search').value")==''
             appearance('grouped','dark')
             driver.refresh()
@@ -69,13 +70,13 @@ def main():
             driver.set_window_size(1280,1000)
             category('identity')
             driver.set_context('chrome')
-            driver.save_screenshot(str(Path(__file__).resolve().parents[2]/'docs/font-ui-fix/layout-console-light.png'))
+            driver.save_screenshot(str(Path(os.environ.get('REPORT_DIR', str(Path(__file__).resolve().parents[2]/'docs/font-ui-fix')))/'layout-console-light.png'))
             driver.set_context('content')
             appearance('grouped','dark')
             driver.refresh()
             WebDriverWait(driver,10).until(lambda d:d.execute_script("return document.body.dataset.layout === 'grouped' && document.documentElement.dataset.theme === 'dark'"))
             driver.set_context('chrome')
-            driver.save_screenshot(str(Path(__file__).resolve().parents[2]/'docs/font-ui-fix/layout-grouped-dark.png'))
+            driver.save_screenshot(str(Path(os.environ.get('REPORT_DIR', str(Path(__file__).resolve().parents[2]/'docs/font-ui-fix')))/'layout-grouped-dark.png'))
             driver.set_context('content')
             print(json.dumps({'ok':True,'categories':11,'draftRetained':True,'searchAndEmptyState':True,'deepLink':True,'advancedLayout':True,'layoutAndThemePersist':True,'layoutDraftRetained':True,'tabs':True,'responsiveWidths':[1280,848,600]}))
         finally:driver.quit()

@@ -9,11 +9,13 @@ const ua = version => `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${version}) 
 function harness(version = '155.0.1', hostOS = 'WINNT', sampler = () => ({ userAgent: ua('146.0'), screen: {} })) {
   const prefs = new Map();
   const filters = [];
+  const fpgenFilters = [];
   const get = (key, fallback) => prefs.has(key) ? prefs.get(key) : fallback;
   const context = vm.createContext({
     AppConstants: { MOZ_APP_VERSION: version }, atob, btoa, console,
     crypto: { getRandomValues: bytes => bytes.fill(19) },
     sampleFingerprint: sampler,
+    sampleFPGenFingerprint: (prng, constraints) => { fpgenFilters.push({...constraints}); if (constraints.hardware === "impossible") throw Error("Unsupported fpgen filters"); return {...sampler(prng), hardwareConcurrency: 24}; },
     samplePersonaFingerprint: (prng, constraints) => { filters.push({...constraints}); return sampler(prng); },
     ContextualIdentityService: { getPublicIdentities: () => [{ userContextId: 7 }] },
     Services: { appinfo: {OS: hostOS},
@@ -33,7 +35,7 @@ function harness(version = '155.0.1', hostOS = 'WINNT', sampler = () => ({ userA
       .replace(/^export /gm, '');
     vm.runInContext(source, context, { filename: name });
   }
-  return { prefs, context, filters, start: () => context.initCloakfoxSeedSync(), cfg: () => JSON.parse(prefs.get('cloakfox.s.cloak_cfg_7')) };
+  return { prefs, context, filters, fpgenFilters, start: () => context.initCloakfoxSeedSync(), cfg: () => JSON.parse(prefs.get('cloakfox.s.cloak_cfg_7')) };
 }
 // New region/policy metadata is validated by its own suite; this regression
 // verifies every pre-existing config field remains byte-for-byte intact.
@@ -145,7 +147,7 @@ test('first master seed selects mixed OS mode; existing seeded identity remains 
 test('host mode flows through generated keys, pinned keys, preview labels and summary',()=>{
  const sample=prng=>prng()<0.5?{userAgent:ua('146.0'),platform:'Win32',screen:{width:1920,height:1080},videoCard:{renderer:'Windows GPU'}}:
   {userAgent:'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:146.0) Gecko/20100101 Firefox/146.0',platform:'MacIntel',screen:{width:1440,height:900},videoCard:{renderer:'Apple GPU'}};
- const h=harness('155.0.1','Darwin',sample);h.prefs.set('cloakfox.container.7.persona_os_mode','host');h.start();
+ const h=harness('155.0.1','Darwin',sample);h.prefs.set('cloakfox.container.7.persona_source','browserforge');h.prefs.set('cloakfox.container.7.persona_os_mode','host');h.start();
  assert.match(h.cfg()['navigator.userAgent'],/Macintosh/);
  const previews=h.context.listPersonas('Darwin','host');
  for(let index=0;index<30;index++) {
@@ -280,4 +282,38 @@ test('Unicode math fallback upgrades generated fonts without changing explicit f
   assert.ok(h.cfg().fonts.includes('Noto Sans Math'));
   h.prefs.set('cloakfox.container.7.override.fonts', JSON.stringify(['Arial']));
   h.start(); assert.deepEqual(Array.from(h.cfg().fonts), ['Arial']);
+});
+
+
+test('new containers persist fpgen while existing seeds without source retain BrowserForge', () => {
+ const fresh=harness(); fresh.start();
+ assert.equal(fresh.prefs.get('cloakfox.container.7.persona_source'),'fpgen');
+ assert.equal(fresh.cfg()['navigator.hardwareConcurrency'],24);
+ const old=harness();setExisting(old,legacy());old.start();
+ assert.equal(old.prefs.has('cloakfox.container.7.persona_source'),false);
+ const calls=old.fpgenFilters.length;old.context.refreshContainerConfig(7);assert.equal(old.fpgenFilters.length,calls);
+ const implicit=JSON.stringify(old.context.fillPersonaKeys(seed,7));
+ old.prefs.set('cloakfox.container.7.persona_source','browserforge');
+ assert.equal(JSON.stringify(old.context.fillPersonaKeys(seed,7)),implicit);
+});
+test('explicit provider and filters are per container and rejected generation leaves publication intact', () => {
+ const h=harness(); setExisting(h,legacy()); h.start();h.fpgenFilters.length=0;
+ for(const [key,value] of Object.entries({source:'fpgen',os:'linux',hardware:'intel',browser:'firefox',version:'154'})) h.prefs.set(`cloakfox.container.7.persona_${key}`,value);
+ const value=h.context.fillPersonaKeys(seed,7);
+ assert.equal(value['navigator.hardwareConcurrency'],24);
+ assert.deepEqual(h.fpgenFilters.at(-1),{os:'linux',hardware:'intel',browser:'firefox',version:'154'});
+ h.context.fillPersonaKeys(seed,8);assert.equal(h.fpgenFilters.length,1);
+ const previous=h.prefs.get('cloakfox.s.cloak_cfg_7');
+ h.prefs.set('cloakfox.container.7.persona_hardware','impossible');
+ assert.throws(()=>h.context.refreshContainerConfig(7),/fpgen/);
+ assert.equal(h.prefs.get('cloakfox.s.cloak_cfg_7'),previous);
+ h.prefs.set('cloakfox.container.7.persona_source','unknown');
+ assert.throws(()=>h.context.fillPersonaKeys(seed,7),/source/);
+});
+
+test('legacy configuration or preview without a master seed does not acquire a new provider', () => {
+ for(const setup of [h=>h.prefs.set('cloakfox.s.cloak_cfg_7',JSON.stringify(legacy())),h=>h.prefs.set('cloakfox.container.7.persona_index',3)]) {
+  const h=harness();setup(h);h.start();assert.equal(h.prefs.has('cloakfox.container.7.persona_source'),false);
+  assert.equal(h.context.personaSource(7),'browserforge');
+ }
 });

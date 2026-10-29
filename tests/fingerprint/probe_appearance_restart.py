@@ -55,7 +55,11 @@ def main():
                 toggle = driver.find_element(By.CSS_SELECTOR, f'input[data-pref="{PREF}"]')
                 assert toggle.is_selected() != enabled
                 old_pid = chrome(driver, "return Services.appinfo.processID")
-                toggle.click()
+                # The checkbox is visually hidden beneath the styled switch.
+                # Use its real label, just as a user does, and verify the change.
+                driver.find_element(By.CSS_SELECTOR,
+                    'label.appearance-switch[for="cfx-firefox-appearance"]').click()
+                WebDriverWait(driver, 10).until(lambda _: toggle.is_selected() == enabled)
                 button = WebDriverWait(driver, 10).until(lambda d: d.find_element(
                     By.ID, "cfx-appearance-restart"))
                 assert button.is_displayed(), "Restart action should be available"

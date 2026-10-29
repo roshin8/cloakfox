@@ -1,0 +1,20 @@
+diff --git a/gfx/gl/GLLibraryEGL.cpp b/gfx/gl/GLLibraryEGL.cpp
+--- a/gfx/gl/GLLibraryEGL.cpp
++++ b/gfx/gl/GLLibraryEGL.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxCanonicalBackend.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+  * You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -575,10 +576,7 @@
+   close(manifestFd);
+   const auto manifest = nlohmann::json::parse(content, nullptr, false);
+   if (!manifest.is_object()) return false;
+-  const auto version = manifest.find("rendererVersion");
+-  if (version == manifest.end() || !version->is_number_integer() ||
+-      version->get<uint64_t>() != 1)
+-    return false;
++  if (!CloakfoxCanonicalBackend::ManifestVersionAllowed(manifest)) return false;
+   const auto revisions = manifest.find("revisions");
+   const auto files = manifest.find("files");
+   if (revisions == manifest.end() || !revisions->is_object() ||

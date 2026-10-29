@@ -7,6 +7,13 @@ from screen_management_fixture import ScreenManagementFixture, CHROME
 def main():
     with ScreenManagementFixture() as f:
         d=f.driver;d.get('about:cloakfox#sec-screen-management')
+        def select_chrome():
+            WebDriverWait(d,15).until(lambda d:d.find_elements(By.CSS_SELECTOR,'.browser-family-tile[data-browser=chrome]'))
+            d.execute_script("document.querySelector('.browser-family-tile[data-browser=chrome]').click()")
+            WebDriverWait(d,10).until(lambda d:d.find_element(By.ID,'cfx-screen-management').is_displayed())
+        def reload_settings():
+            d.refresh();select_chrome()
+        select_chrome()
         toggle=WebDriverWait(d,15).until(lambda x:x.find_element(By.ID,'cfx-screen-management'))
         count=d.find_element(By.ID,'cfx-screen-count'); origins=d.find_element(By.ID,'cfx-screen-origins')
         assert d.execute_script('return arguments[0].closest("details")===arguments[1].closest("details")',toggle,origins)
@@ -25,17 +32,17 @@ def main():
             assert 'Line 1' in d.find_element(By.ID,'cfx-screen-origins-status').text
         origins.clear();d.find_element(By.ID,'cfx-screen-origins-save').click()
         assert f.chrome('return Services.prefs.getStringPref("cloakfox.compat.screen_management.origins")')=='[]'
-        d.find_element(By.ID,'cfx-screen-origins-reset').click();d.refresh()
+        d.find_element(By.ID,'cfx-screen-origins-reset').click();reload_settings()
         assert d.find_element(By.ID,'cfx-screen-count').get_attribute('value')=='2'
         assert d.find_element(By.ID,'cfx-screen-origins').get_attribute('value')=='https://app.testdome.com'
         for value in [1,2,3,8,0,-1,9,'wrong']:
-            f.set_screen_count(value); d.refresh()
+            f.set_screen_count(value); reload_settings()
             expected=str(value) if isinstance(value,int) and 1<=value<=8 else '1'
             assert d.find_element(By.ID,'cfx-screen-count').get_attribute('value')==expected
         for malformed in ['{bad', '{}', '[7]',123,True]:
-            f.pref('cloakfox.compat.screen_management.origins',malformed);d.refresh()
+            f.pref('cloakfox.compat.screen_management.origins',malformed);reload_settings()
             assert 'Could not read' in d.find_element(By.ID,'cfx-screen-origins-status').text
-        f.set_screen_count(3);f.set_origins([f.origin]);d=f.restart();d.get('about:cloakfox#sec-screen-management')
+        f.set_screen_count(3);f.set_origins([f.origin]);d=f.restart();d.get('about:cloakfox#sec-screen-management');select_chrome()
         assert d.find_element(By.ID,'cfx-screen-count').get_attribute('value')=='3'
         assert d.find_element(By.ID,'cfx-screen-origins').get_attribute('value')==f.origin
         defaults=f.chrome("return [Services.prefs.getDefaultBranch('').getBoolPref('cloakfox.compat.screen_management'),Services.prefs.getDefaultBranch('').getIntPref('cloakfox.compat.screen_management.screen_count'),Services.prefs.getDefaultBranch('').getStringPref('cloakfox.compat.screen_management.origins')]")

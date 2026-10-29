@@ -16,6 +16,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from probe_container_workflows import open_site, chrome
+from probe_canvas_canonical_gpu import headless_webgpu_unavailable
 from probe_webgl_backend_profile import INSPECT
 
 HTML = b'''<!doctype html><title>Container profile feasibility</title><style>
@@ -27,7 +28,7 @@ const rect=e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.heigh
 const gpu=['webgl','webgl2'].map(kind=>{const g=document.createElement('canvas').getContext(kind);const v=inspect(g);if(g)g.getExtension('WEBGL_lose_context')?.loseContext();return v});
 const c=document.createElement('canvas');c.width=400;c.height=70;const x=c.getContext('2d');x.font='29px sans-serif';x.fillText('Distinct owner typography 0123456789',5,45);
 return {gpu,fixed:rect(document.getElementById('fixed')),intrinsic:rect(document.getElementById('intrinsic')),canvas:c.toDataURL()};'''
-GPU = r'''const done=arguments[arguments.length-1];(async()=>{if(!navigator.gpu)return {available:false};const a=await navigator.gpu.requestAdapter();if(!a)return {available:false};const info=a.info;return {available:true,info:[info.vendor,info.architecture,info.description,info.device],limits:Object.fromEntries(Object.keys(Object.getPrototypeOf(a.limits)).filter(k=>typeof a.limits[k]==='number').map(k=>[k,a.limits[k]]))}})().then(done,e=>done({error:String(e)}));'''
+GPU = r'''const done=arguments[arguments.length-1];(async()=>{if(!navigator.gpu)return {available:false,reason:'navigator.gpu absent'};const a=await navigator.gpu.requestAdapter();if(!a)return {available:false,reason:'no adapter'};const info=a.info;return {available:true,info:[info.vendor,info.architecture,info.description,info.device],limits:Object.fromEntries(Object.keys(Object.getPrototypeOf(a.limits)).filter(k=>typeof a.limits[k]==='number').map(k=>[k,a.limits[k]]))}})().then(done,e=>done({error:String(e)}));'''
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -41,7 +42,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     out=Path(os.environ.get('REPORT_DIR','/tmp/cloakfox-container-feasibility'));out.mkdir(parents=True,exist_ok=True)
     binary=os.environ.get('CLOAKFOX_BIN','/Applications/Cloakfox.app/Contents/MacOS/cloakfox')
-    report={'binary':binary,'purpose':'feasibility baseline; no product change','cases':[],'checks':[]}
+    report={'binary':binary,'purpose':'feasibility baseline; no product change','cases':[],'checks':[],'inconclusive':[]}
     xul=Path(binary).parent/'XUL';report['xulSHA256']=hashlib.sha256(xul.read_bytes()).hexdigest()
     server=ThreadingHTTPServer(('127.0.0.1',0),Handler);threading.Thread(target=server.serve_forever,daemon=True).start()
     def check(value,name):
@@ -49,6 +50,8 @@ def main():
     try:
         with tempfile.TemporaryDirectory(prefix='cfx-profile-feasibility-') as profile:
             options=Options();options.binary_location=binary
+            # Exercise real WebGPU while remaining headless; keep sandbox/blocklist defaults.
+            if os.environ.get('MOZ_HEADLESS') == '1': options.set_preference('layers.gpu-process.allow-headless',True)
             for arg in ['-purgecaches','-profile',profile]:options.add_argument(arg)
             options.set_preference('cloakfox.enabled',True)
             options.set_preference('cloakfox.experimental.canvas_pipeline',True)
@@ -56,6 +59,10 @@ def main():
             driver=webdriver.Firefox(options=options,service=Service('/opt/homebrew/bin/geckodriver',service_args=['--allow-system-access'],log_output=str(out/'gecko.log')))
             try:
                 report['runtime']=chrome(driver,'return {buildID:Services.appinfo.appBuildID,version:Services.appinfo.version};')
+                chrome(driver,"Services.prefs.setBoolPref('cloakfox.enabled',false);")
+                driver.set_context('content');driver.get(f'http://127.0.0.1:{server.server_port}/native-control')
+                report['nativeWebGPU']=driver.execute_async_script(GPU)
+                chrome(driver,"Services.prefs.setBoolPref('cloakfox.enabled',true);")
                 open_site(driver,f'http://127.0.0.1:{server.server_port}/raw-software-backend',0)
                 chrome(driver,"const key='cloakfox.s.cloak_cfg_0',cfg=JSON.parse(Services.prefs.getStringPref(key));for(const name of Object.keys(cfg))if(/^webgl/i.test(name))delete cfg[name];cfg['webGl:backend_profile']=false;cfg['webgl:typed_readback:disabled']=true;Services.prefs.setStringPref(key,JSON.stringify(cfg));")
                 driver.set_context('content');driver.refresh()
@@ -80,13 +87,18 @@ def main():
                         check(actual==ucid,f'{os_name}/{index}: real owner matches')
                         check(state['canonical'] and state['profile'],f'{os_name}/{index}: existing protected pipeline active')
                         check(all(not x.get('missing') for s in samples for x in s['value']['gpu']),f'{os_name}/{index}: both WebGL contexts operate')
-                        check(all(s['value']['webgpu'].get('available') for s in samples),f'{os_name}/{index}: WebGPU enabled and available')
+                        if all(headless_webgpu_unavailable(s['value']['webgpu'],report['nativeWebGPU']) for s in samples):
+                            report['inconclusive'].append({'owner':ucid,'os':os_name,'reason':'No headless native WebGPU adapter'})
+                            print(f'INCONCLUSIVE {os_name}/{index}: no headless native WebGPU adapter',flush=True)
+                        else:
+                            check(all(s['value']['webgpu'].get('available') for s in samples),f'{os_name}/{index}: WebGPU enabled and available')
                     a,b=pair
                     report.setdefault('comparisons',[]).append({'os':os_name,'personaRenderer':persona['webGl:renderer'],'identicalSavedPersona':a['requested']['renderer']==b['requested']['renderer'],'distinctOwnerSeeds':a['requested']['canvasSeed']!=b['requested']['canvasSeed'],'sameReportedGPUTuple':[(v['identity'],v['caps'])for v in a['samples'][0]['value']['gpu']]==[(v['identity'],v['caps'])for v in b['samples'][0]['value']['gpu']],'differentIntrinsicGeometry':a['samples'][0]['value']['intrinsic']!=b['samples'][0]['value']['intrinsic'],'differentCanvas':a['samples'][0]['value']['canvas']!=b['samples'][0]['value']['canvas']})
                     (out/'result.json').write_text(json.dumps(report,indent=2)+'\n')
             finally:driver.quit()
     finally:
         server.shutdown();server.server_close();(out/'result.json').write_text(json.dumps(report,indent=2)+'\n')
-    return int(any(not c['pass'] for c in report['checks']))
+    if any(not c['pass'] for c in report['checks']): return 1
+    return 2 if report['inconclusive'] else 0
 
 if __name__=='__main__':raise SystemExit(main())

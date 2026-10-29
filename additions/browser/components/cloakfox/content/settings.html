@@ -66,7 +66,7 @@
       </div>
       <header class="profile-heading">
         <div><h2>Choose this container’s browser identity</h2><p>Pick the browser it reports; rendering engine selection stays independent.</p></div>
-        <span class="browserforge-badge">BrowserForge generated</span>
+        <span class="browserforge-badge" id="cfx-persona-source-current">Generated identity</span>
       </header>
       <fieldset class="browser-family-picker">
         <legend>Browser family</legend>
@@ -74,6 +74,11 @@
         <p id="cfx-browser-family-help" class="field-help">This controls the reported browser identity. Choose the rendering engine separately in Engine settings.</p>
       </fieldset>
       <div class="profile-fields">
+        <div class="profile-field">
+          <label for="cfx-persona-source">Fingerprint source</label>
+          <select id="cfx-persona-source" class="hero-select" aria-describedby="cfx-persona-source-help"><option value="fpgen">fpgen (preferred)</option><option value="browserforge">BrowserForge</option></select>
+          <p id="cfx-persona-source-help" class="card-help">Fresh generation uses the selected local model. Existing identities stay unchanged until applied. Unsupported combinations keep your current identity.</p>
+        </div>
         <div class="profile-field">
           <label for="cfx-persona-version">Browser version</label>
           <select id="cfx-persona-version" class="hero-select"></select>
@@ -107,7 +112,7 @@
       <section class="matching-profile-browser" aria-labelledby="matching-profiles-heading">
         <h3 id="matching-profiles-heading">Choose a matching profile</h3>
         <p class="matching-profile-description">Select a profile to preview, then apply it to this container.</p>
-        <div class="matching-profile-field"><label for="cfx-persona-choice">Matching profiles</label><select id="cfx-persona-choice" class="hero-select" aria-describedby="cfx-persona-help"></select><button id="cfx-regenerate" class="btn btn-secondary">Apply selected profile</button></div>
+        <div class="matching-profile-field"><label for="cfx-persona-choice">BrowserForge previews</label><select id="cfx-persona-choice" class="hero-select" aria-describedby="cfx-persona-help"></select><button id="cfx-regenerate" class="btn btn-secondary">Apply selected profile</button></div>
       </section>
       <p id="cfx-identity-status" class="identity-status" role="status" aria-live="polite"></p>
     </section>
@@ -178,7 +183,7 @@
       <p class="profile-section-label">Frequently asked questions</p>
       <div class="profile-faq-list">
         <details class="profile-help">
-          <summary><span><strong>How does Cloakfox generate an identity?</strong><small>BrowserForge sampling and the choices in Identity generator</small></span></summary>
+          <summary><span><strong>How does Cloakfox generate an identity?</strong><small>Local fpgen or BrowserForge sampling and generation filters</small></span></summary>
           <div class="profile-disclosure-body">
             <p id="cfx-persona-help" class="card-help"></p>
             <p id="cfx-persona-os-current" class="card-help"></p>
@@ -256,6 +261,23 @@
         </div>
       </header>
       <div class="spoof-grid" id="grp-graphics"></div>
+      <fieldset class="hardening-group" id="cfx-container-rendering-settings">
+        <legend>Rendering for this container</legend>
+        <p class="hardening-group-help">These choices apply to the container selected above. Canonical software rendering must be enabled in Optional hardening.</p>
+        <div class="hardening-controls">
+          <label class="flag-row"><input type="checkbox" data-container-rendering="rendering:gpu_reference"><span><strong>Use a reference-based GPU profile</strong><small class="flag-description" role="list"><span role="listitem">Uses paired recorded WebGL profiles matching this container’s BrowserForge vendor and renderer, with documented Firefox and privacy adaptations.</span><span role="listitem">Requires container GPU persona profiles and the bundled CPU backend. Native allocation, shader, precision and rendering checks refuse unsupported profiles.</span><span role="listitem">Keeps container/site secrets separate and retains input/readback protections. It does not reproduce a physical driver or guarantee that fingerprinting tools recognize the profile.</span><span role="listitem">Reload pages and restart workers after saving. Turning this off restores the existing protected GPU mode.</span></small></span></label>
+          <label class="flag-row"><input type="checkbox" data-container-rendering="rendering:gpu_observed"><span><strong>Use observed GPU compatibility</strong><small class="flag-description" role="list"><span role="listitem">Uses a complete set of graphics capabilities measured from a real browser/GPU combination. This helps avoid unusual combinations that fingerprinting tools can flag.</span><span role="listitem">On by default for compatible Windows Intel, AMD and NVIDIA reference personas once canonical software rendering and container GPU profiles are enabled. Your explicit off choice is kept.</span><span role="listitem">Keeps your real GPU hidden behind the software renderer, with existing readback protection and separate container/site secrets. It does not emulate a physical GPU driver or make the browser undetectable.</span><span role="listitem">Apple and unmatched personas keep the existing reference mode. A manually enabled incompatible choice is rejected; your persona is never silently replaced.</span><span role="listitem">Reload pages and restart workers after saving. Turning this off keeps the reference profile; turning reference profiles off also clears this request.</span></small></span></label>
+          <label class="flag-row"><input type="checkbox" data-container-rendering="geometry:canonical"><span><strong>Use canonical layout geometry</strong><small class="flag-description" role="list"><span role="listitem">Uses an owned layout profile with bundled font metrics, fixed controls and scrollbars, and normalized layout rounding.</span><span role="listitem">Measures the layout used for painting and hit testing. Unsupported scopes or live policy changes retain existing geometry masking until reload.</span><span role="listitem">May change text, control sizes and scrolling. Browser zoom, print and developer emulation can require protected fallback.</span><span role="listitem">Keeps the profile and identity separate for each container and site. Reload affected pages after saving.</span></small></span></label>
+        </div>
+        <p id="cfx-container-rendering-status" role="status" aria-live="polite"></p>
+        <details id="cfx-observed-gpu-catalog">
+          <summary>Supported GPU profiles and where the values come from</summary>
+          <p>The currently validated Windows profiles are Intel HD Graphics 400, AMD Radeon R9 200 Series and NVIDIA GeForce GTX 980. Each profile contains paired WebGL 1 and WebGL 2 limits, shader precision, extensions and initial state.</p>
+          <p>Our pinned source snapshot contains 106 records and 118 context reports. Only the three profiles above are admitted to this mode; this is not a complete database of every GPU or driver.</p>
+          <p>Values come from the <a href="https://github.com/scrapfly/fingerprint-generator/releases/tag/model-2/2026" target="_blank" rel="noopener noreferrer">Scrapfly fingerprint-generator model, February 2026</a>. BrowserForge supplies the surrounding persona; native compatibility checks decide whether a measured GPU profile can be used.</p>
+          <p>The catalog is bundled locally. Enabling this option does not contact the source website or upload your hardware details.</p>
+        </details>
+      </fieldset>
     </section>
 
     <section class="card" id="sec-audio">
@@ -505,7 +527,7 @@
 <section class="card" id="cfx-font-settings"><h2>Fonts</h2><p>Font names configured for this container. This list controls font exposure; adding a name does not install a font or reproduce another operating system’s rendering.</p><p id="cfx-font-source"></p><h3>Generated font list</h3><div id="cfx-font-generated" class="font-name-list"></div><details><summary>Custom font override</summary><p>Replace the generated list for this container. Keep essential fonts to avoid broken text. Reload website tabs after changes.</p><label for="cfx-font-custom">Font names — one per line</label><textarea id="cfx-font-custom" rows="6"></textarea><div class="actions"><button id="cfx-font-save" type="button" class="btn btn-primary">Save custom font list</button><button id="cfx-font-reset" type="button" class="btn btn-secondary">Use generated fonts</button></div></details><p id="cfx-font-status" role="status" aria-live="polite"></p><h3>Effective font list</h3><div id="cfx-font-effective" class="font-name-list"></div></section>
 <section class="card" id="sec-hardening"><header class="hardening-header"><h2>Optional hardening</h2><p>Review additional protections and their compatibility tradeoffs. Some protections are already enabled by default, as noted below.</p></header><fieldset class="hardening-group"><legend>Graphics & rendering</legend><p class="hardening-group-help">Appearance, graphics compatibility and rendering performance.</p><div class="hardening-controls"><label class="flag-row"><input type="checkbox" data-pref="cloakfox.experimental.canvas_pipeline"><span><strong>Use canonical software rendering</strong><small class="flag-description" role="list"><span role="listitem">Uses bundled font shaping and software graphics for canvas, WebGL and WebGPU.</span><span role="listitem">Refuses unverified GPU inputs and exact VideoFrame copies; keeps fallback protection for unverified 2D inputs and restricts precise GPU reads.</span><span role="listitem">Changes font appearance and uses more CPU and battery. Missing renderer resources cause context creation to fail.</span><span role="listitem">Reload pages and restart workers to apply changes. Mac validation does not establish identical rendering on other operating systems.</span></small></span></label>
 <label class="flag-row"><input type="checkbox" data-pref="cloakfox.opt.canvas_render_privacy"><span><strong>Additional canvas rendering protection</strong><small class="flag-description" role="list"><span role="listitem">Adds experimental variation to text drawing using the container and site identity.</span><span role="listitem">Keeps existing canvas readback protection enabled.</span><span role="listitem">May alter text slightly. Reload pages and restart workers to apply changes.</span></small></span></label>
-<label class="flag-row"><input type="checkbox" data-pref="cloakfox.opt.container_rendering_profiles"><span><strong>Use container-specific GPU persona profiles</strong><small class="flag-description" role="list"><span role="listitem">Enforces bounded Apple, Intel, AMD or NVIDIA persona resource profiles, using this container’s existing identity and site separation.</span><span role="listitem">Requires canonical software rendering. Keeps saved BrowserForge identities and existing readback privacy guards.</span><span role="listitem">Profiles constrain real allocations and shader resources; they do not reproduce every physical GPU driver’s rendering or performance.</span><span role="listitem">Incompatible personas or overrides prevent activation. Reload pages and restart workers after changes.</span></small></span></label>
+<label class="flag-row"><input type="checkbox" data-pref="cloakfox.opt.container_rendering_profiles"><span><strong>Use container-specific GPU persona profiles</strong><small class="flag-description" role="list"><span role="listitem">Selects a whole executable capability set for Apple, Intel, AMD or NVIDIA BrowserForge identities, using this container’s existing identity and site separation.</span><span role="listitem">Requires canonical software rendering. Keeps saved BrowserForge identities and existing readback privacy guards.</span><span role="listitem">Profiles constrain real allocations and shader resources. Capability values may coincide; container records and secrets remain separate. They do not emulate physical GPU drivers.</span><span role="listitem">Incompatible personas or overrides prevent activation. Reload pages and restart workers after changes.</span></small></span></label>
 <p id="cfx-container-gpu-status" role="status"></p>
 <label class="flag-row"><input type="checkbox" data-pref="cloakfox.opt.gpu_backend_profiles"><span><strong>Use compatible GPU profile</strong><small class="flag-description" role="list"><span role="listitem">Uses a generic masked GPU profile bounded by the active graphics backend.</span><span role="listitem">Keeps existing GPU readback privacy protections enabled.</span><span role="listitem">Enabled automatically while canonical software rendering is on; your separate choice is retained.</span><span role="listitem">Capability changes may affect 3D applications. Reload pages and restart workers to apply changes.</span></small></span></label>
 <label class="flag-row"><input type="checkbox" data-pref="cloakfox.opt.webgl_typed_readback_disabled"><span><strong>Restrict precise GPU readback</strong><small class="flag-description" role="list"><span role="listitem">Blocks precise and pixel-buffer readbacks that expose unprotected GPU data.</span><span role="listitem">Keeps ordinary canvas readback protected.</span><span role="listitem">Required while canonical software rendering is on; your separate choice is retained.</span><span role="listitem">Disable for applications that need exact GPU computation buffers; this restores that fingerprint surface.</span></small></span></label>

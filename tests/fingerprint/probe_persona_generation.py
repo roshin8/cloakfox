@@ -42,7 +42,7 @@ def main():
             d.execute_script('arguments[0].scrollIntoView({block:"center"})',el)
             click_with_evidence(d,el,f.report_path,f"generate-{generation_attempt}")
             WebDriverWait(d,15).until(lambda d: not d.find_element(By.ID,'cfx-generate-new').get_attribute('aria-busy'))
-            assert 'Generated and applied' in d.find_element(By.ID,'cfx-identity-status').text
+            assert d.execute_script("return document.querySelector('.profile-preview-label').textContent === 'Applied identity'")
         load();before=cfg()
         choose('cfx-persona-filter','Windows');choose('cfx-persona-hardware','nvidia')
         assert cfg()==before, 'Choosing filters applied them before generation'
@@ -60,8 +60,7 @@ def main():
         assert cfg()==second, 'Restart changed generated persona'
         assert Select(d.find_element(By.ID,'cfx-persona-filter')).first_selected_option.get_attribute('value')=='Windows'
         assert Select(d.find_element(By.ID,'cfx-persona-hardware')).first_selected_option.get_attribute('value')=='nvidia'
-        choose('cfx-persona-filter','macOS');choose('cfx-persona-hardware','apple')
-        reveal('cfx-persona-panel')
+        reveal('sec-identity')
         clear=d.find_element(By.ID,'cfx-clear-overrides')
         d.execute_script('arguments[0].scrollIntoView({block:"center"})',clear)
         try:

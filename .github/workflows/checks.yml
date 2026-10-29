@@ -27,12 +27,15 @@ jobs:
         run: brew install zstd
 
       - name: Install unit and transport fixture dependencies
-        run: python3 -m pip install pytest -r tests/network/requirements-wire.txt
+        run: python3 -m pip install pytest -r tests/network/requirements-wire.txt -r tests/fingerprint/requirements-reference.txt
 
       - name: Engine and CI helper unit tests (native runtime runs separately)
         run: |
           python3 -m unittest discover -s tests/ci -v
           python3 -m unittest discover -s tests/engines -p 'test_*.py' -v
+
+      - name: Offline GPU reference import tests
+        run: python3 -m pytest --noconftest -q tests/fingerprint/test_gpu_reference_import.py
 
       - name: Node unit tests
         run: |

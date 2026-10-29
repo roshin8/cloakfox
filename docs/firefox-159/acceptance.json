@@ -1,0 +1,1017 @@
+{
+  "state": "completed-with-headless-limitations",
+  "nativeBuild": {
+    "state": "built",
+    "started": "2026-10-27T21:45:51.664639+00:00",
+    "pid": 60066,
+    "jobs": 2,
+    "priorityNice": 10,
+    "sourceVersion": "159.0",
+    "headlessRuntimeRequired": true,
+    "log": "/tmp/cloakfox159-native-build-attempt7.log",
+    "checkpointsDeleted": false,
+    "chromiumTouched": false,
+    "diskFreeBytes": 6383661056,
+    "exitCode": 0,
+    "finished": "2026-10-27T21:46:46.724128+00:00"
+  },
+  "candidate": {
+    "source": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/obj-aarch64-apple-darwin/dist/Cloakfox.app",
+    "copy": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-viewport/Cloakfox.app",
+    "nativeFilesIdentical": {
+      "Contents/MacOS/cloakfox": "38da5601627ed7aec37c137e2bd19216d81b477d4ab20562e762d417f83ade6f",
+      "Contents/MacOS/XUL": "a020a8207b2afd038c98233bb27e205042aa2232e1058522cc2f4004d6f4430d",
+      "Contents/Resources/canonical-gpu/manifest.json": "c6156ce3ddf2c7df8e6b95d142fc07f915c32c697a5bf3a11ee9229c0e05cad2",
+      "Contents/Resources/canonical-gpu/libEGL_cloakfox_canonical.dylib": "049ba7e2449b060fb1a847f20e2e691f0cefe8695edd1979b0200a7b7a8ff53f",
+      "Contents/Resources/canonical-gpu/libGLESv2_cloakfox_canonical.dylib": "e7809c314167f50440958c285b3d87a391f16833cd3a9811fd11bde8fa7b9163",
+      "Contents/Resources/canonical-gpu/libvk_swiftshader.dylib": "932a2fee966160092e518f002699161c64b7a9b2429fdf12bf9b8d086e7876e5"
+    },
+    "selfContained": true,
+    "installed": false
+  },
+  "headless": true,
+  "sourceBaseCommit": "a8ef96501b2dbdf5ab061ba832ad9911b8bab452",
+  "probes": {
+    "passed": 150,
+    "inconclusive": 4,
+    "failed": 0
+  },
+  "additionalRuntimeChecks": {
+    "libraryAuditModesPassed": 2,
+    "pythonTestsPassed": 144
+  },
+  "allRuntimeResultCounts": {
+    "passed": 153,
+    "inconclusive": 4
+  },
+  "staticChecks": {
+    "wholePatchReplay": 160,
+    "javascriptTests": 363,
+    "ciHelperTests": 169,
+    "releaseTests": 31
+  },
+  "ciHelperCapacity": "Bounded test fixtures simulated20GiB; real build/production storage guards unchanged. Raw host-capacity failures retained.",
+  "deferred": {
+    "probe_camera_nicknames.py": "Physical camera/native picker; may prompt outside headless browser",
+    "probe_appearance_restart.py": "NSWorkspace relaunch can activate an app despite headless environment",
+    "probe_privacy_enforcement.py": "Real display-capture negative path may reach OS chooser on regression",
+    "probe_cpp_first.py": "Historical DMG mounting/copying; not the newly built159 binary",
+    "probe_cpp_first_priority.py": "Historical DMG mounting/copying; not the newly built159 binary",
+    "probe_signature_selection.py": "Requires independent Chromium reference, not Firefox-only acceptance",
+    "probe_regions.py": "Real geolocation path may prompt for macOS Location Services",
+    "probe_per_container.py": "Real geolocation path may prompt for macOS Location Services",
+    "probe_chrome_network_baseline.py": "Independent stock Chrome reference, not a test of the new Firefox159 binary"
+  },
+  "privacyProtectionsRelaxed": false,
+  "originalCheckpointHeadAndDirtyStatusPreserved": true,
+  "installedOrReplacedApplication": false,
+  "results": [
+    {
+      "probe": "probe_privileged_viewport.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.05
+    },
+    {
+      "probe": "probe_network_identity.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.26
+    },
+    {
+      "probe": "probe_realm_privacy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.23
+    },
+    {
+      "probe": "probe_language_scopes.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.15
+    },
+    {
+      "probe": "probe_worker_debugger_startup.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.56
+    },
+    {
+      "probe": "probe_navigator_coherence.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 13.8
+    },
+    {
+      "probe": "probe_webgpu_null_safety.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 9.1
+    },
+    {
+      "probe": "probe_site_data_scope.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 8.64
+    },
+    {
+      "probe": "probe_site_data_cache_scope.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.35
+    },
+    {
+      "probe": "probe_about_dialog.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.54
+    },
+    {
+      "probe": "probe_actor_stealth.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.23
+    },
+    {
+      "probe": "probe_actors.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.83
+    },
+    {
+      "probe": "probe_alps_identity.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.39
+    },
+    {
+      "probe": "probe_appearance.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 23.76
+    },
+    {
+      "probe": "probe_appearance_profile.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.63
+    },
+    {
+      "probe": "probe_audio_website_labels.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.96
+    },
+    {
+      "probe": "probe_audioworklet_privacy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 14.16
+    },
+    {
+      "probe": "probe_background_activity.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 53.52
+    },
+    {
+      "probe": "probe_bitmap_export_protection.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.4
+    },
+    {
+      "probe": "probe_browser_profile_picker.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.86
+    },
+    {
+      "probe": "probe_bulk_containers.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.74
+    },
+    {
+      "probe": "probe_bundled_blocker.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.9
+    },
+    {
+      "probe": "probe_bundled_containers.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.19
+    },
+    {
+      "probe": "probe_bundled_font_rendering.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.21
+    },
+    {
+      "probe": "probe_bundled_fonts.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.16
+    },
+    {
+      "probe": "probe_camera_exposure.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.68
+    },
+    {
+      "probe": "probe_camera_website_labels.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 9.89
+    },
+    {
+      "probe": "probe_camoufox_followup.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.47
+    },
+    {
+      "probe": "probe_camoufox_speech_errors.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.51
+    },
+    {
+      "probe": "probe_canonical_gpu_standalone.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 0.13
+    },
+    {
+      "probe": "probe_canvas_canonical_adversarial.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 9.74
+    },
+    {
+      "probe": "probe_canvas_canonical_backing.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.33
+    },
+    {
+      "probe": "probe_canvas_canonical_capture.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.22
+    },
+    {
+      "probe": "probe_canvas_canonical_encoders.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.49
+    },
+    {
+      "probe": "probe_canvas_canonical_fonts.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 15.91
+    },
+    {
+      "probe": "probe_canvas_canonical_gpu.py",
+      "code": 2,
+      "outcome": "inconclusive",
+      "seconds": 3.26
+    },
+    {
+      "probe": "probe_canvas_canonical_images.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.62
+    },
+    {
+      "probe": "probe_canvas_canonical_media_codecs.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 1.8
+    },
+    {
+      "probe": "probe_canvas_canonical_performance.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.38
+    },
+    {
+      "probe": "probe_canvas_canonical_raw_video.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.18
+    },
+    {
+      "probe": "probe_canvas_canonical_svg_golden.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.09
+    },
+    {
+      "probe": "probe_canvas_canonical_text.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.76
+    },
+    {
+      "probe": "probe_canvas_capture_fallback.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.51
+    },
+    {
+      "probe": "probe_canvas_consistency.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 8.98
+    },
+    {
+      "probe": "probe_canvas_first_glyph.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 23.77
+    },
+    {
+      "probe": "probe_canvas_owner_transfer.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.82
+    },
+    {
+      "probe": "probe_canvas_pipeline_baseline.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.06
+    },
+    {
+      "probe": "probe_canvas_pixel_transfers.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.73
+    },
+    {
+      "probe": "probe_canvas_render_privacy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.76
+    },
+    {
+      "probe": "probe_canvas_unseeded_guards.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.05
+    },
+    {
+      "probe": "probe_capture_label_scope.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.94
+    },
+    {
+      "probe": "probe_clipboard_masking.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.14
+    },
+    {
+      "probe": "probe_coderpad_media.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.46
+    },
+    {
+      "probe": "probe_container_fonts.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 8.39
+    },
+    {
+      "probe": "probe_container_gpu_profiles.py",
+      "code": 2,
+      "outcome": "inconclusive",
+      "seconds": 12.66
+    },
+    {
+      "probe": "probe_container_isolation.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.85
+    },
+    {
+      "probe": "probe_container_rendering_feasibility.py",
+      "code": 2,
+      "outcome": "inconclusive",
+      "seconds": 9.99
+    },
+    {
+      "probe": "probe_container_workflows.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 17.82
+    },
+    {
+      "probe": "probe_css_media_privacy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.27
+    },
+    {
+      "probe": "probe_daily_defaults.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.66
+    },
+    {
+      "probe": "probe_daily_settings_ui.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.95
+    },
+    {
+      "probe": "probe_detached_frame_timers.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.87
+    },
+    {
+      "probe": "probe_dns_network.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.17
+    },
+    {
+      "probe": "probe_dom_geometry_consistency.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.52
+    },
+    {
+      "probe": "probe_ech_identity.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 12.84
+    },
+    {
+      "probe": "probe_enabled_killswitch.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.4
+    },
+    {
+      "probe": "probe_engine_presentation.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.51
+    },
+    {
+      "probe": "probe_firefox158_features.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.8
+    },
+    {
+      "probe": "probe_focus_masking.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 22.23
+    },
+    {
+      "probe": "probe_font_allowlist.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 11.37
+    },
+    {
+      "probe": "probe_font_metric_noise.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 17.66
+    },
+    {
+      "probe": "probe_fontface_loading.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 10.19
+    },
+    {
+      "probe": "probe_fullscreen_gate.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.16
+    },
+    {
+      "probe": "probe_generation_clear_overrides.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.2
+    },
+    {
+      "probe": "probe_graphics_optins_settings.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.21
+    },
+    {
+      "probe": "probe_graphics_privacy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.92
+    },
+    {
+      "probe": "probe_h2_per_container.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.13
+    },
+    {
+      "probe": "probe_hackerrank_media_recovery.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.13
+    },
+    {
+      "probe": "probe_host_personas.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 10.85
+    },
+    {
+      "probe": "probe_identifier_leaks.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.41
+    },
+    {
+      "probe": "probe_identity_forget.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.14
+    },
+    {
+      "probe": "probe_identity_network_gaps.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 20.28
+    },
+    {
+      "probe": "probe_ip_check_routes.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.77
+    },
+    {
+      "probe": "probe_ip_conflict_settings.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.54
+    },
+    {
+      "probe": "probe_ip_conflicts.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.17
+    },
+    {
+      "probe": "probe_js_spoofers.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.11
+    },
+    {
+      "probe": "probe_keyboard_actor.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.45
+    },
+    {
+      "probe": "probe_keyboard_lifecycle.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.79
+    },
+    {
+      "probe": "probe_letterboxing.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.62
+    },
+    {
+      "probe": "probe_locale_tags.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.41
+    },
+    {
+      "probe": "probe_mac_proxy_auth.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.82
+    },
+    {
+      "probe": "probe_math_data_noise.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 9.98
+    },
+    {
+      "probe": "probe_media_capabilities.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.21
+    },
+    {
+      "probe": "probe_media_permissions.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.12
+    },
+    {
+      "probe": "probe_microphone_exposure.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.45
+    },
+    {
+      "probe": "probe_monaco_focus.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 28.39
+    },
+    {
+      "probe": "probe_native_webrtc_policy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.44
+    },
+    {
+      "probe": "probe_network_policy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.05
+    },
+    {
+      "probe": "probe_network_profile_controls.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.0
+    },
+    {
+      "probe": "probe_network_profile_settings.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.3
+    },
+    {
+      "probe": "probe_network_quic.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.86
+    },
+    {
+      "probe": "probe_network_resumption.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.84
+    },
+    {
+      "probe": "probe_network_transports.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.53
+    },
+    {
+      "probe": "probe_network_wire.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.55
+    },
+    {
+      "probe": "probe_packaged_resource_inventory.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 1.1
+    },
+    {
+      "probe": "probe_performance_timeline.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.46
+    },
+    {
+      "probe": "probe_permissions_workspaces.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 11.74
+    },
+    {
+      "probe": "probe_persona_generation.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.81
+    },
+    {
+      "probe": "probe_persona_version.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.85
+    },
+    {
+      "probe": "probe_pointer_activity.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 49.84
+    },
+    {
+      "probe": "probe_privacy_inspector.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.77
+    },
+    {
+      "probe": "probe_privacy_media_hdr.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.82
+    },
+    {
+      "probe": "probe_privacy_settings_ownership.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.74,
+      "initialAttempt": {
+        "probe": "probe_privacy_settings_ownership.py",
+        "code": 1,
+        "outcome": "failed",
+        "seconds": 2.74
+      },
+      "rerunReceipt": "headless-final-rerun.json",
+      "sourceSHA256": "f474a052d68f069d8cdebd662b41603d088e0b84a548bc5901e402163e318d47"
+    },
+    {
+      "probe": "probe_privacy_timing_controls.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.21
+    },
+    {
+      "probe": "probe_proxy_manager.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.64
+    },
+    {
+      "probe": "probe_quic_identity.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.59
+    },
+    {
+      "probe": "probe_quic_resumption.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 22.7
+    },
+    {
+      "probe": "probe_quic_wire.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 13.89
+    },
+    {
+      "probe": "probe_screen_management.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.42
+    },
+    {
+      "probe": "probe_screen_management_settings.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.82
+    },
+    {
+      "probe": "probe_screen_presentation.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.18
+    },
+    {
+      "probe": "probe_settings_navigation.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.09
+    },
+    {
+      "probe": "probe_settings_overrides.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.68
+    },
+    {
+      "probe": "probe_settings_presets.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 7.76
+    },
+    {
+      "probe": "probe_shared_permissions.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.29
+    },
+    {
+      "probe": "probe_site_isolation.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.96
+    },
+    {
+      "probe": "probe_speech_mediaquery.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.84
+    },
+    {
+      "probe": "probe_stealth.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.87
+    },
+    {
+      "probe": "probe_strict_graphics_settings.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.2
+    },
+    {
+      "probe": "probe_templates.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.59
+    },
+    {
+      "probe": "probe_testdome_recording.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.7
+    },
+    {
+      "probe": "probe_timing_jitter.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 10.62
+    },
+    {
+      "probe": "probe_tracking_protection.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.41
+    },
+    {
+      "probe": "probe_turn_proxy_negotiation.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.74
+    },
+    {
+      "probe": "probe_turn_proxy_privacy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 33.07
+    },
+    {
+      "probe": "probe_untested_vectors.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 55.12
+    },
+    {
+      "probe": "probe_upstream_hardening.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 14.25
+    },
+    {
+      "probe": "probe_user_agent_data.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.15
+    },
+    {
+      "probe": "probe_webcodecs_privacy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.85
+    },
+    {
+      "probe": "probe_webgl_backend_profile.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 6.71
+    },
+    {
+      "probe": "probe_webgl_consistency.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 5.74
+    },
+    {
+      "probe": "probe_webgl_readback.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 39.95
+    },
+    {
+      "probe": "probe_webgl_tables.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 16.09
+    },
+    {
+      "probe": "probe_webgpu_canvas_owner.py",
+      "code": 2,
+      "outcome": "inconclusive",
+      "seconds": 4.73
+    },
+    {
+      "probe": "probe_webrtc_leak.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.74
+    },
+    {
+      "probe": "probe_website_appearance.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.84
+    },
+    {
+      "probe": "probe_websocket_privacy.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 16.73
+    },
+    {
+      "probe": "probe_websocket_routes.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.71
+    },
+    {
+      "probe": "probe_window_geometry_tz.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 11.7
+    },
+    {
+      "probe": "probe_worker_canvas.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 4.94
+    },
+    {
+      "probe": "probe_worker_container.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 8.27
+    },
+    {
+      "probe": "probe_worker_lifecycle.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 19.95
+    },
+    {
+      "probe": "probe_worker_timeline.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 3.48
+    },
+    {
+      "probe": "probe_workers.py",
+      "code": 0,
+      "outcome": "passed",
+      "seconds": 2.72
+    },
+    {
+      "probe": "fingerprint-libraries-canonical-0",
+      "code": 0,
+      "outcome": "passed"
+    },
+    {
+      "probe": "fingerprint-libraries-canonical-1",
+      "code": 0,
+      "outcome": "passed"
+    },
+    {
+      "probe": "fingerprint-pytest-runtime",
+      "code": 0,
+      "outcome": "passed"
+    }
+  ]
+}

@@ -1,0 +1,2224 @@
+TAP version 13
+# Subtest: unchanged source reuses one signed app and its owning profile
+ok 1 - unchanged source reuses one signed app and its owning profile
+  ---
+  duration_ms: 124.977708
+  type: 'test'
+  ...
+# Subtest: sealed and loose payload updates rebuild at the same path
+ok 2 - sealed and loose payload updates rebuild at the same path
+  ---
+  duration_ms: 158.675959
+  type: 'test'
+  ...
+# Subtest: failed signing and failed installation retain the working copy
+ok 3 - failed signing and failed installation retain the working copy
+  ---
+  duration_ms: 248.902167
+  type: 'test'
+  ...
+# Subtest: an active app cannot be replaced; a damaged inactive copy is rebuilt
+ok 4 - an active app cannot be replaced; a damaged inactive copy is rebuilt
+  ---
+  duration_ms: 73.261334
+  type: 'test'
+  ...
+# Subtest: Firefox appearance replaces the current SVG popup badge without losing controls
+ok 5 - Firefox appearance replaces the current SVG popup badge without losing controls
+  ---
+  duration_ms: 10.245375
+  type: 'test'
+  ...
+# Subtest: appearance refuses a cache directory redirected to installed applications
+ok 6 - appearance refuses a cache directory redirected to installed applications
+  ---
+  duration_ms: 14.624708
+  type: 'test'
+  ...
+# Subtest: appearance refuses an existing app without its ownership receipt
+ok 7 - appearance refuses an existing app without its ownership receipt
+  ---
+  duration_ms: 21.676833
+  type: 'test'
+  ...
+# Subtest: a display name alone cannot authorize a Mozilla bundle as the source
+ok 8 - a display name alone cannot authorize a Mozilla bundle as the source
+  ---
+  duration_ms: 10.934791
+  type: 'test'
+  ...
+# Subtest: Applications exclusion follows case-insensitive macOS spelling
+ok 9 - Applications exclusion follows case-insensitive macOS spelling
+  ---
+  duration_ms: 16.261792
+  type: 'test'
+  ...
+# Subtest: identity composer exposes accessible browser, version, OS and hardware controls
+ok 10 - identity composer exposes accessible browser, version, OS and hardware controls
+  ---
+  duration_ms: 1.429916
+  type: 'test'
+  ...
+# Subtest: browser choices are catalog-driven and separate from engine selection
+ok 11 - browser choices are catalog-driven and separate from engine selection
+  ---
+  duration_ms: 0.215917
+  type: 'test'
+  ...
+# Subtest: picker has responsive, focus, selected, disabled, confidence and preview styling
+ok 12 - picker has responsive, focus, selected, disabled, confidence and preview styling
+  ---
+  duration_ms: 0.198833
+  type: 'test'
+  ...
+# Subtest: hybrid layout keeps the focused editor and restores an all-controls view
+ok 13 - hybrid layout keeps the focused editor and restores an all-controls view
+  ---
+  duration_ms: 0.305958
+  type: 'test'
+  ...
+# Subtest: identity utilities and experimental engine choice have clear structure
+ok 14 - identity utilities and experimental engine choice have clear structure
+  ---
+  duration_ms: 0.326542
+  type: 'test'
+  ...
+# Subtest: focused identity mode keeps the full browser field editor reachable
+ok 15 - focused identity mode keeps the full browser field editor reachable
+  ---
+  duration_ms: 0.240125
+  type: 'test'
+  ...
+# Subtest: browser-specific settings follow the selected identity family
+ok 16 - browser-specific settings follow the selected identity family
+  ---
+  duration_ms: 0.188
+  type: 'test'
+  ...
+# Subtest: desktop branding keeps its switch, status and actions in one control
+ok 17 - desktop branding keeps its switch, status and actions in one control
+  ---
+  duration_ms: 0.349041
+  type: 'test'
+  ...
+# Subtest: focused mode uses evident tabs and keeps the active persona visible
+ok 18 - focused mode uses evident tabs and keeps the active persona visible
+  ---
+  duration_ms: 4205.76325
+  type: 'test'
+  ...
+# Subtest: identity families stay selectable independently from the active engine
+ok 19 - identity families stay selectable independently from the active engine
+  ---
+  duration_ms: 1.196958
+  type: 'test'
+  ...
+# Subtest: Firefox versions include a useful recent history and random recent
+ok 20 - Firefox versions include a useful recent history and random recent
+  ---
+  duration_ms: 0.25425
+  type: 'test'
+  ...
+# Subtest: Safari version history stays narrow because its majors span longer periods
+ok 21 - Safari version history stays narrow because its majors span longer periods
+  ---
+  duration_ms: 0.075833
+  type: 'test'
+  ...
+# Subtest: normalization rejects stale or unsupported selections without guessing
+ok 22 - normalization rejects stale or unsupported selections without guessing
+  ---
+  duration_ms: 0.194375
+  type: 'test'
+  ...
+# Subtest: selection rejects default, missing, duplicate and empty IDs before mutation
+ok 23 - selection rejects default, missing, duplicate and empty IDs before mutation
+  ---
+  duration_ms: 1.868167
+  type: 'test'
+  ...
+# Subtest: bulk proxy copy preserves auth, isolates connections, leaves unselected rows intact
+ok 24 - bulk proxy copy preserves auth, isolates connections, leaves unselected rows intact
+  ---
+  duration_ms: 0.340125
+  type: 'test'
+  ...
+# Subtest: remove proxy only changes selected containers
+ok 25 - remove proxy only changes selected containers
+  ---
+  duration_ms: 0.222333
+  type: 'test'
+  ...
+# Subtest: nicknames preserve the real source and do not change unmatched cameras
+ok 26 - nicknames preserve the real source and do not change unmatched cameras
+  ---
+  duration_ms: 0.541666
+  type: 'test'
+  ...
+# Subtest: corrupt preferences fall back to original names
+ok 27 - corrupt preferences fall back to original names
+  ---
+  duration_ms: 0.115959
+  type: 'test'
+  ...
+# Subtest: saving trims names and rejects ambiguous or unsafe entries
+ok 28 - saving trims names and rejects ambiguous or unsafe entries
+  ---
+  duration_ms: 0.160167
+  type: 'test'
+  ...
+# Subtest: native canvas owner token preserves 128 bits and separates disabled seed and canonical top site
+ok 29 - native canvas owner token preserves 128 bits and separates disabled seed and canonical top site
+  ---
+  duration_ms: 413.10425
+  type: 'test'
+  ...
+# Subtest: affected combined worker uses the existing canvas frame sender without starting capture
+ok 30 - affected combined worker uses the existing canvas frame sender without starting capture
+  ---
+  duration_ms: 2.122792
+  type: 'test'
+  ...
+# Subtest: local preview reuses the authorized stream and leaves remote players alone
+ok 31 - local preview reuses the authorized stream and leaves remote players alone
+  ---
+  duration_ms: 0.57675
+  type: 'test'
+  ...
+# Subtest: camera switch updates only the local preview and teardown releases the stream
+ok 32 - camera switch updates only the local preview and teardown releases the stream
+  ---
+  duration_ms: 0.4115
+  type: 'test'
+  ...
+# Subtest: standard workers, supported processors and unverified SDK versions remain unchanged
+ok 33 - standard workers, supported processors and unverified SDK versions remain unchanged
+  ---
+  duration_ms: 1.236333
+  type: 'test'
+  ...
+# Subtest: opt-out makes no SDK, capture or DOM changes
+ok 34 - opt-out makes no SDK, capture or DOM changes
+  ---
+  duration_ms: 0.357333
+  type: 'test'
+  ...
+# Subtest: late initialization and client replacement reconcile without creating a client
+ok 35 - late initialization and client replacement reconcile without creating a client
+  ---
+  duration_ms: 0.505541
+  type: 'test'
+  ...
+# Subtest: coherent window and worker measurements show no contradictions
+ok 36 - coherent window and worker measurements show no contradictions
+  ---
+  duration_ms: 1.419542
+  type: 'test'
+  ...
+# Subtest: config contradictions are distinguished from measured mismatches and unavailable worker
+ok 37 - config contradictions are distinguished from measured mismatches and unavailable worker
+  ---
+  duration_ms: 0.139583
+  type: 'test'
+  ...
+# Subtest: production repair recomputes allowed changes and undo restores original override without rotating seed
+ok 38 - production repair recomputes allowed changes and undo restores original override without rotating seed
+  ---
+  duration_ms: 0.826459
+  type: 'test'
+  ...
+# Subtest: production undo clears an override introduced by repair and stale repair cannot write
+ok 39 - production undo clears an override introduced by repair and stale repair cannot write
+  ---
+  duration_ms: 0.857042
+  type: 'test'
+  ...
+# Subtest: production undo refuses newer config and independently changed overrides
+ok 40 - production undo refuses newer config and independently changed overrides
+  ---
+  duration_ms: 0.77875
+  type: 'test'
+  ...
+# Subtest: production measurement excludes private windows and other containers even for default container
+ok 41 - production measurement excludes private windows and other containers even for default container
+  ---
+  duration_ms: 0.850542
+  type: 'test'
+  ...
+# Subtest: production measurement refuses a navigation race rather than attributing old readings to new page
+ok 42 - production measurement refuses a navigation race rather than attributing old readings to new page
+  ---
+  duration_ms: 0.419875
+  type: 'test'
+  ...
+# Subtest: all four BrowserForge hardware families receive independently owned descriptors
+ok 43 - all four BrowserForge hardware families receive independently owned descriptors
+  ---
+  duration_ms: 2.029667
+  type: 'test'
+  ...
+# Subtest: missing identity, wrong owner and unsupported claims never select a generic fallback
+ok 44 - missing identity, wrong owner and unsupported claims never select a generic fallback
+  ---
+  duration_ms: 0.258917
+  type: 'test'
+  ...
+# Subtest: incompatible manual capacity overrides are rejected without mutating input
+ok 45 - incompatible manual capacity overrides are rejected without mutating input
+  ---
+  duration_ms: 0.165833
+  type: 'test'
+  ...
+# Subtest: global activation validates every owner before any write and requires protected software backing
+ok 46 - global activation validates every owner before any write and requires protected software backing
+  ---
+  duration_ms: 1.488292
+  type: 'test'
+  ...
+# Subtest: preset changes validate the complete update before deleting any saved fields
+ok 47 - preset changes validate the complete update before deleting any saved fields
+  ---
+  duration_ms: 0.75425
+  type: 'test'
+  ...
+# Subtest: whole catalog eligibility filters ceilings without independently randomizing limits
+ok 48 - whole catalog eligibility filters ceilings without independently randomizing limits
+  ---
+  duration_ms: 0.143542
+  type: 'test'
+  ...
+# Subtest: canonical exact hosts reject URLs, wildcards, suffixes and malformed hosts
+ok 49 - canonical exact hosts reject URLs, wildcards, suffixes and malformed hosts
+  ---
+  duration_ms: 2.265458
+  type: 'test'
+  ...
+# Subtest: encrypted backups roundtrip, randomize and reject tampering/wrong passwords
+ok 50 - encrypted backups roundtrip, randomize and reject tampering/wrong passwords
+  ---
+  duration_ms: 428.605875
+  type: 'test'
+  ...
+# Subtest: untrusted backup rejects duplicate IDs, unknown keys, malformed seeds and missing rule targets
+ok 51 - untrusted backup rejects duplicate IDs, unknown keys, malformed seeds and missing rule targets
+  ---
+  duration_ms: 12.334708
+  type: 'test'
+  ...
+# Subtest: restore creates fresh IDs and remaps rules without overwriting old identities
+ok 52 - restore creates fresh IDs and remaps rules without overwriting old identities
+  ---
+  duration_ms: 0.550042
+  type: 'test'
+  ...
+# Subtest: failed import removes only newly created identities
+ok 53 - failed import removes only newly created identities
+  ---
+  duration_ms: 1.204584
+  type: 'test'
+  ...
+# Subtest: temporary cleanup waits for successful clear and retains recovery marker on failure
+ok 54 - temporary cleanup waits for successful clear and retains recovery marker on failure
+  ---
+  duration_ms: 0.218292
+  type: 'test'
+  ...
+# Subtest: a rule added during import is retained and only new containers are rolled back
+ok 55 - a rule added during import is retained and only new containers are rolled back
+  ---
+  duration_ms: 0.40425
+  type: 'test'
+  ...
+# Subtest: startup recovery clears temporary tabs rather than treating them as permanent
+ok 56 - startup recovery clears temporary tabs rather than treating them as permanent
+  ---
+  duration_ms: 0.092292
+  type: 'test'
+  ...
+# Subtest: failed import retains a rule reassigned by the user while save was pending
+ok 57 - failed import retains a rule reassigned by the user while save was pending
+  ---
+  duration_ms: 0.467708
+  type: 'test'
+  ...
+# Subtest: whole-window close schedules cleanup without TabClose and keeps temporary tabs in another window
+ok 58 - whole-window close schedules cleanup without TabClose and keeps temporary tabs in another window
+  ---
+  duration_ms: 1.224584
+  type: 'test'
+  ...
+# Subtest: rollback awaits persistence before reporting that newly created identities were removed
+ok 59 - rollback awaits persistence before reporting that newly created identities were removed
+  ---
+  duration_ms: 0.344917
+  type: 'test'
+  ...
+# Subtest: rollback save failure reports possible remaining state instead of completed removal
+ok 60 - rollback save failure reports possible remaining state instead of completed removal
+  ---
+  duration_ms: 0.329834
+  type: 'test'
+  ...
+# Subtest: adding a site rule while native routing is disabled rejects without changing associations
+ok 61 - adding a site rule while native routing is disabled rejects without changing associations
+  ---
+  duration_ms: 0.134333
+  type: 'test'
+  ...
+# Subtest: v2 validates region, policy, opening pages, OS mode and reference-only named routes
+ok 62 - v2 validates region, policy, opening pages, OS mode and reference-only named routes
+  ---
+  duration_ms: 1.583042
+  type: 'test'
+  ...
+# Subtest: v2 encrypted roundtrip binds the version and preserves all identity settings
+ok 63 - v2 encrypted roundtrip binds the version and preserves all identity settings
+  ---
+  duration_ms: 217.384333
+  type: 'test'
+  ...
+# Subtest: missing named proxy remains blocked with its reference and cannot become a manual route
+ok 64 - missing named proxy remains blocked with its reference and cannot become a manual route
+  ---
+  duration_ms: 0.239667
+  type: 'test'
+  ...
+# Subtest: present named proxy uses local binding, while previously blocked refs stay blocked
+ok 65 - present named proxy uses local binding, while previously blocked refs stay blocked
+  ---
+  duration_ms: 0.082875
+  type: 'test'
+  ...
+# Subtest: v2 restore exposes missing binding status and forwards every saved field unchanged
+ok 66 - v2 restore exposes missing binding status and forwards every saved field unchanged
+  ---
+  duration_ms: 0.377791
+  type: 'test'
+  ...
+# Subtest: backup source OS metadata is optional for v2, strict when present, forbidden for v1
+ok 67 - backup source OS metadata is optional for v2, strict when present, forbidden for v1
+  ---
+  duration_ms: 0.253459
+  type: 'test'
+  ...
+# Subtest: appearance warning distinguishes changed, unknown and matching source OS without changing seeds or mode
+ok 68 - appearance warning distinguishes changed, unknown and matching source OS without changing seeds or mode
+  ---
+  duration_ms: 0.154208
+  type: 'test'
+  ...
+# Subtest: restore passes and returns adaptation metadata while preserving original record and seeds
+ok 69 - restore passes and returns adaptation metadata while preserving original record and seeds
+  ---
+  duration_ms: 0.460875
+  type: 'test'
+  ...
+# Subtest: native identity writer persists restoration disclosure alongside unchanged imported seeds
+ok 70 - native identity writer persists restoration disclosure alongside unchanged imported seeds
+  ---
+  duration_ms: 4.23425
+  type: 'test'
+  ...
+# Subtest: backup UI previews adaptation and reloads its persistent restoration notice
+ok 71 - backup UI previews adaptation and reloads its persistent restoration notice
+  ---
+  duration_ms: 4.378417
+  type: 'test'
+  ...
+# Subtest: OS-specific generation modes survive backup validation
+ok 72 - OS-specific generation modes survive backup validation
+  ---
+  duration_ms: 0.435458
+  type: 'test'
+  ...
+# Subtest: fresh profiles enable URL protection and avoid outgoing search suggestions
+ok 73 - fresh profiles enable URL protection and avoid outgoing search suggestions
+  ---
+  duration_ms: 2.291167
+  type: 'test'
+  ...
+# Subtest: ordinary browser choices survive two startups including protective exceptions and search opt-in
+ok 74 - ordinary browser choices survive two startups including protective exceptions and search opt-in
+  ---
+  duration_ms: 0.777834
+  type: 'test'
+  ...
+# Subtest: native OS reduced-motion choice is not overridden on a fresh profile
+ok 75 - native OS reduced-motion choice is not overridden on a fresh profile
+  ---
+  duration_ms: 0.341666
+  type: 'test'
+  ...
+# Subtest: mandatory RFP and container invariants are restored at startup
+ok 76 - mandatory RFP and container invariants are restored at startup
+  ---
+  duration_ms: 0.294959
+  type: 'test'
+  ...
+# Subtest: native exact-host routing defaults on while an explicit opt-out survives restart
+ok 77 - native exact-host routing defaults on while an explicit opt-out survives restart
+  ---
+  duration_ms: 0.808875
+  type: 'test'
+  ...
+# Subtest: CloakfoxFeatureDetectChild preserves WebIDL receiver checks and native descriptor flags
+ok 78 - CloakfoxFeatureDetectChild preserves WebIDL receiver checks and native descriptor flags
+  ---
+  duration_ms: 3.818875
+  type: 'test'
+  ...
+# Subtest: CloakfoxFeatureDetectChild master switch preserves native values
+ok 79 - CloakfoxFeatureDetectChild master switch preserves native values
+  ---
+  duration_ms: 0.476291
+  type: 'test'
+  ...
+# Subtest: CloakfoxWebGPUChild preserves WebIDL receiver checks and native descriptor flags
+ok 80 - CloakfoxWebGPUChild preserves WebIDL receiver checks and native descriptor flags
+  ---
+  duration_ms: 0.594917
+  type: 'test'
+  ...
+# Subtest: CloakfoxWebGPUChild master switch preserves native values
+ok 81 - CloakfoxWebGPUChild master switch preserves native values
+  ---
+  duration_ms: 0.707875
+  type: 'test'
+  ...
+# Subtest: all bundled font bytes have exact hashes, license text and attribution
+ok 82 - all bundled font bytes have exact hashes, license text and attribution
+  ---
+  duration_ms: 96.23325
+  type: 'test'
+  ...
+# Subtest: production font seed lookup uses prepared owner identity on style threads and observes changes
+ok 83 - production font seed lookup uses prepared owner identity on style threads and observes changes
+  ---
+  duration_ms: 349.62925
+  type: 'test'
+  ...
+# Subtest: production SeedSync emits one mirror refresh and scoped language invalidation without observer recursion
+ok 84 - production SeedSync emits one mirror refresh and scoped language invalidation without observer recursion
+  ---
+  duration_ms: 0.944792
+  type: 'test'
+  ...
+# Subtest: settings headline describes the active compatible profile without losing saved identity
+ok 85 - settings headline describes the active compatible profile without losing saved identity
+  ---
+  duration_ms: 3.313292
+  type: 'test'
+  ...
+# Subtest: opt-ins default off and reject malformed pref types
+ok 86 - opt-ins default off and reject malformed pref types
+  ---
+  duration_ms: 3.278792
+  type: 'test'
+  ...
+# Subtest: authoritative flags override stale unknown overrides independently
+ok 87 - authoritative flags override stale unknown overrides independently
+  ---
+  duration_ms: 1.121666
+  type: 'test'
+  ...
+# Subtest: backfill changes only owned fields, preserves identities, skips bad configs and is idempotent
+ok 88 - backfill changes only owned fields, preserves identities, skips bad configs and is idempotent
+  ---
+  duration_ms: 1.932667
+  type: 'test'
+  ...
+# Subtest: startup and each opt-in notification synchronize persisted overlays
+ok 89 - startup and each opt-in notification synchronize persisted overlays
+  ---
+  duration_ms: 1.230083
+  type: 'test'
+  ...
+# Subtest: internal canonical pipeline is strict, independently authoritative, and preserves privacy fields
+ok 90 - internal canonical pipeline is strict, independently authoritative, and preserves privacy fields
+  ---
+  duration_ms: 0.945083
+  type: 'test'
+  ...
+# Subtest: internal pipeline backfills a stale field even if public graphics fields are already current
+ok 91 - internal pipeline backfills a stale field even if public graphics fields are already current
+  ---
+  duration_ms: 0.87775
+  type: 'test'
+  ...
+# Subtest: complete pipeline atomically selects canonical 2D and GPU while preserving readback guards
+ok 92 - complete pipeline atomically selects canonical 2D and GPU while preserving readback guards
+  ---
+  duration_ms: 1.467875
+  type: 'test'
+  ...
+# Subtest: canonical renderer cannot inherit a disabled precise GPU readback guard
+ok 93 - canonical renderer cannot inherit a disabled precise GPU readback guard
+  ---
+  duration_ms: 1.351083
+  type: 'test'
+  ...
+# Subtest: every GPU class emits WebGL2 limits without exposing them on WebGL1
+ok 94 - every GPU class emits WebGL2 limits without exposing them on WebGL1
+  ---
+  duration_ms: 1.6595
+  type: 'test'
+  ...
+# Subtest: uniform vector and component capacities describe the same storage
+ok 95 - uniform vector and component capacities describe the same storage
+  ---
+  duration_ms: 0.257041
+  type: 'test'
+  ...
+# Subtest: varying vectors follow Gecko fragment-input capacity without expanding vertex outputs
+ok 96 - varying vectors follow Gecko fragment-input capacity without expanding vertex outputs
+  ---
+  duration_ms: 0.150375
+  type: 'test'
+  ...
+# Subtest: no UA yields a non-Firefox H3 profile (the chimera guard holds)
+ok 97 - no UA yields a non-Firefox H3 profile (the chimera guard holds)
+  ---
+  duration_ms: 1.086334
+  type: 'test'
+  ...
+# Subtest: H2 uses the actual Firefox engine for every identity
+ok 98 - H2 uses the actual Firefox engine for every identity
+  ---
+  duration_ms: 0.074167
+  type: 'test'
+  ...
+# Subtest: reconnect refreshes stale local ID and rerenders without starting capture
+ok 99 - reconnect refreshes stale local ID and rerenders without starting capture
+  ---
+  duration_ms: 2.689042
+  type: 'test'
+  ...
+# Subtest: joining, closed and invalid SDK IDs never replace application state
+ok 100 - joining, closed and invalid SDK IDs never replace application state
+  ---
+  duration_ms: 1.435375
+  type: 'test'
+  ...
+# Subtest: new SDK clients detach old listeners and actor teardown cancels work
+ok 101 - new SDK clients detach old listeners and actor teardown cancels work
+  ---
+  duration_ms: 1.14175
+  type: 'test'
+  ...
+# Subtest: compatibility opt-out leaves the application alone
+ok 102 - compatibility opt-out leaves the application alone
+  ---
+  duration_ms: 0.921125
+  type: 'test'
+  ...
+# Subtest: late service initialization is retried without recreating the service
+ok 103 - late service initialization is retried without recreating the service
+  ---
+  duration_ms: 0.778792
+  type: 'test'
+  ...
+# Subtest: teardown tolerates a destroyed content window and still detaches SDK callbacks
+ok 104 - teardown tolerates a destroyed content window and still detaches SDK callbacks
+  ---
+  duration_ms: 0.867875
+  type: 'test'
+  ...
+# Subtest: host selection retains complete correlated tuple without mutation
+ok 105 - host selection retains complete correlated tuple without mutation
+  ---
+  duration_ms: 1.064375
+  type: 'test'
+  ...
+# Subtest: reject unsupported hosts and absent host distribution
+ok 106 - reject unsupported hosts and absent host distribution
+  ---
+  duration_ms: 2.034916
+  type: 'test'
+  ...
+# Subtest: host aliases normalize consistently
+ok 107 - host aliases normalize consistently
+  ---
+  duration_ms: 0.071125
+  type: 'test'
+  ...
+# Subtest: real Bayesian tuples select every supported OS deterministically
+ok 108 - real Bayesian tuples select every supported OS deterministically
+  ---
+  duration_ms: 42.416167
+  type: 'test'
+  ...
+# Subtest: prunes default container including missing UCID without erasing mixed windows or unrelated selected tab
+ok 109 - prunes default container including missing UCID without erasing mixed windows or unrelated selected tab
+  ---
+  duration_ms: 1.446833
+  type: 'test'
+  ...
+# Subtest: prunes saved/closed groups, empty windows and nested deferred sessions
+ok 110 - prunes saved/closed groups, empty windows and nested deferred sessions
+  ---
+  duration_ms: 0.261959
+  type: 'test'
+  ...
+# Subtest: rejects invalid, coerced, nonexistent IDs and missing confirmation before side effects
+ok 111 - rejects invalid, coerced, nonexistent IDs and missing confirmation before side effects
+  ---
+  duration_ms: 0.323458
+  type: 'test'
+  ...
+# Subtest: waits for close and clear before rotating; always releases lock
+ok 112 - waits for close and clear before rotating; always releases lock
+  ---
+  duration_ms: 3.38575
+  type: 'test'
+  ...
+# Subtest: partial clear failure retains seeds and explains destructive partial effects
+ok 113 - partial clear failure retains seeds and explains destructive partial effects
+  ---
+  duration_ms: 0.826625
+  type: 'test'
+  ...
+# Subtest: concurrent same-container forget cannot start a second clear
+ok 114 - concurrent same-container forget cannot start a second clear
+  ---
+  duration_ms: 1.286791
+  type: 'test'
+  ...
+# Subtest: retains unrelated closed records when the last open tab belonged to target
+ok 115 - retains unrelated closed records when the last open tab belonged to target
+  ---
+  duration_ms: 0.243208
+  type: 'test'
+  ...
+# Subtest: uses native removal callback for late-update bookkeeping and preserves selected neighbor
+ok 116 - uses native removal callback for late-update bookkeeping and preserves selected neighbor
+  ---
+  duration_ms: 0.396875
+  type: 'test'
+  ...
+# Subtest: restore preflight rejection leaves tabs and data untouched
+ok 117 - restore preflight rejection leaves tabs and data untouched
+  ---
+  duration_ms: 0.835791
+  type: 'test'
+  ...
+# Subtest: accepts legacy numeric-string IDs in restore records while action IDs stay strict
+ok 118 - accepts legacy numeric-string IDs in restore records while action IDs stay strict
+  ---
+  duration_ms: 0.748875
+  type: 'test'
+  ...
+# Subtest: successful forget clears typed bounce exceptions only after native data clear succeeds
+ok 119 - successful forget clears typed bounce exceptions only after native data clear succeeds
+  ---
+  duration_ms: 0.275667
+  type: 'test'
+  ...
+# Subtest: prunes supported current, previous, upgrade and legacy restore files without losing other containers
+ok 120 - prunes supported current, previous, upgrade and legacy restore files without losing other containers
+  ---
+  duration_ms: 1.837417
+  type: 'test'
+  ...
+# Subtest: backup read and atomic write failures reject instead of declaring data forgotten
+ok 121 - backup read and atomic write failures reject instead of declaring data forgotten
+  ---
+  duration_ms: 0.536417
+  type: 'test'
+  ...
+# Subtest: strict SessionFile write rejects original writer failure after removing shutdown blocker
+ok 122 - strict SessionFile write rejects original writer failure after removing shutdown blocker
+  ---
+  duration_ms: 3.816458
+  type: 'test'
+  ...
+# Subtest: restore-file pruning uses SessionWriter mutex and releases it after failure
+ok 123 - restore-file pruning uses SessionWriter mutex and releases it after failure
+  ---
+  duration_ms: 6.127292
+  type: 'test'
+  ...
+# Subtest: restore persistence failure prevents rotation and reports partial effects
+ok 124 - restore persistence failure prevents rotation and reports partial effects
+  ---
+  duration_ms: 0.800542
+  type: 'test'
+  ...
+# Subtest: waits for each target service-worker unregister callback and leaves other containers alone
+ok 125 - waits for each target service-worker unregister callback and leaves other containers alone
+  ---
+  duration_ms: 3.258333
+  type: 'test'
+  ...
+# Subtest: service-worker unregister failure is reported instead of treated as successful clear
+ok 126 - service-worker unregister failure is reported instead of treated as successful clear
+  ---
+  duration_ms: 1.48
+  type: 'test'
+  ...
+# Subtest: default-container clearing preserves shared permission flags; other IDs retain exact scope
+ok 127 - default-container clearing preserves shared permission flags; other IDs retain exact scope
+  ---
+  duration_ms: 0.18275
+  type: 'test'
+  ...
+# Subtest: cookie cleanup verification rejects residual target cookies but preserves other containers
+ok 128 - cookie cleanup verification rejects residual target cookies but preserves other containers
+  ---
+  duration_ms: 0.363541
+  type: 'test'
+  ...
+# Subtest: only literal IP addresses accepted and IPv6 canonicalized
+ok 129 - only literal IP addresses accepted and IPv6 canonicalized
+  ---
+  duration_ms: 1.527833
+  type: 'test'
+  ...
+# Subtest: compare fresh different containers only; unknown is not a conflict-free measurement
+ok 130 - compare fresh different containers only; unknown is not a conflict-free measurement
+  ---
+  duration_ms: 0.522209
+  type: 'test'
+  ...
+# Subtest: website rules match exact hosts and subdomains without suffix confusion
+ok 131 - website rules match exact hosts and subdomains without suffix confusion
+  ---
+  duration_ms: 0.185541
+  type: 'test'
+  ...
+# Subtest: history records bounded URLs, supports reassignment, deletion and IP exceptions
+ok 132 - history records bounded URLs, supports reassignment, deletion and IP exceptions
+  ---
+  duration_ms: 0.750333
+  type: 'test'
+  ...
+# Subtest: temporary allowance expires and website exclusions take precedence
+ok 133 - temporary allowance expires and website exclusions take precedence
+  ---
+  duration_ms: 0.2445
+  type: 'test'
+  ...
+# Subtest: container visits remain separate and expired history is removed from storage
+ok 134 - container visits remain separate and expired history is removed from storage
+  ---
+  duration_ms: 0.121917
+  type: 'test'
+  ...
+# Subtest: invalid website rules cannot overwrite the saved rules
+ok 135 - invalid website rules cannot overwrite the saved rules
+  ---
+  duration_ms: 0.189792
+  type: 'test'
+  ...
+# Subtest: warnings require the same exact hostname, same IP and another container
+ok 136 - warnings require the same exact hostname, same IP and another container
+  ---
+  duration_ms: 0.16675
+  type: 'test'
+  ...
+# Subtest: each container and hostname retains independent visits on a shared address
+ok 137 - each container and hostname retains independent visits on a shared address
+  ---
+  duration_ms: 0.329709
+  type: 'test'
+  ...
+# Subtest: unscoped legacy history and IP-only observations cannot imply a website visit
+ok 138 - unscoped legacy history and IP-only observations cannot imply a website visit
+  ---
+  duration_ms: 0.337958
+  type: 'test'
+  ...
+# Subtest: legacy row actions leave scoped website visits intact
+ok 139 - legacy row actions leave scoped website visits intact
+  ---
+  duration_ms: 0.144625
+  type: 'test'
+  ...
+# Subtest: dual measurements preserve routing/privacy, cache and each address family
+ok 140 - dual measurements preserve routing/privacy, cache and each address family
+  ---
+  duration_ms: 3.098
+  type: 'test'
+  ...
+# Subtest: family mismatches fail closed, fallback validates, and a route change invalidates both
+ok 141 - family mismatches fail closed, fallback validates, and a route change invalidates both
+  ---
+  duration_ms: 1.388875
+  type: 'test'
+  ...
+# Subtest: comparison includes IPv6 overlap and supports legacy IPv6 records
+ok 142 - comparison includes IPv6 overlap and supports legacy IPv6 records
+  ---
+  duration_ms: 1.391166
+  type: 'test'
+  ...
+# Subtest: IPv6-only hostname warning retains unknown family on recheck and records both on continue
+ok 143 - IPv6-only hostname warning retains unknown family on recheck and records both on continue
+  ---
+  duration_ms: 6.138
+  type: 'test'
+  ...
+# Subtest: IP action exempts only matching addresses, and cross-host observations never warn
+ok 144 - IP action exempts only matching addresses, and cross-host observations never warn
+  ---
+  duration_ms: 5.200291
+  type: 'test'
+  ...
+# Subtest: website action excludes the warning hostname only in its container and preserves other rules
+ok 145 - website action excludes the warning hostname only in its container and preserves other rules
+  ---
+  duration_ms: 2.656041
+  type: 'test'
+  ...
+# Subtest: website action refuses a full exclusion list rather than dropping an existing rule
+ok 146 - website action refuses a full exclusion list rather than dropping an existing rule
+  ---
+  duration_ms: 9.875959
+  type: 'test'
+  ...
+# Subtest: actual visits record both addresses without creating unscoped history
+ok 147 - actual visits record both addresses without creating unscoped history
+  ---
+  duration_ms: 2.357125
+  type: 'test'
+  ...
+# Subtest: fallbacks retain separate families; fully failed result remains unknown
+ok 148 - fallbacks retain separate families; fully failed result remains unknown
+  ---
+  duration_ms: 4.979375
+  type: 'test'
+  ...
+# Subtest: required conflicting families persist through repeated unknown rechecks
+ok 149 - required conflicting families persist through repeated unknown rechecks
+  ---
+  duration_ms: 8.679291
+  type: 'test'
+  ...
+# Subtest: an allowed family cannot hide a conflicting other family
+ok 150 - an allowed family cannot hide a conflicting other family
+  ---
+  duration_ms: 6.575708
+  type: 'test'
+  ...
+# Subtest: navigation checks remain opt-in and exclude private windows
+ok 151 - navigation checks remain opt-in and exclude private windows
+  ---
+  duration_ms: 5.861541
+  type: 'test'
+  ...
+# Subtest: pending requests coalesce and completed cache is discarded on route change
+ok 152 - pending requests coalesce and completed cache is discarded on route change
+  ---
+  duration_ms: 1.17275
+  type: 'test'
+  ...
+# Subtest: allow matching IPs rejects unknown results without silently continuing
+ok 153 - allow matching IPs rejects unknown results without silently continuing
+  ---
+  duration_ms: 4.261209
+  type: 'test'
+  ...
+# Subtest: explicit unknown family fields cannot resurrect a stale legacy alias
+ok 154 - explicit unknown family fields cannot resurrect a stale legacy alias
+  ---
+  duration_ms: 0.847042
+  type: 'test'
+  ...
+# Subtest: route results attribute overlap to the matching family instead of the primary alias
+ok 155 - route results attribute overlap to the matching family instead of the primary alias
+  ---
+  duration_ms: 1.1495
+  type: 'test'
+  ...
+# Subtest: route results list each matching family and deduplicate aggregate containers
+ok 156 - route results list each matching family and deduplicate aggregate containers
+  ---
+  duration_ms: 1.782042
+  type: 'test'
+  ...
+# Subtest: switching lookup route clears cached results and rejects invalid modes
+ok 157 - switching lookup route clears cached results and rejects invalid modes
+  ---
+  duration_ms: 3.263042
+  type: 'test'
+  ...
+# Subtest: route changes discard in-flight checks without repopulating the cache
+ok 158 - route changes discard in-flight checks without repopulating the cache
+  ---
+  duration_ms: 1.308584
+  type: 'test'
+  ...
+# Subtest: tab mode uses real container tabs, never background channels, and closes probes
+ok 159 - tab mode uses real container tabs, never background channels, and closes probes
+  ---
+  duration_ms: 5.801875
+  type: 'test'
+  ...
+# Subtest: saved history is retained but never compared across lookup modes
+ok 160 - saved history is retained but never compared across lookup modes
+  ---
+  duration_ms: 2.32475
+  type: 'test'
+  ...
+# Subtest: settings route result identifies both families and their individual errors
+ok 161 - settings route result identifies both families and their individual errors
+  ---
+  duration_ms: 3.222791
+  type: 'test'
+  ...
+# Subtest: settings keeps both measured addresses and displays family for each visit record
+ok 162 - settings keeps both measured addresses and displays family for each visit record
+  ---
+  duration_ms: 12.148791
+  type: 'test'
+  ...
+# Subtest: rich route results never assign aggregate IPv6 conflict to primary IPv4
+ok 163 - rich route results never assign aggregate IPv6 conflict to primary IPv4
+  ---
+  duration_ms: 1.24075
+  type: 'test'
+  ...
+# Subtest: explicit per-family matches identify IPv6 sharing without implicating IPv4
+ok 164 - explicit per-family matches identify IPv6 sharing without implicating IPv4
+  ---
+  duration_ms: 0.806542
+  type: 'test'
+  ...
+# Subtest: website button resolves a hostname exception without overwriting the destination label
+ok 165 - website button resolves a hostname exception without overwriting the destination label
+  ---
+  duration_ms: 5.516083
+  type: 'test'
+  ...
+# Subtest: warning explains lookup evidence without claiming measured website egress
+ok 166 - warning explains lookup evidence without claiming measured website egress
+  ---
+  duration_ms: 1.511375
+  type: 'test'
+  ...
+# Subtest: recheck keeps the lookup limitation while updating addresses and container names
+ok 167 - recheck keeps the lookup limitation while updating addresses and container names
+  ---
+  duration_ms: 1.100542
+  type: 'test'
+  ...
+# Subtest: legacy IPv6 warning shows separate families without fabricating IPv4
+ok 168 - legacy IPv6 warning shows separate families without fabricating IPv4
+  ---
+  duration_ms: 1.295334
+  type: 'test'
+  ...
+# Subtest: dual results show both current families and both recorded matches
+ok 169 - dual results show both current families and both recorded matches
+  ---
+  duration_ms: 1.075875
+  type: 'test'
+  ...
+# Subtest: other container only displays its recorded matching family
+ok 170 - other container only displays its recorded matching family
+  ---
+  duration_ms: 0.85825
+  type: 'test'
+  ...
+# Subtest: ipv4 unavailable keeps its error separate from the other result
+ok 171 - ipv4 unavailable keeps its error separate from the other result
+  ---
+  duration_ms: 2.189917
+  type: 'test'
+  ...
+# Subtest: ipv6 unavailable keeps its error separate from the other result
+ok 172 - ipv6 unavailable keeps its error separate from the other result
+  ---
+  duration_ms: 0.47425
+  type: 'test'
+  ...
+# Subtest: partial recheck error refreshes both families and keeps current matches
+ok 173 - partial recheck error refreshes both families and keeps current matches
+  ---
+  duration_ms: 0.746459
+  type: 'test'
+  ...
+# Subtest: incomplete ipv6 recheck does not claim a match when remaining family differs
+ok 174 - incomplete ipv6 recheck does not claim a match when remaining family differs
+  ---
+  duration_ms: 0.898834
+  type: 'test'
+  ...
+# Subtest: incomplete ipv4 recheck does not claim a match when remaining family differs
+ok 175 - incomplete ipv4 recheck does not claim a match when remaining family differs
+  ---
+  duration_ms: 0.472958
+  type: 'test'
+  ...
+# Subtest: HTTP credentials round-trip special characters and Unicode
+ok 176 - HTTP credentials round-trip special characters and Unicode
+  ---
+  duration_ms: 1.402084
+  type: 'test'
+  ...
+# Subtest: editing server preserves loaded auth and explicit clearing removes it
+ok 177 - editing server preserves loaded auth and explicit clearing removes it
+  ---
+  duration_ms: 0.169417
+  type: 'test'
+  ...
+# Subtest: SOCKS authentication uses native username/password fields
+ok 178 - SOCKS authentication uses native username/password fields
+  ---
+  duration_ms: 0.150459
+  type: 'test'
+  ...
+# Subtest: invalid input is rejected instead of silently changing the proxy
+ok 179 - invalid input is rejected instead of silently changing the proxy
+  ---
+  duration_ms: 0.415792
+  type: 'test'
+  ...
+# Subtest: animation math reuses one process snapshot across calls and windows
+ok 180 - animation math reuses one process snapshot across calls and windows
+  ---
+  duration_ms: 6.545125
+  type: 'test'
+  ...
+# Subtest: sin/cos/tan keep the page realm when its math-library policy can differ
+ok 181 - sin/cos/tan keep the page realm when its math-library policy can differ
+  ---
+  duration_ms: 3.666958
+  type: 'test'
+  ...
+# Subtest: numeric animation calls avoid realm round trips and repeated preference reads
+ok 182 - numeric animation calls avoid realm round trips and repeated preference reads
+  ---
+  duration_ms: 4.669334
+  type: 'test'
+  ...
+# Subtest: published seed updates remain live in previously captured functions
+ok 183 - published seed updates remain live in previously captured functions
+  ---
+  duration_ms: 1.41075
+  type: 'test'
+  ...
+# Subtest: removed or invalid seeds clear cached noise and a later seed restores it
+ok 184 - removed or invalid seeds clear cached noise and a later seed restores it
+  ---
+  duration_ms: 1.199291
+  type: 'test'
+  ...
+# Subtest: Firebase tree sizes retain all children with the failing live seed
+ok 185 - Firebase tree sizes retain all children with the failing live seed
+  ---
+  duration_ms: 0.671667
+  type: 'test'
+  ...
+# Subtest: logarithms and powers preserve native values used by data encoders
+ok 186 - logarithms and powers preserve native values used by data encoders
+  ---
+  duration_ms: 0.771875
+  type: 'test'
+  ...
+# Subtest: optional data-math noise applies to new pages and switching off restores native results
+ok 187 - optional data-math noise applies to new pages and switching off restores native results
+  ---
+  duration_ms: 0.930084
+  type: 'test'
+  ...
+# Subtest: opt-in data-math noise respects the master switch and zero seed
+ok 188 - opt-in data-math noise respects the master switch and zero seed
+  ---
+  duration_ms: 0.923
+  type: 'test'
+  ...
+# Subtest: camera: custom fallback requires save and rejects invalid names
+ok 189 - camera: custom fallback requires save and rejects invalid names
+  ---
+  duration_ms: 3.430667
+  type: 'test'
+  ...
+# Subtest: microphone: custom fallback requires save and rejects invalid names
+ok 190 - microphone: custom fallback requires save and rejects invalid names
+  ---
+  duration_ms: 0.629292
+  type: 'test'
+  ...
+# Subtest: speaker: custom fallback requires save and rejects invalid names
+ok 191 - speaker: custom fallback requires save and rejects invalid names
+  ---
+  duration_ms: 2.01625
+  type: 'test'
+  ...
+# Subtest: audio inventory filters kinds and disallows unnamed placeholder saves
+ok 192 - audio inventory filters kinds and disallows unnamed placeholder saves
+  ---
+  duration_ms: 3.789083
+  type: 'test'
+  ...
+# Subtest: per-device save preserves other names, rejects invalid labels and caps map size
+ok 193 - per-device save preserves other names, rejects invalid labels and caps map size
+  ---
+  duration_ms: 1.075625
+  type: 'test'
+  ...
+# Subtest: camera: permission placeholder cannot silently save
+ok 194 - camera: permission placeholder cannot silently save
+  ---
+  duration_ms: 4.483209
+  type: 'test'
+  ...
+# Subtest: microphone: permission placeholder cannot silently save
+ok 195 - microphone: permission placeholder cannot silently save
+  ---
+  duration_ms: 2.447292
+  type: 'test'
+  ...
+# Subtest: speaker: permission placeholder cannot silently save
+ok 196 - speaker: permission placeholder cannot silently save
+  ---
+  duration_ms: 1.90725
+  type: 'test'
+  ...
+# Subtest: camera choices follow maximum and preserve disconnected selections
+ok 197 - camera choices follow maximum and preserve disconnected selections
+  ---
+  duration_ms: 1.967542
+  type: 'test'
+  ...
+# Subtest: website appearance delegates to Firefox instead of pinning light
+ok 198 - website appearance delegates to Firefox instead of pinning light
+  ---
+  duration_ms: 2.574
+  type: 'test'
+  ...
+# Subtest: standalone controlled feature is spoofed to the pin
+ok 199 - standalone controlled feature is spoofed to the pin
+  ---
+  duration_ms: 0.185041
+  type: 'test'
+  ...
+# Subtest: ORACLE (unsatisfiable term): pin ∧ native-false = false
+ok 200 - ORACLE (unsatisfiable term): pin ∧ native-false = false
+  ---
+  duration_ms: 0.100834
+  type: 'test'
+  ...
+# Subtest: ORACLE (satisfiable term): must NOT leak the real controlled value
+ok 201 - ORACLE (satisfiable term): must NOT leak the real controlled value
+  ---
+  duration_ms: 0.079667
+  type: 'test'
+  ...
+# Subtest: uncontrolled clauses honor their real native value
+ok 202 - uncontrolled clauses honor their real native value
+  ---
+  duration_ms: 0.134208
+  type: 'test'
+  ...
+# Subtest: pure uncontrolled queries defer (undefined)
+ok 203 - pure uncontrolled queries defer (undefined)
+  ---
+  duration_ms: 0.046459
+  type: 'test'
+  ...
+# Subtest: all-controlled conjunction ANDs correctly
+ok 204 - all-controlled conjunction ANDs correctly
+  ---
+  duration_ms: 0.105208
+  type: 'test'
+  ...
+# Subtest: comma list is OR across queries
+ok 205 - comma list is OR across queries
+  ---
+  duration_ms: 0.045041
+  type: 'test'
+  ...
+# Subtest: not inverts a controlled query
+ok 206 - not inverts a controlled query
+  ---
+  duration_ms: 0.263959
+  type: 'test'
+  ...
+# Subtest: media type prefix is honored
+ok 207 - media type prefix is honored
+  ---
+  duration_ms: 0.28575
+  type: 'test'
+  ...
+# Subtest: color-gamut is a min-feature (p3 matches srgb and p3)
+ok 208 - color-gamut is a min-feature (p3 matches srgb and p3)
+  ---
+  duration_ms: 0.102291
+  type: 'test'
+  ...
+# Subtest: bare boolean-context feature has no controlled feature → defer
+ok 209 - bare boolean-context feature has no controlled feature → defer
+  ---
+  duration_ms: 0.035334
+  type: 'test'
+  ...
+# Subtest: or-combined queries defer (not parsed)
+ok 210 - or-combined queries defer (not parsed)
+  ---
+  duration_ms: 0.032083
+  type: 'test'
+  ...
+# Subtest: without nativeEval, a mixed query defers rather than guess
+ok 211 - without nativeEval, a mixed query defers rather than guess
+  ---
+  duration_ms: 0.030584
+  type: 'test'
+  ...
+# Subtest: pointer and hover queries defer to native digitizer/RDM capabilities
+ok 212 - pointer and hover queries defer to native digitizer/RDM capabilities
+  ---
+  duration_ms: 0.055958
+  type: 'test'
+  ...
+# Subtest: website color scheme is not a persona pin
+ok 213 - website color scheme is not a persona pin
+  ---
+  duration_ms: 0.040416
+  type: 'test'
+  ...
+# Subtest: production actor defers every query and change event to native Gecko
+ok 214 - production actor defers every query and change event to native Gecko
+  ---
+  duration_ms: 0.095041
+  type: 'test'
+  ...
+# Subtest: inherit keeps existing system proxy, scoped proxy has no direct failover and resolves destination through proxy
+ok 215 - inherit keeps existing system proxy, scoped proxy has no direct failover and resolves destination through proxy
+  ---
+  duration_ms: 5.405417
+  type: 'test'
+  ...
+# Subtest: blocked and malformed strict routes cancel before returning null, never inherit direct
+ok 216 - blocked and malformed strict routes cancel before returning null, never inherit direct
+  ---
+  duration_ms: 1.216583
+  type: 'test'
+  ...
+# Subtest: proxy validation rejects embedded secrets, URL extras and unsafe ports
+ok 217 - proxy validation rejects embedded secrets, URL extras and unsafe ports
+  ---
+  duration_ms: 0.567208
+  type: 'test'
+  ...
+# Subtest: invalid container or route cannot overwrite a working policy
+ok 218 - invalid container or route cannot overwrite a working policy
+  ---
+  duration_ms: 0.590333
+  type: 'test'
+  ...
+# Subtest: configured wrong-type modes fail closed using actual Gecko default-getter semantics
+ok 219 - configured wrong-type modes fail closed using actual Gecko default-getter semantics
+  ---
+  duration_ms: 3.535666
+  type: 'test'
+  ...
+# Subtest: system background channels retain browser route, content-triggered and expanded-principal channels do not bypass container policy
+ok 220 - system background channels retain browser route, content-triggered and expanded-principal channels do not bypass container policy
+  ---
+  duration_ms: 0.488625
+  type: 'test'
+  ...
+# Subtest: callback exceptions cannot cause a second callback or cancel a valid channel
+ok 221 - callback exceptions cannot cause a second callback or cancel a valid channel
+  ---
+  duration_ms: 1.067125
+  type: 'test'
+  ...
+# Subtest: parent publishes numeric fail-closed policy and epoch for sanitized string changes
+ok 222 - parent publishes numeric fail-closed policy and epoch for sanitized string changes
+  ---
+  duration_ms: 1.047083
+  type: 'test'
+  ...
+# Subtest: managed HTTP credentials remain proxy-only, with exact container identity and revision isolation
+ok 223 - managed HTTP credentials remain proxy-only, with exact container identity and revision isolation
+  ---
+  duration_ms: 1.975208
+  type: 'test'
+  ...
+# Subtest: managed SOCKS5 uses native username/password API with remote DNS and no fallback
+ok 224 - managed SOCKS5 uses native username/password API with remote DNS and no fallback
+  ---
+  duration_ms: 1.821583
+  type: 'test'
+  ...
+# Subtest: locked or missing managed credentials cancel before exactly one callback
+ok 225 - locked or missing managed credentials cancel before exactly one callback
+  ---
+  duration_ms: 1.097375
+  type: 'test'
+  ...
+# Subtest: native transport remains the default even for a Chrome identity
+ok 226 - native transport remains the default even for a Chrome identity
+  ---
+  duration_ms: 3.754583
+  type: 'test'
+  ...
+# Subtest: opt-in Chrome intent selects one combined native adapter profile
+ok 227 - opt-in Chrome intent selects one combined native adapter profile
+  ---
+  duration_ms: 0.885959
+  type: 'test'
+  ...
+# Subtest: master off wins over the saved network choice
+ok 228 - master off wins over the saved network choice
+  ---
+  duration_ms: 0.422667
+  type: 'test'
+  ...
+# Subtest: Gecko-native and unsupported identities have explicit status
+ok 229 - Gecko-native and unsupported identities have explicit status
+  ---
+  duration_ms: 0.604125
+  type: 'test'
+  ...
+# Subtest: a future engine cannot accidentally inherit the Gecko adapter
+ok 230 - a future engine cannot accidentally inherit the Gecko adapter
+  ---
+  duration_ms: 0.840459
+  type: 'test'
+  ...
+# Subtest: network intent and atomic native profile remain scoped to exact container zero
+ok 231 - network intent and atomic native profile remain scoped to exact container zero
+  ---
+  duration_ms: 0.652
+  type: 'test'
+  ...
+# Subtest: UA changes and malformed cfg never retain an old Chrome network profile
+ok 232 - UA changes and malformed cfg never retain an old Chrome network profile
+  ---
+  duration_ms: 1.436166
+  type: 'test'
+  ...
+# Subtest: adapter names inherited from Object.prototype remain unavailable
+ok 233 - adapter names inherited from Object.prototype remain unavailable
+  ---
+  duration_ms: 0.487125
+  type: 'test'
+  ...
+# Subtest: registry startup reconciles persisted intent and discards stale adapter IDs
+ok 234 - registry startup reconciles persisted intent and discards stale adapter IDs
+  ---
+  duration_ms: 0.903084
+  type: 'test'
+  ...
+# Subtest: config observer uses a complete branch compatible with native matching
+ok 235 - config observer uses a complete branch compatible with native matching
+  ---
+  duration_ms: 0.732416
+  type: 'test'
+  ...
+# Subtest: unmeasured Chrome versions retain native networking with explicit status
+ok 236 - unmeasured Chrome versions retain native networking with explicit status
+  ---
+  duration_ms: 0.430542
+  type: 'test'
+  ...
+# Subtest: Edge, Opera and other Chromium-branded families are unsupported
+ok 237 - Edge, Opera and other Chromium-branded families are unsupported
+  ---
+  duration_ms: 0.336792
+  type: 'test'
+  ...
+# Subtest: profile and identity changes advance an atomic generation without switch-back revival
+ok 238 - profile and identity changes advance an atomic generation without switch-back revival
+  ---
+  duration_ms: 0.368542
+  type: 'test'
+  ...
+# Subtest: generation exhaustion cannot wrap and revive an old profile
+ok 239 - generation exhaustion cannot wrap and revive an old profile
+  ---
+  duration_ms: 0.412708
+  type: 'test'
+  ...
+# Subtest: grant inventory distinguishes exact origin attributes, type, expiry and denial
+ok 240 - grant inventory distinguishes exact origin attributes, type, expiry and denial
+  ---
+  duration_ms: 10.449791
+  type: 'test'
+  ...
+# Subtest: expiry uses the original principal and capability, and never extends an existing boundary
+ok 241 - expiry uses the original principal and capability, and never extends an existing boundary
+  ---
+  duration_ms: 1.911042
+  type: 'test'
+  ...
+# Subtest: missing consent, stale grants, policy grants, tab widening and isolation changes fail closed
+ok 242 - missing consent, stale grants, policy grants, tab widening and isolation changes fail closed
+  ---
+  duration_ms: 0.217916
+  type: 'test'
+  ...
+# Subtest: revocation touches only the selected stored principal
+ok 243 - revocation touches only the selected stored principal
+  ---
+  duration_ms: 0.151458
+  type: 'test'
+  ...
+# Subtest: session and timed expiry reject invalid dates without writes
+ok 244 - session and timed expiry reject invalid dates without writes
+  ---
+  duration_ms: 0.176834
+  type: 'test'
+  ...
+# Subtest: workspace creation uses native empty profile allocation and saves before success
+ok 245 - workspace creation uses native empty profile allocation and saves before success
+  ---
+  duration_ms: 0.413459
+  type: 'test'
+  ...
+# Subtest: workspace opening resolves the registered profile and rejects current, busy or arbitrary paths
+ok 246 - workspace opening resolves the registered profile and rejects current, busy or arbitrary paths
+  ---
+  duration_ms: 0.104583
+  type: 'test'
+  ...
+# Subtest: profile catalog save failure never launches or deletes profile storage
+ok 247 - profile catalog save failure never launches or deletes profile storage
+  ---
+  duration_ms: 0.221292
+  type: 'test'
+  ...
+# Subtest: constrained generation follows supported OS and GPU combinations
+ok 248 - constrained generation follows supported OS and GPU combinations
+  ---
+  duration_ms: 10.903292
+  type: 'test'
+  ...
+# Subtest: fresh seeds generate fresh samples instead of a fixed persona pool
+ok 249 - fresh seeds generate fresh samples instead of a fixed persona pool
+  ---
+  duration_ms: 4.123875
+  type: 'test'
+  ...
+# Subtest: automatic preserves the previous sampling path and unknown filters fail
+ok 250 - automatic preserves the previous sampling path and unknown filters fail
+  ---
+  duration_ms: 0.867834
+  type: 'test'
+  ...
+# Subtest: identical visible traits warn even with different fingerprint seeds
+ok 251 - identical visible traits warn even with different fingerprint seeds
+  ---
+  duration_ms: 0.560042
+  type: 'test'
+  ...
+# Subtest: CPU or font variation alone does not hide a near duplicate
+ok 252 - CPU or font variation alone does not hide a near duplicate
+  ---
+  duration_ms: 0.121334
+  type: 'test'
+  ...
+# Subtest: distinct GPU or screen avoids high-overlap warning
+ok 253 - distinct GPU or screen avoids high-overlap warning
+  ---
+  duration_ms: 0.722125
+  type: 'test'
+  ...
+# Subtest: missing values do not count as shared traits
+ok 254 - missing values do not count as shared traits
+  ---
+  duration_ms: 0.188958
+  type: 'test'
+  ...
+# Subtest: exclude own container and missing identities; include default and manual overrides
+ok 255 - exclude own container and missing identities; include default and manual overrides
+  ---
+  duration_ms: 0.928917
+  type: 'test'
+  ...
+# Subtest: fresh cfg derives Firefox major from 155.0.1
+ok 256 - fresh cfg derives Firefox major from 155.0.1
+  ---
+  duration_ms: 5.544584
+  type: 'test'
+  ...
+# Subtest: fresh cfg derives Firefox major from 156.0a1
+ok 257 - fresh cfg derives Firefox major from 156.0a1
+  ---
+  duration_ms: 4.029083
+  type: 'test'
+  ...
+# Subtest: fresh cfg derives Firefox major from 157.0b3
+ok 258 - fresh cfg derives Firefox major from 157.0b3
+  ---
+  duration_ms: 3.697083
+  type: 'test'
+  ...
+# Subtest: fresh cfg derives Firefox major from 155.2.0esr
+ok 259 - fresh cfg derives Firefox major from 155.2.0esr
+  ---
+  duration_ms: 5.481666
+  type: 'test'
+  ...
+# Subtest: startup migrates legacy identity only and keeps seeds and unrelated cfg
+ok 260 - startup migrates legacy identity only and keeps seeds and unrelated cfg
+  ---
+  duration_ms: 2.422583
+  type: 'test'
+  ...
+# Subtest: explicit identity overrides remain pinned while other generated fields migrate
+ok 261 - explicit identity overrides remain pinned while other generated fields migrate
+  ---
+  duration_ms: 2.040208
+  type: 'test'
+  ...
+# Subtest: unrecognized direct cfg identity is preserved
+ok 262 - unrecognized direct cfg identity is preserved
+  ---
+  duration_ms: 2.87
+  type: 'test'
+  ...
+# Subtest: explicit Firefox-shaped UA and header overrides remain on their chosen version
+ok 263 - explicit Firefox-shaped UA and header overrides remain on their chosen version
+  ---
+  duration_ms: 4.375583
+  type: 'test'
+  ...
+# Subtest: font-key upgrade also migrates identity without losing existing values
+ok 264 - font-key upgrade also migrates identity without losing existing values
+  ---
+  duration_ms: 2.070833
+  type: 'test'
+  ...
+# Subtest: startup repairs a saved macOS identity carrying Linux fonts
+ok 265 - startup repairs a saved macOS identity carrying Linux fonts
+  ---
+  duration_ms: 3.940708
+  type: 'test'
+  ...
+# Subtest: corrupt cfg rebuilds from persisted seeds with current identity
+ok 266 - corrupt cfg rebuilds from persisted seeds with current identity
+  ---
+  duration_ms: 2.149042
+  type: 'test'
+  ...
+# Subtest: divergent navigator and HTTP overrides each retain the explicit choice
+ok 267 - divergent navigator and HTTP overrides each retain the explicit choice
+  ---
+  duration_ms: 2.140583
+  type: 'test'
+  ...
+# Subtest: first master seed selects mixed OS mode; existing seeded identity remains legacy
+ok 268 - first master seed selects mixed OS mode; existing seeded identity remains legacy
+  ---
+  duration_ms: 4.96475
+  type: 'test'
+  ...
+# Subtest: host mode flows through generated keys, pinned keys, preview labels and summary
+ok 269 - host mode flows through generated keys, pinned keys, preview labels and summary
+  ---
+  duration_ms: 5.878916
+  type: 'test'
+  ...
+# Subtest: saved 146 OS/hardware filters survive the port and invalid strings keep the legacy path
+ok 270 - saved 146 OS/hardware filters survive the port and invalid strings keep the legacy path
+  ---
+  duration_ms: 1.137083
+  type: 'test'
+  ...
+# Subtest: selected recent Firefox version updates navigator, HTTP UA and appVersion together
+ok 271 - selected recent Firefox version updates navigator, HTTP UA and appVersion together
+  ---
+  duration_ms: 0.892959
+  type: 'test'
+  ...
+# Subtest: browser identity selection is independent from the rendering engine control
+ok 272 - browser identity selection is independent from the rendering engine control
+  ---
+  duration_ms: 0.957708
+  type: 'test'
+  ...
+# Subtest: timing keys vary by launch salt and seed, and preserve explicit media choices
+ok 273 - timing keys vary by launch salt and seed, and preserve explicit media choices
+  ---
+  duration_ms: 1.706458
+  type: 'test'
+  ...
+# Subtest: media exposure caps are editable without inventing devices or changing the identity
+ok 274 - media exposure caps are editable without inventing devices or changing the identity
+  ---
+  duration_ms: 2.265
+  type: 'test'
+  ...
+# Subtest: startup migrates only the exact generated legacy GPU profile without rotating identity
+ok 275 - startup migrates only the exact generated legacy GPU profile without rotating identity
+  ---
+  duration_ms: 15.110166
+  type: 'test'
+  ...
+# Subtest: customized, partial, and renderer-mismatched legacy GPU tables survive migration
+ok 276 - customized, partial, and renderer-mismatched legacy GPU tables survive migration
+  ---
+  duration_ms: 15.317792
+  type: 'test'
+  ...
+# Subtest: Unicode math fallback upgrades generated fonts without changing explicit font overrides
+ok 277 - Unicode math fallback upgrades generated fonts without changing explicit font overrides
+  ---
+  duration_ms: 1.581625
+  type: 'test'
+  ...
+# Subtest: exceptions follow top-level schemeful site, vector and expiry independently
+ok 278 - exceptions follow top-level schemeful site, vector and expiry independently
+  ---
+  duration_ms: 0.656708
+  type: 'test'
+  ...
+# Subtest: invalid and excessively broad exceptions rejected
+ok 279 - invalid and excessively broad exceptions rejected
+  ---
+  duration_ms: 1.039833
+  type: 'test'
+  ...
+# Subtest: presets only alter specified vectors and strict API flags
+ok 280 - presets only alter specified vectors and strict API flags
+  ---
+  duration_ms: 0.111375
+  type: 'test'
+  ...
+# Subtest: production native policy gates geometry separately, schemeful site, expiry and malformed data
+ok 281 - production native policy gates geometry separately, schemeful site, expiry and malformed data
+  ---
+  duration_ms: 914.095
+  type: 'test'
+  ...
+# Subtest: MAC proxy status describes configuration without disclosing credentials
+ok 282 - MAC proxy status describes configuration without disclosing credentials
+  ---
+  duration_ms: 0.548125
+  type: 'test'
+  ...
+# Subtest: native blocked route overrides MAC and direct has no proxy badge
+ok 283 - native blocked route overrides MAC and direct has no proxy badge
+  ---
+  duration_ms: 0.067125
+  type: 'test'
+  ...
+# Subtest: native proxy takes priority and URLs never expose credentials
+ok 284 - native proxy takes priority and URLs never expose credentials
+  ---
+  duration_ms: 0.090542
+  type: 'test'
+  ...
+# Subtest: named proxy stores credentials only in LoginManager and emits redacted references
+ok 285 - named proxy stores credentials only in LoginManager and emits redacted references
+  ---
+  duration_ms: 3.500542
+  type: 'test'
+  ...
+# Subtest: missing reference and deleted credential fail closed; deletion blocks bound containers
+ok 286 - missing reference and deleted credential fail closed; deletion blocks bound containers
+  ---
+  duration_ms: 0.861708
+  type: 'test'
+  ...
+# Subtest: credential changes rotate connection isolation revision and apply to bound route
+ok 287 - credential changes rotate connection isolation revision and apply to bound route
+  ---
+  duration_ms: 0.691542
+  type: 'test'
+  ...
+# Subtest: binding changed while LoginManager is pending never releases stale credentials
+ok 288 - binding changed while LoginManager is pending never releases stale credentials
+  ---
+  duration_ms: 1.665125
+  type: 'test'
+  ...
+# Subtest: login storage failure leaves all existing bindings blocked and preserves reference
+ok 289 - login storage failure leaves all existing bindings blocked and preserves reference
+  ---
+  duration_ms: 2.4795
+  type: 'test'
+  ...
+# Subtest: reject partial, oversized, and protocol-invalid credentials before mutating store
+ok 290 - reject partial, oversized, and protocol-invalid credentials before mutating store
+  ---
+  duration_ms: 1.052875
+  type: 'test'
+  ...
+# Subtest: explicit diagnostics require proxy mode, preserve target origin attributes and prohibit redirects/cookies
+ok 291 - explicit diagnostics require proxy mode, preserve target origin attributes and prohibit redirects/cookies
+  ---
+  duration_ms: 8.927291
+  type: 'test'
+  ...
+# Subtest: route changed during diagnostic cannot publish success for another route
+ok 292 - route changed during diagnostic cannot publish success for another route
+  ---
+  duration_ms: 2.342083
+  type: 'test'
+  ...
+# Subtest: Rust-style origin normalization cannot collapse two named proxy credential records
+ok 293 - Rust-style origin normalization cannot collapse two named proxy credential records
+  ---
+  duration_ms: 1.4975
+  type: 'test'
+  ...
+# Subtest: native service supplies pref baseline before remote initialization and preserves live updates
+ok 294 - native service supplies pref baseline before remote initialization and preserves live updates
+  ---
+  duration_ms: 1.75425
+  type: 'test'
+  ...
+# Subtest: original native source reproduces unprotected first-navigation initialization window
+ok 295 - original native source reproduces unprotected first-navigation initialization window
+  ---
+  duration_ms: 1.860208
+  type: 'test'
+  ...
+# Subtest: physical streams stop independently when play stalls
+ok 296 - physical streams stop independently when play stalls
+  ---
+  duration_ms: 2.188208
+  type: 'test'
+  ...
+# Subtest: physical streams stop independently when resume stalls
+ok 297 - physical streams stop independently when resume stalls
+  ---
+  duration_ms: 0.761291
+  type: 'test'
+  ...
+# Subtest: physical streams stop independently when recorder-stop stalls
+ok 298 - physical streams stop independently when recorder-stop stalls
+  ---
+  duration_ms: 0.905583
+  type: 'test'
+  ...
+# Subtest: late playback resolution cannot recreate audio resources after cancellation
+ok 299 - late playback resolution cannot recreate audio resources after cancellation
+  ---
+  duration_ms: 0.590625
+  type: 'test'
+  ...
+# Subtest: successful capture returns metrics then stops its streams and deadline
+ok 300 - successful capture returns metrics then stops its streams and deadline
+  ---
+  duration_ms: 0.826333
+  type: 'test'
+  ...
+# Subtest: manual region is canonical, coherent, isolated and preserves unrelated identity
+ok 301 - manual region is canonical, coherent, isolated and preserves unrelated identity
+  ---
+  duration_ms: 17.02225
+  type: 'test'
+  ...
+# Subtest: optional location is off for generated and manual defaults; independent bilingual preference persists
+ok 302 - optional location is off for generated and manual defaults; independent bilingual preference persists
+  ---
+  duration_ms: 0.773875
+  type: 'test'
+  ...
+# Subtest: validation is atomic and rejects malformed, precise, future and dangerous input
+ok 303 - validation is atomic and rejects malformed, precise, future and dangerous input
+  ---
+  duration_ms: 0.915791
+  type: 'test'
+  ...
+# Subtest: reset and malformed storage do not reuse another container
+ok 304 - reset and malformed storage do not reuse another container
+  ---
+  duration_ms: 2.018791
+  type: 'test'
+  ...
+# Subtest: region native implementation gates geo on site permission and avoids ambient/cache mutation
+ok 305 - region native implementation gates geo on site permission and avoids ambient/cache mutation
+  ---
+  duration_ms: 2.424583
+  type: 'test'
+  ...
+# Subtest: unconfigured personas receive explicit realm defaults without touching seeds
+ok 306 - unconfigured personas receive explicit realm defaults without touching seeds
+  ---
+  duration_ms: 1.021833
+  type: 'test'
+  ...
+# Subtest: reapplying generated regions is byte-stable for legacy and partial configs
+ok 307 - reapplying generated regions is byte-stable for legacy and partial configs
+  ---
+  duration_ms: 0.538417
+  type: 'test'
+  ...
+# Subtest: HTTP language override is scoped to channel origin attributes, not a handler cache
+ok 308 - HTTP language override is scoped to channel origin attributes, not a handler cache
+  ---
+  duration_ms: 2.2365
+  type: 'test'
+  ...
+# Subtest: synthetic location retains site prompt and avoids device-permission override before Allow
+ok 309 - synthetic location retains site prompt and avoids device-permission override before Allow
+  ---
+  duration_ms: 1.701458
+  type: 'test'
+  ...
+# Subtest: cookie-only origin clearing leaves shared and scoped permissions and unrelated legacy state alone
+ok 310 - cookie-only origin clearing leaves shared and scoped permissions and unrelated legacy state alone
+  ---
+  duration_ms: 8.644042
+  type: 'test'
+  ...
+# Subtest: explicit permission clearing removes only provably scoped nonzero entries
+ok 311 - explicit permission clearing removes only provably scoped nonzero entries
+  ---
+  duration_ms: 2.361167
+  type: 'test'
+  ...
+# Subtest: zero flags is a no-op with completion; legacy ALL still delegates with ALL
+ok 312 - zero flags is a no-op with completion; legacy ALL still delegates with ALL
+  ---
+  duration_ms: 1.750667
+  type: 'test'
+  ...
+# Subtest: ALL-minus-permissions keeps the legacy notification and excludes permission cleaners
+ok 313 - ALL-minus-permissions keeps the legacy notification and excludes permission cleaners
+  ---
+  duration_ms: 2.430291
+  type: 'test'
+  ...
+# Subtest: \#7 each OS resolves its OWN persona generic from the union
+ok 314 - \#7 each OS resolves its OWN persona generic from the union
+  ---
+  duration_ms: 0.592834
+  type: 'test'
+  ...
+# Subtest: \#7 every union family is kept in the C++ global whitelist
+ok 315 - \#7 every union family is kept in the C++ global whitelist
+  ---
+  duration_ms: 0.162542
+  type: 'test'
+  ...
+# Subtest: \#7 union has no duplicate families within a slot
+ok 316 - \#7 union has no duplicate families within a slot
+  ---
+  duration_ms: 0.142917
+  type: 'test'
+  ...
+# Subtest: \#8 rebuild when cfg is absent
+ok 317 - \#8 rebuild when cfg is absent
+  ---
+  duration_ms: 0.104625
+  type: 'test'
+  ...
+# Subtest: \#8 rebuild when cfg predates the font keys
+ok 318 - \#8 rebuild when cfg predates the font keys
+  ---
+  duration_ms: 0.077417
+  type: 'test'
+  ...
+# Subtest: \#8 corrupt cfg triggers rebuild
+ok 319 - \#8 corrupt cfg triggers rebuild
+  ---
+  duration_ms: 0.050583
+  type: 'test'
+  ...
+# Subtest: \#8 valid-but-non-object JSON rebuilds instead of throwing
+ok 320 - \#8 valid-but-non-object JSON rebuilds instead of throwing
+  ---
+  duration_ms: 0.151459
+  type: 'test'
+  ...
+# Subtest: \#8 up-to-date cfg is left alone (no clobber)
+ok 321 - \#8 up-to-date cfg is left alone (no clobber)
+  ---
+  duration_ms: 0.246459
+  type: 'test'
+  ...
+# Subtest: clear-site-data choice 0, container 8
+ok 322 - clear-site-data choice 0, container 8
+  ---
+  duration_ms: 3.1605
+  type: 'test'
+  ...
+# Subtest: clear-site-data choice 0, container 0
+ok 323 - clear-site-data choice 0, container 0
+  ---
+  duration_ms: 0.637042
+  type: 'test'
+  ...
+# Subtest: clear-site-data choice 1, container 8
+ok 324 - clear-site-data choice 1, container 8
+  ---
+  duration_ms: 0.89375
+  type: 'test'
+  ...
+# Subtest: clear-site-data choice 2, container 8
+ok 325 - clear-site-data choice 2, container 8
+  ---
+  duration_ms: 1.370917
+  type: 'test'
+  ...
+# Subtest: HMAC matches Node crypto for (https,example.co.uk)
+ok 326 - HMAC matches Node crypto for (https,example.co.uk)
+  ---
+  duration_ms: 4.417708
+  type: 'test'
+  ...
+# Subtest: HMAC matches Node crypto for (http,localhost)
+ok 327 - HMAC matches Node crypto for (http,localhost)
+  ---
+  duration_ms: 0.203292
+  type: 'test'
+  ...
+# Subtest: HMAC matches Node crypto for (https,[::1])
+ok 328 - HMAC matches Node crypto for (https,[::1])
+  ---
+  duration_ms: 0.086417
+  type: 'test'
+  ...
+# Subtest: HMAC matches Node crypto for 12345678-1234-1234-1234-123456789abc.mozilla
+ok 329 - HMAC matches Node crypto for 12345678-1234-1234-1234-123456789abc.mozilla
+  ---
+  duration_ms: 0.4325
+  type: 'test'
+  ...
+# Subtest: top-level site stable; foreign ancestor bit removed; scheme/domain/secret/vector change output
+ok 330 - top-level site stable; foreign ancestor bit removed; scheme/domain/secret/vector change output
+  ---
+  duration_ms: 1.706
+  type: 'test'
+  ...
+# Subtest: missing/malformed context has no container-wide fallback; explicit zero disables noise
+ok 331 - missing/malformed context has no container-wide fallback; explicit zero disables noise
+  ---
+  duration_ms: 0.119208
+  type: 'test'
+  ...
+# Subtest: actor reads top-level cookie partition and cfg base seed, not frame origin or legacy seed offset
+ok 332 - actor reads top-level cookie partition and cfg base seed, not frame origin or legacy seed offset
+  ---
+  duration_ms: 0.199208
+  type: 'test'
+  ...
+# Subtest: default container resolves its own secret and explicit zero independently
+ok 333 - default container resolves its own secret and explicit zero independently
+  ---
+  duration_ms: 0.109667
+  type: 'test'
+  ...
+# Subtest: production C++ protocol matches HMAC vectors, opaque keys and ancestor normalization
+ok 334 - production C++ protocol matches HMAC vectors, opaque keys and ancestor normalization
+  ---
+  duration_ms: 335.88975
+  type: 'test'
+  ...
+# Subtest: native exact-container cfg lookup keeps ucid zero independent of ambient JS
+ok 335 - native exact-container cfg lookup keeps ucid zero independent of ambient JS
+  ---
+  duration_ms: 859.446791
+  type: 'test'
+  ...
+# Subtest: global strict toggle updates only its field in every canonical existing config
+ok 336 - global strict toggle updates only its field in every canonical existing config
+  ---
+  duration_ms: 2.639542
+  type: 'test'
+  ...
+# Subtest: unrelated writes do not rewrite strict policy; malformed configs remain intact
+ok 337 - unrelated writes do not rewrite strict policy; malformed configs remain intact
+  ---
+  duration_ms: 1.181042
+  type: 'test'
+  ...
+# Subtest: language cache epochs follow mirror refresh and remain scoped to canonical owners
+ok 338 - language cache epochs follow mirror refresh and remain scoped to canonical owners
+  ---
+  duration_ms: 0.636291
+  type: 'test'
+  ...
+# Subtest: strict settings schema rejects secrets, IDs, arbitrary overrides and malformed settings
+ok 339 - strict settings schema rejects secrets, IDs, arbitrary overrides and malformed settings
+  ---
+  duration_ms: 1.6555
+  type: 'test'
+  ...
+# Subtest: opening pages reject privileged schemes and embedded authentication
+ok 340 - opening pages reject privileged schemes and embedded authentication
+  ---
+  duration_ms: 0.1525
+  type: 'test'
+  ...
+# Subtest: version 0 migration preserves settings and derives required route without accepting future versions
+ok 341 - version 0 migration preserves settings and derives required route without accepting future versions
+  ---
+  duration_ms: 0.288083
+  type: 'test'
+  ...
+# Subtest: capture copies only enumerated settings and detaches records from source objects
+ok 342 - capture copies only enumerated settings and detaches records from source objects
+  ---
+  duration_ms: 0.160417
+  type: 'test'
+  ...
+# Subtest: catalog import creates fresh IDs, survives reload, and rejects hostile imports atomically
+ok 343 - catalog import creates fresh IDs, survives reload, and rejects hostile imports atomically
+  ---
+  duration_ms: 1.12
+  type: 'test'
+  ...
+# Subtest: creation writes distinct persistent secrets into fresh containers before opening pages
+ok 344 - creation writes distinct persistent secrets into fresh containers before opening pages
+  ---
+  duration_ms: 0.68425
+  type: 'test'
+  ...
+# Subtest: missing proxy is rejected before creation, unbound required preset remains explicitly blocked
+ok 345 - missing proxy is rejected before creation, unbound required preset remains explicitly blocked
+  ---
+  duration_ms: 0.266292
+  type: 'test'
+  ...
+# Subtest: failed initialization removes only newly created identity and saves cleanup; opening failure preserves configured container
+ok 346 - failed initialization removes only newly created identity and saves cleanup; opening failure preserves configured container
+  ---
+  duration_ms: 0.150791
+  type: 'test'
+  ...
+# Subtest: native creation generates fresh independent seeds, config and opening tabs after route binding and persistence
+ok 347 - native creation generates fresh independent seeds, config and opening tabs after route binding and persistence
+  ---
+  duration_ms: 1.544209
+  type: 'test'
+  ...
+# Subtest: settings UI mounts, saves selected container settings and creates edited templates through the native API
+ok 348 - settings UI mounts, saves selected container settings and creates edited templates through the native API
+  ---
+  duration_ms: 25.893375
+  type: 'test'
+  ...
+# Subtest: template mode preserves legacy pins and gives new presets mixed OS mode
+ok 349 - template mode preserves legacy pins and gives new presets mixed OS mode
+  ---
+  duration_ms: 1.79225
+  type: 'test'
+  ...
+# Subtest: templates retain explicit generation operating systems
+ok 350 - templates retain explicit generation operating systems
+  ---
+  duration_ms: 0.194208
+  type: 'test'
+  ...
+# Subtest: tracking exceptions require registrable hosts and preserve unrelated lists
+ok 351 - tracking exceptions require registrable hosts and preserve unrelated lists
+  ---
+  duration_ms: 6.322958
+  type: 'test'
+  ...
+# Subtest: DNS secure-only needs numeric bootstrap and never turns guard off during apply
+ok 352 - DNS secure-only needs numeric bootstrap and never turns guard off during apply
+  ---
+  duration_ms: 1.137917
+  type: 'test'
+  ...
+# Subtest: DNS rejects malformed input before changing prefs and Firefox defaults clear explicit policy
+ok 353 - DNS rejects malformed input before changing prefs and Firefox defaults clear explicit policy
+  ---
+  duration_ms: 0.446292
+  type: 'test'
+  ...
+# Subtest: existing native encrypted-only mode is not displayed as Firefox defaults
+ok 354 - existing native encrypted-only mode is not displayed as Firefox defaults
+  ---
+  duration_ms: 0.691917
+  type: 'test'
+  ...
+# Subtest: bounce exception scope lives in a private permission type, independent of shared OA preferences
+ok 355 - bounce exception scope lives in a private permission type, independent of shared OA preferences
+  ---
+  duration_ms: 0.772834
+  type: 'test'
+  ...
+# Subtest: native narrow bounce lookup stays out of the broad allowlist cache
+ok 356 - native narrow bounce lookup stays out of the broad allowlist cache
+  ---
+  duration_ms: 0.37775
+  type: 'test'
+  ...
+# Subtest: bounce cleanup removes both exact scopes while retaining other containers and ordinary permissions
+ok 357 - bounce cleanup removes both exact scopes while retaining other containers and ordinary permissions
+  ---
+  duration_ms: 1.05075
+  type: 'test'
+  ...
+# Subtest: startup container-deleted observer clears typed grants without opening settings
+ok 358 - startup container-deleted observer clears typed grants without opening settings
+  ---
+  duration_ms: 0.552333
+  type: 'test'
+  ...
+# Subtest: Trust Panel exposes both scopes before Clear
+ok 359 - Trust Panel exposes both scopes before Clear
+  ---
+  duration_ms: 0.437667
+  type: 'test'
+  ...
+# Subtest: Trust Panel scope: container
+ok 360 - Trust Panel scope: container
+  ---
+  duration_ms: 1.88725
+  type: 'test'
+  ...
+# Subtest: Trust Panel scope: all
+ok 361 - Trust Panel scope: all
+  ---
+  duration_ms: 0.407583
+  type: 'test'
+  ...
+# Subtest: Trust Panel scope: invalid
+ok 362 - Trust Panel scope: invalid
+  ---
+  duration_ms: 2.305334
+  type: 'test'
+  ...
+# Subtest: default protection never contacts IP-echo services, including network changes
+ok 363 - default protection never contacts IP-echo services, including network changes
+  ---
+  duration_ms: 4.092208
+  type: 'test'
+  ...
+# Subtest: lookup requires its separate opt-in and master protection
+ok 364 - lookup requires its separate opt-in and master protection
+  ---
+  duration_ms: 1.820334
+  type: 'test'
+  ...
+# Subtest: disabling lookup while requests are pending cannot republish stale IPs
+ok 365 - disabling lookup while requests are pending cannot republish stale IPs
+  ---
+  duration_ms: 1.786459
+  type: 'test'
+  ...
+# Subtest: opt-out aborts active requests and starts no fallback service after failures
+ok 366 - opt-out aborts active requests and starts no fallback service after failures
+  ---
+  duration_ms: 0.847833
+  type: 'test'
+  ...
+# Subtest: superseded refresh cannot start fallback requests after a newer generation begins
+ok 367 - superseded refresh cannot start fallback requests after a newer generation begins
+  ---
+  duration_ms: 1.83325
+  type: 'test'
+  ...
+# Subtest: RTC actor uses privileged setters without reading the page global
+ok 368 - RTC actor uses privileged setters without reading the page global
+  ---
+  duration_ms: 0.774667
+  type: 'test'
+  ...
+# Subtest: production worker config epoch refresh handles oversized updates, removals and shutdown without IPC under lock
+ok 369 - production worker config epoch refresh handles oversized updates, removals and shutdown without IPC under lock
+  ---
+  duration_ms: 352.715167
+  type: 'test'
+  ...
+1..369
+# tests 369
+# suites 0
+# pass 369
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4278.392458

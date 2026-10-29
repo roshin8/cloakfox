@@ -22,25 +22,32 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 
-from library_audit_common import ROOT, LIB, CREEP, MANIFEST, FP_BUNDLE, Handler, stable_hash, verify_fixtures
+from library_audit_common import ROOT, LIB, CREEP, MANIFEST, FP_BUNDLE, Handler, stable_hash, verify_fixtures, observed_gpu_recognized
 
 
 def main():
     binary = os.environ.get('CLOAKFOX_BIN', '/Applications/Cloakfox.app/Contents/MacOS/cloakfox')
     container_profiles = os.environ.get('LIBRARY_CONTAINER_GPU_PROFILES','0') == '1'
-    webgpu_enabled = os.environ.get('LIBRARY_WEBGPU_ENABLED', '0') == '1'
+    reference_layout = os.environ.get('LIBRARY_REFERENCE_LAYOUT', '0') == '1'
+    observed_gpu = os.environ.get('LIBRARY_OBSERVED_GPU', '0') == '1'
+    if observed_gpu and not reference_layout:
+        raise ValueError('LIBRARY_OBSERVED_GPU requires LIBRARY_REFERENCE_LAYOUT=1')
+    webgpu_enabled = os.environ.get('LIBRARY_WEBGPU_ENABLED', '0') == '1' or reference_layout
     graphics_modes = {
         'canvas_render_privacy': os.environ.get('LIBRARY_CANVAS_RENDER_PRIVACY', '0') == '1',
         'gpu_backend_profiles': os.environ.get('LIBRARY_GPU_BACKEND_PROFILES', '0') == '1',
         'canonical_2d': os.environ.get('CLOAKFOX_TEST_CANVAS_PIPELINE', '0') == '1',
     }
+    if reference_layout and not (container_profiles and graphics_modes['canonical_2d']):
+        raise ValueError('LIBRARY_REFERENCE_LAYOUT requires LIBRARY_CONTAINER_GPU_PROFILES=1 and CLOAKFOX_TEST_CANVAS_PIPELINE=1')
     out = Path(os.environ.get('REPORT_DIR', ROOT / 'tests/fingerprint/reports/fingerprint-libraries'))
     out.mkdir(parents=True, exist_ok=True)
     repeats = int(os.environ.get('LIBRARY_REPEATS', '3'))
     assert repeats >= 3, 'At least three reload samples required'
     assert Path(binary).is_file(), 'Required Gecko binary is missing'
     provenance = {**verify_fixtures(), 'binary': binary, 'graphicsModes': graphics_modes,
-                  'webgpuEnabled': webgpu_enabled, 'containerGPUProfiles': container_profiles}
+                  'webgpuEnabled': webgpu_enabled, 'containerGPUProfiles': container_profiles,
+                  'referenceLayout': reference_layout, 'observedGPU': observed_gpu}
     (out / 'upstreams.json').write_text(json.dumps(provenance, indent=2))
     server = ThreadingHTTPServer(('127.0.0.1', 0), partial(Handler, directory=str(CREEP / 'docs')))
     server.requests = []
@@ -70,6 +77,8 @@ def main():
                 options.set_preference('privacy.resistFingerprinting', False)
                 if webgpu_enabled:
                     options.set_preference('dom.webgpu.enabled', True)
+                    if os.environ.get('MOZ_HEADLESS') == '1':
+                        options.set_preference('layers.gpu-process.allow-headless', True)
                 for name, value in graphics_modes.items():
                     options.set_preference('cloakfox.experimental.canvas_pipeline' if name == 'canonical_2d' else 'cloakfox.opt.' + name, value)
                 driver = webdriver.Firefox(options=options, service=Service(
@@ -119,6 +128,19 @@ def main():
                             const id=Number(key.slice('cloakfox.s.cloak_cfg_'.length));
                             Services.prefs.setStringPref(key,JSON.stringify(m.applyGraphicsPolicy(JSON.parse(Services.prefs.getStringPref(key)),id)));
                           }''',ids)
+                    if enabled and reference_layout:
+                        chrome('''const {REFERENCE_GPU_PROFILES}=ChromeUtils.importESModule('resource:///modules/CloakfoxGPUReferenceProfiles.sys.mjs');
+                          const m=ChromeUtils.importESModule('resource:///modules/CloakfoxOverrides.sys.mjs');
+                          for(const id of [0,...arguments[0]]){
+                            const family=arguments[1]&&id===arguments[0][0]?'intel':arguments[1]&&id===arguments[0][1]?'amd':'nvidia';
+                            const ref=REFERENCE_GPU_PROFILES.find(p=>p.family===family&&p.os==='win');
+                            if(!ref)throw Error('Recorded Windows '+family+' reference fixture is missing');
+                            const key='cloakfox.s.cloak_cfg_'+id,c=JSON.parse(Services.prefs.getStringPref(key));
+                            Object.assign(c,{'webGl:renderer':ref.renderer,'webGl:vendor':ref.vendor,
+                              'navigator.platform':'Win32','navigator.oscpu':'Windows NT 10.0; Win64; x64',
+                              'rendering:gpu_reference':true,'rendering:gpu_observed':arguments[1],'geometry:canonical':true,'navigator:webgpu:disabled':false});
+                            Services.prefs.setStringPref(key,JSON.stringify(m.applyGraphicsPolicy(c,id)));
+                          }''', ids, observed_gpu)
                     for label, container, host in definitions:
                         before = set(driver.window_handles)
                         chrome('''const w=Services.wm.getMostRecentWindow('navigator:browser');w.gBrowser.selectedTab=w.gBrowser.addTab('about:blank',{userContextId:arguments[0],triggeringPrincipal:Services.scriptSecurityManager.getSystemPrincipal()})''', container)
@@ -132,6 +154,16 @@ def main():
                               cfg['navigator:webgpu:disabled']=false;
                               Services.prefs.setStringPref(key,JSON.stringify(cfg));''', container)
                         if enabled:
+                            if reference_layout:
+                                case['referenceLayout'] = chrome('''const c=JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_'+arguments[0]));
+                                  return {referenceRequested:c['rendering:gpu_reference']===true,geometryRequested:c['geometry:canonical']===true,
+                                    gpu:c['rendering:gpu_profile'],geometry:c['rendering:geometry_profile']};''', container)
+                                mode = case['referenceLayout']
+                                check(mode['referenceRequested'] and mode['geometryRequested']
+                                      and mode.get('gpu', {}).get('mode') == ('observed-reference' if observed_gpu else 'reference')
+                                      and mode['gpu'].get('owner') == container
+                                      and mode.get('geometry') == {'version':1,'id':'canonical-v1','owner':container},
+                                      label + ': reference GPU and canonical geometry requests have exact owned descriptors')
                             case['graphicsModes'] = chrome('''const cfg=JSON.parse(Services.prefs.getStringPref('cloakfox.s.cloak_cfg_'+arguments[0]));
                               return {canvas_render_privacy:cfg['canvas:render_privacy']===true,
                                       gpu_backend_profiles:cfg['webGl:backend_profile']===true,
@@ -228,6 +260,14 @@ def main():
         for name in ['default','A','B','Chrome']:
             f=by_name[name]['libraries']['creepjs'][0]['fingerprint']
             check(f['canvas2d']['dataURI']!=native['canvas2d']['dataURI'] and f['offlineAudioContext']['$hash']!=native['offlineAudioContext']['$hash'], name+': protected output differs from native control')
+        if observed_gpu:
+            for case in cases:
+                if not case['protected']:
+                    continue
+                for index, sample in enumerate(case['libraries']['creepjs']):
+                    warnings = sample['fingerprint'].get('trash', {}).get('trashBin', [])
+                    flagged = [w for w in warnings if w.get('value') in ['suspicious gpu', 'suspicious capabilities']]
+                    check(observed_gpu_recognized(sample['fingerprint']), f"{case['case']}/{index}: complete unmodified CreepJS collection recognizes observed GPU and capabilities", flagged)
         save()
         failures = [x for x in checks if not x['pass']]
         (out / 'summary.json').write_text(json.dumps({'cases': len(cases), 'repeats': repeats, 'checks': len(checks),

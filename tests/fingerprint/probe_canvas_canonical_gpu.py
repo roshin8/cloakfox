@@ -86,18 +86,28 @@ async function webgpuSample(){
 '''
 
 
+def headless_webgpu_unavailable(value, native_sample):
+    # Never excuse a protected-only failure when the native control works.
+    return (os.environ.get('MOZ_HEADLESS') == '1'
+            and value.get('available') is False and value.get('reason') == 'no adapter'
+            and native_sample.get('available') is False
+            and native_sample.get('reason') == 'no adapter')
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--expect-backend-failure',action='store_true')
     args=parser.parse_args()
     output=Path(os.environ.get('REPORT_DIR','/tmp/cloakfox-canonical-gpu'));output.mkdir(parents=True,exist_ok=True)
-    report={'binary':os.environ['CLOAKFOX_BIN'],'scope':'installed macOS only; actual CPU routing also requires missing/tampered bundle runs','checks':[],'samples':{}}
+    report={'binary':os.environ['CLOAKFOX_BIN'],'scope':'installed macOS only; actual CPU routing also requires missing/tampered bundle runs','checks':[],'samples':{},'inconclusive':[]}
     def check(value,name):
         report['checks'].append({'name':name,'pass':bool(value)});print(('PASS 'if value else'FAIL ')+name,flush=True)
     server=ThreadingHTTPServer(('127.0.0.1',0),Page);threading.Thread(target=server.serve_forever,daemon=True).start()
     try:
         with tempfile.TemporaryDirectory(prefix='cloakfox-gpu-corpus-') as profile:
             options=Options();options.binary_location=report['binary']
+            # Exercise real WebGPU while remaining headless; keep sandbox/blocklist defaults.
+            if os.environ.get('MOZ_HEADLESS') == '1': options.set_preference('layers.gpu-process.allow-headless',True)
             for arg in ['-purgecaches','-profile',profile]:options.add_argument(arg)
             if os.environ.get('CLOAKFOX_HEADFUL')!='1':options.add_argument('-headless')
             options.set_preference('dom.webgpu.enabled',True)
@@ -115,6 +125,11 @@ def main():
                         value=sample.get(kind,{})
                         if args.expect_backend_failure and pipeline:
                             check(value.get('available') is False,kind+' fails closed with rejected canonical bundle');continue
+                        native_sample=report['samples'].get('native',sample).get('webgpu',{})
+                        if kind=='webgpu' and headless_webgpu_unavailable(value,native_sample):
+                            report['inconclusive'].append({'mode':mode,'api':kind,'reason':'No adapter in headless native control; hardware execution unverified'})
+                            print('INCONCLUSIVE '+mode+' WebGPU: no headless native adapter',flush=True)
+                            continue
                         check(value.get('available') is True,mode+' '+kind+' creates actual context/device')
                         if not value.get('available'):continue
                         if kind=='webgpu':
@@ -145,7 +160,8 @@ def main():
             finally:driver.quit()
     finally:
         server.shutdown();server.server_close();(output/'result.json').write_text(json.dumps(report,indent=2)+'\n')
-    return int(any(not check['pass'] for check in report['checks']))
+    if any(not check['pass'] for check in report['checks']): return 1
+    return 2 if report['inconclusive'] else 0
 
 
 if __name__=='__main__':raise SystemExit(main())

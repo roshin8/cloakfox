@@ -1,0 +1,78 @@
+{
+  "retrieved": "2026-10-28",
+  "sources": [
+    {
+      "url": "https://opengl.gpuinfo.org/about.php",
+      "type": "community desktop OpenGL capability database",
+      "license": "CC-BY-4.0",
+      "qualification": "Not browser WebGL/WebGPU execution data. Direct download returned403; cached web pages were readable. No bypass attempted."
+    },
+    {
+      "url": "https://opengl.gpuinfo.org/displaycapability.php?name=GL_MAX_TEXTURE_SIZE",
+      "type": "aggregate capability distribution",
+      "qualification": "Contains common8192/16384/32768 values; not evidence of a model-specific Firefox profile or a substitute for shader outputs."
+    },
+    {
+      "url": "https://docs.skia.org/docs/dev/testing/skiagold/",
+      "type": "first-party rendering-baseline documentation",
+      "qualification": "Baselines depend on version, OS, architecture and backend."
+    },
+    {
+      "url": "https://angle-gold.skia.org/json/v2/paramset",
+      "type": "public first-party baseline metadata",
+      "sha256": "ae4d11eded53d14ad431cef8f1960c5a045c41f4968549affe66b0624b63f15e",
+      "observed": {
+        "vendor_id": [
+          "0x1010",
+          "0x10de",
+          "0x13b5",
+          "0x144d",
+          "0x1ae0",
+          "0x5143",
+          "0x8086"
+        ],
+        "device_id": [
+          "0x2184",
+          "0x2600200",
+          "0x36334330",
+          "0x4680",
+          "0x71061212",
+          "0x92020000",
+          "0x92020010",
+          "0x9bc5",
+          "0xc0de"
+        ],
+        "driver_vendor": [
+          "Arm Holdings",
+          "Google",
+          "Imagination Technologies Limited",
+          "Intel Corporation",
+          "NVIDIA Corporation",
+          "Qualcomm Technologies, Inc",
+          "Samsung"
+        ],
+        "os": [
+          "Android",
+          "Linux",
+          "Windows"
+        ],
+        "source_type": [
+          "angle"
+        ]
+      },
+      "qualification": "Metadata index only, not complete capability tables or matching corpus images. This snapshot has Intel/NVIDIA but no Apple/AMD vendor traces. Does not certify current Gecko corpus."
+    },
+    {
+      "url": "https://chrome-gold.skia.org/json/v2/paramset",
+      "type": "first-party baseline service",
+      "qualification": "Returned401; no authentication or access bypass attempted."
+    },
+    {
+      "url": "https://github.com/gpuweb/cts",
+      "type": "WebGPU behavior/conformance corpus",
+      "qualification": "Tests specification behavior; does not provide a complete vendor GPU emulator."
+    }
+  ],
+  "validatedEmulationProfiles": [],
+  "productionProfileChanges": false
+}

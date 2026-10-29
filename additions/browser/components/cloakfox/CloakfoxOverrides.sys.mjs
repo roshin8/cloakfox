@@ -77,6 +77,9 @@ export const KEY_TYPES = {
   "window.scrollMinY":        "int",
 
   // ── graphics ──
+  "geometry:canonical": "bool",
+  "rendering:gpu_reference": "bool",
+  "rendering:gpu_observed": "bool",
   "webGl:vendor":   "string",
   "webGl:renderer": "string",
 
@@ -161,6 +164,34 @@ export function readOverrides(ucid) {
   return out;
 }
 
+// Per-container modes never change another owner or regenerate its identity.
+const CONTAINER_RENDERING_OPTIONS = ["geometry:canonical", "rendering:gpu_reference", "rendering:gpu_observed"];
+function validateContainerRenderingOptions(config, owner) {
+  for (const key of CONTAINER_RENDERING_OPTIONS) {
+    if (config[key] !== undefined && typeof config[key] !== "boolean") throw new Error(`${key} requires a boolean`);
+  }
+  if (config["rendering:gpu_observed"] === true && config["rendering:gpu_reference"] !== true) throw new Error("Observed GPU rendering requires the reference profile request");
+  if (!CONTAINER_RENDERING_OPTIONS.some(key => config[key] === true)) return;
+  if (!Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false)) throw new Error("Enable canonical software rendering before enabling a container rendering mode");
+  if (config["rendering:gpu_reference"] === true && !Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) throw new Error("Enable container GPU profiles before selecting a reference profile");
+  if (!Number.isInteger(owner) || owner < 0 || owner > 0xffffffff ||
+      typeof config["fingerprint:secret"] !== "string" || !/^[A-Za-z0-9+/]{43}=$/.test(config["fingerprint:secret"]) ||
+      !Number.isInteger(config["canvas:seed"]) || config["canvas:seed"] <= 0 || config["canvas:seed"] > 0xffffffff) throw new Error("Container rendering identity is missing or invalid");
+}
+export function requireContainerRenderingModesDisabled() {
+  for (const name of Services.prefs.getChildList("cloakfox.container.")) {
+    if (!/^cloakfox\.container\.(0|[1-9]\d*)\.override\.(geometry:canonical|rendering:gpu_reference|rendering:gpu_observed)$/.test(name)) continue;
+    if (Services.prefs.getBoolPref(name, false)) throw new Error("Disable the saved rendering requests in each container before disabling canonical software rendering");
+  }
+}
+function renderingBase(current, generated) {
+  const base = {...current, ...generated};
+  for (const key of CONTAINER_RENDERING_OPTIONS) delete base[key];
+  delete base["rendering:geometry_profile"];
+  delete base["rendering:geometry_profile:error"];
+  return base;
+}
+
 // Graphics opt-ins are global policy, not per-field identity overrides. Apply
 // last so stale imported override keys cannot enable or disable a mode.
 // Missing or malformed preferences select the existing protected behavior.
@@ -186,8 +217,8 @@ export function applyGraphicsPolicy(config, owner = null, allowUnavailable = fal
   let containerProfiles = false;
   try { containerProfiles = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false); } catch (_) { /* malformed opt-in stays off */ }
   if (containerProfiles) {
-    if (!result["canvas:canonical_gpu"]) throw new Error("Container GPU profiles require canonical software rendering");
     try {
+      if (!result["canvas:canonical_gpu"]) throw new Error("Container GPU profiles require canonical software rendering");
       result["rendering:gpu_profile"] = createGPUProfile(result, owner);
       delete result["rendering:gpu_profile:error"];
     } catch (error) {
@@ -197,6 +228,22 @@ export function applyGraphicsPolicy(config, owner = null, allowUnavailable = fal
       delete result["rendering:gpu_profile"];
       result["rendering:gpu_profile:error"] = error.message;
     }
+  }
+  try {
+    validateContainerRenderingOptions(result, owner);
+    if (result["geometry:canonical"] === true) {
+      result["rendering:geometry_profile"] = {version:1,id:"canonical-v1",owner};
+      delete result["rendering:geometry_profile:error"];
+    } else {
+      delete result["rendering:geometry_profile"];
+      delete result["rendering:geometry_profile:error"];
+    }
+  } catch (error) {
+    if (!allowUnavailable) throw error;
+    // Presence of invalid metadata explicitly prevents native admission; absence
+    // is reserved for a valid request using the sole shipped geometry profile.
+    result["rendering:geometry_profile"] = null;
+    result["rendering:geometry_profile:error"] = error.message;
   }
   return result;
 }
@@ -221,7 +268,21 @@ export function setContainerGPUProfilesEnabled(enabled) {
  * Returns a new object.
  */
 export function applyOverrides(ucid, baseObj, overrides = readOverrides(ucid), allowUnavailable = false) {
-  return applyGraphicsPolicy(applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides })), ucid, allowUnavailable);
+  const config = applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides }));
+  // Defaults are recomputed from the current persona; never persist an automatic
+  // choice as an explicit override or carry it into an incompatible identity.
+  if (!Object.hasOwn(overrides, "rendering:gpu_observed")) {
+    delete config["rendering:gpu_observed"];
+    if (config["rendering:gpu_reference"] === true &&
+        Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false) &&
+        Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) {
+      try {
+        createGPUProfile({ ...config, "rendering:gpu_observed": true }, ucid);
+        config["rendering:gpu_observed"] = true;
+      } catch (_) { /* unsupported observed records retain the existing reference mode */ }
+    }
+  }
+  return applyGraphicsPolicy(config, ucid, allowUnavailable);
 }
 
 /**
@@ -238,6 +299,7 @@ export function setOverrides(ucid, changes) {
     if (key === "fonts" && value !== undefined && value !== null && value !== "" &&
         (!Array.isArray(value) || !value.length || value.length > 512 || !value.every(font => typeof font === "string" && font.trim() && font.length <= 200 && !/[\r\n\0]/.test(font)))) throw new Error("Provide 1–512 valid font names");
     if (!(key in KEY_TYPES)) throw new Error(`Unknown cloak_cfg key: ${key}`);
+    if (CONTAINER_RENDERING_OPTIONS.includes(key) && value !== undefined && value !== null && value !== "" && typeof value !== "boolean") throw new Error(`${key} requires a boolean`);
     if (value === undefined || value === null || value === "") continue;
     if (["int", "float"].includes(KEY_TYPES[key]) && !Number.isFinite(Number(value))) throw new Error("Invalid numeric override");
     if (KEY_TYPES[key] === "int" && !Number.isInteger(Number(value))) throw new Error("Invalid integer override");
@@ -245,7 +307,9 @@ export function setOverrides(ucid, changes) {
   }
   let active = false;
   try { active = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false); } catch (_) {}
-  if (active) {
+  const onlyDisablingRendering = Object.keys(changes).length > 0 && Object.entries(changes).every(([key,value]) =>
+    CONTAINER_RENDERING_OPTIONS.includes(key) && (value === false || value === undefined || value === null || value === ""));
+  if (!onlyDisablingRendering && (active || CONTAINER_RENDERING_OPTIONS.some(key => key in changes || key in readOverrides(ucid)))) {
     const current = JSON.parse(Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${ucid}`));
     const { fillPersonaKeys } = ChromeUtils.importESModule("resource:///modules/CloakfoxPersonas.sys.mjs");
     const seed = Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`);
@@ -254,7 +318,7 @@ export function setOverrides(ucid, changes) {
       if (value === undefined || value === null || value === "") delete overrides[key];
       else overrides[key] = ["int", "float"].includes(KEY_TYPES[key]) ? Number(value) : value;
     }
-    applyOverrides(ucid, { ...current, ...fillPersonaKeys(seed, ucid) }, overrides);
+    applyOverrides(ucid, renderingBase(current, fillPersonaKeys(seed, ucid)), overrides);
   }
   for (const [key, value] of Object.entries(changes)) writeOverride(ucid, key, value);
 }
@@ -306,11 +370,11 @@ export function clearAllOverrides(ucid) {
 function validateClearedOverrides(ucid, key = null) {
   let active = false;
   try { active = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false); } catch (_) {}
-  if (!active) return;
+  if (!active && !CONTAINER_RENDERING_OPTIONS.some(key => key in readOverrides(ucid))) return;
   const current = JSON.parse(Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${ucid}`));
   const { fillPersonaKeys } = ChromeUtils.importESModule("resource:///modules/CloakfoxPersonas.sys.mjs");
   const seed = Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`);
   const overrides = key === null ? {} : readOverrides(ucid);
   if (key !== null) delete overrides[key];
-  applyOverrides(ucid, { ...current, ...fillPersonaKeys(seed, ucid) }, overrides);
+  applyOverrides(ucid, renderingBase(current, fillPersonaKeys(seed, ucid)), overrides);
 }

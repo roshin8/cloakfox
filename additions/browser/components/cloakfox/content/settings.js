@@ -1,3 +1,4 @@
+const { confirmConsistencyChange } = ChromeUtils.importESModule("resource:///modules/CloakfoxInspector.sys.mjs");
 import { initMediaWebsiteLabels, initCameraExposure, initMicrophoneExposure } from "./media-label-controls.mjs";
 import { getPersonaHardwareFamilies } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
 import { listBrowserFamilies, listBrowserVersions, normalizeBrowserSelection } from "resource:///modules/CloakfoxBrowserProfiles.sys.mjs";
@@ -32,8 +33,8 @@ const browserCapabilities = () => Object.freeze({
 
 // Write a container's cloak_cfg and keep its H2/H3 wire profile coherent
 // with the persona in one step. Used by every cloak_cfg (re)write below.
-function persistCloakCfg(ucid, seed, clearOverrides = false) {
-  const cfg = buildCloakCfg(seed, ucid, clearOverrides);
+function persistCloakCfg(ucid, seed, clearOverrides = false, allowUnavailable = false) {
+  const cfg = buildCloakCfg(seed, ucid, clearOverrides, allowUnavailable);
   // Build successfully before discarding saved fields; keep region/privacy policy.
   if (clearOverrides) clearAllOverrides(ucid);
   Services.prefs.setStringPref(cloakCfgPref(ucid), cfg);
@@ -41,7 +42,7 @@ function persistCloakCfg(ucid, seed, clearOverrides = false) {
   try { ua = JSON.parse(cfg)["navigator.userAgent"] || ""; } catch (_e) {}
   writeHttpProfilePrefs(ucid, ua);
 }
-const { KEY_TYPES, readOverrides, setOverride, setOverrides, clearOverride, clearAllOverrides, applyOverrides, setContainerGPUProfilesEnabled } =
+const { KEY_TYPES, readOverrides, setOverride, setOverrides, clearOverride, clearAllOverrides, applyOverrides, setContainerGPUProfilesEnabled, requireContainerRenderingModesDisabled } =
   ChromeUtils.importESModule("resource:///modules/CloakfoxOverrides.sys.mjs");
 
 const { ContextualIdentityService } = ChromeUtils.importESModule(
@@ -135,7 +136,7 @@ function u32(seedB64, i) {
 }
 
 // MUST match SeedSync.buildCloakCfg shape — see CloakfoxSeedSync.sys.mjs.
-function buildCloakCfg(seedB64, ucid = null, clearOverrides = false) {
+function buildCloakCfg(seedB64, ucid = null, clearOverrides = false, allowUnavailable = false) {
   const base = {
     "fingerprint:secret": seedB64,
     "canvas:seed": u32(seedB64, 0),
@@ -148,7 +149,22 @@ function buildCloakCfg(seedB64, ucid = null, clearOverrides = false) {
     ...fillPersonaKeys(seedB64, ucid),
   };
   return JSON.stringify(ucid === null ? base : applyOverrides(
-    ucid, base, clearOverrides ? {} : readOverrides(ucid)));
+    ucid, base, clearOverrides ? {} : readOverrides(ucid), allowUnavailable));
+}
+
+// Preview through the same policy/override builder used for publication.
+function applySettingChanges(ucid, changes) {
+  const overrides = {...readOverrides(ucid)};
+  for (const [key,value] of Object.entries(changes)) {
+    if (value === null || value === undefined || value === '') delete overrides[key];
+    else overrides[key] = ['int','float'].includes(KEY_TYPES[key]) ? Number(value) : value;
+  }
+  const seed = Services.prefs.getStringPref(masterSeedPref(ucid), '');
+  const base = seed ? JSON.parse(buildCloakCfg(seed, ucid, true)) : (getCloakCfg(ucid) || {});
+  const candidate = applyOverrides(ucid, base, overrides);
+  if (!confirmConsistencyChange(getCloakCfg(ucid), candidate, message => window.confirm(message))) return false;
+  setOverrides(ucid, changes);
+  return true;
 }
 
 // ── container enumeration ──────────────────────────────────────────
@@ -376,11 +392,11 @@ function makePresetRow(definition, cfg, ucid, overrides, onChange) {
     if (select.value === "custom") return;
     try {
       if (select.value === "auto") {
-        setOverrides(ucid, Object.fromEntries(ownedKeys.map(key => [key, null])));
+        if (!applySettingChanges(ucid, Object.fromEntries(ownedKeys.map(key => [key, null])))) { onChange(); return; }
         Services.prefs.clearUserPref(presetPref);
       } else {
         const item = definition.items.find(p => p.id === select.value);
-        setOverrides(ucid, definition.values(item, cfg || {}));
+        if (!applySettingChanges(ucid, definition.values(item, cfg || {}))) { onChange(); return; }
         Services.prefs.setStringPref(presetPref, select.value);
       }
     } catch (error) {
@@ -483,7 +499,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     resetBtn.title = "Reset to persona value";
     resetBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      clearOverride(ucid, key);
+      applySettingChanges(ucid, {[key]: null});
       onChange();
     });
     actions.appendChild(resetBtn);
@@ -504,8 +520,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     }
     picker.addEventListener("change", () => {
       if (picker.value === "custom") { picker.replaceWith(v); openEditMode(); return; }
-      if (picker.value === "auto") clearOverride(ucid, key);
-      else setOverride(ucid, key, isBool ? picker.value === "true" : picker.value);
+      applySettingChanges(ucid, {[key]: picker.value === "auto" ? null : isBool ? picker.value === "true" : picker.value});
       onChange();
     });
     row.append(k, picker, actions);
@@ -570,7 +585,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
       }
       committed = true;
       if (input.value !== initialValue) {
-        setOverride(ucid, key, input.value);
+        applySettingChanges(ucid, {[key]: input.value});
         onChange();
       } else {
         onChange();   // re-render to swap input back to value pill
@@ -945,10 +960,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Editing a field rewrites cloak_cfg so the change takes effect for
   // new tabs immediately, then refreshes the UI to show the new state.
-  function rebuildCloakCfg(ucid) {
+  function rebuildCloakCfg(ucid, allowUnavailable = false) {
     const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
     if (seed) {
-      persistCloakCfg(ucid, seed);
+      persistCloakCfg(ucid, seed, false, allowUnavailable);
     }
   }
   const generateNew = document.getElementById("cfx-generate-new");
@@ -1078,6 +1093,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let refreshCameraExposure = () => {};
   let refreshMicrophoneExposure = () => {};
+  function refreshContainerRenderingOptions(ucid, cfg) {
+    const enabled = Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false);
+    const gpuProfiles = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false);
+    const requests = readOverrides(ucid);
+    for (const control of document.querySelectorAll("input[data-container-rendering]")) {
+      const key = control.dataset.containerRendering;
+      const requested = requests[key] === true ||
+        (key === "rendering:gpu_observed" && !Object.hasOwn(requests, key) && cfg?.[key] === true);
+      control.checked = requested;
+      // A saved request can always be turned off, including if its dependency
+      // became unavailable after an import or external preference change.
+      control.disabled = !requested && (!enabled || (key !== "geometry:canonical" && !gpuProfiles) ||
+        (key === "rendering:gpu_observed" && requests["rendering:gpu_reference"] !== true));
+      control.onchange = () => {
+        const status = document.getElementById("cfx-container-rendering-status");
+        try {
+          const enable = control.checked;
+          if (key === "rendering:gpu_reference" && !enable) {
+            setOverrides(ucid, { "rendering:gpu_reference": false, "rendering:gpu_observed": false });
+          } else {
+            setOverride(ucid, key, enable);
+          }
+          rebuildCloakCfg(ucid, !enable);
+          refreshContainer();
+          status.textContent = "Saved for this container. Reload pages and restart workers to use the new rendering policy.";
+        } catch (error) {
+          refreshContainerRenderingOptions(ucid, getCloakCfg(ucid));
+          status.textContent = error.message;
+        }
+      };
+    }
+    const reference = cfg?.["rendering:gpu_profile"];
+    const errors = [cfg?.["rendering:gpu_profile:error"], cfg?.["rendering:geometry_profile:error"]].filter(Boolean);
+    document.getElementById("cfx-container-rendering-status").textContent = errors.length ? errors.join(" · ")
+      : reference?.mode === "observed-reference" ? "Observed GPU compatibility saved for this container. Reload pages and restart workers to apply its native policy."
+      : reference?.mode === "reference" ? "Reference-based GPU profile saved for this container. Live contexts keep their captured policy until reload."
+      : "Rendering requests and saved identity are separate for each container. Reload pages after changes.";
+  }
   function refreshContainer() {
     const ucid = parseInt(selectEl.value, 10) || 0;
     presentationEl.value = getChromiumPresentation(ucid);
@@ -1085,6 +1138,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "Chromium switching is not available in this build. This preference is saved for a future release.";
     const cfg = getCloakCfg(ucid);
     const overrides = readOverrides(ucid);
+    refreshContainerRenderingOptions(ucid, cfg);
     const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
     const onEdit = () => { rebuildCloakCfg(ucid); refreshContainer(); };
 
@@ -1110,6 +1164,9 @@ document.addEventListener("DOMContentLoaded", () => {
       catch (error) { document.getElementById("cfx-font-status").textContent = error.message; }
     };
     const mode = personaOSMode(ucid);
+    document.getElementById("cfx-persona-source").value = Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_source`, "fpgen");
+    const appliedSource = Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_source`, "browserforge");
+    document.getElementById("cfx-persona-source-current").textContent = `${appliedSource === "fpgen" ? "fpgen" : "BrowserForge"} generated`;
     const osLabels = { windows:"Windows", macos:"macOS", linux:"Linux", legacy:"all" };
     const hostLabel = { Darwin:"macOS", WINNT:"Windows", Linux:"Linux" }[Services.appinfo.OS];
     document.getElementById("cfx-persona-filter").value = mode === "host" ? hostLabel : osLabels[mode];
@@ -1221,9 +1278,10 @@ document.addEventListener("DOMContentLoaded", () => {
     regenBtn.disabled = true;
     document.getElementById("cfx-generate-new").textContent = "Generate and apply";
     document.getElementById("cfx-persona-help").textContent =
-      `${choice.options.length - 1} BrowserForge previews. Both fresh generation and previews use the operating system above. Selecting an OS or preview does not apply it. Custom overrides are kept unless cleared during fresh generation.`;
+      `${choice.options.length - 1} BrowserForge previews. Previews always apply BrowserForge. Fresh generation uses the selected source and operating system above. Selecting an OS or preview does not apply it. Custom overrides are kept unless cleared during fresh generation.`;
   }
   document.getElementById("cfx-persona-filter").addEventListener("change", () => { loadIdentityChoices(); updateHardwareChoices(); updateBrowserPreview(); });
+  document.getElementById("cfx-persona-source").addEventListener("change", updateBrowserPreview);
   document.getElementById("cfx-persona-hardware").addEventListener("change", updateBrowserPreview);
   document.getElementById("cfx-persona-version").addEventListener("change", updateBrowserPreview);
 
@@ -1255,7 +1313,7 @@ document.addEventListener("DOMContentLoaded", () => {
     button.textContent = index === -1 ? "Generating…" : "Applying…";
     status.textContent = button.textContent;
     status.className = "identity-status";
-    // Paint the working state before synchronous BrowserForge sampling begins.
+    // Paint the working state before synchronous local model sampling begins.
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     let succeeded = false;
     const identityPrefix = `cloakfox.container.${ucid}.`;
@@ -1274,11 +1332,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (index === -1) Services.prefs.clearUserPref(personaIndexPref(ucid));
       else Services.prefs.setIntPref(personaIndexPref(ucid), index);
       const hardware = document.getElementById("cfx-persona-hardware").value;
+      const source = index === -1 ? document.getElementById("cfx-persona-source").value : "browserforge";
+      if (!["fpgen", "browserforge"].includes(source)) throw new Error("Invalid fingerprint source");
       const prefix = `cloakfox.container.${ucid}.`;
+      Services.prefs.setStringPref(prefix + "persona_source", source);
       Services.prefs.setStringPref(prefix + "persona_browser", selection.browser);
       Services.prefs.setStringPref(prefix + "persona_version", selection.version);
       // A selected preview retains its 155 pin; fresh sampling may use hardware filters.
-      if (index === -1 && hardware !== "auto") {
+      if (index === -1 && (source === "fpgen" || hardware !== "auto")) {
         Services.prefs.setStringPref(prefix + "persona_os", mode === "legacy" ? "auto" : mode);
         Services.prefs.setStringPref(prefix + "persona_hardware", hardware);
       } else {
@@ -1288,6 +1349,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const seed = randomSeedB64();
       const clearOverrides = index === -1 &&
         document.getElementById("cfx-generation-clear-overrides").checked;
+      const candidate = JSON.parse(buildCloakCfg(seed, ucid, clearOverrides));
+      if (!confirmConsistencyChange(getCloakCfg(ucid), candidate, message => window.confirm(message))) {
+        const canceled = new Error("Identity change canceled; current settings kept.");
+        canceled.name = "PersonaChangeCanceled";
+        throw canceled;
+      }
       Services.prefs.setStringPref(masterSeedPref(ucid), seed);
       persistCloakCfg(ucid, seed, clearOverrides);
       Services.prefs.savePrefFile(null);
@@ -1364,9 +1431,10 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (saved.type === Services.prefs.PREF_INT) Services.prefs.setIntPref(name, saved.value);
         else Services.prefs.setStringPref(name, saved.value);
       }
-      Cu.reportError("Cloakfox regenerate failed: " + e.message + "\n" + e.stack);
-      status.textContent = "Identity change failed: " + e.message;
-      status.className = "identity-status identity-error";
+      const canceled = e.name === "PersonaChangeCanceled";
+      if (!canceled) Cu.reportError("Cloakfox regenerate failed: " + e.message + "\n" + e.stack);
+      status.textContent = canceled ? e.message : "Identity change failed: " + e.message;
+      status.className = canceled ? "identity-status" : "identity-status identity-error";
     } finally {
       identityBusy = false;
       controls.forEach((control, i) => { control.disabled = previousDisabled[i]; });
@@ -1497,7 +1565,11 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("change", () => {
       try {
         if (pref === "cloakfox.opt.container_rendering_profiles") setContainerGPUProfilesEnabled(el.checked);
-        else if (pref === "cloakfox.experimental.canvas_pipeline" && !el.checked && Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) throw new Error("Disable container GPU profiles before disabling their canonical backend");
+        else if (pref === "cloakfox.experimental.canvas_pipeline" && !el.checked) {
+          requireContainerRenderingModesDisabled();
+          if (Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) throw new Error("Disable container GPU profiles before disabling their canonical backend");
+          Services.prefs.setBoolPref(pref, false);
+        }
         else Services.prefs.setBoolPref(pref, el.checked);
         if (pref === "cloakfox.appearance.colored_inactive_buttons") {
           Services.prefs.savePrefFile(null);
@@ -1508,6 +1580,8 @@ document.addEventListener("DOMContentLoaded", () => {
         el.checked = Services.prefs.getBoolPref(pref, false);
         document.getElementById("cfx-container-gpu-status").textContent = error.message;
       }
+      const renderingOwner = parseInt(selectEl.value, 10) || 0;
+      refreshContainerRenderingOptions(renderingOwner, getCloakCfg(renderingOwner));
       if (pref === "cloakfox.compat.screen_management") updateChromiumCompatibility();
       if (pref === "cloakfox.opt.gpu_backend_profiles") {
         const ucid = parseInt(selectEl.value, 10) || 0;

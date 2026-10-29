@@ -155,6 +155,30 @@ jobs:
           python3 scripts/fix-mach-logging.py firefox-src
           echo "ac_add_options --with-ccache=$SCCACHE_PATH" >> firefox-src/mozconfig
 
+      - name: Install version-matched Mozilla compiler
+        run: |
+          set -euo pipefail
+          mkdir -p firefox-src/.tools-gecko
+          cd firefox-src/.tools-gecko
+          MOZBUILD_STATE_PATH="$RUNNER_TEMP/gecko-mozbuild" python3 ../mach artifact toolchain \
+            --from-build macosx64-aarch64-clang \
+            --cache-dir "$RUNNER_TEMP/gecko-toolchain-cache" \
+            --artifact-manifest gecko-clang-artifact.json
+          ./clang/bin/clang --version
+          echo "CC=$PWD/clang/bin/clang" >> "$GITHUB_ENV"
+          echo "CXX=$PWD/clang/bin/clang++" >> "$GITHUB_ENV"
+          echo "LIBCLANG_PATH=$PWD/clang/lib" >> "$GITHUB_ENV"
+          echo "MOZBUILD_STATE_PATH=$RUNNER_TEMP/gecko-mozbuild" >> "$GITHUB_ENV"
+          echo "ac_add_options --enable-linker=ld64" >> ../mozconfig
+
+      - name: Preserve compiler provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gecko-toolchain-evidence
+          path: firefox-src/.tools-gecko/gecko-clang-artifact.json
+          if-no-files-found: warn
+
       - name: Source-dependent Gecko regression tests
         run: |
           set -euo pipefail

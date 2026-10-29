@@ -285,12 +285,7 @@ diff --git a/dom/base/NavigatorUAData.h b/dom/base/NavigatorUAData.h
 diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
 --- a/dom/base/ScreenOrientation.cpp
 +++ b/dom/base/ScreenOrientation.cpp
-@@ -700,16 +700,19 @@
-                                       mFullscreenListener,
-                                       /* useCapture */ true);
-   }
- 
-   mFullscreenListener = nullptr;
+@@ -728,6 +728,9 @@
  }
  
  OrientationType ScreenOrientation::DeviceType(CallerType aCallerType) const {
@@ -300,17 +295,7 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
    if ((aCallerType == CallerType::NonSystem &&
         nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) ||
        nsContentUtils::ShouldResistFingerprinting(
-           aCallerType, GetRelevantGlobal(), RFPTarget::ScreenOrientation)) {
-     Document* doc = GetResponsibleDocument();
-     BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
-     if (!bc) {
-       return nsRFPService::GetDefaultOrientationType();
-@@ -719,16 +722,19 @@
-       return nsRFPService::ViewportSizeToOrientationType(size.width,
-                                                          size.height);
-     }
-   }
-   return mType;
+@@ -747,6 +750,9 @@
  }
  
  uint16_t ScreenOrientation::DeviceAngle(CallerType aCallerType) const {
@@ -320,17 +305,7 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
    if ((aCallerType == CallerType::NonSystem &&
         nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) ||
        nsContentUtils::ShouldResistFingerprinting(
-           aCallerType, GetRelevantGlobal(), RFPTarget::ScreenOrientation)) {
-     Document* doc = GetResponsibleDocument();
-     BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
-     if (!bc) {
-       return 0;
-@@ -738,16 +744,19 @@
-       return nsRFPService::ViewportSizeToAngle(size.width, size.height);
-     }
-   }
-   return mAngle;
- }
+@@ -766,6 +772,9 @@
  
  OrientationType ScreenOrientation::GetType(CallerType aCallerType,
                                             ErrorResult& aRv) const {
@@ -340,17 +315,7 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
    if (aCallerType == CallerType::NonSystem &&
        nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) {
      return DeviceType(aCallerType);
-   }
-   // Cloakfox: always landscape-primary on desktop profiles
-   if (auto v = MaskConfig::GetString("screen:orientation:type")) {
-     const std::string& s = v.value();
-     if (s == "landscape-primary") return OrientationType::Landscape_primary;
-@@ -769,16 +778,19 @@
-     CSSIntSize size = bc->TopInnerSizeSpoofedForRFP();
-     return nsRFPService::ViewportSizeToOrientationType(size.width, size.height);
-   }
-   return orientation;
- }
+@@ -797,6 +806,9 @@
  
  uint16_t ScreenOrientation::GetAngle(CallerType aCallerType,
                                       ErrorResult& aRv) const {
@@ -360,28 +325,13 @@ diff --git a/dom/base/ScreenOrientation.cpp b/dom/base/ScreenOrientation.cpp
    if (aCallerType == CallerType::NonSystem &&
        nsGlobalWindowInner::UseCloakfoxLetterboxing(GetResponsibleDocument())) {
      return DeviceAngle(aCallerType);
-   }
-   Document* doc = GetResponsibleDocument();
-   BrowsingContext* bc = doc ? doc->GetBrowsingContext() : nullptr;
-   if (!bc) {
-     aRv.Throw(NS_ERROR_UNEXPECTED);
-@@ -823,16 +835,17 @@
-   if (!owner) {
-     return nullptr;
-   }
- 
-   return owner->GetDoc();
+@@ -851,6 +863,7 @@
  }
  
  void ScreenOrientation::MaybeChanged() {
 +  if (mScreen->GetVirtualPresentation()) return;
-   Document* doc = GetResponsibleDocument();
+   RefPtr<Document> doc = GetResponsibleDocument();
    if (!doc || doc->ShouldResistFingerprinting(RFPTarget::ScreenOrientation)) {
-     return;
-   }
- 
-   BrowsingContext* bc = doc->GetBrowsingContext();
-   if (!bc) {
      return;
 diff --git a/dom/base/moz.build b/dom/base/moz.build
 --- a/dom/base/moz.build

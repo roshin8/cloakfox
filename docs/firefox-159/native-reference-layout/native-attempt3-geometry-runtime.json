@@ -1,0 +1,28 @@
+{
+  "binary": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-native-reference-layout/Cloakfox.app/Contents/MacOS/cloakfox",
+  "xulSHA256": "6b5dee59c60f40aeb18f2853790f6bddd5bf13989f31288ebca19bf8918bfad6",
+  "phase": "native",
+  "headless": true,
+  "probes": [
+    {
+      "probe": "probe_gpu_reference_backend_admission.py",
+      "exitCode": 0,
+      "seconds": 1.79
+    },
+    {
+      "probe": "probe_gpu_reference_profiles.py",
+      "exitCode": 0,
+      "seconds": 23.66
+    },
+    {
+      "probe": "probe_touch_document_policy.py",
+      "exitCode": 0,
+      "seconds": 8.31
+    },
+    {
+      "probe": "probe_canonical_geometry.py",
+      "exitCode": 1,
+      "seconds": 17.81
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 """Exercise IP rule and exception controls in a disposable browser profile."""
+import os
 import tempfile
 from pathlib import Path
 from probe_daily_defaults import launch
@@ -31,14 +32,17 @@ def main():
    click('Allow IP');assert '192.0.2.1' in d.find_element('id','cfx-ip-conflict-panel').text
    click('Remove exception');assert 'No IP exceptions.' in d.find_element('id','cfx-ip-conflict-panel').text
    d.set_context('chrome');d.execute_script("ChromeUtils.importESModule('resource:///modules/CloakfoxIPConflicts.sys.mjs').recordIPAccess('192.0.2.9',0,'https://example.com/path?secret=x');")
-   d.set_context('content');WebDriverWait(d,5).until(lambda d:'192.0.2.9' in d.find_element('id','cfx-ip-conflict-panel').text)
-   assert 'secret=x' not in d.find_element('id','cfx-ip-conflict-panel').text
+   d.set_context('content')
+   WebDriverWait(d,5).until(lambda d:d.execute_script("return document.querySelector('#cfx-ip-conflict-panel .ip-history-website')?.textContent.includes('192.0.2.9')"))
+   d.execute_script("document.querySelector('#cfx-ip-conflict-panel .ip-history-website').open=true")
+   WebDriverWait(d,5).until(lambda d:'192.0.2.9' in d.find_element('id','cfx-ip-conflict-panel').text)
+   assert 'secret=x' not in d.execute_script("return document.getElementById('cfx-ip-conflict-panel').textContent")
    for width in [1280,848,600]:
     d.set_window_size(width,1000)
     WebDriverWait(d,5).until(lambda d:d.execute_script('return document.documentElement.scrollWidth <= innerWidth'),f'responsive width {width}')
    d.set_window_size(1280,1000)
    d.find_element('class name','ip-manager-fields').location_once_scrolled_into_view
-   d.set_context('chrome');d.save_screenshot(str(Path(__file__).resolve().parents[2]/'docs/ip-conflicts/settings.png'));d.set_context('content')
+   d.set_context('chrome');d.save_screenshot(str(Path(os.environ.get('REPORT_DIR', str(Path(__file__).resolve().parents[2]/'docs/ip-conflicts')))/'settings.png'));d.set_context('content')
    d.execute_script("const s=document.getElementById('cfx-layout');s.value='grouped';s.dispatchEvent(new Event('change'))")
    assert d.execute_script("return document.getElementById('cfx-ip-conflict-panel').closest('.settings-group').querySelector('summary').textContent==='IP conflict management'")
    click('Delete record');assert 'No recorded website visits.' in d.find_element('id','cfx-ip-conflict-panel').text

@@ -1,6 +1,5 @@
 diff --git a/netwerk/protocol/http/CloakfoxClientHints.h b/netwerk/protocol/http/CloakfoxClientHints.h
-new file mode 100644
---- /dev/null
+--- a/netwerk/protocol/http/CloakfoxClientHints.h
 +++ b/netwerk/protocol/http/CloakfoxClientHints.h
 @@ -0,0 +1,79 @@
 +/* This Source Code Form is subject to the terms of the Mozilla Public
@@ -85,7 +84,7 @@ new file mode 100644
 diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
 --- a/dom/base/Document.cpp
 +++ b/dom/base/Document.cpp
-@@ -273,16 +273,17 @@
+@@ -275,16 +275,17 @@
  #include "mozilla/dom/UserActivation.h"
  #include "mozilla/dom/ViewTransition.h"
  #include "mozilla/dom/WakeLockJS.h"
@@ -103,7 +102,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
  #include "mozilla/dom/XULPersist.h"
  #include "mozilla/dom/fragmentdirectives_ffi_generated.h"
  #include "mozilla/dom/nsCSPContext.h"
-@@ -4313,16 +4314,49 @@
+@@ -4367,16 +4368,49 @@
      return NS_OK;
    }
  
@@ -153,7 +152,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    permissionsPolicy->ResetDeclaredPolicy();
  
    permissionsPolicy->SetDefaultOrigin(NodePrincipal());
-@@ -4340,16 +4374,17 @@
+@@ -4394,16 +4428,17 @@
          // exists.
          if (RefPtr<dom::PermissionsPolicy> containerPermissionsPolicy =
                  GetPermissionsPolicyFromElement(aContainer)) {
@@ -171,7 +170,7 @@ diff --git a/dom/base/Document.cpp b/dom/base/Document.cpp
    }
    if (!aBrowsingContext->IsContentSubframe()) {
      return nullptr;
-@@ -4370,30 +4405,31 @@
+@@ -4424,30 +4459,31 @@
    }
  
    nsCOMPtr<nsIHttpChannel> httpChannel;
@@ -339,13 +338,13 @@ diff --git a/dom/security/PolicyContainer.cpp b/dom/security/PolicyContainer.cpp
    }
  
    if (aOther->mCSP) {
-@@ -165,16 +188,17 @@
-     integrityPolicy->InitFromOther(
-         IntegrityPolicy::Cast(aOther->mIntegrityPolicy));
-     mIntegrityPolicy = integrityPolicy;
+@@ -169,16 +192,17 @@
+   if (aOther->mConnectionAllowlists) {
+     // Unlike CSP, connection allowlists are not mutable, so they don't need to
+     // be cloned.
+     mConnectionAllowlists = aOther->mConnectionAllowlists;
+     mConnectionAllowlists->Freeze();  // Avoid accidental modifications.
    }
- 
-   // TODO(Bug 2073404): Support ConnectionAllowlists
  
    mIPAddressSpace = aOther->mIPAddressSpace;
 +  mCloakfoxClientHintsDenied = aOther->mCloakfoxClientHintsDenied;
@@ -357,7 +356,7 @@ diff --git a/dom/security/PolicyContainer.cpp b/dom/security/PolicyContainer.cpp
    return NS_OK;
  }
  
-@@ -197,17 +221,19 @@
+@@ -201,17 +225,19 @@
    if (!IntegrityPolicy::Equals(
            IntegrityPolicy::Cast(aContainer->mIntegrityPolicy),
            IntegrityPolicy::Cast(aOtherContainer->mIntegrityPolicy))) {
@@ -589,18 +588,17 @@ diff --git a/dom/workers/WorkerPrivate.cpp b/dom/workers/WorkerPrivate.cpp
 diff --git a/dom/workers/remoteworkers/RemoteWorkerChild.cpp b/dom/workers/remoteworkers/RemoteWorkerChild.cpp
 --- a/dom/workers/remoteworkers/RemoteWorkerChild.cpp
 +++ b/dom/workers/remoteworkers/RemoteWorkerChild.cpp
-@@ -393,16 +393,18 @@
+@@ -384,16 +384,18 @@
+     info.mCSPContext = ctx.unwrap();
+   }
+ 
    // Extract IP address space from clientInfo for all worker types
    // (shared and service workers) for Local Network Access checks.
-   if (clientInfo.isSome()) {
-     Maybe<mozilla::ipc::PolicyContainerArgs> policyContainerArgs =
-         clientInfo.ref().GetPolicyContainerArgs();
-     if (policyContainerArgs.isSome()) {
-       info.mIPAddressSpace =
-           static_cast<uint16_t>(policyContainerArgs->ipAddressSpace());
-+      info.mCloakfoxClientHintsDenied =
-+          policyContainerArgs->cloakfoxClientHintsDenied();
-     }
+   if (policyContainerArgs.isSome()) {
+     info.mIPAddressSpace =
+         static_cast<uint16_t>(policyContainerArgs->ipAddressSpace());
++    info.mCloakfoxClientHintsDenied =
++        policyContainerArgs->cloakfoxClientHintsDenied();
    }
  
    nsresult rv = info.SetPrincipalsAndCSPOnMainThread(
@@ -608,6 +606,7 @@ diff --git a/dom/workers/remoteworkers/RemoteWorkerChild.cpp b/dom/workers/remot
    if (NS_WARN_IF(NS_FAILED(rv))) {
      return rv;
    }
+ 
 diff --git a/ipc/glue/PBackgroundSharedTypes.ipdlh b/ipc/glue/PBackgroundSharedTypes.ipdlh
 --- a/ipc/glue/PBackgroundSharedTypes.ipdlh
 +++ b/ipc/glue/PBackgroundSharedTypes.ipdlh
@@ -782,7 +781,7 @@ diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/H
                                 uint64_t aChannelId, nsILoadInfo* aLoadInfo) {
    LOG1(("HttpBaseChannel::Init [this=%p]\n", this));
  
-@@ -2094,16 +2168,17 @@
+@@ -2109,16 +2183,17 @@
    // Verify header names are valid HTTP tokens and header values are reasonably
    // close to whats allowed in RFC 2616.
    if (!nsHttp::IsValidToken(flatHeader) ||
@@ -800,7 +799,7 @@ diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/H
  }
  
  NS_IMETHODIMP
-@@ -2132,16 +2207,17 @@
+@@ -2147,16 +2222,17 @@
  
    // Verify header names are valid HTTP tokens and header values are reasonably
    // close to whats allowed in RFC 2616.
@@ -818,7 +817,7 @@ diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/H
  }
  
  NS_IMETHODIMP
-@@ -5405,16 +5481,17 @@
+@@ -5431,16 +5507,17 @@
      // Such as nsHttpChannel and InterceptedChannel.
      // Even thought InterceptedChannel itself doesn't require these information,
      // it may still be necessary for the following redirections.
@@ -836,7 +835,7 @@ diff --git a/netwerk/protocol/http/HttpBaseChannel.cpp b/netwerk/protocol/http/H
      // update the DocumentURI indicator since we are being redirected.
      // if this was a top-level document channel, then the new channel
      // should have its mDocumentURI point to newURI; otherwise, we
-@@ -5475,17 +5552,18 @@
+@@ -5501,17 +5578,18 @@
        (void)cacheInfoChan->SetForceValidateCacheContent(true);
      }
    }
@@ -880,7 +879,7 @@ diff --git a/netwerk/protocol/http/HttpBaseChannel.h b/netwerk/protocol/http/Htt
    NS_IMETHOD GetOwner(nsISupports** aOwner) override;
    NS_IMETHOD SetOwner(nsISupports* aOwner) override;
    NS_IMETHOD GetLoadInfo(nsILoadInfo** aLoadInfo) override;
-@@ -802,16 +806,17 @@
+@@ -813,16 +817,17 @@
    nsCString mMatchedFullHash;
  
    nsTArray<nsCString> mMatchedTrackingLists;
@@ -919,22 +918,10 @@ diff --git a/netwerk/protocol/http/moz.build b/netwerk/protocol/http/moz.build
      "HttpBackgroundChannelParent.h",
      "HttpBaseChannel.h",
      "HttpChannelChild.h",
-@@ -254,9 +255,9 @@
- 
- XPCOM_MANIFESTS += [
-     "components.conf",
- ]
- 
- include("/tools/fuzzing/libfuzzer-config.mozbuild")
- 
- # DOM Mask
--LOCAL_INCLUDES += ["/cloakcfg"]
-\ No newline at end of file
-+LOCAL_INCLUDES += ["/cloakcfg"]
 diff --git a/netwerk/protocol/http/nsHttpChannel.cpp b/netwerk/protocol/http/nsHttpChannel.cpp
 --- a/netwerk/protocol/http/nsHttpChannel.cpp
 +++ b/netwerk/protocol/http/nsHttpChannel.cpp
-@@ -892,16 +892,20 @@
+@@ -893,16 +893,20 @@
    if (!value.IsEmpty()) {
      SetRequestHeader("Priority"_ns, value, false);
    }
@@ -955,7 +942,7 @@ diff --git a/netwerk/protocol/http/nsHttpChannel.cpp b/netwerk/protocol/http/nsH
    // Check to see if we should redirect this channel elsewhere by
    // nsIHttpChannel.redirectTo API request
    if (mAPIRedirectTo) {
-@@ -1879,16 +1883,19 @@
+@@ -1883,16 +1887,19 @@
  
  nsresult nsHttpChannel::SetupChannelForTransaction() {
    LOG((
@@ -975,7 +962,7 @@ diff --git a/netwerk/protocol/http/nsHttpChannel.cpp b/netwerk/protocol/http/nsH
    }
  
    StoreUsedNetwork(1);
-@@ -7946,16 +7953,17 @@
+@@ -7979,16 +7986,17 @@
      // represents both user cookies and cookies from cookieService
      mUserSetCookieHeader = std::move(cookieHeader);
    }

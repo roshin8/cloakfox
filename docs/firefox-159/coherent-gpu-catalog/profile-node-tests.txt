@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: all four BrowserForge hardware families receive independently owned descriptors
+ok 1 - all four BrowserForge hardware families receive independently owned descriptors
+  ---
+  duration_ms: 1.603708
+  type: 'test'
+  ...
+# Subtest: missing identity, wrong owner and unsupported claims never select a generic fallback
+ok 2 - missing identity, wrong owner and unsupported claims never select a generic fallback
+  ---
+  duration_ms: 0.216625
+  type: 'test'
+  ...
+# Subtest: incompatible manual capacity overrides are rejected without mutating input
+ok 3 - incompatible manual capacity overrides are rejected without mutating input
+  ---
+  duration_ms: 0.151417
+  type: 'test'
+  ...
+# Subtest: global activation validates every owner before any write and requires protected software backing
+ok 4 - global activation validates every owner before any write and requires protected software backing
+  ---
+  duration_ms: 1.649833
+  type: 'test'
+  ...
+# Subtest: preset changes validate the complete update before deleting any saved fields
+ok 5 - preset changes validate the complete update before deleting any saved fields
+  ---
+  duration_ms: 0.803666
+  type: 'test'
+  ...
+# Subtest: whole catalog eligibility filters ceilings without independently randomizing limits
+ok 6 - whole catalog eligibility filters ceilings without independently randomizing limits
+  ---
+  duration_ms: 0.131375
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51.777042

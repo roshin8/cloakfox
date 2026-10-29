@@ -239,12 +239,7 @@ diff --git a/browser/components/sessionstore/SessionSaver.sys.mjs b/browser/comp
 diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/components/sessionstore/SessionStore.sys.mjs
 --- a/browser/components/sessionstore/SessionStore.sys.mjs
 +++ b/browser/components/sessionstore/SessionStore.sys.mjs
-@@ -301,16 +301,37 @@
-  * @alias SessionStore
-  */
- class _SessionStore {
-   QueryInterface = ChromeUtils.generateQI([
-     "nsIObserver",
+@@ -390,6 +390,27 @@
      "nsISupportsWeakReference",
    ]);
  
@@ -272,17 +267,7 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
    #globalState = new GlobalState();
  
    // A counter to be used to generate a unique ID for each closed tab or window.
-   #nextClosedId = 0;
- 
-   /**
-    * Resets the counter used to hand out closed tab and window IDs.
-    * Only for testing purposes.
-@@ -1018,22 +1039,21 @@
-         this.#onPrefChange(aData);
-         this.#notifyOfClosedObjectsChange();
-         break;
-       case "idle-daily":
-         this.#onIdleDaily();
+@@ -1215,12 +1236,11 @@
          this.#notifyOfClosedObjectsChange();
          break;
        case "clear-origin-attributes-data": {
@@ -300,23 +285,9 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
          }
          break;
        }
-       case "browsing-context-did-set-embedder":
-         if (aSubject === aSubject.top && aSubject.isContent) {
-           const permanentKey = aSubject.embedderElement?.permanentKey;
-           if (permanentKey) {
-             this.#maybeRecreateSHistoryListener(permanentKey, aSubject);
-@@ -5039,60 +5059,55 @@
-         win.gBrowser.setIcon(tab, tabData.image);
-       }
-       lazy.TabStateCache.update(browser.permanentKey, {
-         image: null,
-       });
-     }
-   }
+@@ -5286,48 +5306,42 @@
  
--  // This method deletes all the closedTabs matching userContextId.
-+  // Remove only this container from all current restorable records, including
-+  // default-container entries and mixed closed windows. Preserve other tabs.
+   // This method deletes all the closedTabs matching userContextId.
    #forgetTabsWithUserContextId(userContextId) {
 -    const clearClosedTabs = windowState => {
 -      // In order to remove the tabs in the correct order, we store the
@@ -335,7 +306,7 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
 -    };
 -
 -    for (let window of Services.wm.getEnumerator("navigator:browser")) {
--      let windowState = this.#windows[window.__SSi];
+-      let windowState = this.#windows[this.#windowIds.get(window)];
 -      if (windowState) {
 -        clearClosedTabs(windowState);
 -      }
@@ -365,7 +336,7 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
 +    const removeClosed = (win, list, index) =>
 +      this.#removeClosedTabData(win, list, index);
 +    for (const win of Services.wm.getEnumerator("navigator:browser")) {
-+      const state = this.#windows[win.__SSi];
++      const state = this.#windows[this.#windowIds.get(win)];
 +      if (!state) continue;
 +      const wrapper = {
 +        _closedTabs: state._closedTabs,
@@ -398,39 +369,24 @@ diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/comp
    }
  
    /**
-    * Restores the session state stored in LastSession. This will attempt
-    * to merge data into the current session. If a window was opened at startup
-    * with pinned tab(s), then the remaining data from the previous session for
-    * that window will be opened into that window. Otherwise new windows will
-    * be opened.
 diff --git a/browser/components/sessionstore/SessionWriter.sys.mjs b/browser/components/sessionstore/SessionWriter.sys.mjs
 --- a/browser/components/sessionstore/SessionWriter.sys.mjs
 +++ b/browser/components/sessionstore/SessionWriter.sys.mjs
-@@ -65,16 +65,27 @@
-    * Write the contents of the session file.
-    *
-    * @param state - May get changed on shutdown.
-    */
-   async write(state, options = {}) {
+@@ -138,6 +138,17 @@
      const unlock = await lockIOWithMutex();
      try {
-       return await SessionWriterInternal.write(state, options);
+       return await this.#write(state, options);
 +    } finally {
 +      unlock();
 +    }
-+  },
++  }
 +
 +  async pruneContainerRestoreFiles(userContextId) {
 +    const unlock = await lockIOWithMutex();
 +    try {
 +      const { pruneContainerRestoreFiles } = ChromeUtils.importESModule(
 +        "resource:///modules/CloakfoxIdentityActions.sys.mjs");
-+      await pruneContainerRestoreFiles(userContextId, SessionWriterInternal.Paths);
++      await pruneContainerRestoreFiles(userContextId, this.#paths);
      } finally {
        unlock();
      }
-   },
- 
-   async wipe() {
-     const unlock = await lockIOWithMutex();
-     try {

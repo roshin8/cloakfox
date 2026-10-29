@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "kind": "canonical-executable-cohorts",
+  "qualification": "Whole virtual resource profiles for BrowserForge families, not physical vendor-driver emulation.",
+  "provenance": "Canonical software backend measurements recorded in docs/firefox-159/coverage-followup-evidence/probe_container_rendering_feasibility.json; native validation must independently confirm every required capacity.",
+  "profiles": [
+    {"id":1,"name":"portable-4k","familyMask":15,"texture":4096,"vertexUniforms":256,"fragmentUniforms":224,"vertexAttribs":16,"combinedTexUnits":32,"vertexTexUnits":16,"fragmentTexUnits":16,"vertexOutputs":16,"fragmentInputs":15,"texture3d":256,"arrayLayers":256,"uniformBufferBindings":24,"drawBuffers":4,"bufferBytes":268435456,"storageBytes":134217728},
+    {"id":2,"name":"desktop-8k","familyMask":15,"texture":8192,"vertexUniforms":1024,"fragmentUniforms":1024,"vertexAttribs":16,"combinedTexUnits":64,"vertexTexUnits":32,"fragmentTexUnits":32,"vertexOutputs":16,"fragmentInputs":16,"texture3d":1024,"arrayLayers":1024,"uniformBufferBindings":24,"drawBuffers":8,"bufferBytes":536870912,"storageBytes":134217728}
+  ],
+  "requirements": [
+    {"pname":3379,"field":"texture"},
+    {"pname":34076,"field":"texture"},
+    {"pname":34024,"field":"texture"},
+    {"pname":3386,"field":"texture","components":2},
+    {"pname":34921,"field":"vertexAttribs"},
+    {"pname":36347,"field":"vertexUniforms"},
+    {"pname":36349,"field":"fragmentUniforms"},
+    {"pname":35661,"field":"combinedTexUnits"},
+    {"pname":34930,"field":"fragmentTexUnits"},
+    {"pname":35660,"field":"vertexTexUnits"},
+    {"pname":36348,"field":"fragmentInputs"},
+    {"pname":32883,"field":"texture3d","webgl2Only":true},
+    {"pname":35071,"field":"arrayLayers","webgl2Only":true},
+    {"pname":35375,"field":"uniformBufferBindings","webgl2Only":true},
+    {"pname":34852,"field":"drawBuffers","webgl2Only":true},
+    {"pname":35658,"field":"vertexUniforms","multiplier":4,"webgl2Only":true},
+    {"pname":35657,"field":"fragmentUniforms","multiplier":4,"webgl2Only":true},
+    {"pname":37154,"field":"vertexOutputs","multiplier":4,"webgl2Only":true},
+    {"pname":37157,"field":"fragmentInputs","multiplier":4,"webgl2Only":true},
+    {"pname":35659,"field":"fragmentInputs","multiplier":4,"webgl2Only":true}
+  ]
+}

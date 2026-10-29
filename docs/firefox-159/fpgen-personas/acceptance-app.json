@@ -1,0 +1,80 @@
+{
+  "app": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-fpgen-personas/Cloakfox.app",
+  "base": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-observed-gpu-defaults/Cloakfox.app",
+  "nativeFilesIdentical": {
+    "Contents/MacOS/cloakfox": "847116df6fe11b3a42a0ef70cabd8bbd4386dda32c9796512b9e4e0bc8e4bb08",
+    "Contents/MacOS/XUL": "4e747b52fe248fd6e50ed4b618a233352109ee2a86d774b3404d5cda86f6d792",
+    "Contents/Resources/canonical-gpu/manifest.json": "f07e49e8dcc44e2767a1d1f75ff3346c4e943c8d7f5047ab36d727841703f450",
+    "Contents/Resources/canonical-gpu/libEGL_cloakfox_canonical.dylib": "aaa1f098b7e7bcd1f0b204535d6e0211dc7e699d46ec2390460b6dc753312dc4",
+    "Contents/Resources/canonical-gpu/libGLESv2_cloakfox_canonical.dylib": "4209e6f9d24120f7d7a1636dbf21e3af6296b202a18d85fe49f43c801d967390",
+    "Contents/Resources/canonical-gpu/libvk_swiftshader.dylib": "39b234afad41255c6eb49dda5836fc9c66b196175a98f006f547017afdf06418"
+  },
+  "changedResources": [
+    {
+      "source": "additions/browser/components/cloakfox/CloakfoxFPGenNetwork.sys.mjs",
+      "destination": "Contents/Resources/browser/modules/CloakfoxFPGenNetwork.sys.mjs",
+      "sha256": "09336a77c279a28660f5dbfb37c458c25f443416284ebd31165c76500b4968e1"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/CloakfoxFPGenSampler.sys.mjs",
+      "destination": "Contents/Resources/browser/modules/CloakfoxFPGenSampler.sys.mjs",
+      "sha256": "9fff9f6413e66253747fcc5010346eb162c0ef4e3701dca7767e5e0059fff188"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/CloakfoxPersonas.sys.mjs",
+      "destination": "Contents/Resources/browser/modules/CloakfoxPersonas.sys.mjs",
+      "sha256": "fdddeb65f304052466ef00195e6506624a6fc9a08aede45f61866d96bc05f1a3"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/CloakfoxSeedSync.sys.mjs",
+      "destination": "Contents/Resources/browser/modules/CloakfoxSeedSync.sys.mjs",
+      "sha256": "38b3f6e33fecc49520803226d3eac6bbbf429518ed091ef7535f6f45d04ddcf6"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/CloakfoxContainerWorkflows.sys.mjs",
+      "destination": "Contents/Resources/browser/modules/CloakfoxContainerWorkflows.sys.mjs",
+      "sha256": "bf89368f8b6571befb92355fbe4d6e5a8a6a41432e553bb37823b3ce57390c41"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/CloakfoxTemplates.sys.mjs",
+      "destination": "Contents/Resources/browser/modules/CloakfoxTemplates.sys.mjs",
+      "sha256": "2048aedfeedfb55ec4e365dd37f34971c174f90fe201e9eed5947aa98abdacda"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/CloakfoxInspector.sys.mjs",
+      "destination": "Contents/Resources/browser/modules/CloakfoxInspector.sys.mjs",
+      "sha256": "f511e9a30b0f5350f20b84770d84d09aa6a210699c272ec8c0086ae17cd1893c"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/content/settings.html",
+      "destination": "Contents/Resources/browser/chrome/browser/content/browser/cloakfox/settings.html",
+      "sha256": "1cb0be61d1c548bbee155e37dc647203a9e8ba71df21e861b660e4f0b3f53eda"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/content/settings.js",
+      "destination": "Contents/Resources/browser/chrome/browser/content/browser/cloakfox/settings.js",
+      "sha256": "a5ebbc33dd545e85c41c0cd2db2fb8310dae138bd27db6f02c4e70a4058b0114"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/content/template-settings.js",
+      "destination": "Contents/Resources/browser/chrome/browser/content/browser/cloakfox/template-settings.js",
+      "sha256": "67971b59e89186c441348f5f57553ab3900c5d49ddf514bb9f5f0b6cbd456059"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/fpgen-model-reference.zip",
+      "destination": "Contents/Resources/browser/modules/fpgen-model-reference.zip",
+      "sha256": "6530b8322cdaa4ec042921c8d9a0369a0e6e0269ba636c01a7203e4a2f109936"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/fpgen-model-source.json",
+      "destination": "Contents/Resources/browser/modules/fpgen-model-source.json",
+      "sha256": "e7322dc6795ba413a6db6509519061517614912a4cfa8cbb4ad57d1faa4c6cd5"
+    },
+    {
+      "source": "additions/browser/components/cloakfox/fpgen-model-LICENSE.txt",
+      "destination": "Contents/Resources/browser/modules/fpgen-model-LICENSE.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  ],
+  "concurrentDependency": "CloakfoxInspector supplies the consistency confirmation imported by the concurrently edited settings UI; preserved unchanged"
+}

@@ -8,14 +8,18 @@ import sys
 import tempfile
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'network'))
 from h3_fixture import H3Fixtures, create_certificates
-from probe_network_wire import launch_wire_browser
+from probe_network_wire import launch_wire_browser,stock_firefox_binary
 from probe_network_policy import READ
 
 
 def main():
     report={}
     native=os.environ['CLOAKFOX_BIN']
-    binaries={'stock':os.environ.get('FIREFOX_BIN','/Applications/Firefox.app/Contents/MacOS/firefox'),'cloakfox':native}
+    reference=stock_firefox_binary()
+    if reference is None:
+        print('INCONCLUSIVE: provide matching owned stock Firefox via FIREFOX_BIN')
+        return 2
+    binaries={'stock':reference,'cloakfox':native}
     hosts=['quic-wire-a.test','quic-wire-b.test','quic-wire-c.test']
     try:
         with tempfile.TemporaryDirectory(prefix='cloakfox-quic-wire-') as temp:
@@ -64,4 +68,4 @@ def main():
     finally:os.environ['CLOAKFOX_BIN']=native
 
 
-if __name__=='__main__':main()
+if __name__=='__main__':raise SystemExit(main())

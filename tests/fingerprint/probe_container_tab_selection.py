@@ -8,7 +8,7 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-tab-selection-') as tmp:
     (addon/'manifest.json').write_text(json.dumps({'manifest_version':2,'name':'Tab selection fixture','version':'1.0','browser_specific_settings':{'gecko':{'id':'@testpilot-containers'}},'permissions':['tabs','contextualIdentities'],'background':{'scripts':['background.js']}}))
     (addon/'background.js').write_text('')
     with zipfile.ZipFile(Path(os.environ['CLOAKFOX_BIN']).parents[1]/'Resources/distribution/extensions/@testpilot-containers.xpi') as package:(addon/'popup.css').write_bytes(package.read('css/popup.css'))
-    driver=launch(profile,root/'gecko.log')
+    driver=launch(profile,root/'gecko.log',purge_caches=True)
     try:
         driver.set_script_timeout(30)
         ids=driver.execute_script("const s=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService;return ['Tab test','Other container'].map(n=>s.create(n,'fingerprint','blue').userContextId);")

@@ -1,5 +1,6 @@
 {
-  "rendererVersion": 1,
+  "rendererVersion": 2,
+  "capacityProfile": "reference-v1",
   "platform": "macos-arm64",
   "backend": "ANGLE Vulkan / SwiftShader CPU",
   "hostRendererFallback": false,
@@ -31,14 +32,16 @@
   },
   "localPatches": {
     "canonical-only.patch": "cba763e13c4eb009b36f1988e2be50dfcc103e6f6d6a96086649f12323442c7d",
-    "command-line-tools.patch": "26482cfb46bdca6147592411326b9781187c1ba36f1e8568425d5ea16a5c991a"
+    "command-line-tools.patch": "26482cfb46bdca6147592411326b9781187c1ba36f1e8568425d5ea16a5c991a",
+    "reference-capacity-angle.patch": "b2ded9cf1466f30d2e6a9e2d4fb693a78c35bae03bff0cf9503ea6638ed22a5a",
+    "reference-capacity-swiftshader.patch": "d3b0b552651d9a5109c1fe3edb3197986f677a32cd2f0a6ff3eba23e11e9bada"
   },
   "integrityScope": "Verify before packaging; signed application validates loaded library code. No cross-host pixel identity claim.",
   "files": {
     "args.gn": "dd0c097adc3790aa65789d63e460c6b8be9c9d18038cd31a5cbfba1eb828c9f8",
-    "libEGL_cloakfox_canonical.dylib": "049ba7e2449b060fb1a847f20e2e691f0cefe8695edd1979b0200a7b7a8ff53f",
-    "libGLESv2_cloakfox_canonical.dylib": "e7809c314167f50440958c285b3d87a391f16833cd3a9811fd11bde8fa7b9163",
-    "libvk_swiftshader.dylib": "932a2fee966160092e518f002699161c64b7a9b2429fdf12bf9b8d086e7876e5",
+    "libEGL_cloakfox_canonical.dylib": "aaa1f098b7e7bcd1f0b204535d6e0211dc7e699d46ec2390460b6dc753312dc4",
+    "libGLESv2_cloakfox_canonical.dylib": "4209e6f9d24120f7d7a1636dbf21e3af6296b202a18d85fe49f43c801d967390",
+    "libvk_swiftshader.dylib": "39b234afad41255c6eb49dda5836fc9c66b196175a98f006f547017afdf06418",
     "notices/AUTHORS": "c070acff64364b6934c9adf4f98adc84ea163bd36ff336a80cc85f780c0ec183",
     "notices/LICENSE": "bf4da21bd20bcfb5b60b7ecc67fa864a79be049e21d6178076887f178dd6c71a",
     "notices/build/android/incremental_install/third_party/AndroidHiddenApiBypass/LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
@@ -117,5 +120,6 @@
     "notices/tools/flex-bison/third_party/skeletons/LICENSE": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
     "notices/util/android/third_party/LICENSE": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
     "notices/util/windows/third_party/StackWalker/LICENSE": "bfec18debedcb337f8af53f143ccf0b1575d0b7c30deaee137f10397eca0d353"
-  }
+  },
+  "gitSha": "2379ecdb7f"
 }

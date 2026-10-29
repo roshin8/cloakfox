@@ -109,7 +109,10 @@ def main():
         def edit(key, value):
             reveal('sec-identity')
             pickers=row(key).find_elements(By.CSS_SELECTOR,'select[data-key]')
-            if pickers:
+            custom=row(key).find_elements(By.CSS_SELECTOR,'.identity-custom-override')
+            if custom:
+                click(custom[0])
+            elif pickers:
                 click(pickers[0])
                 Select(pickers[0]).select_by_value('custom')
             else:
@@ -141,7 +144,7 @@ def main():
                 driver.refresh()
                 WebDriverWait(driver, 15).until(lambda d: d.find_elements(By.CSS_SELECTOR, ".spoof-row.dyn"))
                 Select(driver.find_element(By.ID, "cfx-container-select")).select_by_value(str(id))
-                check(row("navigator.userAgent").find_element(By.CSS_SELECTOR, ".v").get_attribute("title") == ua,
+                check(row("navigator.userAgent").find_element(By.CSS_SELECTOR, ".identity-field-value, .v").get_attribute("title") == ua,
                       f"container {id}: settings reload retains UA", snapshot(id))
             check(snapshot(0)["cfg"]["navigator.userAgent"] == CHROME,
                   "editing container 2 preserves default container", snapshot(0))
@@ -168,7 +171,7 @@ def main():
                   and state["cfg"]["navigator.hardwareConcurrency"] == persona_cores
                   and state["cfg"]["navigator.userAgent"] == CHROME,
                   "resetting one field retains other overrides", state)
-            reveal('cfx-persona-panel')
+            reveal('sec-identity')
             click(driver.find_element(By.ID,'cfx-clear-overrides'))
             state = snapshot(0)
             check(not state["pins"] and "Firefox/" in state["cfg"]["navigator.userAgent"]

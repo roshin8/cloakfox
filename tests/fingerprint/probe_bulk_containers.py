@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
     (addon/'background.js').write_text('')
     with zipfile.ZipFile(Path(os.environ['CLOAKFOX_BIN']).parents[1]/'Resources/distribution/extensions/@testpilot-containers.xpi') as package:
         (addon/'popup.css').write_bytes(package.read('css/popup.css'))
-    driver=launch(profile,root/'gecko.log')
+    driver=launch(profile,root/'gecko.log',purge_caches=True)
     try:
         driver.set_script_timeout(90)
         ids=driver.execute_script("const s=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService;return ['Source','Target A','Target B','Unselected'].map(n=>s.create(n,'fingerprint','blue').userContextId);")
@@ -48,6 +48,7 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
         for i in ids[1:3]:driver.find_element('css selector',f'tr[data-cookie-store-id="firefox-container-{i}"]').click()
         assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 2
         assert driver.execute_script("const f=document.getElementById('cfx-bulk-footer').getBoundingClientRect(),p=document.getElementById('container-picker-panel').getBoundingClientRect(),l=document.querySelector('#container-picker-panel>.scrollable').getBoundingClientRect();return Math.abs(f.bottom-p.bottom)<2 && l.bottom<=f.top+1;"), 'actions must remain below the scrolling list at the panel bottom'
+        driver.find_element('id','container-picker-panel').screenshot('/tmp/cloakfox159-bulk-footer.png')
         driver.find_element('id','cfx-bulk-apply-open').click()
         wait.until(lambda _:driver.execute_script("return document.getElementById('cfx-bulk-source').options.length>1;"))
         driver.execute_script("document.getElementById('cfx-bulk-source').value=arguments[0];",str(ids[0]))

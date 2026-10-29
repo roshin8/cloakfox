@@ -1,0 +1,169 @@
+--- a/dom/canvas/WebGLContextValidate.cpp
++++ b/dom/canvas/WebGLContextValidate.cpp
+@@ -318,6 +318,14 @@
+   mStencilWriteMaskFront = allOnes;
+   mStencilWriteMaskBack  = allOnes;
+   */
++
++  if (const auto mask = CloakfoxGPUReference::ObservedStencilMask(
++          mOptions.cloakfoxPersonaProfile, IsWebGL2())) {
++    // Initialize real per-context state before capturing the public cache.
++    // Author stencil calls remain fully mutable, including all-ones masks.
++    gl->fStencilFuncSeparate(LOCAL_GL_FRONT_AND_BACK, LOCAL_GL_ALWAYS, 0, mask);
++    gl->fStencilMaskSeparate(LOCAL_GL_FRONT_AND_BACK, mask);
++  }
+ 
+   gl->GetUIntegerv(LOCAL_GL_STENCIL_VALUE_MASK, &mStencilValueMaskFront);
+   gl->GetUIntegerv(LOCAL_GL_STENCIL_BACK_VALUE_MASK, &mStencilValueMaskBack);
+--- a/dom/canvas/WebGLShaderValidator.cpp
++++ b/dom/canvas/WebGLShaderValidator.cpp
+@@ -126,6 +126,10 @@
+   sh::InitBuiltInResources(&resources);
+ 
+   resources.HashFunction = webgl::IdentifierHashFunc;
++  // The optional observed cohort enforces its bias range in typed translation,
++  // for both ESSL100 and ESSL300. Other contexts leave this transform disabled.
++  resources.CloakfoxMaxTextureLodBias =
++      CloakfoxGPUReference::ObservedLodBias(mOptions.cloakfoxPersonaProfile);
+ 
+   const auto& limits = Limits();
+ 
+--- a/third_party/angle/include/GLSLANG/ShaderLang.h
++++ b/third_party/angle/include/GLSLANG/ShaderLang.h
+@@ -781,6 +781,9 @@
+     size_t MaxVariableSizeInBytes;
+     size_t MaxPrivateVariableSizeInBytes;
+     size_t MaxTotalPrivateVariableSizeInBytes;
++
++    // Optional embedder bias execution policy; zero retains native translation.
++    float CloakfoxMaxTextureLodBias;
+ };
+ 
+ //
+--- a/third_party/angle/src/compiler/translator/ShaderLang.cpp
++++ b/third_party/angle/src/compiler/translator/ShaderLang.cpp
+@@ -367,6 +367,7 @@
+     resources->MaxVariableSizeInBytes             = static_cast<size_t>(2) * 1024 * 1024 * 1024;
+     resources->MaxPrivateVariableSizeInBytes      = static_cast<size_t>(64) * 1024;
+     resources->MaxTotalPrivateVariableSizeInBytes = static_cast<size_t>(16) * 1024 * 1024;
++    resources->CloakfoxMaxTextureLodBias = 0.0f;
+ }
+ 
+ //
+--- a/third_party/angle/src/compiler/translator/Compiler.cpp
++++ b/third_party/angle/src/compiler/translator/Compiler.cpp
+@@ -28,6 +28,7 @@
+ #include "compiler/translator/tree_ops/ClampFragDepth.h"
+ #include "compiler/translator/tree_ops/ClampIndirectIndices.h"
+ #include "compiler/translator/tree_ops/ClampPointSize.h"
++#include "compiler/translator/tree_ops/CloakfoxClampTextureBias.h"
+ #include "compiler/translator/tree_ops/DeclareAndInitBuiltinsForInstancedMultiview.h"
+ #include "compiler/translator/tree_ops/DeferGlobalInitializers.h"
+ #include "compiler/translator/tree_ops/EmulateGLFragColorBroadcast.h"
+@@ -1181,6 +1182,12 @@
+         }
+     }
+ 
++    if (mShaderType == GL_FRAGMENT_SHADER &&
++        !CloakfoxClampTextureBias(this, root, mResources.CloakfoxMaxTextureLodBias))
++    {
++        return false;
++    }
++
+     if (compileOptions.clampPointSize)
+     {
+         if (!ClampPointSize(this, root, mResources.MinPointSize, mResources.MaxPointSize,
+@@ -1350,6 +1357,7 @@
+ 
+     // clang-format off
+     strstream << ":MaxVertexAttribs:" << mResources.MaxVertexAttribs
++        << ":CloakfoxMaxTextureLodBias:" << mResources.CloakfoxMaxTextureLodBias
+         << ":MaxVertexUniformVectors:" << mResources.MaxVertexUniformVectors
+         << ":MaxVaryingVectors:" << mResources.MaxVaryingVectors
+         << ":MaxVertexTextureImageUnits:" << mResources.MaxVertexTextureImageUnits
+--- /dev/null
++++ b/third_party/angle/src/compiler/translator/tree_ops/CloakfoxClampTextureBias.h
+@@ -0,0 +1,83 @@
++// Copyright 2026 The Cloakfox Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef COMPILER_TRANSLATOR_TREEOPS_CLOAKFOXCLAMPTEXTUREBIAS_H_
++#define COMPILER_TRANSLATOR_TREEOPS_CLOAKFOXCLAMPTEXTUREBIAS_H_
++
++#include "compiler/translator/Compiler.h"
++#include "compiler/translator/tree_util/IntermNode_util.h"
++#include "compiler/translator/tree_util/IntermTraverse.h"
++
++#include <cmath>
++
++namespace sh
++{
++namespace cloakfox
++{
++// Use the parsed builtin operator, never its spelling: author overloads,
++// macros, explicit LOD and gradient operations retain their native semantics.
++class TextureBiasClamper final : public TIntermTraverser
++{
++  public:
++    TextureBiasClamper(TCompiler *compiler, float limit)
++        : TIntermTraverser(false, false, true), mCompiler(compiler), mLimit(limit)
++    {}
++
++  private:
++    bool visitAggregate(Visit, TIntermAggregate *node) override
++    {
++        switch (node->getOp())
++        {
++            case EOpTexture2DBias:
++            case EOpTexture2DProjBias:
++            case EOpTextureCubeBias:
++            case EOpTexture3DBias:
++            case EOpTexture3DProjBias:
++            case EOpTextureBias:
++            case EOpTextureProjBias:
++            case EOpTextureOffsetBias:
++            case EOpTextureProjOffsetBias:
++                break;
++            default:
++                return true;
++        }
++
++        auto *arguments = node->getSequence();
++        ASSERT(!arguments->empty());
++        TIntermTyped *bias = arguments->back()->getAsTyped();
++        ASSERT(bias && bias->isScalar() && bias->getBasicType() == EbtFloat);
++
++        const auto constant = [](float value) {
++            auto *data = new TConstantUnion();
++            data->setFConst(value);
++            return new TIntermConstantUnion(data, TType(EbtFloat, EbpHigh, EvqConst));
++        };
++        // Retain the original expression exactly once. Post-order traversal
++        // clamps nested texture calls before moving this argument beneath clamp.
++        TIntermSequence clampArguments = {bias, constant(-mLimit), constant(mLimit)};
++        TIntermTyped *clamped = CreateBuiltInFunctionCallNode(
++            "clamp", &clampArguments, mCompiler->getSymbolTable(), mCompiler->getShaderVersion());
++        clamped->setLine(bias->getLine());
++        arguments->back() = clamped;
++        return true;
++    }
++
++    TCompiler *const mCompiler;
++    const float mLimit;
++};
++}  // namespace cloakfox
++
++inline bool CloakfoxClampTextureBias(TCompiler *compiler, TIntermBlock *root, float limit)
++{
++    if (!(limit > 0.0f) || !std::isfinite(limit))
++    {
++        return true;
++    }
++    cloakfox::TextureBiasClamper traverser(compiler, limit);
++    root->traverse(&traverser);
++    return compiler->validateAST(root);
++}
++}  // namespace sh
++
++#endif

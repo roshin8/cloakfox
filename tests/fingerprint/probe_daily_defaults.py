@@ -40,12 +40,14 @@ return values;
 """
 
 
-def launch(profile, log, *, distro_addons=False, accept_insecure_certs=None):
+def launch(profile, log, *, distro_addons=False, accept_insecure_certs=None, purge_caches=False):
     options = Options()
     options.binary_location = os.environ["CLOAKFOX_BIN"]
     if accept_insecure_certs is not None:
         options.accept_insecure_certs = accept_insecure_certs
     options.add_argument("--headless")
+    if purge_caches:
+        options.add_argument("-purgecaches")
     options.add_argument("-profile")
     options.add_argument(str(profile))
     # Firefox automation otherwise disables Safe Browsing itself.

@@ -78,3 +78,37 @@ test('production measurement refuses a navigation race rather than attributing o
  const r=runtime({windows:[{private:false,gBrowser:{tabs:[tab]}}]});
  await assert.rejects(r.api.measureContainer(7),/navigated during measurement/);
 });
+
+const cases = {
+ 'app-version': {'navigator.appVersion':'Macintosh Firefox/158.0'},
+ 'oscpu-os': {'navigator.oscpu':'Intel Mac OS X'},
+ 'gpu-os': {'webGl:renderer':'Apple M1'},
+ 'gl-renderer': {'webGl:renderer':'GPU A','webGl:parameters':{'7937':'GPU B'}},
+ 'screen-width': {'screen.width':0}, 'available-width':{'screen.availWidth':-1},
+ 'viewport-width': {'window.innerWidth':1000,'window.outerWidth':900},
+ dpr:{'window.devicePixelRatio':0}, 'locale-language':{'locale:language':'de'},
+ 'language-header':{'headers.Accept-Language':'de-DE'}, 'language-tag':{'navigator.language':'not_a_tag'},
+};
+const desktop={...cfg,'navigator.userAgent':'Windows Firefox/158.0','headers.User-Agent':'Windows Firefox/158.0'};
+for (const [code,delta] of Object.entries(cases)) test(`detects missing configuration case ${code}`,()=>{
+ assert.ok(context.inspect({...desktop,...delta}).some(i=>i.code===code));
+});
+test('optional fields, unknown GPUs, reduced appVersion and canonical language aliases are allowed',()=>{
+ const result=context.inspect({...desktop,'navigator.appVersion':'5.0','webGl:renderer':'Unknown GPU',
+ 'navigator.language':'iw-IL','locale:language':'he','locale:region':'IL','headers.Accept-Language':'he-IL, en;q=0.5'});
+ assert.equal(result.filter(i=>i.source==='configuration').length,0);
+});
+test('confirmation cancellation has no writes; accepting retains the exact candidate',async()=>{
+ const api=await import('../../additions/browser/components/cloakfox/CloakfoxInspector.sys.mjs');
+ const prior={...desktop},candidate={...prior,'window.devicePixelRatio':0,'fingerprint:secret':'keep'};
+ let calls=0,writes=0;
+ const save=accept=>{if(api.confirmConsistencyChange(prior,candidate,()=>{calls++;return accept;})){writes++;return candidate;}};
+ assert.equal(save(false),undefined);assert.equal(writes,0);
+ assert.equal(save(true),candidate);assert.equal(writes,1);assert.equal(candidate['fingerprint:secret'],'keep');
+ assert.equal(api.confirmConsistencyChange(candidate,{...candidate},()=>{throw Error('existing conflict must not prompt')}),true);
+ assert.equal(calls,2);
+});
+
+test('missing optional identity fields do not create configuration findings',()=>{
+ assert.equal(context.inspect({'navigator.userAgent':'Windows Firefox/158.0'}).filter(i=>i.source==='configuration').length,0);
+});

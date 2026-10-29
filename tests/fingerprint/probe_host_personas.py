@@ -99,7 +99,7 @@ def main():
                     assert result['seed']!=before['seed']
                     before=result
                     driver.set_context('content')
-                    assert 'Generated and applied' in driver.execute_script("return document.getElementById('cfx-identity-status').textContent")
+                    assert driver.execute_script("return document.querySelector('.profile-preview-label').textContent === 'Applied identity'")
                     assert driver.execute_script("return document.getElementById('cfx-persona-filter').value")==os
                     assert driver.execute_script("return document.getElementById('cfx-regenerate').disabled")
                 driver.get('about:cloakfox?ucid='+str(ucid))

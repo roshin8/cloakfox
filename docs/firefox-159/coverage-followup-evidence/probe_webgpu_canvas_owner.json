@@ -1,0 +1,79 @@
+{
+  "binary": "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/firefox-src/.tools159/acceptance-viewport/Cloakfox.app/Contents/MacOS/cloakfox",
+  "checks": [
+    {
+      "pass": true,
+      "name": "masterTrue: same-owner canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterTrue: same-owner worker canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterTrue: platform refuses cross-process OffscreenCanvas transfer before configure"
+    },
+    {
+      "pass": true,
+      "name": "masterTrue: transferred stale-owner canvas rejected by configure"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: same-owner canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: same-owner worker canvas/device configures"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: platform refuses cross-process OffscreenCanvas transfer before configure"
+    },
+    {
+      "pass": true,
+      "name": "masterFalse: transferred stale-owner canvas native behavior retained"
+    }
+  ],
+  "cases": [
+    {
+      "master": true,
+      "sameOwner": {
+        "configured": true
+      },
+      "worker": {
+        "configured": true
+      },
+      "crossSite": {
+        "cloneError": true
+      },
+      "rotatedOwner": {
+        "configured": false,
+        "message": "GPUCanvasContext.configure: The GPU device does not match this canvas's privacy owner.",
+        "name": "InvalidStateError"
+      }
+    },
+    {
+      "master": false,
+      "sameOwner": {
+        "configured": true
+      },
+      "worker": {
+        "configured": true
+      },
+      "crossSite": {
+        "cloneError": true
+      },
+      "rotatedOwner": {
+        "configured": true
+      }
+    }
+  ],
+  "inconclusive": [],
+  "runtime": {
+    "buildID": "20261027164555",
+    "version": "159.0-beta.1"
+  },
+  "nativeWebGPU": {
+    "configured": true
+  }
+}

@@ -21,6 +21,12 @@ from h3_fixture import create_certificates
 from wire_fixture import TLSFixture
 
 
+def stock_firefox_binary():
+    selected=os.environ.get('FIREFOX_BIN')
+    path=Path(selected) if selected else Path(__file__).resolve().parents[2]/'firefox-src/.tools159/stock159/Firefox.app/Contents/MacOS/firefox'
+    return str(path) if path.is_file() else None
+
+
 def launch_wire_browser(binary, profile, log, preferences=None):
     """Keep profile discovery as well as the browser profile disposable.
 
@@ -45,8 +51,11 @@ def launch_wire_browser(binary, profile, log, preferences=None):
 
 def main():
     report={}
-    binaries={'stock':os.environ.get('FIREFOX_BIN','/Applications/Firefox.app/Contents/MacOS/firefox'),
-              'cloakfox':os.environ['CLOAKFOX_BIN']}
+    reference=stock_firefox_binary()
+    if reference is None:
+        print('INCONCLUSIVE: provide matching owned stock Firefox via FIREFOX_BIN')
+        return 2
+    binaries={'stock':reference,'cloakfox':os.environ['CLOAKFOX_BIN']}
     with tempfile.TemporaryDirectory(prefix='cloakfox-wire-') as temp:
         root=Path(temp)
         ca,cert,key=create_certificates(root,['wire.test'])
@@ -88,6 +97,7 @@ def main():
                         'untrustedRejected':True,'wrongHostRejected':True,'connections':valid}
                 finally:d.quit()
             report['comparison']={
+                'matchingMajorVersion':report['stock']['version'].split('.')[0]==report['cloakfox']['version'].split('.')[0],
                 'tlsEqual':report['stock']['connections'][0]['hello']==report['cloakfox']['connections'][0]['hello'],
                 'h2SettingsEqual':report['stock']['connections'][0]['settings']==report['cloakfox']['connections'][0]['settings'],
                 'h2PseudoHeaderOrderEqual':report['stock']['connections'][0]['pseudoHeaders']==report['cloakfox']['connections'][0]['pseudoHeaders'],
@@ -102,4 +112,4 @@ def main():
             for server in servers:server.close()
 
 
-if __name__=='__main__':main()
+if __name__=='__main__':raise SystemExit(main())

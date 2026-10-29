@@ -1,0 +1,41 @@
+RUN probe_network_identity.py
+{'probe': 'probe_network_identity.py', 'code': 0, 'outcome': 'passed', 'seconds': 4.7}
+RUN probe_realm_privacy.py
+{'probe': 'probe_realm_privacy.py', 'code': 0, 'outcome': 'passed', 'seconds': 4.88}
+RUN probe_language_scopes.py
+{'probe': 'probe_language_scopes.py', 'code': 0, 'outcome': 'passed', 'seconds': 5.42}
+RUN probe_worker_debugger_startup.py
+{'probe': 'probe_worker_debugger_startup.py', 'code': 0, 'outcome': 'passed', 'seconds': 3.63}
+RUN probe_navigator_coherence.py
+{'probe': 'probe_navigator_coherence.py', 'code': 0, 'outcome': 'passed', 'seconds': 13.78}
+RUN probe_webgpu_null_safety.py
+{'probe': 'probe_webgpu_null_safety.py', 'code': 0, 'outcome': 'passed', 'seconds': 7.5}
+RUN probe_site_data_scope.py
+{'probe': 'probe_site_data_scope.py', 'code': 0, 'outcome': 'passed', 'seconds': 7.71}
+RUN probe_site_data_cache_scope.py
+{'probe': 'probe_site_data_cache_scope.py', 'code': 0, 'outcome': 'passed', 'seconds': 2.18}
+RUN probe_about_dialog.py
+{'probe': 'probe_about_dialog.py', 'code': 0, 'outcome': 'passed', 'seconds': 2.37}
+RUN probe_actor_stealth.py
+{'probe': 'probe_actor_stealth.py', 'code': 0, 'outcome': 'passed', 'seconds': 5.64}
+RUN probe_actors.py
+Traceback (most recent call last):
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/run_all.py", line 96, in run_probe
+    code = process.wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.asdf/installs/python/3.12.0/lib/python3.12/subprocess.py", line 2040, in _wait
+    time.sleep(delay)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/cloakfox159-run-headless.py", line 32, in <module>
+    code,text=run_all.run_probe(path,900)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zeus/.codex/worktrees/firefox-159-port/cloakfox/tests/fingerprint/run_all.py", line 116, in run_probe
+    os.killpg(process.pid, signal.SIGKILL)
+PermissionError: [Errno 1] Operation not permitted

@@ -46,7 +46,7 @@ def main():
             driver=webdriver.Firefox(options=options,service=Service(service_args=['--allow-system-access'],log_output=str(report/'gecko.log')))
             driver.set_script_timeout(15)
             observations['browserInfo']=chrome(driver,'return {version:Services.appinfo.version,buildID:Services.appinfo.appBuildID}')
-            assert observations['browserInfo']['version'].startswith('158.'),observations['browserInfo']
+            assert observations['browserInfo']['version'].startswith('159.'),observations['browserInfo']
             chrome(driver,'''const {FileUtils}=ChromeUtils.importESModule('resource://gre/modules/FileUtils.sys.mjs');
               const handler=Services.io.getProtocolHandler('resource').QueryInterface(Ci.nsIResProtocolHandler);
               handler.setSubstitution('locale-scope-fixture',Services.io.newFileURI(new FileUtils.File(arguments[0])));

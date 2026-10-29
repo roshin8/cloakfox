@@ -2,11 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* Cloakfox: per-container fingerprint persona — BrowserForge runtime.
+/* Cloakfox: per-container fingerprint persona — local fpgen/BrowserForge runtime.
  *
  * Each container's master seed deterministically samples a fingerprint
- * from Apify BrowserForge's filtered desktop-Firefox Bayesian network
- * (CloakfoxBayesianNetwork). The sample is a coherent bundle: webGl
+ * from the saved provider's pinned desktop Bayesian network. Missing source
+ * metadata retains BrowserForge; new identities explicitly choose fpgen. The sample is a coherent bundle: webGl
  * renderer matches platform, screen matches devicePixelRatio, etc. —
  * coherence comes for free from the joint distribution.
  *
@@ -22,6 +22,7 @@
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 import { writeNetworkProfile } from "resource:///modules/CloakfoxNetworkProfiles.sys.mjs";
 import { sampleFingerprint, samplePersonaFingerprint } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
+import { sampleFPGenFingerprint } from "resource:///modules/CloakfoxFPGenSampler.sys.mjs";
 import { sampleHostFingerprint } from "resource:///modules/CloakfoxHostPersona.sys.mjs";
 
 // Pin the UA's Firefox version to the build's milestone — BF's pool has
@@ -676,6 +677,11 @@ export function personaOSMode(ucid) {
     `cloakfox.container.${ucid}.persona_os_mode`, "legacy");
   return ["host", "legacy", "windows", "macos", "linux"].includes(mode) ? mode : "legacy";
 }
+export function personaSource(ucid) {
+  const source = ucid === null ? "browserforge" : Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_source`, "browserforge");
+  if (!["fpgen", "browserforge"].includes(source)) throw new Error("Invalid persona source");
+  return source;
+}
 function sampleForMode(prng, mode, hostOS = Services.appinfo.OS) {
   if (mode === "legacy") return sampleFingerprint(prng);
   return sampleHostFingerprint(prng, sampleFingerprint, mode === "host" ? hostOS : mode);
@@ -697,14 +703,35 @@ export function fillPersonaKeys(seedB64, ucid = null, constraints = null) {
   const filters = constraints || (savedVersion === "auto"
     ? { os: savedOS, hardware: savedHardware }
     : { browser: savedBrowser, version: savedVersion, os: savedOS, hardware: savedHardware });
-  let fp = filtered ? samplePersonaFingerprint(prng, filters) : sampleForMode(prng, mode);
+  const source = constraints?.source ?? personaSource(ucid);
+  if (!["fpgen", "browserforge"].includes(source)) throw new Error("Invalid persona source");
+  // Keep BrowserForge's historical PRNG consumption exactly intact. Only the
+  // explicit new provider receives the fully persisted filter tuple.
+  const fpgenOS = rawOS !== "auto" ? rawOS : mode === "host"
+    ? ({WINNT:"windows", Darwin:"macos", Linux:"linux"}[Services.appinfo.OS] || "auto")
+    : mode === "legacy" ? "auto" : mode;
+  const generation = constraints ? {os: constraints.os ?? "auto", hardware: constraints.hardware ?? "auto", browser: constraints.browser ?? "firefox", version: constraints.version ?? "auto"}
+    : {os: fpgenOS, hardware: rawHardware, browser: rawBrowser, version: rawVersion};
+  let fp = source === "fpgen" ? sampleFPGenFingerprint(prng, generation)
+    : filtered ? samplePersonaFingerprint(prng, filters) : sampleForMode(prng, mode);
   if (ucid !== null) {
     const index = Services.prefs.getIntPref(`cloakfox.container.${ucid}.persona_index`, -1);
-    if (!filtered && index >= 0 && index < 30) fp = previewPersona(index, mode);
+    if (source === "browserforge" && !filtered && index >= 0 && index < 30) fp = previewPersona(index, mode);
   }
-  let selectedVersion = filters.version || "auto";
-  if (selectedVersion === "random-recent") selectedVersion = String(parseInt(FIREFOX_VERSION, 10) - Math.floor(prng() * 3));
-  const keys = bfToCloakKeys(fp, prng, selectedVersion === "auto" ? FIREFOX_VERSION : selectedVersion, filters.browser || savedBrowser);
+  let selectedVersion = (source === "fpgen" ? generation.version : filters.version) || "auto";
+  if (source === "fpgen" && generation.browser !== "firefox" &&
+      ["auto", "random-recent"].includes(selectedVersion)) {
+    // The model already samples this family's observed release. Do not derive
+    // Safari/Chrome/Edge versions from Gecko, or invent skipped releases by
+    // subtracting from a major (Safari moved from 18 to 26).
+    const pattern = {chrome: /Chrome\/(\d+)/, edge: /Edg\/(\d+)/, safari: /Version\/(\d+)/}[generation.browser];
+    const observedMajor = pattern?.exec(fp.userAgent || "")?.[1];
+    if (!observedMajor) throw new Error("fpgen: missing observed browser family version");
+    selectedVersion = observedMajor;
+  } else if (selectedVersion === "random-recent") {
+    selectedVersion = String(parseInt(FIREFOX_VERSION, 10) - Math.floor(prng() * 3));
+  }
+  const keys = bfToCloakKeys(fp, prng, selectedVersion === "auto" ? FIREFOX_VERSION : selectedVersion, source === "fpgen" ? generation.browser : filters.browser || savedBrowser);
 
   // Precise/PBO GPU readbacks bypass canvas noise. Explicit opt-out preserves
   // compute compatibility; never perturb numerical application buffers.
