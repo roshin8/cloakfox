@@ -3,7 +3,7 @@ export function initBulkContainerUI(actor) {
   const doc=actor.document, panel=doc.getElementById('container-picker-panel');
   const list=doc.getElementById('picker-identities-list'), newContainer=doc.getElementById('new-container-div');
   if(!panel || !list || !newContainer || doc.getElementById('cfx-bulk-tools'))return;
-  let selecting=false,busy=false,review=null,containers=[];
+  let selecting=false,busy=false,review=null,containers=[],anchor=null,anchorSelected=true;
   const selected=new Set();
   const node=(tag,text)=>{const el=doc.createElement(tag);if(text)el.textContent=text;return el;};
   const style=node('style');
@@ -28,6 +28,7 @@ export function initBulkContainerUI(actor) {
     html[data-cfx-bulk-open] #new-container-div {display:none;}
     html[data-cfx-bulk-open] #picker-identities-list tr td {display:flex;align-items:center;gap:8px;width:100%;}
     html[data-cfx-bulk-open] #picker-identities-list .move-button {display:none;}
+    html[data-cfx-bulk-open] #picker-identities-list tr {user-select:none;}
     .cfx-bulk-check {inline-size:16px;block-size:16px;flex:none;margin:0;pointer-events:none;}
   `;
   doc.head.append(style);
@@ -36,9 +37,9 @@ export function initBulkContainerUI(actor) {
   const controls=node('div');controls.className='cfx-bulk-row';tools.append(controls);
   const button=(text,parent,handler,id)=>{const b=node('button',text);b.type='button';if(id)b.id=id;b.addEventListener('click',handler);parent.append(b);return b;};
   const select=button('Select containers',controls,()=>setSelecting(!selecting),'cfx-bulk-select');
-  const count=node('span');count.setAttribute('aria-live','polite');controls.append(count);
-  const all=button('Select all',controls,()=>{rows().forEach(row=>selected.add(row.dataset.cookieStoreId));sync();},'cfx-bulk-all');
-  const clear=button('Clear',controls,()=>{selected.clear();sync();},'cfx-bulk-clear');
+  const count=node('span');count.title='Shift-click containers to select a range.';count.setAttribute('aria-live','polite');controls.append(count);
+  const all=button('Select all',controls,()=>{anchor=null;rows().forEach(row=>selected.add(row.dataset.cookieStoreId));sync();},'cfx-bulk-all');
+  const clear=button('Clear',controls,()=>{anchor=null;selected.clear();sync();},'cfx-bulk-clear');
   const actions=node('div');actions.className='cfx-bulk-actions';tools.append(actions);
   const proxyForm=node('div');proxyForm.hidden=true;proxyForm.setAttribute('data-fields','');tools.append(proxyForm);
   const reviewForm=node('div');reviewForm.hidden=true;reviewForm.setAttribute('data-fields','');tools.append(reviewForm);
@@ -98,7 +99,7 @@ export function initBulkContainerUI(actor) {
   }),'cfx-bulk-delete-confirm');confirm.className='cfx-danger';
   button('Cancel',deleteButtons,()=>{review=null;reviewForm.hidden=true;});
   function setSelecting(value){
-    selecting=value;selected.clear();review=null;proxyForm.hidden=reviewForm.hidden=true;password.value='';status.textContent='';
+    selecting=value;selected.clear();anchor=null;review=null;proxyForm.hidden=reviewForm.hidden=true;password.value='';status.textContent='';
     doc.documentElement.toggleAttribute('data-cfx-bulk-open',value);sync();
   }
   function sync(){
@@ -121,7 +122,17 @@ export function initBulkContainerUI(actor) {
     if(!selecting||!row||!visible())return;
     if(event.type==='keydown'&&!['Enter',' '].includes(event.key))return;
     event.preventDefault();event.stopImmediatePropagation();if(busy)return;
-    const id=row.dataset.cookieStoreId;selected.has(id)?selected.delete(id):selected.add(id);
+    const id=row.dataset.cookieStoreId;
+    const entries=rows(),start=entries.findIndex(item=>item.dataset.cookieStoreId===anchor),end=entries.indexOf(row);
+    if(event.shiftKey && start>=0){
+      for(const item of entries.slice(Math.min(start,end),Math.max(start,end)+1)){
+        const value=item.dataset.cookieStoreId;
+        anchorSelected?selected.add(value):selected.delete(value);
+      }
+    }else{
+      selected.has(id)?selected.delete(id):selected.add(id);
+      anchor=id;anchorSelected=selected.has(id);
+    }
     review=null;reviewForm.hidden=true;sync();
   }
   doc.addEventListener('click',toggle,true);doc.addEventListener('keydown',toggle,true);

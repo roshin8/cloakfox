@@ -2,6 +2,8 @@
 import json,os,tempfile,zipfile
 from pathlib import Path
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 from probe_daily_defaults import launch
 with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
     root=Path(tmp);profile=root/'profile';profile.mkdir();addon=root/'addon';addon.mkdir()
@@ -9,7 +11,7 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
     (addon/'background.js').write_text('')
     with zipfile.ZipFile(Path(os.environ['CLOAKFOX_BIN']).parents[1]/'Resources/distribution/extensions/@testpilot-containers.xpi') as package:
         (addon/'popup.css').write_bytes(package.read('css/popup.css'))
-    driver=launch(profile,root/'gecko.log')
+    driver=launch(profile,root/'gecko.log',purge_caches=True)
     try:
         driver.set_script_timeout(90)
         ids=driver.execute_script("const s=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService;return ['Source','Target A','Target B','Unselected'].map(n=>s.create(n,'fingerprint','blue').userContextId);")
@@ -24,6 +26,24 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
         wait=WebDriverWait(driver,15)
         wait.until(lambda _:driver.execute_script("return !!document.getElementById('cfx-bulk-select');"))
         driver.find_element('id','cfx-bulk-select').click()
+        def row(index):
+            return driver.find_element('css selector',f'tr[data-cookie-store-id="firefox-container-{ids[index]}"]')
+        def shift_click(index):
+            ActionChains(driver).key_down(Keys.SHIFT).click(row(index)).key_up(Keys.SHIFT).perform()
+        row(0).click()
+        shift_click(3)
+        assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 4, 'Shift-click must select the intervening rows'
+        driver.find_element('id','cfx-bulk-clear').click()
+        row(3).click()
+        shift_click(0)
+        assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 4, 'reverse ranges must work'
+        row(1).click()
+        shift_click(3)
+        assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 1, 'a deselected anchor must clear its range'
+        driver.find_element('id','cfx-bulk-clear').click()
+        shift_click(2)
+        assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 1, 'Clear must reset the range anchor'
+        driver.find_element('id','cfx-bulk-clear').click()
         for i in ids[1:3]:driver.find_element('css selector',f'tr[data-cookie-store-id="firefox-container-{i}"]').click()
         assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 2
         driver.find_element('id','cfx-bulk-apply-open').click()
