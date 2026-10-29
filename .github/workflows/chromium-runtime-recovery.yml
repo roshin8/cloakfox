@@ -60,6 +60,13 @@ jobs:
           run-id: '39026745900'
           github-token: ${{ github.token }}
           path: artifacts/gecko
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          artifact-ids: '12100705023'
+          run-id: '39026745900'
+          github-token: ${{ github.token }}
+          path: evidence/gecko-provenance
       - name: Verify archives against their own immutable producer inputs
         id: verify
         env:
@@ -90,7 +97,17 @@ jobs:
               if any(path==pattern or path.startswith(pattern+'/') or fnmatch.fnmatchcase(path,pattern) for pattern in engine.INPUTS['gecko']):selected.append(entry)
           key=hashlib.sha256(b'cloakfox-native-v1/macos-arm64/gecko\0'+b'\0'.join(selected)).hexdigest()
           assert key=='bb2db43ebb0d6004e4cfed8ee8f9231021aa40bf62fc06d1fa0bee7162a40224'
-          engine.verify(Path('artifacts/gecko'),'gecko',key,sha,'39026745900')
+          import json
+          manifests=list(Path('evidence/gecko-provenance').rglob('engine-artifact.json'))
+          assert len(manifests)==1
+          record=json.loads(manifests[0].read_text())
+          assert record['schema']==1 and record['platform']=='macos-arm64' and record['kind']=='gecko'
+          assert record['key']==key and record['producerSha']==sha and record['producerRun']=='39026745900'
+          dmg=Path('artifacts/gecko/Cloakfox-macos-arm64.dmg')
+          assert not dmg.is_symlink()
+          expected=record['files']['Cloakfox-macos-arm64.dmg']
+          assert expected=={'sha256':engine.digest(dmg),'size':dmg.stat().st_size}
+          print('Verified retained Gecko DMG against its successful engine-gate manifest; other original package inputs are not consumed.')
           PY
           hdiutil attach artifacts/gecko/Cloakfox-macos-arm64.dmg -mountpoint /tmp/coexist-gecko -nobrowse -readonly
           cp -R /tmp/coexist-gecko/Cloakfox.app apps/
