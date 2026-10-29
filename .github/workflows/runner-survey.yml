@@ -3,6 +3,10 @@ name: Browser build runner survey
 on:
   workflow_dispatch:
     inputs:
+      chromium_runtime_recovery:
+        description: Reuse verified built browsers for shutdown and remaining native gates
+        type: boolean
+        default: false
       chromium_sdk_validate:
         description: Build matching pinned client and run required runtime gates from completed SDK
         type: boolean
@@ -58,8 +62,15 @@ permissions:
   contents: read
 
 jobs:
+  chromium-runtime-recovery:
+    if: ${{ inputs.chromium_runtime_recovery }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/chromium-runtime-recovery.yml
+
   chromium-sdk-validation:
-    if: ${{ inputs.chromium_sdk_validate }}
+    if: ${{ !inputs.chromium_runtime_recovery && inputs.chromium_sdk_validate }}
     permissions:
       contents: read
       actions: read
@@ -67,7 +78,7 @@ jobs:
     uses: ./.github/workflows/chromium-sdk-validation.yml
 
   survey:
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && !inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     strategy:
       fail-fast: false
       matrix:
@@ -108,7 +119,7 @@ jobs:
           if-no-files-found: error
 
   chromium-intel-build:
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.chromium_intel_build && !inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     permissions:
       contents: read
       actions: read
@@ -118,7 +129,7 @@ jobs:
       resume-run: ${{ inputs.chromium_resume_run }}
 
   metal-prerequisites:
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.metal_prerequisites_only && !inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     runs-on: macos-26-intel
     timeout-minutes: 30
     steps:
@@ -141,7 +152,7 @@ jobs:
           if-no-files-found: warn
 
   xcrun-setup-diagnostic:
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.xcrun_setup_diagnostic && !inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     strategy:
       fail-fast: false
       matrix:
@@ -185,7 +196,7 @@ jobs:
           if-no-files-found: warn
 
   xcrun-fixed-full-setup:
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.xcrun_verify_fixed && !inputs.checkpoint_roundtrip }}
     runs-on: macos-26-intel
     timeout-minutes: 50
     steps:
@@ -292,7 +303,7 @@ jobs:
           if-no-files-found: warn
 
   checkpoint-roundtrip:
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.checkpoint_roundtrip }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && !inputs.checkout_preflight_only && inputs.checkpoint_roundtrip }}
     permissions:
       contents: read
       actions: read
@@ -300,7 +311,7 @@ jobs:
     uses: ./.github/workflows/checkpoint-roundtrip.yml
 
   checkout-preflight:
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && inputs.checkout_preflight_only }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && !inputs.cache_audit_only && inputs.checkout_preflight_only }}
     permissions:
       contents: read
     uses: ./.github/workflows/chromium-checkout-preflight.yml
@@ -309,7 +320,7 @@ jobs:
       source-key: cc270ce4c2790dc4d2fb295e7721c23321cb3acc4aefa3f934b846eda5d08999
 
   compiler-cache-audit:
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && inputs.cache_audit_only }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && !inputs.module_cache_verify_only && inputs.cache_audit_only }}
     runs-on: macos-26-intel
     timeout-minutes: 15
     steps:
@@ -346,7 +357,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-    if: ${{ !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && inputs.module_cache_verify_only }}
+    if: ${{ !inputs.chromium_runtime_recovery && !inputs.chromium_sdk_validate && !inputs.checkpoint_download_verify_only && inputs.module_cache_verify_only }}
     runs-on: macos-26-intel
     timeout-minutes: 20
     steps:
