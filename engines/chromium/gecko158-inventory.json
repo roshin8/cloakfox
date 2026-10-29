@@ -160,7 +160,9 @@
     "patches/cloakfox-trust-panel-site-data-scope.patch",
     "patches/cloakfox-container-site-cache.patch",
     "patches/cloakfox-container-colors.patch",
-    "patches/cloakfox-quick-container.patch"
+    "patches/cloakfox-quick-container.patch",
+    "patches/cloakfox-container-tab-accents.patch",
+    "patches/cloakfox-container-label-spacing.patch"
   ],
   "preferences": [
     "cloakfox.opt.canvas_render_privacy",
@@ -589,8 +591,10 @@
     "patches/cloakfox-site-data-container-scope.patch": "ceac1908e856815c0f30770d270ab7a4ada73166df6c453199d2a6ee62d7f688",
     "patches/cloakfox-trust-panel-site-data-scope.patch": "062b5cc41655d51a21d3c728caadac90d1249f803e9240e63af5b2cb6ccb34d0",
     "patches/cloakfox-container-site-cache.patch": "e086e7a8063d108f693de320d0e23472dde360040453f56fc68c1b19f6eeb594",
-    "patches/cloakfox-container-colors.patch": "8e499b6aa7c39d54e1163e31cb497e43472f4aac49b412dd36b016292630edf6",
+    "patches/cloakfox-container-colors.patch": "bce2445c83d4c2376e75248070f51cc6304d20c5eec70910d0cfa52eb550fc3c",
     "patches/cloakfox-quick-container.patch": "2ec51d7ad01e85db514332e44d43c3c249f122d819529ead41e288faab059170",
+    "patches/cloakfox-container-tab-accents.patch": "d6cf97c43b458e6db8fdda877e911961068637c79f65e60da9ca18d34325e538",
+    "patches/cloakfox-container-label-spacing.patch": "f879db65d5792df1759be71159f5c8b878a805dbccba12b805dff16090106455",
     "additions/browser/components/cloakfox/CloakfoxAppearance.sys.mjs": "ca73338a1505025e06604f0489dd6eb90db7818807774b463211fc7ed58da297",
     "additions/browser/components/cloakfox/CloakfoxBFNetwork.sys.mjs": "564a9dc342a08c9bfe00de75ba09d62bbb857a870e0ae3f59d10b305bb00d728",
     "additions/browser/components/cloakfox/CloakfoxBayesianNetwork.sys.mjs": "f55d9c3bf2b74f10d2fa8abfedc2a0b00c302ff812ca6d672a98aa90b7b9e9b2",
@@ -629,8 +633,8 @@
     "additions/browser/components/cloakfox/CloakfoxWebRTCSync.sys.mjs": "3bc2ebb9e9750574e998e33e0b79f61fc374183baa8115714153379f43c44e44",
     "additions/browser/components/cloakfox/CloakfoxWorkspaces.sys.mjs": "e93b16ed9b91a752064aea9f82f2681599cd8494c2a8d8b6c03d4aa593ed4c46",
     "additions/browser/components/cloakfox/actors/CloakfoxCoderPadMediaChild.sys.mjs": "f3ec3dfdb85a2bb404d472c7a6d05f740467cf2bc511bf7b28e9572d969a6aba",
-    "additions/browser/components/cloakfox/actors/CloakfoxContainerBulkChild.sys.mjs": "1d6eb2a34a6444b300ef5895c8fc6927d541fd2a1e5aebd6b6b106f883c25037",
-    "additions/browser/components/cloakfox/actors/CloakfoxContainerProxyEditorChild.sys.mjs": "8a6b753acbf363d20ee6ed69e53c9f6d57efc35e11ad69496edc247b4ca7366f",
+    "additions/browser/components/cloakfox/actors/CloakfoxContainerBulkChild.sys.mjs": "ebcfbf87ad70668a2194b58cead1d01c6c101913dbec2850ab46b63a2d1d047e",
+    "additions/browser/components/cloakfox/actors/CloakfoxContainerProxyEditorChild.sys.mjs": "54268a428420577285f5443154358b56a9b8067cd4de232cec2ac4e82fb1a8c2",
     "additions/browser/components/cloakfox/actors/CloakfoxContainerProxyEditorParent.sys.mjs": "dd7dc63efa30611cf82c859900f66d72160b2df0612cd21d3b6f13b1ce19d168",
     "additions/browser/components/cloakfox/actors/CloakfoxContainerTabsChild.sys.mjs": "6176c08b080839d33bf18825fc1627390b62b9b74cb9f88fe0ab2543f88f662e",
     "additions/browser/components/cloakfox/actors/CloakfoxFeatureDetectChild.sys.mjs": "5929a72df2119bbc1cd4ac9be2d3a5b239e47f5a992da4d2d2520ce47ecebbe7",
@@ -679,7 +683,7 @@
     "additions/browser/components/cloakfox/content/tracking-settings.js": "60901a25cfc29f22a1b225f4b9e5ed4f7812d4497fddffe3fd09cdc8c16fdb03",
     "additions/browser/components/cloakfox/content/workspace-settings.js": "6137e3e42919583e845982de72285d0e0b92a3b14e8e5d5d71bfc8ff5c99558d",
     "settings/cloakfox.cfg": "35bacf11d95d8cda0afd31e6fc3a2aa8bfbd3044849a59c1ebeeccc74e4a2912",
-    "patches/order.txt": "0ee1f2402034a43f8b12a6737a4761859626a8f25ece2ef915fad9d20beebd95",
+    "patches/order.txt": "61e029c5d6222616102cee2ac132b3b10ba2857d13aea239cfb023b5d9334ab4",
     "scripts/_mixin.py": "65e504efc33d4b808f668e927662bc0f9a444fdbb87f063131a5a0a374703290"
   }
 }
