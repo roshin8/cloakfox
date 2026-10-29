@@ -1,107 +1,26 @@
-name: Chromium current app and runtime
-
+name: Chromium client with versioned SDK
 on:
   workflow_call:
-
 permissions:
   contents: read
   actions: read
-  checks: write
-
 jobs:
-  engine:
-    uses: ./.github/workflows/chromium-engine.yml
-
-  clients:
-    needs: engine
-    runs-on: macos-26
-    timeout-minutes: 45
+  matching-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
         with:
-          python-version: '3.12.10'
-      - name: Install current app build tools
-        run: brew install cmake ninja
-      - name: Download exact resolved native SDK artifact
-        uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-          artifact-ids: ${{ needs.engine.outputs.artifact-id }}
-          run-id: ${{ needs.engine.outputs.producer-run }}
-          github-token: ${{ github.token }}
-          path: ${{ runner.temp }}/engine-package
-      - name: Verify SDK and compile current patched and control clients
-        env:
-          PRODUCER_SHA: ${{ needs.engine.outputs.producer-sha }}
-          PRODUCER_RUN: ${{ needs.engine.outputs.producer-run }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require the client under review to match the SDK client pin
         run: |
-          python3 -u scripts/ci/chromium_clients.py --package "$RUNNER_TEMP/engine-package" \
-            --root "$RUNNER_TEMP/chromium-clients" --producer-sha "$PRODUCER_SHA" --producer-run "$PRODUCER_RUN"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: chromium-macos-arm64-test-apps
-          path: ${{ runner.temp }}/chromium-clients/chromium-apps.tar.gz
-          if-no-files-found: error
-          retention-days: 7
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: chromium-source-evidence
-          path: ${{ runner.temp }}/chromium-clients/evidence/
-          if-no-files-found: error
-          retention-days: 14
-
-  runtime:
-    needs: clients
-    runs-on: macos-26
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/download-artifact@v4
-        with:
-          name: chromium-macos-arm64-test-apps
-          path: artifacts
-      - uses: actions/download-artifact@v4
-        with:
-          name: chromium-source-evidence
-          path: evidence/source
-      - name: Verify same-commit artifact and embedded source framework
-        run: |
-          mkdir -p apps evidence/runtime
-          python3 scripts/ci/verify_chromium_artifact.py --archive artifacts/chromium-apps.tar.gz --evidence evidence/source --destination apps
-          echo "CLOAKFOX_CHROMIUM_BIN=$PWD/apps/patched-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" >> "$GITHUB_ENV"
-          echo "CLOAKFOX_UNPATCHED_CHROMIUM_BIN=$PWD/apps/baseline-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" >> "$GITHUB_ENV"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install pinned upstream fingerprint library fixtures
-        run: python3 scripts/setup-fingerprint-libraries.py
-      - name: Required CreepJS and FingerprintJS native Chromium audit
-        timeout-minutes: 15
-        run: python3 -u tests/engines/probe_fingerprint_libraries.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report-dir evidence/runtime/library-audit
-      - name: Install owned transport probe dependencies
-        run: python3 -m pip install -r tests/network/requirements-wire.txt
-      - name: Require actual Metal execution
-        run: |
-          python3 scripts/ci/runner_probe.py --output evidence/runtime/runner.json
-          python3 -c 'import json; assert json.load(open("evidence/runtime/runner.json"))["metalAvailable"], "Metal compute unavailable"'
-      - name: Native engine and privacy tests with unpatched control
-        run: |
-          set -o pipefail
-          python3 scripts/ci/run_engine_tests.py 2>&1 | tee evidence/runtime/engine-tests.log
-      - name: Sandbox and storage isolation
-        run: python3 tests/engines/probe_cef_isolation.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report evidence/runtime/isolation.json
-      - name: Owned TCP and QUIC transport and certificate rejection
-        run: python3 tests/engines/probe_cef_transport.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report evidence/runtime/transport.json
-      - name: Preserve actual runtime evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chromium-runtime-evidence
-          path: evidence/runtime/
-          if-no-files-found: error
-          retention-days: 14
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.ci.sdk_client import verify_caller
+          verify_caller(Path.cwd(),json.load(open('engines/chromium/sdk-lock.json')))
+          PY
+  client:
+    needs: matching-client
+    uses: ./.github/workflows/chromium-sdk-validation.yml
