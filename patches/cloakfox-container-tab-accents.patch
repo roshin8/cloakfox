@@ -1,0 +1,67 @@
+--- a/browser/components/contextualidentity/content/usercontext.css
++++ b/browser/components/contextualidentity/content/usercontext.css
+@@ -3,0 +4,2 @@
++
++/* Tab accents use --identity-accent-color independently of readable name/icon colors. */
+@@ -14,0 +17 @@
++  --identity-accent-color: #4385f5;
+@@ -24,0 +28 @@
++  --identity-accent-color: #00a8cb;
+@@ -34,0 +39 @@
++  --identity-accent-color: #00b983;
+@@ -44,0 +50 @@
++  --identity-accent-color: #f2b600;
+@@ -54,0 +61 @@
++  --identity-accent-color: #f98422;
+@@ -64,0 +72 @@
++  --identity-accent-color: #f14c70;
+@@ -74,0 +83 @@
++  --identity-accent-color: #e83ab5;
+@@ -84,0 +94 @@
++  --identity-accent-color: #a650e8;
+@@ -94,0 +105 @@
++  --identity-accent-color: #8055ee;
+@@ -104,0 +116 @@
++  --identity-accent-color: #cc8540;
+@@ -115,0 +128 @@
++  --identity-accent-color: #5279c4;
+@@ -125,0 +139 @@
++  --identity-accent-color: #009e98;
+@@ -135,0 +150 @@
++  --identity-accent-color: #94a922;
+@@ -145,0 +161 @@
++  --identity-accent-color: #c83f73;
+@@ -155,0 +172 @@
++  --identity-accent-color: #ba7c3f;
+@@ -165,0 +183 @@
++  --identity-accent-color: #578fab;
+@@ -175,0 +194 @@
++  --identity-accent-color: #f16f56;
+@@ -185,0 +205 @@
++  --identity-accent-color: #efa24a;
+@@ -195,0 +216 @@
++  --identity-accent-color: #36b780;
+@@ -205,0 +227 @@
++  --identity-accent-color: #48bbd6;
+@@ -215,0 +238 @@
++  --identity-accent-color: #9472d4;
+@@ -225,0 +249 @@
++  --identity-accent-color: #db6ca8;
+@@ -235,0 +260 @@
++  --identity-accent-color: #bca16a;
+@@ -245,0 +271 @@
++  --identity-accent-color: #b75ba7;
+--- a/browser/themes/shared/tabbrowser/tabs.css
++++ b/browser/themes/shared/tabbrowser/tabs.css
+@@ -1187 +1187 @@
+-    background-color: var(--identity-icon-color);
++    background-color: var(--identity-accent-color, var(--identity-icon-color));
+@@ -1206 +1206 @@
+-    background: var(--identity-stroke-color) border-box border-box;
++    background: var(--identity-accent-color, var(--identity-stroke-color)) border-box border-box;
+@@ -1224 +1224 @@
+-    background-image: linear-gradient(to left, transparent, var(--identity-stroke-color) var(--tab-label-mask-size));
++    background-image: linear-gradient(to left, transparent, var(--identity-accent-color, var(--identity-stroke-color)) var(--tab-label-mask-size));
+@@ -1227 +1227 @@
+-      background-image: linear-gradient(to right, transparent, var(--identity-stroke-color) var(--tab-label-mask-size));
++      background-image: linear-gradient(to right, transparent, var(--identity-accent-color, var(--identity-stroke-color)) var(--tab-label-mask-size));

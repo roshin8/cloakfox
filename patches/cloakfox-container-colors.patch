@@ -1,0 +1,384 @@
+--- a/toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs
++++ b/toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs
+@@ -28,2 +28,2 @@
+-    code: "#7c7c7d",
+-    codeNova: "#949297",
++    code: "#e2a16b",
++    codeNova: "#e2a16b",
+@@ -35 +35 @@
+-    codeNova: "#db820e",
++    codeNova: "#e29a3c",
+@@ -41 +41 @@
+-    codeNova: "#f4682c",
++    codeNova: "#f78c5f",
+@@ -46,2 +46,2 @@
+-    code: "#ff613d",
+-    codeNova: "#ed566e",
++    code: "#ff876c",
++    codeNova: "#f38a9b",
+@@ -52,2 +52,2 @@
+-    code: "#ff4bda",
+-    codeNova: "#db54bf",
++    code: "#ff74e3",
++    codeNova: "#e689d3",
+@@ -58,2 +58,2 @@
+-    code: "#af51f5",
+-    codeNova: "#b864ee",
++    code: "#cc90f9",
++    codeNova: "#cd91f3",
+@@ -64,2 +64,2 @@
+-    code: "#764edd",
+-    codeNova: "#9871ff",
++    code: "#b29cec",
++    codeNova: "#b599ff",
+@@ -70,2 +70,2 @@
+-    code: "#37adff",
+-    codeNova: "#5a87fd",
++    code: "#3fb0ff",
++    codeNova: "#85a6fe",
+@@ -77 +77 @@
+-    codeNova: "#10a4ca",
++    codeNova: "#40b6d5",
+@@ -83 +83 @@
+-    codeNova: "#11ae84",
++    codeNova: "#39bc99",
+@@ -84,0 +85,84 @@
++  },
++  {
++    name: "navy",
++    code: "#99a8cd",
++    codeNova: "#99a8cd",
++    l10nId: "user-context-color-navy",
++  },
++  {
++    name: "teal",
++    code: "#6eb5b3",
++    codeNova: "#6eb5b3",
++    l10nId: "user-context-color-teal",
++  },
++  {
++    name: "olive",
++    code: "#9eb14e",
++    codeNova: "#9eb14e",
++    l10nId: "user-context-color-olive",
++  },
++  {
++    name: "burgundy",
++    code: "#d797ab",
++    codeNova: "#d797ab",
++    l10nId: "user-context-color-burgundy",
++  },
++  {
++    name: "brown",
++    code: "#c8a27b",
++    codeNova: "#c8a27b",
++    l10nId: "user-context-color-brown",
++  },
++  {
++    name: "slate",
++    code: "#91aeb7",
++    codeNova: "#91aeb7",
++    l10nId: "user-context-color-slate",
++  },
++  {
++    name: "coral",
++    code: "#ee917e",
++    codeNova: "#ee917e",
++    l10nId: "user-context-color-coral",
++  },
++  {
++    name: "apricot",
++    code: "#e8b673",
++    codeNova: "#e8b673",
++    l10nId: "user-context-color-apricot",
++  },
++  {
++    name: "mint",
++    code: "#79c7a3",
++    codeNova: "#79c7a3",
++    l10nId: "user-context-color-mint",
++  },
++  {
++    name: "ice",
++    code: "#9ad4df",
++    codeNova: "#9ad4df",
++    l10nId: "user-context-color-ice",
++  },
++  {
++    name: "lavender",
++    code: "#b6a6db",
++    codeNova: "#b6a6db",
++    l10nId: "user-context-color-lavender",
++  },
++  {
++    name: "blush",
++    code: "#e8a8cb",
++    codeNova: "#e8a8cb",
++    l10nId: "user-context-color-blush",
++  },
++  {
++    name: "sand",
++    code: "#c7b38c",
++    codeNova: "#c7b38c",
++    l10nId: "user-context-color-sand",
++  },
++  {
++    name: "charcoal",
++    code: "#ed9ad7",
++    codeNova: "#ed9ad7",
++    l10nId: "user-context-color-charcoal",
+--- a/browser/components/contextualidentity/content/usercontext.css
++++ b/browser/components/contextualidentity/content/usercontext.css
+@@ -15,2 +15,2 @@
+-  --identity-tab-color: #37adff;
+-  --identity-icon-color: #37adff;
++  --identity-tab-color: #3fb0ff;
++  --identity-icon-color: #3fb0ff;
+@@ -20 +20 @@
+-    --identity-stroke-color: var(--color-blue-40);
++    --identity-stroke-color: #85a6fe;
+@@ -30 +30 @@
+-    --identity-stroke-color: var(--color-cyan-40);
++    --identity-stroke-color: #40b6d5;
+@@ -40 +40 @@
+-    --identity-stroke-color: var(--color-green-40);
++    --identity-stroke-color: #39bc99;
+@@ -50 +50 @@
+-    --identity-stroke-color: var(--color-yellow-40);
++    --identity-stroke-color: #e29a3c;
+@@ -60 +60 @@
+-    --identity-stroke-color: var(--color-orange-40);
++    --identity-stroke-color: #f78c5f;
+@@ -65,2 +65,2 @@
+-  --identity-tab-color: #ff613d;
+-  --identity-icon-color: #ff613d;
++  --identity-tab-color: #ff876c;
++  --identity-icon-color: #ff876c;
+@@ -70 +70 @@
+-    --identity-stroke-color: var(--color-red-40);
++    --identity-stroke-color: #f38a9b;
+@@ -75,2 +75,2 @@
+-  --identity-tab-color: #ff4bda;
+-  --identity-icon-color: #ff4bda;
++  --identity-tab-color: #ff74e3;
++  --identity-icon-color: #ff74e3;
+@@ -80 +80 @@
+-    --identity-stroke-color: var(--color-pink-40);
++    --identity-stroke-color: #e689d3;
+@@ -85,2 +85,2 @@
+-  --identity-tab-color: #af51f5;
+-  --identity-icon-color: #af51f5;
++  --identity-tab-color: #cc90f9;
++  --identity-icon-color: #cc90f9;
+@@ -90 +90 @@
+-    --identity-stroke-color: var(--color-purple-40);
++    --identity-stroke-color: #cd91f3;
+@@ -95,2 +95,2 @@
+-  --identity-tab-color: #764edd;
+-  --identity-icon-color: #764edd;
++  --identity-tab-color: #b29cec;
++  --identity-icon-color: #b29cec;
+@@ -100 +100 @@
+-    --identity-stroke-color: var(--color-violet-40);
++    --identity-stroke-color: #b599ff;
+@@ -105,2 +105,2 @@
+-  --identity-tab-color: currentColor;
+-  --identity-icon-color: currentColor;
++  --identity-tab-color: #e2a16b;
++  --identity-icon-color: #e2a16b;
+@@ -110 +110,142 @@
+-    --identity-stroke-color: var(--color-gray-40);
++    --identity-stroke-color: #e2a16b;
++  }
++}
++
++/* Additional Cloakfox colors keep separate hues and lightness levels. */
++.identity-color-navy {
++  --identity-tab-color: #99a8cd;
++  --identity-icon-color: #99a8cd;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #526caa;
++    --identity-stroke-color: #99a8cd;
++  }
++}
++
++.identity-color-teal {
++  --identity-tab-color: #6eb5b3;
++  --identity-icon-color: #6eb5b3;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #007d79;
++    --identity-stroke-color: #6eb5b3;
++  }
++}
++
++.identity-color-olive {
++  --identity-tab-color: #9eb14e;
++  --identity-icon-color: #9eb14e;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #879f24;
++    --identity-stroke-color: #9eb14e;
++  }
++}
++
++.identity-color-burgundy {
++  --identity-tab-color: #d797ab;
++  --identity-icon-color: #d797ab;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #b74669;
++    --identity-stroke-color: #d797ab;
++  }
++}
++
++.identity-color-brown {
++  --identity-tab-color: #c8a27b;
++  --identity-icon-color: #c8a27b;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #b07a43;
++    --identity-stroke-color: #c8a27b;
++  }
++}
++
++.identity-color-slate {
++  --identity-tab-color: #91aeb7;
++  --identity-icon-color: #91aeb7;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #608996;
++    --identity-stroke-color: #91aeb7;
++  }
++}
++
++.identity-color-coral {
++  --identity-tab-color: #ee917e;
++  --identity-icon-color: #ee917e;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #ee917e;
++    --identity-stroke-color: #ee917e;
++  }
++}
++
++.identity-color-apricot {
++  --identity-tab-color: #e8b673;
++  --identity-icon-color: #e8b673;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #e8b673;
++    --identity-stroke-color: #e8b673;
++  }
++}
++
++.identity-color-mint {
++  --identity-tab-color: #79c7a3;
++  --identity-icon-color: #79c7a3;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #79c7a3;
++    --identity-stroke-color: #79c7a3;
++  }
++}
++
++.identity-color-ice {
++  --identity-tab-color: #9ad4df;
++  --identity-icon-color: #9ad4df;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #9ad4df;
++    --identity-stroke-color: #9ad4df;
++  }
++}
++
++.identity-color-lavender {
++  --identity-tab-color: #b6a6db;
++  --identity-icon-color: #b6a6db;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #b6a6db;
++    --identity-stroke-color: #b6a6db;
++  }
++}
++
++.identity-color-blush {
++  --identity-tab-color: #e8a8cb;
++  --identity-icon-color: #e8a8cb;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #e8a8cb;
++    --identity-stroke-color: #e8a8cb;
++  }
++}
++
++.identity-color-sand {
++  --identity-tab-color: #c7b38c;
++  --identity-icon-color: #c7b38c;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #c7b38c;
++    --identity-stroke-color: #c7b38c;
++  }
++}
++
++.identity-color-charcoal {
++  --identity-tab-color: #ed9ad7;
++  --identity-icon-color: #ed9ad7;
++
++  @media -moz-pref("browser.nova.enabled") {
++    --identity-fill-color: #525660;
++    --identity-stroke-color: #ed9ad7;
+--- a/toolkit/locales/en-US/toolkit/global/contextual-identity.ftl
++++ b/toolkit/locales/en-US/toolkit/global/contextual-identity.ftl
+@@ -55,0 +56,30 @@
++user-context-color-navy =
++    .label = Navy
++user-context-color-teal =
++    .label = Teal
++user-context-color-olive =
++    .label = Olive
++user-context-color-burgundy =
++    .label = Burgundy
++user-context-color-brown =
++    .label = Brown
++user-context-color-slate =
++    .label = Slate
++
++user-context-color-coral =
++    .label = Coral
++user-context-color-apricot =
++    .label = Apricot
++user-context-color-mint =
++    .label = Mint
++user-context-color-ice =
++    .label = Ice blue
++user-context-color-lavender =
++    .label = Lavender
++user-context-color-blush =
++    .label = Blush
++user-context-color-sand =
++    .label = Sand
++user-context-color-charcoal =
++    .label = Charcoal
++
+--- a/browser/components/enterprisepolicies/schemas/policies-schema.json
++++ b/browser/components/enterprisepolicies/schemas/policies-schema.json
+@@ -797 +797,15 @@
+-                  { "const": "gray", "title": "Gray" }
++                  { "const": "gray", "title": "Gray" },
++                  { "const": "navy", "title": "Navy" },
++                  { "const": "teal", "title": "Teal" },
++                  { "const": "olive", "title": "Olive" },
++                  { "const": "burgundy", "title": "Burgundy" },
++                  { "const": "brown", "title": "Brown" },
++                  { "const": "slate", "title": "Slate" },
++                  { "const": "coral", "title": "Coral" },
++                  { "const": "apricot", "title": "Apricot" },
++                  { "const": "mint", "title": "Mint" },
++                  { "const": "ice", "title": "Ice blue" },
++                  { "const": "lavender", "title": "Lavender" },
++                  { "const": "blush", "title": "Blush" },
++                  { "const": "sand", "title": "Sand" },
++                  { "const": "charcoal", "title": "Charcoal" }
