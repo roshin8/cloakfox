@@ -63,14 +63,29 @@ jobs:
           GITHUB_SHA: d6d7300aa9be16a8dc652ac2c0320ff0f94c8e19
         run: |
           mkdir -p apps
-          python3 scripts/ci/verify_chromium_artifact.py --archive artifacts/chromium/chromium-apps.tar.gz --evidence evidence/source --destination apps
+          python3 - <<'PYCHROMIUM'
+          import importlib.util,json,os,subprocess
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('verify','scripts/ci/verify_chromium_artifact.py')
+          verifier=importlib.util.module_from_spec(spec);spec.loader.exec_module(verifier)
+          print('Runtime checkout:',subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip())
+          print('Recorded app identity:',[(str(p),json.loads(p.read_text()).get('appGitSha')) for p in Path('evidence/source').rglob('source-provenance.json')])
+          verifier.verify(Path('artifacts/chromium/chromium-apps.tar.gz'),Path('evidence/source'),Path('apps'),'d6d7300aa9be16a8dc652ac2c0320ff0f94c8e19')
+          PYCHROMIUM
           python3 - <<'PY'
           import importlib.util
           from pathlib import Path
           spec=importlib.util.spec_from_file_location('engine','scripts/ci/engine_artifact.py')
           engine=importlib.util.module_from_spec(spec);spec.loader.exec_module(engine)
           sha='4d3e0c28d41b194832e62bac2dc595811c32abca'
-          key=engine.input_key(Path.cwd(),'gecko',sha)
+          import hashlib,fnmatch,subprocess
+          entries=subprocess.check_output(['git','ls-tree','-r','-z',sha]).split(b'\0')
+          selected=[]
+          for entry in entries:
+              if not entry:continue
+              path=entry.split(b'\t',1)[1].decode()
+              if any(path==pattern or path.startswith(pattern+'/') or fnmatch.fnmatchcase(path,pattern) for pattern in engine.INPUTS['gecko']):selected.append(entry)
+          key=hashlib.sha256(b'cloakfox-native-v1/macos-arm64/gecko\0'+b'\0'.join(selected)).hexdigest()
           assert key=='bb2db43ebb0d6004e4cfed8ee8f9231021aa40bf62fc06d1fa0bee7162a40224'
           engine.verify(Path('artifacts/gecko'),'gecko',key,sha,'39026745900')
           PY
