@@ -203,3 +203,48 @@ test('clearing all observed overrides restores same owner and seeds without chan
  assert.equal(applied['fingerprint:secret'],base['fingerprint:secret']);
  assert.equal(applied['canvas:seed'],base['canvas:seed']);assert.equal(values.get(prefix+'7'),before);
 });
+
+test('observed compatibility defaults on only for compatible reference owners without an explicit choice',()=>{
+ for(const family of ['intel','amd','nvidia']) {
+  const {context,values,writes}=fixture();const base=pairedConfig(family);
+  values.set('cloakfox.opt.container_rendering_profiles',true);
+  values.set(branch(6)+referenceKey,true);
+  const applied=context.applyOverrides(6,base);
+  assert.equal(applied[observedKey],true);
+  assert.equal(applied['rendering:gpu_profile'].mode,'observed-reference');
+  assert.equal(applied['rendering:gpu_profile'].owner,6);
+  assert.equal(applied['fingerprint:secret'],base['fingerprint:secret']);
+  assert.equal(writes.length,0,'automatic defaults must not become saved overrides');
+  assert.equal(context.applyOverrides(7,base)[observedKey],undefined);
+  values.set(branch(6)+observedKey,false);
+  assert.equal(context.applyOverrides(6,applied)['rendering:gpu_profile'].mode,'reference');
+  assert.equal(context.applyOverrides(6,applied)[observedKey],false);
+  values.delete(branch(6)+observedKey);
+  assert.equal(context.applyOverrides(6,applied)[observedKey],true);
+ }
+});
+test('automatic observed preference reevaluates compatibility and never enables prerequisites',()=>{
+ const {context,values}=fixture();values.set('cloakfox.opt.container_rendering_profiles',true);
+ values.set(branch(6)+referenceKey,true);
+ const active=context.applyOverrides(6,pairedConfig());
+ const apple=context.applyOverrides(6,{...active,...pairedConfig('apple')});
+ assert.equal(apple[observedKey],undefined);
+ assert.equal(apple['rendering:gpu_profile'].mode,'reference');
+ values.set(branch(6)+referenceKey,false);
+ assert.equal(context.applyOverrides(6,active)[observedKey],undefined);
+ values.set('cloakfox.experimental.canvas_pipeline',false);
+ values.set('cloakfox.opt.container_rendering_profiles',false);
+ assert.equal(context.applyOverrides(6,pairedConfig())[observedKey],undefined);
+ assert.equal(values.get('cloakfox.experimental.canvas_pipeline'),false);
+});
+test('real settings control reflects automatic observed admission without saving an override',()=>{
+ const {context,values}=fixture();values.set('cloakfox.opt.container_rendering_profiles',true);
+ values.set(branch(6)+referenceKey,true);
+ const {controls}=renderingControls(context,values);
+ context.refreshContainerRenderingOptions(6,{[observedKey]:true,'rendering:gpu_profile':{mode:'observed-reference'}});
+ assert.equal(controls[2].checked,true);
+ assert.equal(controls[2].disabled,false);
+ assert.equal(values.has(branch(6)+observedKey),false);
+ controls[2].checked=false;controls[2].onchange();
+ assert.equal(values.get(branch(6)+observedKey),false);
+});

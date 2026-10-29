@@ -268,7 +268,21 @@ export function setContainerGPUProfilesEnabled(enabled) {
  * Returns a new object.
  */
 export function applyOverrides(ucid, baseObj, overrides = readOverrides(ucid), allowUnavailable = false) {
-  return applyGraphicsPolicy(applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides })), ucid, allowUnavailable);
+  const config = applyPrivacyPolicy(ucid, applyRegion(ucid, { ...baseObj, ...overrides }));
+  // Defaults are recomputed from the current persona; never persist an automatic
+  // choice as an explicit override or carry it into an incompatible identity.
+  if (!Object.hasOwn(overrides, "rendering:gpu_observed")) {
+    delete config["rendering:gpu_observed"];
+    if (config["rendering:gpu_reference"] === true &&
+        Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false) &&
+        Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) {
+      try {
+        createGPUProfile({ ...config, "rendering:gpu_observed": true }, ucid);
+        config["rendering:gpu_observed"] = true;
+      } catch (_) { /* unsupported observed records retain the existing reference mode */ }
+    }
+  }
+  return applyGraphicsPolicy(config, ucid, allowUnavailable);
 }
 
 /**

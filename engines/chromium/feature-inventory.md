@@ -335,6 +335,7 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-network-follow-identity`
 - `cfx-network-mode`
 - `cfx-network-profile-status`
+- `cfx-observed-gpu-catalog`
 - `cfx-override-count`
 - `cfx-permission-settings`
 - `cfx-persona-choice`

@@ -1084,7 +1084,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const requests = readOverrides(ucid);
     for (const control of document.querySelectorAll("input[data-container-rendering]")) {
       const key = control.dataset.containerRendering;
-      const requested = requests[key] === true;
+      const requested = requests[key] === true ||
+        (key === "rendering:gpu_observed" && !Object.hasOwn(requests, key) && cfg?.[key] === true);
       control.checked = requested;
       // A saved request can always be turned off, including if its dependency
       // became unavailable after an import or external preference change.
