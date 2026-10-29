@@ -41,18 +41,21 @@ jobs:
           PY
       - uses: actions/download-artifact@v4
         with:
+          merge-multiple: true
           artifact-ids: '12917100023'
           run-id: '40915444473'
           github-token: ${{ github.token }}
           path: artifacts/chromium
       - uses: actions/download-artifact@v4
         with:
+          merge-multiple: true
           artifact-ids: '12916476366'
           run-id: '40915444473'
           github-token: ${{ github.token }}
           path: evidence/source
       - uses: actions/download-artifact@v4
         with:
+          merge-multiple: true
           artifact-ids: '12099719951'
           run-id: '39026745900'
           github-token: ${{ github.token }}
