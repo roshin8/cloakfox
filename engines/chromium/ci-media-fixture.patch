@@ -1,0 +1,14 @@
+--- a/engines/chromium/src/browser_client.cc
++++ b/engines/chromium/src/browser_client.cc
+@@ -337,6 +337,11 @@
+       // Use stable feature defaults, matching official CEF distributions.
+       command->AppendSwitch("disable-field-trial-config");
+       if (testKeychain_) command->AppendSwitch("use-mock-keychain");
++      // Give camera-less CI a device so the real permission-denial callback runs.
++      // This is restricted to the explicit probe/test-keychain harness.
++      if (probe_ && testKeychain_) {
++        command->AppendSwitch("use-fake-device-for-media-stream");
++      }
+       if (testQuicPort_) {
+         command->AppendSwitch("enable-quic");
+         command->AppendSwitchWithValue("origin-to-force-quic-on", "127.0.0.1:" + std::to_string(testQuicPort_));
