@@ -3,6 +3,7 @@ import json, os, tempfile
 from pathlib import Path
 from probe_daily_defaults import launch
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.action_chains import ActionChains
 
 def luminance(code):
     values = [int(code[i:i+2], 16) / 255 for i in (1, 3, 5)]
@@ -34,6 +35,16 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-colors-') as temp:
               const identity = cis.create('Palette test', 'circle', arguments[0]);
               return cis.getPublicIdentityFromId(identity.userContextId).color;
             """, color) == color
+        tab_colors = driver.execute_script("""
+          const cis=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService;
+          const identity=cis.create('Accent test','circle','blue');
+          const tab=gBrowser.addTrustedTab('about:blank',{userContextId:identity.userContextId});
+          const s=getComputedStyle(tab.querySelector('.tab-context-line'));
+          return {accent:getComputedStyle(tab).getPropertyValue('--identity-accent-color').trim(),paint:s.backgroundColor+' '+s.backgroundImage,label:cis.getContainerColorCode('blue')};
+        """)
+        assert tab_colors['accent'] == '#4385f5', tab_colors
+        assert '67, 133, 245' in tab_colors['paint'], tab_colors
+        assert tab_colors['label'] == result['codes'][result['names'].index('blue')], tab_colors
         driver.set_context('content')
         driver.get('about:preferences#containers')
         for theme in ['light', 'dark']:
@@ -68,6 +79,25 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-colors-') as temp:
         assert swatches == result['names'], swatches
         for color in EXTRA:
             assert driver.find_element('css selector', f'label[for="edit-container-panel-choose-color-{color}"]').is_displayed(), color
+        layout = driver.execute_script("""
+          const panel=document.getElementById('edit-container-panel');
+          const del=document.getElementById('delete-container-button');
+          const r=del.getBoundingClientRect(),p=panel.getBoundingClientRect();
+          const swatch=color=>getComputedStyle(document.querySelector('label[for="edit-container-panel-choose-color-'+color+'"]'),'::before').fill;
+          return {visible:r.height>0 && r.top>=p.top && r.bottom<=Math.min(p.bottom,innerHeight),gray:swatch('gray'),charcoal:swatch('charcoal'),blue:swatch('blue')};
+        """)
+        assert layout['gray'] == 'rgb(204, 133, 64)', layout
+        assert layout['charcoal'] == 'rgb(183, 91, 167)', layout
+        assert layout['blue'] == 'rgb(67, 133, 245)', layout
+        target=driver.find_element('css selector','label[for="edit-container-panel-choose-color-coral"]')
+        background=lambda:driver.execute_script('return getComputedStyle(arguments[0]).backgroundColor',target)
+        normal=background()
+        ActionChains(driver).move_to_element(target).perform()
+        assert background()!=normal, 'Native hover feedback missing'
+        target.click()
+        assert driver.find_element('id','edit-container-panel-choose-color-coral').is_selected()
+        ActionChains(driver).move_to_element(driver.find_element('id','container-edit-title')).perform()
+        assert background()!=normal, 'Native selected feedback missing'
         driver.save_screenshot('/tmp/cloakfox-container-colors.png')
         print(json.dumps({'passed':True, 'colors':result['names'], 'themes':['light','dark']}))
     finally:

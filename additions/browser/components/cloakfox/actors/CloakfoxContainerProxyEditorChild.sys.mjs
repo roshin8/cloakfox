@@ -30,18 +30,42 @@ export class CloakfoxContainerProxyEditorChild extends JSWindowActorChild {
       }
     `;
     layout.textContent+=`
-      #edit-container-panel-choose-color .usercontext-icon {
-        inline-size:22px;block-size:22px;border-radius:50%;
-        background:var(--identity-icon-color);filter:none;
-        box-shadow:inset 0 0 0 1px rgb(255 255 255 / .2);
+      #edit-container-panel-choose-color .usercontext-icon::before {
+        fill:var(--cfx-swatch-color,var(--identity-icon-color));
       }
+    `;
+    layout.textContent+=`
+      #edit-container-panel-choose-color label[for$="-gray"] { --cfx-swatch-color:#cc8540; }
+      #edit-container-panel-choose-color label[for$="-yellow"] { --cfx-swatch-color:#f2b600; }
+      #edit-container-panel-choose-color label[for$="-orange"] { --cfx-swatch-color:#f98422; }
+      #edit-container-panel-choose-color label[for$="-red"] { --cfx-swatch-color:#f14c70; }
+      #edit-container-panel-choose-color label[for$="-pink"] { --cfx-swatch-color:#e83ab5; }
+      #edit-container-panel-choose-color label[for$="-purple"] { --cfx-swatch-color:#a650e8; }
+      #edit-container-panel-choose-color label[for$="-violet"] { --cfx-swatch-color:#8055ee; }
+      #edit-container-panel-choose-color label[for$="-blue"] { --cfx-swatch-color:#4385f5; }
+      #edit-container-panel-choose-color label[for$="-cyan"] { --cfx-swatch-color:#00a8cb; }
+      #edit-container-panel-choose-color label[for$="-green"] { --cfx-swatch-color:#00b983; }
+      #edit-container-panel-choose-color label[for$="-navy"] { --cfx-swatch-color:#5279c4; }
+      #edit-container-panel-choose-color label[for$="-teal"] { --cfx-swatch-color:#009e98; }
+      #edit-container-panel-choose-color label[for$="-olive"] { --cfx-swatch-color:#94a922; }
+      #edit-container-panel-choose-color label[for$="-burgundy"] { --cfx-swatch-color:#c83f73; }
+      #edit-container-panel-choose-color label[for$="-brown"] { --cfx-swatch-color:#ba7c3f; }
+      #edit-container-panel-choose-color label[for$="-slate"] { --cfx-swatch-color:#578fab; }
+      #edit-container-panel-choose-color label[for$="-coral"] { --cfx-swatch-color:#f16f56; }
+      #edit-container-panel-choose-color label[for$="-apricot"] { --cfx-swatch-color:#efa24a; }
+      #edit-container-panel-choose-color label[for$="-mint"] { --cfx-swatch-color:#36b780; }
+      #edit-container-panel-choose-color label[for$="-ice"] { --cfx-swatch-color:#48bbd6; }
+      #edit-container-panel-choose-color label[for$="-lavender"] { --cfx-swatch-color:#9472d4; }
+      #edit-container-panel-choose-color label[for$="-blush"] { --cfx-swatch-color:#db6ca8; }
+      #edit-container-panel-choose-color label[for$="-sand"] { --cfx-swatch-color:#bca16a; }
+      #edit-container-panel-choose-color label[for$="-charcoal"] { --cfx-swatch-color:#b75ba7; }
     `;
     doc.head.append(layout);
     const palette=doc.getElementById('edit-container-panel-choose-color');
     if(palette){
       const labelColors=()=>{
         for(const input of palette.querySelectorAll('input[type=radio]')){
-          const label=input.value.charAt(0).toUpperCase()+input.value.slice(1);
+          const label=({gray:'Copper',charcoal:'Berry'})[input.value] || input.value.charAt(0).toUpperCase()+input.value.slice(1);
           input.setAttribute('aria-label',label);
           input.parentElement.title=label;
         }

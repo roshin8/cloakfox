@@ -6,8 +6,8 @@
      name: "gray",
 -    code: "#7c7c7d",
 -    codeNova: "#949297",
-+    code: "#d4d4dc",
-+    codeNova: "#d4d4dc",
++    code: "#e2a16b",
++    codeNova: "#e2a16b",
      l10nId: "user-context-color-gray",
    },
    {
@@ -158,8 +158,8 @@
 +  },
 +  {
 +    name: "charcoal",
-+    code: "#edf1f7",
-+    codeNova: "#edf1f7",
++    code: "#ed9ad7",
++    codeNova: "#ed9ad7",
 +    l10nId: "user-context-color-charcoal",
    },
  ];
@@ -273,13 +273,13 @@
  .identity-color-gray {
 -  --identity-tab-color: currentColor;
 -  --identity-icon-color: currentColor;
-+  --identity-tab-color: #d4d4dc;
-+  --identity-icon-color: #d4d4dc;
++  --identity-tab-color: #e2a16b;
++  --identity-icon-color: #e2a16b;
  
    @media -moz-pref("browser.nova.enabled") {
      --identity-fill-color: light-dark(var(--color-gray-60), var(--color-gray-20));
 -    --identity-stroke-color: var(--color-gray-40);
-+    --identity-stroke-color: #d4d4dc;
++    --identity-stroke-color: #e2a16b;
 +  }
 +}
 +
@@ -415,12 +415,12 @@
 +}
 +
 +.identity-color-charcoal {
-+  --identity-tab-color: #edf1f7;
-+  --identity-icon-color: #edf1f7;
++  --identity-tab-color: #ed9ad7;
++  --identity-icon-color: #ed9ad7;
 +
 +  @media -moz-pref("browser.nova.enabled") {
 +    --identity-fill-color: #525660;
-+    --identity-stroke-color: #edf1f7;
++    --identity-stroke-color: #ed9ad7;
    }
  }
  
