@@ -192,6 +192,14 @@ export function needsCfgRebuild(curCfg) {
 }
 
 function ensureContainerSeeds(ucid) {
+  // A missing source on a seeded identity always means BrowserForge. Only
+  // initialize fpgen before this container receives its first secret.
+  if (!Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`, "") &&
+      !Services.prefs.getStringPref(`cloakfox.container.${ucid}.persona_source`, "") &&
+      !Services.prefs.getStringPref(`cloakfox.s.cloak_cfg_${ucid}`, "") &&
+      Services.prefs.getIntPref(`cloakfox.container.${ucid}.persona_index`, -1) === -1) {
+    Services.prefs.setStringPref(`cloakfox.container.${ucid}.persona_source`, "fpgen");
+  }
   // Initialize the mode before generating the first master seed. Existing
   // seeds with no mode are deliberately legacy, including imported v1 backups.
   if (!Services.prefs.getStringPref(`cloakfox.container.${ucid}.math_seed`, "") &&

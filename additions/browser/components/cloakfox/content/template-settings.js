@@ -14,7 +14,7 @@
   };
   const field = (label, tag = 'input') => element(tag, '', element('label', label + ' '));
   element('h2', 'Reusable container templates');
-  element('p', 'Save region, privacy policy, pinned persona, proxy reference and opening pages. Every new container gets fresh fingerprint secrets and empty site storage. Templates exclude cookies, passwords and proxy credentials.');
+  element('p', 'Save generation source and filters, region, privacy policy, pinned persona, proxy reference and opening pages. Every new container gets fresh fingerprint secrets and empty site storage. Templates exclude cookies, passwords and proxy credentials.');
   const choose = field('Template', 'select');
   const name = field('New container or template name'); name.maxLength = 128;
   const opening = field('Opening pages, one HTTP or HTTPS URL per line', 'textarea'); opening.rows = 3;
@@ -40,6 +40,14 @@
     persona.value = String(index);
   }
   mode.addEventListener('change', () => loadPersonas());
+  const source = field('Fresh generation source', 'select');
+  element('option', 'fpgen (preferred)', source).value = 'fpgen';
+  element('option', 'BrowserForge', source).value = 'browserforge';
+  const hardware = field('Graphics family', 'select');
+  for (const value of ['auto','apple','intel','nvidia','amd','software','other']) element('option', value, hardware).value = value;
+  const browser = field('Reported browser', 'select');
+  for (const value of ['firefox','chrome','edge','chromium','safari']) element('option', value, browser).value = value;
+  const version = field('Browser version (auto, random-recent or major number)');
   const summary = element('p');
   const status = element('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   let items = [];
@@ -47,7 +55,12 @@
   const current = () => {
     const item = items.find(record => record.id === choose.value);
     if (!item) throw new Error('Select a template');
-    return { ...item.settings, name: name.value, startPages: pages(), proxyRef: proxy.value || null,
+    return { ...item.settings, version: 2, personaGeneration: {
+      source: Number(persona.value) >= 0 ? 'browserforge' : source.value,
+      os: Number(persona.value) >= 0 || ['legacy','host'].includes(mode.value) ? 'auto' : mode.value,
+      hardware: Number(persona.value) >= 0 ? 'auto' : hardware.value,
+      browser: browser.value, version: version.value,
+    }, name: name.value, startPages: pages(), proxyRef: proxy.value || null,
       proxyRequired: required.checked, temporary: temporary.checked, personaIndex: Number(persona.value), personaOSMode: mode.value };
   };
   function loadFields() {
@@ -56,6 +69,9 @@
     const value = item.settings;
     name.value = value.name; opening.value = value.startPages.join('\n'); required.checked = value.proxyRequired;
     temporary.checked = value.temporary; mode.value = value.personaOSMode || "legacy"; loadPersonas(value.personaIndex);
+    const generation = value.personaGeneration || {source:'browserforge',hardware:'auto',browser:'firefox',version:'auto'};
+    if (generation.os && generation.os !== "auto" && value.personaIndex < 0) mode.value = generation.os;
+    source.value = generation.source; hardware.value = generation.hardware; browser.value = generation.browser; version.value = generation.version;
     proxy.replaceChildren();
     const none = element('option', 'No saved proxy', proxy); none.value = '';
     const catalog = proxies.listProxies();

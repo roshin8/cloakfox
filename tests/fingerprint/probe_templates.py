@@ -103,6 +103,7 @@ Services.prefs.setIntPref('network.proxy.type',0);
             template = chrome(driver, IMPORTS + """
 regions.setRegion(0,{version:1,locale:'de-DE',languages:['de-DE','de'],timezone:'Europe/Berlin',geolocation:null});
 privacy.setPrivacyPolicy(0,{version:1,preset:'compatibility',exceptions:[]});
+Services.prefs.setStringPref('cloakfox.container.0.persona_source','browserforge');
 Services.prefs.setIntPref('cloakfox.container.0.persona_index',5);
 ChromeUtils.importESModule('resource:///modules/CloakfoxSeedSync.sys.mjs').refreshContainerConfig(0);
 return templates.saveTemplate(templates.captureTemplate(0,'Disposable template',[])).settings;

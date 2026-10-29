@@ -21,9 +21,32 @@ export function validateStartPages(pages) {
     return url.href;
   });
 }
+export function validatePersonaGeneration(value) {
+  exact(value, ['source', 'os', 'hardware', 'browser', 'version']);
+  if (!['fpgen', 'browserforge'].includes(value.source) ||
+      !['auto', 'windows', 'macos', 'linux'].includes(value.os) ||
+      !['auto', 'apple', 'intel', 'nvidia', 'amd', 'software', 'other'].includes(value.hardware) ||
+      !['firefox', 'chrome', 'edge', 'chromium', 'safari'].includes(value.browser) ||
+      typeof value.version !== 'string' || !/^(auto|random-recent|[1-9][0-9]{0,2})$/.test(value.version)) {
+    throw new Error('Invalid persona generation settings');
+  }
+  return clone(value);
+}
+export function readPersonaGeneration(id) {
+  const defaults = {source:'browserforge', os:'auto', hardware:'auto', browser:'firefox', version:'auto'};
+  return validatePersonaGeneration(Object.fromEntries(Object.entries(defaults).map(([key, fallback]) =>
+    [key, Services.prefs.getStringPref(`cloakfox.container.${id}.persona_${key}`, fallback)])));
+}
+function legacyPersonaGeneration() {
+  return {source:'browserforge', os:'auto', hardware:'auto', browser:'firefox', version:'auto'};
+}
 export function validateTemplate(value, schemas = nativeSchemas()) {
-  exact(value, KEYS);
-  if (value.version !== 1 || typeof value.name !== 'string' || !value.name.trim() || value.name.length > 128 ||
+  exact(value, [...KEYS, ...(value?.version === 2 ? ['personaGeneration'] : [])]);
+  if (value.version === 2) {
+    validatePersonaGeneration(value.personaGeneration);
+    if (value.personaIndex >= 0 && value.personaGeneration.source !== 'browserforge') throw new Error('Pinned previews require BrowserForge');
+  }
+  if (![1, 2].includes(value.version) || typeof value.name !== 'string' || !value.name.trim() || value.name.length > 128 ||
       !schemas.colors.includes(value.color) || !schemas.icons.includes(value.icon) ||
       typeof value.temporary !== 'boolean' || typeof value.proxyRequired !== 'boolean' ||
       !(value.personaOSMode === undefined || ['host', 'legacy', 'windows', 'macos', 'linux'].includes(value.personaOSMode)) ||
@@ -45,7 +68,7 @@ export function migrateTemplate(value, schemas = nativeSchemas()) {
   return validateTemplate(value, schemas);
 }
 export function templatePresets() {
-  const base = { version: 1, color: 'blue', icon: 'fingerprint', temporary: false, personaIndex: -1, personaOSMode: 'legacy',
+  const base = { version: 2, personaGeneration: {...legacyPersonaGeneration(), source:'fpgen'}, color: 'blue', icon: 'fingerprint', temporary: false, personaIndex: -1, personaOSMode: 'legacy',
     region: null, policy: { version: 1, preset: 'standard', exceptions: [] }, proxyRef: null, proxyRequired: false, startPages: [] };
   return [ { ...clone(base), name: 'Personal browsing' }, { ...clone(base), name: 'Work', color: 'orange', icon: 'briefcase' },
     { ...clone(base), name: 'Temporary research', color: 'gray', temporary: true },
@@ -87,26 +110,28 @@ export function removeTemplate(id, deps = storeDependencies()) {
   deps.write(JSON.stringify(listTemplates(deps).filter(record => record.id !== id)));
 }
 export function exportTemplates(deps = storeDependencies()) {
-  return { format: FORMAT, version: 1, templates: listTemplates(deps).map(record => record.settings) };
+  return { format: FORMAT, version: 2, templates: listTemplates(deps).map(record => record.settings) };
 }
 export function importTemplates(payload, deps = storeDependencies()) {
   exact(payload, ['format', 'version', 'templates']);
-  if (payload.format !== FORMAT || payload.version !== 1 || !Array.isArray(payload.templates) || payload.templates.length > 200 ||
+  if (payload.format !== FORMAT || ![1, 2].includes(payload.version) || !Array.isArray(payload.templates) || payload.templates.length > 200 ||
       JSON.stringify(payload).length > 1024 * 1024) throw new Error('Unsupported template export');
   const records = listTemplates(deps);
   if (records.length + payload.templates.length > 200) throw new Error('Template limit reached');
+  if (payload.version === 1 && payload.templates.some(value => value?.version === 2)) throw new Error('Template export version mismatch');
   const added = payload.templates.map(value => ({ id: deps.uuid(), settings: migrateTemplate(value, deps.schemas) }));
   if (new Set([...records, ...added].map(record => record.id)).size !== records.length + added.length) throw new Error('Template ID collision');
   deps.write(JSON.stringify([...records, ...added]));
   return added;
 }
 export function captureTemplate(id, name, startPages = [], deps = nativeCaptureDependencies()) {
-  return validateTemplate({ version: 1, name, color: deps.identity(id).color, icon: deps.identity(id).icon,
+  return validateTemplate({ version: 2, personaGeneration: deps.personaGeneration?.(id) ?? legacyPersonaGeneration(), name, color: deps.identity(id).color, icon: deps.identity(id).icon,
     temporary: deps.temporary(id), personaIndex: deps.personaIndex(id), personaOSMode: deps.personaOSMode?.(id) ?? "legacy", region: deps.region(id), policy: deps.policy(id),
     proxyRef: deps.proxyRef(id), proxyRequired: deps.networkMode(id) !== 0, startPages }, deps.schemas);
 }
 function nativeCaptureDependencies() {
   return { schemas: nativeSchemas(), identity: id => identities().getPublicIdentityFromId(id) || { color: 'blue', icon: 'fingerprint' },
+    personaGeneration: readPersonaGeneration,
     temporary: id => module('CloakfoxContainerWorkflows').getTemporaryContainers().includes(id),
     personaOSMode: id => Services.prefs.getStringPref(`cloakfox.container.${id}.persona_os_mode`, "legacy"),
     personaIndex: id => Services.prefs.getIntPref(`cloakfox.container.${id}.persona_index`, -1),
@@ -150,6 +175,9 @@ function nativeCreationDependencies(win) {
       if (value.temporary) cis.update(id, value.name, value.icon, value.color);
       Services.prefs.setIntPref(prefix + 'network_mode', 2);
       Services.prefs.setStringPref(prefix + 'persona_os_mode', value.personaOSMode);
+      for (const [key, setting] of Object.entries(value.personaGeneration ?? legacyPersonaGeneration())) {
+        Services.prefs.setStringPref(prefix + 'persona_' + key, setting);
+      }
       for (const key of ['math_seed', 'keyboard_seed', 'timing_seed']) {
         const bytes = crypto.getRandomValues(new Uint8Array(32));
         Services.prefs.setStringPref(prefix + key, btoa(String.fromCharCode(...bytes)));

@@ -23,6 +23,8 @@ EXTRA_JS_MODULES += [
     "CloakfoxDNS.sys.mjs",
     "CloakfoxEngineHost.sys.mjs",
     "CloakfoxEnginePreferences.sys.mjs",
+    "CloakfoxFPGenNetwork.sys.mjs",
+    "CloakfoxFPGenSampler.sys.mjs",
     "CloakfoxGPUCatalog.sys.mjs",
     "CloakfoxGPUProfiles.sys.mjs",
     "CloakfoxGPUReferenceProfiles.sys.mjs",
@@ -106,3 +108,10 @@ FINAL_TARGET_FILES.actors += [
 
 with Files("**"):
     BUG_COMPONENT = ("Firefox", "Cloakfox")
+
+# Pinned full fpgen model, provenance and source license. Runtime sampling is local.
+FINAL_TARGET_FILES.modules += [
+    "fpgen-model-reference.zip",
+    "fpgen-model-source.json",
+    "fpgen-model-LICENSE.txt",
+]

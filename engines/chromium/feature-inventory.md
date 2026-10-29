@@ -344,6 +344,9 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-persona-help`
 - `cfx-persona-os-current`
 - `cfx-persona-similarity`
+- `cfx-persona-source`
+- `cfx-persona-source-current`
+- `cfx-persona-source-help`
 - `cfx-persona-version`
 - `cfx-privacy-settings`
 - `cfx-profile-confidence`

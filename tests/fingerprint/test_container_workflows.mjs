@@ -299,15 +299,19 @@ test('native identity writer persists restoration disclosure alongside unchanged
   ChromeUtils:{importESModule:url=>url.includes('Overrides')?{setOverride(){}}:url.includes('SeedSync')?{refreshContainerConfig:id=>events.push(id)}:
    url.includes('NetworkPolicy')?{setContainerNetwork(){}}:{listProxies:()=>[]}}});
  const source=await readFile(new URL('../../additions/browser/components/cloakfox/CloakfoxContainerWorkflows.sys.mjs',import.meta.url),'utf8');
- vm.runInContext(source.replace(/^export /gm,''),context);
+ vm.runInContext(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),context);
  const payload=fixtureV2(),record=payload.containers[0];record.network={mode:0,proxyURL:'',webrtcMode:0,proxyRef:null};
  const [warning]=backupAppearanceWarnings(payload,'Linux');
+ prefs.set('cloakfox.container.99.persona_source','fpgen');
  context.writeRestoredIdentity(99,record,warning);
+ assert.equal(prefs.get('cloakfox.container.99.persona_source'),'browserforge');
  assert.equal(prefs.get('cloakfox.container.99.restore_appearance_notice'),warning.message);
  assert.equal(prefs.get('cloakfox.container.99.persona_os_mode'),'host');
  for(const [name,value] of Object.entries(record.seeds))assert.equal(prefs.get('cloakfox.container.99.'+name),value);
  assert.deepEqual(events,[99]);
+ Object.assign(record.settings,{persona_source:'fpgen',persona_os:'linux',persona_hardware:'intel',persona_browser:'firefox',persona_version:'159'});
  context.writeRestoredIdentity(100,record);
+ for(const key of ['source','os','hardware','browser','version']) assert.equal(prefs.get('cloakfox.container.100.persona_'+key),record.settings['persona_'+key]);
  assert.equal(prefs.has('cloakfox.container.100.restore_appearance_notice'),false);
 });
 
@@ -350,4 +354,19 @@ test('OS-specific generation modes survive backup validation', () => {
     const data=fixtureV2();data.containers[0].settings.persona_os_mode=mode;
     assert.deepEqual(validateIdentityBackup(data,schemasV2),data);
   }
+});
+
+
+test('v3 backup strictly persists provider and filters with encrypted version binding', async () => {
+ const value=fixture();value.version=3;value.sourceOS='linux';const record=value.containers[0];
+ Object.assign(record,{region:null,policy:{version:1,preset:'standard',exceptions:[]},startPages:[]});record.network.proxyRef=null;
+ Object.assign(record.settings,{persona_os_mode:'legacy',persona_source:'fpgen',persona_os:'linux',persona_hardware:'intel',persona_browser:'firefox',persona_version:'159'});
+ const extended={...schemas,region:x=>x,policy:x=>x,startPages:x=>x};
+ assert.deepEqual(validateIdentityBackup(value,extended),value);
+ const envelope=await encryptIdentityBackup(value,'a sufficiently long password',webcrypto);
+ assert.equal(envelope.version,3);assert.deepEqual(await decryptIdentityBackup(envelope,'a sufficiently long password',webcrypto),value);
+ for(const [key,bad] of [['persona_source','bad'],['persona_os','android'],['persona_hardware','secret'],['persona_browser','other'],['persona_version','all']]) {
+  const invalid=structuredClone(value);invalid.containers[0].settings[key]=bad;assert.throws(()=>validateIdentityBackup(invalid,extended));
+ }
+ const old=fixture();old.containers[0].settings.persona_source='fpgen';assert.throws(()=>validateIdentityBackup(old,extended));
 });

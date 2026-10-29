@@ -7,7 +7,7 @@ import { validateRegion } from '../../additions/browser/components/cloakfox/Cloa
 import { validatePrivacyPolicy } from '../../additions/browser/components/cloakfox/CloakfoxPrivacyPolicy.sys.mjs';
 const schemas = { colors: ['blue', 'gray', 'orange', 'purple'], icons: ['fingerprint', 'briefcase'], region: validateRegion,
   policy: validatePrivacyPolicy };
-const fixture = () => templatePresets()[0];
+const fixture = () => { const {personaGeneration, ...value} = templatePresets()[0]; return {...value, version:1}; };
 function store() {
   let saved = '[]', count = 0;
   return { schemas, read: () => saved, write: value => { saved = value; }, uuid: () => 'template-' + ++count };
@@ -160,4 +160,28 @@ test('template mode preserves legacy pins and gives new presets mixed OS mode',(
 
 test('templates retain explicit generation operating systems', () => {
   for (const mode of ['windows','macos','linux']) assert.equal(validateTemplate({...fixture(),personaOSMode:mode},schemas).personaOSMode,mode);
+});
+
+
+test('version 2 templates retain provider and generation filters and reject malformed fields', () => {
+ const generation={source:'fpgen',os:'linux',hardware:'intel',browser:'firefox',version:'159'};
+ const value={...fixture(),version:2,personaGeneration:generation};
+ assert.deepEqual(validateTemplate(value,schemas).personaGeneration,generation);
+ for(const change of [{source:'other'},{os:'mobile'},{hardware:'bad'},{browser:'opera'},{version:'evil'},{secret:'captured'}]) {
+  assert.throws(()=>validateTemplate({...value,personaGeneration:{...generation,...change}},schemas));
+ }
+ const deps=store();saveTemplate(value,deps); const payload=exportTemplates(deps);
+ assert.equal(payload.version,2);assert.deepEqual(importTemplates(payload,deps)[0].settings.personaGeneration,generation);
+ assert.throws(()=>importTemplates({...payload,version:1},deps));
+ assert.equal(captureTemplate(7,'existing',[],{schemas,identity:()=>({color:'blue',icon:'fingerprint'}),temporary:()=>false,personaIndex:()=>-1,region:()=>null,policy:()=>fixture().policy,proxyRef:()=>null,networkMode:()=>0}).personaGeneration.source,'browserforge');
+});
+
+test('capture reads generation settings from the selected owner and creation persists them',async()=>{
+ const generation={source:'fpgen',os:'linux',hardware:'intel',browser:'firefox',version:'159'};
+ const owner=[];
+ const record=captureTemplate(17,'selected',[],{schemas,identity:()=>({color:'blue',icon:'fingerprint'}),temporary:()=>false,personaIndex:()=>-1,personaGeneration:id=>{owner.push(id);return generation;},region:()=>null,policy:()=>fixture().policy,proxyRef:()=>null,networkMode:()=>0});
+ assert.deepEqual(owner,[17]);assert.deepEqual(record.personaGeneration,generation);record.personaGeneration.hardware='amd';assert.equal(generation.hardware,'intel');
+ let initialized;
+ await createFromTemplate(record,null,{schemas,hasProxy:()=>true,create:()=>18,initialize:(_id,value)=>{initialized=value;},save(){},remove(){},open(){}});
+ assert.deepEqual(initialized.personaGeneration,record.personaGeneration);
 });
