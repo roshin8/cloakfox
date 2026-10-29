@@ -10,19 +10,19 @@ The SDK validation prerelease is a validation input, not a release-ready browser
 
 ## Running validation
 
-On the CI branch, use the existing entry point:
+After merging, recheck the preserved SDK apps on main:
 
 ```sh
-gh workflow run runner-survey.yml --ref codex/chromium-intel-build -f chromium_sdk_validate=true
+gh workflow run chromium-runtime-recovery.yml --ref main
 ```
 
-The reusable `chromium-sdk-validation.yml` also has a direct manual entry once registered by GitHub. The old survey/recovery workflows remain available for historical recovery; they are not dependencies of client validation. The Chromium source workflow is separate and opt-in. A missing or incompatible SDK fails the client job; it never triggers an engine rebuild.
+To rebuild only the matching clients against the saved SDK, use `gh workflow run chromium-sdk-validation.yml --ref main`. The old survey/recovery workflows remain available for historical recovery; they are not dependencies of client validation. The Chromium source workflow is separate and opt-in. A missing or incompatible SDK fails the client job; it never triggers an engine rebuild.
 
 ## Updating inputs
 
 For client changes compatible with this SDK, pin a reviewed client commit in the lock. The manifest retains its original `sdkSourceRevision`; the verifier compares committed native patch/recipe inputs between that revision and the new client revision. Client-only changes can reuse the SDK; added or changed native patches/recipes fail closed. Ordinary CI additionally checks that the code and tests under review match the client pin, so a frozen older snapshot cannot make unrelated changes appear green. When native engine patches or the native API change, produce a new SDK version, retain the old one, and update the SDK lock and matching client together. Do not package an old compiled engine under a new source identity.
 
-SDK publication happens once per engine version. Normal client builds download it; they do not require a fresh upload from a developer's mounted volume. These workflow changes are on the CI branch. Main is not merged or modified; promoting them to main is a separate review. They do not incorporate unrelated development work from this checkout.
+SDK publication happens once per engine version. Normal client builds download it; they do not require a fresh upload from a developer's mounted volume. The CI integration preserves the newer application source and isolates the historical test fixtures from the current main test suite.
 
 The workflow preserves built apps before runtime checks, and uploads evidence even on failure. Required checks cover C++ tests, actual Metal, upstream fingerprint libraries, the complete matching engine/privacy suite with unpatched control, sandbox/storage, TCP/QUIC/TLS certificate rejection, and dual-engine coexistence. Independent checks continue after another check fails; the job stays failed.
 
