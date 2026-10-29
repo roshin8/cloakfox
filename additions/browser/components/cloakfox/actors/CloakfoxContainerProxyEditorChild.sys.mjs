@@ -34,6 +34,15 @@ export class CloakfoxContainerProxyEditorChild extends JSWindowActorChild {
       }
     `;
     layout.textContent+=`
+      html:has(#edit-container-panel:not(.hide)),html:has(#edit-container-panel:not(.hide)) body {block-size:600px;min-block-size:600px;max-block-size:600px;}
+      #edit-container-panel {block-size:600px;min-block-size:0;max-block-size:600px;}
+      #edit-container-panel > * {flex-shrink:0;}
+      #edit-container-panel .edit-form {flex:0;padding-block:8px;}
+      #edit-container-panel fieldset {padding-block-end:8px;}
+      #edit-container-panel .radio-container {block-size:28px;}
+      #edit-container-panel .moz-vpn-controller-content {padding-block:8px;}
+      #edit-container-panel .collapsible-content > .flx-row.flx-space-between {padding-block-start:6px;}
+      #edit-container-panel .moz-vpn-cta {margin-block-start:8px;}
       #edit-container-panel-choose-color label[for$="-gray"] { --cfx-swatch-color:#cc8540; }
       #edit-container-panel-choose-color label[for$="-yellow"] { --cfx-swatch-color:#f2b600; }
       #edit-container-panel-choose-color label[for$="-orange"] { --cfx-swatch-color:#f98422; }
