@@ -1,6 +1,7 @@
 /* MPL-2.0: top-level site-bound noise; callable on document or worker threads. */
 #pragma once
 #include "CloakfoxSiteSeedCore.hpp"
+#include "CloakfoxSiteSeedCache.hpp"
 #include "MaskConfig.hpp"
 #include "ScopedNSSTypes.h"
 #include "mozilla/dom/Document.h"
@@ -30,9 +31,15 @@ inline nsICookieJarSettings* SettingsForGlobal(nsIGlobalObject* global) {
 // MaskConfig's legacy ucid=0 API means "ambient container". Noise keys must
 // instead address the owning container exactly, including the default one,
 // even when layout runs while a different container has the current JS realm.
+inline std::shared_ptr<ConfigSnapshot> ExactSnapshot(uint32_t ucid) {
+  // Worker and main threads never share mutable cache state. Read the current
+  // exact-owner overlay every time; deletion, rotation and policy edits replace
+  // the snapshot atomically within this thread, including default owner zero.
+  static thread_local SiteSeedCache cache;
+  return cache.Get(ucid, ::CloakConfigOverlay_Get(ucid));
+}
 inline nlohmann::json ExactConfig(uint32_t ucid) {
-  auto cfg = nlohmann::json::parse(::CloakConfigOverlay_Get(ucid), nullptr, false);
-  return cfg.is_object() ? cfg : nlohmann::json::object();
+  return ExactSnapshot(ucid)->Config();
 }
 inline std::optional<uint32_t> BaseSeed(uint32_t ucid, const char* vector) {
   const auto cfg = ExactConfig(ucid);
@@ -81,7 +88,8 @@ inline bool PolicyAllows(const nlohmann::json& cfg, const char* vector,
 inline uint32_t Derive(uint32_t ucid, const char* vector,
                        nsICookieJarSettings* settings, const char* policyVector = nullptr) {
   if (!settings) return 0;
-  const auto cfg = ExactConfig(ucid);
+  const auto snapshot = ExactSnapshot(ucid);
+  const auto& cfg = snapshot->Config();
   const char* gate = policyVector ? policyVector :
     (std::string(vector) == "canvas:seed" ? "canvas" :
      std::string(vector) == "audio:seed" ? "audio" : vector);
@@ -99,13 +107,15 @@ inline uint32_t Derive(uint32_t ucid, const char* vector,
   if (secretValue == cfg.end() || !secretValue->is_string()) return 0;
   const auto secret = secretValue->get<std::string>();
   if (input.empty() || !ValidSecret(secret)) return 0;
-  mozilla::HMAC hmac;
-  if (NS_FAILED(hmac.Begin(SEC_OID_SHA256,
-      mozilla::Span(reinterpret_cast<const uint8_t*>(secret.data()), secret.size()))) ||
-      NS_FAILED(hmac.Update(reinterpret_cast<const uint8_t*>(input.data()), input.size()))) return 0;
-  nsTArray<uint8_t> digest;
-  if (NS_FAILED(hmac.End(digest)) || digest.Length() != 32) return 0;
-  return SeedFromDigest(digest.Elements());
+  return snapshot->Seed(input, [&]() -> uint32_t {
+    mozilla::HMAC hmac;
+    if (NS_FAILED(hmac.Begin(SEC_OID_SHA256,
+        mozilla::Span(reinterpret_cast<const uint8_t*>(secret.data()), secret.size()))) ||
+        NS_FAILED(hmac.Update(reinterpret_cast<const uint8_t*>(input.data()), input.size()))) return 0;
+    nsTArray<uint8_t> digest;
+    if (NS_FAILED(hmac.End(digest)) || digest.Length() != 32) return 0;
+    return SeedFromDigest(digest.Elements());
+  });
 }
 inline std::optional<std::array<uint64_t, 2>> OwnerKey(
     uint32_t ucid, nsICookieJarSettings* settings) {

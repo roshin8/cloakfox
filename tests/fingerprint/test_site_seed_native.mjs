@@ -34,11 +34,13 @@ int main() {
 
 test('native exact-container cfg lookup keeps ucid zero independent of ambient JS', () => {
   const source=readFileSync(new URL('../../additions/cloakcfg/CloakfoxSiteSeed.hpp',import.meta.url),'utf8');
-  const helpers=source.slice(source.indexOf('inline nlohmann::json ExactConfig'),source.indexOf('// Invalid policy data'));
+  const helpers=source.slice(source.indexOf('// MaskConfig\'s legacy'),source.indexOf('// Invalid policy data'));
   const dir=mkdtempSync(`${tmpdir()}/cloakfox-exact-config-`);
   const include=fileURLToPath(new URL('../../additions/cloakcfg',import.meta.url));
   try {
     writeFileSync(`${dir}/test.cpp`, `#include "json.hpp"
+#include "CloakfoxSiteSeedCache.hpp"
+using namespace CloakfoxSiteSeed;
 #include <cassert>
 #include <optional>
 #include <cstdint>
