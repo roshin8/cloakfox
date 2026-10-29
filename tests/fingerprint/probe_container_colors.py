@@ -86,6 +86,13 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-colors-') as temp:
           const swatch=color=>getComputedStyle(document.querySelector('label[for="edit-container-panel-choose-color-'+color+'"]'),'::before').fill;
           return {visible:r.height>0 && r.top>=p.top && r.bottom<=Math.min(p.bottom,innerHeight),gray:swatch('gray'),charcoal:swatch('charcoal'),blue:swatch('blue')};
         """)
+        assert layout['visible'], layout
+        assert driver.execute_script("""
+          const p=document.getElementById('edit-container-panel');
+          const proxy=document.getElementById('advanced-proxy-settings-btn').getBoundingClientRect();
+          const del=document.getElementById('delete-container-button').getBoundingClientRect();
+          return !document.getElementById('cfx-container-edit-scroll') && p.scrollHeight<=p.clientHeight && proxy.bottom<=del.top && del.bottom<=600;
+        """), 'Editor must fit proxy and original delete button without scrolling'
         assert layout['gray'] == 'rgb(204, 133, 64)', layout
         assert layout['charcoal'] == 'rgb(183, 91, 167)', layout
         assert layout['blue'] == 'rgb(67, 133, 245)', layout
