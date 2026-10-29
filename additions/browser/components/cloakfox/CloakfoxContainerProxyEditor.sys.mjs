@@ -61,7 +61,7 @@ export async function macProxyStorage() {
   const db=await ExtensionStorageIDB.open(ExtensionStorageIDB.getStoragePrincipal(extension));
   return {extension,db,ExtensionStorageIDB};
 }
-function resolveContainer(data) {
+export function resolveContainer(data) {
   const {ContextualIdentityService:service}=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs');
   const identities=service.getPublicIdentities().map(identity=>({
     cookieStoreId:`firefox-container-${identity.userContextId}`,

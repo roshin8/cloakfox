@@ -5,6 +5,7 @@ export class CloakfoxContainerProxyEditorChild extends JSWindowActorChild {
     if (doc.nodePrincipal.addonId!=='@testpilot-containers' ||
         new URL(doc.documentURI).pathname!=='/popup.html' || doc.getElementById('cfx-mac-auth')) return;
     ChromeUtils.importESModule('resource:///actors/CloakfoxContainerBulkChild.sys.mjs').initBulkContainerUI(this);
+    ChromeUtils.importESModule('resource:///actors/CloakfoxContainerTabsChild.sys.mjs').initContainerTabSelection(this);
     const panel=doc.getElementById('advanced-proxy-settings-panel');
     const form=panel?.querySelector('.advanced-proxy-panel-content');
     const apply=doc.getElementById('submit-advanced-proxy');
@@ -160,5 +161,5 @@ export class CloakfoxContainerProxyEditorChild extends JSWindowActorChild {
     this.observer.observe(panel,{attributes:true,attributeFilter:['class']});
     if(visible())void load();
   }
-  didDestroy(){this.observer?.disconnect();this.paletteObserver?.disconnect();this.bulkCleanup?.();}
+  didDestroy(){this.observer?.disconnect();this.paletteObserver?.disconnect();this.bulkCleanup?.();this.tabSelectionCleanup?.();}
 }
