@@ -1,3 +1,4 @@
+import {createReferenceGPUProfile} from './CloakfoxGPUReferenceProfiles.sys.mjs';
 /* MPL-2.0: privileged, owner-bound coherent GPU capability descriptors. */
 import {GPU_PROFILE_CATALOG, GPU_PROFILE_REQUIREMENTS, GPU_PROFILE_CATALOG_VERSION} from './CloakfoxGPUCatalog.sys.mjs';
 export function gpuFamily(renderer) {
@@ -33,6 +34,7 @@ export function eligibleGPUProfiles(config, family) {
   }).map(profile=>profile.id);
 }
 export function createGPUProfile(config, owner) {
+  if (config['rendering:gpu_reference'] === true) return createReferenceGPUProfile(config, owner);
   if (!Number.isInteger(owner) || owner < 0 || owner > 0xffffffff) throw new Error('GPU profile requires an exact container owner');
   const renderer = config['webGl:renderer'], vendor = config['webGl:vendor'];
   const family = typeof renderer === 'string' && gpuFamily(renderer);

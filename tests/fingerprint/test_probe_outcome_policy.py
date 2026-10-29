@@ -10,6 +10,12 @@ spec.loader.exec_module(runner)
 
 
 class ProbeOutcomePolicy(unittest.TestCase):
+    def test_diagnostic_baseline_is_separate_from_new_native_acceptance(self):
+        selected = {p.name for p in runner.discover()}
+        self.assertNotIn('probe_canonical_geometry_readiness.py', selected)
+        self.assertIn('probe_canonical_geometry.py', selected)
+        self.assertIn('probe_gpu_reference_profiles.py', selected)
+
     def test_inconclusive_is_failure_unless_exact_unexpired_allowance(self):
         today = datetime.date(2026, 10, 15)
         entry = {'probe': 'probe_example.py', 'platform': 'linux',

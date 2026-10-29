@@ -1,0 +1,101 @@
+diff --git a/src/libANGLE/Constants.h b/src/libANGLE/Constants.h
+index 62d983b..eaea47e 100644
+--- a/src/libANGLE/Constants.h
++++ b/src/libANGLE/Constants.h
+@@ -45,11 +45,11 @@ enum
+ 
+     // GL_EXT_geometry_shader increases the minimum value of GL_MAX_COMBINED_UNIFORM_BLOCKS to 36.
+     // GL_EXT_tessellation_shader increases the minimum value to 60.
+-    IMPLEMENTATION_MAX_COMBINED_SHADER_UNIFORM_BUFFERS = 60,
++    IMPLEMENTATION_MAX_COMBINED_SHADER_UNIFORM_BUFFERS = 96,
+ 
+     // GL_EXT_geometry_shader increases the minimum value of GL_MAX_UNIFORM_BUFFER_BINDINGS to 48.
+     // GL_EXT_tessellation_shader increases the minimum value to 72.
+-    IMPLEMENTATION_MAX_UNIFORM_BUFFER_BINDINGS = 72,
++    IMPLEMENTATION_MAX_UNIFORM_BUFFER_BINDINGS = 96,
+ 
+     // Transform feedback limits set to the minimum required by the spec.
+     IMPLEMENTATION_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS = 128,
+@@ -73,8 +73,8 @@ enum
+ 
+     IMPLEMENTATION_MAX_SHADER_TEXTURES = 32,
+ 
+-    // In ES 3.1 and below, the limit for active textures is 64.
+-    IMPLEMENTATION_MAX_ES31_ACTIVE_TEXTURES = 64,
++    // Canonical CPU storage uses the full ActiveTextureArray in ES 3.1 too.
++    IMPLEMENTATION_MAX_ES31_ACTIVE_TEXTURES = 96,
+ 
+     // In ES 3.2 we need to support a minimum of 96 maximum textures, but some Android
+     // apps assume more are available without querying limits first.
+diff --git a/src/libANGLE/angletypes.h b/src/libANGLE/angletypes.h
+index cec8f64..d075792 100644
+--- a/src/libANGLE/angletypes.h
++++ b/src/libANGLE/angletypes.h
+@@ -588,10 +588,12 @@ using AttributesMask = angle::BitSet<MAX_VERTEX_ATTRIBS>;
+ using BufferBindingMask = angle::BitSet<MAX_VERTEX_ATTRIB_BINDINGS>;
+ 
+ // Used in Program
+-static_assert(IMPLEMENTATION_MAX_SHADER_STORAGE_BUFFER_BINDINGS >
+-                  IMPLEMENTATION_MAX_COMBINED_SHADER_UNIFORM_BUFFERS,
+-              "maxCombinedShaderStorageBlocks must be greater than maxCombinedUniformBlocks");
+-using ProgramBufferBlockMask  = angle::BitSet<IMPLEMENTATION_MAX_SHADER_STORAGE_BUFFER_BINDINGS>;
++// Uniform and storage descriptors have independent limits. Size the shared
++// dirty-block mask for both, including canonical CPU uniform block expansion.
++using ProgramBufferBlockMask = angle::BitSet<
++    (IMPLEMENTATION_MAX_SHADER_STORAGE_BUFFER_BINDINGS > IMPLEMENTATION_MAX_COMBINED_SHADER_UNIFORM_BUFFERS
++         ? IMPLEMENTATION_MAX_SHADER_STORAGE_BUFFER_BINDINGS
++         : IMPLEMENTATION_MAX_COMBINED_SHADER_UNIFORM_BUFFERS)>;
+ using ProgramUniformBlockMask = ProgramBufferBlockMask;
+ using ProgramStorageBlockMask = ProgramBufferBlockMask;
+ template <typename T>
+diff --git a/src/libANGLE/renderer/vulkan/ShaderVk.cpp b/src/libANGLE/renderer/vulkan/ShaderVk.cpp
+index 352282e..4e25cd3 100644
+--- a/src/libANGLE/renderer/vulkan/ShaderVk.cpp
++++ b/src/libANGLE/renderer/vulkan/ShaderVk.cpp
+@@ -70,10 +70,10 @@ std::shared_ptr<ShaderTranslateTask> ShaderVk::compile(const gl::Context *contex
+         options->addAdvancedBlendEquationsEmulation = true;
+     }
+ 
+-    if (!contextVk->getFeatures().enablePrecisionQualifiers.enabled)
+-    {
+-        options->ignorePrecisionQualifiers = true;
+-    }
++    // The separately named canonical CPU backend executes all qualifiers at
++    // full32-bit precision. Do not emit RelaxedPrecision decorations that
++    // permit lower precision instructions while advertising IEEEfloat caps.
++    options->ignorePrecisionQualifiers = true;
+ 
+     if (contextVk->getFeatures().clampFragDepth.enabled)
+     {
+diff --git a/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp b/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
+index 45ad108..b5761f9 100644
+--- a/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
++++ b/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
+@@ -705,19 +705,19 @@ void Renderer::ensureCapsInitialized() const
+     // Looks like all floats are IEEE according to the docs here:
+     // https://www.khronos.org/registry/vulkan/specs/1.0-wsi_extensions/html/vkspec.html#spirvenv-precision-operation
+     mNativeCaps.vertexHighpFloat.setIEEEFloat();
+-    mNativeCaps.vertexMediumpFloat.setIEEEHalfFloat();
+-    mNativeCaps.vertexLowpFloat.setIEEEHalfFloat();
++    mNativeCaps.vertexMediumpFloat.setIEEEFloat();
++    mNativeCaps.vertexLowpFloat.setIEEEFloat();
+     mNativeCaps.fragmentHighpFloat.setIEEEFloat();
+-    mNativeCaps.fragmentMediumpFloat.setIEEEHalfFloat();
+-    mNativeCaps.fragmentLowpFloat.setIEEEHalfFloat();
++    mNativeCaps.fragmentMediumpFloat.setIEEEFloat();
++    mNativeCaps.fragmentLowpFloat.setIEEEFloat();
+ 
+     // Vulkan doesn't provide such information.  We provide the spec-required minimum here.
+     mNativeCaps.vertexHighpInt.setTwosComplementInt(32);
+-    mNativeCaps.vertexMediumpInt.setTwosComplementInt(16);
+-    mNativeCaps.vertexLowpInt.setTwosComplementInt(16);
++    mNativeCaps.vertexMediumpInt.setTwosComplementInt(32);
++    mNativeCaps.vertexLowpInt.setTwosComplementInt(32);
+     mNativeCaps.fragmentHighpInt.setTwosComplementInt(32);
+-    mNativeCaps.fragmentMediumpInt.setTwosComplementInt(16);
+-    mNativeCaps.fragmentLowpInt.setTwosComplementInt(16);
++    mNativeCaps.fragmentMediumpInt.setTwosComplementInt(32);
++    mNativeCaps.fragmentLowpInt.setTwosComplementInt(32);
+ 
+     // Compute shader limits.
+     mNativeCaps.maxComputeWorkGroupCount[0] = rx::LimitToInt(limitsVk.maxComputeWorkGroupCount[0]);

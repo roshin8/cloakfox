@@ -1,0 +1,18 @@
+diff --git a/layout/painting/nsCSSRendering.cpp b/layout/painting/nsCSSRendering.cpp
+--- a/layout/painting/nsCSSRendering.cpp
++++ b/layout/painting/nsCSSRendering.cpp
+@@ -3704,9 +3704,13 @@
+ // Either returns true if it was successful, or false if something went wrong
+ static bool GetSkFontFromGfxFont(DrawTarget& aDrawTarget, gfxFont* aFont,
+                                  SkFont& aSkFont) {
+   RefPtr<ScaledFont> scaledFont = aFont->GetScaledFont(&aDrawTarget);
+-  if (!scaledFont) {
++  if (!scaledFont || scaledFont->IsCanonicalFont()) {
++    // CanonicalScaledFont derives directly from ScaledFont, not ScaledFontBase.
++    // Its glyphs still use the canonical painter; decoration skip-ink takes
++    // the caller's ordinary line-paint fallback instead of accessing a native
++    // SkTypeface through an invalid downcast.
+     return false;
+   }
+ 
+   ScaledFontBase* fontBase = static_cast<ScaledFontBase*>(scaledFont.get());

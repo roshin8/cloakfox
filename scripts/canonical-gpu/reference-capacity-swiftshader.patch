@@ -1,0 +1,668 @@
+diff --git a/src/Device/Blitter.cpp b/src/Device/Blitter.cpp
+index c4316e5..4b92c8f 100644
+--- a/src/Device/Blitter.cpp
++++ b/src/Device/Blitter.cpp
+@@ -2124,7 +2124,13 @@ bool Blitter::fastResolve(const vk::Image *src, vk::Image *dst, VkImageResolve2K
+ 	uint8_t *dest = reinterpret_cast<uint8_t *>(dst->getTexelPointer({ 0, 0, 0 }, dstSubresource));
+ 
+ 	auto format = src->getFormat();
++	// The byte-average fast path is specialized for exactly four samples.
++	// Other supported counts must use the generic all-sample resolver.
+ 	auto samples = src->getSampleCount();
++	if(samples != 4)
++	{
++		return false;
++	}
+ 	auto extent = src->getExtent();
+ 
+ 	int width = extent.width;
+diff --git a/src/Device/Config.hpp b/src/Device/Config.hpp
+index d030354..bbfabdb 100644
+--- a/src/Device/Config.hpp
++++ b/src/Device/Config.hpp
+@@ -17,7 +17,7 @@
+ 
+ namespace sw {
+ 
+-constexpr int OUTLINE_RESOLUTION = 8192;  // Maximum vertical resolution of the render target
++constexpr int OUTLINE_RESOLUTION = 16384;  // Maximum vertical resolution of the render target
+ constexpr int MIPMAP_LEVELS = 15;
+ constexpr int MAX_CLIP_DISTANCES = 8;
+ constexpr int MAX_CULL_DISTANCES = 8;
+@@ -25,9 +25,10 @@ constexpr int MIN_TEXEL_OFFSET = -8;
+ constexpr int MAX_TEXEL_OFFSET = 7;
+ constexpr int MAX_TEXTURE_LOD = MIPMAP_LEVELS - 2;  // Trilinear accesses lod+1
+ constexpr int MAX_COLOR_BUFFERS = 8;
+-constexpr int MAX_INTERFACE_COMPONENTS = 32 * 4;  // Must be multiple of 4 for 16-byte alignment.
++constexpr int MAX_MULTISAMPLE_COUNT = 8;
++constexpr int MAX_INTERFACE_COMPONENTS = 33 * 4;  // Must be multiple of 4 for 16-byte alignment.
+ constexpr int MAX_FRAMEBUFFER_DIM = OUTLINE_RESOLUTION;
+-constexpr int MAX_VIEWPORT_DIM = MAX_FRAMEBUFFER_DIM;
++constexpr int MAX_VIEWPORT_DIM = 32767;
+ 
+ }  // namespace sw
+ 
+diff --git a/src/Device/Context.cpp b/src/Device/Context.cpp
+index ee753ba..08cdf28 100644
+--- a/src/Device/Context.cpp
++++ b/src/Device/Context.cpp
+@@ -506,6 +506,12 @@ void MultisampleState::set(const VkPipelineMultisampleStateCreateInfo *multisamp
+ 	case VK_SAMPLE_COUNT_1_BIT:
+ 		sampleCount = 1;
+ 		break;
++	case VK_SAMPLE_COUNT_8_BIT:
++		sampleCount = 8;
++		break;
++	case VK_SAMPLE_COUNT_2_BIT:
++		sampleCount = 2;
++		break;
+ 	case VK_SAMPLE_COUNT_4_BIT:
+ 		sampleCount = 4;
+ 		break;
+diff --git a/src/Device/QuadRasterizer.cpp b/src/Device/QuadRasterizer.cpp
+index f9f3c8f..27bc922 100644
+--- a/src/Device/QuadRasterizer.cpp
++++ b/src/Device/QuadRasterizer.cpp
+@@ -134,7 +134,7 @@ void QuadRasterizer::rasterize(Int &yMin, Int &yMax)
+ 
+ 				if(state.enableMultiSampling)
+ 				{
+-					y += SIMD::Float(*Pointer<Float>(constants + OFFSET(Constants, SampleLocationsY) + q * sizeof(float)));
++					y += SIMD::Float(*Pointer<Float>(constants + OFFSET(Constants, SampleLocationsY) + (state.multiSampleCount + q) * sizeof(float)));
+ 				}
+ 
+ 				Dz[q] = SIMD::Float(*Pointer<Float>(primitive + OFFSET(Primitive, z.C))) + y * SIMD::Float(*Pointer<Float>(primitive + OFFSET(Primitive, z.B)));
+@@ -178,8 +178,8 @@ void QuadRasterizer::rasterize(Int &yMin, Int &yMax)
+ 				}
+ 			}
+ 
+-			Short4 xLeft[4];
+-			Short4 xRight[4];
++			Short4 xLeft[MAX_MULTISAMPLE_COUNT];
++			Short4 xRight[MAX_MULTISAMPLE_COUNT];
+ 
+ 			for(unsigned int q = 0; q < state.multiSampleCount; q++)
+ 			{
+@@ -193,7 +193,7 @@ void QuadRasterizer::rasterize(Int &yMin, Int &yMax)
+ 			For(Int x = x0, x < x1, x += 2)
+ 			{
+ 				Short4 xxxx = Short4(x);
+-				Int cMask[4];
++				Int cMask[MAX_MULTISAMPLE_COUNT];
+ 
+ 				for(unsigned int q = 0; q < state.multiSampleCount; q++)
+ 				{
+diff --git a/src/Device/QuadRasterizer.hpp b/src/Device/QuadRasterizer.hpp
+index 16399e0..fda076a 100644
+--- a/src/Device/QuadRasterizer.hpp
++++ b/src/Device/QuadRasterizer.hpp
+@@ -39,7 +39,7 @@ protected:
+ 	SIMD::Float yFragment;
+ 
+ 	// B * y + C term of interpolants plane equations
+-	SIMD::Float Dz[4];
++	SIMD::Float Dz[MAX_MULTISAMPLE_COUNT];
+ 	SIMD::Float Dw;
+ 	SIMD::Float Dv[MAX_INTERFACE_COMPONENTS];
+ 	SIMD::Float Df;
+@@ -48,7 +48,7 @@ protected:
+ 
+ 	UInt occlusion;
+ 
+-	virtual void quad(Pointer<Byte> cBuffer[4], Pointer<Byte> &zBuffer, Pointer<Byte> &sBuffer, Int cMask[4], Int &x, Int &y) = 0;
++	virtual void quad(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Pointer<Byte> &zBuffer, Pointer<Byte> &sBuffer, Int cMask[MAX_MULTISAMPLE_COUNT], Int &x, Int &y) = 0;
+ 
+ 	bool interpolateZ() const;
+ 	bool interpolateW() const;
+diff --git a/src/Device/Renderer.cpp b/src/Device/Renderer.cpp
+index 4d072b0..5a9ba93 100644
+--- a/src/Device/Renderer.cpp
++++ b/src/Device/Renderer.cpp
+@@ -388,27 +388,6 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
+ 
+ 		data->factor = pixelProcessor.factor;
+ 
+-		if(pixelState.alphaToCoverage)
+-		{
+-			if(ms == 4)
+-			{
+-				data->a2c0 = 0.2f;
+-				data->a2c1 = 0.4f;
+-				data->a2c2 = 0.6f;
+-				data->a2c3 = 0.8f;
+-			}
+-			else if(ms == 2)
+-			{
+-				data->a2c0 = 0.25f;
+-				data->a2c1 = 0.75f;
+-			}
+-			else if(ms == 1)
+-			{
+-				data->a2c0 = 0.5f;
+-			}
+-			else
+-				ASSERT(false);
+-		}
+ 
+ 		if(pixelState.occlusionEnabled)
+ 		{
+diff --git a/src/Device/SetupProcessor.hpp b/src/Device/SetupProcessor.hpp
+index 95a075f..b809a2d 100644
+--- a/src/Device/SetupProcessor.hpp
++++ b/src/Device/SetupProcessor.hpp
+@@ -54,7 +54,7 @@ public:
+ 		bool interpolateW : 1;
+ 		VkFrontFace frontFace : BITS(VK_FRONT_FACE_MAX_ENUM);
+ 		VkCullModeFlags cullMode : BITS(VK_CULL_MODE_FLAG_BITS_MAX_ENUM);
+-		unsigned int multiSampleCount : 3;  // 1, 2 or 4
++		unsigned int multiSampleCount : 4;  // 1, 2, 4 or 8
+ 		bool enableMultiSampling : 1;
+ 		unsigned int numClipDistances : 4;  // [0 - 8]
+ 		unsigned int numCullDistances : 4;  // [0 - 8]
+diff --git a/src/Pipeline/Constants.cpp b/src/Pipeline/Constants.cpp
+index 6535272..7b9659b 100644
+--- a/src/Pipeline/Constants.cpp
++++ b/src/Pipeline/Constants.cpp
+@@ -275,8 +275,10 @@ Constants::Constants()
+ 		sRGBtoLinearFF_FF00[i] = (unsigned short)(sRGBtoLinear((float)i / 0xFF) * 0xFF00 + 0.5f);
+ 	}
+ 
+-	for(int q = 0; q < 4; q++)
++	for(int q = 0; q < 2 * MAX_MULTISAMPLE_COUNT; q++)
+ 	{
++		SampleLocationsX[q] = VkSampleLocations[q][0] - 0.5f;
++		SampleLocationsY[q] = VkSampleLocations[q][1] - 0.5f;
+ 		for(int c = 0; c < 16; c++)
+ 		{
+ 			for(int i = 0; i < 4; i++)
+@@ -290,11 +292,11 @@ Constants::Constants()
+ 
+ 	constexpr auto subPixB = vk::SUBPIXEL_PRECISION_BITS;
+ 
+-	const int Xf[4] = { toFixedPoint(SampleLocationsX[0], subPixB), toFixedPoint(SampleLocationsX[1], subPixB), toFixedPoint(SampleLocationsX[2], subPixB), toFixedPoint(SampleLocationsX[3], subPixB) };
+-	const int Yf[4] = { toFixedPoint(SampleLocationsY[0], subPixB), toFixedPoint(SampleLocationsY[1], subPixB), toFixedPoint(SampleLocationsY[2], subPixB), toFixedPoint(SampleLocationsY[3], subPixB) };
+-
+-	memcpy(&this->Xf, &Xf, sizeof(Xf));
+-	memcpy(&this->Yf, &Yf, sizeof(Yf));
++	for(int q = 0; q < 2 * MAX_MULTISAMPLE_COUNT; q++)
++	{
++		Xf[q] = toFixedPoint(SampleLocationsX[q], subPixB);
++		Yf[q] = toFixedPoint(SampleLocationsY[q], subPixB);
++	}
+ 
+ 	for(int i = 0; i <= 0xFFFF; i++)
+ 	{
+diff --git a/src/Pipeline/Constants.hpp b/src/Pipeline/Constants.hpp
+index ab410f6..c8267ee 100644
+--- a/src/Pipeline/Constants.hpp
++++ b/src/Pipeline/Constants.hpp
+@@ -21,35 +21,25 @@
+ 
+ namespace sw {
+ 
+-// VK_SAMPLE_COUNT_4_BIT
+-// https://www.khronos.org/registry/vulkan/specs/1.1/html/vkspec.html#primsrast-multisampling
+-static constexpr float VkSampleLocations4[][2] = {
+-	{ 0.375, 0.125 },
+-	{ 0.875, 0.375 },
+-	{ 0.125, 0.625 },
+-	{ 0.625, 0.875 },
++// Standard Vulkan locations. The count is also the row offset, so 1/2/4/8
++// sample modes retain their own positions instead of aliasing the four-sample grid.
++static constexpr float VkSampleLocations[2 * MAX_MULTISAMPLE_COUNT][2] = {
++    { 0.5f, 0.5f }, { 0.5f, 0.5f },
++    { 0.75f, 0.75f }, { 0.25f, 0.25f },
++    { 0.375f, 0.125f }, { 0.875f, 0.375f },
++    { 0.125f, 0.625f }, { 0.625f, 0.875f },
++    { 0.5625f, 0.3125f }, { 0.4375f, 0.6875f },
++    { 0.8125f, 0.5625f }, { 0.3125f, 0.1875f },
++    { 0.1875f, 0.8125f }, { 0.0625f, 0.4375f },
++    { 0.6875f, 0.9375f }, { 0.9375f, 0.0625f },
+ };
+-
+-// Vulkan spec sample positions are relative to 0,0 in top left corner, with Y+ going down.
+-// Convert to our space, with 0,0 in center, and Y+ going up.
+-static constexpr float SampleLocationsX[4] = {
+-	VkSampleLocations4[0][0] - 0.5f,
+-	VkSampleLocations4[1][0] - 0.5f,
+-	VkSampleLocations4[2][0] - 0.5f,
+-	VkSampleLocations4[3][0] - 0.5f,
+-};
+-
+-static constexpr float SampleLocationsY[4] = {
+-	VkSampleLocations4[0][1] - 0.5f,
+-	VkSampleLocations4[1][1] - 0.5f,
+-	VkSampleLocations4[2][1] - 0.5f,
+-	VkSampleLocations4[3][1] - 0.5f,
+-};
+-
+-// Compute the yMin and yMax multisample offsets so that they are just
+-// large enough (+/- max range - epsilon) to include sample points
+-static constexpr int yMinMultiSampleOffset = sw::toFixedPoint(1, vk::SUBPIXEL_PRECISION_BITS) - sw::toFixedPoint(sw::max(SampleLocationsY[0], SampleLocationsY[1], SampleLocationsY[2], SampleLocationsY[3]), vk::SUBPIXEL_PRECISION_BITS) - 1;
+-static constexpr int yMaxMultiSampleOffset = sw::toFixedPoint(1, vk::SUBPIXEL_PRECISION_BITS) + sw::toFixedPoint(sw::max(SampleLocationsY[0], SampleLocationsY[1], SampleLocationsY[2], SampleLocationsY[3]), vk::SUBPIXEL_PRECISION_BITS) - 1;
++static constexpr float sampleLocation(int count, int sample, int axis)
++{
++    return VkSampleLocations[count + sample][axis] - 0.5f;
++}
++// Include every supported grid, including the outer +/-7/16 eight-sample points.
++static constexpr int yMinMultiSampleOffset = sw::toFixedPoint(1.0f - 0.4375f, vk::SUBPIXEL_PRECISION_BITS) - 1;
++static constexpr int yMaxMultiSampleOffset = sw::toFixedPoint(1.0f + 0.4375f, vk::SUBPIXEL_PRECISION_BITS) - 1;
+ 
+ struct Constants
+ {
+@@ -109,27 +99,16 @@ struct Constants
+ 	unsigned short sRGBtoLinearFF_FF00[256];
+ 
+ 	// Centroid parameters
+-	float4 sampleX[4][16];
+-	float4 sampleY[4][16];
++	float4 sampleX[2 * MAX_MULTISAMPLE_COUNT][16];
++	float4 sampleY[2 * MAX_MULTISAMPLE_COUNT][16];
+ 	float4 weight[16];
+ 
+ 	// Fragment offsets
+-	int Xf[4];
+-	int Yf[4];
+-
+-	const float SampleLocationsX[4] = {
+-		sw::SampleLocationsX[0],
+-		sw::SampleLocationsX[1],
+-		sw::SampleLocationsX[2],
+-		sw::SampleLocationsX[3],
+-	};
+-
+-	const float SampleLocationsY[4] = {
+-		sw::SampleLocationsY[0],
+-		sw::SampleLocationsY[1],
+-		sw::SampleLocationsY[2],
+-		sw::SampleLocationsY[3],
+-	};
++	int Xf[2 * MAX_MULTISAMPLE_COUNT];
++	int Yf[2 * MAX_MULTISAMPLE_COUNT];
++
++	float SampleLocationsX[2 * MAX_MULTISAMPLE_COUNT];
++	float SampleLocationsY[2 * MAX_MULTISAMPLE_COUNT];
+ 
+ 	float half2float[65536];
+ };
+diff --git a/src/Pipeline/PixelProgram.cpp b/src/Pipeline/PixelProgram.cpp
+index 9ed1d53..3301f7a 100644
+--- a/src/Pipeline/PixelProgram.cpp
++++ b/src/Pipeline/PixelProgram.cpp
+@@ -33,7 +33,7 @@ PixelProgram::PixelProgram(
+ }
+ 
+ // Union all cMask and return it as Booleans
+-SIMD::Int PixelProgram::maskAny(Int cMask[4], const SampleSet &samples)
++SIMD::Int PixelProgram::maskAny(Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	// See if at least 1 sample is used
+ 	Int maskUnion = 0;
+@@ -50,7 +50,7 @@ SIMD::Int PixelProgram::maskAny(Int cMask[4], const SampleSet &samples)
+ }
+ 
+ // Union all cMask/sMask/zMask and return it as Booleans
+-SIMD::Int PixelProgram::maskAny(Int cMask[4], Int sMask[4], Int zMask[4], const SampleSet &samples)
++SIMD::Int PixelProgram::maskAny(Int cMask[MAX_MULTISAMPLE_COUNT], Int sMask[MAX_MULTISAMPLE_COUNT], Int zMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	// See if at least 1 sample is used
+ 	Int maskUnion = 0;
+@@ -66,7 +66,7 @@ SIMD::Int PixelProgram::maskAny(Int cMask[4], Int sMask[4], Int zMask[4], const
+ 	return mask;
+ }
+ 
+-void PixelProgram::setBuiltins(Int &x, Int &y, SIMD::Float (&z)[4], SIMD::Float &w, Int cMask[4], const SampleSet &samples)
++void PixelProgram::setBuiltins(Int &x, Int &y, SIMD::Float (&z)[MAX_MULTISAMPLE_COUNT], SIMD::Float &w, Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	routine.setImmutableInputBuiltins(spirvShader);
+ 
+@@ -82,8 +82,8 @@ void PixelProgram::setBuiltins(Int &x, Int &y, SIMD::Float (&z)[4], SIMD::Float
+ 	//  the x and y components of FragCoord reflect the location of the center of the fragment."
+ 	if(state.sampleShadingEnabled && state.multiSampleCount > 1)
+ 	{
+-		x0 = VkSampleLocations4[samples[0]][0];
+-		y0 = VkSampleLocations4[samples[0]][1];
++		x0 = VkSampleLocations[state.multiSampleCount + samples[0]][0];
++		y0 = VkSampleLocations[state.multiSampleCount + samples[0]][1];
+ 		x1 = 1.0f + x0;
+ 		y1 = 1.0f + y0;
+ 	}
+@@ -135,7 +135,7 @@ void PixelProgram::setBuiltins(Int &x, Int &y, SIMD::Float (&z)[4], SIMD::Float
+ 	});
+ }
+ 
+-void PixelProgram::executeShader(Int cMask[4], Int sMask[4], Int zMask[4], const SampleSet &samples)
++void PixelProgram::executeShader(Int cMask[MAX_MULTISAMPLE_COUNT], Int sMask[MAX_MULTISAMPLE_COUNT], Int zMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	routine.device = device;
+ 	routine.descriptorSets = data + OFFSET(DrawData, descriptorSets);
+@@ -187,9 +187,9 @@ void PixelProgram::executeShader(Int cMask[4], Int sMask[4], Int zMask[4], const
+ 		ASSERT(samples.size() == 1);
+ 		int sampleId = samples[0];
+ 		routine.getVariable(it->second.Id)[it->second.FirstComponent + 0] =
+-		    SIMD::Float((state.multiSampleCount > 1) ? VkSampleLocations4[sampleId][0] : 0.5f);
++		    SIMD::Float((state.multiSampleCount > 1) ? VkSampleLocations[state.multiSampleCount + sampleId][0] : 0.5f);
+ 		routine.getVariable(it->second.Id)[it->second.FirstComponent + 1] =
+-		    SIMD::Float((state.multiSampleCount > 1) ? VkSampleLocations4[sampleId][1] : 0.5f);
++		    SIMD::Float((state.multiSampleCount > 1) ? VkSampleLocations[state.multiSampleCount + sampleId][1] : 0.5f);
+ 	}
+ 
+ 	// Note: all lanes initially active to facilitate derivatives etc. Actual coverage is
+@@ -240,7 +240,7 @@ void PixelProgram::executeShader(Int cMask[4], Int sMask[4], Int zMask[4], const
+ 	}
+ }
+ 
+-Bool PixelProgram::alphaTest(Int cMask[4], const SampleSet &samples)
++Bool PixelProgram::alphaTest(Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	if(!state.alphaToCoverage)
+ 	{
+@@ -258,7 +258,7 @@ Bool PixelProgram::alphaTest(Int cMask[4], const SampleSet &samples)
+ 	return pass != 0x0;
+ }
+ 
+-void PixelProgram::blendColor(Pointer<Byte> cBuffer[4], Int &x, Int sMask[4], Int zMask[4], Int cMask[4], const SampleSet &samples)
++void PixelProgram::blendColor(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Int &x, Int sMask[MAX_MULTISAMPLE_COUNT], Int zMask[MAX_MULTISAMPLE_COUNT], Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	for(int index = 0; index < MAX_COLOR_BUFFERS; index++)
+ 	{
+diff --git a/src/Pipeline/PixelProgram.hpp b/src/Pipeline/PixelProgram.hpp
+index b02708d..b967ed3 100644
+--- a/src/Pipeline/PixelProgram.hpp
++++ b/src/Pipeline/PixelProgram.hpp
+@@ -32,10 +32,10 @@ public:
+ 	virtual ~PixelProgram() {}
+ 
+ protected:
+-	virtual void setBuiltins(Int &x, Int &y, SIMD::Float (&z)[4], SIMD::Float &w, Int cMask[4], const SampleSet &samples);
+-	virtual void executeShader(Int cMask[4], Int sMask[4], Int zMask[4], const SampleSet &samples);
+-	virtual Bool alphaTest(Int cMask[4], const SampleSet &samples);
+-	virtual void blendColor(Pointer<Byte> cBuffer[4], Int &x, Int sMask[4], Int zMask[4], Int cMask[4], const SampleSet &samples);
++	virtual void setBuiltins(Int &x, Int &y, SIMD::Float (&z)[MAX_MULTISAMPLE_COUNT], SIMD::Float &w, Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
++	virtual void executeShader(Int cMask[MAX_MULTISAMPLE_COUNT], Int sMask[MAX_MULTISAMPLE_COUNT], Int zMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
++	virtual Bool alphaTest(Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
++	virtual void blendColor(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Int &x, Int sMask[MAX_MULTISAMPLE_COUNT], Int zMask[MAX_MULTISAMPLE_COUNT], Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
+ 
+ private:
+ 	// Color outputs
+@@ -44,8 +44,8 @@ private:
+ 	// Raster operations
+ 	void clampColor(SIMD::Float4 color[MAX_COLOR_BUFFERS]);
+ 
+-	static SIMD::Int maskAny(Int cMask[4], const SampleSet &samples);
+-	static SIMD::Int maskAny(Int cMask[4], Int sMask[4], Int zMask[4], const SampleSet &samples);
++	static SIMD::Int maskAny(Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
++	static SIMD::Int maskAny(Int cMask[MAX_MULTISAMPLE_COUNT], Int sMask[MAX_MULTISAMPLE_COUNT], Int zMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
+ };
+ 
+ }  // namespace sw
+diff --git a/src/Pipeline/PixelRoutine.cpp b/src/Pipeline/PixelRoutine.cpp
+index aed652a..d1b9fb2 100644
+--- a/src/Pipeline/PixelRoutine.cpp
++++ b/src/Pipeline/PixelRoutine.cpp
+@@ -94,13 +94,13 @@ PixelRoutine::SampleSet PixelRoutine::getSampleSet(int invocation) const
+ 	return samples;
+ }
+ 
+-void PixelRoutine::quad(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Pointer<Byte> &zBuffer, Pointer<Byte> &sBuffer, Int cMask[4], Int &x, Int &y)
++void PixelRoutine::quad(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Pointer<Byte> &zBuffer, Pointer<Byte> &sBuffer, Int cMask[MAX_MULTISAMPLE_COUNT], Int &x, Int &y)
+ {
+ 	const bool earlyFragmentTests = !spirvShader || spirvShader->getExecutionModes().EarlyFragmentTests;
+ 
+-	Int zMask[4];  // Depth mask
+-	Int sMask[4];  // Stencil mask
+-	SIMD::Float unclampedZ[4];
++	Int zMask[MAX_MULTISAMPLE_COUNT];  // Depth mask
++	Int sMask[MAX_MULTISAMPLE_COUNT];  // Stencil mask
++	SIMD::Float unclampedZ[MAX_MULTISAMPLE_COUNT];
+ 
+ 	for(int invocation = 0; invocation < invocationCount; invocation++)
+ 	{
+@@ -133,7 +133,7 @@ void PixelRoutine::quad(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Pointer<Byte>
+ 
+ 				if(state.enableMultiSampling)
+ 				{
+-					x -= SIMD::Float(*Pointer<Float>(constants + OFFSET(Constants, SampleLocationsX) + q * sizeof(float)));
++					x -= SIMD::Float(*Pointer<Float>(constants + OFFSET(Constants, SampleLocationsX) + (state.multiSampleCount + q) * sizeof(float)));
+ 				}
+ 
+ 				z[q] = interpolate(x, Dz[q], z[q], primitive + OFFSET(Primitive, z), false, false);
+@@ -180,8 +180,8 @@ void PixelRoutine::quad(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Pointer<Byte>
+ 				for(unsigned int q : samples)
+ 				{
+ 					ASSERT(SIMD::Width == 4);
+-					xCentroid += SIMD::Float(*Pointer<Float4>(constants + OFFSET(Constants, sampleX[q]) + 16 * cMask[q]));
+-					yCentroid += SIMD::Float(*Pointer<Float4>(constants + OFFSET(Constants, sampleY[q]) + 16 * cMask[q]));
++					xCentroid += SIMD::Float(*Pointer<Float4>(constants + OFFSET(Constants, sampleX[state.multiSampleCount + q]) + 16 * cMask[q]));
++					yCentroid += SIMD::Float(*Pointer<Float4>(constants + OFFSET(Constants, sampleY[state.multiSampleCount + q]) + 16 * cMask[q]));
+ 					weight += SIMD::Float(*Pointer<Float4>(constants + OFFSET(Constants, weight) + 16 * cMask[q]));
+ 				}
+ 
+@@ -224,8 +224,8 @@ void PixelRoutine::quad(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Pointer<Byte>
+ 
+ 				if(perSampleShading && (state.multiSampleCount > 1))
+ 				{
+-					xSample += SampleLocationsX[samples[0]];
+-					ySample += SampleLocationsY[samples[0]];
++					xSample += sampleLocation(state.multiSampleCount, samples[0], 0);
++					ySample += sampleLocation(state.multiSampleCount, samples[0], 1);
+ 				}
+ 
+ 				int packedInterpolant = 0;
+@@ -357,7 +357,7 @@ void PixelRoutine::quad(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Pointer<Byte>
+ 	}
+ }
+ 
+-void PixelRoutine::stencilTest(const Pointer<Byte> &sBuffer, const Int &x, Int sMask[4], const SampleSet &samples)
++void PixelRoutine::stencilTest(const Pointer<Byte> &sBuffer, const Int &x, Int sMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	if(!state.stencilActive)
+ 	{
+@@ -640,18 +640,12 @@ void PixelRoutine::depthBoundsTest(const Pointer<Byte> &zBuffer, int q, const In
+ 	}
+ }
+ 
+-void PixelRoutine::alphaToCoverage(Int cMask[4], const SIMD::Float &alpha, const SampleSet &samples)
++void PixelRoutine::alphaToCoverage(Int cMask[MAX_MULTISAMPLE_COUNT], const SIMD::Float &alpha, const SampleSet &samples)
+ {
+-	static const int a2c[4] = {
+-		OFFSET(DrawData, a2c0),
+-		OFFSET(DrawData, a2c1),
+-		OFFSET(DrawData, a2c2),
+-		OFFSET(DrawData, a2c3),
+-	};
+ 
+ 	for(unsigned int q : samples)
+ 	{
+-		SIMD::Int coverage = CmpNLT(alpha, SIMD::Float(*Pointer<Float>(data + a2c[q])));
++		SIMD::Int coverage = CmpNLT(alpha, SIMD::Float(state.multiSampleCount == 4 ? (q + 1.0f) / 5.0f : (q + 0.5f) / state.multiSampleCount));
+ 		Int aMask = SignMask(coverage);
+ 		cMask[q] &= aMask;
+ 	}
+@@ -712,7 +706,7 @@ void PixelRoutine::writeDepth16(Pointer<Byte> &zBuffer, int q, const Int &x, con
+ 	*Pointer<Int>(buffer + pitch) = Extract(As<Int2>(Z), 1);
+ }
+ 
+-void PixelRoutine::writeDepth(Pointer<Byte> &zBuffer, const Int &x, const Int zMask[4], const SampleSet &samples)
++void PixelRoutine::writeDepth(Pointer<Byte> &zBuffer, const Int &x, const Int zMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	if(!state.depthWriteEnable)
+ 	{
+@@ -738,7 +732,7 @@ void PixelRoutine::writeDepth(Pointer<Byte> &zBuffer, const Int &x, const Int zM
+ 	}
+ }
+ 
+-void PixelRoutine::occlusionSampleCount(const Int zMask[4], const Int sMask[4], const SampleSet &samples)
++void PixelRoutine::occlusionSampleCount(const Int zMask[MAX_MULTISAMPLE_COUNT], const Int sMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	if(!state.occlusionEnabled)
+ 	{
+@@ -751,7 +745,7 @@ void PixelRoutine::occlusionSampleCount(const Int zMask[4], const Int sMask[4],
+ 	}
+ }
+ 
+-void PixelRoutine::writeStencil(Pointer<Byte> &sBuffer, const Int &x, const Int sMask[4], const Int zMask[4], const Int cMask[4], const SampleSet &samples)
++void PixelRoutine::writeStencil(Pointer<Byte> &sBuffer, const Int &x, const Int sMask[MAX_MULTISAMPLE_COUNT], const Int zMask[MAX_MULTISAMPLE_COUNT], const Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples)
+ {
+ 	if(!state.stencilActive)
+ 	{
+diff --git a/src/Pipeline/PixelRoutine.hpp b/src/Pipeline/PixelRoutine.hpp
+index ba97cb6..ea03000 100644
+--- a/src/Pipeline/PixelRoutine.hpp
++++ b/src/Pipeline/PixelRoutine.hpp
+@@ -38,7 +38,7 @@ public:
+ protected:
+ 	using SampleSet = std::vector<int>;
+ 
+-	SIMD::Float z[4];  // Multisampled z
++	SIMD::Float z[MAX_MULTISAMPLE_COUNT];  // Multisampled z
+ 	SIMD::Float w;     // Used as is
+ 	SIMD::Float rhw;   // Reciprocal w
+ 
+@@ -46,15 +46,15 @@ protected:
+ 	const vk::Attachments &attachments;
+ 	const vk::DescriptorSet::Bindings &descriptorSets;
+ 
+-	virtual void setBuiltins(Int &x, Int &y, SIMD::Float (&z)[4], SIMD::Float &w, Int cMask[4], const SampleSet &samples) = 0;
+-	virtual void executeShader(Int cMask[4], Int sMask[4], Int zMask[4], const SampleSet &samples) = 0;
+-	virtual Bool alphaTest(Int cMask[4], const SampleSet &samples) = 0;
+-	virtual void blendColor(Pointer<Byte> cBuffer[4], Int &x, Int sMask[4], Int zMask[4], Int cMask[4], const SampleSet &samples) = 0;
++	virtual void setBuiltins(Int &x, Int &y, SIMD::Float (&z)[MAX_MULTISAMPLE_COUNT], SIMD::Float &w, Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples) = 0;
++	virtual void executeShader(Int cMask[MAX_MULTISAMPLE_COUNT], Int sMask[MAX_MULTISAMPLE_COUNT], Int zMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples) = 0;
++	virtual Bool alphaTest(Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples) = 0;
++	virtual void blendColor(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Int &x, Int sMask[MAX_MULTISAMPLE_COUNT], Int zMask[MAX_MULTISAMPLE_COUNT], Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples) = 0;
+ 
+-	void quad(Pointer<Byte> cBuffer[4], Pointer<Byte> &zBuffer, Pointer<Byte> &sBuffer, Int cMask[4], Int &x, Int &y) override;
++	void quad(Pointer<Byte> cBuffer[MAX_COLOR_BUFFERS], Pointer<Byte> &zBuffer, Pointer<Byte> &sBuffer, Int cMask[MAX_MULTISAMPLE_COUNT], Int &x, Int &y) override;
+ 
+ 	void alphaTest(Int &aMask, const Short4 &alpha);
+-	void alphaToCoverage(Int cMask[4], const SIMD::Float &alpha, const SampleSet &samples);
++	void alphaToCoverage(Int cMask[MAX_MULTISAMPLE_COUNT], const SIMD::Float &alpha, const SampleSet &samples);
+ 
+ 	void writeColor(int index, const Pointer<Byte> &cBuffer, const Int &x, Vector4f &color, const Int &sMask, const Int &zMask, const Int &cMask);
+ 	SIMD::Float4 alphaBlend(int index, const Pointer<Byte> &cBuffer, const SIMD::Float4 &sourceColor, const Int &x);
+@@ -64,7 +64,7 @@ protected:
+ private:
+ 	bool hasStencilReplaceRef() const;
+ 	Byte8 stencilReplaceRef();
+-	void stencilTest(const Pointer<Byte> &sBuffer, const Int &x, Int sMask[4], const SampleSet &samples);
++	void stencilTest(const Pointer<Byte> &sBuffer, const Int &x, Int sMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
+ 	void stencilTest(Byte8 &value, VkCompareOp stencilCompareMode, bool isBack);
+ 	Byte8 stencilOperation(const Byte8 &bufferValue, const PixelProcessor::States::StencilOpState &ops, bool isBack, const Int &zMask, const Int &sMask);
+ 	Byte8 stencilOperation(const Byte8 &bufferValue, VkStencilOp operation, bool isBack);
+@@ -97,9 +97,9 @@ private:
+ 	SIMD::Float lumRGB(SIMD::Float4 &c);
+ 	void premultiply(SIMD::Float4 &c);
+ 
+-	void writeStencil(Pointer<Byte> &sBuffer, const Int &x, const Int sMask[4], const Int zMask[4], const Int cMask[4], const SampleSet &samples);
+-	void writeDepth(Pointer<Byte> &zBuffer, const Int &x, const Int zMask[4], const SampleSet &samples);
+-	void occlusionSampleCount(const Int zMask[4], const Int sMask[4], const SampleSet &samples);
++	void writeStencil(Pointer<Byte> &sBuffer, const Int &x, const Int sMask[MAX_MULTISAMPLE_COUNT], const Int zMask[MAX_MULTISAMPLE_COUNT], const Int cMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
++	void writeDepth(Pointer<Byte> &zBuffer, const Int &x, const Int zMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
++	void occlusionSampleCount(const Int zMask[MAX_MULTISAMPLE_COUNT], const Int sMask[MAX_MULTISAMPLE_COUNT], const SampleSet &samples);
+ 
+ 	SIMD::Float readDepth32F(const Pointer<Byte> &zBuffer, int q, const Int &x) const;
+ 	SIMD::Float readDepth16(const Pointer<Byte> &zBuffer, int q, const Int &x) const;
+diff --git a/src/Pipeline/SetupRoutine.cpp b/src/Pipeline/SetupRoutine.cpp
+index 821d35f..ed7ee65 100644
+--- a/src/Pipeline/SetupRoutine.cpp
++++ b/src/Pipeline/SetupRoutine.cpp
+@@ -200,8 +200,8 @@ void SetupRoutine::generate()
+ 				if(state.enableMultiSampling)
+ 				{
+ 					// The subtraction here is because we're not moving the point, we're testing the edge against it
+-					Xq[i] = Xq[i] - *Pointer<Int>(constants + OFFSET(Constants, Xf) + q * sizeof(int));
+-					Yq[i] = Yq[i] - *Pointer<Int>(constants + OFFSET(Constants, Yf) + q * sizeof(int));
++					Xq[i] = Xq[i] - *Pointer<Int>(constants + OFFSET(Constants, Xf) + (state.multiSampleCount + q) * sizeof(int));
++					Yq[i] = Yq[i] - *Pointer<Int>(constants + OFFSET(Constants, Yf) + (state.multiSampleCount + q) * sizeof(int));
+ 				}
+ 
+ 				i++;
+diff --git a/src/Pipeline/SpirvShaderGLSLstd450.cpp b/src/Pipeline/SpirvShaderGLSLstd450.cpp
+index 1286066..eda33ba 100644
+--- a/src/Pipeline/SpirvShaderGLSLstd450.cpp
++++ b/src/Pipeline/SpirvShaderGLSLstd450.cpp
+@@ -1015,21 +1015,20 @@ SIMD::Float SpirvEmitter::EmitInterpolate(const SIMD::Pointer &ptr, int32_t loca
+ 
+ 		if(multisample)
+ 		{
+-			static constexpr int NUM_SAMPLES = 4;
+-			ASSERT(multiSampleCount == NUM_SAMPLES);
++			ASSERT(multiSampleCount <= MAX_MULTISAMPLE_COUNT);
+ 
+ 			auto sampleOperand = Operand(shader, *this, paramId);
+ 			ASSERT(sampleOperand.componentCount == 1);
+ 
+ 			// If sample does not exist, the position used to interpolate the
+ 			// input variable is undefined, so we just clamp to avoid OOB accesses.
+-			SIMD::Int samples = sampleOperand.Int(0) & SIMD::Int(NUM_SAMPLES - 1);
++			SIMD::Int samples = sampleOperand.Int(0) & SIMD::Int(multiSampleCount - 1);
+ 
+ 			for(int i = 0; i < SIMD::Width; i++)
+ 			{
+ 				Int sample = Extract(samples, i);
+-				x = Insert(x, *Pointer<Float>(routine->constants + OFFSET(Constants, SampleLocationsX) + sample * sizeof(float)), i);
+-				y = Insert(y, *Pointer<Float>(routine->constants + OFFSET(Constants, SampleLocationsY) + sample * sizeof(float)), i);
++				x = Insert(x, *Pointer<Float>(routine->constants + OFFSET(Constants, SampleLocationsX) + (multiSampleCount + sample) * sizeof(float)), i);
++				y = Insert(y, *Pointer<Float>(routine->constants + OFFSET(Constants, SampleLocationsY) + (multiSampleCount + sample) * sizeof(float)), i);
+ 			}
+ 		}
+ 
+diff --git a/src/Vulkan/VkConfig.hpp b/src/Vulkan/VkConfig.hpp
+index cc4e3b9..ed97575 100644
+--- a/src/Vulkan/VkConfig.hpp
++++ b/src/Vulkan/VkConfig.hpp
+@@ -72,7 +72,7 @@ constexpr uint32_t MAX_IMAGE_LEVELS_2D = 15;
+ constexpr uint32_t MAX_IMAGE_LEVELS_3D = 12;
+ constexpr uint32_t MAX_IMAGE_LEVELS_CUBE = 15;
+ constexpr uint32_t MAX_IMAGE_ARRAY_LAYERS = 2048;
+-constexpr float MAX_SAMPLER_LOD_BIAS = 15.0;
++constexpr float MAX_SAMPLER_LOD_BIAS = 16.0;
+ 
+ static_assert(MAX_IMAGE_LEVELS_1D <= sw::MIPMAP_LEVELS);
+ static_assert(MAX_IMAGE_LEVELS_2D <= sw::MIPMAP_LEVELS);
+@@ -94,7 +94,7 @@ constexpr uint32_t MAX_COMPUTE_WORKGROUP_INVOCATIONS = 256;
+ 
+ constexpr size_t MAX_INLINE_UNIFORM_BLOCK_SIZE = 256;
+ 
+-constexpr float MAX_POINT_SIZE = 1023.0;
++constexpr float MAX_POINT_SIZE = 2047.0;
+ 
+ constexpr int MAX_SAMPLER_ALLOCATION_COUNT = 4000;
+ 
+diff --git a/src/Vulkan/VkImageView.hpp b/src/Vulkan/VkImageView.hpp
+index 25feebc..9e3bd2e 100644
+--- a/src/Vulkan/VkImageView.hpp
++++ b/src/Vulkan/VkImageView.hpp
+@@ -118,7 +118,9 @@ public:
+ 		switch(image->getSampleCount())
+ 		{
+ 		case VK_SAMPLE_COUNT_1_BIT: return 1;
++		case VK_SAMPLE_COUNT_2_BIT: return 2;
+ 		case VK_SAMPLE_COUNT_4_BIT: return 4;
++		case VK_SAMPLE_COUNT_8_BIT: return 8;
+ 		default:
+ 			UNSUPPORTED("Sample count %d", image->getSampleCount());
+ 			return 1;
+diff --git a/src/Vulkan/VkPhysicalDevice.cpp b/src/Vulkan/VkPhysicalDevice.cpp
+index 5d5edcf..5e1da4d 100644
+--- a/src/Vulkan/VkPhysicalDevice.cpp
++++ b/src/Vulkan/VkPhysicalDevice.cpp
+@@ -718,7 +718,7 @@ void PhysicalDevice::getFeatures2(VkPhysicalDeviceFeatures2 *features) const
+ 
+ VkSampleCountFlags PhysicalDevice::getSampleCounts()
+ {
+-	return VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
++	return VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT | VK_SAMPLE_COUNT_8_BIT;
+ }
+ 
+ const VkPhysicalDeviceLimits &PhysicalDevice::getLimits()
+@@ -741,7 +741,7 @@ const VkPhysicalDeviceLimits &PhysicalDevice::getLimits()
+ 		0,                                           // sparseAddressSpaceSize (unsupported)
+ 		MAX_BOUND_DESCRIPTOR_SETS,                   // maxBoundDescriptorSets
+ 		64,                                          // maxPerStageDescriptorSamplers
+-		15,                                          // maxPerStageDescriptorUniformBuffers
++		17,                                          // maxPerStageDescriptorUniformBuffers
+ 		30,                                          // maxPerStageDescriptorStorageBuffers
+ 		200,                                         // maxPerStageDescriptorSampledImages
+ 		16,                                          // maxPerStageDescriptorStorageImages

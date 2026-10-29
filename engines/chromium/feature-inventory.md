@@ -29,7 +29,7 @@ Gecko158 additions missing from the old157 checklist include AudioWorklet privac
 <!-- BEGIN GENERATED GECKO INVENTORY -->
 ## Active Gecko 159.0 source inventory
 
-Canonical patch resolver: 161 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
+Canonical patch resolver: 167 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
 
 Canvas/GPU/config entries have partial Chromium equivalents described above. Gecko UI, branding, build and compatibility patches can be engine-specific; no patch is mechanically applied to Chromium.
 
@@ -194,6 +194,12 @@ Canvas/GPU/config entries have partial Chromium equivalents described above. Gec
 - `patches/cloakfox-apple-linker-detection.patch`
 - `patches/cloakfox-system-document-viewport.patch`
 - `patches/cloakfox-coherent-gpu-catalog.patch`
+- `patches/cloakfox-reference-gpu-profiles.patch`
+- `patches/cloakfox-canonical-layout-geometry.patch`
+- `patches/cloakfox-reference-backend-integrity.patch`
+- `patches/cloakfox-touch-document-policy.patch`
+- `patches/cloakfox-canonical-mac-texture-limits.patch`
+- `patches/cloakfox-canonical-font-decoration.patch`
 
 ## Optional/privacy preference inventory
 
@@ -267,6 +273,8 @@ All id/data-pref bindings from component HTML, including secondary settings pane
 - `cfx-colored-inactive-buttons`
 - `cfx-consistency-inspector`
 - `cfx-container-gpu-status`
+- `cfx-container-rendering-settings`
+- `cfx-container-rendering-status`
 - `cfx-container-select`
 - `cfx-dns-settings`
 - `cfx-enabled`

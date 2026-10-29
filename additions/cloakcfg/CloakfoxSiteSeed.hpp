@@ -9,6 +9,9 @@
 #include "nsString.h"
 #include "nsIGlobalObject.h"
 #include "nsPIDOMWindow.h"
+namespace CloakfoxCanonicalGeometry {
+bool Ready(mozilla::dom::Document*);
+}
 #include "prtime.h"
 
 namespace CloakfoxSiteSeed {
@@ -146,6 +149,7 @@ inline uint32_t Geometry(uint32_t ucid, const char* vector,
 inline std::optional<uint32_t> GeometryForDocument(mozilla::dom::Document* doc,
                                                   const char* vector) {
   if (!doc) return 0;
+  if (CloakfoxCanonicalGeometry::Ready(doc)) return 0;
   return Geometry(doc->NodePrincipal()->OriginAttributesRef().mUserContextId,
                   vector, doc->CookieJarSettings());
 }

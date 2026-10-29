@@ -32,8 +32,8 @@ const browserCapabilities = () => Object.freeze({
 
 // Write a container's cloak_cfg and keep its H2/H3 wire profile coherent
 // with the persona in one step. Used by every cloak_cfg (re)write below.
-function persistCloakCfg(ucid, seed, clearOverrides = false) {
-  const cfg = buildCloakCfg(seed, ucid, clearOverrides);
+function persistCloakCfg(ucid, seed, clearOverrides = false, allowUnavailable = false) {
+  const cfg = buildCloakCfg(seed, ucid, clearOverrides, allowUnavailable);
   // Build successfully before discarding saved fields; keep region/privacy policy.
   if (clearOverrides) clearAllOverrides(ucid);
   Services.prefs.setStringPref(cloakCfgPref(ucid), cfg);
@@ -41,7 +41,7 @@ function persistCloakCfg(ucid, seed, clearOverrides = false) {
   try { ua = JSON.parse(cfg)["navigator.userAgent"] || ""; } catch (_e) {}
   writeHttpProfilePrefs(ucid, ua);
 }
-const { KEY_TYPES, readOverrides, setOverride, setOverrides, clearOverride, clearAllOverrides, applyOverrides, setContainerGPUProfilesEnabled } =
+const { KEY_TYPES, readOverrides, setOverride, setOverrides, clearOverride, clearAllOverrides, applyOverrides, setContainerGPUProfilesEnabled, requireContainerRenderingModesDisabled } =
   ChromeUtils.importESModule("resource:///modules/CloakfoxOverrides.sys.mjs");
 
 const { ContextualIdentityService } = ChromeUtils.importESModule(
@@ -135,7 +135,7 @@ function u32(seedB64, i) {
 }
 
 // MUST match SeedSync.buildCloakCfg shape — see CloakfoxSeedSync.sys.mjs.
-function buildCloakCfg(seedB64, ucid = null, clearOverrides = false) {
+function buildCloakCfg(seedB64, ucid = null, clearOverrides = false, allowUnavailable = false) {
   const base = {
     "fingerprint:secret": seedB64,
     "canvas:seed": u32(seedB64, 0),
@@ -148,7 +148,7 @@ function buildCloakCfg(seedB64, ucid = null, clearOverrides = false) {
     ...fillPersonaKeys(seedB64, ucid),
   };
   return JSON.stringify(ucid === null ? base : applyOverrides(
-    ucid, base, clearOverrides ? {} : readOverrides(ucid)));
+    ucid, base, clearOverrides ? {} : readOverrides(ucid), allowUnavailable));
 }
 
 // ── container enumeration ──────────────────────────────────────────
@@ -945,10 +945,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Editing a field rewrites cloak_cfg so the change takes effect for
   // new tabs immediately, then refreshes the UI to show the new state.
-  function rebuildCloakCfg(ucid) {
+  function rebuildCloakCfg(ucid, allowUnavailable = false) {
     const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
     if (seed) {
-      persistCloakCfg(ucid, seed);
+      persistCloakCfg(ucid, seed, false, allowUnavailable);
     }
   }
   const generateNew = document.getElementById("cfx-generate-new");
@@ -1078,6 +1078,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let refreshCameraExposure = () => {};
   let refreshMicrophoneExposure = () => {};
+  function refreshContainerRenderingOptions(ucid, cfg) {
+    const enabled = Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false);
+    const gpuProfiles = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false);
+    for (const control of document.querySelectorAll("input[data-container-rendering]")) {
+      const key = control.dataset.containerRendering;
+      const requested = readOverrides(ucid)[key] === true;
+      control.checked = requested;
+      // A saved request can always be turned off, including if its dependency
+      // became unavailable after an import or external preference change.
+      control.disabled = !requested && (!enabled || (key === "rendering:gpu_reference" && !gpuProfiles));
+      control.onchange = () => {
+        const status = document.getElementById("cfx-container-rendering-status");
+        try {
+          const enable = control.checked;
+          setOverride(ucid, key, enable);
+          rebuildCloakCfg(ucid, !enable);
+          refreshContainer();
+          status.textContent = "Saved for this container. Reload pages and restart workers to use the new rendering policy.";
+        } catch (error) {
+          refreshContainerRenderingOptions(ucid, getCloakCfg(ucid));
+          status.textContent = error.message;
+        }
+      };
+    }
+    const reference = cfg?.["rendering:gpu_profile"];
+    const errors = [cfg?.["rendering:gpu_profile:error"], cfg?.["rendering:geometry_profile:error"]].filter(Boolean);
+    document.getElementById("cfx-container-rendering-status").textContent = errors.length ? errors.join(" · ")
+      : reference?.mode === "reference" ? "Reference-based GPU profile saved for this container. Live contexts keep their captured policy until reload."
+      : "Rendering requests and saved identity are separate for each container. Reload pages after changes.";
+  }
   function refreshContainer() {
     const ucid = parseInt(selectEl.value, 10) || 0;
     presentationEl.value = getChromiumPresentation(ucid);
@@ -1085,6 +1115,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "Chromium switching is not available in this build. This preference is saved for a future release.";
     const cfg = getCloakCfg(ucid);
     const overrides = readOverrides(ucid);
+    refreshContainerRenderingOptions(ucid, cfg);
     const seedB64 = Services.prefs.getStringPref(masterSeedPref(ucid), "");
     const onEdit = () => { rebuildCloakCfg(ucid); refreshContainer(); };
 
@@ -1497,7 +1528,11 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("change", () => {
       try {
         if (pref === "cloakfox.opt.container_rendering_profiles") setContainerGPUProfilesEnabled(el.checked);
-        else if (pref === "cloakfox.experimental.canvas_pipeline" && !el.checked && Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) throw new Error("Disable container GPU profiles before disabling their canonical backend");
+        else if (pref === "cloakfox.experimental.canvas_pipeline" && !el.checked) {
+          requireContainerRenderingModesDisabled();
+          if (Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) throw new Error("Disable container GPU profiles before disabling their canonical backend");
+          Services.prefs.setBoolPref(pref, false);
+        }
         else Services.prefs.setBoolPref(pref, el.checked);
         if (pref === "cloakfox.appearance.colored_inactive_buttons") {
           Services.prefs.savePrefFile(null);
@@ -1508,6 +1543,8 @@ document.addEventListener("DOMContentLoaded", () => {
         el.checked = Services.prefs.getBoolPref(pref, false);
         document.getElementById("cfx-container-gpu-status").textContent = error.message;
       }
+      const renderingOwner = parseInt(selectEl.value, 10) || 0;
+      refreshContainerRenderingOptions(renderingOwner, getCloakCfg(renderingOwner));
       if (pref === "cloakfox.compat.screen_management") updateChromiumCompatibility();
       if (pref === "cloakfox.opt.gpu_backend_profiles") {
         const ucid = parseInt(selectEl.value, 10) || 0;

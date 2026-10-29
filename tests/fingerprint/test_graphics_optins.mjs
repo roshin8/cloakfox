@@ -52,8 +52,9 @@ function fixture(entries = []) {
     applyPrivacyPolicy: (_id, config) => config,
     applyRegion: (_id, config) => config,
   });
-  vm.runInContext(declaration(overridesSource, 'applyGraphicsPolicy') + '\n' +
-    declaration(overridesSource, 'applyOverrides') + '\n' +
+  // Exercise the complete policy module, including its native-mode validators.
+  // Function-only extraction omitted dependencies and hid backfill failures.
+  vm.runInContext(overridesSource.replace(/^import .*\n/gm, '').replace(/export /g, '') + '\n' +
     declaration(syncSource, 'applyGraphicsOptInPolicy'), context);
   return {context, values, writes};
 }

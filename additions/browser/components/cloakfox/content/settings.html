@@ -256,6 +256,15 @@
         </div>
       </header>
       <div class="spoof-grid" id="grp-graphics"></div>
+      <fieldset class="hardening-group" id="cfx-container-rendering-settings">
+        <legend>Rendering for this container</legend>
+        <p class="hardening-group-help">These choices apply to the container selected above. Canonical software rendering must be enabled in Optional hardening.</p>
+        <div class="hardening-controls">
+          <label class="flag-row"><input type="checkbox" data-container-rendering="rendering:gpu_reference"><span><strong>Use a reference-based GPU profile</strong><small class="flag-description" role="list"><span role="listitem">Uses paired recorded WebGL profiles matching this container’s BrowserForge vendor and renderer, with documented Firefox and privacy adaptations.</span><span role="listitem">Requires container GPU persona profiles and the bundled CPU backend. Native allocation, shader, precision and rendering checks refuse unsupported profiles.</span><span role="listitem">Keeps container/site secrets separate and retains input/readback protections. It does not reproduce a physical driver or guarantee that fingerprinting tools recognize the profile.</span><span role="listitem">Reload pages and restart workers after saving. Turning this off restores the existing protected GPU mode.</span></small></span></label>
+          <label class="flag-row"><input type="checkbox" data-container-rendering="geometry:canonical"><span><strong>Use canonical layout geometry</strong><small class="flag-description" role="list"><span role="listitem">Uses an owned layout profile with bundled font metrics, fixed controls and scrollbars, and normalized layout rounding.</span><span role="listitem">Measures the layout used for painting and hit testing. Unsupported scopes or live policy changes retain existing geometry masking until reload.</span><span role="listitem">May change text, control sizes and scrolling. Browser zoom, print and developer emulation can require protected fallback.</span><span role="listitem">Keeps the profile and identity separate for each container and site. Reload affected pages after saving.</span></small></span></label>
+        </div>
+        <p id="cfx-container-rendering-status" role="status" aria-live="polite"></p>
+      </fieldset>
     </section>
 
     <section class="card" id="sec-audio">

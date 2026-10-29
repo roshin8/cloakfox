@@ -30,17 +30,43 @@ class BackendProfile(unittest.TestCase):
 #include <cassert>
 #include <cstdint>
 #include <string>
+#include <vector>
+// The extracted production body also compiles its reference admission branch.
+// This fixture executes legacy cohorts only; any driver query here is a
+// regression because those cohorts use the existing preloaded native limits.
+using GLfloat = float;
+using GLint = int32_t;
+using GLint64 = int64_t;
+enum class WebGLExtensionID : uint8_t { OVR_multiview2, Max };
+unsigned UnderlyingValue(WebGLExtensionID value) { return unsigned(value); }
+std::vector<unsigned> IntegerRange(unsigned count) {
+ std::vector<unsigned> result;for(unsigned i=0;i<count;i++)result.push_back(i);
+ return result;
+}
+const char* GetExtensionName(WebGLExtensionID) { return "OVR_multiview2"; }
+struct ExtensionBits {
+ bool operator[](WebGLExtensionID) const { return false; }
+};
+struct DriverQueries {
+ void fGetFloatv(uint32_t, GLfloat*) { assert(false && "unexpected legacy driver query"); }
+ void fGetInteger64v(uint32_t, GLint64*) { assert(false && "unexpected legacy driver query"); }
+ void fGetIntegerv(uint32_t, GLint*) { assert(false && "unexpected legacy driver query"); }
+};
 struct Failure { const char* id; const char* reason; };
 template<class T> bool RestrictCap(T* cap, T target) {
  if(*cap < target)return false; *cap=target;return true;
 }
 struct Context {
+ DriverQueries driver;
+ DriverQueries* gl = &driver;
  bool gl2=true;
  struct { bool cloakfoxBackendProfile=true; uint32_t cloakfoxPersonaProfile=0; } mOptions;
  struct Caps {
   uint32_t maxTexUnits=80,maxVertexAttribs=32,maxColorDrawBuffers=8,
    maxTex2dSize=16384,maxTexCubeSize=16384,maxTex3dSize=2048,
-   maxTexArrayLayers=2048,maxViewportDim=16384,maxUniformBufferBindings=72;
+   maxTexArrayLayers=2048,maxViewportDim=16384,maxUniformBufferBindings=72,
+   uniformBufferOffsetAlignment=256,maxMultiviewLayers=4;
+  ExtensionBits supportedExtensions;
   std::array<float,2> pointSizeRange={1,1024},lineWidthRange={1,8};
  } limits;
  uint32_t mGLMaxRenderbufferSize=16384,mGLMaxVertexTextureImageUnits=32,

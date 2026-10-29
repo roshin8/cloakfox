@@ -24,12 +24,12 @@
 ## Tasks
 
 - [x] Pin/import complete paired Firefox WebGL1/2 reference data from upstream fpgen model2/2026 (archive6530b8322cdaa4ec042921c8d9a0369a0e6e0269ba636c01a7203e4a2f109936). Check archive/file hashes, decode conditional GPU/GL1/GL2 ownership and retain source provenance. Test corrupt/cross-paired inputs. Keep executable admission separate.
-- [ ] Evaluate complete references against canonical backend, including precision/ranges/extensions, actual resource/shader operations and API error semantics. Implement native admission/enforcement and descriptors with strict ownership; mark unsupported references accurately rather than using native values. Add per-container setting/persistence and activation preflight.
-- [ ] Implement canonical geometry policy and actual layout prerequisites: bundled/author canonical fonts, theme/control metrics, font-size preferences, zoom/device rounding and SVG path/transform behavior. Freeze or safely reconstruct mode/identity during updates. Unsupported paths retain protection; no native fallback. Test Element/Range/SVG, caret/empty/fragments, controls and hit-testing/painting agreement.
-- [ ] Wire per-container settings descriptions/dependencies and typed keys. Test state persistence, reset/import/malformed settings, atomic rejection and isolation.
-- [ ] Run task reviews and repair findings before rebuilding. Stage only owned source additions; replay patches against159 without drift. Rebuild2low-priority jobs with own-process disk guard.
-- [ ] Stage separate test app; test both modes/off controls, all four families, owned records/sites/workers, reload/restart, native bounds, geometry semantics and unmodified library audits. Run appropriate broader regression suites; retain warnings/failures.
-- [ ] Final independent review, evidence, and local checkpoint. Do not declare success for unsupported references or unnormalized geometry paths.
+- [x] Evaluate complete references against canonical backend, including precision/ranges/extensions, actual resource/shader operations and API error semantics. Implement native admission/enforcement and descriptors with strict ownership; mark unsupported references accurately rather than using native values. Add per-container setting/persistence and activation preflight.
+- [x] Implement canonical geometry policy and actual layout prerequisites: bundled/author canonical fonts, theme/control metrics, font-size preferences, zoom/device rounding and SVG path/transform behavior. Freeze or safely reconstruct mode/identity during updates. Unsupported paths retain protection; no native fallback. Test Element/Range/SVG, caret/empty/fragments, controls and hit-testing/painting agreement.
+- [x] Wire per-container settings descriptions/dependencies and typed keys. Test state persistence, reset/import/malformed settings, atomic rejection and isolation.
+- [x] Run task reviews and repair findings before rebuilding. Stage only owned source additions; replay patches against159 without drift. Rebuild2low-priority jobs with own-process disk guard.
+- [x] Stage separate test app; test both modes/off controls, all four families, owned records/sites/workers, reload/restart, native bounds, geometry semantics and unmodified library audits. Run appropriate broader regression suites; retain warnings/failures.
+- [x] Final independent review, evidence, and local checkpoint. Do not declare success for unsupported references or unnormalized geometry paths.
 
 ## Review focus
 
@@ -39,4 +39,6 @@
 - Malformed owner descriptors and unsupported references must not expose host values.
 - Shared public capability/geometry values do not imply shared container records/secrets.
 
-Current readiness: [blocked acceptance and evidence](../../firefox-159/reference-geometry-readiness/README.md). No native feature is admitted yet.
+Current evidence: [native implementation and integration](../../firefox-159/native-reference-layout/README.md). The source-derived GPU mode passes1,035 actual Firefox159 checks and the UI passes66 checks. Canonical geometry passes its actual layout, widget painting and native input checks on the final159 app. All native, regression and unmodified-library phases pass on that artifact. The earlier readiness report is preserved as a historical negative baseline.
+
+Ruling: preserve verified canonical pixel exports as exact/common output. Separate container records, secrets and contexts do not require identical authored pixels to differ. Existing fallback noise remains partitioned; new tests distinguish these policies rather than adding readback noise to satisfy a mistaken test assumption.

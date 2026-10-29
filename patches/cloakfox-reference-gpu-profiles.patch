@@ -1,0 +1,331 @@
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -2537,10 +2537,22 @@
+     }
+   }
+ 
++  // Reference descriptors own a complete immutable derived capability table.
++  // Creation admitted every budget against the CPU backend; resource/shader
++  // operations below use these same limits. Never re-read mutable persona prefs.
++  const auto referenceCode=mCloakfoxPersonaProfile.valueOr(0);
++  if(const auto* p=CloakfoxGPUReference::Find(referenceCode,mIsWebGL2,pname)) {
++    const bool enabled=pname==34047?IsExtensionEnabled(WebGLExtensionID::EXT_texture_filter_anisotropic):
++      pname==38449?IsExtensionEnabled(WebGLExtensionID::OVR_multiview2):
++      (pname==34852||pname==36063)?mIsWebGL2||IsExtensionEnabled(WebGLExtensionID::WEBGL_draw_buffers):true;
++    if(!enabled){EnqueueError_ArgEnum("pname",pname);return;}
++    if(p->components==1){retval.setNumber(p->lo);return;}
++  }
++
+   // Only fixed device limits come from captured tables. Mutable state,
+   // framebuffer-dependent values and strings retain native validation.
+   const bool backendProfile = ActualContextParameters().cloakfoxBackendProfile;
+-  const bool profileControlled = backendProfile && [&]() {
++  const bool profileControlled = backendProfile && (CloakfoxGPUReference::Find(referenceCode,mIsWebGL2,pname) || [&]() {
+     switch (pname) {
+       case LOCAL_GL_MAX_TEXTURE_SIZE:
+       case LOCAL_GL_MAX_CUBE_MAP_TEXTURE_SIZE:
+@@ -2570,7 +2582,7 @@
+       default:
+         return false;
+     }
+-  }();
++  }());
+   // Keep the existing bounded mask for uncontrolled capabilities. Selecting
+   // this cohort must not restore richer native samples/UBO/TF/texel surfaces.
+   const bool fromTable = !profileControlled && [&]() {
+@@ -2929,7 +2941,7 @@
+           state.mCompressedTextureFormats.end());
+       retval.set(Create<dom::Uint32Array>(
+           cx, this,
+-          MaskConfig::MParamGLVector<uint32_t>(pname, compressedTextureUint32,
++          backendProfile ? compressedTextureUint32 : MaskConfig::MParamGLVector<uint32_t>(pname, compressedTextureUint32,
+                                                mIsWebGL2),
+           rv));
+       return;
+--- a/dom/canvas/WebGL2Context.cpp
++++ b/dom/canvas/WebGL2Context.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -121,6 +122,14 @@
+   mGLMaxFragmentUniformBlocks =
+       gl->GetIntAs<uint32_t>(LOCAL_GL_MAX_FRAGMENT_UNIFORM_BLOCKS);
+ 
++  if(CloakfoxGPUReference::Lookup(mOptions.cloakfoxPersonaProfile)) {
++    const auto cap=[&](uint32_t pname){return CloakfoxGPUReference::Cap(mOptions.cloakfoxPersonaProfile,true,pname);};
++    mGLMinProgramTexelOffset=uint32_t(int32_t(CloakfoxGPUReference::Find(mOptions.cloakfoxPersonaProfile,true,35076)->lo));
++    mGLMaxProgramTexelOffset=cap(35077);
++    mGLMaxVertexUniformBlocks=cap(35371);
++    mGLMaxFragmentUniformBlocks=cap(35373);
++  }
++
+   mIndexedUniformBufferBindings.resize(mLimits->maxUniformBufferBindings);
+ 
+   mDefaultTransformFeedback = new WebGLTransformFeedback(this, 0);
+--- a/dom/canvas/WebGL2ContextRenderbuffers.cpp
++++ b/dom/canvas/WebGL2ContextRenderbuffers.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -65,6 +66,10 @@
+                              LOCAL_GL_SAMPLES, ret.size(), ret.data());
+   }
+ 
++  if(CloakfoxGPUReference::Lookup(mOptions.cloakfoxPersonaProfile)) {
++    const auto cap=CloakfoxGPUReference::Cap(mOptions.cloakfoxPersonaProfile,true,36183);
++    ret.erase(std::remove_if(ret.begin(),ret.end(),[&](int32_t n){return n>int32_t(cap);}),ret.end());
++  }
+   return Some(ret);
+ }
+ 
+--- a/dom/canvas/WebGL2ContextState.cpp
++++ b/dom/canvas/WebGL2ContextState.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -21,6 +22,10 @@
+   //     case LOCAL_GL_DRAW_BUFFERi:
+ 
+   if (IsContextLost()) return Nothing();
++
++  if(const auto* p=CloakfoxGPUReference::Find(mOptions.cloakfoxPersonaProfile,true,pname)) {
++    if(p->components==1)return Some(p->lo);
++  }
+ 
+   if (mOptions.cloakfoxBackendProfile) {
+     // These scalar companions describe the same normalized shader resources.
+--- a/dom/canvas/WebGLContext.cpp
++++ b/dom/canvas/WebGLContext.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -479,8 +480,15 @@
+     [&]() {
+       if (mOptions.antialias) {
+         MOZ_ASSERT(!mDefaultFB);
++        uint32_t samples = mMsaaSamples;
++        if (CloakfoxGPUReference::Lookup(mOptions.cloakfoxPersonaProfile)) {
++          // This same captured code survives resize and context restoration.
++          // A process-wide MSAA preference cannot exceed the owner's budget.
++          samples = std::min(samples, CloakfoxGPUReference::Cap(
++              mOptions.cloakfoxPersonaProfile, true, 36183));
++        }
+         mDefaultFB = gl::MozFramebuffer::Create(
+-            gl, attemptSize, mMsaaSamples, mOptions.depth, mOptions.stencil);
++            gl, attemptSize, samples, mOptions.depth, mOptions.stencil);
+         if (mDefaultFB) return;
+         if (mOptionsFrozen) return;
+       }
+@@ -691,6 +699,22 @@
+           out->error = std::string{"Backend cannot support the protected shader precision baseline"};
+           return nullptr;
+         }
++      }
++      if(const auto* reference=CloakfoxGPUReference::ForContext(desc.options.cloakfoxPersonaProfile,webgl->IsWebGL2())) {
++        bool matched=false;
++        for(size_t i=0;i<reference->precisionCount;i++) {
++          const auto& required=reference->precision[i];
++          if(required.shader!=shaderType||required.type!=precisionType)continue;
++          matched=CloakfoxGPUProfile::ReferencePrecisionSupported(required,spf.rangeMin,spf.rangeMax,spf.precision);
++          if(matched){
++            // Each required component is <= the admitted uint8_t native tuple.
++            spf.rangeMin=LazyAssertedCast(required.rangeMin);
++            spf.rangeMax=LazyAssertedCast(required.rangeMax);
++            spf.precision=LazyAssertedCast(required.precision);
++          }
++          break;
++        }
++        if(!matched){out->error=std::string{"CPU backend cannot fulfill the reference shader precision tuple"};return nullptr;}
+       }
+       out->shaderPrecisions->insert({{shaderType, precisionType}, spf});
+     }
+--- a/dom/canvas/WebGLContextValidate.cpp
++++ b/dom/canvas/WebGLContextValidate.cpp
+@@ -86,6 +86,8 @@
+ 
+ namespace mozilla {
+ 
++const char* GetExtensionName(WebGLExtensionID);
++
+ bool WebGLContext::ValidateBlendEquationEnum(GLenum mode, const char* info) {
+   switch (mode) {
+     case LOCAL_GL_FUNC_ADD:
+@@ -188,7 +190,9 @@
+   for (const auto i : IntegerRange(UnderlyingValue(WebGLExtensionID::Max))) {
+     const auto ext = WebGLExtensionID(i);
+     limits.supportedExtensions[ext] = webgl.IsExtensionSupported(ext);
+-    if (webgl.Options().cloakfoxBackendProfile) {
++    if (const auto* reference=CloakfoxGPUReference::ForContext(webgl.Options().cloakfoxPersonaProfile,webgl.IsWebGL2())) {
++      limits.supportedExtensions[ext] = bool(limits.supportedExtensions[ext]) && CloakfoxGPUReference::HasExtension(*reference,GetExtensionName(ext));
++    } else if (webgl.Options().cloakfoxBackendProfile) {
+       // Conservative allowlist, intersected with real support above. Exclude
+       // debug shader sources, timers and vendor compressed texture formats.
+       bool allowed = ext == WebGLExtensionID::WEBGL_debug_renderer_info ||
+@@ -419,20 +423,23 @@
+   // shader translator resources, not only reported getters. Unsupported whole
+   // baselines fail creation; never raise a backend capacity to meet this table.
+   if (mOptions.cloakfoxBackendProfile) {
+-    const auto persona = CloakfoxGPUProfile::Decode(mOptions.cloakfoxPersonaProfile);
++    const auto persona = CloakfoxGPUProfile::Decode(mOptions.cloakfoxPersonaProfile,IsWebGL2());
+     if (mOptions.cloakfoxPersonaProfile && !persona) {
+       *out_failReason = {"FEATURE_FAILURE_CLOAKFOX_GPU_PROFILE", "Invalid bounded persona profile"};
+       return false;
+     }
++    const auto code=mOptions.cloakfoxPersonaProfile;
++    const auto* reference=CloakfoxGPUReference::ForContext(code,IsWebGL2());
++    const auto cap=[&](uint32_t pname,uint32_t fallback){const auto* p=CloakfoxGPUReference::Find(code,IsWebGL2(),pname);return p?uint32_t(p->lo):fallback;};
+     const uint32_t texture = persona ? persona->texture : 2048;
+     const uint32_t vertexUniforms = persona ? persona->vertexUniforms : 256;
+     const uint32_t fragmentUniforms = persona ? persona->fragmentUniforms : 224;
+     const bool gl2 = IsWebGL2();
+     bool ok = true;
+     ok &= RestrictCap(&limits.maxTex2dSize, texture);
+-    ok &= RestrictCap(&limits.maxTexCubeSize, texture);
+-    ok &= RestrictCap(&mGLMaxRenderbufferSize, texture);
+-    ok &= RestrictCap(&limits.maxViewportDim, persona ? texture : uint32_t{4096});
++    ok &= RestrictCap(&limits.maxTexCubeSize, cap(34076,texture));
++    ok &= RestrictCap(&mGLMaxRenderbufferSize, cap(34024,texture));
++    ok &= RestrictCap(&limits.maxViewportDim, cap(3386,persona ? texture : uint32_t{4096}));
+     ok &= RestrictCap(&limits.maxVertexAttribs, persona ? persona->vertexAttribs : uint32_t{16u});
+     ok &= RestrictCap(&limits.maxTexUnits, persona ? persona->combinedTexUnits : uint32_t{32u});
+     ok &= RestrictCap(&mGLMaxVertexTextureImageUnits, persona ? persona->vertexTexUnits : uint32_t{16u});
+@@ -447,15 +454,45 @@
+       ok &= RestrictCap(&limits.maxUniformBufferBindings, persona ? persona->uniformBufferBindings : uint32_t{24});
+       ok &= RestrictCap(&limits.maxColorDrawBuffers, persona ? persona->drawBuffers : uint32_t{4});
+     }
+-    ok &= limits.lineWidthRange[0] <= 1 && limits.lineWidthRange[1] >= 1;
+-    ok &= limits.pointSizeRange[0] <= 1 && limits.pointSizeRange[1] >= 63;
++    const auto* line=CloakfoxGPUReference::Find(code,gl2,33902);
++    const auto* point=CloakfoxGPUReference::Find(code,gl2,33901);
++    const std::array<float,2> lineRange=line?std::array<float,2>{float(line->lo),float(line->hi)}:std::array<float,2>{1,1};
++    const std::array<float,2> pointRange=point?std::array<float,2>{float(point->lo),float(point->hi)}:std::array<float,2>{1,63};
++    ok &= limits.lineWidthRange[0]<=lineRange[0]&&limits.lineWidthRange[1]>=lineRange[1];
++    ok &= limits.pointSizeRange[0]<=pointRange[0]&&limits.pointSizeRange[1]>=pointRange[1];
++    if(reference) {
++      // Every advertised extension requires Gecko's real implementation and
++      // backing support. Privacy-denied entries never enter the registry.
++      for(size_t i=0;i<reference->extensionCount;i++) {
++        bool supported=false;
++        for(const auto n:IntegerRange(UnderlyingValue(WebGLExtensionID::Max))) {
++          const auto ext=WebGLExtensionID(n);
++          if(std::string_view(reference->extensions[i])==GetExtensionName(ext))supported=bool(limits.supportedExtensions[ext]);
++        }
++        ok &= supported;
++      }
++      // Query actual CPU backend before assigning any public reference value.
++      // Recommendation hints and finite server waits are not resource budgets.
++      for(size_t i=0;i<reference->parameterCount;i++) {
++        const auto& p=reference->parameters[i];
++        if(p.components!=1||p.pname==33000||p.pname==33001||p.pname==37447||p.pname==37137||p.pname==36203)continue;
++        if(p.pname==35380) {ok &= limits.uniformBufferOffsetAlignment&&uint32_t(p.lo)%limits.uniformBufferOffsetAlignment==0;limits.uniformBufferOffsetAlignment=uint32_t(p.lo);continue;}
++        double actual=0;
++        if(p.pname==34045||p.pname==34047) {GLfloat v=0;gl->fGetFloatv(p.pname,&v);actual=v;}
++        else if(p.pname==35376||p.pname==35377||p.pname==35379) {GLint64 v=0;gl->fGetInteger64v(p.pname,&v);actual=double(v);}
++        else {GLint v=0;gl->fGetIntegerv(p.pname,&v);actual=v;}
++        ok &= CloakfoxGPUProfile::ReferenceScalarSupported(p,actual);
++      }
++      if(!gl2)ok &= RestrictCap(&limits.maxColorDrawBuffers,cap(34852,8));
++      if(limits.supportedExtensions[WebGLExtensionID::OVR_multiview2])ok &= RestrictCap(&limits.maxMultiviewLayers,cap(38449,4));
++    }
+     if (!ok) {
+       *out_failReason = {"FEATURE_FAILURE_CLOAKFOX_GPU_BASELINE",
+                          "Backend cannot support the protected WebGL baseline"};
+       return false;
+     }
+-    limits.lineWidthRange = {1, 1};
+-    limits.pointSizeRange = {1, 63};
++    limits.lineWidthRange = lineRange;
++    limits.pointSizeRange = pointRange;
+   }
+   // End Cloakfox standardized backend cohort.
+ 
+--- a/dom/canvas/WebGLProgram.cpp
++++ b/dom/canvas/WebGLProgram.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -1048,6 +1049,20 @@
+   const auto& linkInfo = mMostRecentLinkInfo;
+   const auto& gl = mContext->gl;
+ 
++  if(CloakfoxGPUReference::Lookup(mContext->Options().cloakfoxPersonaProfile)&&mContext->IsWebGL2()) {
++    const auto cap=[&](uint32_t pname){return CloakfoxGPUReference::Cap(mContext->Options().cloakfoxPersonaProfile,true,pname);};
++    uint32_t vertexBlocks=0,fragmentBlocks=0;
++    uint64_t vertexComponents=0,fragmentComponents=0;
++    for(const auto& block:linkInfo->active.activeUniformBlocks) {
++      if(block.dataSize>cap(35376)){*out_linkLog="Uniform block exceeds reference profile size";return false;}
++      if(block.referencedByVertexShader){vertexBlocks++;vertexComponents+=(block.dataSize+3)/4;}
++      if(block.referencedByFragmentShader){fragmentBlocks++;fragmentComponents+=(block.dataSize+3)/4;}
++    }
++    if(vertexBlocks>cap(35371)||fragmentBlocks>cap(35373)||vertexBlocks+fragmentBlocks>cap(35374)||vertexComponents>cap(35377)||fragmentComponents>cap(35379)) {
++      *out_linkLog="Uniform blocks exceed reference profile stage or combined resources";return false;
++    }
++  }
++
+   // Check for overlapping attrib locations.
+   {
+     std::unordered_map<uint32_t, const std::string&> nameByLoc;
+@@ -1103,6 +1118,11 @@
+         MOZ_CRASH("`bufferMode`");
+     }
+ 
++    if(CloakfoxGPUReference::Lookup(mContext->Options().cloakfoxPersonaProfile)) {
++      const auto pname=linkInfo->transformFeedbackBufferMode==LOCAL_GL_INTERLEAVED_ATTRIBS?35978u:35968u;
++      maxComponentsPerIndex=std::min(maxComponentsPerIndex,CloakfoxGPUReference::Cap(mContext->Options().cloakfoxPersonaProfile,true,pname));
++    }
++
+     std::vector<size_t> componentsPerVert;
+     for (const auto& cur : activeTfVaryings) {
+       if (componentsPerVert.empty() ||
+--- a/dom/canvas/WebGLRenderbuffer.cpp
++++ b/dom/canvas/WebGLRenderbuffer.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -166,7 +167,8 @@
+     return;
+   }
+ 
+-  const auto maxSamples = usage->MaxSamples(*mContext->gl);
++  auto maxSamples = usage->MaxSamples(*mContext->gl);
++  if(CloakfoxGPUReference::Lookup(mContext->Options().cloakfoxPersonaProfile))maxSamples=std::min(maxSamples,CloakfoxGPUReference::Cap(mContext->Options().cloakfoxPersonaProfile,true,36183));
+   if (samples > maxSamples) {
+     mContext->ErrorInvalidOperation("`samples` is out of the valid range.");
+     return;
+--- a/dom/canvas/WebGLShaderValidator.cpp
++++ b/dom/canvas/WebGLShaderValidator.cpp
+@@ -1,3 +1,4 @@
++#include "CloakfoxGPUProfileCore.hpp"
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+@@ -144,6 +145,7 @@
+     resources.MaxProgramTexelOffset = mGLMaxProgramTexelOffset;
+     resources.MaxVertexUniformBlocks = mGLMaxVertexUniformBlocks;
+     resources.MaxFragmentUniformBlocks = mGLMaxFragmentUniformBlocks;
++    if(CloakfoxGPUReference::Lookup(mOptions.cloakfoxPersonaProfile))resources.MaxUniformBufferBindings=limits.maxUniformBufferBindings;
+   }
+ 
+   resources.MaxDrawBuffers = MaxValidDrawBuffers();
+@@ -237,7 +239,8 @@
+   if (mOptions.cloakfoxBackendProfile) {
+     // Match the advertised cohort range in translated vertex shader output.
+     resources.MinPointSize = 1.0f;
+-    resources.MaxPointSize = 63.0f;
++    resources.MaxPointSize = Limits().pointSizeRange[1];
++    resources.MinPointSize = Limits().pointSizeRange[0];
+     compileOptions.clampPointSize = true;
+   }
+ 
