@@ -89,8 +89,8 @@ inline std::vector<uint32_t> EligibleReferences(const Config& cfg,uint32_t famil
  std::vector<uint32_t> result;
  for(const auto& p:CloakfoxGPUReference::kProfiles) {
   if(p.observed!=observed||p.family!=family||!cfg.contains("webGl:renderer")||cfg["webGl:renderer"]!=p.renderer||!cfg.contains("webGl:vendor")||cfg["webGl:vendor"]!=p.vendor)continue;
-  const char* platform=p.family==1?"MacIntel":"Win32";
-  const char* oscpu=p.family==1?"Intel Mac OS X 10.15":"Windows NT 10.0; Win64; x64";
+  const char* platform=std::string_view(p.os)=="mac"?"MacIntel":"Win32";
+  const char* oscpu=std::string_view(p.os)=="mac"?"Intel Mac OS X 10.15":"Windows NT 10.0; Win64; x64";
   if(!cfg.contains("navigator.platform")||cfg["navigator.platform"]!=platform||!cfg.contains("navigator.oscpu")||cfg["navigator.oscpu"]!=oscpu)continue;
   bool ok=true;
   for(size_t gi=0;gi<2;gi++) {

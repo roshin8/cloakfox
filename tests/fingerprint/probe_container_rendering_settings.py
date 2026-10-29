@@ -7,6 +7,7 @@ paired BrowserForge reference labels validated by createReferenceGPUProfile.
 Requires CLOAKFOX_BIN, geckodriver and Selenium; reports no identity secrets.
 """
 from __future__ import annotations
+import gzip
 import hashlib
 import io
 import json
@@ -303,7 +304,29 @@ def main():
             check('On by default' in driver.find_element(By.CSS_SELECTOR, 'input[data-container-rendering="rendering:gpu_observed"]').find_element(By.XPATH, '..').text, 'observed UI explains default activation')
             catalog=driver.find_element(By.ID,'cfx-observed-gpu-catalog')
             driver.execute_script('arguments[0].open=true;',catalog)
-            check(all(text in catalog.text for text in ['106 records','Intel HD Graphics 400','AMD Radeon R9 200 Series','NVIDIA GeForce GTX 980','not a complete database']), 'UI exposes supported list and source coverage limitations')
+            source_root=Path(__file__).resolve().parents[2]/'additions/cloakcfg'
+            executable=json.loads((source_root/'gpu-reference-executable.json').read_text())
+            with gzip.open(source_root/'gpu-full-reference-records.json.gz','rt') as source:
+                full_catalog=json.load(source)
+            observed_profiles=executable['observedProfiles']
+            words=['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+                   'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen','twenty']
+            count=len(observed_profiles)
+            count_text=words[count] if count<len(words) else str(count)
+            text=catalog.text
+            check(all(profile['os']=='win' for profile in observed_profiles) and
+                  f'{count_text} Windows GPU identities' in text and
+                  all({'intel':'Intel','amd':'AMD','nvidia':'NVIDIA'}[family] in text
+                      for family in {profile['family'] for profile in observed_profiles}),
+                  'UI observed identity count, OS and families match the bundled executable catalog')
+            check(f'all {len(full_catalog["records"])} browser, platform, GPU and WebGL conditional paths' in text and
+                  all(term in text for term in ['Source membership alone does not enable a profile',
+                    'incomplete records','inconsistent pairs','capabilities the software renderer cannot execute remain excluded',
+                    'Apple personas retain the protected reference mode']),
+                  'UI full source-path coverage and runtime admission exclusions match bundled corpus')
+            check(all(term in text for term in ['fpgen or BrowserForge supplies the surrounding persona',
+                  'bundled locally','does not contact the source website or upload your hardware details']),
+                  'UI explains persona sources and local catalog privacy')
             check(catalog.find_element(By.TAG_NAME,'a').get_attribute('href') == 'https://github.com/scrapfly/fingerprint-generator/releases/tag/model-2/2026', 'UI links the pinned source release')
             chrome('Services.prefs.savePrefFile(null);')
             driver.quit()

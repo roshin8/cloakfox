@@ -41,9 +41,9 @@ EXTRA_JS_MODULES += [
     "CloakfoxPersonas.sys.mjs",
     "CloakfoxPrefMigration.sys.mjs",
     "CloakfoxPrivacyPolicy.sys.mjs",
-    "CloakfoxQuickContainer.sys.mjs",
     "CloakfoxProxyIndicator.sys.mjs",
     "CloakfoxProxyManager.sys.mjs",
+    "CloakfoxQuickContainer.sys.mjs",
     "CloakfoxRegions.sys.mjs",
     "CloakfoxReleaseStatus.sys.mjs",
     "CloakfoxSeedSync.sys.mjs",
@@ -79,8 +79,8 @@ FINAL_TARGET_FILES.actors += [
     "actors/CloakfoxCoderPadMediaChild.sys.mjs",
     "actors/CloakfoxContainerBulkChild.sys.mjs",
     "actors/CloakfoxContainerProxyEditorChild.sys.mjs",
-    "actors/CloakfoxContainerTabsChild.sys.mjs",
     "actors/CloakfoxContainerProxyEditorParent.sys.mjs",
+    "actors/CloakfoxContainerTabsChild.sys.mjs",
     "actors/CloakfoxFeatureDetectChild.sys.mjs",
     "actors/CloakfoxFeatureDetectParent.sys.mjs",
     "actors/CloakfoxGamepadChild.sys.mjs",
@@ -114,7 +114,7 @@ with Files("**"):
 
 # Pinned full fpgen model, provenance and source license. Runtime sampling is local.
 FINAL_TARGET_FILES.modules += [
+    "fpgen-model-LICENSE.txt",
     "fpgen-model-reference.zip",
     "fpgen-model-source.json",
-    "fpgen-model-LICENSE.txt",
 ]

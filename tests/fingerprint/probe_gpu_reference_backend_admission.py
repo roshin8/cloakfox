@@ -41,26 +41,28 @@ def probe(directory):
     integer=gl('glGetIntegerv',None,C.c_uint,C.POINTER(C.c_int));floating=gl('glGetFloatv',None,C.c_uint,C.POINTER(C.c_float));integer64=gl('glGetInteger64v',None,C.c_uint,C.POINTER(C.c_int64));error=gl('glGetError',C.c_uint)
     precision=gl('glGetShaderPrecisionFormat',None,C.c_uint,C.c_uint,C.POINTER(C.c_int),C.POINTER(C.c_int))
     measurements={'kind':kind,'renderer':renderer,'profiles':[]};result['contexts'].append(measurements)
-    for profile in catalog['profiles']:
-     observed={'code':profile['code'],'record':profile['record'],'family':profile['family'],'scalars':{},'ranges':{},'precision':[]};measurements['profiles'].append(observed)
-     for key,entry in profile['contexts'][kind]['parameters'].items():
-      enum=int(key);required=entry['value']
-      # Recommendation hints are not resource capacities. Timeout/index
-      # semantics are enforced by native Gecko, rather than driver budgets.
-      if enum in [34467,33000,33001,37447,37137,36203]:continue
-      vector=isinstance(required,list)
-      if enum in [33901,33902,34045,34047]:value=(C.c_float*2)();floating(enum,value)
-      elif enum in [35376,35377,35379]:value=(C.c_int64*2)();integer64(enum,value)
-      else:value=(C.c_int*2)();integer(enum,value)
-      err=error();actual=list(value) if vector else value[0]
-      if vector:ok=(actual[0]<=required[0] and actual[1]>=required[1]) if enum in [33901,33902] else all(a>=b for a,b in zip(actual,required))
-      elif enum==35380:ok=actual>0 and required%actual==0
-      else:ok=actual<=required if enum==35076 else actual>=required
-      observed['ranges' if vector else 'scalars'][key]={'actual':actual,'required':required,'error':err}
-      result['checks'].append({'pass':bool(ok and err==0),'name':profile['family']+'/'+kind+'/'+entry['name'],'actual':actual,'required':required,'error':err})
-     for entry in profile['contexts'][kind]['shaderPrecisionFormats']:
-      bounds=(C.c_int*2)();bits=C.c_int();precision(entry['shaderType'],entry['precisionType'],bounds,C.byref(bits));err=error();actual=[*bounds,bits.value];r=entry['shaderPrecisionFormat'];required=[r['rangeMin'],r['rangeMax'],r['precision']]
-      observed['precision'].append({'shaderType':entry['shaderType'],'precisionType':entry['precisionType'],'actual':actual,'required':required,'error':err});result['checks'].append({'pass':actual==required and err==0,'name':profile['family']+'/'+kind+'/precision/'+str(entry['shaderType'])+','+str(entry['precisionType']),'actual':actual,'required':required,'error':err})
+    for mode in ['profiles','observedProfiles']:
+     for profile in catalog[mode]:
+      observed={'code':profile['code'],'record':profile['record'],'family':profile['family'],'renderer':profile['renderer'],'os':profile['os'],'mode':mode,'scalars':{},'ranges':{},'precision':[]};measurements['profiles'].append(observed)
+      for key,entry in profile['contexts'][kind]['parameters'].items():
+       enum=int(key);required=entry['value']
+       # Recommendation hints are not resource capacities. Timeout/index
+       # semantics are enforced by native Gecko, rather than driver budgets.
+       if enum in [34467,33000,33001,37447,37137,36203]:continue
+       vector=isinstance(required,list)
+       if enum in [33901,33902,34045,34047]:value=(C.c_float*2)();floating(enum,value)
+       elif enum in [35376,35377,35379]:value=(C.c_int64*2)();integer64(enum,value)
+       else:value=(C.c_int*2)();integer(enum,value)
+       err=error();actual=list(value) if vector else value[0]
+       if vector:ok=(actual[0]<=required[0] and actual[1]>=required[1]) if enum in [33901,33902] else all(a>=b for a,b in zip(actual,required))
+       elif enum==35380:ok=actual>0 and required%actual==0
+       # LOD bias 34045 is an upper capacity: raw 16 admits public 2.
+       else:ok=actual<=required if enum==35076 else actual>=required
+       observed['ranges' if vector else 'scalars'][key]={'actual':actual,'required':required,'error':err}
+       result['checks'].append({'pass':bool(ok and err==0),'name':str(profile['code'])+':'+profile['renderer']+'/'+mode+'/'+kind+'/'+entry['name'],'actual':actual,'required':required,'error':err})
+      for entry in profile['contexts'][kind]['shaderPrecisionFormats']:
+       bounds=(C.c_int*2)();bits=C.c_int();precision(entry['shaderType'],entry['precisionType'],bounds,C.byref(bits));err=error();actual=[*bounds,bits.value];r=entry['shaderPrecisionFormat'];required=[r['rangeMin'],r['rangeMax'],r['precision']]
+       observed['precision'].append({'shaderType':entry['shaderType'],'precisionType':entry['precisionType'],'actual':actual,'required':required,'error':err});result['checks'].append({'pass':actual==required and err==0,'name':str(profile['code'])+':'+profile['renderer']+'/'+mode+'/'+kind+'/precision/'+str(entry['shaderType'])+','+str(entry['precisionType']),'actual':actual,'required':required,'error':err})
    finally:current(display,None,None,None);destroy_surface(display,surface);destroy_context(display,context)
  finally:bind('eglTerminate',C.c_uint,C.c_void_p)(display)
  return result

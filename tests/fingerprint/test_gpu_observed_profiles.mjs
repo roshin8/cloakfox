@@ -4,7 +4,7 @@ import * as registry from '../../additions/browser/components/cloakfox/CloakfoxG
 import {createGPUProfile} from '../../additions/browser/components/cloakfox/CloakfoxGPUProfiles.sys.mjs';
 const config=p=>({'webGl:renderer':p.renderer,'webGl:vendor':p.vendor,'navigator.platform':'Win32','navigator.oscpu':'Windows NT 10.0; Win64; x64','fingerprint:secret':'A'.repeat(43)+'=','canvas:seed':42,'rendering:gpu_reference':true,'rendering:gpu_observed':true});
 test('observed mode selects independently versioned immutable complete Windows records',()=>{
- assert.equal(registry.OBSERVED_GPU_PROFILES?.length,3);
+ assert.equal(registry.OBSERVED_GPU_PROFILES?.length,9);
  for(const [i,p] of registry.OBSERVED_GPU_PROFILES.entries()){
   assert.equal(p.code,36866+i);assert(Object.isFrozen(p));
   const c=config(p), before=structuredClone(c),d=createGPUProfile(c,0);
@@ -21,4 +21,17 @@ test('observed dependencies, unsupported Apple, foreign identities and ceilings 
  assert.throws(()=>createGPUProfile({...c,'webGl:vendor':'borrowed'},0));
  const apple=registry.REFERENCE_GPU_PROFILES[0];assert.throws(()=>createGPUProfile({...config(apple),'navigator.platform':'MacIntel','navigator.oscpu':'Intel Mac OS X 10.15'},0),/supported/);
  assert.equal(createGPUProfile({...c,'rendering:gpu_observed':false},0).version,3);
+});
+
+test('expanded identities retain lineage and independent container descriptors',()=>{
+ const identities=new Set();
+ for(const p of registry.OBSERVED_GPU_PROFILES){
+  assert(p.sourceRecords.includes(p.record));
+  const identity=JSON.stringify([p.os,p.vendor,p.renderer]);assert(!identities.has(identity));identities.add(identity);
+  const a=createGPUProfile(config(p),1),b=createGPUProfile(config(p),2);
+  assert.equal(a.owner,1);assert.equal(b.owner,2);a.catalog.push(123);
+  assert.deepEqual(createGPUProfile(config(p),2),b);
+  for(const key of ['navigator.platform','navigator.oscpu'])assert.throws(()=>createGPUProfile({...config(p),[key]:'borrowed'},1));
+  for(const secret of ['',null,'A'.repeat(44)])assert.throws(()=>createGPUProfile({...config(p),'fingerprint:secret':secret},1));
+ }
 });
