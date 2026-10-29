@@ -1,0 +1,101 @@
+{
+  "scope": "Focused Firefox 159 verification of earlier Firefox 146 parity work; no application changes or complete parity claim",
+  "verified_at": "2026-10-29T06:36:03.235879+00:00",
+  "tested_source_commit": "0be9ed973f8281ddc4bf05f24fb40fc44fb523f1",
+  "matrix": [
+    {
+      "feature": "Persona consistency",
+      "status": "present",
+      "detail": "Existing inspector reports contradictions; hardware/OS inference remains advisory.",
+      "evidence": [
+        "additions/browser/components/cloakfox/CloakfoxInspector.sys.mjs",
+        "tests/fingerprint/test_consistency_inspector.mjs"
+      ]
+    },
+    {
+      "feature": "Save and generation contradiction warning",
+      "status": "present",
+      "detail": "Edit cancellation preserves config/overrides. Generation cancellation restores identity preferences before publication. Runtime edit guard and Node generation tests pass; full live UI interaction remains unverified.",
+      "evidence": [
+        "tests/fingerprint/probe_settings_consistency.py",
+        "tests/fingerprint/test_settings_consistency.mjs"
+      ]
+    },
+    {
+      "feature": "Storage/channel isolation coverage",
+      "status": "verified_targeted",
+      "detail": "Local Firefox159 runtime checks cover cookies, local/session storage, IndexedDB, CacheStorage, SharedWorker, BroadcastChannel, other-origin separation and profile restart with positive controls.",
+      "evidence": [
+        "tests/fingerprint/probe_container_storage_channels.py"
+      ]
+    },
+    {
+      "feature": "Service-worker registration/identity and HTTP-cache isolation coverage",
+      "status": "verified_targeted",
+      "detail": "Same-origin non-default owners cannot read each other's registrations/storage/cache. Explicit configured page and worker identities, independent writes, same-owner worker state and HTTP-cache reuse are checked.",
+      "evidence": [
+        "tests/fingerprint/probe_container_state_isolation.py"
+      ]
+    },
+    {
+      "feature": "Castle lab",
+      "status": "not_assessed",
+      "detail": "Not part of this verification. No Castle requests or port work performed; historical deferral is not a current parity claim."
+    },
+    {
+      "feature": "Complete native privacy runtime parity",
+      "status": "unverified",
+      "detail": "All 12 listed patches exist in order. Patch presence and focused tests do not establish complete engine/runtime/proxy parity."
+    }
+  ],
+  "validation": {
+    "browser": {
+      "binary": "/Applications/Cloakfox.app/Contents/MacOS/cloakfox",
+      "version": "159.0-beta.1",
+      "xul_sha256": "c88bcbef2bd0e6f310f51a4958d5a91d9af0a9e0a14b726920667b11628b2d71",
+      "headless": true,
+      "profiles": "Disposable only; personal profile not used"
+    },
+    "targeted_node": {
+      "passed": 28,
+      "failed": 0
+    },
+    "broad_node": {
+      "passed": 440,
+      "failed": 0,
+      "skipped": 0
+    },
+    "runtime": {
+      "service_worker_cache_storage_checks": 49,
+      "storage_channel_restart_checks": 70,
+      "source_loaded_settings_checks": 7
+    },
+    "ordered_privacy_patches": {
+      "patches/cloakfox-font-whitelist-parent.patch": true,
+      "patches/cloakfox-native-realm-presentation.patch": true,
+      "patches/cloakfox-websocket-headers.patch": true,
+      "patches/cloakfox-fontface-native-loading.patch": true,
+      "patches/cloakfox-websocket-privacy.patch": true,
+      "patches/cloakfox-graphics-gap-fix.patch": true,
+      "patches/cloakfox-inherited-realm-privacy.patch": true,
+      "patches/cloakfox-language-identity.patch": true,
+      "patches/cloakfox-privacy-enforcement.patch": true,
+      "patches/cloakfox-turn-proxy-privacy.patch": true,
+      "patches/cloakfox-proxy-resolver-errors.patch": true,
+      "patches/cloakfox-request-identity-and-mask-storage.patch": true
+    }
+  },
+  "review": {
+    "finding": "Prior page/worker equality could pass if both identities were wrong.",
+    "resolution": "Require each configured populated owner identity for pages and all worker types at setup/return/reload; require different owner identities. Assert fetch bodies and B setup success.",
+    "final": "Independent review: no open blocking findings."
+  },
+  "limitations": [
+    "Only installed Firefox159 on macOS was exercised now; no fresh Firefox146/158 verification.",
+    "Settings probe imports the maintained inspector and sandboxed edit handler, uses installed Overrides module and a stubbed config builder. Generation handlers use Node with simulated UI/prefs.",
+    "No live settings-page click test, rebuild or reinstall performed for this task.",
+    "Local TLS fixture uses temporary self-signed certificate acceptance with loopback-only DNS. No external proxy/TLS/exit-IP parity assessment.",
+    "Full native privacy parity and Castle lab are not established."
+  ],
+  "local_artifacts": "Raw logs and tools remain untracked under .tools159/parity-probe-review; checkpoints retained."
+}

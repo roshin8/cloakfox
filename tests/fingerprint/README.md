@@ -736,3 +736,33 @@ Run `node --test tests/fingerprint/test_ip_conflicts_dual.mjs` and
 `CLOAKFOX_BIN=/Applications/Cloakfox.app/Contents/MacOS/cloakfox python tests/fingerprint/probe_ip_check_routes.py`.
 The latter uses local TLS fixtures in a disposable profile and tests native proxies,
 tab-based extension routes, blocked routes, cache invalidation, UI wiring and cleanup.
+
+### Firefox 146 parity regression coverage
+
+- `test_consistency_inspector.mjs` covers configuration contradictions, optional
+  fields, canonical language aliases, and existing repair/measurement safeguards.
+- `test_settings_consistency.mjs` executes the actual settings edit and generation
+  handlers: Cancel preserves seed/preferences/overrides; Accept keeps custom values.
+- `probe_settings_consistency.py` loads the maintained inspector through a temporary
+  resource mapping in a disposable browser profile and exercises real override
+  writes. It does not replace installed application resources or drive the settings UI.
+- `probe_container_state_isolation.py` checks same-origin, non-default-container
+  service-worker registration separation, worker identity, storage, and HTTP-cache
+  separation with same-owner cache-reuse and worker positive controls.
+- `probe_container_storage_channels.py` covers cookies (including request cookies),
+  local/session storage, IndexedDB, CacheStorage, SharedWorker and BroadcastChannel
+  separation plus profile-restart controls. CacheStorage is distinct from HTTP cache.
+
+Run the runtime probes with `CLOAKFOX_BIN` pointing to the respective development
+app and `MOZ_REMOTE_ALLOW_SYSTEM_ACCESS=1` for builds requiring explicit privileged
+automation access. Profiles and servers are temporary/local. These checks do not
+establish complete native privacy parity, proxy/IP behavior, or remote-site behavior.
+The Castle lab is outside this verification and is not covered by these probes.
+
+The current Firefox 159 verification is recorded in
+[`docs/feature-parity-146.json`](../../docs/feature-parity-146.json): 49 state/worker/
+HTTP-cache checks, 70 storage/channel/restart checks, 7 sandboxed settings checks,
+and 440 JavaScript tests passed. The state probe requires the configured Windows
+and Linux identities for both pages and workers; agreement alone is insufficient.
+These results apply to the tested macOS 159 binary, not a fresh 146/158 comparison.
+Raw browser logs and local tooling are kept outside the committed evidence.
