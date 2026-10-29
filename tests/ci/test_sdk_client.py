@@ -33,7 +33,7 @@ class SDKTests(unittest.TestCase):
           'frameworkSha256':self.m.digest(sdk/'engine'),'patchLocks':{'last.json':self.m.digest(p/'last.json')},
           'sourceFiles':{'engine.cc':'abc'},'entries':self.m.inventory(sdk),'knownValidationFailures':[]}
         self.manifest = self.package/'sdk-import.json'
-        self.lock = {'clientRevision':rev,'archiveName':'sdk.tar.gz','manifestSha256':'','archiveSha256':self.record['archiveSha256'],
+        self.lock = {'clientRevision':rev,'sdkSourceRevision':rev,'archiveName':'sdk.tar.gz','manifestSha256':'','archiveSha256':self.record['archiveSha256'],
           'archiveBytes':self.record['archiveBytes'],'frameworkSha256':self.record['frameworkSha256'],
           'patchLock':'last.json','frameworkPath':'engine'}
         self.save_manifest()
@@ -48,6 +48,43 @@ class SDKTests(unittest.TestCase):
         sdk, record = self.verify()
         self.assertEqual((sdk/'link').read_bytes(),b'engine')
         self.assertEqual(record,self.record)
+
+    def test_new_client_revision_can_reuse_unchanged_engine_contract(self):
+        (self.source/'client.txt').write_text('compatible client update')
+        subprocess.run(['git','-C',str(self.source),'add','.'],check=True)
+        subprocess.run(['git','-C',str(self.source),'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','client'],check=True)
+        self.lock['clientRevision']=subprocess.check_output(['git','-C',str(self.source),'rev-parse','HEAD'],text=True).strip()
+        sdk,record=self.verify()
+        self.assertEqual(record['clientRevision'],self.lock['sdkSourceRevision'])
+        self.assertEqual((sdk/'engine').read_bytes(),b'engine')
+
+    def test_added_native_patch_cannot_reuse_old_sdk(self):
+        (self.source/'engines/chromium/new-patch-lock.json').write_text('{}')
+        subprocess.run(['git','-C',str(self.source),'add','.'],check=True)
+        subprocess.run(['git','-C',str(self.source),'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','native change'],check=True)
+        self.lock['clientRevision']=subprocess.check_output(['git','-C',str(self.source),'rev-parse','HEAD'],text=True).strip()
+        with self.assertRaisesRegex(ValueError,'native inputs'):self.verify()
+
+    def commit_file(self,path):
+        p=self.source/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('changed')
+        subprocess.run(['git','-C',str(self.source),'add','.'],check=True)
+        subprocess.run(['git','-C',str(self.source),'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','change'],check=True)
+        return subprocess.check_output(['git','-C',str(self.source),'rev-parse','HEAD'],text=True).strip()
+
+    def test_changed_compiler_recipe_rejects_sdk_reuse(self):
+        self.lock['clientRevision']=self.commit_file('scripts/ci/chromium_source.py')
+        with self.assertRaisesRegex(ValueError,'native inputs'):self.verify()
+
+    def test_caller_shared_policy_cannot_test_old_pin(self):
+        self.commit_file('engines/shared/privacy_contract.json')
+        with self.assertRaisesRegex(ValueError,'differ'):self.m.verify_caller(self.source,self.lock)
+
+    def test_caller_fingerprint_fixture_cannot_test_old_pin(self):
+        self.commit_file('tests/fingerprint/library_audit_common.py')
+        with self.assertRaisesRegex(ValueError,'differ'):self.m.verify_caller(self.source,self.lock)
+
+    def test_caller_matching_inputs_pass(self):
+        self.m.verify_caller(self.source,self.lock)
 
     def test_manifest_tampering_rejected(self):
         self.manifest.write_text('{}')

@@ -1,6 +1,6 @@
 # Chromium client CI
 
-The normal validation path consumes a versioned binary SDK. It does not compile Chromium.
+The normal validation path consumes a versioned binary SDK. It does not compile Chromium. The existing `chromium.yml` entry point now calls SDK client validation instead of the engine builder. Its first gate refuses to test an old pinned client when the client/native/test inputs under review differ.
 
 `engines/chromium/sdk-lock.json` pins the SDK release asset IDs and SHA-256 digests, the framework digest, the matching client revision, and its engine patch chain. `chromium-sdk-validation.yml` downloads and verifies those inputs, builds the client and an upstream negative control, saves the apps, and runs the required checks on a standard `macos-26` GitHub-hosted runner.
 
@@ -20,8 +20,8 @@ The reusable `chromium-sdk-validation.yml` also has a direct manual entry once r
 
 ## Updating inputs
 
-For client changes compatible with this SDK, pin a reviewed client commit in the lock. This first imported manifest deliberately binds its original source revision too: a future compatible client update must introduce an explicit reviewed compatibility rule instead of silently changing the pin. When native engine patches or the native API change, produce a new SDK version, retain the old one, and update the SDK lock and matching client together. Do not package an old compiled engine under a new source identity.
+For client changes compatible with this SDK, pin a reviewed client commit in the lock. The manifest retains its original `sdkSourceRevision`; the verifier compares committed native patch/recipe inputs between that revision and the new client revision. Client-only changes can reuse the SDK; added or changed native patches/recipes fail closed. Ordinary CI additionally checks that the code and tests under review match the client pin, so a frozen older snapshot cannot make unrelated changes appear green. When native engine patches or the native API change, produce a new SDK version, retain the old one, and update the SDK lock and matching client together. Do not package an old compiled engine under a new source identity.
 
-SDK publication happens once per engine version. Normal client builds download it; they do not require a fresh upload from a developer's mounted volume. Promoting this branch's workflow into the main PR pipeline is a separate reviewed change, not a merge of the unrelated development work in this checkout.
+SDK publication happens once per engine version. Normal client builds download it; they do not require a fresh upload from a developer's mounted volume. These workflow changes are on the CI branch. Main is not merged or modified; promoting them to main is a separate review. They do not incorporate unrelated development work from this checkout.
 
 The workflow preserves built apps before runtime checks, and uploads evidence even on failure. Required checks cover C++ tests, actual Metal, upstream fingerprint libraries, the complete matching engine/privacy suite with unpatched control, sandbox/storage, TCP/QUIC/TLS certificate rejection, and dual-engine coexistence. Independent checks continue after another check fails; the job stays failed.

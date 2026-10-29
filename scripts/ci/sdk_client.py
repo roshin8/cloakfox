@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Consume a versioned SDK. Chromium compilation is deliberately not supported."""
 import argparse
+import fnmatch
 import hashlib
 import json
 import os
@@ -48,13 +49,46 @@ def sdk_filter(member, destination):
     return safe.replace(mode=member.mode) if safe.isfile() or safe.isdir() else safe
 
 
+def native_inputs(source, revision):
+    patterns = ('engines/chromium/*lock.json', 'engines/chromium/cef-runtime-patches.json',
+                'engines/chromium/apply_*_patch.py', 'engines/chromium/patches/*',
+                'engines/chromium/build_identity.py', 'engines/chromium/clt_sdk_info.py',
+                'engines/chromium/prepare_clt_build.py', 'engines/chromium/source_preflight.py',
+                'engines/chromium/fetch_cef.py', 'scripts/ci/chromium_source.py',
+                'scripts/ci/chromium_host_identity.py', 'scripts/ci/chromium_host_tools.py',
+                'scripts/ci/prepare_macos.py')
+    listing = subprocess.check_output(['git', '-C', str(source), 'ls-tree', '-r', '-z', revision])
+    return [entry for entry in listing.split(b'\0') if entry and any(
+        fnmatch.fnmatchcase(entry.split(b'\t', 1)[1].decode(), pattern) for pattern in patterns)
+        and entry.split(b'\t', 1)[1] != b'engines/chromium/sdk-lock.json']
+
+
+def verify_caller(source, lock):
+    paths = ['engines/chromium', 'engines/shared', 'additions/cloakcfg/engine-host',
+             'tests/engines', 'tests/network', 'tests/fingerprint',
+             'scripts/ci/run_engine_tests.py', 'scripts/ci/runner_probe.py',
+             'scripts/setup-fingerprint-libraries.py',
+             ':(exclude)engines/chromium/sdk-lock.json',
+             ':(exclude)engines/chromium/ci-media-fixture.patch']
+    changed = subprocess.check_output(['git', '-C', str(source), 'diff', '--name-only',
+                                      lock['clientRevision'], 'HEAD', '--', *paths], text=True)
+    require(not changed, 'Client/native/test inputs differ from the reviewed client pin: ' + changed +
+            'Update the client pin for compatible changes or publish a new SDK for native changes. '
+            'CI will not rebuild Chromium or validate an unrelated older client.')
+    require(native_inputs(source, 'HEAD') == native_inputs(source, lock['sdkSourceRevision']),
+            'Current native inputs differ from the SDK source revision')
+
+
 def verify_sdk(package, lock, source, destination):
     manifest = package / 'sdk-import.json'
     require(digest(manifest) == lock['manifestSha256'], 'SDK manifest digest mismatch')
     record = json.loads(manifest.read_text())
     require(record['schema'] == 1 and record['origin'] == 'locally-built-sdk-import', 'SDK origin mismatch')
     revision = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
-    require(revision == record['clientRevision'] == lock['clientRevision'], 'client revision mismatch')
+    require(revision == lock['clientRevision'], 'client revision mismatch')
+    require(record['clientRevision'] == lock['sdkSourceRevision'], 'SDK source revision mismatch')
+    require(native_inputs(source, revision) == native_inputs(source, lock['sdkSourceRevision']),
+            'client native inputs require a different SDK')
     for field in ('archiveSha256', 'archiveBytes', 'frameworkSha256'):
         require(record[field] == lock[field], 'SDK lock mismatch: ' + field)
     archive = package / lock['archiveName']
@@ -112,6 +146,8 @@ def build_clients(source, package, lock_path, work):
     evidence.mkdir(exist_ok=True)
     verification = {key: record[key] for key in ('origin', 'archiveSha256', 'frameworkSha256',
                     'clientRevision', 'patchLocks', 'knownValidationFailures')}
+    verification['sdkSourceRevision'] = record['clientRevision']
+    verification['clientRevision'] = lock['clientRevision']
     verification['clientPatchSha256'] = lock['clientPatchSha256']
     verification['controllerRevision'] = os.environ['GITHUB_SHA']
     (evidence / 'sdk-verification.json').write_text(json.dumps(verification, indent=2) + '\n')
