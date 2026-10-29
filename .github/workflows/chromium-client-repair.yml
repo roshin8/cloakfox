@@ -1,0 +1,243 @@
+name: Repair probe fixture with existing SDK and require runtime gates
+on:
+  workflow_call:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  clients:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4f155411db66d1934e6926c4bf4c93cfb6561838
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Install current app build tools
+        run: brew install cmake ninja
+      - name: Require successful owned SDK producer and exact artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PYVERIFY'
+          import json, subprocess
+          def api(path):
+              return json.loads(subprocess.check_output(['gh','api','repos/roshin8/cloakfox/'+path]))
+          run=api('actions/runs/40544857164')
+          assert run['status']=='completed' and run['conclusion']=='success'
+          assert run['head_sha']=='ba3f02ce039f37a99d787e3ed5e7ded3d832e436'
+          assert run['head_repository']['full_name']=='roshin8/cloakfox'
+          artifact=api('actions/artifacts/12879218120')
+          assert not artifact['expired'] and artifact['workflow_run']['id']==40544857164
+          assert artifact['name']=='chromium-macos-arm64-cc270ce4c2790dc4d2fb295e7721c23321cb3acc4aefa3f934b846eda5d08999'
+          PYVERIFY
+      - name: Download exact resolved native SDK artifact
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          artifact-ids: 12879218120
+          run-id: 40544857164
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/engine-package
+      - name: Load recorded probe-only media fixture
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/roshin8/cloakfox/contents/engines/chromium/src/browser_client.cc?ref=${{ github.sha }}" --jq .content | base64 --decode > engines/chromium/src/browser_client.cc
+      - name: Load reviewed continuation lineage verifier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/roshin8/cloakfox/contents/scripts/ci/chromium_clients.py?ref=ba3f02ce039f37a99d787e3ed5e7ded3d832e436 --jq .content | base64 --decode > scripts/ci/chromium_clients.py
+      - name: Verify SDK and compile pinned patched and control clients
+        env:
+          PRODUCER_SHA: ba3f02ce039f37a99d787e3ed5e7ded3d832e436
+          PRODUCER_RUN: 40544857164
+        run: |
+          python3 -u scripts/ci/chromium_clients.py --package "$RUNNER_TEMP/engine-package" \
+            --root "$RUNNER_TEMP/chromium-clients" --producer-sha "$PRODUCER_SHA" --producer-run "$PRODUCER_RUN"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chromium-macos-arm64-test-apps
+          path: ${{ runner.temp }}/chromium-clients/chromium-apps.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chromium-source-evidence
+          path: ${{ runner.temp }}/chromium-clients/evidence/
+          if-no-files-found: error
+          retention-days: 14
+
+  runtime:
+    needs: clients
+    env:
+      APP_PRODUCER_RUN: ${{ github.run_id }}
+      APP_PRODUCER_SHA: ${{ github.sha }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4f155411db66d1934e6926c4bf4c93cfb6561838
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Verify owned successful client and Gecko build gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p evidence
+          python3 - <<'PY'
+          import json,subprocess,os
+          def api(path):return json.loads(subprocess.check_output(['gh','api','repos/roshin8/cloakfox/'+path]))
+          records=[]
+          for run_id,sha,artifact_id,name,gate in [
+              (int(os.environ['APP_PRODUCER_RUN']),os.environ['APP_PRODUCER_SHA'],None,'chromium-macos-arm64-test-apps','clients'),
+              (39026745900,'4d3e0c28d41b194832e62bac2dc595811c32abca',12099719951,'cloakfox-macos-arm64','gecko-engine-complete')]:
+              run=api(f'actions/runs/{run_id}')
+              assert run['head_sha']==sha
+              assert run['status']=='completed' or run_id==int(os.environ['APP_PRODUCER_RUN'])
+              assert run['head_repository']['full_name']=='roshin8/cloakfox'
+              jobs=api(f'actions/runs/{run_id}/jobs?per_page=100')['jobs']
+              assert any(j['name'].split(' / ')[-1]==gate and j['conclusion']=='success' for j in jobs)
+              if artifact_id is None:
+                  artifacts=api(f'actions/runs/{run_id}/artifacts?per_page=100')['artifacts']
+                  matching=[a for a in artifacts if a['name']==name and not a['expired']]
+                  assert len(matching)==1
+                  artifact_id=matching[0]['id']
+              artifact=api(f'actions/artifacts/{artifact_id}')
+              assert not artifact['expired'] and artifact['name']==name
+              assert artifact['workflow_run']['id']==run_id and artifact['workflow_run']['head_sha']==sha
+              records.append({'run':run,'artifact':artifact})
+          open('evidence/producer-verification.json','w').write(json.dumps(records,indent=2))
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          name: chromium-macos-arm64-test-apps
+          path: artifacts/chromium
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          name: chromium-source-evidence
+          path: evidence/source
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          artifact-ids: '12099719951'
+          run-id: '39026745900'
+          github-token: ${{ github.token }}
+          path: artifacts/gecko
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          artifact-ids: '12100705023'
+          run-id: '39026745900'
+          github-token: ${{ github.token }}
+          path: evidence/gecko-provenance
+      - name: Verify archives against their own immutable producer inputs
+        id: verify
+        run: |
+          mkdir -p apps
+          python3 - <<'PYCHROMIUM'
+          import importlib.util,json,os,subprocess
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('verify','scripts/ci/verify_chromium_artifact.py')
+          verifier=importlib.util.module_from_spec(spec);spec.loader.exec_module(verifier)
+          print('Runtime checkout:',subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip())
+          print('Recorded app identity:',[(str(p),json.loads(p.read_text()).get('appGitSha')) for p in Path('evidence/source').rglob('source-provenance.json')])
+          verifier.verify(Path('artifacts/chromium/chromium-apps.tar.gz'),Path('evidence/source'),Path('apps'),os.environ['APP_PRODUCER_SHA'])
+          PYCHROMIUM
+          python3 - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('engine','scripts/ci/engine_artifact.py')
+          engine=importlib.util.module_from_spec(spec);spec.loader.exec_module(engine)
+          sha='4d3e0c28d41b194832e62bac2dc595811c32abca'
+          import hashlib,fnmatch,subprocess
+          entries=subprocess.check_output(['git','ls-tree','-r','-z',sha]).split(b'\0')
+          selected=[]
+          for entry in entries:
+              if not entry:continue
+              path=entry.split(b'\t',1)[1].decode()
+              if any(path==pattern or path.startswith(pattern+'/') or fnmatch.fnmatchcase(path,pattern) for pattern in engine.INPUTS['gecko']):selected.append(entry)
+          key=hashlib.sha256(b'cloakfox-native-v1/macos-arm64/gecko\0'+b'\0'.join(selected)).hexdigest()
+          assert key=='bb2db43ebb0d6004e4cfed8ee8f9231021aa40bf62fc06d1fa0bee7162a40224'
+          import json
+          manifests=list(Path('evidence/gecko-provenance').rglob('engine-artifact.json'))
+          assert len(manifests)==1
+          record=json.loads(manifests[0].read_text())
+          assert record['schema']==1 and record['platform']=='macos-arm64' and record['kind']=='gecko'
+          assert record['key']==key and record['producerSha']==sha and record['producerRun']=='39026745900'
+          dmg=Path('artifacts/gecko/Cloakfox-macos-arm64.dmg')
+          assert not dmg.is_symlink()
+          expected=record['files']['Cloakfox-macos-arm64.dmg']
+          assert expected=={'sha256':engine.digest(dmg),'size':dmg.stat().st_size}
+          print('Verified retained Gecko DMG against its successful engine-gate manifest; other original package inputs are not consumed.')
+          PY
+          hdiutil attach artifacts/gecko/Cloakfox-macos-arm64.dmg -mountpoint /tmp/coexist-gecko -nobrowse -readonly
+          cp -R /tmp/coexist-gecko/Cloakfox.app apps/
+          hdiutil detach /tmp/coexist-gecko
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' apps/Cloakfox.app/Contents/Info.plist)" = org.mozilla.cloakfox
+          echo "CLOAKFOX_CHROMIUM_BIN=$PWD/apps/patched-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" >> "$GITHUB_ENV"
+          echo "CLOAKFOX_UNPATCHED_CHROMIUM_BIN=$PWD/apps/baseline-client/Release/CloakfoxChromium.app/Contents/MacOS/CloakfoxChromium" >> "$GITHUB_ENV"
+      - name: Install probe dependencies
+        run: |
+          python3 -m pip install -r tests/network/requirements-wire.txt selenium
+          brew install geckodriver
+      - name: Require actual Metal execution
+        id: metal
+        run: |
+          python3 scripts/ci/runner_probe.py --output evidence/runner.json
+          python3 -c 'import json; assert json.load(open("evidence/runner.json"))["metalAvailable"]'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install pinned upstream fingerprint fixtures
+        run: python3 scripts/setup-fingerprint-libraries.py
+      - name: Require upstream CreepJS and FingerprintJS native audit
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' && steps.metal.outcome == 'success' }}
+        run: python3 -u tests/engines/probe_fingerprint_libraries.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report-dir evidence/library-audit
+      - name: Load committed diagnostic harness
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/roshin8/cloakfox/contents/scripts/ci/diagnose_chromium_shutdown.py?ref=${{ github.sha }}" --jq .content | base64 --decode > /tmp/diagnose_chromium_shutdown.py
+      - name: Repeat private WebGPU shutdown with process stacks
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' && steps.metal.outcome == 'success' }}
+        env:
+          SHUTDOWN_EVIDENCE: evidence/shutdown
+        run: |
+          set -o pipefail
+          python3 -u /tmp/diagnose_chromium_shutdown.py 2>&1 | tee evidence/shutdown.log
+      - name: Reproduce full engine suite with shutdown stacks
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' && steps.metal.outcome == 'success' }}
+        env:
+          SHUTDOWN_EVIDENCE: evidence/full-suite-shutdown
+          SHUTDOWN_FULL_SUITE: '1'
+        run: |
+          set -o pipefail
+          python3 -u /tmp/diagnose_chromium_shutdown.py 2>&1 | tee evidence/full-suite.log
+      - name: Require sandbox and storage isolation
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        run: python3 tests/engines/probe_cef_isolation.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report evidence/isolation.json
+      - name: Require owned TCP QUIC and certificate rejection
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        run: python3 tests/engines/probe_cef_transport.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report evidence/transport.json
+      - name: Require dual-engine coexistence with verified Gecko 158
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        run: |
+          python3 tests/engines/probe_dual_engine_coexistence.py --gecko-binary "$PWD/apps/Cloakfox.app/Contents/MacOS/cloakfox" --chromium-binary "$CLOAKFOX_CHROMIUM_BIN" --require-persona-config --require-pixel-privacy --report evidence/coexistence.json
+      - name: Preserve diagnostics and all gate results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-runtime-recovery-evidence
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 14

@@ -214,6 +214,11 @@ class Companion : public CefApp, public CefBrowserProcessHandler {
       // Use stable feature defaults, matching official CEF distributions.
       command->AppendSwitch("disable-field-trial-config");
       if (testKeychain_) command->AppendSwitch("use-mock-keychain");
+      // Owned probe runs need devices to reach CEF's permission callback on
+      // camera-less hosted Macs. Do not auto-grant permission: the real
+      // OnRequestMediaAccessPermission handler must still reject capture.
+      if (probe_ && testKeychain_)
+        command->AppendSwitch("use-fake-device-for-media-stream");
       if (testQuicPort_) {
         command->AppendSwitch("enable-quic");
         command->AppendSwitchWithValue("origin-to-force-quic-on", "127.0.0.1:" + std::to_string(testQuicPort_));
