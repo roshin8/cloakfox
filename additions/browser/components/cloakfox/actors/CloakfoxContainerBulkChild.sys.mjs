@@ -3,7 +3,7 @@ export function initBulkContainerUI(actor) {
   const doc=actor.document, panel=doc.getElementById('container-picker-panel');
   const list=doc.getElementById('picker-identities-list'), newContainer=doc.getElementById('new-container-div');
   if(!panel || !list || !newContainer || doc.getElementById('cfx-bulk-tools'))return;
-  let selecting=false,busy=false,review=null,containers=[];
+  let selecting=false,busy=false,review=null,containers=[],anchor=null,anchorSelected=true;
   const selected=new Set();
   const node=(tag,text)=>{const el=doc.createElement(tag);if(text)el.textContent=text;return el;};
   const style=node('style');
@@ -26,7 +26,7 @@ export function initBulkContainerUI(actor) {
     .cfx-bulk-selection {display:flex;gap:12px;align-items:center;border-block-end:1px solid color-mix(in srgb,var(--text-color-primary) 12%,transparent);padding-block-end:8px;}
     :is(#cfx-bulk-tools,#cfx-bulk-footer) #cfx-bulk-delete-open {grid-column:1/-1;background:transparent;color:light-dark(#a62136,#ffb3bf);border-color:color-mix(in srgb,currentColor 35%,transparent);margin-block-start:4px;}
     :is(#cfx-bulk-tools,#cfx-bulk-footer) p:empty {display:none;}
-    html[data-cfx-bulk-open] #picker-identities-list tr {min-block-size:38px;box-sizing:border-box;}
+    html[data-cfx-bulk-open] #picker-identities-list tr {min-block-size:38px;box-sizing:border-box;user-select:none;}
     html[data-cfx-bulk-open] #picker-identities-list tr[aria-checked=true] {background:var(--menu-bg-hover-color);}
     .cfx-bulk-row {display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .cfx-bulk-actions {display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -62,9 +62,9 @@ export function initBulkContainerUI(actor) {
   const controls=node('div');controls.className='cfx-bulk-row';tools.append(controls);
   const button=(text,parent,handler,id)=>{const b=node('button',text);b.type='button';if(id)b.id=id;b.addEventListener('click',handler);parent.append(b);return b;};
   const select=button('Select containers',controls,()=>setSelecting(!selecting),'cfx-bulk-select');
-  const count=node('span');count.id='cfx-bulk-count';count.setAttribute('aria-live','polite');controls.append(count);
-  const all=button('Select all',controls,()=>{rows().forEach(row=>selected.add(row.dataset.cookieStoreId));sync();},'cfx-bulk-all');
-  const clear=button('Clear',controls,()=>{selected.clear();sync();},'cfx-bulk-clear');
+  const count=node('span');count.id='cfx-bulk-count';count.title='Shift-click containers to select a range.';count.setAttribute('aria-live','polite');controls.append(count);
+  const all=button('Select all',controls,()=>{anchor=null;rows().forEach(row=>selected.add(row.dataset.cookieStoreId));sync();},'cfx-bulk-all');
+  const clear=button('Clear',controls,()=>{anchor=null;selected.clear();sync();},'cfx-bulk-clear');
   controls.prepend(count);
   const selection=node('div');selection.className='cfx-bulk-selection';selection.append(all,clear);tools.append(selection);
   const footer=node('section');footer.id='cfx-bulk-footer';footer.hidden=true;panel.append(footer);
@@ -129,7 +129,7 @@ export function initBulkContainerUI(actor) {
   }),'cfx-bulk-delete-confirm');confirm.className='cfx-danger';
   button('Cancel',deleteButtons,()=>{review=null;reviewForm.hidden=true;sync();});
   function setSelecting(value){
-    selecting=value;selected.clear();review=null;proxyForm.hidden=reviewForm.hidden=true;password.value='';status.textContent='';
+    selecting=value;selected.clear();anchor=null;review=null;proxyForm.hidden=reviewForm.hidden=true;password.value='';status.textContent='';
     doc.documentElement.toggleAttribute('data-cfx-bulk-open',value);sync();
   }
   function sync(){
@@ -160,7 +160,17 @@ export function initBulkContainerUI(actor) {
     if(!selecting||!row||!visible())return;
     if(event.type==='keydown'&&!['Enter',' '].includes(event.key))return;
     event.preventDefault();event.stopImmediatePropagation();if(busy)return;
-    const id=row.dataset.cookieStoreId;selected.has(id)?selected.delete(id):selected.add(id);
+    const id=row.dataset.cookieStoreId;
+    const entries=rows(),start=entries.findIndex(item=>item.dataset.cookieStoreId===anchor),end=entries.indexOf(row);
+    if(event.shiftKey && start>=0){
+      for(const item of entries.slice(Math.min(start,end),Math.max(start,end)+1)){
+        const value=item.dataset.cookieStoreId;
+        anchorSelected?selected.add(value):selected.delete(value);
+      }
+    }else{
+      selected.has(id)?selected.delete(id):selected.add(id);
+      anchor=id;anchorSelected=selected.has(id);
+    }
     review=null;reviewForm.hidden=true;sync();
   }
   doc.addEventListener('click',toggle,true);doc.addEventListener('keydown',toggle,true);

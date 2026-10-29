@@ -2,6 +2,8 @@
 import json,os,tempfile,zipfile
 from pathlib import Path
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 from probe_daily_defaults import launch
 with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
     root=Path(tmp);profile=root/'profile';profile.mkdir();addon=root/'addon';addon.mkdir()
@@ -25,6 +27,24 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-bulk-test-') as tmp:
         wait.until(lambda _:driver.execute_script("return !!document.getElementById('cfx-bulk-select');"))
         assert driver.execute_script("return document.getElementById('cfx-bulk-select').parentElement.id==='cfx-bulk-footer';"), 'selection entry belongs in the footer'
         driver.find_element('id','cfx-bulk-select').click()
+        def row(index):
+            return driver.find_element('css selector',f'tr[data-cookie-store-id="firefox-container-{ids[index]}"]')
+        def shift_click(index):
+            ActionChains(driver).key_down(Keys.SHIFT).click(row(index)).key_up(Keys.SHIFT).perform()
+        row(0).click()
+        shift_click(3)
+        assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 4, 'Shift-click must select the intervening rows'
+        driver.find_element('id','cfx-bulk-clear').click()
+        row(3).click()
+        shift_click(0)
+        assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 4, 'reverse ranges must work'
+        row(1).click()
+        shift_click(3)
+        assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 1, 'a deselected anchor must clear its range'
+        driver.find_element('id','cfx-bulk-clear').click()
+        shift_click(2)
+        assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 1, 'Clear must reset the range anchor'
+        driver.find_element('id','cfx-bulk-clear').click()
         for i in ids[1:3]:driver.find_element('css selector',f'tr[data-cookie-store-id="firefox-container-{i}"]').click()
         assert driver.execute_script("return document.querySelectorAll('tr[aria-checked=true]').length") == 2
         assert driver.execute_script("const f=document.getElementById('cfx-bulk-footer').getBoundingClientRect(),p=document.getElementById('container-picker-panel').getBoundingClientRect(),l=document.querySelector('#container-picker-panel>.scrollable').getBoundingClientRect();return Math.abs(f.bottom-p.bottom)<2 && l.bottom<=f.top+1;"), 'actions must remain below the scrolling list at the panel bottom'
