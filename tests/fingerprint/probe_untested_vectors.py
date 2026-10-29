@@ -132,6 +132,20 @@ return (async () => {
 })();
 """
 
+VIEWPORT_SCROLL_PROBE = r"""
+return (async () => {
+  const spacer = document.createElement('div');
+  spacer.style.cssText = 'height:3000px;width:3000px';
+  document.body.appendChild(spacer);
+  window.scrollTo(173, 211);
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  return JSON.stringify({width:visualViewport.width,height:visualViewport.height,
+    scale:visualViewport.scale,pageLeft:visualViewport.pageLeft,pageTop:visualViewport.pageTop,
+    offsetLeft:visualViewport.offsetLeft,offsetTop:visualViewport.offsetTop,
+    scrollX:window.scrollX,scrollY:window.scrollY});
+})();
+"""
+
 IDB_PROBE = r"""
 return (async () => {
   try {
@@ -147,7 +161,7 @@ return (async () => {
 
 
 def run(bin_path: str, probe: str, cfg: dict | None, enabled: bool = True,
-        async_probe: bool = False):
+        async_probe: bool = False, letterboxing: bool = True):
     with tempfile.TemporaryDirectory() as t:
         prof = os.path.join(t, "p")
         Path(prof).mkdir()
@@ -182,6 +196,7 @@ def run(bin_path: str, probe: str, cfg: dict | None, enabled: bool = True,
         Path(prof, "user.js").write_text(js)
         opts = Options()
         opts.binary_location = bin_path
+        opts.set_preference("privacy.resistFingerprinting.letterboxing", letterboxing)
         opts.add_argument("--headless")
         opts.add_argument("-profile")
         opts.add_argument(prof)
@@ -277,14 +292,27 @@ def main(bin_path: str) -> int:
                     f"covered-all-true={ms_all} ({len(ms_cov)} types); "
                     f"changed-vs-base={ms_changed or 'none'}"))
 
-    vv = run(bin_path, OPTIN_PROBE,
-             {"navigator.platform": "Win32", "window:visualViewport:spoof": True,
-              "window.outerWidth": 1536, "window.outerHeight": 864,
-              "window.innerWidth": 1536, "window.innerHeight": 738},
-             async_probe=True)
-    results.append(("visual-viewport-spoofing",
-                    vv["vv"] != base["vv"],
-                    f"base={base['vv']} flagged={vv['vv']}"))
+    # The legacy flag normalizes zoom/scroll offsets, never width/height.
+    # Letterboxing intentionally delegates to native viewport geometry, so
+    # test the flag with letterboxing disabled and actual nonzero scrolling.
+    viewport_cfg = {"navigator.platform": "Win32"}
+    vv_base = run(bin_path, VIEWPORT_SCROLL_PROBE, viewport_cfg,
+                  async_probe=True, letterboxing=False)
+    vv = run(bin_path, VIEWPORT_SCROLL_PROBE,
+             {**viewport_cfg, "window:visualViewport:spoof": True},
+             async_probe=True, letterboxing=False)
+    vv_off = run(bin_path, VIEWPORT_SCROLL_PROBE,
+                 {**viewport_cfg, "window:visualViewport:spoof": True}, enabled=False,
+                 async_probe=True, letterboxing=False)
+    native_offsets = lambda value: (value["scrollX"] == 173 and value["scrollY"] == 211
+                                     and value["pageLeft"] == 173 and value["pageTop"] == 211)
+    results.append(("visual-viewport-spoofing (scroll offsets, native size)",
+                    native_offsets(vv_base) and native_offsets(vv_off)
+                    and vv["scrollX"] == 173 and vv["scrollY"] == 211
+                    and all(vv[key] == 0 for key in ("pageLeft", "pageTop", "offsetLeft", "offsetTop"))
+                    and vv["scale"] == 1 and vv["width"] == vv_base["width"]
+                    and vv["height"] == vv_base["height"],
+                    f"base={vv_base} flagged={vv} disabled={vv_off}"))
 
     idb_base = run(bin_path, IDB_PROBE, {"navigator.platform": "Win32"}, async_probe=True)
     idb_hid = run(bin_path, IDB_PROBE,

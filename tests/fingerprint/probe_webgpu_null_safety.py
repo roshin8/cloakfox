@@ -1,4 +1,4 @@
-"""Disabled WebGPU must return safely, including actor-free blank frames.
+"""Disabled WebGPU must return safely across inherited frames and workers.
 
 Runs against CLOAKFOX_BIN using loopback pages and disposable profiles. Never
 requests a GPU adapter/device or changes the installed app/user profile.
@@ -105,10 +105,8 @@ def run_case(binary, root, case, enabled, disabled):
                     """, kind, URL)
                 result = read_getter(driver, token, kind)
                 assert not result.get("missing"), f"{case}/{kind}: GPU binding missing"
-                if not enabled or (kind == "blank" and not disabled):
+                if not enabled:
                     assert result == {"type": "object", "isNull": False, "same": True}, result
-                elif kind == "blank":
-                    assert result == {"type": "object", "isNull": True, "same": True}, result
                 elif disabled:
                     # Existing page actors hide GPU; the native disabled return
                     # is null in any realm the actor doesn't reach.
@@ -158,7 +156,7 @@ def run_case(binary, root, case, enabled, disabled):
                 w.onmessage=e=>{w.terminate();done(e.data)};
                 w.onerror=e=>{w.terminate();done({error:e.message})};
             """)
-            assert worker == {"type": "object", "nonnull": True, "same": True}, worker
+            assert worker == {"type": "undefined" if enabled and disabled else "object", "nonnull": True, "same": True}, worker
             results.append({"realm": "worker", "value": worker})
             WebDriverWait(driver, 5).until(lambda d: d.execute_script("return window.probeToken") == token)
         finally:

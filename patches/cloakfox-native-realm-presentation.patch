@@ -1,0 +1,150 @@
+diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
+--- a/dom/base/Navigator.cpp
++++ b/dom/base/Navigator.cpp
+@@ -2498,15 +2498,28 @@
+   return mAddonManager;
+ }
+ 
+-webgpu::Instance* Navigator::GetGpu() {
+-  // Cloakfox: return null (navigator.gpu -> null) when WebGPU is disabled
+-  if (MaskConfig::GetBool("navigator:webgpu:disabled").value_or(false)) {
+-    return nullptr;
++void Navigator::GetGpu(JSContext* aCx, JS::MutableHandle<JS::Value> aValue,
++                       ErrorResult& aRv) {
++  // The native getter also covers synchronous initial about:blank globals,
++  // before any document actor can run. Keep disabled presentation consistent
++  // in all page/worker realms without replacing the native WebIDL accessor.
++  nsIPrincipal* principal = mWindow
++      ? nsGlobalWindowInner::Cast(mWindow)->GetPrincipal() : nullptr;
++  BrowsingContext* bc = mWindow ? mWindow->GetBrowsingContext() : nullptr;
++  if (StaticPrefs::cloakfox_enabled() && principal &&
++      !principal->IsSystemPrincipal() &&
++      MaskConfig::GetBool("navigator:webgpu:disabled",
++                          bc ? bc->OriginAttributesRef().mUserContextId : 0)
++          .value_or(false)) {
++    aValue.setUndefined();
++    return;
+   }
+   if (!mWebGpu) {
+     mWebGpu = webgpu::Instance::Create(GetWindow()->AsGlobal());
+   }
+-  return mWebGpu;
++  if (!ToJSValue(aCx, mWebGpu, aValue)) {
++    aRv.NoteJSContextException(aCx);
++  }
+ }
+ 
+ dom::LockManager* Navigator::Locks() {
+@@ -2530,11 +2543,17 @@
+   return mPrivateAttribution;
+ }
+ 
+-/* static */
+ bool Navigator::Webdriver() {
+-  // Cloakfox: hide webdriver when running automation tools under spoofing
+-  if (auto v = MaskConfig::GetBool("navigator:webdriver"); v.has_value()) {
+-    return v.value();
++  // Resolve the receiver's own global even for a synchronous blank frame or
++  // a getter borrowed across same-origin windows. Browser UI remains native.
++  nsIPrincipal* principal = mWindow
++      ? nsGlobalWindowInner::Cast(mWindow)->GetPrincipal() : nullptr;
++  if (StaticPrefs::cloakfox_enabled() && principal &&
++      !principal->IsSystemPrincipal()) {
++    BrowsingContext* bc = mWindow->GetBrowsingContext();
++    return MaskConfig::GetBool("navigator:webdriver",
++                              bc ? bc->OriginAttributesRef().mUserContextId : 0)
++        .value_or(false);
+   }
+ #ifdef ENABLE_WEBDRIVER
+   nsCOMPtr<nsIMarionette> marionette = do_GetService(NS_MARIONETTE_CONTRACTID);
+diff --git a/dom/base/Navigator.h b/dom/base/Navigator.h
+--- a/dom/base/Navigator.h
++++ b/dom/base/Navigator.h
+@@ -216,12 +216,13 @@
+ 
+   mozilla::dom::CredentialsContainer* Credentials();
+   dom::Clipboard* Clipboard();
+-  webgpu::Instance* GetGpu();
++  void GetGpu(JSContext* aCx, JS::MutableHandle<JS::Value> aValue,
++              ErrorResult& aRv);
+   dom::LockManager* Locks();
+   NavigatorLogin* Login();
+   dom::PrivateAttribution* PrivateAttribution();
+ 
+-  static bool Webdriver();
++  bool Webdriver();
+ 
+   void GetLanguages(nsTArray<nsString>& aLanguages);
+ 
+diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
+--- a/dom/workers/WorkerNavigator.cpp
++++ b/dom/workers/WorkerNavigator.cpp
+@@ -7,6 +7,7 @@
+ #include "mozilla/dom/WorkerNavigator.h"
+ #include "mozilla/dom/NavigatorUAData.h"
+ #include "MaskConfig.hpp"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/dom/NavigatorManager.h"
+ #include "mozilla/dom/WorkerPrivate.h"
+ 
+@@ -388,23 +389,25 @@
+   return mMediaCapabilities;
+ }
+ 
+-webgpu::Instance* WorkerNavigator::GetGpu() {
+-  // Workers have no window actor. Resolve their own origin attributes rather
+-  // than the main-thread current-window container (which is 0 on workers).
+-  if (MaskConfig::GetBool("navigator:webgpu:disabled", CloakfoxWorkerUcid())
++void WorkerNavigator::GetGpu(JSContext* aCx,
++                             JS::MutableHandle<JS::Value> aValue,
++                             ErrorResult& aRv) {
++  WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
++  MOZ_ASSERT(workerPrivate);
++  if (StaticPrefs::cloakfox_enabled() && !workerPrivate->UsesSystemPrincipal() &&
++      MaskConfig::GetBool("navigator:webgpu:disabled", CloakfoxWorkerUcid())
+           .value_or(false)) {
+-    return nullptr;
++    aValue.setUndefined();
++    return;
+   }
+   if (!mWebGpu) {
+-    WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+-    MOZ_ASSERT(workerPrivate);
+-
+     nsIGlobalObject* global = workerPrivate->GlobalScope();
+     MOZ_ASSERT(global);
+-
+     mWebGpu = webgpu::Instance::Create(global);
+   }
+-  return mWebGpu;
++  if (!ToJSValue(aCx, mWebGpu, aValue)) {
++    aRv.NoteJSContextException(aCx);
++  }
+ }
+ 
+ dom::LockManager* WorkerNavigator::Locks() {
+diff --git a/dom/workers/WorkerNavigator.h b/dom/workers/WorkerNavigator.h
+--- a/dom/workers/WorkerNavigator.h
++++ b/dom/workers/WorkerNavigator.h
+@@ -113,7 +113,8 @@
+ 
+   dom::MediaCapabilities* MediaCapabilities();
+ 
+-  webgpu::Instance* GetGpu();
++  void GetGpu(JSContext* aCx, JS::MutableHandle<JS::Value> aValue,
++              ErrorResult& aRv);
+ 
+   dom::LockManager* Locks();
+ 
+diff --git a/dom/webidl/WebGPU.webidl b/dom/webidl/WebGPU.webidl
+--- a/dom/webidl/WebGPU.webidl
++++ b/dom/webidl/WebGPU.webidl
+@@ -85,7 +85,7 @@
+ };
+ 
+ interface mixin NavigatorGPU {
+-    [SameObject, Func="mozilla::webgpu::Instance::PrefEnabled", SecureContext] readonly attribute GPU? gpu;
++    [Throws, Func="mozilla::webgpu::Instance::PrefEnabled", SecureContext] readonly attribute any gpu;
+ };
+ // NOTE: see `dom/webidl/Navigator.webidl`
+ // Navigator includes NavigatorGPU;

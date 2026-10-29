@@ -36,16 +36,15 @@ export class CloakfoxWebRTCChild extends JSWindowActorChild {
     if (!win) return;
     if (!Services.prefs.getBoolPref("cloakfox.enabled", false)) return;
 
-    const pageWin = win.wrappedJSObject;
 
     const ipv4 = Services.cpmm.sharedData.get("cloakfox-public-ipv4");
-    if (ipv4 && typeof pageWin.setWebRTCIPv4 === "function") {
-      try { pageWin.setWebRTCIPv4(ipv4); } catch (_e) { /* best effort */ }
+    if (ipv4 && typeof win.setWebRTCIPv4 === "function") {
+      try { win.setWebRTCIPv4(ipv4); } catch (_e) { /* best effort */ }
     }
 
     const ipv6 = Services.cpmm.sharedData.get("cloakfox-public-ipv6");
-    if (ipv6 && typeof pageWin.setWebRTCIPv6 === "function") {
-      try { pageWin.setWebRTCIPv6(ipv6); } catch (_e) { /* best effort */ }
+    if (ipv6 && typeof win.setWebRTCIPv6 === "function") {
+      try { win.setWebRTCIPv6(ipv6); } catch (_e) { /* best effort */ }
     }
   }
 }

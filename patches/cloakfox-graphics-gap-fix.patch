@@ -1,0 +1,168 @@
+--- a/dom/base/CanvasFingerprintManager.cpp
++++ b/dom/base/CanvasFingerprintManager.cpp
+@@ -31,8 +31,10 @@
+   uint32_t state = seed;
+   for (uint32_t i = 0; i + 3 < length; i += 4) {
+     state = (state * 1664525u + 1013904223u);
+-    if (state & 0x100) {
+-      // Iterate RGB channels (skip alpha at i+3) to find first non-zero.
++    // Use high state bits: low LCG bits repeat every 1024 pixels and make
++    // seeds separated by 1024 produce the same mask.
++    if ((state & 0x40000000) && data[i + 3] != 0) {
++      // Protect every usable RGB channel, retaining alpha and exact zeroes.
+       // This is format-agnostic: works for both RGBA (getImageData) and
+       // BGRA (GetImageBuffer/toDataURL). Skipping zero channels preserves
+       // clearRect transparency and avoids the CreepJS post-clear trap.
+@@ -40,8 +42,7 @@
+         int32_t val = static_cast<int32_t>(data[i + c]);
+         if (val == 0) continue;
+         data[i + c] = static_cast<uint8_t>(
+-            (state & 0x200) ? std::min(val + 1, 255) : std::max(val - 1, 0));
+-        break;  // Only modify one channel per pixel
++            (state & 0x80000000) ? std::min(val + 1, 255) : std::max(val - 1, 1));
+       }
+     }
+   }
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -33,6 +33,7 @@
+ #include "mozilla/ResultVariant.h"
+ #include "mozilla/ScopeExit.h"
+ #include "mozilla/StaticPrefs_webgl.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/dom/BufferSourceBinding.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/GeneratePlaceholderCanvasData.h"
+@@ -5506,6 +5507,22 @@
+ }
+ 
+ // ------------------------------ Readback -------------------------------
++// Precise/packed pixels are application data as well as a fingerprint surface.
++// Never perturb those values: strict privacy denies unprotected readbacks,
++// while the explicit compatibility override restores exact GPU compute data.
++// PBOs bypass CPU noise entirely and must obey the same policy.
++static bool CloakfoxBlockPixelReadback(GLenum format, GLenum type, bool pbo,
++                                      uint32_t userContextId) {
++  if (!StaticPrefs::cloakfox_enabled() ||
++      !MaskConfig::GetBool("webgl:typed_readback:disabled", userContextId)
++           .value_or(true)) {
++    return false;
++  }
++  // Unknown packing enums retain the normal driver's validation/error path.
++  if (!webgl::PackingInfoInfo::For({format, type})) return false;
++  return pbo || format != LOCAL_GL_RGBA || type != LOCAL_GL_UNSIGNED_BYTE;
++}
++
+ void ClientWebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
+                                     GLsizei height, GLenum format, GLenum type,
+                                     WebGLsizeiptr offset,
+@@ -5517,6 +5534,11 @@
+   if (!ValidateNonNegative("width", width)) return;
+   if (!ValidateNonNegative("height", height)) return;
+   if (!ValidateNonNegative("offset", offset)) return;
++  if (CloakfoxBlockPixelReadback(format, type, true, GetUserContextId())) {
++    EnqueueError(LOCAL_GL_INVALID_OPERATION,
++                 "Pixel readback is disabled by browser policy.");
++    return;
++  }
+ 
+   const auto desc = webgl::ReadPixelsDesc{{x, y},
+                                           *uvec2::From(width, height),
+@@ -5555,6 +5577,12 @@
+   if (viewElemType != reqScalarType) {
+     EnqueueError(LOCAL_GL_INVALID_OPERATION,
+                  "`pixels` type does not match `type`.");
++    return;
++  }
++
++  if (CloakfoxBlockPixelReadback(format, type, false, GetUserContextId())) {
++    EnqueueError(LOCAL_GL_INVALID_OPERATION,
++                 "Pixel readback is disabled by browser policy.");
+     return;
+   }
+ 
+@@ -5604,22 +5632,53 @@
+ 
+ // Cloakfox: per-container noise for gl.readPixels(), the other half of the
+ // classic "webglHash" (the toDataURL/toBlob half is handled in
+-// GetImageBuffer). Applied ONLY to 8-bit RGBA readback: float/integer formats
+-// are used for GPU compute readback where perturbing values would corrupt
+-// results rather than defend a fingerprint. Same canvas:seed as the 2D context
++// GetImageBuffer). Applied ONLY to 8-bit RGBA readback. Precise/integer/PBO
++// readbacks are denied by the strict policy above, or kept exact when the
++// user explicitly opts into GPU compute compatibility. Same canvas:seed as the 2D context
+ // and GetImageBuffer, so a container's surfaces stay mutually consistent.
++static uint32_t CloakfoxAdvanceCanvasSeed(uint32_t seed, uint32_t pixels) {
++  // Skip the same LCG used by ApplyCanvasNoise without walking row padding.
++  uint32_t multiplier = 1664525u, increment = 1013904223u;
++  while (pixels) {
++    if (pixels & 1) seed = seed * multiplier + increment;
++    increment *= multiplier + 1;
++    multiplier *= multiplier;
++    pixels >>= 1;
++  }
++  return seed;
++}
++
+ static void CloakfoxNoiseReadPixels(const webgl::ReadPixelsDesc& desc,
+-                                    const Span<uint8_t>& dest) {
++                                    const webgl::ReadPixelsResult& result,
++                                    const Span<uint8_t>& dest,
++                                    uint32_t userContextId) {
+   if (desc.pi.type != LOCAL_GL_UNSIGNED_BYTE ||
+       desc.pi.format != LOCAL_GL_RGBA) {
+     return;
+   }
+-  const uint32_t seed = MaskConfig::GetUint32("canvas:seed").value_or(0);
+-  if (!seed || dest.size() < 4) {
+-    return;
+-  }
+-  mozilla::dom::CanvasFingerprintManager::ApplyCanvasNoise(
+-      dest.data(), static_cast<uint32_t>(dest.size() & ~size_t(3)), seed);
++  const uint32_t seed =
++      MaskConfig::GetUint32("canvas:seed", userContextId).value_or(0);
++  if (!seed || !result.byteStride || result.subrect.IsEmpty()) {
++    return;
++  }
++  // Noise only pixels the backend actually wrote. PACK_SKIP_ROWS/PIXELS,
++  // row padding, untouched destination tails and failed reads stay exact.
++  const auto& rect = result.subrect;
++  const size_t rowBytes = size_t(rect.width) * 4;
++  for (int32_t row = 0; row < rect.height; ++row) {
++    const size_t offset =
++        (size_t(desc.packState.skipRows) + rect.y + row) * result.byteStride +
++        (size_t(desc.packState.skipPixels) + rect.x) * 4;
++    if (offset > dest.size() || rowBytes > dest.size() - offset ||
++        rowBytes > UINT32_MAX) {
++      return;
++    }
++    const uint32_t firstPixel =
++        uint32_t(uint64_t(rect.y + row) * desc.size.x + rect.x);
++    mozilla::dom::CanvasFingerprintManager::ApplyCanvasNoise(
++        dest.data() + offset, static_cast<uint32_t>(rowBytes),
++        CloakfoxAdvanceCanvasSeed(seed, firstPixel));
++  }
+ }
+ 
+ bool ClientWebGLContext::DoReadPixels(const webgl::ReadPixelsDesc& desc,
+@@ -5630,8 +5689,9 @@
+   }
+   const auto& inProcess = notLost->inProcess;
+   if (inProcess) {
+-    inProcess->ReadPixelsInto(desc, dest);
+-    CloakfoxNoiseReadPixels(desc, dest);
++    const auto result = inProcess->ReadPixelsInto(desc, dest);
++    if (!result.byteStride) return false;
++    CloakfoxNoiseReadPixels(desc, result, dest, GetUserContextId());
+     return true;
+   }
+   const auto& child = notLost->outOfProcess;
+@@ -5675,7 +5735,7 @@
+     Memcpy(&destRow, srcRow);
+   }
+ 
+-  CloakfoxNoiseReadPixels(desc, dest);
++  CloakfoxNoiseReadPixels(desc, res, dest, GetUserContextId());
+   return true;
+ }
+ 

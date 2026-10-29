@@ -17,6 +17,8 @@
 
 import { getPersonaHardwareFamilies, personaOS as sampledOS, personaHardware as sampledHardware } from "resource:///modules/CloakfoxBayesianNetwork.sys.mjs";
 
+import { validatePersona } from "./persona-consistency.mjs";
+
 import { PRESETS, browserValues, screenValues, languageValues, gpuValues } from "./settings-presets.mjs";
 
 const { ContextualIdentityService } = ChromeUtils.importESModule(
@@ -298,19 +300,64 @@ function makePresetRow(definition, cfg, ucid, overrides, onChange) {
   select.value = ownedKeys.some(key => key in overrides) ? (match || "custom") : "auto";
   select.addEventListener("change", () => {
     if (select.value === "custom") return;
-    if (select.value === "auto") {
-      ownedKeys.forEach(key => clearOverride(ucid, key));
-      Services.prefs.clearUserPref(presetPref);
-    }
-    else {
-      Services.prefs.setStringPref(presetPref, select.value);
-      const item = definition.items.find(p => p.id === select.value);
-      for (const [key, value] of Object.entries(definition.values(item, cfg || {}))) setOverride(ucid, key, value);
+    const changes = select.value === "auto"
+      ? Object.fromEntries(ownedKeys.map(key => [key, null]))
+      : definition.values(definition.items.find(p => p.id === select.value), cfg || {});
+    if (applySettingChanges(ucid, changes)) {
+      if (select.value === "auto") Services.prefs.clearUserPref(presetPref);
+      else Services.prefs.setStringPref(presetPref, select.value);
     }
     onChange();
   });
   row.append(label, select, document.createElement("span"));
   return row;
+}
+
+// Only newly introduced conflicts require confirmation. Saved custom values
+// remain intact and are always listed in the advisory panel.
+function confirmPersonaChanges(ucid, candidate) {
+  const previous = new Set(validatePersona(getCloakCfg(ucid)).map(i => i.code + i.message));
+  const fresh = validatePersona(candidate).filter(i => !previous.has(i.code + i.message));
+  return fresh.length === 0 || window.confirm(
+    "This change introduces persona conflicts:\n\n" + fresh.map(i => "• " + i.message).join("\n") +
+    "\n\nSave these custom values anyway? Cancel keeps your current settings.");
+}
+function applySettingChanges(ucid, changes) {
+  const overrides = {...readOverrides(ucid)};
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === null || value === undefined || value === "") delete overrides[key];
+    else overrides[key] = KEY_TYPES[key] === "int" ? parseInt(value, 10)
+      : KEY_TYPES[key] === "float" ? Number(value) : value;
+  }
+  const seed = Services.prefs.getStringPref(masterSeedPref(ucid), "");
+  const base = seed ? JSON.parse(buildCloakCfg(seed, ucid, null, true)) : getCloakCfg(ucid);
+  if (!confirmPersonaChanges(ucid, {...base, ...overrides})) return false;
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === null) clearOverride(ucid, key);
+    else setOverride(ucid, key, value);
+  }
+  return true;
+}
+function renderPersonaConsistency(cfg) {
+  const panel = document.getElementById("cfx-consistency");
+  const issues = validatePersona(cfg);
+  panel.replaceChildren();
+  panel.previousElementSibling.textContent = issues.length
+    ? `Persona consistency — ${issues.length} conflict${issues.length === 1 ? "" : "s"}`
+    : "Persona consistency — no known conflicts";
+  panel.closest("details").open = issues.length > 0;
+  const summary = document.createElement("p");
+  summary.textContent = issues.length ? `${issues.length} known persona conflict${issues.length === 1 ? "" : "s"}:` : "No known configuration conflicts found.";
+  panel.appendChild(summary);
+  if (issues.length) {
+    const list = document.createElement("ul");
+    for (const issue of issues) { const item = document.createElement("li"); item.textContent = issue.message; list.appendChild(item); }
+    panel.appendChild(list);
+  }
+  const limit = document.createElement("p");
+  limit.className = "card-help";
+  limit.textContent = "Checks identity, GPU, geometry, and language values. Codec support and page/worker agreement require runtime tests. This is not an anonymity guarantee.";
+  panel.appendChild(limit);
 }
 
 // Boolean cloak_cfg keys render presence-as-on. Absence = no spoof.
@@ -358,7 +405,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
     resetBtn.title = "Reset to persona value";
     resetBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      clearOverride(ucid, key);
+      applySettingChanges(ucid, {[key]: null});
       onChange();
     });
     actions.appendChild(resetBtn);
@@ -372,8 +419,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
       if (cur === true) next = false;
       else if (cur === false) next = null;
       else next = true;
-      if (next === null) clearOverride(ucid, key);
-      else setOverride(ucid, key, next);
+      applySettingChanges(ucid, {[key]: next});
       onChange();
     });
   } else {
@@ -393,7 +439,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
       picker.value = FIELD_OPTIONS[key].some(value => value === rawVal) ? String(rawVal) : "custom";
       picker.addEventListener("change", () => {
         if (picker.value === "custom") openEditMode();
-        else { setOverride(ucid, key, picker.value); onChange(); }
+        else { applySettingChanges(ucid, {[key]: picker.value}); onChange(); }
       });
       actions.prepend(picker);
     }
@@ -420,7 +466,7 @@ function makeRow(label, key, cfg, ucid, overrides, onChange) {
       if (committed) return;
       committed = true;
       if (input.value !== initialValue) {
-        setOverride(ucid, key, input.value);
+        applySettingChanges(ucid, {[key]: input.value});
         onChange();
       } else {
         onChange();   // re-render to swap input back to value pill
@@ -716,6 +762,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const onEdit = () => { rebuildCloakCfg(ucid); refreshContainer(); };
 
     updateHeadline(cfg, seedB64);
+    renderPersonaConsistency(cfg || {});
     const browserPresets = document.getElementById("grp-browser-presets");
     browserPresets.replaceChildren(makePresetRow(PRESET_GROUPS["grp-navigator"], cfg, ucid, overrides, onEdit));
     updateChromiumCompatibility();
@@ -778,7 +825,12 @@ document.addEventListener("DOMContentLoaded", () => {
           || (filters.hardware !== "auto" && sampledHardware(generated["webGl:renderer"]) !== filters.hardware)) {
         throw new Error("The generator returned a different OS or hardware family. No changes saved; the browser needs to load its updated generator.");
       }
-      const cfg = JSON.stringify(clearFields ? generated : applyOverrides(ucid, generated));
+      const candidate = clearFields ? generated : applyOverrides(ucid, generated);
+      if (!confirmPersonaChanges(ucid, candidate)) {
+        generationStatus.textContent = "Generation cancelled. Your saved persona and overrides are unchanged.";
+        return;
+      }
+      const cfg = JSON.stringify(candidate);
       if (clearFields) clearAllOverrides(ucid);
       Services.prefs.clearUserPref(personaIndexPref(ucid));
       Services.prefs.setStringPref(`cloakfox.container.${ucid}.persona_os`, filters.os);

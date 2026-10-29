@@ -36,8 +36,13 @@ def main():
                 if label == "default":
                     for setting in [True, False]:
                         driver.get("about:cloakfox")
+                        group = WebDriverWait(driver, 10).until(lambda d: d.find_element(
+                            By.ID, "sec-hardening"))
+                        if not group.get_attribute("open"):
+                            group.find_element(By.CSS_SELECTOR, "summary").click()
                         checkbox = WebDriverWait(driver, 10).until(lambda d: d.find_element(
                             By.CSS_SELECTOR, 'input[data-pref="cloakfox.opt.math_data_noise"]'))
+                        WebDriverWait(driver, 10).until(lambda d: checkbox.is_displayed())
                         assert checkbox.is_selected() is not setting, "saved UI checkbox state"
                         checkbox.click()
                         assert checkbox.is_selected() is setting

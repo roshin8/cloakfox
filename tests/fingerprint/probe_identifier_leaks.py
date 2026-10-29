@@ -45,7 +45,7 @@ function collect() {
   r.functions.toString={...inspect(Function.prototype.toString),flags:flags(Object.getOwnPropertyDescriptor(Function.prototype,'toString'))};
   capture('toString.invalidThis',()=>Function.prototype.toString.call({}));
   for(const [key,obj] of Object.entries({global:globalThis,navigator,Math,FunctionPrototype:Function.prototype}))
-    r.names[key]=Object.getOwnPropertyNames(obj).filter(k=>/cloakfox|camoufox|__cfx|^set(?:CanvasSeed|CloakConfig|WebGLVendor)/i.test(k));
+    r.names[key]=Object.getOwnPropertyNames(obj).filter(k=>/cloakfox|camoufox|__cfx|^set(?:CanvasSeed|CloakConfig|WebGLVendor|WebRTCIPv[46])/i.test(k));
   r.identity={userAgent:navigator.userAgent,appVersion:navigator.appVersion,platform:navigator.platform};
   r.values={samples:Object.values(r.functions).slice(0,23).map(f=>Math[f.name](.5,1.5)),sin:Math.sin(.5),pure:Math.sin(.5)===Math.sin(.5),sqrt:Math.sqrt(4),
     negativeZero:Object.is(Math.sin(-0),-0),nan:Number.isNaN(Math.sin(NaN)),infinity:Math.log(0)===-Infinity};

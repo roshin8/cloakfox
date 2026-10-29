@@ -79,6 +79,7 @@
         <button id="cfx-regenerate" class="btn btn-primary" type="button">Generate new persona</button>
         <p id="cfx-generation-status" class="card-help" role="status" aria-live="polite"></p>
       </div>
+      <details class="persona-consistency"><summary>Persona consistency</summary><div id="cfx-consistency" role="status" aria-live="polite"></div></details>
       <p class="hero-note">
         Personas are sampled at runtime from <strong>BrowserForge</strong>'s real-world Bayesian network — coherent fingerprints
         (matching webGl ↔ platform ↔ screen) drawn fresh each time you click <em>Generate new persona</em>.
@@ -257,10 +258,10 @@
         </label>
         <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.websocket_disabled" aria-describedby="cfx-help-websocket-disabled">
-          <span><strong>Disable WebSocket</strong><small id="cfx-help-websocket-disabled" class="flag-description" role="list">
-              <span role="listitem">Blocks websites from opening WebSocket connections.</span>
+          <span><strong>Block WebSockets (optional)</strong><small id="cfx-help-websocket-disabled" class="flag-description" role="list">
+              <span role="listitem">Off by default. WebSockets work normally with container isolation and container-specific handshake identity.</span>
               <span role="listitem">Can stop live chat, collaborative editor sync, multiplayer features, and live data feeds.</span>
-              <span role="listitem">Does not block ordinary HTTP requests or every other form of networking.</span>
+              <span role="listitem">Enable only to deny new connections in pages and workers. Existing sockets require a reload to close.</span>
             </small></span>
         </label>
         <label class="flag-row">
@@ -287,12 +288,16 @@
               <span role="listitem">Ordinary video playback and camera capture use separate APIs.</span>
             </small></span>
         </label>
+<label class="flag-row"><input type="checkbox" data-pref="cloakfox.opt.webgl_typed_readback_disabled" aria-describedby="cfx-help-typed-readback"><span><strong>Restrict precise WebGL readback</strong><small id="cfx-help-typed-readback" class="flag-description" role="list"><span role="listitem">On by default. Rejects precise and pixel-buffer readbacks that bypass canvas fingerprint noise.</span><span role="listitem">Ordinary RGBA8 canvas pixels keep deterministic noise. Numerical buffers are never silently changed.</span><span role="listitem">May affect GPU-compute and advanced graphics applications. Turning this off exposes native GPU output; reload affected pages.</span></small></span></label>
+<label class="flag-row"><input type="checkbox" data-pref="cloakfox.webrtc.protect_proxy" aria-describedby="cfx-help-protect-proxy"><span><strong>Protect WebRTC proxy routing</strong><small id="cfx-help-protect-proxy" class="flag-description" role="list"><span role="listitem">On by default. Checks TURN server routes before gathering; proxied connections cannot fall back to direct traffic.</span><span role="listitem">A proxied call needs TURN over a supported TCP proxy route. UDP-only services may fail.</span><span role="listitem">Direct calls remain available when no proxy route applies. Existing connections need to reconnect after routing changes.</span></small></span></label>
+<label class="flag-row"><input type="checkbox" data-pref="cloakfox.webrtc.external_ip_discovery" aria-describedby="cfx-help-external_ip_discovery"><span><strong>Allow external IP discovery</strong><small id="cfx-help-external_ip_discovery" class="flag-description" role="list"><span role="listitem">Off by default. Contacts IP-echo services at startup and after network changes.</span><span role="listitem">Those services receive your connection IP; results supply WebRTC address masks.</span><span role="listitem">With discovery off, protected WebRTC requires a TURN relay.</span></small></span></label>
+<label class="flag-row"><input type="checkbox" data-pref="cloakfox.webrtc.protect_unready" aria-describedby="cfx-help-protect_unready"><span><strong>Protect WebRTC before IP masks are ready</strong><small id="cfx-help-protect_unready" class="flag-description" role="list"><span role="listitem">On by default. Uses relay-only ICE while discovery is off or either IP-family mask is missing.</span><span role="listitem">Services without TURN support may not connect. Existing connections keep their starting policy.</span><span role="listitem">Turning this off permits direct candidates and may expose addresses outside your HTTP route.</span></small></span></label>
         <label class="flag-row">
           <input type="checkbox" data-pref="cloakfox.opt.mediadevices_disabled" aria-describedby="cfx-help-mediadevices-disabled">
           <span><strong>Disable mediaDevices</strong><small id="cfx-help-mediadevices-disabled" class="flag-description" role="list">
-              <span role="listitem">Requests media-device disabling in the container’s configuration.</span>
-              <span role="listitem">Current limitation: the device-listing implementation does not reliably enforce this setting.</span>
-              <span role="listitem">Do not rely on it to block camera or microphone access; use browser or macOS permissions.</span>
+              <span role="listitem">Returns an empty device list and rejects new camera, microphone, and screen-capture requests.</span>
+              <span role="listitem">Existing streams are not stopped automatically; stop them or reload the page.</span>
+              <span role="listitem">Browser and macOS permissions still apply when this setting is off.</span>
             </small></span>
         </label>
         <label class="flag-row">

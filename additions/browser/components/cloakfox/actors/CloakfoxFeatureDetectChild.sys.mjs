@@ -3,8 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* Cloakfox: small navigator-property fakes for feature-detection
- * fingerprinting (webdriver, doNotTrack, globalPrivacyControl,
- * pdfViewerEnabled, javaEnabled). Most of these are 1-bit signals
+ * fingerprinting (pdfViewerEnabled, onLine, cookieEnabled, javaEnabled). Most of these are 1-bit signals
  * that anti-bot scripts read; pinning them to "human-realistic"
  * values is independent of container, so no per-container seed.
  *
@@ -14,7 +13,7 @@
  */
 
 const FAKES = [
-  ["webdriver", false],          // bot detection — must look like a real human session
+  // webdriver is masked natively, including synchronous initial blank frames.
   // doNotTrack / globalPrivacyControl are deliberately NOT faked here. Pinning
   // them in JS created contradictions a server or a worker can see: the page
   // was told DNT=1 / GPC=true while no DNT or Sec-GPC header was sent (their
@@ -67,15 +66,22 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
         // own accessor that shows up in getOwnPropertyNames(Navigator.prototype)
         // and `prop in navigator` — a tamper tell, the exact leak class we
         // otherwise avoid. If it isn't natively present, leave it absent.
-        if (!(prop in navProto)) continue;
+        const descriptor = Object.getOwnPropertyDescriptor(navProto, prop);
+        if (typeof descriptor?.get !== "function") continue;
+        const nativeGetter = descriptor.get;
         // Native WebIDL getter reports name "get <prop>" length 0; match it so
         // a getOwnPropertyDescriptor(...).get.name probe can't spot the wrapper.
-        const getter = Cu.exportFunction(function () { return value; }, pageWin, { functionName: prop, allowConstruct: false });
+        const getter = Cu.exportFunction(function () {
+          // Delegate brand checks to the page's native WebIDL binding. These
+          // read-only boolean getters do not trigger permissions or requests.
+          Reflect.apply(nativeGetter, this, []);
+          return value;
+        }, pageWin, { functionName: prop, allowConstruct: false });
         setNativeIdentity(getter, `get ${prop}`, 0);
         Object.defineProperty(navProto, prop, {
           get: getter,
-          configurable: true,
-          enumerable: true,
+          configurable: descriptor.configurable,
+          enumerable: descriptor.enumerable,
         });
       } catch (_e) { /* property might be non-configurable */ }
     }
@@ -86,7 +92,10 @@ export class CloakfoxFeatureDetectChild extends JSWindowActorChild {
     // Object.keys(navigator) (stock Firefox returns []).
     if (typeof navProto.javaEnabled === "function") {
       const orig = navProto.javaEnabled;
-      const wrapped = Cu.exportFunction(function () { return false; }, pageWin, { functionName: "javaEnabled", allowConstruct: false });
+      const wrapped = Cu.exportFunction(function () {
+        Reflect.apply(orig, this, []);
+        return false;
+      }, pageWin, { functionName: "javaEnabled", allowConstruct: false });
       setNativeIdentity(wrapped, orig.name, orig.length);
       Object.defineProperty(navProto, "javaEnabled", {
         value: wrapped, writable: true, enumerable: true, configurable: true,

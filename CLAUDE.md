@@ -111,3 +111,71 @@ alone. `cloakfox.compat.hackerrank_media=false` disables it on the next load.
 - Test spoofed values are deterministic given same seed
 - Test different containers produce different fingerprints
 - Test different domains produce different fingerprints within same container
+
+### Media and network consent
+
+`cloakfox.opt.mediadevices_disabled` enforces an empty enumeration and denies
+new page camera/microphone/display/output-selection requests. Existing streams
+are not revoked. Device-change notifications are suppressed while disabled.
+Persona location values preserve native location permission checks.
+
+External WebRTC IP discovery is independently opt-in via
+`cloakfox.webrtc.external_ip_discovery` (default false).
+`cloakfox.webrtc.protect_unready` defaults true: native ICE is relay-only while
+discovery is off or either family mask is missing. TURN-less services can fail.
+Installed masks are snapshots, not a VPN kill switch; existing connections
+retain their ICE policy until reconfigured/recreated.
+
+WebSocket blocking resolves a worker's `WorkerPrivate::GetOriginAttributes()`
+container explicitly, including nested/shared/service workers. Exceptions use
+neutral browser-policy wording. Blocking prevents new handshakes; existing
+sockets are not automatically closed. The master switch restores native access.
+
+Allowed WebSocket handshakes read their UA from the HTTP channel's origin
+attributes and container configuration, rather than a process-wide cached UA.
+The real Origin, native cookies, TLS checks and proxy handling are preserved.
+WebSocket blocking remains off by default and is independent of these protections.
+
+### Identity gap protections
+
+Ordinary HTTP request headers and CONNECT requests resolve the channel or
+transaction origin attributes. Persona values never populate the native
+process-wide UA/language/encoding caches; disabling Cloakfox restores native
+values without a stale persona. WebSocket handshake identity remains supported.
+
+WebRTC mask setters are ChromeOnly, system-principal gated and called through
+actor Xrays. Overlay mutations write the authoritative cloakfox.s namespace.
+Pending content writes remain readable until the parent preference mirror
+acknowledges them, so back-to-back IPv4/IPv6 writes cannot overwrite each other.
+
+Privacy actors also match inherited HTTP/HTTPS/file content principals for
+about:blank/srcdoc. System, opaque and internal documents stay excluded from
+actors. Native WebGPU policy uses each window/worker's origin attributes and
+also covers synchronous initial blank frames. Disabled policy returns undefined;
+the explicit compatibility opt-out preserves the native GPU object and identity.
+API replacements validate receivers
+through captured native methods/getters before returning their configured values.
+
+Canvas noise covers every nonzero RGB channel of opaque pixels and leaves
+transparent/zero pixels unchanged. WebGL2 personas include uniform-buffer and
+3D/array-texture limits. Strict precise/PBO pixel readback is on by default
+(cloakfox.opt.webgl_typed_readback_disabled); its explicit compatibility opt-out
+returns exact GPU data. Neither policy silently perturbs computation buffers.
+
+FontFace lifecycle/loading remains native for URL and buffer webfonts. local()
+sources are skipped while the owning persona font list is active; URL fallbacks
+continue to work. Only the parent mutates the global font whitelist.
+
+WebRTC proxy protection (cloakfox.webrtc.protect_proxy, default true) resolves
+ICE server routes before gathering and forces native proxy transports for proxy
+or resolution-error routes. Unavailable PAC errors do not silently become DIRECT.
+Normal system/PAC DIRECT routes remain supported. Existing connections require
+recreation or ICE restart after route changes. This does not implement an OS VPN
+kill switch. Unsupported proxy/UDP-only combinations fail closed.
+
+Page and worker language values use the same own-container identity as HTTP
+headers. Canonical language lists omit HTTP quality syntax and duplicates;
+frozen binding caches invalidate on relevant configuration/master changes,
+including already-running workers and opaque content documents. System windows
+and ChromeWorkers retain native locale values. Native locale/RFP behavior remains
+the master-off fallback.

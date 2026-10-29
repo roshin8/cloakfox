@@ -1,0 +1,140 @@
+diff --git a/dom/workers/WorkerNavigator.cpp b/dom/workers/WorkerNavigator.cpp
+--- a/dom/workers/WorkerNavigator.cpp
++++ b/dom/workers/WorkerNavigator.cpp
+@@ -369,6 +369,12 @@
+ }
+ 
+ webgpu::Instance* WorkerNavigator::GetGpu() {
++  // Workers have no window actor. Resolve their own origin attributes rather
++  // than the main-thread current-window container (which is 0 on workers).
++  if (MaskConfig::GetBool("navigator:webgpu:disabled", CloakfoxWorkerUcid())
++          .value_or(false)) {
++    return nullptr;
++  }
+   if (!mWebGpu) {
+     WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
+     MOZ_ASSERT(workerPrivate);
+diff --git a/dom/ipc/jsactor/JSWindowActorProtocol.cpp b/dom/ipc/jsactor/JSWindowActorProtocol.cpp
+--- a/dom/ipc/jsactor/JSWindowActorProtocol.cpp
++++ b/dom/ipc/jsactor/JSWindowActorProtocol.cpp
+@@ -18,6 +18,7 @@
+ #include "mozilla/dom/WindowGlobalChild.h"
+ #include "mozilla/extensions/MatchPattern.h"
+ #include "nsContentUtils.h"
++#include "nsNetUtil.h"
+ 
+ namespace mozilla::dom {
+ 
+@@ -332,7 +333,7 @@
+ 
+ bool JSWindowActorProtocol::Matches(BrowsingContext* aBrowsingContext,
+                                     nsIURI* aURI, const nsACString& aRemoteType,
+-                                    ErrorResult& aRv) {
++                                    nsIPrincipal* aPrincipal, ErrorResult& aRv) {
+   MOZ_ASSERT(aBrowsingContext, "DocShell without a BrowsingContext!");
+   MOZ_ASSERT(aURI, "Must have URI!");
+ 
+@@ -366,7 +367,34 @@
+   }
+ 
+   if (extensions::MatchPatternSetCore* uriMatcher = GetURIMatcher()) {
+-    if (!uriMatcher->Matches(aURI)) {
++    // Privacy actors must also reach same-origin initial/blank/srcdoc frames.
++    // Match their inherited content principal, never an ancestor's current URI:
++    // privileged, opaque, and browser-internal documents remain excluded.
++    const bool privacyActor =
++        mName.EqualsLiteral("CloakfoxMediaQuery") ||
++        mName.EqualsLiteral("CloakfoxSpeech") ||
++        mName.EqualsLiteral("CloakfoxKeyboard") ||
++        mName.EqualsLiteral("CloakfoxFeatureDetect") ||
++        mName.EqualsLiteral("CloakfoxMidi") ||
++        mName.EqualsLiteral("CloakfoxWebGPU") ||
++        mName.EqualsLiteral("CloakfoxGamepad") ||
++        mName.EqualsLiteral("CloakfoxTabHistory") ||
++        mName.EqualsLiteral("CloakfoxTiming") ||
++        mName.EqualsLiteral("CloakfoxTimezone") ||
++        mName.EqualsLiteral("CloakfoxWebRTC") ||
++        mName.EqualsLiteral("CloakfoxMath");
++    nsCOMPtr<nsIURI> matchURI = aURI;
++    if (privacyActor && aPrincipal && aPrincipal->GetIsContentPrincipal() &&
++        (NS_IsAboutBlankAllowQueryAndFragment(aURI) ||
++         NS_IsAboutSrcdoc(aURI))) {
++      nsCOMPtr<nsIURI> inheritedURI = aPrincipal->GetURI();
++      if (inheritedURI &&
++          (inheritedURI->SchemeIs("http") || inheritedURI->SchemeIs("https") ||
++           inheritedURI->SchemeIs("file"))) {
++        matchURI = inheritedURI;
++      }
++    }
++    if (!uriMatcher->Matches(matchURI.get())) {
+       aRv.ThrowNotSupportedError(nsPrintfCString(
+           "Window protocol '%s' doesn't match uri %s", mName.get(),
+           nsContentUtils::TruncatedURLForDisplay(aURI).get()));
+diff --git a/dom/ipc/jsactor/JSWindowActorProtocol.h b/dom/ipc/jsactor/JSWindowActorProtocol.h
+--- a/dom/ipc/jsactor/JSWindowActorProtocol.h
++++ b/dom/ipc/jsactor/JSWindowActorProtocol.h
+@@ -12,6 +12,7 @@
+ #include "mozilla/extensions/MatchPattern.h"
+ #include "nsIDOMEventListener.h"
+ #include "nsIObserver.h"
++#include "nsIPrincipal.h"
+ #include "nsIURI.h"
+ #include "nsString.h"
+ #include "nsTArray.h"
+@@ -73,7 +74,8 @@
+   void AddObservers();
+   void RemoveObservers();
+   bool Matches(BrowsingContext* aBrowsingContext, nsIURI* aURI,
+-               const nsACString& aRemoteType, ErrorResult& aRv);
++               const nsACString& aRemoteType, nsIPrincipal* aPrincipal,
++               ErrorResult& aRv);
+ 
+  private:
+   explicit JSWindowActorProtocol(const nsACString& aName) : mName(aName) {}
+diff --git a/dom/ipc/WindowGlobalActor.cpp b/dom/ipc/WindowGlobalActor.cpp
+--- a/dom/ipc/WindowGlobalActor.cpp
++++ b/dom/ipc/WindowGlobalActor.cpp
+@@ -170,7 +170,7 @@
+   }
+ 
+   if (!proto->Matches(BrowsingContext(), GetDocumentURI(), GetRemoteType(),
+-                      aRv)) {
++                      DocumentPrincipal(), aRv)) {
+     MOZ_ASSERT(aRv.Failed());
+     return nullptr;
+   }
+diff --git a/dom/ipc/WindowGlobalActor.h b/dom/ipc/WindowGlobalActor.h
+--- a/dom/ipc/WindowGlobalActor.h
++++ b/dom/ipc/WindowGlobalActor.h
+@@ -41,6 +41,7 @@
+       ErrorResult& aRv) final;
+ 
+   virtual nsIURI* GetDocumentURI() = 0;
++  virtual nsIPrincipal* DocumentPrincipal() = 0;
+   virtual dom::BrowsingContext* BrowsingContext() = 0;
+ 
+   static WindowGlobalInit BaseInitializer(
+diff --git a/dom/ipc/WindowGlobalChild.h b/dom/ipc/WindowGlobalChild.h
+--- a/dom/ipc/WindowGlobalChild.h
++++ b/dom/ipc/WindowGlobalChild.h
+@@ -71,7 +71,7 @@
+   void SetDocumentPrincipal(nsIPrincipal* aNewDocumentPrincipal,
+                             nsIPrincipal* aNewDocumentStoragePrincipal);
+ 
+-  nsIPrincipal* DocumentPrincipal() { return mDocumentPrincipal; }
++  nsIPrincipal* DocumentPrincipal() override { return mDocumentPrincipal; }
+ 
+   // The Window ID for this WindowGlobal
+   uint64_t InnerWindowId();
+diff --git a/dom/ipc/WindowGlobalParent.h b/dom/ipc/WindowGlobalParent.h
+--- a/dom/ipc/WindowGlobalParent.h
++++ b/dom/ipc/WindowGlobalParent.h
+@@ -109,7 +109,7 @@
+   // The principal of this WindowGlobal. This value will not change over the
+   // lifetime of the WindowGlobal object, even to reflect changes in
+   // |document.domain|.
+-  nsIPrincipal* DocumentPrincipal() { return mDocumentPrincipal; }
++  nsIPrincipal* DocumentPrincipal() override { return mDocumentPrincipal; }
+ 
+   nsIPrincipal* DocumentStoragePrincipal() { return mDocumentStoragePrincipal; }
+ 

@@ -1,0 +1,29 @@
+--- a/dom/websocket/WebSocket.cpp
++++ b/dom/websocket/WebSocket.cpp
+@@ -17,6 +17,7 @@
+ #include "mozilla/LoadInfo.h"
+ #include "mozilla/Preferences.h"
+ #include "mozilla/StaticPrefs_dom.h"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "mozilla/dom/CloseEvent.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/File.h"
+@@ -1046,9 +1047,15 @@
+ already_AddRefed<WebSocket> WebSocket::Constructor(
+     const GlobalObject& aGlobal, const nsAString& aUrl,
+     const StringOrStringSequence& aProtocols, ErrorResult& aRv) {
+-  // Cloakfox: optional WebSocket blocking for privacy-focused contexts.
+-  if (MaskConfig::GetBool("webSocket:disabled").value_or(false)) {
+-    aRv.ThrowSecurityError("WebSocket blocked by Cloakfox");
++  // Workers have no current Window: use their own immutable origin
++  // attributes instead of falling back to the default container's policy.
++  uint32_t userContextId = CloakConfigOverlay_CurrentUserContextId();
++  if (WorkerPrivate* worker = GetCurrentThreadWorkerPrivate()) {
++    userContextId = worker->GetOriginAttributes().mUserContextId;
++  }
++  if (StaticPrefs::cloakfox_enabled() &&
++      MaskConfig::GetBool("webSocket:disabled", userContextId).value_or(false)) {
++    aRv.ThrowSecurityError("WebSocket access is disabled by browser policy.");
+     return nullptr;
+   }
+   if (aProtocols.IsStringSequence()) {

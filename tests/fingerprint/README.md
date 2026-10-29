@@ -799,3 +799,70 @@ headers fail; timeouts record progress, and sources/timers are cleaned up.
 `--empty-output` deliberately exits unsuccessfully to verify that guard.
 Set `REPORT_DIR` to retain JSON/native logs. These checks establish local APIs
 and encoding, not physical capture, remote delivery or full assessment support.
+
+### Persona consistency and container state
+
+- `node --test tests/fingerprint/test_persona_consistency.mjs`: pure checks for
+  identity/header, geometry, GPU-table and locale contradictions; inputs are not
+  rewritten. Only observed common navigator fields are compared between realms.
+- `probe_persona_consistency_settings.py`: rejects a new conflict on Cancel,
+  preserves explicitly accepted custom values, and verifies warning persistence.
+- `probe_container_state_isolation.py`: local TLS, same origin in two non-default
+  containers. Checks cookies, localStorage, IndexedDB, Cache API, service-worker
+  registrations, shared-worker global state, and HTTP-cache request isolation.
+  Same-container positive controls prove data remains usable. Dedicated/shared/
+  service workers are checked against their page's UA/platform/language/CPU.
+
+These are bounded checks, not proof against all tracking or an audit of DNS, TLS
+session resumption, codecs, GPU execution, or every worker API. Shared-worker
+globals are checked with the owner tab still alive; they are not durable storage.
+
+### WebSocket privacy enforcement
+
+`probe_websocket_privacy.py` uses a local TLS echo server (`websockets` Python
+package) and disposable profiles. Pages, dedicated/nested/shared/service workers
+must respect their own container's blocking policy before a handshake. Allowed
+connections must echo successfully, carry only that container's cookie, and use
+the real page Origin. The probe checks neutral exceptions, the default-container
+inverse case, and the master-off switch. This does not test VPN/proxy routing.
+
+The WebSocket probe also verifies working connections in both containers,
+container-scoped handshake UA, and failure without a direct handshake when a
+manual proxy is unavailable (direct failover disabled). It verifies recovery
+after proxy settings are restored. This is not a VPN kill-switch certification
+or coverage of every PAC/SOCKS/proxy configuration.
+
+## Identity-gap regressions
+
+Run the following against the built development executable with CLOAKFOX_BIN.
+Each probe owns disposable profiles and loopback servers; none contacts a real
+assessment, publishes synthetic IP masks outside its profile, or captures a
+physical camera/microphone/screen.
+
+- probe_identity_network_gaps.py: per-container page/frame/worker HTTP headers,
+  redirect and CONNECT identity, master-off recovery, invisible WebRTC setters,
+  and authoritative dual-family mask writes. Also covers canonical weighted
+  language lists, frozen cache identity, live worker updates, sibling isolation,
+  and later parent identity updates after installing masks.
+- probe_graphics_privacy.py: each canvas channel, seed isolation, WebGL2 limits,
+  strict precise/PBO readback, exact compatibility compute buffers, untouched
+  readback padding/tails and native validation errors.
+- probe_realm_privacy.py: page/frame/worker GPU policy, synchronous initial blank
+  frames, inherited blank/srcdoc actors, native GPU identity and receiver errors,
+  live policy transitions, opaque/internal exclusions and master off.
+- probe_language_scopes.py: opaque content keeps configured language and live
+  frozen-cache updates; system documents and ChromeWorkers retain native locale,
+  GPU and automation behavior.
+- probe_fontface_loading.py: actual FontFace statuses/promises, successful and
+  failed URL loads, buffer fonts, masked local() and native installed-font control.
+- probe_turn_proxy_privacy.py: authenticated local TURN UDP/TCP allocations,
+  HTTP CONNECT forwarding, per-target PAC, unavailable proxies/PAC fail-closed,
+  proxy-to-DIRECT failover chains, explicit opt-out and system DIRECT controls.
+- probe_turn_proxy_negotiation.py: two peers exchange datachannel messages before
+  and after ICE restart, with a local answer during delayed PAC resolution.
+- probe_strict_graphics_settings.py: real settings checkbox persistence, existing
+  container updates without changing persona/masks, and new-container inheritance.
+
+The suite runner discovers these automatically. Node receiver/policy/persona
+unit tests use the production JS; test_graphics_native_noise.py compiles the
+actual C++ canvas routine in a small deterministic harness.

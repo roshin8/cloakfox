@@ -1,0 +1,11 @@
+{
+  "name": "cloakfox-castle-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "test": "node --test server.test.mjs"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": { "@castleio/castle-js": "2.8.5" }
+}

@@ -1,0 +1,43 @@
+--- a/netwerk/protocol/websocket/WebSocketChannel.cpp
++++ b/netwerk/protocol/websocket/WebSocketChannel.cpp
+@@ -7,6 +7,8 @@
+ #include <algorithm>
+ 
+ #include "WebSocketChannel.h"
++#include "MaskConfig.hpp"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ 
+ #include "WebSocketConnectionBase.h"
+ #include "WebSocketFrame.h"
+@@ -2816,6 +2818,21 @@
+   rv = mChannel->HTTPUpgrade("websocket"_ns, this);
+   NS_ENSURE_SUCCESS(rv, rv);
+ 
++  // Resolve identity from the actual channel, including worker handshakes.
++  // The HTTP handler's process-wide UA must not link separate containers.
++  if (StaticPrefs::cloakfox_enabled() && mLoadInfo) {
++    const uint32_t ucid = mLoadInfo->GetOriginAttributes().mUserContextId;
++    auto ua = MaskConfig::GetString("headers.User-Agent", ucid);
++    if (!ua || ua->empty()) {
++      ua = MaskConfig::GetString("navigator.userAgent", ucid);
++    }
++    if (ua && !ua->empty()) {
++      rv = mHttpChannel->SetRequestHeader("User-Agent"_ns,
++                                          nsDependentCString(ua->c_str()), false);
++      NS_ENSURE_SUCCESS(rv, rv);
++    }
++  }
++
+   rv = mHttpChannel->SetRequestHeader("Sec-WebSocket-Version"_ns,
+                                       nsLiteralCString(SEC_WEBSOCKET_VERSION),
+                                       false);
+--- a/netwerk/protocol/websocket/moz.build
++++ b/netwerk/protocol/websocket/moz.build
+@@ -60,6 +60,7 @@
+ FINAL_LIBRARY = "xul"
+ 
+ LOCAL_INCLUDES += [
++    "/cloakcfg",
+     "/dom/base",
+     "/netwerk/base",
+ ]

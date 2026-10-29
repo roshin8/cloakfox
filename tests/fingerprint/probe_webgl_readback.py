@@ -16,7 +16,8 @@ consistent:
   * ClientWebGLContext::DoReadPixels    — gl.readPixels (both the in-process
                                           and the IPC path)
 
-readPixels noise is deliberately limited to 8-bit RGBA: float/integer formats
+readPixels noise covers 8-bit RGBA. Strict policy denies precise/PBO reads;
+explicit compatibility mode preserves their exact data. Float/integer formats
 are used for GPU compute readback, where perturbing values corrupts results
 rather than defending a fingerprint.
 

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cloakfox · Castle lab</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/vendor/castle.browser.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><a href="/">Cloakfox / Castle lab</a><span id="connection">Checking setup…</span></header>
+    <h1>See what Castle reports.</h1>
+    <p class="intro">Measure this browser, then open the same page in Firefox to compare signals.</p>
+    <aside id="setup" role="status" aria-live="polite">Loading Castle configuration…</aside>
+    <section class="workspace">
+      <form id="measure">
+        <h2>New measurement</h2>
+        <label for="label">Run label</label>
+        <input id="label" name="label" maxlength="100" placeholder="Cloakfox · current settings" required>
+        <label for="email">Email to evaluate <span>(optional)</span></label>
+        <input id="email" name="email" type="email" maxlength="254" autocomplete="off">
+        <p class="hint">Email is sent to Castle if supplied. Leave it empty to focus on browser and network signals.</p>
+        <button id="run" disabled>Measure this browser</button>
+        <p class="hint">Use the page manually before measuring so Castle can observe normal interaction. Each measurement calls Castle once.</p>
+        <p id="status" role="status" aria-live="polite"></p>
+      </form>
+      <section class="latest" aria-labelledby="latest-title">
+        <h2 id="latest-title">Latest result</h2>
+        <div id="latest"><p>No measurements yet. Connect a sandbox to begin.</p></div>
+      </section>
+    </section>
+    <section class="history" aria-labelledby="history-title">
+      <div class="section-heading"><h2 id="history-title">Compare runs</h2><button id="refresh" class="secondary">Refresh results</button></div>
+      <div class="table-wrap"><table><thead><tr><th>Run</th><th>Bot / 100</th><th>Abuse / 100</th><th>Policy</th><th>Signals</th><th>Result</th></tr></thead><tbody id="runs"></tbody></table></div>
+      <p class="hint">Showing the latest 30 saved runs. A policy action depends on your sandbox rules; “allow” alone does not establish a clean fingerprint.</p>
+    </section>
+    <footer>Results describe this Castle environment. They cannot reveal Grasshopper’s policies or explain its past signup decision. <a href="https://docs.castle.io/docs/signals-reference" target="_blank" rel="noreferrer">Signal reference</a></footer>
+  </main>
+</body>
+</html>

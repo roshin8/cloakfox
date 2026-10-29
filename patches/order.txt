@@ -133,3 +133,27 @@ cloakfox-screen-presentation.patch
 cloakfox-testdome-screen-management.patch
 cloakfox-window-management-permission.patch
 cloakfox-screen-orientation-events.patch
+
+# Enforce media policy, preserve geolocation consent, and guard unready ICE.
+cloakfox-privacy-enforcement.patch
+
+# Neutral errors and owner-container WebSocket policy in all worker types.
+cloakfox-websocket-privacy.patch
+
+# Preserve allowed WebSockets with container-scoped handshake identity.
+cloakfox-websocket-headers.patch
+
+# Close runtime-confirmed graphics, inherited-realm, font and network gaps.
+cloakfox-graphics-gap-fix.patch
+cloakfox-inherited-realm-privacy.patch
+cloakfox-fontface-native-loading.patch
+cloakfox-font-whitelist-parent.patch
+cloakfox-request-identity-and-mask-storage.patch
+cloakfox-proxy-resolver-errors.patch
+cloakfox-turn-proxy-privacy.patch
+
+# Keep page/worker language identity coherent with container HTTP headers.
+cloakfox-language-identity.patch
+
+# Enforce WebGPU and automation presentation before deferred document actors.
+cloakfox-native-realm-presentation.patch

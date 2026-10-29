@@ -1,0 +1,151 @@
+--- a/dom/media/MediaDevices.cpp
++++ b/dom/media/MediaDevices.cpp
+@@ -37,6 +37,16 @@
+ using MediaDeviceSetRefCnt = MediaManager::MediaDeviceSetRefCnt;
+ using mozilla::intl::Localization;
+ 
++// Privacy enforcement is owner-scoped; reporting a fake device list is not
++// an access control. Preserve system callers and the global kill switch.
++static bool CloakfoxMediaDisabled(nsPIDOMWindowInner* owner) {
++  if (!owner || !Preferences::GetBool("cloakfox.enabled", false)) return false;
++  auto* bc = owner->GetBrowsingContext();
++  const uint32_t ucid = bc ? bc->OriginAttributesRef().mUserContextId : 0;
++  auto enabled = MaskConfig::GetBool("mediaDevices:enabled", ucid);
++  return enabled.has_value() && !enabled.value();
++}
++
+ MediaDevices::MediaDevices(nsPIDOMWindowInner* aWindow)
+     : DOMEventTargetHelper(aWindow), mDefaultOutputLabel(VoidString()) {}
+ 
+@@ -80,6 +90,10 @@
+   RefPtr<Promise> p = Promise::Create(global, aRv);
+   if (NS_WARN_IF(aRv.Failed())) {
+     return nullptr;
++  }
++  if (aCallerType != CallerType::System && CloakfoxMediaDisabled(owner)) {
++    p->MaybeRejectWithNotAllowedError("Media access is disabled by browser policy.");
++    return p.forget();
+   }
+   /* If requestedMediaTypes is the empty set, return a promise rejected with a
+    * TypeError. */
+@@ -187,6 +201,10 @@
+   if (NS_WARN_IF(aRv.Failed())) {
+     return nullptr;
+   }
++  if (CloakfoxMediaDisabled(owner)) {
++    p->MaybeResolve(nsTArray<RefPtr<MediaDeviceInfo>>());
++    return p.forget();
++  }
+   mPendingEnumerateDevicesPromises.AppendElement(p);
+   MaybeResumeDeviceExposure();
+   return p.forget();
+@@ -226,7 +244,9 @@
+           if (ShouldQueueDeviceChange(*exposedDevices)) {
+             NS_DispatchToCurrentThread(NS_NewRunnableFunction(
+                 "devicechange", [self = RefPtr(this), this] {
+-                  DispatchTrustedEvent(u"devicechange"_ns);
++                  if (!CloakfoxMediaDisabled(GetOwnerWindow())) {
++                    DispatchTrustedEvent(u"devicechange"_ns);
++                  }
+                 }));
+           }
+           mLastPhysicalDevices = std::move(aAllDevices);
+@@ -346,7 +366,7 @@
+   // Replaces the RFP-based device count spoofing with one that controls the
+   // number of devices exposed.
+ 
+-  if (!MaskConfig::GetBool("mediaDevices:enabled")) {
++  if (!MaskConfig::GetBool("mediaDevices:enabled").value_or(false)) {
+     return exposed;
+   }
+ 
+@@ -494,8 +514,12 @@
+ void MediaDevices::ResolveEnumerateDevicesPromise(
+     Promise* aPromise, const LocalMediaDeviceSet& aDevices) const {
+   nsCOMPtr<nsPIDOMWindowInner> window = GetOwnerWindow();
++  nsTArray<RefPtr<MediaDeviceInfo>> infos;
++  if (CloakfoxMediaDisabled(window)) {
++    aPromise->MaybeResolve(std::move(infos));
++    return;
++  }
+   auto windowId = window->WindowID();
+-  nsTArray<RefPtr<MediaDeviceInfo>> infos;
+   bool legacy = IsLegacyMode(window);
+   bool capturePermitted =
+       legacy &&
+@@ -521,6 +545,10 @@
+     return nullptr;
+   }
+   nsCOMPtr<nsPIDOMWindowInner> owner = do_QueryInterface(global);
++  if (aCallerType != CallerType::System && CloakfoxMediaDisabled(owner)) {
++    p->MaybeRejectWithNotAllowedError("Media access is disabled by browser policy.");
++    return p.forget();
++  }
+   /* If the relevant global object of this does not have transient activation,
+    * return a promise rejected with a DOMException object whose name attribute
+    * has the value InvalidStateError. */
+@@ -655,6 +683,10 @@
+    * return a promise rejected with a DOMException object whose name attribute
+    * has the value InvalidStateError. */
+   nsCOMPtr<nsPIDOMWindowInner> owner = do_QueryInterface(global);
++  if (aCallerType != CallerType::System && CloakfoxMediaDisabled(owner)) {
++    p->MaybeRejectWithNotAllowedError("Media access is disabled by browser policy.");
++    return p.forget();
++  }
+   WindowContext* wc = owner->GetWindowContext();
+   if (!wc || !wc->HasValidTransientUserGestureActivation()) {
+     p->MaybeRejectWithInvalidStateError(
+@@ -789,6 +821,7 @@
+ 
+ void MediaDevices::OnDeviceChange() {
+   MOZ_ASSERT(NS_IsMainThread());
++  if (CloakfoxMediaDisabled(GetOwnerWindow())) return;
+   if (NS_FAILED(CheckCurrentGlobalCorrectness())) {
+     // This is a ghost window, don't do anything.
+     return;
+--- a/dom/geolocation/Geolocation.cpp
++++ b/dom/geolocation/Geolocation.cpp
+@@ -1467,12 +1467,7 @@
+ /* static */ bool Geolocation::RegisterRequestWithPrompt(
+     nsGeolocationRequest* request) {
+   nsIEventTarget* target = GetMainThreadSerialEventTarget();
+-  if (MaskConfig::GetDouble("geolocation:latitude") &&
+-      MaskConfig::GetDouble("geolocation:longitude")) {
+-    request->RequestDelayedTask(target,
+-                                nsGeolocationRequest::DelayedTaskType::Allow);
+-    return true;
+-  }
++  // Persona coordinates do not authorize a location request.
+   ContentPermissionRequestBase::PromptResult pr = request->CheckPromptPrefs();
+   if (pr == ContentPermissionRequestBase::PromptResult::Granted) {
+     request->RequestDelayedTask(target,
+--- a/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
++++ b/dom/media/webrtc/jsapi/PeerConnectionImpl.cpp
+@@ -2578,8 +2578,26 @@
+ 
+ nsresult PeerConnectionImpl::SetConfiguration(
+     const RTCConfiguration& aConfiguration) {
++  auto policy = aConfiguration.mIceTransportPolicy;
++  // Never gather direct candidates while the privacy policy lacks a mask
++  // for either address family. TURN-only also prevents direct STUN traffic.
++  // Existing connections keep their policy; pages may recreate them after
++  // discovery completes. Disabling discovery therefore remains relay-only.
++  if (Preferences::GetBool("cloakfox.enabled", false) &&
++      Preferences::GetBool("cloakfox.webrtc.protect_unready", true)) {
++    uint32_t ucid = 0;
++    if (mWindow && mWindow->GetBrowsingContext()) {
++      ucid = mWindow->GetBrowsingContext()->OriginAttributesRef().mUserContextId;
++    }
++    nsString v4, v6;
++    const bool ready = WebRTCIPManager::GetIPv4(ucid, v4) && !v4.IsEmpty() &&
++                       WebRTCIPManager::GetIPv6(ucid, v6) && !v6.IsEmpty();
++    if (!ready || !Preferences::GetBool("cloakfox.webrtc.external_ip_discovery", false)) {
++      policy = RTCIceTransportPolicy::Relay;
++    }
++  }
+   nsresult rv = mTransportHandler->SetIceConfig(
+-      aConfiguration.mIceServers, aConfiguration.mIceTransportPolicy);
++      aConfiguration.mIceServers, policy);
+   if (NS_WARN_IF(NS_FAILED(rv))) {
+     return rv;
+   }

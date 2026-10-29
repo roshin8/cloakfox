@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from selenium import webdriver
+from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
@@ -62,6 +63,9 @@ def main():
         def launch():
             opts = Options()
             opts.binary_location = os.environ["CLOAKFOX_BIN"]
+            # Custom cross-OS values deliberately trigger the consistency UI.
+            # Keep its prompt pending so the test can inspect and accept it.
+            opts.set_capability("unhandledPromptBehavior", "ignore")
             opts.add_argument("-headless")
             opts.add_argument("-profile")
             opts.add_argument(str(profile))
@@ -98,11 +102,22 @@ def main():
             return driver.find_element(By.CSS_SELECTOR, f'.k[title="{key}"]').find_element(By.XPATH, "..")
 
         def edit(key, value):
-            driver.execute_script("arguments[0].click()", row(key).find_element(By.CSS_SELECTOR, ".v"))
+            for group in row(key).find_elements(By.XPATH, "ancestor::details"):
+                if not group.get_attribute("open"):
+                    group.find_element(By.CSS_SELECTOR, "summary").click()
+            row(key).find_element(By.CSS_SELECTOR, ".v").click()
             field = row(key).find_element(By.CSS_SELECTOR, ".row-input")
             field.send_keys(Keys.COMMAND, "a")
             field.send_keys(value)
             driver.execute_script("document.activeElement.blur()")
+            try:
+                alert = driver.switch_to.alert
+                message = alert.text
+                check("persona conflicts" in message and "Save these custom values anyway?" in message,
+                      f"{key}: custom edit shows consistency confirmation", message)
+                alert.accept()
+            except NoAlertPresentException:
+                pass
             WebDriverWait(driver, 5).until(lambda d: not row(key).find_elements(By.CSS_SELECTOR, ".row-input"))
 
         try:

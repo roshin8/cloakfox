@@ -1,0 +1,361 @@
+--- a/dom/base/CloakConfigOverlay.cpp
++++ b/dom/base/CloakConfigOverlay.cpp
+@@ -35,7 +35,7 @@
+   nsAutoString key;
+   key.AppendPrintf("cloak_cfg_%u", userContextId);
+   NS_ConvertUTF8toUTF16 value(jsonStr.c_str());
+-  mozilla::dom::RoverfoxStorageManager::PutString(key, value);
++  mozilla::dom::RoverfoxStorageManager::PutCppFirstString(key, value);
+ }
+ 
+ void CloakConfigOverlay_MergeUint(uint32_t userContextId, const std::string& key, uint32_t value) {
+--- a/dom/base/RoverfoxStorageManager.cpp
++++ b/dom/base/RoverfoxStorageManager.cpp
+@@ -14,6 +14,12 @@
+   return sCache;
+ }
+ 
++/* static */ nsTHashMap<nsCStringHashKey, nsCString>&
++RoverfoxStorageManager::GetPendingCppFirstWrites() {
++  static nsTHashMap<nsCStringHashKey, nsCString> sPending;
++  return sPending;
++}
++
+ /* static */ mozilla::Mutex&
+ RoverfoxStorageManager::GetLocalCacheMutex() {
+   static mozilla::Mutex sMutex("RoverfoxStorageCache");
+@@ -31,6 +37,13 @@
+                                                const nsCString& value) {
+   MOZ_ASSERT(NS_IsMainThread());
+   MutexAutoLock lock(GetLocalCacheMutex());
++  // Parent writes are synchronous, but the child's pref mirror is updated
++  // asynchronously. Do not let an older notification overwrite a newer local
++  // write before its acknowledgement arrives.
++  if (auto pending = GetPendingCppFirstWrites().Lookup(prefName)) {
++    if (!pending.Data().Equals(value)) return;
++    GetPendingCppFirstWrites().Remove(prefName);
++  }
+   if (auto entry = GetLocalCache().Lookup(prefName);
+       entry && entry.Data().Equals(value)) {
+     return;
+@@ -86,6 +99,13 @@
+ RoverfoxStorageManager::TryGetCppFirstPref(const nsAString& key,
+                                             nsACString& outValue) {
+   nsCString prefName = MakeCppFirstPrefName(key);
++  if (NS_IsMainThread()) {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    if (auto pending = GetPendingCppFirstWrites().Lookup(prefName)) {
++      outValue = pending.Data();
++      return !outValue.IsEmpty();
++    }
++  }
+   // Remote service workers may run in a process without these dynamic prefs.
+   // WorkerPrivate warms the exact container key on the main thread. Cache the
+   // cpp-first result too: previously that priority path returned before caching
+@@ -244,6 +264,29 @@
+   nsCString prefName = MakePrefName(key);
+   nsAutoCString utf8Value;
+   CopyUTF16toUTF8(value, utf8Value);
++  SetPrefValue(prefName, utf8Value);
++}
++
++/* static */ void
++RoverfoxStorageManager::PutCppFirstString(const nsAString& key,
++                                        const nsAString& value) {
++  MOZ_ASSERT(NS_IsMainThread());
++  const nsCString prefName = MakeCppFirstPrefName(key);
++  NS_ConvertUTF16toUTF8 utf8Value(value);
++  nsAutoCString previous;
++  if (TryGetCppFirstPref(key, previous) && previous.Equals(utf8Value)) {
++    return;  // An unchanged parent pref emits no acknowledgement notification.
++  }
++  {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    // A new local write supersedes the previous pending acknowledgement.
++    GetPendingCppFirstWrites().Remove(prefName);
++  }
++  UpdateCppFirstPrefCache(prefName, utf8Value);
++  if (!XRE_IsParentProcess()) {
++    MutexAutoLock lock(GetLocalCacheMutex());
++    GetPendingCppFirstWrites().InsertOrUpdate(prefName, nsCString(utf8Value));
++  }
+   SetPrefValue(prefName, utf8Value);
+ }
+ 
+--- a/dom/base/RoverfoxStorageManager.h
++++ b/dom/base/RoverfoxStorageManager.h
+@@ -21,6 +21,7 @@
+   static void PutBool(const nsAString& key, bool value);
+   static bool GetBool(const nsAString& key, bool& outValue);
+   static void PutString(const nsAString& key, const nsAString& value);
++  static void PutCppFirstString(const nsAString& key, const nsAString& value);
+   static bool GetString(const nsAString& key, nsAString& outValue);
+   static void Remove(const nsAString& key);
+ 
+@@ -39,6 +40,7 @@
+   static bool TryGetCppFirstPref(const nsAString& key, nsACString& outValue);
+   static void SetPrefValue(const nsCString& prefName, const nsCString& value);
+   static nsTHashMap<nsCStringHashKey, nsCString>& GetLocalCache();
++  static nsTHashMap<nsCStringHashKey, nsCString>& GetPendingCppFirstWrites();
+   static mozilla::Mutex& GetLocalCacheMutex();
+   static nsTHashMap<nsCStringHashKey, uint32_t>& GetMathSeedCache();
+ };
+--- a/dom/base/WebRTCIPManager.cpp
++++ b/dom/base/WebRTCIPManager.cpp
+@@ -9,6 +9,8 @@
+ #include "mozilla/dom/BrowsingContext.h"
+ #include "mozilla/dom/Document.h"
+ #include "nsPIDOMWindow.h"
++#include "nsContentUtils.h"
++#include "mozilla/BasePrincipal.h"
+ 
+ namespace mozilla {
+ namespace dom {
+@@ -115,6 +117,9 @@
+ 
+ /* static */ bool
+ WebRTCIPManager::IsIPv4FunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj) {
++  // Only browser-privileged code may configure masks, even before discovery.
++  nsIPrincipal* principal = nsContentUtils::SubjectPrincipal(aCx);
++  if (!principal || !principal->IsSystemPrincipal()) return false;
+   nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
+   if (!win) {
+     return false;
+@@ -132,6 +137,9 @@
+ 
+ /* static */ bool
+ WebRTCIPManager::IsIPv6FunctionEnabledForWebIDL(JSContext* aCx, JSObject* aObj) {
++  // Only browser-privileged code may configure masks, even before discovery.
++  nsIPrincipal* principal = nsContentUtils::SubjectPrincipal(aCx);
++  if (!principal || !principal->IsSystemPrincipal()) return false;
+   nsGlobalWindowInner* win = xpc::WindowOrNull(aObj);
+   if (!win) {
+     return false;
+--- a/dom/webidl/Window.webidl
++++ b/dom/webidl/Window.webidl
+@@ -954,12 +954,12 @@
+ 
+ // WebRTC IP interfaces for privacy-preserving IP spoofing
+ partial interface Window {
+-  [Throws, Func="mozilla::dom::WebRTCIPManager::IsIPv4FunctionEnabledForWebIDL"]
++  [ChromeOnly, Throws, Func="mozilla::dom::WebRTCIPManager::IsIPv4FunctionEnabledForWebIDL"]
+   undefined setWebRTCIPv4(DOMString ipv4);
+ };
+ 
+ partial interface Window {
+-  [Throws, Func="mozilla::dom::WebRTCIPManager::IsIPv6FunctionEnabledForWebIDL"]
++  [ChromeOnly, Throws, Func="mozilla::dom::WebRTCIPManager::IsIPv6FunctionEnabledForWebIDL"]
+   undefined setWebRTCIPv6(DOMString ipv6);
+ };
+ 
+--- a/netwerk/protocol/http/HttpBaseChannel.cpp
++++ b/netwerk/protocol/http/HttpBaseChannel.cpp
+@@ -397,7 +397,8 @@
+   rv = gHttpHandler->AddStandardRequestHeaders(
+       &mRequestHead, aURI, isHTTPS, contentPolicyType,
+       nsContentUtils::ShouldResistFingerprinting(this,
+-                                                 RFPTarget::HttpUserAgent));
++                                                 RFPTarget::HttpUserAgent),
++      mLoadInfo->GetOriginAttributes().mUserContextId);
+   if (NS_FAILED(rv)) return rv;
+ 
+   nsAutoCString type;
+--- a/netwerk/protocol/http/HttpConnectionUDP.cpp
++++ b/netwerk/protocol/http/HttpConnectionUDP.cpp
+@@ -521,8 +521,13 @@
+   request->SetVersion(gHttpHandler->HttpVersion());
+ 
+   bool shouldResistFingerprinting = trans->Caps() & NS_HTTP_USE_RFP;
+-  rv = request->SetHeader(nsHttp::User_Agent,
+-                          gHttpHandler->UserAgent(shouldResistFingerprinting));
++  nsAutoCString userAgent;
++  if (NS_FAILED(trans->RequestHead()->GetHeader(nsHttp::User_Agent, userAgent))) {
++    userAgent = gHttpHandler->UserAgentForContainer(
++        shouldResistFingerprinting,
++        trans->ConnectionInfo()->GetOriginAttributes().mUserContextId);
++  }
++  rv = request->SetHeader(nsHttp::User_Agent, userAgent);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+   rv = request->SetHeader(nsHttp::Host, host);
+--- a/netwerk/protocol/http/nsHttpChannel.cpp
++++ b/netwerk/protocol/http/nsHttpChannel.cpp
+@@ -7380,8 +7380,10 @@
+   if (!LoadIsUserAgentHeaderModified()) {
+     rv = mRequestHead.SetHeader(
+         nsHttp::User_Agent,
+-        gHttpHandler->UserAgent(nsContentUtils::ShouldResistFingerprinting(
+-            this, RFPTarget::HttpUserAgent)),
++        gHttpHandler->UserAgentForContainer(
++            nsContentUtils::ShouldResistFingerprinting(
++                this, RFPTarget::HttpUserAgent),
++            mLoadInfo->GetOriginAttributes().mUserContextId),
+         false, nsHttpHeaderArray::eVarietyRequestEnforceDefault);
+     MOZ_ASSERT(NS_SUCCEEDED(rv));
+   }
+--- a/netwerk/protocol/http/nsHttpConnection.cpp
++++ b/netwerk/protocol/http/nsHttpConnection.cpp
+@@ -1999,8 +1999,13 @@
+   } else {
+     request->SetRequestURI(result);
+   }
+-  rv = request->SetHeader(nsHttp::User_Agent,
+-                          gHttpHandler->UserAgent(aShouldResistFingerprinting));
++  nsAutoCString userAgent;
++  if (NS_FAILED(trans->RequestHead()->GetHeader(nsHttp::User_Agent, userAgent))) {
++    userAgent = gHttpHandler->UserAgentForContainer(
++        aShouldResistFingerprinting,
++        trans->ConnectionInfo()->GetOriginAttributes().mUserContextId);
++  }
++  rv = request->SetHeader(nsHttp::User_Agent, userAgent);
+   MOZ_ASSERT(NS_SUCCEEDED(rv));
+ 
+   // a CONNECT is always persistent
+--- a/netwerk/protocol/http/nsHttpHandler.cpp
++++ b/netwerk/protocol/http/nsHttpHandler.cpp
+@@ -15,6 +15,7 @@
+ #include "nsHttp.h"
+ #include "nsHttpHandler.h"
+ #include "MaskConfig.hpp"
++#include "mozilla/StaticPrefs_cloakfox.h"
+ #include "nsHttpChannel.h"
+ #include "nsHTTPCompressConv.h"
+ #include "nsHttpAuthCache.h"
+@@ -732,14 +733,47 @@
+   return rv;
+ }
+ 
++// Request identity must use the channel's origin attributes, never the current
++// JS window or process-wide header caches. Context 0 is an explicit container.
++static std::optional<std::string> CloakfoxRequestHeader(
++    const char* aKey, uint32_t aUserContextId) {
++  if (!mozilla::StaticPrefs::cloakfox_enabled()) return std::nullopt;
++  const auto cfg = nlohmann::json::parse(
++      ::CloakConfigOverlay_Get(aUserContextId), nullptr, false);
++  if (cfg.is_object()) {
++    const auto value = cfg.find(aKey);
++    if (value != cfg.end() && value->is_string()) {
++      return value->get<std::string>();
++    }
++  }
++  const auto& env = MaskConfig::GetJson();
++  const auto value = env.find(aKey);
++  if (value != env.end() && value->is_string()) {
++    return value->get<std::string>();
++  }
++  return std::nullopt;
++}
++
++nsCString nsHttpHandler::UserAgentForContainer(bool aShouldResistFingerprinting,
++                                              uint32_t aUserContextId) {
++  if (auto value = CloakfoxRequestHeader("headers.User-Agent", aUserContextId)) {
++    return nsCString(value->c_str());
++  }
++  if (auto value = CloakfoxRequestHeader("navigator.userAgent", aUserContextId)) {
++    return nsCString(value->c_str());
++  }
++  return nsCString(UserAgent(aShouldResistFingerprinting));
++}
++
+ nsresult nsHttpHandler::AddStandardRequestHeaders(
+     nsHttpRequestHead* request, nsIURI* aURI, bool aIsHTTPS,
+-    ExtContentPolicyType aContentPolicyType, bool aShouldResistFingerprinting) {
++    ExtContentPolicyType aContentPolicyType, bool aShouldResistFingerprinting,
++    uint32_t aUserContextId) {
+   nsresult rv;
+ 
+   // Add the "User-Agent" header
+   rv = request->SetHeader(nsHttp::User_Agent,
+-                          UserAgent(aShouldResistFingerprinting), false,
++                          UserAgentForContainer(aShouldResistFingerprinting, aUserContextId), false,
+                           nsHttpHeaderArray::eVarietyRequestDefault);
+   if (NS_FAILED(rv)) return rv;
+ 
+@@ -773,9 +807,11 @@
+     MOZ_ASSERT(NS_SUCCEEDED(rv));
+   }
+ 
++  const auto language = CloakfoxRequestHeader("headers.Accept-Language", aUserContextId);
++  const nsCString acceptLanguages = language ? nsCString(language->c_str()) : mAcceptLanguages;
+   // Add the "Accept-Language" header
+-  if (!mAcceptLanguages.IsEmpty()) {
+-    rv = request->SetHeader(nsHttp::Accept_Language, mAcceptLanguages, false,
++  if (!acceptLanguages.IsEmpty()) {
++    rv = request->SetHeader(nsHttp::Accept_Language, acceptLanguages, false,
+                             nsHttpHeaderArray::eVarietyRequestOverride);
+     if (NS_FAILED(rv)) return rv;
+   }
+@@ -787,11 +823,14 @@
+     if (NS_FAILED(rv)) return rv;
+   }
+ 
++  const auto encoding = CloakfoxRequestHeader("headers.Accept-Encoding", aUserContextId);
++  const nsCString acceptEncodings = encoding ? nsCString(encoding->c_str()) :
++      (aIsHTTPS ? mHttpsAcceptEncodings : mHttpAcceptEncodings);
+   if (aIsHTTPS) {
+-    rv = request->SetHeader(nsHttp::Accept_Encoding, mHttpsAcceptEncodings,
++    rv = request->SetHeader(nsHttp::Accept_Encoding, acceptEncodings,
+                             false, nsHttpHeaderArray::eVarietyRequestDefault);
+   } else {
+-    rv = request->SetHeader(nsHttp::Accept_Encoding, mHttpAcceptEncodings,
++    rv = request->SetHeader(nsHttp::Accept_Encoding, acceptEncodings,
+                             false, nsHttpHeaderArray::eVarietyRequestDefault);
+   }
+   return NS_OK;
+@@ -967,15 +1006,6 @@
+ //-----------------------------------------------------------------------------
+ 
+ const nsCString& nsHttpHandler::UserAgent(bool aShouldResistFingerprinting) {
+-  if (auto value = MaskConfig::GetString("headers.User-Agent")) {
+-    mUserAgent.Assign(nsCString(value.value().c_str()));
+-    return mUserAgent;
+-  }
+-  if (auto value = MaskConfig::GetString("navigator.userAgent")) {
+-    mUserAgent.Assign(nsCString(value.value().c_str()));
+-    return mUserAgent;
+-  }
+-
+   if (aShouldResistFingerprinting && !mSpoofedUserAgent.IsEmpty()) {
+     LOG(("using spoofed userAgent : %s\n", mSpoofedUserAgent.get()));
+     return mSpoofedUserAgent;
+@@ -2092,11 +2122,6 @@
+   }
+ 
+   MOZ_ASSERT(NS_IsMainThread());
+-  if (auto value = MaskConfig::GetString("headers.Accept-Language")) {
+-    mAcceptLanguages.Assign(nsCString(value.value().c_str()));
+-    return NS_OK;
+-  }
+-
+   mAcceptLanguagesIsDirty = false;
+ 
+   nsAutoCString acceptLanguages;
+@@ -2112,11 +2137,6 @@
+ 
+ nsresult nsHttpHandler::SetAcceptEncodings(const char* aAcceptEncodings,
+                                            bool isSecure, bool isDictionary) {
+-  nsCString encodingOverride;
+-  if (auto value = MaskConfig::GetString("headers.Accept-Encoding")) {
+-    encodingOverride.Assign(nsCString(value.value().c_str()));
+-    aAcceptEncodings = encodingOverride.get();
+-  }
+   if (isDictionary) {
+     mDictionaryAcceptEncodings = aAcceptEncodings;
+   } else if (isSecure) {
+--- a/netwerk/protocol/http/nsHttpHandler.h
++++ b/netwerk/protocol/http/nsHttpHandler.h
+@@ -124,11 +124,13 @@
+   [[nodiscard]] nsresult AddStandardRequestHeaders(
+       nsHttpRequestHead*, nsIURI* aURI, bool aIsHTTPS,
+       ExtContentPolicyType aContentPolicyType,
+-      bool aShouldResistFingerprinting);
++      bool aShouldResistFingerprinting, uint32_t aUserContextId);
+   [[nodiscard]] nsresult AddConnectionHeader(nsHttpRequestHead*, uint32_t caps);
+   bool IsAcceptableEncoding(const char* encoding, bool isSecure);
+ 
+   const nsCString& UserAgent(bool aShouldResistFingerprinting);
++  nsCString UserAgentForContainer(bool aShouldResistFingerprinting,
++                                 uint32_t aUserContextId);
+ 
+   enum HttpVersion HttpVersion() { return mHttpVersion; }
+   enum HttpVersion ProxyHttpVersion() { return mProxyHttpVersion; }

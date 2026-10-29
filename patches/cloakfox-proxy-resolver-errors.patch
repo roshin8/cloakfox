@@ -1,0 +1,28 @@
+diff --git a/netwerk/base/nsIProtocolProxyService.idl b/netwerk/base/nsIProtocolProxyService.idl
+--- a/netwerk/base/nsIProtocolProxyService.idl
++++ b/netwerk/base/nsIProtocolProxyService.idl
+@@ -75,6 +75,11 @@
+      * CONNECT through the http proxy.
+      */
+     const unsigned long RESOLVE_ALWAYS_TUNNEL = (1 << 4);
++
++    /** Preserve unavailable/failed PAC errors instead of falling back DIRECT.
++     * Privacy-sensitive transports opt in; ordinary channel behavior is native.
++     */
++    const unsigned long RESOLVE_PRESERVE_PAC_ERRORS = (1 << 5);
+ 
+     /**
+      * This method returns via callback a nsIProxyInfo instance that identifies
+diff --git a/netwerk/base/nsProtocolProxyService.cpp b/netwerk/base/nsProtocolProxyService.cpp
+--- a/netwerk/base/nsProtocolProxyService.cpp
++++ b/netwerk/base/nsProtocolProxyService.cpp
+@@ -356,7 +356,8 @@
+ 
+   void DoCallback() {
+     bool pacAvailable = true;
+-    if (mStatus == NS_ERROR_NOT_AVAILABLE && !mProxyInfo) {
++    if (mStatus == NS_ERROR_NOT_AVAILABLE && !mProxyInfo &&
++        !(mResolveFlags & nsIProtocolProxyService::RESOLVE_PRESERVE_PAC_ERRORS)) {
+       // If the PAC service is not avail (e.g. failed pac load
+       // or shutdown) then we will be going direct. Make that
+       // mapping now so that any filters are still applied.

@@ -1,0 +1,136 @@
+diff --git a/layout/style/FontFace.cpp b/layout/style/FontFace.cpp
+--- a/layout/style/FontFace.cpp
++++ b/layout/style/FontFace.cpp
+@@ -241,16 +241,7 @@
+   mImpl->SetSizeAdjust(aValue, aRv);
+ }
+ 
+-FontFaceLoadStatus FontFace::Status() {
+-  nsAutoCString fontFamily;
+-  GetFamily(fontFamily);
+-
+-  if (mozilla::dom::IsFontAllowed(fontFamily)) {
+-    return FontFaceLoadStatus::Loaded;
+-  } else {
+-    return FontFaceLoadStatus::Error;
+-  }
+-}
++FontFaceLoadStatus FontFace::Status() { return mImpl->Status(); }
+ 
+ Promise* FontFace::Load(ErrorResult& aRv) {
+   EnsurePromise();
+@@ -260,17 +251,7 @@
+     return nullptr;
+   }
+ 
+-  nsAutoCString fontFamily;
+-  GetFamily(fontFamily);
+-
+-  if (mozilla::dom::IsFontAllowed(fontFamily)) {
+-    // For allowed fonts, always resolve the promise
+-    mLoaded->MaybeResolve(this);
+-  } else {
+-    // For non-allowed fonts, always reject the promise
+-    mLoaded->MaybeReject(NS_ERROR_FAILURE);
+-  }
+-
++  mImpl->Load(aRv);
+   return mLoaded;
+ }
+ 
+diff --git a/layout/style/FontFaceImpl.cpp b/layout/style/FontFaceImpl.cpp
+--- a/layout/style/FontFaceImpl.cpp
++++ b/layout/style/FontFaceImpl.cpp
+@@ -360,14 +360,20 @@
+ void FontFaceImpl::SetStatus(FontFaceLoadStatus aStatus) {
+   gfxFontUtils::AssertSafeThreadOrServoFontMetricsLocked();
+ 
+-  nsAutoCString fontFamily;
+-  GetFamily(fontFamily);
+-
+-  if (IsFontAllowed(fontFamily)) {
+-    mStatus = FontFaceLoadStatus::Loaded;
+-  } else {
+-    mStatus = FontFaceLoadStatus::Error;
+-  }
++  if (mStatus == aStatus) {
++    return;
++  }
++
++  if (aStatus < mStatus) {
++    // We're being asked to go backwards in status!  Normally, this shouldn't
++    // happen.  But it can if the FontFace had a user font entry that had
++    // loaded, but then was given a new one by FontFaceSet::InsertRuleFontFace
++    // if we used a local() rule.  For now, just ignore the request to
++    // go backwards in status.
++    return;
++  }
++
++  mStatus = aStatus;
+ 
+   if (mInFontFaceSet) {
+     mFontFaceSet->OnFontFaceStatusChanged(this);
+diff --git a/layout/style/FontFaceImpl.h b/layout/style/FontFaceImpl.h
+--- a/layout/style/FontFaceImpl.h
++++ b/layout/style/FontFaceImpl.h
+@@ -12,7 +12,6 @@
+ #include "mozilla/RWLock.h"
+ #include "mozilla/ServoStyleConsts.h"
+ #include "mozilla/dom/FontFaceBinding.h"
+-#include "MaskConfig.hpp"
+ #include "nsTHashSet.h"
+ 
+ class gfxFontFaceBufferSource;
+@@ -32,20 +31,6 @@
+ }  // namespace mozilla
+ 
+ namespace mozilla::dom {
+-
+-// Helper function to check if a font is in the allowed list
+-inline bool IsFontAllowed(const nsACString& aFontName) {
+-  if (std::vector<std::string> maskValues =
+-          MaskConfig::GetStringListLower("fonts");
+-      !maskValues.empty()) {
+-    std::string fontName(aFontName.BeginReading(), aFontName.EndReading());
+-    std::transform(fontName.begin(), fontName.end(), fontName.begin(),
+-                   ::tolower);
+-    return std::find(maskValues.begin(), maskValues.end(), fontName) !=
+-           maskValues.end();
+-  }
+-  return true;
+-}
+ 
+ class FontFaceImpl final {
+   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(FontFaceImpl)
+diff --git a/gfx/thebes/gfxUserFontSet.cpp b/gfx/thebes/gfxUserFontSet.cpp
+--- a/gfx/thebes/gfxUserFontSet.cpp
++++ b/gfx/thebes/gfxUserFontSet.cpp
+@@ -24,6 +24,7 @@
+ #include "nsContentUtils.h"
+ #include "nsPresContext.h"
+ #include "mozilla/dom/FontFaceSetImpl.h"
++#include "mozilla/dom/FontListManager.h"
+ #include "nsTHashSet.h"
+ 
+ using namespace mozilla;
+@@ -456,9 +457,18 @@
+     if (currSrc.mSourceType == gfxFontFaceSrc::eSourceType_Local) {
+       gfxPlatformFontList* pfl = gfxPlatformFontList::PlatformFontList();
+       pfl->AddUserFontSet(fontSet);
+-      // Don't look up local fonts if the font whitelist is being used.
++      // local() names identify installed faces, including full/PostScript
++      // aliases that do not pass through family filtering. As with Gecko's
++      // global whitelist, skip them while this font set's persona is masked;
++      // URL/buffer webfonts still use their native loading path and fallback.
++      RefPtr<gfxFontSrcPrincipal> principal =
++          fontSet->GetStandardFontLoadPrincipal();
++      const bool personaFontListActive =
++          principal && principal->NodePrincipal() &&
++          mozilla::dom::FontListManager::HasFontList(
++              principal->NodePrincipal()->OriginAttributesRef().mUserContextId);
+       gfxFontEntry* fe = nullptr;
+-      if (!pfl->IsFontFamilyWhitelistActive()) {
++      if (!pfl->IsFontFamilyWhitelistActive() && !personaFontListActive) {
+         fe = gfxPlatform::GetPlatform()->LookupLocalFont(
+             fontSet->GetFontVisibilityProvider(), currSrc.mLocalName, Weight(),
+             Stretch(), SlantStyle());

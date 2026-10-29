@@ -1,5 +1,7 @@
 """Exercise restored native preset controls using a disposable browser profile."""
+from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from screen_management_fixture import ScreenManagementFixture
 
@@ -15,7 +17,11 @@ def main():
                 d.execute_script('document.getElementById(arguments[0]).open=true',section)
             el=d.find_element(By.ID,control)
             d.execute_script('arguments[0].scrollIntoView({block:"center"})',el)
+            previous=Select(el).first_selected_option.get_attribute("value")
             Select(el).select_by_value(value)
+            try: d.switch_to.alert.accept() # acknowledge intentionally mixed presets
+            except NoAlertPresentException: pass
+            if control.endswith("-preset") and previous!=value: WebDriverWait(d,5).until(EC.staleness_of(el))
         def cfg():
             return f.chrome('return JSON.parse(Services.prefs.getStringPref("cloakfox.s.cloak_cfg_0"))')
         load()
