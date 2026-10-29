@@ -41,8 +41,9 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-colors-') as temp:
           const tab=gBrowser.addTrustedTab('about:blank',{userContextId:identity.userContextId});
           gBrowser.selectedTab=tab;
           const s=getComputedStyle(tab.querySelector('.tab-context-line'));
-          return {accent:getComputedStyle(tab).getPropertyValue('--identity-accent-color').trim(),paint:s.backgroundColor+' '+s.backgroundImage,label:cis.getContainerColorCode('blue')};
+          return {labelGap:getComputedStyle(document.getElementById('userContext-label')).marginInlineStart,accent:getComputedStyle(tab).getPropertyValue('--identity-accent-color').trim(),paint:s.backgroundColor+' '+s.backgroundImage,label:cis.getContainerColorCode('blue')};
         """)
+        assert tab_colors['labelGap'] == '6px', tab_colors
         assert tab_colors['accent'] == '#4385f5', tab_colors
         assert '67, 133, 245' in tab_colors['paint'], tab_colors
         assert tab_colors['label'] == result['codes'][result['names'].index('blue')], tab_colors
@@ -111,9 +112,10 @@ with tempfile.TemporaryDirectory(prefix='cloakfox-colors-') as temp:
         driver = launch(profile, root / 'reused-profile.log', purge_caches=True)
         reused = driver.execute_script("""
           const cis=ChromeUtils.importESModule('moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs').ContextualIdentityService;
-          return {codes:cis.containerColors.map(c=>cis.getContainerColorCode(c))};
+          return {codes:cis.containerColors.map(c=>cis.getContainerColorCode(c)),gap:getComputedStyle(document.getElementById('userContext-label')).marginInlineStart};
         """)
         assert reused['codes'] == result['codes'], reused
+        assert reused['gap'] == '6px', reused
         print(json.dumps({'passed':True, 'colors':result['names'], 'themes':['light','dark'], 'profileReuse':True}))
     finally:
         driver.quit()

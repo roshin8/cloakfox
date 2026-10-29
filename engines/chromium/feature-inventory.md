@@ -29,7 +29,7 @@ Gecko158 additions missing from the old157 checklist include AudioWorklet privac
 <!-- BEGIN GENERATED GECKO INVENTORY -->
 ## Active Gecko 159.0 source inventory
 
-Canonical patch resolver: 168 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
+Canonical patch resolver: 171 active patches. These are rewrite/triage inputs, not a count of missing Chromium features. The source manifest records exact hashes and catches later source drift.
 
 Canvas/GPU/config entries have partial Chromium equivalents described above. Gecko UI, branding, build and compatibility patches can be engine-specific; no patch is mechanically applied to Chromium.
 
@@ -201,6 +201,9 @@ Canvas/GPU/config entries have partial Chromium equivalents described above. Gec
 - `patches/cloakfox-canonical-mac-texture-limits.patch`
 - `patches/cloakfox-canonical-font-decoration.patch`
 - `patches/cloakfox-observed-gpu-execution.patch`
+- `patches/cloakfox-container-colors.patch`
+- `patches/cloakfox-container-tab-accents.patch`
+- `patches/cloakfox-container-label-spacing.patch`
 
 ## Optional/privacy preference inventory
 

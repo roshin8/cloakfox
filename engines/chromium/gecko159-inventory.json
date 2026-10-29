@@ -168,7 +168,10 @@
     "patches/cloakfox-touch-document-policy.patch",
     "patches/cloakfox-canonical-mac-texture-limits.patch",
     "patches/cloakfox-canonical-font-decoration.patch",
-    "patches/cloakfox-observed-gpu-execution.patch"
+    "patches/cloakfox-observed-gpu-execution.patch",
+    "patches/cloakfox-container-colors.patch",
+    "patches/cloakfox-container-tab-accents.patch",
+    "patches/cloakfox-container-label-spacing.patch"
   ],
   "preferences": [
     "cloakfox.opt.canvas_render_privacy",
@@ -612,6 +615,9 @@
     "patches/cloakfox-canonical-mac-texture-limits.patch": "0bde7e5cd5f3ed1491eaec13483a7f5477ee44376e6e49e89075c03592951ffb",
     "patches/cloakfox-canonical-font-decoration.patch": "79a4bddae9e130a0e465e5a6312749f091c8c485cb78f78c301d8060b02a6993",
     "patches/cloakfox-observed-gpu-execution.patch": "5ff59fcb984245e7b47554924276a52cb20aff8a8f7ce3797dee8e03c61d0e45",
+    "patches/cloakfox-container-colors.patch": "7e0acdf5cced2e400231bb4fe68a7913efb2d0be766af845eb2ac6e8c1a080f7",
+    "patches/cloakfox-container-tab-accents.patch": "d6cf97c43b458e6db8fdda877e911961068637c79f65e60da9ca18d34325e538",
+    "patches/cloakfox-container-label-spacing.patch": "f879db65d5792df1759be71159f5c8b878a805dbccba12b805dff16090106455",
     "additions/browser/components/cloakfox/CloakfoxAppearance.sys.mjs": "ca73338a1505025e06604f0489dd6eb90db7818807774b463211fc7ed58da297",
     "additions/browser/components/cloakfox/CloakfoxBFNetwork.sys.mjs": "564a9dc342a08c9bfe00de75ba09d62bbb857a870e0ae3f59d10b305bb00d728",
     "additions/browser/components/cloakfox/CloakfoxBayesianNetwork.sys.mjs": "f55d9c3bf2b74f10d2fa8abfedc2a0b00c302ff812ca6d672a98aa90b7b9e9b2",
@@ -652,8 +658,8 @@
     "additions/browser/components/cloakfox/CloakfoxWebRTCSync.sys.mjs": "3bc2ebb9e9750574e998e33e0b79f61fc374183baa8115714153379f43c44e44",
     "additions/browser/components/cloakfox/CloakfoxWorkspaces.sys.mjs": "e93b16ed9b91a752064aea9f82f2681599cd8494c2a8d8b6c03d4aa593ed4c46",
     "additions/browser/components/cloakfox/actors/CloakfoxCoderPadMediaChild.sys.mjs": "f3ec3dfdb85a2bb404d472c7a6d05f740467cf2bc511bf7b28e9572d969a6aba",
-    "additions/browser/components/cloakfox/actors/CloakfoxContainerBulkChild.sys.mjs": "1b29bbdc60f669fb11ed4be81f340d30ce42c566176238a8a053705d1c457353",
-    "additions/browser/components/cloakfox/actors/CloakfoxContainerProxyEditorChild.sys.mjs": "87313b6cd8a118e7e0964bc72daf97cbf950a3f023b68e633cb51900d6540fcf",
+    "additions/browser/components/cloakfox/actors/CloakfoxContainerBulkChild.sys.mjs": "365f461877a6578f391347bedfe0e4e2817300d1e54eb5d737f2fc5d772b406f",
+    "additions/browser/components/cloakfox/actors/CloakfoxContainerProxyEditorChild.sys.mjs": "9d7f7475f43630033026101b1180f7133dd10e2c6c687075ffd3cf632fdf40d6",
     "additions/browser/components/cloakfox/actors/CloakfoxContainerProxyEditorParent.sys.mjs": "014a8df4ed5f1f3f4f6c999ec965b4c8b58b6db146f31fc4ac4ba933b4e6b5ed",
     "additions/browser/components/cloakfox/actors/CloakfoxFeatureDetectChild.sys.mjs": "5929a72df2119bbc1cd4ac9be2d3a5b239e47f5a992da4d2d2520ce47ecebbe7",
     "additions/browser/components/cloakfox/actors/CloakfoxFeatureDetectParent.sys.mjs": "e76d2a77532df2c4e30674088eac437b3fd289ed80f84d5234c51b673ca528fd",
@@ -701,7 +707,7 @@
     "additions/browser/components/cloakfox/content/tracking-settings.js": "60901a25cfc29f22a1b225f4b9e5ed4f7812d4497fddffe3fd09cdc8c16fdb03",
     "additions/browser/components/cloakfox/content/workspace-settings.js": "6137e3e42919583e845982de72285d0e0b92a3b14e8e5d5d71bfc8ff5c99558d",
     "settings/cloakfox.cfg": "35bacf11d95d8cda0afd31e6fc3a2aa8bfbd3044849a59c1ebeeccc74e4a2912",
-    "patches/order.txt": "b48b6d029204b348f11076e284790cbedd50f0defac170fc9dca1e6ade198ba8",
+    "patches/order.txt": "d21def8ae44852e491f570d1271ee09d844950e520a442e1400b66f5cf06525d",
     "scripts/_mixin.py": "65e504efc33d4b808f668e927662bc0f9a444fdbb87f063131a5a0a374703290",
     "upstream.sh": "868f08756a60af538cd43050ce391b4a19c291ed10f2d5c796ee1f95a9d4f809"
   }
