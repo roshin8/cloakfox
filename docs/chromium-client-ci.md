@@ -6,7 +6,7 @@ The normal validation path consumes a versioned binary SDK. It does not compile 
 
 Current version: `locale-f03b85fd-20261029`, client source `a06a95168d462024d274570ab73f5b8c535ca103`. This SDK was compiled locally before import. Its provenance says so; importing it does not turn it into a hosted source build. It contains the locale/display/owned-IME patch chain. It does not include later regional-validation engine changes. The small hashed client patch provides a synthetic media device only in explicit probe/test-keychain mode, letting the actual deny callback execute on camera-less runners. It never grants media permission.
 
-The draft release is a validation input, not a release-ready browser. Previously recorded local owned-IME password metadata and privacy inventory failures remain listed in the SDK manifest. Every hosted gate still runs and must pass. The retained Gecko app is verified against its own producer inputs for coexistence; this does not waive its separate historical release-test failures.
+The SDK validation prerelease is a validation input, not a release-ready browser. Previously recorded local owned-IME password metadata and privacy inventory failures remain listed in the SDK manifest. Every hosted gate still runs and must pass. The retained Gecko app is verified against its own producer inputs for coexistence; this does not waive its separate historical release-test failures.
 
 ## Running validation
 

@@ -46,6 +46,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RUNNER_TEMP/sdk-package" evidence
+          cp ../controller/engines/chromium/sdk-lock.json evidence/requested-sdk-lock.json
           python3 - <<'PY'
           import json,os,subprocess
           from pathlib import Path
