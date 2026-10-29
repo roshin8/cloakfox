@@ -93,6 +93,11 @@ jobs:
       - name: Require upstream CreepJS and FingerprintJS native audit
         if: ${{ !cancelled() && steps.clients.outcome == 'success' && steps.metal.outcome == 'success' }}
         run: python3 -u tests/engines/probe_fingerprint_libraries.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report-dir evidence/library-audit
+      - name: Prepare verified source replays and portable test fixtures
+        if: ${{ !cancelled() && steps.clients.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 ../controller/scripts/ci/prepare_locale_recheck.py
       - name: Require full engine privacy and native client suite
         if: ${{ !cancelled() && steps.clients.outcome == 'success' && steps.metal.outcome == 'success' }}
         env:
