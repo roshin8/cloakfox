@@ -8,28 +8,53 @@ export function initBulkContainerUI(actor) {
   const node=(tag,text)=>{const el=doc.createElement(tag);if(text)el.textContent=text;return el;};
   const style=node('style');
   style.textContent=`
-    #cfx-bulk-tools {margin:8px 16px;display:grid;gap:10px;flex:none;text-align:start;}
-    #cfx-bulk-tools button {min-height:32px;border:0;border-radius:4px;padding:6px 10px;font:inherit;cursor:pointer;background:var(--button-bg-color-secondary);color:var(--text-color-primary);}
-    #cfx-bulk-tools button:hover {background:var(--button-bg-hover-color-secondary);}
-    #cfx-bulk-tools button:focus-visible {outline:2px solid var(--link-color);outline-offset:2px;}
-    #cfx-bulk-tools button:disabled {opacity:.5;cursor:default;}
-    #cfx-bulk-tools .cfx-primary {background:var(--button-bg-color-primary);color:var(--button-text-color-primary);}
-    #cfx-bulk-tools .cfx-danger {color:var(--button-destructive-text-color);background:var(--button-destructive-bg-color);}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) {box-sizing:border-box;inline-size:calc(100% - 24px);margin:12px;padding:12px;display:grid;gap:12px;flex:none;text-align:start;border:1px solid color-mix(in srgb,var(--text-color-primary) 16%,transparent);border-radius:10px;background:color-mix(in srgb,var(--bgColor) 94%,var(--text-color-primary));max-block-size:360px;overflow:auto;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) button {min-height:34px;border:1px solid color-mix(in srgb,var(--text-color-primary) 12%,transparent);border-radius:6px;padding:7px 10px;font:inherit;cursor:pointer;background:var(--button-bg-color-secondary);color:var(--text-color-primary);}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) button:hover {background:var(--button-bg-hover-color-secondary);}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) button:focus-visible {outline:2px solid var(--link-color);outline-offset:2px;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) button:disabled {opacity:.5;cursor:default;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) .cfx-primary {background:var(--button-bg-color-primary);color:var(--button-text-color-primary);}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) .cfx-danger {color:var(--button-destructive-text-color);background:var(--button-destructive-bg-color);}
+    html:not([data-cfx-bulk-open]) :is(#cfx-bulk-tools,#cfx-bulk-footer) {padding:0;margin:8px 12px;gap:0;border:0;background:transparent;overflow:visible;}
+    html:not([data-cfx-bulk-open]) #cfx-bulk-select {inline-size:100%;margin:0;padding:10px 12px;min-block-size:38px;text-align:start;border:1px solid color-mix(in srgb,var(--text-color-primary) 16%,transparent);background:transparent;border-radius:6px;}
+    html:not([data-cfx-bulk-open]) #cfx-bulk-select:hover {background:var(--menu-bg-hover-color);}
+    html:not([data-cfx-bulk-open]) #cfx-bulk-footer {inline-size:calc(100% - 24px);}
+    #cfx-bulk-count {font-size:14px;font-weight:600;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer)>.cfx-bulk-row {justify-content:space-between;flex-wrap:nowrap;}
+    #cfx-bulk-select {margin-inline-start:auto;}
+    #cfx-bulk-select,#cfx-bulk-all,#cfx-bulk-clear {background:transparent;border-color:transparent;min-height:28px;padding:4px 6px;}
+    .cfx-bulk-selection {display:flex;gap:12px;align-items:center;border-block-end:1px solid color-mix(in srgb,var(--text-color-primary) 12%,transparent);padding-block-end:8px;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) #cfx-bulk-delete-open {grid-column:1/-1;background:transparent;color:light-dark(#a62136,#ffb3bf);border-color:color-mix(in srgb,currentColor 35%,transparent);margin-block-start:4px;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) p:empty {display:none;}
+    html[data-cfx-bulk-open] #picker-identities-list tr {min-block-size:38px;box-sizing:border-box;user-select:none;}
+    html[data-cfx-bulk-open] #picker-identities-list tr[aria-checked=true] {background:var(--menu-bg-hover-color);}
     .cfx-bulk-row {display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .cfx-bulk-actions {display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-    #cfx-bulk-tools input:not([type=checkbox]),#cfx-bulk-tools select {box-sizing:border-box;width:100%;height:36px;min-height:36px;padding:8px;border:1px solid var(--input-border-color);border-radius:4px;background:var(--input-bg-color);color:var(--text-color-primary);font:inherit;}
-    #cfx-bulk-tools label {display:grid;gap:5px;}
-    #cfx-bulk-tools p {margin:0;font-size:12px;line-height:1.45;}
-    #cfx-bulk-tools [data-fields] {display:grid;gap:10px;}
-    #cfx-bulk-delete-names {max-height:120px;overflow:auto;white-space:pre-line;font-weight:600;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) input:not([type=checkbox]),:is(#cfx-bulk-tools,#cfx-bulk-footer) select {box-sizing:border-box;width:100%;height:36px;min-height:36px;padding:8px;border:1px solid var(--input-border-color);border-radius:4px;background:var(--input-bg-color);color:var(--text-color-primary);font:inherit;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) label {display:grid;gap:5px;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) p {margin:0;font-size:12px;line-height:1.45;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) [data-fields] {display:grid;gap:10px;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) [data-delete-review] {gap:14px;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) [data-delete-review]>strong {font-size:15px;line-height:1.4;}
+    #cfx-bulk-delete-names {max-height:120px;overflow:auto;white-space:pre-line;font-weight:500;line-height:1.8!important;padding:10px 12px;border:1px solid color-mix(in srgb,var(--text-color-primary) 15%,transparent);border-radius:6px;background:var(--bgColor);}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) [data-delete-review]>.cfx-bulk-row {display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    #cfx-bulk-delete-confirm {grid-column:2;grid-row:1;}
+    :is(#cfx-bulk-tools,#cfx-bulk-footer) [data-delete-review]>.cfx-bulk-row>button:last-child {grid-column:1;grid-row:1;}
+    html[data-cfx-bulk-review] :is(#cfx-bulk-tools,#cfx-bulk-footer) {max-block-size:420px;}
+
     html[data-cfx-bulk-open],html[data-cfx-bulk-open] body {block-size:600px;min-block-size:600px;max-block-size:600px;}
     html[data-cfx-bulk-open] #container-picker-panel {block-size:600px;max-block-size:600px;min-block-size:0;}
-    html[data-cfx-bulk-open] #container-picker-panel>.scrollable {min-block-size:80px;}
+    html[data-cfx-bulk-open] #container-picker-panel>.scrollable {min-block-size:140px;}
     html[data-cfx-bulk-open] #new-container-div {display:none;}
     html[data-cfx-bulk-open] #picker-identities-list tr td {display:flex;align-items:center;gap:8px;width:100%;}
     html[data-cfx-bulk-open] #picker-identities-list .move-button {display:none;}
-    html[data-cfx-bulk-open] #picker-identities-list tr {user-select:none;}
     .cfx-bulk-check {inline-size:16px;block-size:16px;flex:none;margin:0;pointer-events:none;}
+    html[data-cfx-bulk-open] #cfx-bulk-tools {inline-size:100%;margin:0;padding:12px 16px;border:0;border-block-end:1px solid color-mix(in srgb,var(--text-color-primary) 15%,transparent);border-radius:0;background:transparent;gap:6px;overflow:visible;}
+    html[data-cfx-bulk-open] .cfx-bulk-selection {border:0;padding:0;}
+    html[data-cfx-bulk-open] #cfx-bulk-tools :is(#cfx-bulk-select,#cfx-bulk-all,#cfx-bulk-clear) {background:transparent;border-color:transparent;padding-inline:0;}
+    #cfx-bulk-footer {inline-size:100%;margin:0;padding:12px 16px;border:0;border-block-start:1px solid color-mix(in srgb,var(--text-color-primary) 15%,transparent);border-radius:0;background:var(--bgColor);max-block-size:360px;}
+    #cfx-bulk-footer #cfx-bulk-delete-open {border:0;border-block-start:1px solid color-mix(in srgb,var(--text-color-primary) 12%,transparent);border-radius:0;padding-block-start:12px;margin-block-start:4px;}
+    html[data-cfx-bulk-open] #container-picker-panel>.scrollable {block-size:auto;flex:1;min-block-size:140px;}
   `;
   doc.head.append(style);
   const tools=node('section');tools.id='cfx-bulk-tools';tools.hidden=true;
@@ -37,13 +62,16 @@ export function initBulkContainerUI(actor) {
   const controls=node('div');controls.className='cfx-bulk-row';tools.append(controls);
   const button=(text,parent,handler,id)=>{const b=node('button',text);b.type='button';if(id)b.id=id;b.addEventListener('click',handler);parent.append(b);return b;};
   const select=button('Select containers',controls,()=>setSelecting(!selecting),'cfx-bulk-select');
-  const count=node('span');count.title='Shift-click containers to select a range.';count.setAttribute('aria-live','polite');controls.append(count);
+  const count=node('span');count.id='cfx-bulk-count';count.title='Shift-click containers to select a range.';count.setAttribute('aria-live','polite');controls.append(count);
   const all=button('Select all',controls,()=>{anchor=null;rows().forEach(row=>selected.add(row.dataset.cookieStoreId));sync();},'cfx-bulk-all');
   const clear=button('Clear',controls,()=>{anchor=null;selected.clear();sync();},'cfx-bulk-clear');
-  const actions=node('div');actions.className='cfx-bulk-actions';tools.append(actions);
-  const proxyForm=node('div');proxyForm.hidden=true;proxyForm.setAttribute('data-fields','');tools.append(proxyForm);
-  const reviewForm=node('div');reviewForm.hidden=true;reviewForm.setAttribute('data-fields','');tools.append(reviewForm);
-  const status=node('p');status.setAttribute('role','status');tools.append(status);
+  controls.prepend(count);
+  const selection=node('div');selection.className='cfx-bulk-selection';selection.append(all,clear);tools.append(selection);
+  const footer=node('section');footer.id='cfx-bulk-footer';footer.hidden=true;panel.append(footer);
+  const actions=node('div');actions.className='cfx-bulk-actions';footer.append(actions);
+  const proxyForm=node('div');proxyForm.hidden=true;proxyForm.setAttribute('data-fields','');footer.append(proxyForm);
+  const reviewForm=node('div');reviewForm.hidden=true;reviewForm.setAttribute('data-fields','');reviewForm.setAttribute('data-delete-review','');footer.append(reviewForm);
+  const status=node('p');status.setAttribute('role','status');footer.append(status);
   const ids=()=>[...selected].map(value=>Number(value.replace('firefox-container-','')));
   const rows=()=>[...list.querySelectorAll('tr[data-cookie-store-id]')];
   const visible=()=>!panel.classList.contains('hide') && !!newContainer.querySelector('#new-container');
@@ -66,7 +94,9 @@ export function initBulkContainerUI(actor) {
   const deleteOpen=button('Delete selected…',actions,()=>void run(async()=>{
     review=await actor.sendQuery('BulkDeleteReview',{ids:ids()});
     names.textContent=review.containers.map(item=>item.name).join('\n');
-    reviewForm.hidden=false;proxyForm.hidden=true;status.textContent='Review the names before deleting.';
+    reviewTitle.textContent=`Delete ${review.containers.length} ${review.containers.length===1?'container':'containers'}?`;
+    confirm.textContent=`Delete ${review.containers.length} ${review.containers.length===1?'container':'containers'}`;
+    reviewForm.hidden=false;proxyForm.hidden=true;status.textContent='';
   }),'cfx-bulk-delete-open');deleteOpen.className='cfx-danger';
   const sourceLabel=node('label','Proxy to apply');const source=node('select');source.id='cfx-bulk-source';sourceLabel.append(source);proxyForm.append(sourceLabel);
   const custom=node('div');custom.setAttribute('data-fields','');custom.hidden=true;proxyForm.append(custom);
@@ -85,7 +115,7 @@ export function initBulkContainerUI(actor) {
     password.value='';proxyForm.hidden=true;status.textContent=`Proxy applied to ${result.count} containers. Reload their website tabs to use it.`;
   }),'cfx-bulk-apply');apply.className='cfx-primary';
   button('Cancel',proxyButtons,()=>{proxyForm.hidden=true;password.value='';});
-  reviewForm.append(node('strong','Delete these containers?'));
+  const reviewTitle=node('strong','Delete these containers?');reviewForm.append(reviewTitle);
   const names=node('p');names.id='cfx-bulk-delete-names';reviewForm.append(names);
   reviewForm.append(node('p','This permanently deletes these containers and their cookies and site data, and closes their tabs. This cannot be undone.'));
   const deleteButtons=node('div');deleteButtons.className='cfx-bulk-row';reviewForm.append(deleteButtons);
@@ -97,16 +127,24 @@ export function initBulkContainerUI(actor) {
     removed.forEach(id=>selected.delete(id));reviewForm.hidden=true;
     status.textContent=`Deleted ${result.deleted.length} containers.${result.failed.length?' Could not delete: '+result.failed.map(item=>`${item.name}: ${item.error}`).join('; '):''}`;
   }),'cfx-bulk-delete-confirm');confirm.className='cfx-danger';
-  button('Cancel',deleteButtons,()=>{review=null;reviewForm.hidden=true;});
+  button('Cancel',deleteButtons,()=>{review=null;reviewForm.hidden=true;sync();});
   function setSelecting(value){
     selecting=value;selected.clear();anchor=null;review=null;proxyForm.hidden=reviewForm.hidden=true;password.value='';status.textContent='';
     doc.documentElement.toggleAttribute('data-cfx-bulk-open',value);sync();
   }
   function sync(){
-    tools.hidden=!visible();
+    tools.hidden=!visible()||!selecting;
+    footer.hidden=!visible();
+    if(selecting && select.parentElement!==controls)controls.append(select);
+    else if(!selecting && select.parentElement!==footer)footer.prepend(select);
     select.textContent=selecting?'Done':'Select containers';count.textContent=selecting?`${selected.size} selected`:'';
-    all.hidden=clear.hidden=actions.hidden=!selecting;
-    for(const b of tools.querySelectorAll('button'))b.disabled=busy;
+    const reviewing=!reviewForm.hidden;
+    doc.documentElement.toggleAttribute('data-cfx-bulk-review',reviewing);
+    select.hidden=reviewing;
+    count.hidden=!selecting;
+    selection.hidden=all.hidden=clear.hidden=actions.hidden=!selecting||reviewing;
+    deleteOpen.textContent=selected.size?`Delete ${selected.size} ${selected.size===1?'container':'containers'}…`:'Delete selected…';
+    for(const host of [tools,footer])for(const b of host.querySelectorAll('button'))b.disabled=busy;
     for(const b of actions.querySelectorAll('button'))b.disabled=busy||!selected.size;
     for(const row of rows()){
       let check=row.querySelector('.cfx-bulk-check');
