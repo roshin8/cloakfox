@@ -57,10 +57,18 @@ def close_with_diagnostics(self):
         thread.join(timeout=7)
 
 probe_cef_isolation.Companion.close = close_with_diagnostics
-suite = unittest.TestSuite()
-for _ in range(10):
-    suite.addTests(unittest.defaultTestLoader.loadTestsFromName(
-        'test_webgpu_pixel_privacy.WebGPUPixelPrivacy.test_private_pixels_regenerate_after_last_private_window'))
+full_suite = os.environ.get('SHUTDOWN_FULL_SUITE') == '1'
+if full_suite:
+    suite = unittest.defaultTestLoader.discover(str(ROOT / 'tests/engines'), pattern='test_*.py')
+else:
+    suite = unittest.TestSuite()
+    for _ in range(10):
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromName(
+            'test_webgpu_pixel_privacy.WebGPUPixelPrivacy.test_private_pixels_regenerate_after_last_private_window'))
+if full_suite:
+    sys.path.insert(0, str(ROOT / 'scripts/ci'))
+    import run_engine_tests
+    raise SystemExit(0 if run_engine_tests.run_suite(suite, sys.stderr) else 1)
 result = unittest.TextTestRunner(verbosity=2).run(suite)
 (OUTPUT / 'result.json').write_text(json.dumps({'tests': result.testsRun,
     'failures': len(result.failures), 'errors': len(result.errors), 'skipped': len(result.skipped)}, indent=2))

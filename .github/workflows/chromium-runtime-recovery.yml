@@ -136,6 +136,14 @@ jobs:
         run: |
           set -o pipefail
           python3 -u /tmp/diagnose_chromium_shutdown.py 2>&1 | tee evidence/shutdown.log
+      - name: Reproduce full engine suite with shutdown stacks
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' && steps.metal.outcome == 'success' }}
+        env:
+          SHUTDOWN_EVIDENCE: evidence/full-suite-shutdown
+          SHUTDOWN_FULL_SUITE: '1'
+        run: |
+          set -o pipefail
+          python3 -u /tmp/diagnose_chromium_shutdown.py 2>&1 | tee evidence/full-suite.log
       - name: Require sandbox and storage isolation
         if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         run: python3 tests/engines/probe_cef_isolation.py --binary "$CLOAKFOX_CHROMIUM_BIN" --report evidence/isolation.json
