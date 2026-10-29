@@ -161,6 +161,7 @@ export function initCloakfoxNetworkPolicy() {
   for (const id of ids) publishNativePolicy(Number(id));
   registered = true;
   try {
+    ChromeUtils.importESModule('resource:///modules/CloakfoxQuickContainer.sys.mjs').initQuickContainerButton();
     ChromeUtils.importESModule('resource:///modules/CloakfoxContainerProxyEditor.sys.mjs').initContainerProxyEditor();
     ChromeUtils.importESModule('resource:///modules/CloakfoxProxyIndicator.sys.mjs').initProxyIndicator();
   } catch(error) { Cu.reportError(error); }

@@ -1,0 +1,32 @@
+--- a/browser/components/contextualidentity/content/ContainerCreationPanel.mjs
++++ b/browser/components/contextualidentity/content/ContainerCreationPanel.mjs
+@@ -65,0 +66,7 @@
++    const automatic = doc.createElementNS("http://www.w3.org/1999/xhtml", "moz-checkbox");
++    automatic.id = "containerCreation-auto";
++    automatic.label = "Generate name and color automatically";
++    automatic.description = "Creates a permanent container and opens a new tab.";
++    automatic.style.cssText = "display:block;margin:var(--space-large) var(--space-large) 0";
++    body.prepend(automatic);
++
+@@ -70 +77,3 @@
+-      createButton.disabled = !editor.isValid;
++      createButton.disabled = !automatic.checked && !editor.isValid;
++      editor.form.inert = automatic.checked;
++      editor.form.style.opacity = automatic.checked ? "0.5" : "";
+@@ -72,0 +82 @@
++    automatic.addEventListener("change", updateValidity);
+@@ -76,2 +86,12 @@
+-      editor.commit();
+-      panel.hidePopup();
++      createButton.disabled = true;
++      try {
++        if (automatic.checked) {
++          ChromeUtils.importESModule("resource:///modules/CloakfoxQuickContainer.sys.mjs").createQuickContainer(win);
++        } else {
++          editor.commit();
++        }
++        panel.hidePopup();
++      } catch (error) {
++        automatic.description = error.message;
++        updateValidity();
++      }
