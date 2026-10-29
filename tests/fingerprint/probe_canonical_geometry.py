@@ -208,7 +208,16 @@ def main():
                     def completed(_):
                         state['nativeResolution']=native_resolution()
                         state['bounds']=driver.execute_script("const r=document.getElementById('fixed').getBoundingClientRect();return [r.x,r.y,r.width,r.height]")
-                        return state['nativeResolution'] == float(scale) and state['bounds'] == [20,20,100,80]
+                        # Output-resolution admission can finish before the
+                        # separate WebDriver window-resize reaches content.
+                        # Wait for that resize too, rather than compare old
+                        # layout measurements with a later resized screenshot.
+                        state['browserViewport']=chrome("const r=Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser.getBoundingClientRect();return [r.width,r.height];")
+                        driver.set_context('content')
+                        state['contentViewport']=driver.execute_script("const r=document.getElementById('viewportProbe').getBoundingClientRect();return [r.width,r.height];")
+                        return (state['nativeResolution'] == float(scale)
+                                and state['bounds'] == [20,20,100,80]
+                                and all(abs(a-b) <= 1/60 for a,b in zip(state['browserViewport'],state['contentViewport'])))
                     try:
                         WebDriverWait(driver,10,poll_frequency=0.1).until(completed)
                     except TimeoutException:

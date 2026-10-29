@@ -1081,18 +1081,24 @@ document.addEventListener("DOMContentLoaded", () => {
   function refreshContainerRenderingOptions(ucid, cfg) {
     const enabled = Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false);
     const gpuProfiles = Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false);
+    const requests = readOverrides(ucid);
     for (const control of document.querySelectorAll("input[data-container-rendering]")) {
       const key = control.dataset.containerRendering;
-      const requested = readOverrides(ucid)[key] === true;
+      const requested = requests[key] === true;
       control.checked = requested;
       // A saved request can always be turned off, including if its dependency
       // became unavailable after an import or external preference change.
-      control.disabled = !requested && (!enabled || (key === "rendering:gpu_reference" && !gpuProfiles));
+      control.disabled = !requested && (!enabled || (key !== "geometry:canonical" && !gpuProfiles) ||
+        (key === "rendering:gpu_observed" && requests["rendering:gpu_reference"] !== true));
       control.onchange = () => {
         const status = document.getElementById("cfx-container-rendering-status");
         try {
           const enable = control.checked;
-          setOverride(ucid, key, enable);
+          if (key === "rendering:gpu_reference" && !enable) {
+            setOverrides(ucid, { "rendering:gpu_reference": false, "rendering:gpu_observed": false });
+          } else {
+            setOverride(ucid, key, enable);
+          }
           rebuildCloakCfg(ucid, !enable);
           refreshContainer();
           status.textContent = "Saved for this container. Reload pages and restart workers to use the new rendering policy.";
@@ -1105,6 +1111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const reference = cfg?.["rendering:gpu_profile"];
     const errors = [cfg?.["rendering:gpu_profile:error"], cfg?.["rendering:geometry_profile:error"]].filter(Boolean);
     document.getElementById("cfx-container-rendering-status").textContent = errors.length ? errors.join(" · ")
+      : reference?.mode === "observed-reference" ? "Observed GPU compatibility saved for this container. Reload pages and restart workers to apply its native policy."
       : reference?.mode === "reference" ? "Reference-based GPU profile saved for this container. Live contexts keep their captured policy until reload."
       : "Rendering requests and saved identity are separate for each container. Reload pages after changes.";
   }

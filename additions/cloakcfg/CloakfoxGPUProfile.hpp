@@ -24,8 +24,12 @@ inline std::optional<Descriptor> ForGlobal(nsIGlobalObject* global) {
  constexpr const char* families[]={"","apple","intel","amd","nvidia"};
  if(!family||p["family"]!=families[family])return std::nullopt;
  const bool reference=cfg.contains("rendering:gpu_reference")&&cfg["rendering:gpu_reference"].is_boolean()&&cfg["rendering:gpu_reference"].get<bool>();
- const auto eligible=reference?EligibleReferences(cfg,family):EligibleCatalog(cfg,family);
- if(reference?!ReferenceDescriptorMatches(p,eligible):!DescriptorCatalogMatches(p,eligible))return std::nullopt;
+ const auto observedIt=cfg.find("rendering:gpu_observed");
+ if(observedIt!=cfg.end()&&!observedIt->is_boolean())return std::nullopt;
+ const bool observed=observedIt!=cfg.end()&&observedIt->get<bool>();
+ if(observed&&!reference)return std::nullopt;
+ const auto eligible=reference?EligibleReferences(cfg,family,observed):EligibleCatalog(cfg,family);
+ if(observed?!ObservedDescriptorMatches(p,eligible):reference?!ReferenceDescriptorMatches(p,eligible):!DescriptorCatalogMatches(p,eligible))return std::nullopt;
  auto* settings=CloakfoxSiteSeed::SettingsForGlobal(global);if(!settings)return std::nullopt;
  // Profile identity is independent of readback exception policy. The HMAC
  // domain is separate from canvas noise; select a whole eligible cohort.

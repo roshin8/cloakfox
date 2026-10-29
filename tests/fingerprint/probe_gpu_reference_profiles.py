@@ -20,6 +20,8 @@ from probe_container_workflows import chrome, open_site
 from probe_webgl_backend_profile import INSPECT, READBACK
 from probe_container_gpu_profiles import GPU
 ROOT=Path(__file__).resolve().parents[2]
+EXECUTION=(ROOT/'tests/fingerprint/observed_gpu_execution.js').read_text()
+EXECUTION_WORKER=EXECUTION+'onmessage=()=>postMessage(observedGpuExecution());'
 DETAILS=INSPECT+r'''
 function captureReference(expected) {
  return ['webgl','webgl2'].map((kind,index)=>{
@@ -79,14 +81,17 @@ RESTORE=r'''const done=arguments[arguments.length-1],g=window.held,ext=g.getExte
 WORKER_RUN=r'''const done=arguments[arguments.length-1],worker=new Worker('/worker.js');let timer=setTimeout(()=>{worker.terminate();done({error:'reference worker timeout'})},30000);worker.onmessage=e=>{clearTimeout(timer);worker.terminate();done(e.data)};worker.onerror=e=>{clearTimeout(timer);worker.terminate();done({error:e.message})};worker.postMessage(arguments[0]);'''
 class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
-  body=STARTUP_WORKER.encode() if self.path.startswith('/startup-worker.js') else WORKER.encode() if self.path.startswith('/worker.js') else b'<!doctype html><title>Native reference GPU profile probe</title>'
-  self.send_response(200);self.send_header('Content-Type','text/javascript' if self.path.startswith(('/worker.js','/startup-worker.js')) else 'text/html');self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(body)
+  body=EXECUTION_WORKER.encode() if self.path.startswith('/observed-execution.js') else STARTUP_WORKER.encode() if self.path.startswith('/startup-worker.js') else WORKER.encode() if self.path.startswith('/worker.js') else b'<!doctype html><title>Native reference GPU profile probe</title>'
+  self.send_response(200);self.send_header('Content-Type','text/javascript' if self.path.startswith(('/worker.js','/startup-worker.js','/observed-execution.js')) else 'text/html');self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(body)
  def log_message(self,*args):pass
 
 def main():
  binary=Path(os.environ['CLOAKFOX_BIN']).resolve();out=Path(os.environ.get('REPORT_DIR','/tmp/cloakfox-gpu-reference-159'));out.mkdir(parents=True,exist_ok=True)
  report={'canonicalExportPolicy':'Verified canonical CPU authored pixels may coincide across containers and sites. Separate records, secrets, captured contexts and ownership guards remain required. Existing noncanonical fallback noise is tested separately with reference/pipeline off.', 'binary':str(binary),'xulSHA256':hashlib.sha256((binary.parent/'XUL').read_bytes()).hexdigest(),'checks':[],'cases':[],'inconclusive':[]}
- profiles=json.loads((ROOT/'additions/cloakcfg/gpu-reference-executable.json').read_text())['profiles']
+ observed_mode=os.environ.get('OBSERVED_GPU_MODE','0')=='1'
+ catalog=json.loads((ROOT/'additions/cloakcfg/gpu-reference-executable.json').read_text())
+ profiles=catalog['observedProfiles' if observed_mode else 'profiles']
+ report['observedMode']=observed_mode
  server=ThreadingHTTPServer(('127.0.0.1',0),Handler);threading.Thread(target=server.serve_forever,daemon=True).start()
  def check(ok,name):report['checks'].append({'name':name,'pass':bool(ok)});print(('PASS ' if ok else 'FAIL ')+name,flush=True)
  def save():(out/'result.json').write_text(json.dumps(report,indent=2)+'\n')
@@ -141,10 +146,10 @@ def main():
        const old=JSON.parse(Services.prefs.getStringPref(key)),personas=ChromeUtils.importESModule('resource:///modules/CloakfoxPersonas.sys.mjs');
        const next=personas.fillPersonaKeys('B'.repeat(43)+'=',owner,{os:ref.os==='mac'?'macos':'windows',hardware:ref.family});
        for(const [k,v] of Object.entries(old))if(/seed|secret/i.test(k))next[k]=v;
-       next['webGl:renderer']=ref.renderer;next['webGl:vendor']=ref.vendor;next['rendering:gpu_reference']=true;next['navigator:webgpu:disabled']=false;
+       next['webGl:renderer']=ref.renderer;next['webGl:vendor']=ref.vendor;next['rendering:gpu_reference']=true;next['rendering:gpu_observed']=arguments[2];next['navigator:webgpu:disabled']=false;
        const result=ChromeUtils.importESModule('resource:///modules/CloakfoxOverrides.sys.mjs').applyGraphicsPolicy(next,owner);
-       Services.prefs.setStringPref(key,JSON.stringify(result));return result;''',owner,profile)
-      check(config['rendering:gpu_profile']['version']==3 and config['rendering:gpu_profile']['owner']==owner,f'{profile["family"]}/{offset}: strict owned v3 descriptor')
+       Services.prefs.setStringPref(key,JSON.stringify(result));return result;''',owner,profile,observed_mode)
+      check(config['rendering:gpu_profile']['version']==(4 if observed_mode else 3) and config['rendering:gpu_profile']['owner']==owner,f'{profile["family"]}/{offset}: strict owned v3 descriptor')
       expected_owners[owner]=config
       owner_rows=[];noise_rows=[];site_bindings=[]
       for site_index,host in enumerate(['127.0.0.1','localhost','127.0.0.1']):
@@ -165,6 +170,13 @@ def main():
       for label,value in [('worker startup',startup),('module worker startup',module_startup),('initial blank frame',frame)]:
        check(startup_valid(value.get('startup'),profile),f'{profile["family"]}/{offset}: '+label+' native owner and reference before deferred actor patches')
        check(noise_valid(value.get('noise')) and pixels(value['noise'])==pixels(noise_rows[-1]),f'{profile["family"]}/{offset}: '+label+' keeps the verified canonical output')
+      if observed_mode:
+       executions={'window':driver.execute_script(EXECUTION+'return observedGpuExecution();'),
+        'worker':driver.execute_async_script("const done=arguments[arguments.length-1],w=new Worker('/observed-execution.js');const t=setTimeout(()=>{w.terminate();done({error:'execution worker timeout'})},30000);w.onmessage=e=>{clearTimeout(t);w.terminate();done(e.data)};w.onerror=e=>{clearTimeout(t);w.terminate();done({error:e.message})};w.postMessage(null);")}
+       for scope,execution in executions.items():
+        check(isinstance(execution.get('checks'),list) and bool(execution['checks']) and len(execution.get('contexts',[]))==2,f'{profile["family"]}/{offset}/{scope}: actual native execution completed for both contexts')
+        for result in execution.get('checks',[]):check(result['pass'],f'{profile["family"]}/{offset}/{scope}: '+result['name'])
+       report.setdefault('nativeExecutions',[]).append({'family':profile['family'],'owner':owner,'executions':executions});save()
       strict=driver.execute_script(READBACK);check(strict.get('integerError')==1282 and strict.get('pboError')==1282 and strict.get('integer')==[88]*16,f'{profile["family"]}/{offset}: precise integer and PBO protections retained')
       gpu=driver.execute_async_script(GPU)
       if gpu.get('available'):check(gpu['aboveRejected'] and gpu['allocationRejected'] and gpu['maxBufferSize']==268435456 and gpu['maxStorageBufferBindingSize']==134217728,f'{profile["family"]}/{offset}: actual canonical WebGPU bounds')
@@ -173,9 +185,9 @@ def main():
       driver.set_context('content');driver.close();driver.switch_to.window(base_handle)
      check(report['cases'][-2]['ownerSiteBindingSHA256Prefix'][0]!=report['cases'][-1]['ownerSiteBindingSHA256Prefix'][0],profile['family']+': identical recorded GPUs retain independent owner bindings even when canonical pixels coincide')
      check(owners[0]['rendering:gpu_profile']['owner']!=owners[1]['rendering:gpu_profile']['owner'] and owners[0]['fingerprint:secret']!=owners[1]['fingerprint:secret'],profile['family']+': identical GPU records keep independent owner secrets')
-    check({case['descriptor']['catalog'][0] for case in report['cases']}=={profile['code'] for profile in profiles} and len(report['cases'])==8,'all four actual source record codes exercised across two distinct owners')
+    check({case['descriptor']['catalog'][0] for case in report['cases']}=={profile['code'] for profile in profiles} and len(report['cases'])==2*len(profiles),'all selected actual source record codes exercised across two distinct owners')
     report['sourcePool']=[{'code':profile['code'],'record':profile['record'],'sourceContexts':profile['sourceContexts']} for profile in profiles]
-    owner=ids[-1]
+    owner=ids[2*len(profiles)-1]
     _,actual=open_site(driver,f'http://127.0.0.1:{server.server_port}/?owner={owner}',owner);check(actual==owner,'malformed and captured-context checks use actual last reference owner')
     saved=json.dumps(expected_owners[owner],separators=(',',':'))
     malformed=[
@@ -198,6 +210,8 @@ def main():
      ('missing descriptor',"delete config['rendering:gpu_profile']"),
      ('invalid reference toggle',"config['rendering:gpu_reference']='true'"),
     ]
+    if observed_mode:
+     malformed += [('invalid observed toggle',"config['rendering:gpu_observed']='true'"),('missing reference prerequisite',"config['rendering:gpu_reference']=false")]
     report['malformed']=[]
     for label,mutation in malformed:
      chrome(driver,"const config=JSON.parse(arguments[1]);"+mutation+";Services.prefs.setStringPref('cloakfox.s.cloak_cfg_'+arguments[0],JSON.stringify(config));",owner,saved)
@@ -213,11 +227,11 @@ def main():
     # including resize/restoration after the owning container toggles mode off.
     owner=ids[0];held_profile=profiles[0];held_case=report['cases'][0]
     _,actual=open_site(driver,f'http://127.0.0.1:{server.server_port}/?owner={owner}',owner)
-    check(actual==owner and held_profile['family']=='apple' and held_profile['contexts']['webgl2']['parameters']['36183']['value']==4,'captured resize and restoration exercise stricter Apple4 source against process MSAA preference8')
+    check(actual==owner and (observed_mode or (held_profile['family']=='apple' and held_profile['contexts']['webgl2']['parameters']['36183']['value']==4)),'captured resize and restoration exercise stricter Apple4 source against process MSAA preference8')
     driver.set_context('content')
     frozen=driver.execute_script("window.held=document.createElement('canvas').getContext('webgl');const ext=held.getExtension('WEBGL_debug_renderer_info');return [held.getParameter(ext.UNMASKED_RENDERER_WEBGL),held.getParameter(3379),held.getParameter(36347),held.getParameter(held.SAMPLES)];")
-    check(0<=frozen[3]<=4,'captured Apple default framebuffer obeys sample4 before toggling with global preference8')
-    chrome(driver,"const key='cloakfox.s.cloak_cfg_'+arguments[0],config=JSON.parse(Services.prefs.getStringPref(key));config['rendering:gpu_reference']=false;const next=ChromeUtils.importESModule('resource:///modules/CloakfoxOverrides.sys.mjs').applyGraphicsPolicy(config,arguments[0]);Services.prefs.setStringPref(key,JSON.stringify(next));",owner)
+    check(0<=frozen[3]<=held_profile['contexts']['webgl2']['parameters']['36183']['value'],'captured Apple default framebuffer obeys sample4 before toggling with global preference8')
+    chrome(driver,"const key='cloakfox.s.cloak_cfg_'+arguments[0],config=JSON.parse(Services.prefs.getStringPref(key));config['rendering:gpu_reference']=false;config['rendering:gpu_observed']=false;const next=ChromeUtils.importESModule('resource:///modules/CloakfoxOverrides.sys.mjs').applyGraphicsPolicy(config,arguments[0]);Services.prefs.setStringPref(key,JSON.stringify(next));",owner)
     driver.set_context('content');check(driver.execute_script("const ext=held.getExtension('WEBGL_debug_renderer_info');return [held.getParameter(ext.UNMASKED_RENDERER_WEBGL),held.getParameter(3379),held.getParameter(36347),held.getParameter(held.SAMPLES)];")==frozen,'existing native context keeps captured reference after toggle')
     resized=driver.execute_script("held.canvas.width=7;held.clearColor(.2,.3,.4,1);held.clear(held.COLOR_BUFFER_BIT);return held.getParameter(held.SAMPLES);");check(0<=resized<=held_profile['contexts']['webgl2']['parameters']['36183']['value'],'resized native default framebuffer keeps captured reference MSAA budget')
     restored=driver.execute_async_script(RESTORE);check(restored==frozen,'restored native context keeps captured reference after per-container toggle');report['restoredContext']=restored
@@ -231,7 +245,7 @@ def main():
     fallback=[]
     fallback_js=r"""const c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d'),authored=new Uint8ClampedArray(1024);for(let i=0;i<256;i++){authored[i*4]=30+i%180;authored[i*4+1]=60+i%140;authored[i*4+2]=90+i%100;authored[i*4+3]=255;}x.putImageData(new ImageData(authored,16,16),0,0);const pixels=Array.from(x.getImageData(0,0,16,16).data),repeat=Array.from(x.getImageData(0,0,16,16).data);return {pixels,repeat,authored:Array.from(authored),error:0};"""
     for fallback_owner in ids[:2]:
-     config=dict(expected_owners[fallback_owner]);config.update({'rendering:gpu_reference':False,'canvas:canonical_2d':False,'canvas:canonical_gpu':False,'webGl:backend_profile':False});config.pop('rendering:gpu_profile',None)
+     config=dict(expected_owners[fallback_owner]);config.update({'rendering:gpu_reference':False,'rendering:gpu_observed':False,'canvas:canonical_2d':False,'canvas:canonical_gpu':False,'webGl:backend_profile':False});config.pop('rendering:gpu_profile',None)
      chrome(driver,"Services.prefs.setStringPref('cloakfox.s.cloak_cfg_'+arguments[0],arguments[1]);",fallback_owner,json.dumps(config,separators=(',',':')))
      samples=[]
      for site_index,host in enumerate(['127.0.0.1','localhost','127.0.0.1']):

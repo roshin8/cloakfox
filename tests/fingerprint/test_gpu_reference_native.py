@@ -15,6 +15,7 @@ int main(){
  using namespace CloakfoxGPUReference;
  assert(!Lookup(0x8000)&&!Lookup(0x8005)&&!Lookup(0xffff));
  for(const auto& reference:kProfiles){
+  if(Observed(reference.code))continue;
   auto config=nlohmann::json::parse("{}");config["webGl:renderer"]=reference.renderer;config["webGl:vendor"]=reference.vendor;config["navigator.platform"]=reference.family==1?"MacIntel":"Win32";config["navigator.oscpu"]=reference.family==1?"Intel Mac OS X 10.15":"Windows NT 10.0; Win64; x64";
   auto eligible=EligibleReferences(config,reference.family);assert(eligible==std::vector<uint32_t>{reference.code});
   config["webGl:parameters"]={{"3379",1}};config["webGl2:parameters"]={{"35375",1}};

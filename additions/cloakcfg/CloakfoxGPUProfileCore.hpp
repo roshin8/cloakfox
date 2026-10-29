@@ -85,10 +85,10 @@ inline bool ReferencePrecisionSupported(const CloakfoxGPUReference::Precision& p
 }
 // A reference code belongs to a complete immutable pair, never a bag of limits.
 template <typename Config>
-inline std::vector<uint32_t> EligibleReferences(const Config& cfg,uint32_t family) {
+inline std::vector<uint32_t> EligibleReferences(const Config& cfg,uint32_t family,bool observed=false) {
  std::vector<uint32_t> result;
  for(const auto& p:CloakfoxGPUReference::kProfiles) {
-  if(p.family!=family||!cfg.contains("webGl:renderer")||cfg["webGl:renderer"]!=p.renderer||!cfg.contains("webGl:vendor")||cfg["webGl:vendor"]!=p.vendor)continue;
+  if(p.observed!=observed||p.family!=family||!cfg.contains("webGl:renderer")||cfg["webGl:renderer"]!=p.renderer||!cfg.contains("webGl:vendor")||cfg["webGl:vendor"]!=p.vendor)continue;
   const char* platform=p.family==1?"MacIntel":"Win32";
   const char* oscpu=p.family==1?"Intel Mac OS X 10.15":"Windows NT 10.0; Win64; x64";
   if(!cfg.contains("navigator.platform")||cfg["navigator.platform"]!=platform||!cfg.contains("navigator.oscpu")||cfg["navigator.oscpu"]!=oscpu)continue;
@@ -117,6 +117,14 @@ inline std::vector<uint32_t> EligibleReferences(const Config& cfg,uint32_t famil
 template <typename Config>
 inline bool ReferenceDescriptorMatches(const Config& p,const std::vector<uint32_t>& eligible) {
  if(eligible.empty()||!p.contains("version")||!p["version"].is_number_unsigned()||p["version"]!=3||!p.contains("mode")||p["mode"]!="reference"||!p.contains("source")||p["source"]!=CloakfoxGPUReference::kSource||!p.contains("privacyPolicy")||p["privacyPolicy"]!="reference-protected-v1"||!p.contains("adaptation")||p["adaptation"]!="Firefox146-to159:canonical-renderer;deny-debug-shaders-and-timers;omit-version-specific-provoking-vertex;WebGPU-canonical-device"||!p.contains("catalog")||!p["catalog"].is_array()||p["catalog"].size()!=eligible.size())return false;
+ for(const auto code:eligible)if(!CloakfoxGPUReference::Lookup(code)||CloakfoxGPUReference::Observed(code))return false;
+ for(size_t i=0;i<eligible.size();i++)if(!p["catalog"][i].is_number_unsigned()||p["catalog"][i]!=eligible[i])return false;
+ return true;
+}
+template <typename Config>
+inline bool ObservedDescriptorMatches(const Config& p,const std::vector<uint32_t>& eligible) {
+ if(eligible.empty()||!p.contains("version")||!p["version"].is_number_unsigned()||p["version"]!=4||!p.contains("mode")||p["mode"]!="observed-reference"||!p.contains("source")||p["source"]!=CloakfoxGPUReference::kSource||!p.contains("privacyPolicy")||p["privacyPolicy"]!="observed-reference-v1"||!p.contains("adaptation")||p["adaptation"]!="observed:full32;native-stencil;typed-lod-bias;fixed-restart-index;deny-debug-shaders-and-timers;omit-version-specific-provoking-vertex;WebGPU-canonical-device"||!p.contains("catalog")||!p["catalog"].is_array()||p["catalog"].size()!=eligible.size())return false;
+ for(const auto code:eligible)if(!CloakfoxGPUReference::Observed(code))return false;
  for(size_t i=0;i<eligible.size();i++)if(!p["catalog"][i].is_number_unsigned()||p["catalog"][i]!=eligible[i])return false;
  return true;
 }

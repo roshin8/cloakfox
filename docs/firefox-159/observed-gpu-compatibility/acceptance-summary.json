@@ -1,0 +1,86 @@
+{
+  "status": "passed",
+  "baseline": "65117fec36",
+  "xulSHA256": "4e747b52fe248fd6e50ed4b618a233352109ee2a86d774b3404d5cda86f6d792",
+  "nativeProbes": 6,
+  "observedChecks": 1431,
+  "observedFamilies": [
+    "intel",
+    "amd",
+    "nvidia"
+  ],
+  "observedOwners": 6,
+  "existingModeChecks": {
+    "referenceGPU": 1035,
+    "backendAdmission": 323,
+    "settings": 82,
+    "touchPolicy": 32
+  },
+  "regressionProbes": 22,
+  "regressionResolution": {
+    "initialPassed": 21,
+    "initialFailed": "probe_font_metric_noise.py",
+    "targetedRerun": "font-runtime.json",
+    "resolution": "Fixed public disposable internal-secret fixture; noise/baseline/restart assertions unchanged; passed."
+  },
+  "unitTests": {
+    "javascript": {
+      "passed": 392,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/cloakfox-observed-node-final.log"
+    },
+    "python": {
+      "passed": 196,
+      "failed": 0,
+      "skipped": 0,
+      "log": "tests/fingerprint/reports/firefox159-observed-gpu-compatibility/all-python-tests.log"
+    },
+    "ciHelpers": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/cloakfox159-observed-ci.log"
+    },
+    "generatorCheck": true
+  },
+  "libraries": {
+    "runs": 144,
+    "configurations": 3,
+    "casesPerConfiguration": 8,
+    "repeats": 3,
+    "libraries": [
+      "CreepJS",
+      "FingerprintJS"
+    ],
+    "webgpuEnabled": true,
+    "observedGPUAndCapabilityWarnings": 0,
+    "remainingObservedWarnings": [
+      "Chrome UA on Firefox engine: WorkerGlobalScope SpiderMonkey/V8 mismatch"
+    ]
+  },
+  "patchReplay": {
+    "count": 168,
+    "allPassed": true,
+    "zeroFuzz": true
+  },
+  "review": "code-review.md",
+  "unsupportedObservedFamily": "apple",
+  "existingAppleReferenceMode": "unchanged",
+  "installed": false,
+  "chromiumInputKey": "bbc651dcf5cbe4321f5fd1728eb40f2a20f7547053009258d96764370804dfcf",
+  "preservedCheckpointAncestors": [
+    "0b7287e90e",
+    "a8ef96501b",
+    "bda36bb1c4",
+    "2432ccb872",
+    "0953822b1e",
+    "582de019aa",
+    "36aef7ee7f",
+    "ec1f1158d3",
+    "2379ecdb7f",
+    "65117fec36"
+  ],
+  "platform": "macOS arm64",
+  "scope": "Coherent executable profiles with canonical rendering, not physical vendor-driver emulation"
+}

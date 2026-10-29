@@ -79,6 +79,7 @@ export const KEY_TYPES = {
   // ── graphics ──
   "geometry:canonical": "bool",
   "rendering:gpu_reference": "bool",
+  "rendering:gpu_observed": "bool",
   "webGl:vendor":   "string",
   "webGl:renderer": "string",
 
@@ -164,11 +165,12 @@ export function readOverrides(ucid) {
 }
 
 // Per-container modes never change another owner or regenerate its identity.
-const CONTAINER_RENDERING_OPTIONS = ["geometry:canonical", "rendering:gpu_reference"];
+const CONTAINER_RENDERING_OPTIONS = ["geometry:canonical", "rendering:gpu_reference", "rendering:gpu_observed"];
 function validateContainerRenderingOptions(config, owner) {
   for (const key of CONTAINER_RENDERING_OPTIONS) {
     if (config[key] !== undefined && typeof config[key] !== "boolean") throw new Error(`${key} requires a boolean`);
   }
+  if (config["rendering:gpu_observed"] === true && config["rendering:gpu_reference"] !== true) throw new Error("Observed GPU rendering requires the reference profile request");
   if (!CONTAINER_RENDERING_OPTIONS.some(key => config[key] === true)) return;
   if (!Services.prefs.getBoolPref("cloakfox.experimental.canvas_pipeline", false)) throw new Error("Enable canonical software rendering before enabling a container rendering mode");
   if (config["rendering:gpu_reference"] === true && !Services.prefs.getBoolPref("cloakfox.opt.container_rendering_profiles", false)) throw new Error("Enable container GPU profiles before selecting a reference profile");
@@ -178,7 +180,7 @@ function validateContainerRenderingOptions(config, owner) {
 }
 export function requireContainerRenderingModesDisabled() {
   for (const name of Services.prefs.getChildList("cloakfox.container.")) {
-    if (!/^cloakfox\.container\.(0|[1-9]\d*)\.override\.(geometry:canonical|rendering:gpu_reference)$/.test(name)) continue;
+    if (!/^cloakfox\.container\.(0|[1-9]\d*)\.override\.(geometry:canonical|rendering:gpu_reference|rendering:gpu_observed)$/.test(name)) continue;
     if (Services.prefs.getBoolPref(name, false)) throw new Error("Disable the saved rendering requests in each container before disabling canonical software rendering");
   }
 }

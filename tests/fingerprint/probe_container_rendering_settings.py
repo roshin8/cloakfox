@@ -27,6 +27,7 @@ PIPELINE = 'cloakfox.experimental.canvas_pipeline'
 GPU_PROFILES = 'cloakfox.opt.container_rendering_profiles'
 GEOMETRY = 'geometry:canonical'
 REFERENCE = 'rendering:gpu_reference'
+OBSERVED = 'rendering:gpu_observed'
 
 
 def main():
@@ -90,20 +91,31 @@ def main():
             WebDriverWait(driver, 20).until(lambda d: d.execute_script(
                 "return location.href===arguments[0] && document.readyState==='complete'", target))
             WebDriverWait(driver, 20).until(lambda d: all(d.find_elements(
-                By.CSS_SELECTOR, f'input[data-container-rendering="{key}"]') for key in [GEOMETRY, REFERENCE]))
+                By.CSS_SELECTOR, f'input[data-container-rendering="{key}"]') for key in [GEOMETRY, REFERENCE, OBSERVED]))
             WebDriverWait(driver, 10).until(lambda d: d.find_element(By.ID, 'cfx-container-select').get_attribute('value') == str(owner))
+
+        def reveal(control):
+            # The fixed settings header can cover WebDriver's default nearest
+            # scroll position. Center the real control before native clicks.
+            driver.execute_script("arguments[0].scrollIntoView({block:'center',behavior:'instant'});", control)
+            WebDriverWait(driver,10).until(lambda d:d.execute_script("""
+              const c=arguments[0],r=c.getBoundingClientRect();
+              const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+              return hit===c || c.contains(hit);
+            """,control))
+            return control
 
         def mode(key):
             driver.execute_script("location.hash='sec-graphics'")
             control=driver.find_element(By.CSS_SELECTOR, f'input[data-container-rendering="{key}"]')
             WebDriverWait(driver,10).until(lambda _:control.is_displayed())
-            return control
+            return reveal(control)
 
         def backing(pref):
             driver.execute_script("location.hash='sec-hardening'")
             control=driver.find_element(By.CSS_SELECTOR, f'input[data-pref="{pref}"]')
             WebDriverWait(driver,10).until(lambda _:control.is_displayed())
-            return control
+            return reveal(control)
 
         def status():
             mode(GEOMETRY)
@@ -267,17 +279,47 @@ def main():
             descriptor = enabled[0]['cfg'].get('rendering:gpu_profile', {})
             check(descriptor.get('owner') == selected and descriptor.get('mode') == 'reference' and bool(descriptor.get('catalog')), 'selected reference profile is paired, complete and owner-bound')
             check('Saved' in status(), 'actual handler reports per-container save and reload instructions')
+            check(mode(OBSERVED).is_enabled() and not mode(OBSERVED).is_selected(), 'saved reference exposes optional observed activation')
+            apple_before = snapshot(owners)
+            mode(OBSERVED).click()
+            check(snapshot(owners) == apple_before and not mode(OBSERVED).is_selected(), 'unsupported Apple observed activation rejects before any owner write')
+            check('supported' in status().lower(), 'unsupported observed persona explains its rejection')
+            # Switch only the selected fixture to a complete original Windows
+            # pair. Persona constraints keep clear-all generation compatible.
+            chrome("""
+              const id=arguments[0],o=ChromeUtils.importESModule('resource:///modules/CloakfoxOverrides.sys.mjs');
+              const {REFERENCE_GPU_PROFILES}=ChromeUtils.importESModule('resource:///modules/CloakfoxGPUReferenceProfiles.sys.mjs');
+              const pair=REFERENCE_GPU_PROFILES.find(p=>p.family==='intel');
+              Services.prefs.setStringPref('cloakfox.container.'+id+'.persona_os','windows');
+              Services.prefs.setStringPref('cloakfox.container.'+id+'.persona_hardware','intel');
+              o.setOverrides(id,{'webGl:vendor':pair.vendor,'webGl:renderer':pair.renderer,
+                'navigator.platform':'Win32','navigator.oscpu':'Windows NT 10.0; Win64; x64'});
+              const name='cloakfox.s.cloak_cfg_'+id,current=JSON.parse(Services.prefs.getStringPref(name));
+              Services.prefs.setStringPref(name,JSON.stringify(o.applyOverrides(id,current)));
+            """, selected)
+            load(selected)
+            windows_before = snapshot(owners)
+            click_mode(selected, OBSERVED, True)
+            observed = snapshot(owners)
+            check(observed[1] == windows_before[1] and [identity(x) for x in observed] == [identity(x) for x in windows_before], 'observed activation preserves both owners and all seeds')
+            d = observed[0]['cfg'].get('rendering:gpu_profile', {})
+            check(d.get('version') == 4 and d.get('mode') == 'observed-reference' and d.get('owner') == selected and d.get('privacyPolicy') == 'observed-reference-v1', 'observed handler saves complete exact-owner version4 policy')
+            click_mode(selected, OBSERVED, False)
+            check(mode(REFERENCE).is_selected() and snapshot(owners)[0]['cfg']['rendering:gpu_profile']['version'] == 3, 'disabling observed retains the existing reference mode')
+            click_mode(selected, OBSERVED, True)
+            enabled = snapshot(owners)
+
             load(other)
             check(not mode(GEOMETRY).is_selected() and not mode(REFERENCE).is_selected(), 'selecting another container shows its separate inactive requests')
             load(selected)
-            check(mode(GEOMETRY).is_selected() and mode(REFERENCE).is_selected(), 'both selected-owner requests survive settings reload')
+            check(all(mode(key).is_selected() for key in [GEOMETRY,REFERENCE,OBSERVED]), 'all selected-owner requests survive settings reload')
             chrome('Services.prefs.savePrefFile(null);')
             driver.quit()
             driver = launch()
             load(selected)
             restored = snapshot(owners)
             check(restored == enabled, 'settings requests, independent owners and identity fields survive browser restart')
-            check(mode(GEOMETRY).is_selected() and mode(REFERENCE).is_selected(), 'restart restores both selected-owner checkbox states')
+            check(all(mode(key).is_selected() for key in [GEOMETRY,REFERENCE,OBSERVED]), 'restart restores all selected-owner checkbox states')
 
             backing(PIPELINE).click()
             check(chrome('return Services.prefs.getBoolPref(arguments[0])', PIPELINE) is True and backing(PIPELINE).is_selected(), 'UI refuses global backing off while any saved rendering request remains')
@@ -297,6 +339,7 @@ def main():
             check(not mode(GEOMETRY).is_enabled() and mode(REFERENCE).is_enabled(), 'dependency loss disables only inactive activation while keeping the saved request removable')
             click_mode(selected, REFERENCE, False)
             off = snapshot(owners)
+            check(off[0]['cfg'].get(OBSERVED) is False and not mode(OBSERVED).is_selected(), 'disabling parent reference atomically disables observed during dependency loss')
             check(all(off[0]['cfg'].get(key) is False for key in [GEOMETRY, REFERENCE]), 'either requested mode can be switched off without restoring its dependency')
             check(all(not mode(key).is_enabled() and not mode(key).is_selected() for key in [GEOMETRY,REFERENCE]), 'after both requests are removed unavailable activation controls are disabled again')
             check([identity(x) for x in off] == [identity(x) for x in before], 'external-backing recovery does not rotate identity inputs')
@@ -328,7 +371,7 @@ def main():
             print('RUN clear-overrides completion checks',flush=True)
             WebDriverWait(driver, 10).until(lambda _: not snapshot([selected])[0]['overrides'])
             cleared = snapshot(owners)
-            check(not cleared[0]['overrides'] and GEOMETRY not in cleared[0]['cfg'] and REFERENCE not in cleared[0]['cfg'] and 'rendering:geometry_profile' not in cleared[0]['cfg'], 'clear-overrides button removes both requests and derived geometry admission')
+            check(not cleared[0]['overrides'] and GEOMETRY not in cleared[0]['cfg'] and REFERENCE not in cleared[0]['cfg'] and OBSERVED not in cleared[0]['cfg'] and 'rendering:geometry_profile' not in cleared[0]['cfg'], 'clear-overrides button removes both requests and derived geometry admission')
             check(cleared[1] == preclear[1], 'clear-overrides handler leaves the other owner untouched')
             check([identity(x) for x in cleared] == [identity(x) for x in before], 'clear-overrides handler keeps every owner seed and secret')
             check(not mode(GEOMETRY).is_selected() and not mode(REFERENCE).is_selected(), 'clear-overrides handler refreshes visible checked states')

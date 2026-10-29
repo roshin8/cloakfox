@@ -30,4 +30,20 @@ class ReferenceGenerator(unittest.TestCase):
     self.assertNotIn('3408',profile['adaptations'][context],'A measured source4 must not be promoted by an assumed canonical raster precision')
     self.assertNotIn('WEBGL_debug_shaders',profile['contexts'][context]['supportedExtensions'])
     for adaptation in profile['adaptations'][context].values():self.assertTrue(adaptation['reason'])
+ def test_observed_profiles_preserve_source_numbers_precision_and_stencil_defaults(self):
+  derived=json.loads((ROOT/'additions/cloakcfg/gpu-reference-executable.json').read_text())
+  source=json.loads((ROOT/'additions/cloakcfg/gpu-reference-records.json').read_text())
+  records={r['id']:r for r in source['records']}
+  observed=derived['observedProfiles']
+  self.assertEqual([p['code'] for p in observed],[36866,36867,36868])
+  for p in observed:
+   legacy=next(old for old in derived['profiles'] if old['code']==p['code']-4096)
+   self.assertEqual(p['record'],legacy['record'])
+   for name,c in p['contexts'].items():
+    original=source['contexts'][records[p['record']][name]]
+    self.assertEqual(c['shaderPrecisionFormats'],original['staticCapabilities']['shaderPrecisionFormats'])
+    for key,value in original['staticCapabilities']['parameters'].items():self.assertEqual(c['parameters'][key],value)
+    for key in ['2963','2968','36004','36005']:self.assertEqual(c['defaults']['stencilMask'],original['observed']['params'][key]['value'])
+    self.assertEqual(c['defaults']['stencilMask'],0x7fffffff)
+    self.assertEqual(c['supportedExtensions'],[ext for ext in original['staticCapabilities']['supportedExtensions'] if ext not in derived['policyExclusions']])
 if __name__=='__main__':unittest.main()

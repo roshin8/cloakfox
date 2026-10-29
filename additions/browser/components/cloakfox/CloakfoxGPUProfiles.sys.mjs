@@ -34,6 +34,8 @@ export function eligibleGPUProfiles(config, family) {
   }).map(profile=>profile.id);
 }
 export function createGPUProfile(config, owner) {
+  if (config['rendering:gpu_observed'] !== undefined && typeof config['rendering:gpu_observed'] !== 'boolean') throw new Error('Invalid observed GPU request');
+  if (config['rendering:gpu_observed'] === true && config['rendering:gpu_reference'] !== true) throw new Error('Observed GPU requires reference rendering');
   if (config['rendering:gpu_reference'] === true) return createReferenceGPUProfile(config, owner);
   if (!Number.isInteger(owner) || owner < 0 || owner > 0xffffffff) throw new Error('GPU profile requires an exact container owner');
   const renderer = config['webGl:renderer'], vendor = config['webGl:vendor'];
