@@ -137,6 +137,37 @@ cert (`http://mitm.it/` from a proxied browser) so Cloakfox trusts the
 intercepted connections. This is pure local observation — nothing about
 the cert manipulation leaks the real fingerprint.
 
+## Shared-memory privacy diagnostic
+
+`probe_sab_privacy.py` measures clock recovery through a worker's shared-memory
+counter during synchronous low/high fixed workloads. It runs both worker and
+main-thread observers, saves raw samples, and fits a classification threshold on
+the first half before scoring the held-out second half. The counter yields
+between finite batches, allowing serialized execution to progress without a
+busy-wait handshake.
+
+```bash
+tests/.venv/bin/python tests/fingerprint/probe_sab_privacy.py \
+  --binary /Applications/Cloakfox.app/Contents/MacOS/cloakfox \
+  --output /tmp/sab-privacy.json
+```
+
+The native, experimental jitter, and Firefox serialized-access policies each
+use a fresh profile with a valid timing key. Reports record installed browser
+version/build metadata and whether the requested mechanism has a registered
+default preference; writing an unknown preference is not evidence of support.
+An absent mechanism is inconclusive. An installed older browser cannot validate
+the current unbuilt branch.
+
+These measurements are diagnostics, never privacy PASS results. A functioning
+native positive control is needed to interpret reduced clock recovery under a
+policy; a native result near chance means the experiment lacks sensitivity.
+Even zero observed counter advancement does not establish resistance to other
+clocks, repeated statistical attacks, hardware identification, or recognizing
+the serialization policy itself. Policy order, thermal state, and background
+load can influence samples; replicate with reversed `--policies` order for
+comparisons. The aggregate regression runner explicitly skips this diagnostic.
+
 ## What lives where
 
 ```

@@ -30,6 +30,7 @@ HERE = Path(__file__).resolve().parent
 # Probes that need a special environment or are one-off spikes rather than
 # regression tests, with the reason they are skipped by default.
 SKIP = {
+    "probe_sab_privacy.py": "privacy diagnostic requires explicit browser provenance and output path; not a pass/fail regression",
     "probe_font_spike.py": "phase-0 spike, needs a hand-staged test font",
     "run_all.py": "this driver",
 }
